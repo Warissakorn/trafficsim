@@ -40,6 +40,10 @@ junctions are not something the user places.
 an aerial image, in under 10 minutes, without reading documentation — and reopening the file
 gives back exactly what they drew.
 
+**Includes, because D7 makes it non-optional:** left-hand / right-hand traffic as a project
+setting that actually drives connector and conflict geometry. Retrofitting this later touches
+every geometry routine.
+
 ---
 
 ## M2 — Demand, run, first numbers · **GATE**
@@ -50,9 +54,19 @@ and queue per movement.
 **Done when:** the M1 intersection, loaded with counted volumes, runs and produces a delay
 table.
 
-**GATE — the honesty check.** Before M3 starts, **three practising traffic engineers** each
-complete a small real study in this tool and in their current tool, and are asked directly
-whether the free SUMO-based alternative would have been good enough for this job.
+**GATE — the honesty check.** Before M3 starts, a practising traffic engineer completes a
+small **real** study in this tool and in their current tool, and answers directly whether the
+free SUMO-based alternative would have been good enough for this job.
+
+> **This gate is currently performed by the project owner alone (D8), which makes it weak** —
+> the person judging is the person who chose to build an engine. It is therefore run as a
+> **pre-registered** test: **the pass/fail criteria are written into this file and committed
+> before any M2 implementation begins.** Criteria decided afterwards are not a test. A pass
+> under these conditions means "not disproven", never "confirmed". Recruiting outside
+> engineers later strengthens the gate and is never wasted effort.
+
+**Pre-registered criteria: TO BE WRITTEN before M2 implementation starts.** Leaving this
+line unfilled and starting M2 anyway voids the gate.
 
 - If the answer is broadly *yes*, this project is the wrong answer to the problem —
   see `PROBLEM.md` §7.1 — and the honest move is to stop and reconsider, not to continue
