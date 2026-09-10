@@ -1,10 +1,10 @@
-# TrafficSim
+# Veytrix
 
 A traffic microsimulator with its own simulation engine, built to the modelling surface PTV
 Vissim users already think in, producing the movement-level delay and level-of-service output
 that traffic impact studies require.
 
-*Working name. No code yet — this repository currently holds the project's documentation spine.*
+*No code yet — this repository currently holds the project's documentation spine.*
 
 ## Start here
 

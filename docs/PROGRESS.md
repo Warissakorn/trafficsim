@@ -1,4 +1,4 @@
-# PROGRESS — TrafficSim
+# PROGRESS — Veytrix
 
 Append-only. Newest entry at the top. **This is what a session with no memory reads to rejoin
 the work.** Never delete an entry; move old blocks to `PROGRESS-archive.md` whole if this gets
@@ -54,7 +54,7 @@ Ask these before the milestone they block.
 | Q2 | Which lane-changing model? | M1 | MOBIL and Gipps are both defensible. Needs a short spike, not a debate. |
 | ~~Q3~~ | ~~Who are the three engineers for the M2 gate?~~ | M2 gate | **Answered 2026-09-10: the project owner performs the gate alone.** This materially weakens it — see D8 and the mitigation in `ROADMAP.md` M2. |
 | Q4 | Which published benchmarks define the M6 tolerance? | M6 | Decide before M5 so evaluation is built to be checkable against them. HCM is the likely baseline now that D7 makes the tool international. |
-| Q5 | Final product name | Repo rename, package name, UI strings | Working name `TrafficSim` is a placeholder. Renaming is cheapest now. |
+| ~~Q5~~ | ~~Final product name~~ | — | **Answered 2026-09-10: Veytrix.** See D9. |
 
 ---
 
@@ -72,6 +72,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D5 | 2026-09-10 | **A results screen carries a "not yet validated" marker until M6 passes** | Numbers from this tool go into documents submitted to regulators. An unvalidated engine that looks authoritative is worse than no tool. | Nothing. This one is not negotiable before M6. |
 | D7 | 2026-09-10 | **International audience from the start, not Thailand-first** | Nothing in the engine is jurisdiction-specific, and the parts that are — LOS thresholds, report layouts, units — are data, not code, so building them swappable costs little now and a retrofit costs a lot. Three concrete consequences: HCM is the default LOS pack with others as swappable data; metric internally with display units switchable; **left-hand and right-hand traffic is a first-class network setting from M1** (Thailand, UK, Japan, Australia all drive left — a prior effort never implemented it at all). | If it turns out every real user is in one jurisdiction and the generality is unused weight. |
 | D8 | 2026-09-10 | **The M2 gate is performed by the project owner alone, not three independent engineers** | The owner is a practising traffic engineer and no outside participants are available. Accepted with eyes open: this is **a materially weaker test than the one D1 needs**, because the person judging whether a free SUMO-based tool would have sufficed is the same person who chose to build an engine instead. Mitigation, mandatory: **the pass/fail criteria are written down and committed before M2 implementation starts**, so the judgement cannot be rationalised after the fact. Adding outside engineers later strengthens the gate and is never wasted. | Nothing makes it wrong; it is simply weak. Treat a pass as "not disproven", not as "confirmed". |
+| D9 | 2026-09-10 | **The project is named Veytrix** | Chosen by the owner after working through several naming directions (domain jargon, borrowed engineering terms, abstract coinages, Thai-rooted feminine names). Verified free on npm and PyPI. **Two known flags, accepted:** `veytrix.com` is already resolving to something, and **Vectrix** is an existing electric-scooter company that is phonetically close. Neither blocks a repository or package name, but both are reasons a trademark search would be worth doing before any commercial use. | A trademark conflict surfacing later. Renaming is cheap while the repo is documentation only and gets steadily more expensive after that. |
 | D6 | 2026-09-10 | **Project spine written before any code** | Only what is on disk survives a session boundary. The rules in `PRINCIPLES.md` §3 were measured by a prior effort and would otherwise have to be rediscovered by paying for them again. | — |
 
 ---
@@ -96,6 +97,16 @@ every row is marked `planned`.
 
 **Next:** toolchain setup — see the `Next` section above.
 
+### 2026-09-10 — named Veytrix (D9)
+
+Working name `TrafficSim` replaced throughout the documentation. `veytrix` is free on npm
+and PyPI; `veytrix.com` is taken and `Vectrix` (electric scooters) is phonetically close —
+both recorded in D9 as accepted, known risks rather than discovered later.
+
+**Still to do by hand:** the GitHub repository is still called `trafficsim`. Renaming it needs
+repository-admin access, which this session's GitHub app does not have — the owner renames it
+in the repository settings, after which the git remote here needs updating.
+
 ### 2026-09-10 — Q1 and Q3 answered (D7, D8)
 
 - **Q1 → international from the start** (D7). Consequences recorded: HCM as the default LOS
@@ -107,6 +118,6 @@ every row is marked `planned`.
   written into `ROADMAP.md` and committed **before** M2 implementation starts. `ROADMAP.md`
   now carries an unfilled placeholder for those criteria; starting M2 without filling it
   voids the gate.
-- **Q5 opened:** final product name. `TrafficSim` is a placeholder. `Headway` was considered
+- **Q5 opened:** final product name. `Veytrix` is a placeholder. `Headway` was considered
   and rejected — `headwaymaps/headway` is an existing open-source maps stack, too close a
   neighbour in the same field.
