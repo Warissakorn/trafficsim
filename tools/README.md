@@ -1,246 +1,117 @@
-# Tools guide
+# Native tools guide
 
-Developer and command-line utilities for TrafficSim. Run every command in this guide from
-the repository root unless a section says otherwise.
+All executable project tools are C++20. Run build commands from the repository root.
+See `../docs/BUILDING.md` for Windows/Qt setup; no Node.js or Python is needed.
 
-## Setup
-
-TrafficSim requires Node.js 22.12 or newer. Python 3 is required only for the file-size
-checker.
+## Setup and quick reference
 
 ```bash
-npm ci
+cmake --preset headless
+cmake --build --preset headless
+cmake --build build/headless --target check
 ```
 
-Use `npm ci` for a clean, reproducible installation from `package-lock.json`. Use
-`npm install` only when deliberately changing dependencies.
+| Source | Executable | Purpose |
+|---|---|---|
+| `run_simulation.cpp` | `trafficsim-cli` | Run a seeded M0 scenario without a window |
+| `check_architecture.cpp` | `trafficsim-check-architecture` | Check core/eval include boundaries and forbidden nondeterministic APIs |
+| `check_file_sizes.cpp` | `trafficsim-check-file-sizes` | Enforce the source-file line budget |
 
-## Quick reference
+The executables are under `build/headless/bin/` or `build/desktop/bin/` for the Ninja
+presets. On Windows add `.exe`. Multi-configuration generators add the configuration
+name after `bin/`.
 
-| Tool | Purpose | Normal command | Success exit code |
-|---|---|---|---|
-| `run-simulation.ts` | Run the built-in crossing scenario without the UI | `npm run simulate -- 42` | `0` |
-| `core-boundary.ts` | Detect forbidden dependencies and nondeterministic APIs in `src/core/` | `npm test -- tests/architecture.test.ts` | `0` |
-| `check_file_sizes.py` | Report source files and fail when one exceeds the line budget | `python3 tools/check_file_sizes.py .` | `0` |
-
-Run the complete project check before committing:
+## Simulation runner
 
 ```bash
-npm run check
+./build/headless/bin/trafficsim-cli
+./build/headless/bin/trafficsim-cli 42
+./build/headless/bin/trafficsim-cli --seed 123
+./build/headless/bin/trafficsim-cli --scenario data/scenarios/crossing.json --data-dir data
+./build/headless/bin/trafficsim-cli 42 --events run-42.jsonl
+./build/headless/bin/trafficsim-cli --help
 ```
 
-This runs all tests, the strict TypeScript and production build, and the default 500-line
-source-file check.
+| Argument | Meaning | Default |
+|---|---|---|
+| Positional seed or `--seed N` | Unsigned integer 0–4294967295; specify once | 42 |
+| `--scenario FILE` | M0 authoring network plus scenario definition | `data/scenarios/crossing.json` beside executable |
+| `--data-dir DIR` | Vehicle/behaviour catalogs; desktop also reads locales here | Data beside executable, then working directory |
+| `--events FILE` | Stream all events as JSON Lines | No trajectory file |
+| `--help` | Usage without loading assets or running a simulation | — |
 
-## Headless simulation runner
+Stdout contains a JSON diagnostic; errors go to stderr with a nonzero exit code.
+Invalid/overflow/fractional seeds are rejected. Missing files, wrong JSON field types,
+unknown references, off-grid timing and unsupported topology fail before stepping.
+`--events` requires a new filename and will not overwrite an existing file.
 
-File: `tools/run-simulation.ts`
+The loaded scenario can contain explicit `definition.vehicleTypes` and
+`definition.behaviours` arrays. Otherwise every `.json` file in the corresponding
+catalog directory is loaded in filename order. Adding the 50th vehicle type needs no
+C++ edit. The authoring fixture format is documented in `../docs/SIMULATION.md`.
 
-The runner loads the built-in network and scenario from `data/scenarios/crossing.json`,
-creates an immutable simulation with the selected random seed, advances it to the scenario
-horizon, and prints a JSON summary. It is useful for smoke tests and reproducibility checks;
-it is not a general project-file runner yet.
+Seed 42 outputs 31 completed trips, 0 active, 0 pending, mean delay
+29.249359418430977 seconds and 0 safety clamps after 180 simulated seconds.
+This is an unvalidated completed-trip diagnostic, **not HCM control delay or LOS**.
 
-### Usage
-
-```bash
-npm run simulate
-npm run simulate -- 42
-npm run simulate -- 123456
-```
-
-The optional positional argument is the random seed. The default is `42`. Valid seeds are
-integers from `0` to `4294967295` inclusive. The same scenario, seed, engine version and
-JavaScript runtime must reproduce the same event stream.
-
-Do not pass options before the `--`; npm would interpret them as npm options rather than
-arguments for the runner.
-
-### Output
-
-```json
-{
-  "seed": 42,
-  "simulatedSeconds": 180,
-  "validation": "not-yet-validated",
-  "completed": 31,
-  "safetyClamps": 0,
-  "meanTravelTime": 51.961290322580645,
-  "meanDelay": 29.249359418430977,
-  "active": 0,
-  "pending": 0
-}
-```
-
-| Field | Meaning |
+| Output field | Interpretation |
 |---|---|
-| `seed` | Seed used by the xorshift32 random-number generator |
-| `simulatedSeconds` | Scenario time reached by fixed stepping |
-| `validation` | Permanent warning for the current unvalidated model |
-| `completed` | Vehicles that reached the end of their route |
-| `safetyClamps` | Steps where overlap prevention shortened a proposed movement |
-| `meanTravelTime` | Mean network travel time for completed trips, in seconds |
-| `meanDelay` | Completed-trip diagnostic delay, in seconds |
-| `active` | Vehicles still inside the network at the horizon |
-| `pending` | Generated vehicles still waiting to enter at the horizon |
+| `validation` | Always `not-yet-validated` in M0 |
+| `engineVersion` | Native engine generation; store with future report runs |
+| `compiler` | Compiler identifier/version used to build the executable |
+| `seed`, `time` | Input seed and final simulated time |
+| `completed` | Vehicles whose front reached the route sink |
+| `active` | Vehicles still in the network |
+| `pending` | Sampled arrivals still waiting outside source lanes |
+| `meanTravelTime` | Mean in-network time for completed trips, or null |
+| `meanDelay` | In-network time plus source wait minus desired-speed reference, or null |
+| `safetyClamps` | Numerical caps that prevented longitudinal overlap/stop-line crossing |
 
-`meanDelay` includes source waiting and acceleration loss. It is not HCM control delay,
-movement delay or LOS. It uses completed trips only, so always inspect `active` and
-`pending` before interpreting it. `safetyClamps` should be investigated when nonzero; the
-guard prevents overlap but may indicate an aggressive timestep, parameter set or topology.
+Event files may become large. Without `--events`, movement events are filtered at the
+sink and no trajectory history is retained. The state still contains latest-step events.
 
-To run a different built-in scenario, change `createDemo()` in `src/model/demo.ts` or add a
-new explicit runner. Do not make this tool parse persisted project files; parsing belongs in
-the future `src/project/` layer.
+## Architecture and size checks
 
-### Common errors
+```bash
+./build/headless/bin/trafficsim-check-architecture .
+./build/headless/bin/trafficsim-check-architecture --self-test
+./build/headless/bin/trafficsim-check-file-sizes .
+```
 
-| Error | Cause and action |
+The architecture checker permits only literal same-directory headers and a reviewed
+standard-library include list in core/eval; eval additionally reads the core event
+contract. It rejects Qt, I/O, random-device/clock/unordered APIs, macro includes and
+module imports. Negative fixtures ensure obvious forbidden imports fail. This is a
+restricted source scanner, not a C++ AST parser; source review covers nonstandard
+preprocessor forms. Do not expand the allowlist to hide a boundary violation.
+
+The size checker scans C++ headers/sources, Markdown and CMake, skips build/output and
+hidden directories, and fails above 500 lines.
+Exit 0 means pass, 1 means a violation; command misuse returns 2.
+
+## Tests and daily workflow
+
+```bash
+cmake --build --preset headless
+ctest --preset headless
+ctest --test-dir build/headless -R reference --output-on-failure
+./build/headless/bin/trafficsim-tests core
+cmake --build build/headless --target check
+```
+
+CTest covers core/network semantics, strict project input, four saved TS baselines,
+architecture checks and CLI boot/errors. A desktop build adds controls, translation,
+full-run agreement and failed-load preservation checks using Qt's offscreen platform.
+Tests use explicit checks and remain active in Release builds.
+
+Before committing: native build green, appropriate CTest suites green, source checks
+green, `docs/PROGRESS.md` updated. Automated regression does not replace owner M0 review.
+
+| Symptom | Action |
 |---|---|
-| `Seed must be an unsigned 32-bit integer` | Pass one integer in the allowed range after `--` |
-| `ScenarioValidationError` | The compiled demo contains an invalid route, parameter, timing or unsupported topology; read every reported `code: path` pair |
-| `ERR_MODULE_NOT_FOUND` | Dependencies are missing; run `npm ci` from the repository root |
-| Different result for seed 42 | Do not accept silently; run the tests and review the trajectory-fingerprint change |
-
-## Core boundary checker
-
-File: `tools/core-boundary.ts`
-
-The checker protects the most important architecture rule: `src/core/` may import only
-other files inside `src/core/`. It parses TypeScript syntax with the compiler AST rather
-than matching text, so it detects ordinary imports, type-only imports, re-exports,
-`require`, import types and dynamic imports.
-
-It also rejects runtime APIs that would make simulation results depend on external state:
-
-- Package, Node.js, browser, model, UI and I/O imports
-- Triple-slash references and external type directives
-- Non-literal `require()` or `import()` calls
-- `Date`, `performance`, `fetch`, `XMLHttpRequest` and `WebSocket`
-- `setTimeout`, `setInterval` and unseeded `Math.random()`
-
-### Usage
-
-The file exports a function and is intentionally exercised through the architecture test:
-
-```bash
-npm test -- tests/architecture.test.ts
-```
-
-To run the entire suite that includes this guard:
-
-```bash
-npm test
-```
-
-The test scans all TypeScript files recursively under `src/core/`. It also feeds deliberate
-bad-import examples to the checker, proving the guard fails for the cases it claims to
-block. Do not replace this with a test that merely checks the current files are clean.
-
-### Reading failures
-
-Typical messages are:
-
-```text
-External core dependency: ../model
-External core dependency: node:fs
-External core type dependency: node
-Non-literal core import
-Forbidden core runtime: Date
-Unseeded Math.random
-```
-
-Move the dependency out of `src/core/` and pass plain scenario data or consume emitted
-events at the boundary. Do not add an exception for convenience. If a dependency is
-genuinely necessary, change the architecture decision and its reasoning before changing
-the checker.
-
-The checker currently uses the TypeScript 5.9.3 public compiler API. Keep that version
-pinned until the guard is migrated and its negative fixtures pass against the replacement.
-
-## Source-file size checker
-
-File: `tools/check_file_sizes.py`
-
-The checker recursively counts lines in recognized source files, prints the largest files,
-and returns a failing exit code when any file is over the configured budget. It skips
-generated, dependency, cache and build directories such as `node_modules`, `dist`,
-`.vite`, `.git`, `vendor` and `target`.
-
-Recognized extensions include TypeScript, JavaScript, Python, C/C++, C#, Rust, Go, Java,
-Kotlin, Ruby, Lua and Swift source files. Markdown, JSON, CSS and HTML are not counted.
-
-### Usage
-
-```bash
-# Check the current repository with the default 500-line limit.
-python3 tools/check_file_sizes.py .
-
-# Show only the ten largest source files.
-python3 tools/check_file_sizes.py . --top 10
-
-# Test a temporary 300-line budget.
-python3 tools/check_file_sizes.py . --limit 300
-
-# Inspect another directory.
-python3 tools/check_file_sizes.py ../another-project --top 30
-```
-
-Arguments:
-
-| Argument | Default | Meaning |
-|---|---:|---|
-| `target` | `.` | Directory scanned recursively |
-| `--limit` | `500` | Maximum allowed lines per recognized source file |
-| `--top` | `20` | Number of largest files printed |
-
-Exit code `0` means no recognized source file exceeds the limit. Exit code `1` means at
-least one file is over the limit. A directory with no recognized source files also returns
-`0` and prints a notice.
-
-When a file is too large, split it along a real responsibility boundary—such as data versus
-logic, simulation versus rendering, or validation versus compilation. Do not divide a file
-at an arbitrary line merely to satisfy the checker. Update `docs/ARCHITECTURE.md` if the
-split changes system ownership.
-
-## Recommended workflows
-
-### Before a commit
-
-```bash
-npm run check
-npm run simulate -- 42
-```
-
-Confirm the tests and build pass, all source files remain within budget, and the reference
-run still makes sense. A changed seed-42 result may be intentional, but it requires review
-because the test suite stores its trajectory fingerprint.
-
-### After changing `src/core/`
-
-```bash
-npm test -- tests/architecture.test.ts tests/simulation.test.ts tests/validation.test.ts
-npm run simulate -- 42
-```
-
-Check boundary enforcement, deterministic dynamics, invalid-input handling and the
-headless result together.
-
-### After changing the network model
-
-```bash
-npm test -- tests/network.test.ts tests/simulation.test.ts
-npm run simulate -- 42
-```
-
-This verifies authoring geometry and compilation, then exercises the resulting runtime
-scenario end to end.
-
-## Tool ownership rules
-
-- Tools may orchestrate the application and print to standard output; `src/core/` may not.
-- A reusable simulation algorithm belongs in `src/core/`, not in a script under `tools/`.
-- Network authoring and compilation belong in `src/model/network/`.
-- Persisted-file parsing, migration and validation will belong in `src/project/`.
-- Tests must exercise a tool's real invocation path, not a second implementation of it.
-- Keep output machine-readable when a tool may later be used in CI or batch automation.
+| CMake cannot find nlohmann/json | Install its development package or set `TRAFFICSIM_JSON_INCLUDE_DIR` |
+| CMake cannot find Qt Widgets | Select the correct kit with `CMAKE_PREFIX_PATH`, or use the headless preset |
+| Windows reports missing Qt DLLs | Add the matching Qt `bin` to PATH or run `windeployqt` |
+| Cannot locate data | Keep `data/` beside executable or pass `--data-dir` |
+| Baseline mismatch | Inspect the first differing event/checkpoint; do not regenerate fixtures to hide it |
+| `UNSUPPORTED_MERGE` | M0 cannot arbitrate merging streams; right-of-way remains M3 |

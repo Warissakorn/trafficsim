@@ -1,1 +1,1 @@
-Planned multi-seed batch execution and aggregation. Current single-run CLI is tools/run-simulation.ts.
+Planned multi-seed batch execution and aggregation. The current single-run C++ CLI is tools/run_simulation.cpp.

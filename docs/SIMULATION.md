@@ -8,42 +8,45 @@ owner reviews the live traffic behaviour against its plausibility gate.
 
 ## Run
 
-Use Node.js 22.12 or newer (tested with 24.19.0):
+Use the C++ build described in `docs/BUILDING.md`:
 
 ```bash
-npm ci
-npm test
-npm run dev
-npm run build
-npm run simulate -- 42
+cmake --preset desktop
+cmake --build --preset desktop
+ctest --preset desktop
+./build/desktop/bin/trafficsim-desktop
+./build/desktop/bin/trafficsim-cli 42
 ```
+
+Use the `headless` preset to build core/model/CLI without Qt.
 
 The development harness provides Run/Pause, single step, reset, seed and playback speed,
 and English/Thai text. Changing the seed resets the run. Playback speed changes the number
-of fixed steps scheduled by the UI; it never changes the engine timestep. Pausing cancels
-the animation callback. The canvas is a diagnostic view, not the network editor.
+of fixed steps scheduled by the UI; it never changes the engine timestep. Pausing stops
+the Qt timer. The QPainter view is a diagnostic view, not the network editor.
 
 ## Public contracts
 
-```ts
-import { compileScenario, validateNetwork } from './src/model/network';
-import { createSimulation, stepSimulation, runSimulation } from './src/core';
+```cpp
+#include "src/core/simulation.hpp"
+#include "src/model/network/network.hpp"
+using namespace trafficsim;
 
-// The caller supplies an authoring Network and a ScenarioDefinition.
-const issues = validateNetwork(network); // { code, path }[], no UI strings
-const scenario = compileScenario(network, definition); // throws on invalid input
-let state = createSimulation(scenario, 42);
-state = stepSimulation(state); // new immutable state; input state is unchanged
-
-for (const event of runSimulation(scenario, 42, { includeMovementEvents: false })) {
-  // Caller owns I/O, rendering and evaluation.
-}
+// Caller supplies Network and ScenarioDefinition values.
+auto issues = validateNetwork(network); // ValidationIssue { code, path }
+auto scenario = compileScenario(network, definition); // Throws ValidationError.
+auto state = createSimulation(scenario, 42);
+auto next = stepSimulation(state); // state is unchanged.
+auto final = runSimulation(scenario, 42, [](const SimEvent& event) {
+    // Caller owns I/O, rendering and evaluation.
+}, false); // Suppress movement callbacks; still simulate every fixed step.
 ```
 
-`src/core/types.ts` defines the complete engine contract. `src/model/network/types.ts`
-defines the authoring contract. Validation functions accept these typed structures;
-they are not general-purpose parsers for untrusted JSON. A future project loader must
-check structural shape before passing data to these validators.
+`src/core/types.hpp` is the engine contract. `src/model/network/network.hpp` is the
+authoring contract. Semantic validation accepts typed values. `src/project/load.hpp`
+loads M0 JSON fixtures and catalogs, checking object/array/string/number fields and
+rejecting invalid signal/driving-side enums before compilation. This read-only loader
+is not production project persistence; save/versioning remains M1.
 
 ## Authoring network
 
@@ -122,7 +125,7 @@ once per vehicle. The distance shape is inspired by the
 [PTV Wiedemann 74 parameter documentation](https://cgi.ptvgroup.com/vision-help/VISSIM_2025_ENG/Content/4_BasisdatenSim/FahrverhaltensparameterFolgeverh_Wied74.htm).
 Unlike that model, this prototype does not smear standstill distance or use its full
 perception thresholds. Its free/approaching/following/braking regime thresholds and
-acceleration equations are defined in `core/following.ts`; they are our own reduced
+acceleration equations are defined in `core/following.cpp`; they are our own reduced
 approximation. Parameters must not be transferred from a calibrated Vissim model.
 
 ## Determinism, snapshots and events
@@ -132,19 +135,26 @@ maps to the fixed nonzero state `0x6d2b79f5`. Desired speeds are sampled uniform
 the vehicle-type range. Scenario collections are sorted by ID, while geometric points,
 route order and phase order are preserved. Stable IDs control simultaneous insertion.
 
-`createSimulation` copies, canonicalizes and deeply freezes the scenario. Each step
-returns a frozen state and does not mutate its argument. Config edits cannot change an
-active run. Simulation time is integer tick times fixed timestep; there is no wall-clock,
-framework or I/O access inside `core/`. The architecture test enforces this boundary,
-including type imports, re-exports, dynamic imports and an intentionally bad-import test.
+`createSimulation` copies and canonicalizes the scenario into shared const ownership.
+Each step returns an independent value state and does not mutate its argument. Config
+edits cannot change an active run. Only the detached, immutable scenario is shared
+between steps; vehicle/queue/event vectors are copied. Public state structs are editable
+C++ values, so callers must treat published snapshots as read-only.
 
-Same scenario, seed, engine version and JavaScript runtime reproduce the same event
-stream. Transcendental arithmetic (`log`, `cos`) is not promised to be bit-identical across
-different JS engines or future native ports. Persist the engine/runtime version alongside
-the scenario and seed when reproducible report runs are introduced. The tests protect
-current replay behaviour, not cross-version scientific reproducibility. The seed-42 demo
-also has a committed SHA-256 event-stream fingerprint; intentional trajectory changes
-must be reviewed and versioned rather than silently updating that reference.
+Simulation time is integer tick times fixed timestep. There is no wall-clock, framework,
+I/O, JSON, unordered container or thread access inside `core/`. The restricted-include
+checker, its negative fixtures and separate CMake targets protect this boundary. The
+checker is not a full C++ parser; unconventional preprocessor constructs need review.
+
+Same scenario, seed, engine version and toolchain reproduce the same C++ event stream.
+`log`/`cos` are not promised to be bit-identical across JS engines or C++ math libraries.
+Preserve engine/compiler/runtime versions with future report runs. Compiler settings
+disable fast-math and floating-point contraction; draw order is explicitly sequenced.
+
+The old TS seed-42 event-string fingerprint remains in Git history. Four saved TS
+fixtures compare all non-movement events and full states every 10 seconds at a 1e-7
+absolute tolerance on physical values. IDs, ticks, counts and categories agree exactly.
+Native replay tests compare every event exactly on the same build. See `MIGRATION.md`.
 
 | Event | Meaning |
 |---|---|
@@ -157,16 +167,17 @@ must be reviewed and versioned rather than silently updating that reference.
 
 Movement and arrival times are quantized to the ending tick. Signals for movement are
 evaluated at the starting tick. `state.events` contains only the latest step; callers
-use `runSimulation` to stream history without retaining all trajectory records in state.
+use `runSimulation` callbacks to stream history without retaining all trajectory records in state.
 
 ## Evaluation and extension points
 
-`eval/summary.ts` is a completed-trip diagnostic. Mean delay is actual travel time plus
+`eval/summary.cpp` is a completed-trip diagnostic. Mean delay is actual travel time plus
 source wait minus route length divided by sampled desired speed. It includes acceleration
 loss; it is **not HCM control delay or LOS**. An empty run returns `null`, not NaN. Incomplete
 trips do not enter this mean and must be reported separately.
 
 Catalog content lives under `data/vehicle-types`, `data/driver-behaviour` and
 `data/scenarios`. The compiled boundary allows editor/project work without importing its
-types into the engine. Runtime indexes and native portability can be improved after
-profiling; the current array searches and occupancy scans target a small M0 network.
+types into the engine. Runtime indexes and state-copy costs can be improved after profiling; the current
+vector searches and occupancy scans target a small M0 network. No performance gain
+is claimed merely because the implementation is now C++.

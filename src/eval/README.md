@@ -1,1 +1,1 @@
-M0 completed-trip diagnostic summary only. Movement evaluation, HCM control delay and LOS remain planned.
+C++ event accumulator for completed-trip diagnostics. HCM control delay, movement LOS, queue measures and confidence intervals remain planned.

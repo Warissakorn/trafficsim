@@ -1,131 +1,95 @@
 # ARCHITECTURE — TrafficSim
 
-The map of this codebase. Read before adding a system; update when the map changes.
+**Current stack: C++20, CMake, Qt 6 Widgets.** D15 supersedes the initial TypeScript stack.
+M0 core/network functionality has been ported, with a native desktop harness and CLI.
+The traffic-engineering acceptance gate remains open. M1 editing is still planned.
 
-> **Status: M0 core/network subset implemented.** The development harness and headless
-> runner exercise the two systems end to end. Later systems remain planned; see their
-> explicit status below. The M0 acceptance gate is still open.
+## Boundaries
 
----
+The authoring network is the source of truth. `compileScenario` derives a runtime scenario;
+it is never persisted as a second editable network. `createSimulation` copies and
+canonicalizes that scenario into `std::shared_ptr<const Scenario>`.
 
-## Shape
+The engine cannot access the authoring model, JSON, Qt, files, wall clocks or threads.
+Each step receives a const state and returns a new value; vehicle/input/event vectors
+are independent copies. Old snapshots remain intact. States are C++ values, not objects
+with JavaScript-style deep-freeze; callers must treat published states as snapshots.
 
-Five layers, and the dependency arrows only ever point downward.
+| CMake target | Location | Dependencies | Status |
+|---|---|---|---|
+| `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
+| `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
+| `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 fixture loading/output; production persistence planned |
+| `trafficsim_shell` | `src/shell/`, `src/render/` | Project, Qt Widgets | M0 controls and passive renderer |
+| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
+| `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point |
 
-```
-  ┌──────────────────────────────────────────────────────────────┐
-  │  shell/          window, panels, command palette, i18n       │
-  │  editor/         network editor · signal editor · tables     │
-  │  render/         the network view (GPU), isolated            │
-  └───────────────────────────┬──────────────────────────────────┘
-                              │  reads model, dispatches commands
-  ┌───────────────────────────┴──────────────────────────────────┐
-  │  commands/       every mutation, undoable, one registry      │
-  │  model/          the network + demand + control data model   │
-  │  project/        load, save, revisions, validation           │
-  └───────────────────────────┬──────────────────────────────────┘
-                              │  scenario in, events out
-  ┌───────────────────────────┴──────────────────────────────────┐
-  │  core/           THE SIMULATION ENGINE — no I/O, no UI       │
-  │                  vehicles · car-following · lane change ·    │
-  │                  gap acceptance · conflict areas · signals   │
-  └───────────────────────────┬──────────────────────────────────┘
-                              │  event stream
-  ┌───────────────────────────┴──────────────────────────────────┐
-  │  eval/           measurements → delay, LOS, queue, travel    │
-  │                  time, per movement, averaged across seeds   │
-  │  report/         tables and exports for impact studies       │
-  └──────────────────────────────────────────────────────────────┘
-```
+Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
+and test the engine, model and CLI on a machine without Qt.
 
-A user action becomes a **command**, which mutates the **model**, which is validated by
-**project** and drawn by **render**. Pressing Run hands an immutable snapshot of the model to
-**core**, which produces an event stream that **eval** turns into the numbers **report**
-formats. The engine never reads the model directly and never writes results directly — it
-receives a scenario and emits events.
+## Contracts
 
-**Why the arrows point one way:** it is what lets the engine run headless in a test, in a
-worker thread, and in a batch of ten seeds at once, without any of those three knowing about
-each other. See PRINCIPLES rules 2 and 3.
+```cpp
+// core/simulation.hpp
+SimState createSimulation(const Scenario&, std::uint32_t seed);
+SimState stepSimulation(const SimState&);
+SimState stepSimulation(const SimState&, double dt); // Must equal scenario.timeStep.
+SimState runSimulation(const Scenario&, std::uint32_t seed,
+                       const EventSink& sink = {}, bool includeMovementEvents = true);
 
----
+// model/network/network.hpp
+Scenario compileScenario(const Network&, const ScenarioDefinition&);
+std::vector<ValidationIssue> validateNetwork(const Network&);
 
-## Systems
-
-| System | Owns | Location | Talks to | Status |
-|---|---|---|---|---|
-| Simulation core | Vehicle state, fixed stepping, reduced longitudinal following, seeded arrivals, signals and event stream | `core/` | internal modules only (pure) | M0 subset implemented; lane changing, gap acceptance and conflict resolution remain planned |
-| Network model | Links, connectors, lanes, signal heads, geometry and scenario compilation | `model/network` | core contracts | M0 subset implemented; conflict areas and priority rules remain planned |
-| Demand model | Vehicle inputs, compositions, routing decisions, OD | `model/demand` | commands, project | editable model planned; M0 fixed routes and Poisson inputs use core contracts |
-| Control model | Signal controllers, groups, programs, detectors | `model/control` | commands, project | editable model planned; M0 fixed-time programs use core contracts |
-| Command registry | Every mutation as a named, undoable, serializable command | `commands/` | model, project | planned |
-| Project | File format, load/save, revisions, undo stack, validation | `project/` | model, commands | planned |
-| Renderer | Drawing network and vehicle positions; nothing else | `render/` | model and core snapshots (read-only) | M0 passive canvas implemented; production renderer planned |
-| Editor | Drawing tools, inspector, tables, signal editor | `editor/` | commands, render | planned |
-| Shell | Window layout, panels, palette, translations, theme | `shell/` | editor | English/Thai demo translations implemented; full shell planned |
-| Evaluation | Turning the event stream into measurements | `eval/` | core output | completed-trip diagnostic implemented; movement delay/LOS planned |
-| Runner | Running N seeds, aggregating, confidence intervals | `runner/` | core, eval | batch runner planned; single-run CLI in `tools/run-simulation.ts` |
-| Report | Impact-study tables and export | `report/` | eval | planned |
-
----
-
-## Interfaces that matter
-
-Contracts other systems code against. Written **before** the implementations they describe,
-because they are what lets a future session build against a system without reading its
-insides. Core and network contracts are implemented; commands, evaluation measures and
-batch interfaces below remain illustrative.
-
-```ts
-// core/ — the whole engine surface. Deliberately tiny.
-createSimulation(scenario: Scenario, seed: number): SimState
-runSimulation(scenario: Scenario, seed: number, opts?: RunOptions): EventStream
-stepSimulation(state: SimState, dt?: number): SimState     // dt must equal scenario.timeStep
-compileScenario(network: Network, definition: ScenarioDefinition): Scenario
-validateNetwork(network: Network): NetworkIssue[]
-
-// commands/ — every mutation goes through here; nothing bypasses it
-applyCommand(model: Model, cmd: Command): CommandResult     // returns inverse for undo
-registerCommand(kind: string, handler: CommandHandler): void
-
-// eval/ — event stream in, measurements out
-evaluate(events: EventStream, measures: MeasureSet): Measurements
-
-// runner/ — the reason multi-seed exists at all
-runBatch(scenario: Scenario, seeds: number[]): AggregateResult  // mean + CI per measure
+// project/load.hpp
+LoadedScenario loadScenario(const std::filesystem::path& file,
+                            const std::filesystem::path& dataDirectory);
 ```
 
-**The command registry is a hard boundary.** Adding a new kind of edit must not require
-touching `project/`. `project/` owns transactions, undo, and revisions; it must never learn
-what any individual command means. Its enforcement test must land with that system.
+`runSimulation` invokes a synchronous `std::function<void(const SimEvent&)>` sink and
+returns the final state. The core owns no output stream. The callback decides whether to
+accumulate statistics, write a file or discard events. `SimEvent` is a `std::variant` of
+six typed event structs. States retain only the latest tick's events.
 
-The existing `tests/architecture.test.ts` enforces the core import boundary and rejects
-wall clocks and unseeded RNG. `core/types.ts` is the runtime contract; the network compiler
-depends on it, and the engine never imports the authoring model. `docs/SIMULATION.md`
-documents supported topology, event timing, immutable state, safety guards and limitations.
+The desktop uses a Qt timer to schedule fixed steps. Playback time never enters the
+engine. The M0 workload runs on the UI thread; playback credit is capped per callback.
+A future worker handoff must retain snapshots and deterministic step order. First
+parallelize independent batch seeds when M5 is implemented.
 
----
+`NetworkView` reads model geometry and runtime snapshots. It owns no edits, signals,
+arrival generation or simulation timer; Qt repaints only when data/exposure changes.
+The current renderer is a QPainter diagnostic, not a performance-tested production
+renderer or the M1 editor.
 
-## Data layer
+## Planned systems
 
-Content lives as data, not code. The diagnostic from the skill applies directly: **if adding
-the 50th vehicle type requires editing code, the boundary is wrong.**
+| System | Location | Required boundary |
+|---|---|---|
+| Commands / Undo | `src/commands/` | Every edit is a named, undoable command |
+| Editor | `src/editor/` | Dispatch commands; never mutate core state |
+| Project persistence | `src/project/` | Versioned authoring file, transactions and revisions |
+| Editable demand/control | `src/model/demand/`, `src/model/control/` | Model data compiles into core contracts |
+| Movement evaluation | `src/eval/` | Events to delay, LOS, queues and travel times |
+| Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
+| Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
 
-- `data/vehicle-types/` — dimensions, acceleration, desired-speed distributions
-- `data/driver-behaviour/` — car-following parameter sets (Wiedemann 74/99 presets)
-- `data/link-types/` — link behaviour templates (urban, freeway, ramp, pedestrian)
-- `data/los-tables/` — LOS thresholds; these are **jurisdiction-specific** and must be
-  swappable per project, never compiled in
-- `data/validation/` — model-checking rules
+Adding a command must never teach `project/` its implementation. The corresponding
+boundary test must land with M1, not an unused abstraction in M0.
 
----
+## Data and enforcement
 
-## Deliberate non-goals
+- `data/scenarios/`: M0 authoring fixtures.
+- `data/vehicle-types/`, `data/driver-behaviour/`: all JSON catalog files are loaded in
+  filename order. Adding a new entry needs no C++ change. Explicit catalogs inside a
+  scenario definition override the directory catalogs for that definition.
+- `data/locales/`: English key source and Thai UI text, copied with runtime data.
+- LOS packs remain planned and must be jurisdiction-specific data, never compiled constants.
 
-Do not add these by reflex. See `PROBLEM.md` §5 and `PRINCIPLES.md` §2.
+`trafficsim-check-architecture` permits literal local headers and reviewed standard
+headers in core/eval. It rejects Qt, I/O, unordered containers, wall-clock/RNG headers,
+macro includes and module imports, with negative fixtures. This is a restricted source
+check, not a full C++ parser; review remains responsible for unconventional preprocessor
+constructs. CMake target dependencies provide an additional compile/link boundary.
 
-- No engine-abstraction layer — there is exactly one engine.
-- No plugin system.
-- No second persisted representation of the network.
-- No UI types reachable from `core/`.
-- No wall-clock or unordered iteration anywhere in `core/` or `eval/` (breaks reproducibility).
+No engine-abstraction layer, plugin framework or second persisted model is introduced.
