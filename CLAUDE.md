@@ -1,4 +1,4 @@
-# Veytrix
+# Velk
 
 Standing orders for anyone — human or model — working in this repo. Read this first, every
 session.
