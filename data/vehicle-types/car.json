@@ -1,0 +1,10 @@
+{
+  "id": "car",
+  "length": 4.5,
+  "width": 1.8,
+  "desiredSpeed": { "min": 11.11, "max": 16.67 },
+  "maxAcceleration": 2.5,
+  "comfortableDeceleration": 2,
+  "maxDeceleration": 8,
+  "behaviourId": "wiedemann-inspired-prototype"
+}
