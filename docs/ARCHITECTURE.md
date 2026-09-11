@@ -1,4 +1,4 @@
-# ARCHITECTURE — Velk
+# ARCHITECTURE — TrafficSim
 
 The map of this codebase. Read before adding a system; update when the map changes.
 

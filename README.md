@@ -1,10 +1,12 @@
-# Velk
+# TrafficSim
 
 A traffic microsimulator with its own simulation engine, built to the modelling surface PTV
 Vissim users already think in, producing the movement-level delay and level-of-service output
 that traffic impact studies require.
 
-*No code yet — this repository currently holds the project's documentation spine.*
+*`TrafficSim` is a working name — naming is deferred until there is a working program to
+judge it against (D11). No code yet; this repository currently holds the project's
+documentation spine.*
 
 ## Start here
 

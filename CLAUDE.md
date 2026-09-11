@@ -1,4 +1,4 @@
-# Velk
+# TrafficSim
 
 Standing orders for anyone — human or model — working in this repo. Read this first, every
 session.
@@ -9,6 +9,9 @@ A **traffic microsimulator with its own simulation engine**, built to the modell
 PTV Vissim users already think in, producing the movement-level delay and LOS output that
 traffic impact studies require. Deliberately **not** a front end over another engine — see
 [`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for why that was tried and where it hit walls.
+
+`TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
+see D11. Do not rename the project, the repository, or any package before then.
 
 **Current milestone:** M0 — vertical slice
 **Done when:** `npm run dev` shows vehicles accelerating, queueing at red, and discharging at

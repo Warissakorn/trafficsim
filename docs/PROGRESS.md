@@ -1,4 +1,4 @@
-# PROGRESS — Velk
+# PROGRESS — TrafficSim
 
 Append-only. Newest entry at the top. **This is what a session with no memory reads to rejoin
 the work.** Never delete an entry; move old blocks to `PROGRESS-archive.md` whole if this gets
@@ -54,8 +54,8 @@ Ask these before the milestone they block.
 | Q2 | Which lane-changing model? | M1 | MOBIL and Gipps are both defensible. Needs a short spike, not a debate. |
 | ~~Q3~~ | ~~Who are the three engineers for the M2 gate?~~ | M2 gate | **Answered 2026-09-10: the project owner performs the gate alone.** This materially weakens it — see D8 and the mitigation in `ROADMAP.md` M2. |
 | Q4 | Which published benchmarks define the M6 tolerance? | M6 | Decide before M5 so evaluation is built to be checkable against them. HCM is the likely baseline now that D7 makes the tool international. |
-| ~~Q5~~ | ~~Final product name~~ | — | **Answered 2026-09-11: Velk.** See D10 (D9/Veytrix superseded). |
-| Q6 | Register `velk` on npm and PyPI, and decide on `velk.dev` | Anything published | All free today. This is exactly the cheap insurance whose absence forced MicroFlow Simulator to be abandoned. |
+| Q5 | Final product name | Nothing before M1 | **Deferred until the end of M1** by D11 — not a blocker on any current work. Candidates and collision findings are in the D11 row; reuse them. |
+| ~~Q6~~ | ~~Register `velk` on npm and PyPI~~ | — | **Withdrawn 2026-09-11 as moot** — no settled name to register. The registration question returns with the name at M1. |
 
 ---
 
@@ -74,12 +74,86 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D7 | 2026-09-10 | **International audience from the start, not Thailand-first** | Nothing in the engine is jurisdiction-specific, and the parts that are — LOS thresholds, report layouts, units — are data, not code, so building them swappable costs little now and a retrofit costs a lot. Three concrete consequences: HCM is the default LOS pack with others as swappable data; metric internally with display units switchable; **left-hand and right-hand traffic is a first-class network setting from M1** (Thailand, UK, Japan, Australia all drive left — a prior effort never implemented it at all). | If it turns out every real user is in one jurisdiction and the generality is unused weight. |
 | D8 | 2026-09-10 | **The M2 gate is performed by the project owner alone, not three independent engineers** | The owner is a practising traffic engineer and no outside participants are available. Accepted with eyes open: this is **a materially weaker test than the one D1 needs**, because the person judging whether a free SUMO-based tool would have sufficed is the same person who chose to build an engine instead. Mitigation, mandatory: **the pass/fail criteria are written down and committed before M2 implementation starts**, so the judgement cannot be rationalised after the fact. Adding outside engineers later strengthens the gate and is never wasted. | Nothing makes it wrong; it is simply weak. Treat a pass as "not disproven", not as "confirmed". |
 | D9 | 2026-09-10 | **The project is named Veytrix** | Chosen by the owner after working through several naming directions (domain jargon, borrowed engineering terms, abstract coinages, Thai-rooted feminine names). Verified free on npm and PyPI. **Two known flags, accepted:** `veytrix.com` is already resolving to something, and **Vectrix** is an existing electric-scooter company that is phonetically close. Neither blocks a repository or package name, but both are reasons a trademark search would be worth doing before any commercial use. | A trademark conflict surfacing later. Renaming is cheap while the repo is documentation only and gets steadily more expensive after that. **Superseded by D10 (Velk) on 2026-09-11.** |
-| D10 | 2026-09-11 | **The project is named Velk**, superseding D9 | Coined, one syllable, no meaning in any major language — the owner's stated requirement. Verified free on npm and PyPI, and a brand/company search found nothing using it. `velk.dev` and `velk.app` are free; `velk.com` and `velk.io` are held, which is ordinary for a four-letter word and irrelevant to a repository or package name — accepted as a known risk. **`MicroFlow Simulator` was considered first and rejected on collision grounds** (`microflow` taken on npm and PyPI, ≥7 GitHub projects plus two orgs and a GitHub Topic, both obvious domains held) — do not re-propose it. | A trademark conflict, or the name proving so anonymous that people cannot find the project. Both are cheap to fix now and expensive once source code, packages and links exist. |
+| D10 | 2026-09-11 | **The project is named Velk**, superseding D9 | Coined, one syllable, no meaning in any major language — the owner's stated requirement. Verified free on npm and PyPI, and a brand/company search found nothing using it. `velk.dev` and `velk.app` are free; `velk.com` and `velk.io` are held, which is ordinary for a four-letter word and irrelevant to a repository or package name — accepted as a known risk. **`MicroFlow Simulator` was considered first and rejected on collision grounds** (`microflow` taken on npm and PyPI, ≥7 GitHub projects plus two orgs and a GitHub Topic, both obvious domains held) — do not re-propose it. | A trademark conflict, or the name proving so anonymous that people cannot find the project. Both are cheap to fix now and expensive once source code, packages and links exist. **Superseded by D11 on 2026-09-11.** |
+| D11 | 2026-09-11 | **Keep the working name `TrafficSim`; defer naming until the end of M1** | The project was renamed three times in two days (TrafficSim → Veytrix → Velk) with several further candidate sets explored, and no code was written in that time. A name is far easier to judge against a working program than against a specification, and each further round costs a session without moving the project. Deferring also cancels work already queued: no GitHub repository rename, and no package or domain registrations to make and then undo. **Trigger to revisit: the end of M1**, when there is a working network editor to name. **Names already examined — start from these findings, do not re-derive them:** `Headway` rejected (`headwaymaps/headway`, an OSM maps stack, same field); `MicroFlow Simulator` rejected (`microflow` taken on npm and PyPI, ≥7 GitHub projects plus two orgs and a GitHub Topic, both obvious domains held); `Veytrix` set aside (`veytrix.com` held, `Vectrix` phonetically close); `Velk` set aside while clean on every channel checked (npm, PyPI, brand search; `velk.dev`/`velk.app` free) and therefore the strongest candidate to return to. | Drifting past M1 without ever deciding. The trigger exists to prevent exactly that. |
 | D6 | 2026-09-10 | **Project spine written before any code** | Only what is on disk survives a session boundary. The rules in `PRINCIPLES.md` §3 were measured by a prior effort and would otherwise have to be rediscovered by paying for them again. | — |
 
 ---
 
 ## Log
+
+### 2026-09-11 — reverted to the working name TrafficSim, naming deferred (D11)
+
+Three renames in two days with no code written. The owner called it: go back to the working
+name and decide the real one once the program has shape.
+
+Headings across `CLAUDE.md`, `README.md`, `ARCHITECTURE.md`, `ROADMAP.md` and this file are
+back to `TrafficSim`, now explicitly marked as a working name so no future session reads it
+as settled. D9 and D10 keep their full reasoning and are marked superseded — this file is
+append-only, and the collision findings gathered over those rounds are the main thing worth
+keeping from them, so they are consolidated into the D11 row. The next naming round starts
+from evidence, not from zero.
+
+**Two pieces of queued work are cancelled, not postponed:** the GitHub repository rename (the
+repo is still `Warissakorn/trafficsim` and the remote already points there, so there is
+nothing to do) and the npm/PyPI/domain registrations for `velk`.
+
+**Two defects in this file were found and fixed while making this change**, both introduced by
+earlier sessions of this conversation:
+
+1. **The D10 log entry below was never actually written.** The edit that should have added it
+   matched no text, and the guard around that edit only checked that *something* in the file
+   had changed — which was true because other edits in the same batch succeeded. It has been
+   reconstructed below from the commit message and the D10 row. Guards on edits to this file
+   now assert an exact match count per edit.
+2. **Entries were in oldest-first order**, contradicting this file's own header. Reordered
+   newest-first. No entry text was altered.
+
+Nothing about scope, architecture or the roadmap changed. D1–D8 stand.
+
+### 2026-09-11 — renamed to Velk (D10)
+
+*Reconstructed on 2026-09-11 — see defect 1 in the entry above.*
+
+`Veytrix` replaced throughout the documentation. `velk` verified free on npm and PyPI with no
+brand or company found using it; `velk.dev` and `velk.app` free, `velk.com` and `velk.io`
+held — ordinary for a four-letter word and irrelevant to a repository or package name, so
+accepted as a known risk.
+
+`MicroFlow Simulator` was proposed first this session and dropped after its collision check:
+`microflow` taken on npm and PyPI, at least seven GitHub projects carrying the name along
+with two orgs and a GitHub Topic, and both obvious domains held. Recorded in D10 so it is not
+raised again.
+
+Also noted at the time: the MicroFlow brand write-up claimed "extends to both microscopic and
+macroscopic" as a strength, which contradicts `PROBLEM.md` §5 where macroscopic assignment is
+a non-goal. **§5 was left unchanged** — that is a scope decision, not a naming one.
+
+### 2026-09-10 — named Veytrix (D9)
+
+Working name `TrafficSim` replaced throughout the documentation. `veytrix` is free on npm
+and PyPI; `veytrix.com` is taken and `Vectrix` (electric scooters) is phonetically close —
+both recorded in D9 as accepted, known risks rather than discovered later.
+
+**Still to do by hand:** the GitHub repository is still called `trafficsim`. Renaming it needs
+repository-admin access, which this session's GitHub app does not have — the owner renames it
+in the repository settings, after which the git remote here needs updating.
+
+
+### 2026-09-10 — Q1 and Q3 answered (D7, D8)
+
+- **Q1 → international from the start** (D7). Consequences recorded: HCM as the default LOS
+  pack with jurisdictions as swappable data, metric internally with switchable display units,
+  and **left-hand/right-hand traffic as a first-class setting from M1** — added to the M1
+  scope in `ROADMAP.md` because retrofitting it touches every geometry routine.
+- **Q3 → the project owner performs the M2 gate alone** (D8). Recorded honestly as a
+  weakening of the gate, with a mandatory mitigation: the M2 pass/fail criteria must be
+  written into `ROADMAP.md` and committed **before** M2 implementation starts. `ROADMAP.md`
+  now carries an unfilled placeholder for those criteria; starting M2 without filling it
+  voids the gate.
+- **Q5 opened:** final product name. `Veytrix` is a placeholder. `Headway` was considered
+  and rejected — `headwaymaps/headway` is an existing open-source maps stack, too close a
+  neighbour in the same field.
 
 ### 2026-09-10 — repository initialized, documentation spine written
 
@@ -99,27 +173,3 @@ every row is marked `planned`.
 
 **Next:** toolchain setup — see the `Next` section above.
 
-### 2026-09-10 — named Veytrix (D9)
-
-Working name `TrafficSim` replaced throughout the documentation. `veytrix` is free on npm
-and PyPI; `veytrix.com` is taken and `Vectrix` (electric scooters) is phonetically close —
-both recorded in D9 as accepted, known risks rather than discovered later.
-
-**Still to do by hand:** the GitHub repository is still called `trafficsim`. Renaming it needs
-repository-admin access, which this session's GitHub app does not have — the owner renames it
-in the repository settings, after which the git remote here needs updating.
-
-### 2026-09-10 — Q1 and Q3 answered (D7, D8)
-
-- **Q1 → international from the start** (D7). Consequences recorded: HCM as the default LOS
-  pack with jurisdictions as swappable data, metric internally with switchable display units,
-  and **left-hand/right-hand traffic as a first-class setting from M1** — added to the M1
-  scope in `ROADMAP.md` because retrofitting it touches every geometry routine.
-- **Q3 → the project owner performs the M2 gate alone** (D8). Recorded honestly as a
-  weakening of the gate, with a mandatory mitigation: the M2 pass/fail criteria must be
-  written into `ROADMAP.md` and committed **before** M2 implementation starts. `ROADMAP.md`
-  now carries an unfilled placeholder for those criteria; starting M2 without filling it
-  voids the gate.
-- **Q5 opened:** final product name. `Veytrix` is a placeholder. `Headway` was considered
-  and rejected — `headwaymaps/headway` is an existing open-source maps stack, too close a
-  neighbour in the same field.
