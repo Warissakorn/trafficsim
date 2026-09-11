@@ -17,8 +17,9 @@ see D11. Do not rename the project, the repository, or any package before then.
 **Done when:** `npm run dev` shows vehicles accelerating, queueing at red, and discharging at
 green plausibly, and `npm test` proves the same seed reproduces the same run.
 
-**Status: no code yet.** The repo currently contains only documentation. The first coding
-session sets up the toolchain (see `Next` in `docs/PROGRESS.md`).
+**Status: M0 core and network model implemented; acceptance gate still open.** A Vite
+development harness and a headless CLI exercise both systems. Read `docs/SIMULATION.md`
+for the current contracts and explicit limitations, then `Next` in `docs/PROGRESS.md`.
 
 ## Read these before working
 
@@ -41,6 +42,8 @@ compiled language later without touching anything above it.
 ```bash
 npm run dev     # run it
 npm test        # test it
+npm run build   # strict type check and production build
+npm run simulate -- 42  # headless seeded diagnostic
 ```
 
 If either fails on a clean checkout, fixing that comes before any feature work.
@@ -114,3 +117,7 @@ tests/
 - Documentation is written in **English**. UI strings live in translation files only.
 - Screen vocabulary follows Vissim ("link", "connector", "conflict area"); **parameter names
   are never translated**, so users can find them in the project file.
+- Current car-following is a reduced Wiedemann-inspired prototype, not W74/W99. Never
+  remove its unvalidated marker or accept merging paths before right-of-way is implemented.
+- Use `npm ci` with the committed lockfile. TypeScript 5.9.3 is pinned because the core
+  boundary checker uses its public compiler AST API; TypeScript 7 has a different API.

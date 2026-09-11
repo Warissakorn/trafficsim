@@ -8,37 +8,34 @@ long.
 
 ## Next
 
-**Set up the toolchain and get both commands green. No features.**
+**Review the M0 acceptance gate in the running development harness.**
 
-1. In the repo root: `npm create vite@latest . -- --template vanilla-ts`, then add `vitest`.
-2. Turn on `strict: true` in `tsconfig.json`.
-3. Create the directory skeleton from the Layout section of `CLAUDE.md`, each with a
-   one-line `README.md` saying what belongs there.
-4. Add a lint rule (or a test) that **fails if anything under `src/core/` imports from
-   outside `src/core/`** — hard rule 1 has to be mechanically enforced from day one, not
-   remembered.
-5. Verify `npm run dev` and `npm test` both work on a clean checkout.
-6. Update the Log below and commit.
+1. Run `npm ci`, `npm test`, `npm run build`, then `npm run dev`.
+2. Inspect the default seed 42 crossing: acceleration, the western approach queue at red,
+   green discharge, and retained source demand.
+3. Record the owner's plausibility judgement here. Automated replay and collision checks
+   do not close the traffic-engineering gate.
+4. If a behaviour defect is found, add the smallest failing scenario and fix the core.
+   Do not add lane changing or priority control to disguise an M0 defect.
+5. Only after the owner passes M0, start M1 with the command/model/project contracts and
+   one undoable link edit. Keep the authoring model outside `core/`.
 
-**Done when:** a clean clone runs both commands successfully and the core-import test fails
-if you deliberately add a bad import.
-
-**Do not start the simulation engine in the same session.** M0's first real system is the
-scenario data structure and one vehicle moving along one link, and it deserves a whole
-session.
+**Implementation reference:** `docs/SIMULATION.md`; core API in `src/core/index.ts`;
+network API in `src/model/network/index.ts`.
 
 ---
 
 ## Backlog (M0, in order)
 
-- [ ] Toolchain + directory skeleton + core-import guard  ← **Next**
-- [ ] `Scenario` type and a fixture: two crossing links, one connector each way
-- [ ] Fixed-timestep loop; one vehicle traverses one link at constant speed
-- [ ] Car-following (Wiedemann-style); vehicles queue behind each other
-- [ ] Fixed-time signal; vehicles stop at red, discharge at green
-- [ ] Vehicle input generating arrivals from a seeded stream
-- [ ] Canvas view: vehicles as dots on links
-- [ ] Headless run printing average delay; reproducibility test on the seed
+- [x] Toolchain + directory skeleton + core-import guard
+- [x] `Scenario` type and a fixture: two crossing movements with explicit connectors
+- [x] Fixed-timestep loop; one vehicle traverses links with continuous route distance
+- [x] Reduced Wiedemann-inspired car-following; vehicles queue behind each other
+- [x] Fixed-time signal; vehicles stop at red, discharge at green
+- [x] Vehicle input generating arrivals from a seeded stream, retaining blocked arrivals
+- [x] Canvas development harness: vehicles as dots on links
+- [x] Headless completed-trip delay diagnostic and seeded replay regression
+- [ ] Owner's M0 plausibility acceptance  ← **Next**
 
 Later milestones are in [`ROADMAP.md`](ROADMAP.md). Do not pull work forward from them.
 
@@ -78,9 +75,56 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D11 | 2026-09-11 | **Keep the working name `TrafficSim`; defer naming until the end of M1** | The project was renamed three times in two days (TrafficSim → Veytrix → Velk) with several further candidate sets explored, and no code was written in that time. A name is far easier to judge against a working program than against a specification, and each further round costs a session without moving the project. Deferring also cancels work already queued: no GitHub repository rename, and no package or domain registrations to make and then undo. **Trigger to revisit: the end of M1**, when there is a working network editor to name. **Names already examined — start from these findings, do not re-derive them:** `Headway` rejected (`headwaymaps/headway`, an OSM maps stack, same field); `MicroFlow Simulator` rejected (`microflow` taken on npm and PyPI, ≥7 GitHub projects plus two orgs and a GitHub Topic, both obvious domains held); `Veytrix` set aside (`veytrix.com` held, `Vectrix` phonetically close); `Velk` set aside while clean on every channel checked (npm, PyPI, brand search; `velk.dev`/`velk.app` free) and therefore the strongest candidate to return to. | Drifting past M1 without ever deciding. The trigger exists to prevent exactly that. |
 | D6 | 2026-09-10 | **Project spine written before any code** | Only what is on disk survives a session boundary. The rules in `PRINCIPLES.md` §3 were measured by a prior effort and would otherwise have to be rediscovered by paying for them again. | — |
 
+| D12 | 2026-09-11 | **Implement the simulation core and network model together, including prerequisite tooling** | The owner explicitly requested both systems in this session. That supersedes the earlier toolchain-only Next and one-system scheduling guidance. The boundary still remains strict: model compiles a snapshot; core imports only its own modules. | If later features are pulled forward without a separate scope decision. M0 is still the boundary. |
+| D13 | 2026-09-11 | **M0 uses a clearly labelled reduced Wiedemann-inspired longitudinal model; unsupported merges are rejected** | A small auditable prototype is enough to exercise the M0 architecture and queue/discharge behaviour. The published W74 safety-distance shape is an inspiration, not permission to claim a faithful W74/W99 implementation. Accepting merging paths without gap acceptance would silently invent unsafe right-of-way semantics. | If M0 plausibility fails, fix or replace the approximation before closing M0; do not remove the unvalidated marker. |
+| D14 | 2026-09-11 | **Pin TypeScript 5.9.3 and the dependency lockfile** | The boundary guard uses the TypeScript compiler AST API, including type imports and dynamic imports. The initially resolved TypeScript 7 package lacks that API. Pinning the compatible compiler makes the guard executable, with deliberate negative tests. | When the guard is migrated to a supported replacement AST API and verified against the same forbidden-import fixtures. |
+
 ---
 
 ## Log
+
+### 2026-09-11 — M0 simulation core and network model implemented
+
+The repository previously contained documentation only. Added a strict TypeScript/Vite/
+Vitest toolchain and lockfile, the directory skeleton, and an AST-based core dependency
+guard that is tested against intentionally invalid imports.
+
+**Network:** link/lane/connector authoring types; left/right driving-side lane geometry;
+mid-link signal heads; geometry/reference/range validation; and a detached scenario
+compiler. Junctions are not authored, and no second persisted network format was added.
+
+**Core:** fixed timestep; explicit xorshift32 seed state; immutable snapshots and pure
+steps; Poisson source arrivals with persistent external queues; reduced four-regime
+following; fixed-time red/amber/green signals; route transitions with residual distance;
+upstream vehicle-tail occupancy; and a streaming event interface. The final subinterval's
+arrivals remain pending instead of disappearing at the run horizon.
+
+**Integration:** a crossing scenario and vehicle/behaviour catalogs in data files; a
+passive canvas harness with run/pause/step/reset, playback speed, seed reset and English/
+Thai text; a headless CLI; and an explicitly unvalidated completed-trip delay diagnostic.
+The engine still has no UI, model, I/O or wall-clock imports.
+
+**Verification:** 40 automated tests cover replay (including a reference trajectory
+fingerprint), pure stepping, source queues, conservation, signal timing, free acceleration,
+red stops/green discharge, upstream tails, short connectors, invalid scenarios, authoring
+geometry and the import boundary. Production type checking/build and the source-size
+check pass. A Chromium 152 browser smoke test passed dev boot, single-step, run/pause,
+seed reset, Thai translation, an entire run matching the headless output, invalid-seed
+handling and a 375-pixel viewport with no horizontal overflow. No page errors occurred.
+In a separate clean detached checkout, `npm ci --offline` (using the package cache),
+all 40 tests, the production build, the headless example and file-size checks also passed.
+
+**Reference run:** seed 42, 180 simulated seconds, 31 completed trips, 0 active and 0
+pending at the horizon, 0 numerical safety clamps. Mean completed-trip delay is
+29.249359418430977 s (includes source wait and acceleration, not HCM control delay).
+This is a reproducibility fixture, not a capacity or fidelity benchmark.
+
+**Limits remain explicit:** no lane changing, merge arbitration, geometric crossing-conflict
+resolution, priority rules, full W74/W99, project persistence, movement LOS or batch
+aggregation. Merges, internal inputs and repeated-route segments fail validation.
+M0 remains open for the owner's plausibility acceptance. No later milestone was closed.
+
+See D12–D14 and `docs/SIMULATION.md` for the reasoning and precise interfaces.
 
 ### 2026-09-11 — reverted to the working name TrafficSim, naming deferred (D11)
 
@@ -172,4 +216,3 @@ falsification test at the M2 gate.
 every row is marked `planned`.
 
 **Next:** toolchain setup — see the `Next` section above.
-

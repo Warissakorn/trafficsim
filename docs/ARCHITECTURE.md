@@ -2,10 +2,9 @@
 
 The map of this codebase. Read before adding a system; update when the map changes.
 
-> **Status: planned, not built.** Nothing in this repo is implemented yet. The Systems
-> table below is the *intended* map and is marked as such. Per the skill this repo follows,
-> a row moves out of "planned" only when the system exists. **Do not treat a planned row as
-> evidence something is there.**
+> **Status: M0 core/network subset implemented.** The development harness and headless
+> runner exercise the two systems end to end. Later systems remain planned; see their
+> explicit status below. The M0 acceptance gate is still open.
 
 ---
 
@@ -51,21 +50,21 @@ each other. See PRINCIPLES rules 2 and 3.
 
 ---
 
-## Systems (all planned)
+## Systems
 
 | System | Owns | Location | Talks to | Status |
 |---|---|---|---|---|
-| Simulation core | Vehicle state, time stepping, car-following, lane changing, gap acceptance, conflict resolution, signal state | `core/` | nothing (pure) | planned |
-| Network model | Links, connectors, lanes, conflict areas, priority rules, signal heads | `model/network` | commands, project | planned |
-| Demand model | Vehicle inputs, compositions, routing decisions, OD | `model/demand` | commands, project | planned |
-| Control model | Signal controllers, groups, programs, detectors | `model/control` | commands, project | planned |
+| Simulation core | Vehicle state, fixed stepping, reduced longitudinal following, seeded arrivals, signals and event stream | `core/` | internal modules only (pure) | M0 subset implemented; lane changing, gap acceptance and conflict resolution remain planned |
+| Network model | Links, connectors, lanes, signal heads, geometry and scenario compilation | `model/network` | core contracts | M0 subset implemented; conflict areas and priority rules remain planned |
+| Demand model | Vehicle inputs, compositions, routing decisions, OD | `model/demand` | commands, project | editable model planned; M0 fixed routes and Poisson inputs use core contracts |
+| Control model | Signal controllers, groups, programs, detectors | `model/control` | commands, project | editable model planned; M0 fixed-time programs use core contracts |
 | Command registry | Every mutation as a named, undoable, serializable command | `commands/` | model, project | planned |
 | Project | File format, load/save, revisions, undo stack, validation | `project/` | model, commands | planned |
-| Renderer | Drawing the network; nothing else | `render/` | model (read-only) | planned |
+| Renderer | Drawing network and vehicle positions; nothing else | `render/` | model and core snapshots (read-only) | M0 passive canvas implemented; production renderer planned |
 | Editor | Drawing tools, inspector, tables, signal editor | `editor/` | commands, render | planned |
-| Shell | Window layout, panels, palette, translations, theme | `shell/` | editor | planned |
-| Evaluation | Turning the event stream into measurements | `eval/` | core output | planned |
-| Runner | Running N seeds, aggregating, confidence intervals | `runner/` | core, eval | planned |
+| Shell | Window layout, panels, palette, translations, theme | `shell/` | editor | English/Thai demo translations implemented; full shell planned |
+| Evaluation | Turning the event stream into measurements | `eval/` | core output | completed-trip diagnostic implemented; movement delay/LOS planned |
+| Runner | Running N seeds, aggregating, confidence intervals | `runner/` | core, eval | batch runner planned; single-run CLI in `tools/run-simulation.ts` |
 | Report | Impact-study tables and export | `report/` | eval | planned |
 
 ---
@@ -74,12 +73,16 @@ each other. See PRINCIPLES rules 2 and 3.
 
 Contracts other systems code against. Written **before** the implementations they describe,
 because they are what lets a future session build against a system without reading its
-insides. Shapes are illustrative until the first version lands.
+insides. Core and network contracts are implemented; commands, evaluation measures and
+batch interfaces below remain illustrative.
 
 ```ts
 // core/ — the whole engine surface. Deliberately tiny.
-runSimulation(scenario: Scenario, seed: number, opts: RunOptions): EventStream
-stepSimulation(state: SimState, dt: number): SimState      // pure, for tests
+createSimulation(scenario: Scenario, seed: number): SimState
+runSimulation(scenario: Scenario, seed: number, opts?: RunOptions): EventStream
+stepSimulation(state: SimState, dt?: number): SimState     // dt must equal scenario.timeStep
+compileScenario(network: Network, definition: ScenarioDefinition): Scenario
+validateNetwork(network: Network): NetworkIssue[]
 
 // commands/ — every mutation goes through here; nothing bypasses it
 applyCommand(model: Model, cmd: Command): CommandResult     // returns inverse for undo
@@ -94,7 +97,12 @@ runBatch(scenario: Scenario, seeds: number[]): AggregateResult  // mean + CI per
 
 **The command registry is a hard boundary.** Adding a new kind of edit must not require
 touching `project/`. `project/` owns transactions, undo, and revisions; it must never learn
-what any individual command means. A test enforces this.
+what any individual command means. Its enforcement test must land with that system.
+
+The existing `tests/architecture.test.ts` enforces the core import boundary and rejects
+wall clocks and unseeded RNG. `core/types.ts` is the runtime contract; the network compiler
+depends on it, and the engine never imports the authoring model. `docs/SIMULATION.md`
+documents supported topology, event timing, immutable state, safety guards and limitations.
 
 ---
 

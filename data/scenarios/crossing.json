@@ -1,0 +1,36 @@
+{
+  "network": {
+    "id": "crossing-demo",
+    "drivingSide": "left",
+    "links": [
+      { "id": "west", "geometry": [{"x": -160, "y": 0}, {"x": -10, "y": 0}], "lanes": [{"id": "west-1", "width": 3.5}] },
+      { "id": "east", "geometry": [{"x": 10, "y": 0}, {"x": 160, "y": 0}], "lanes": [{"id": "east-1", "width": 3.5}] },
+      { "id": "south", "geometry": [{"x": 0, "y": -160}, {"x": 0, "y": -10}], "lanes": [{"id": "south-1", "width": 3.5}] },
+      { "id": "north", "geometry": [{"x": 0, "y": 10}, {"x": 0, "y": 160}], "lanes": [{"id": "north-1", "width": 3.5}] }
+    ],
+    "connectors": [
+      { "id": "west-east", "from": {"linkId": "west", "laneId": "west-1"}, "to": {"linkId": "east", "laneId": "east-1"}, "geometry": [{"x": -10, "y": 0}, {"x": 10, "y": 0}] },
+      { "id": "south-north", "from": {"linkId": "south", "laneId": "south-1"}, "to": {"linkId": "north", "laneId": "north-1"}, "geometry": [{"x": 0, "y": -10}, {"x": 0, "y": 10}] }
+    ],
+    "signalHeads": [
+      { "id": "west-head", "lane": {"linkId": "west", "laneId": "west-1"}, "position": 148, "programId": "east-west-program" },
+      { "id": "south-head", "lane": {"linkId": "south", "laneId": "south-1"}, "position": 148, "programId": "north-south-program" }
+    ]
+  },
+  "definition": {
+    "duration": 180,
+    "timeStep": 0.1,
+    "routes": [
+      { "id": "eastbound", "segmentIds": ["west-1", "west-east", "east-1"] },
+      { "id": "northbound", "segmentIds": ["south-1", "south-north", "north-1"] }
+    ],
+    "inputs": [
+      { "id": "west-input", "routeId": "eastbound", "vehicleTypeId": "car", "vehiclesPerHour": 900, "startTime": 0, "endTime": 90 },
+      { "id": "south-input", "routeId": "northbound", "vehicleTypeId": "car", "vehiclesPerHour": 700, "startTime": 0, "endTime": 90 }
+    ],
+    "signalPrograms": [
+      { "id": "east-west-program", "offset": 0, "phases": [{"duration": 32, "color": "red"}, {"duration": 24, "color": "green"}, {"duration": 3, "color": "amber"}, {"duration": 5, "color": "red"}] },
+      { "id": "north-south-program", "offset": 0, "phases": [{"duration": 24, "color": "green"}, {"duration": 3, "color": "amber"}, {"duration": 37, "color": "red"}] }
+    ]
+  }
+}
