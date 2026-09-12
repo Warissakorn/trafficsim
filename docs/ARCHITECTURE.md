@@ -2,7 +2,7 @@
 
 **Current stack: C++20, CMake, Qt 6 Widgets.** D15 supersedes the initial TypeScript stack.
 M0 core/network functionality has been ported, with a native desktop harness and CLI.
-The traffic-engineering acceptance gate remains open. M1 editing is still planned.
+The traffic-engineering acceptance gate remains open. M1.1–M1.3 editing is implemented; full M1 acceptance remains open.
 
 ## Boundaries
 
@@ -20,8 +20,9 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 fixture loading/output; production persistence planned |
-| `trafficsim_shell` | `src/shell/`, `src/render/` | Project, Qt Widgets | M0 controls and passive renderer |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and version-1 authoring document codec |
+| `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, Link/Lane operations |
+| `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point |
 
@@ -62,20 +63,33 @@ arrival generation or simulation timer; Qt repaints only when data/exposure chan
 The current renderer is a QPainter diagnostic, not a performance-tested production
 renderer or the M1 editor.
 
-## Planned systems
+## Editor boundary
+
+`ProjectDocument` owns the authoring network, optional M0 definition, background,
+revision and ID counter. `History` commits a candidate only after validation and keeps
+bounded before/after snapshots. Failed edits never mutate the published document.
+Project never imports commands; a boundary check and negative fixtures enforce this.
+
+`EditorCanvas` renders a const document and sends gesture callbacks. Drag previews are
+transient and one release submits one command. `EditorWindow` composes native actions,
+inspector controls, translation, save prompts and QSaveFile atomic replacement. It is
+independent from the M0 simulation window; run handoff remains M1.7. Qt stays out of
+project/model/core. Embedded background bytes are immutable and shared across history.
+See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
+
+## Remaining systems
 
 | System | Location | Required boundary |
 |---|---|---|
-| Commands / Undo | `src/commands/` | Every edit is a named, undoable command |
-| Editor | `src/editor/` | Dispatch commands; never mutate core state |
+| Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
+| Extended editor | `src/editor/` | General connectors, tables and diagnostics remain |
 | Project persistence | `src/project/` | Versioned authoring file, transactions and revisions |
 | Editable demand/control | `src/model/demand/`, `src/model/control/` | Model data compiles into core contracts |
 | Movement evaluation | `src/eval/` | Events to delay, LOS, queues and travel times |
 | Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
 | Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
 
-Adding a command must never teach `project/` its implementation. The corresponding
-boundary test must land with M1, not an unused abstraction in M0.
+Adding a command must never teach `project/` its implementation. The corresponding boundary check now runs with the M1 document/command implementation.
 
 ## Data and enforcement
 

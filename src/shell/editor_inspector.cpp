@@ -1,0 +1,71 @@
+#include "editor_window.hpp"
+#include <QAction>
+#include <QComboBox>
+#include <QDockWidget>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QScrollArea>
+#include <QSpinBox>
+#include <QToolButton>
+#include <QVBoxLayout>
+
+namespace trafficsim {
+void EditorWindow::label(QFormLayout* form,const std::string& key,QWidget* field) {
+    auto* label=new QLabel(this);label->setWordWrap(true);label->setBuddy(field);texts_[key]=label;
+    field->setObjectName(QString::fromStdString(key));form->addRow(label,field);
+}
+void EditorWindow::buildInspector() {
+    auto* dock=new QDockWidget(this);dock->setObjectName("editorInspectorDock");texts_["editorInspector"]=dock;
+    dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetClosable);
+    auto* scroll=new QScrollArea(dock);scroll->setWidgetResizable(true);
+    auto* body=new QWidget(scroll);auto* form=new QFormLayout(body);form->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    auto number=[&](double min,double max,double value,int decimals=2){
+        auto* s=new QDoubleSpinBox(body);s->setDecimals(decimals);s->setRange(min,max);s->setValue(value);return s;
+    };
+    auto button=[&](const std::string& key,const std::function<void()>& callback){
+        auto* b=new QToolButton(body);b->setToolButtonStyle(Qt::ToolButtonTextOnly);b->setDefaultAction(action(key,{},callback));form->addRow(b);
+    };
+    auto heading=[&](const std::string& key){auto* h=new QLabel(body);h->setStyleSheet("font-weight:600;margin-top:8px;");texts_[key]=h;form->addRow(h);};
+    heading("editorRoadProperties");
+    id_=new QLineEdit(body);id_->setReadOnly(true);label(form,"editorId",id_);
+    selectionInfo_=new QLabel(body);selectionInfo_->setWordWrap(true);form->addRow(selectionInfo_);
+    count_=new QSpinBox(body);count_->setRange(1,12);count_->setValue(2);label(form,"editorLaneCount",count_);
+    width_=number(0.1,20,3.5);label(form,"editorDefaultWidth",width_);
+    widths_=new QLineEdit(body);label(form,"editorLaneWidths",widths_);
+    button("editorApplyLanes",[this]{
+        const auto parts=widths_->text().split(',',Qt::SkipEmptyParts);std::vector<double> widths;
+        for(const auto& part:parts){bool ok=false;const double w=part.trimmed().toDouble(&ok);if(!ok){showError(std::runtime_error("EDIT_LANES"));return;}widths.push_back(w);}
+        if(widths.size()==1) widths.resize(static_cast<std::size_t>(count_->value()),widths[0]);
+        if(widths.size()!=static_cast<std::size_t>(count_->value())){showError(std::runtime_error("EDIT_LANES"));return;}
+        execute("editorApplyLanes",[&](auto& d){changeLanes(d,canvas_->selected(),widths);});
+    });
+    split_=number(0.21,100000,30);label(form,"editorSplitDistance",split_);
+    button("editorSplitHere",[this]{
+        std::string id;if(execute("editorSplitHere",[&](auto& d){id=splitLink(d,canvas_->selected(),split_->value());}))canvas_->select(id);
+    });
+    button("editorPocket",[this]{
+        std::string id;if(execute("editorPocket",[&](auto& d){id=splitLink(d,canvas_->selected(),split_->value(),true);}))canvas_->select(id);
+    });
+    gap_=number(0,100,2);label(form,"editorMedianGap",gap_);
+    button("editorOpposite",[this]{
+        std::string id;if(execute("editorOpposite",[&](auto& d){id=oppositeLink(d,canvas_->selected(),gap_->value());}))canvas_->select(id);
+    });
+    side_=new QComboBox(body);side_->addItems({"",""});label(form,"editorDrivingSide",side_);
+    connect(side_,&QComboBox::currentIndexChanged,this,[this](int index){execute("editorDrivingSide",[&](auto& d){changeDrivingSide(d,index==0?DrivingSide::left:DrivingSide::right);});});
+    heading("editorBackground");button("editorImportImage",[this]{importImage();});
+    bgX_=number(-1000000,1000000,0,4);label(form,"editorImageX",bgX_);
+    bgY_=number(-1000000,1000000,0,4);label(form,"editorImageY",bgY_);
+    bgScale_=number(0.000001,10000,1,6);label(form,"editorImageScale",bgScale_);
+    bgAngle_=number(-360,360,0,4);label(form,"editorImageRotation",bgAngle_);
+    bgOpacity_=number(0,1,0.5);bgOpacity_->setSingleStep(0.1);label(form,"editorImageOpacity",bgOpacity_);
+    button("editorApplyImage",[this]{applyBackground();});
+    button("editorRemoveImage",[this]{execute("editorRemoveImage",[](auto& d){d.background={};});});
+    auto* help=new QLabel(body);help->setWordWrap(true);texts_["editorHelp"]=help;form->addRow(help);
+    actions_["editorInspector"]=dock->toggleViewAction();
+    actions_["editorInspector"]->setShortcut(QKeySequence("Ctrl+I"));
+    scroll->setWidget(body);dock->setWidget(scroll);addDockWidget(Qt::RightDockWidgetArea,dock);
+    resizeDocks({dock},{325},Qt::Horizontal);
+}
+}

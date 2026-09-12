@@ -1,1 +1,1 @@
-Planned named, serializable and undoable model mutations. No command registry implemented yet.
+Qt-free named document transactions and bounded snapshot Undo/Redo. History validates a candidate before publishing it; failed changes leave model/history/save state intact. Network operations support geometry, lane widths, reference-safe deletion, splitting, pockets and opposite carriageways. History is in memory, not a persisted journal or plugin registry.

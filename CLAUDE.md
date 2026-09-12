@@ -13,13 +13,13 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current milestone:** M0 — vertical slice
+**Current work:** M1.1–M1.3 native editor implemented; M0 owner acceptance remains open
 **Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
 discharging at green plausibly, and CTest proves seeded replay.
 
 **Status: M0 C++ core and network model implemented; acceptance gate still open.** A Qt
 Widgets desktop harness and native CLI exercise both systems. Read `docs/SIMULATION.md`
-for the current contracts and explicit limitations, then `Next` in `docs/PROGRESS.md`.
+for the current simulation contracts, `docs/NETWORK_EDITOR.md` for the editor, then `Next` in `docs/PROGRESS.md`.
 
 ## Read these before working
 
@@ -131,3 +131,5 @@ tests/
 - UI text lives in `data/locales/`. Runtime catalogs are copied beside executables.
 - The owner authorized the full stack migration (D15); it supersedes one-system scheduling
   guidance for that migration only. Existing M0/M1 acceptance gates still apply.
+
+- The owner authorized M1.1–M1.3 together (D16). Project never imports command or Qt types; the shell owns atomic file replacement. Never equate authoring support with runtime support.

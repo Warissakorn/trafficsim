@@ -61,6 +61,51 @@ every geometry routine.
 
 ---
 
+### M1.1 — Document and commands
+
+Implemented: a Qt-free versioned ProjectDocument, persistent revision/ID counter,
+named atomic edits, 100-entry Undo/Redo, save-point tracking and failed-edit rollback.
+
+### M1.2 — Canvas and background
+
+Implemented: pan/zoom/fit, metric grid/snap, link selection, embedded local background
+images, two-point image calibration, transform/opacity editing and distance measurement.
+
+### M1.3 — Link and lane tools
+
+Implemented: drawing, point/link dragging, insert/remove points, per-lane widths,
+reference-safe deletion, splitting with continuity connectors, opposite carriageways,
+and a downstream extra lane for a turn-pocket approach. Basic atomic save/open landed
+with these tools so drawings are not disposable. See NETWORK_EDITOR.md for the exact limits.
+
+### M1.3.1 — Split links carrying signal heads
+
+Not implemented. Current split commands reject these links without changing the document.
+Define stationing/remapping for heads on upstream/downstream portions and inside the
+split connector span, then test control and route preservation together. This is an
+explicit follow-up, not a claim that arbitrary controlled networks can already be split.
+
+### M1.4 — Connector editor
+
+General lane-to-lane connector creation, curve handles and endpoint maintenance.
+
+### M1.5 — Inspection and diagnostics
+
+Object tables, multi-selection and structured validation with jump-to-object navigation.
+
+### M1.6 — Complete persistence workflow
+
+Autosave/recovery, robust asset/catalog handling and future-schema migration policy.
+Basic version-1 atomic save/open and embedded images already exist.
+
+### M1.7 — Run handoff and owner acceptance
+
+Compile an explicit document revision into a run snapshot, expose unsupported simulation
+features before Run, and perform the four-leg/aerial-image/ten-minute/reopen acceptance
+exercise above. The M0 owner gate remains open; editor work does not waive it.
+
+---
+
 ## M2 — Demand, run, first numbers · **GATE**
 
 Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay

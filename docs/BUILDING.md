@@ -96,3 +96,11 @@ math libraries. Preserve toolchain/version metadata for future report runs.
 Qt licensing depends on the modules and distribution arrangement; consult the
 [Qt module documentation](https://doc.qt.io/qt-6/qtwidgets-index.html#licenses).
 No commercial license or redistribution arrangement is assumed by this repository.
+
+## Network editor
+
+After building the desktop, run `trafficsim-desktop --editor` (add `--language th` for
+Thai). `--scenario path/to/network.traffic.json` opens an editor document when used with
+`--editor`; without it the application still opens the M0 simulation harness. See
+[NETWORK_EDITOR.md](NETWORK_EDITOR.md) for drawing, images and saving.
+The headless build includes document/history tests but does not build Qt editor tests.

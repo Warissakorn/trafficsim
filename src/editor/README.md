@@ -1,1 +1,1 @@
-Planned network tools, inspectors and tables. The current development harness is not an editor.
+Native QGraphicsView editor canvas. Reads a const ProjectDocument; gesture callbacks submit commands through the shell. Local previews never mutate the model. Pan, zoom, grid snap, selection, drawing, point/link dragging, insert/remove points, split picking and two-point measurement/calibration are implemented.
