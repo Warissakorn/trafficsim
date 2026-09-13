@@ -8,19 +8,23 @@ long.
 
 ## Next
 
-**Review the owner's M0 plausibility gate in the native Qt desktop.**
+**Review the M1.1–M1.3 native editor, then implement M1.4 connector tools.**
 
-1. Follow `docs/BUILDING.md`; build the `desktop` preset and run CTest.
-2. Launch `trafficsim-desktop` and inspect seed 42: acceleration, western red queue,
-   green discharge, connector transitions and retained source demand.
-3. Record the owner's judgement here. Native migration checks and baseline agreement
-   do not close the traffic-engineering gate. Installer acceptance remains M7.
-4. If a behaviour defect is found, add the smallest failing C++ scenario and fix it.
-5. After M0 passes, start M1 with commands/undo/project contracts and one undoable link
-   edit. Build all new application code in C++; keep Qt and JSON outside the core.
+1. Build the desktop, run CTest, and launch `trafficsim-desktop --editor --language th`.
+2. Follow `docs/NETWORK_EDITOR.md`: draw a road over a calibrated image, reshape it,
+   change lane widths, make a pocket/opposite carriageway, Undo/Redo and save/reopen.
+3. Check the owner's M0 plausibility acceptance separately. The owner explicitly
+   authorized this editor slice (D16); it does not close the M0 or full M1 gates.
+4. M1.4: add general lane-to-lane connectors and editable curves through the existing
+   History command path. Do not put mutations in the renderer or command imports in project.
+5. M1.3.1 remains explicit: splitting a link carrying a signal head is rejected until
+   control stationing/remapping is designed and tested. Preserve that guard.
+6. M1.5/M1.6/M1.7 retain multi-selection/tables, recovery, run handoff and the timed
+   four-leg usability/reopen exercise. No edited-network simulation is claimed yet.
 
-**Implementation:** `docs/SIMULATION.md`; `src/core/simulation.hpp`;
-`src/model/network/network.hpp`. Migration evidence: `docs/MIGRATION.md`.
+**Implementation:** `src/project/document.hpp`, `src/commands/history.hpp`,
+`src/commands/network_commands.hpp`, `src/editor/canvas.hpp`, `src/shell/editor_window.hpp`.
+Base: native migration PR #2, still pending integration when this editor work began.
 
 ---
 
@@ -34,9 +38,9 @@ long.
 - [x] Vehicle input generating arrivals from a seeded stream, retaining blocked arrivals
 - [x] Native Qt harness: vehicles as dots on links (former canvas preserved in Git history)
 - [x] Headless completed-trip delay diagnostic and seeded replay regression
-- [ ] Owner's M0 plausibility acceptance  ← **Next**
+- [ ] Owner's M0 plausibility acceptance (still open)
 
-Later milestones are in [`ROADMAP.md`](ROADMAP.md). Do not pull work forward from them.
+Later milestones are in [`ROADMAP.md`](ROADMAP.md). The owner explicitly authorized M1.1–M1.3 in D16; all other milestone gates remain in force.
 
 ---
 
@@ -80,9 +84,52 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 | D15 | 2026-09-11 | **C++20 throughout the application, Qt 6 Widgets desktop, CMake/CTest**; supersedes D3's initial stack, D4's web-first loop and D14's active TS tooling | The owner asked whether the whole program could move to C++, then authorized the proposed migration. Port the existing M0 core/model and harness together; preserve old source in Git and four frozen regression fixtures. Keep Qt/JSON outside the engine and existing modelling limitations explicit. This supersedes one-system scheduling guidance for the migration. | If behaviour diverges from the saved baseline or desktop controls cannot run, fix the port before M1. Cross-toolchain math uses an explicit tolerance; scientific fidelity still requires M6. |
 
+| D16 | 2026-09-12 | **Implement M1.1–M1.3 together on the native C++ base** | The owner approved the editor plan and explicitly requested these three slices. This supersedes the earlier one-system scheduling and M0-only Next for this scoped work. Implement document/history, canvas/background and Link/Lane tools together with basic saving so drawings persist. Existing scientific and full M1 usability gates remain open. | If later connectors, demand or runtime behaviour are introduced without their own scope decision. |
+
 ---
 
 ## Log
+
+### 2026-09-12 — native editor M1.1–M1.3 implemented (D16)
+
+Added a version-1 ProjectDocument and a Qt-free command library. Every committed edit
+validates a candidate before publishing it; a failed edit preserves both history and
+the model. Undo/Redo keeps up to 100 document snapshots, persists the current revision
+and ID counter in project files, and tracks the last saved revision. Embedded PNG data
+is shared immutably between snapshots rather than copied for every gesture.
+
+The independent Qt editor is available from the M0 window or `--editor`. It provides
+metric grid/snap, pan/zoom/fit, single-link selection, point/link dragging, point insertion
+and removal, lane count and individual widths, left/right driving side, opposite
+carriageways, split links and an extra downstream pocket lane. Splits introduce a 0.2 m
+continuity span with explicit lane connectors and remap existing routes. A link deletion
+confirms its affected connectors/heads/routes/inputs and restores all of them on Undo.
+Referenced lane removal is rejected. Connector endpoints reanchor on geometry edits.
+
+Local background images are embedded, calibrated from two picked points and a known
+real distance, positioned/rotated/scaled and given opacity. All background changes are
+undoable. Basic Open/Save/Save As use a versioned JSON document and QSaveFile atomic
+replacement; failed load/save preserves the current work. New/Open/Close ask about
+unsaved changes. Native prompts and editor controls support English and Thai. The
+inspector can be hidden, resized or detached. No new simulation behaviour was added.
+
+Boundary enforcement now also rejects project-to-command/editor/Qt imports, with
+negative fixtures. `docs/NETWORK_EDITOR.md` records operation, format and exact limits.
+M1.3.1 explicitly tracks the unsupported signal-bearing-link split rather than moving
+signal stationing silently. General connectors, tables, recovery and run handoff remain
+M1.4–M1.7. Windows/macOS GUI execution and the owner's usability gate remain unverified.
+
+**Verification:** GCC 13.3 / Qt 6.4.2 on Linux. Fresh isolated Debug and Release
+builds passed all 13 CTest suites; a separate Qt-free build passed all 11 suites.
+The native test executable contains 38 named cases (8 new editor model cases), and
+Qt UI checks exercise actual mouse/keyboard drawing, dragging, insertion/removal,
+pan/zoom, cancellation, per-lane widths, pockets, opposite carriageways, driving side,
+confirmed deletion/Undo, image transforms/two-point calibration, Unicode paths,
+failed save/load preservation, unsaved-work cancellation and Thai translation.
+The existing four TS regression fixtures, deterministic core replay, CLI and M0
+controls still pass. Architecture/negative checks, the 500-line limit and whitespace
+checks pass. A Thai editor screenshot at 1000×760 was visually inspected. GUI behaviour
+on Windows/macOS and GitHub-hosted runner execution are not claimed verified here.
 
 
 ### 2026-09-11 — native C++ migration implemented (D15)

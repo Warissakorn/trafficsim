@@ -1,1 +1,1 @@
-M0 strict JSON fixture/catalog loading and diagnostic serialization. Versioned project saving, revisions and transactions remain M1.
+Qt-free M0 loading/output and version-1 authoring ProjectDocument codec. The document persists authoring data and optional background; no compiled runtime network is saved. Empty draft networks are valid. Commands depend on this module, never the reverse. The shell owns QSaveFile atomic replacement.

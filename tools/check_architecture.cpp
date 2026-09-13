@@ -33,6 +33,21 @@ bool check(const std::string& source, const std::filesystem::path& directory) {
     }
     return true;
 }
+// Project persistence may read model contracts, but must never know command implementations.
+bool projectBoundary(const std::string& source) {
+    const std::regex directive(R"(^\s*#\s*(include|include_next)\b.*)");
+    const std::regex literal(R"(^\s*#\s*include\s*([<"])([^>"\r\n]+)[>"]\s*(//.*)?$)");
+    const std::regex forbidden(R"((^|[/\\])(commands|editor|shell|render)([/\\]|$))");
+    std::istringstream stream(source); std::string line;
+    while (std::getline(stream, line)) {
+        if (!std::regex_match(line, directive)) continue;
+        std::smatch match;
+        if (!std::regex_match(line, match, literal)) return false;
+        const std::string header = match[2];
+        if (std::regex_search(header, forbidden) || header.starts_with("Q") || header.starts_with("Qt")) return false;
+    }
+    return true;
+}
 }
 int main(int argc, char** argv) {
     if (argc != 2) return 2;
@@ -41,6 +56,9 @@ int main(int argc, char** argv) {
                 "#include \"../model/network.hpp\"", "#include HEADER", "#include_next <vector>",
                 "import bad.module;", "std::rand();", "auto x = __TIME__;"})
             if (check(bad, {})) { std::cerr << "Guard accepted: " << bad << '\n'; return 1; }
+        for (const auto* bad : {"#include \"../commands/history.hpp\"", "#include <QFile>", "#include HEADER"})
+            if (projectBoundary(bad)) return 1;
+        if (!projectBoundary("#include \"../model/network/network.hpp\"\n#include <nlohmann/json.hpp>")) return 1;
         return check("#include <vector>\n#include <cmath>\n", {}) ? 0 : 1;
     }
     bool valid = true;
@@ -58,6 +76,11 @@ int main(int argc, char** argv) {
             }
             if (!file || !check(source, directory)) { std::cerr << "Boundary violation: " << entry.path() << '\n'; valid = false; }
         }
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(argv[1]) / "src/project")) {
+        if (entry.path().extension() != ".hpp" && entry.path().extension() != ".cpp") continue;
+        std::ifstream file(entry.path()); std::string source((std::istreambuf_iterator<char>(file)), {});
+        if (!file || !projectBoundary(source)) { std::cerr << "Project boundary violation: " << entry.path() << '\n'; valid = false; }
     }
     return valid ? 0 : 1;
 }

@@ -115,3 +115,11 @@ green, `docs/PROGRESS.md` updated. Automated regression does not replace owner M
 | Cannot locate data | Keep `data/` beside executable or pass `--data-dir` |
 | Baseline mismatch | Inspect the first differing event/checkpoint; do not regenerate fixtures to hide it |
 | `UNSUPPORTED_MERGE` | M0 cannot arbitrate merging streams; right-of-way remains M3 |
+
+## Editor regression coverage
+
+The `editor` native test group covers ProjectDocument and command transactions without
+Qt. The `editor-ui` CTest entry exercises the Qt editor through mouse/keyboard actions,
+including saving, images and calibration. The architecture guard additionally rejects
+project imports of commands/editor/shell/render and Qt, with negative fixtures.
+See [NETWORK_EDITOR.md](../docs/NETWORK_EDITOR.md) for the editing workflow and limits.

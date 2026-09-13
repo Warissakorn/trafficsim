@@ -1,5 +1,8 @@
 #include "main_window.hpp"
 #include "path.hpp"
+#include "editor_window.hpp"
+#include <QMenuBar>
+#include <QAction>
 #include <QComboBox>
 #include <QFile>
 #include <QFileDialog>
@@ -92,6 +95,13 @@ MainWindow::MainWindow(const std::filesystem::path& data, const std::filesystem:
         try { loadFile(nativePath(file)); }
         catch (const std::exception& e) { error_->setText(text("loadError") + "\n" + QString::fromUtf8(e.what())); error_->show(); }
     });
+    auto* editorAction = menuBar()->addAction(text("editorTitle"));
+    editorAction->setObjectName("launchEditor");
+    connect(editorAction, &QAction::triggered, this, [this] {
+        pause();
+        auto* editor = new EditorWindow(data_, language_->currentData().toString(), this);
+        editor->setAttribute(Qt::WA_DeleteOnClose); editor->setWindowFlag(Qt::Window); editor->show();
+    });
     loadFile(scenario);
     changeLanguage();
 }
@@ -106,6 +116,7 @@ void MainWindow::loadFile(const std::filesystem::path& file) {
     view_->setNetwork(loaded_.network); reset();
 }
 void MainWindow::changeLanguage() {
+    if (auto* action = findChild<QAction*>("launchEditor")) action->setText(text("editorTitle"));
     setWindowTitle(text("title") + " — " + text("subtitle"));
     validation_->setText(text("validation")); scope_->setText(text("scope"));
     for (const auto& [key, label] : labels_) label->setText(text(key.c_str()));
