@@ -1,0 +1,61 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+
+  "configurePresets": [
+    {
+      "name": "win-base",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.3/msvc2022_64",
+        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "win-desktop",
+      "displayName": "Windows desktop (MSVC + Qt 6, Debug)",
+      "inherits": ["desktop", "win-base"],
+      "binaryDir": "${sourceDir}/build/win-desktop"
+    },
+    {
+      "name": "win-release",
+      "displayName": "Windows desktop (MSVC + Qt 6, Release)",
+      "inherits": ["release", "win-base"],
+      "binaryDir": "${sourceDir}/build/win-release"
+    },
+    {
+      "name": "win-headless",
+      "displayName": "Windows core + CLI (no Qt)",
+      "inherits": ["headless", "win-base"],
+      "binaryDir": "${sourceDir}/build/win-headless",
+      "cacheVariables": { "CMAKE_PREFIX_PATH": "" }
+    }
+  ],
+
+  "buildPresets": [
+    { "name": "win-desktop",  "configurePreset": "win-desktop" },
+    { "name": "win-release",  "configurePreset": "win-release" },
+    { "name": "win-headless", "configurePreset": "win-headless" }
+  ],
+
+  "testPresets": [
+    {
+      "name": "win-desktop",
+      "configurePreset": "win-desktop",
+      "output": { "outputOnFailure": true },
+      "environment": { "PATH": "C:/Qt/6.8.3/msvc2022_64/bin;$penv{PATH}" }
+    },
+    {
+      "name": "win-release",
+      "configurePreset": "win-release",
+      "output": { "outputOnFailure": true },
+      "environment": { "PATH": "C:/Qt/6.8.3/msvc2022_64/bin;$penv{PATH}" }
+    },
+    {
+      "name": "win-headless",
+      "configurePreset": "win-headless",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

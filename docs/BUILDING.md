@@ -34,6 +34,26 @@ Put the Qt kit's `bin` on PATH before testing as well as launching, or deploy th
 beside the executables. Use the same compiler/architecture for Qt and TrafficSim.
 MinGW Qt binaries are not compatible with an MSVC application.
 
+### Local presets instead of repeated command-line flags
+
+To avoid passing `CMAKE_PREFIX_PATH` and `CMAKE_TOOLCHAIN_FILE` on every configure,
+copy [`CMakeUserPresets.windows.example.json`](CMakeUserPresets.windows.example.json) to
+`CMakeUserPresets.json` in the repository root and replace the example Qt and vcpkg paths
+with your own. That file is per-developer and is deliberately git-ignored; do not commit
+machine paths. It adds `win-desktop`, `win-release` and `win-headless`, which inherit the
+checked-in `desktop`, `release` and `headless` presets and build into separate directories:
+
+```bat
+cmake --preset win-desktop
+cmake --build --preset win-desktop
+ctest --preset win-desktop
+build\win-desktop\bin\trafficsim-desktop.exe
+```
+
+The test presets prepend the Qt kit's `bin` to `PATH` so CTest resolves the Qt DLLs
+without a separately prepared shell. Visual Studio 2022 reads both preset files when the
+repository folder is opened, and lists these presets in its configuration selector.
+
 For a local runnable folder, build Release and use the matching Qt kit's `windeployqt`:
 
 ```bat
