@@ -24,7 +24,8 @@ long.
 
 **Implementation:** `src/project/document.hpp`, `src/commands/history.hpp`,
 `src/commands/network_commands.hpp`, `src/editor/canvas.hpp`, `src/shell/editor_window.hpp`.
-Base: native migration PR #2, still pending integration when this editor work began.
+Base: the native migration, integrated into `main` on 2026-09-13 together with this
+editor slice.
 
 ---
 
@@ -89,6 +90,26 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 ---
 
 ## Log
+
+### 2026-09-13 — native migration and editor branches integrated into `main`
+
+Merged `codex/cpp-desktop-migration` (D15) and `codex/network-editor-m1-1-3` (D16) into
+`main` as two explicit merge commits. The migration commit is an ancestor of the editor
+commit, so both branches shared one merge base at the last TypeScript commit `70383db`
+and neither merge produced a conflict. No source or documentation was edited to make the
+integration succeed; `main` now carries the C++20/CMake/Qt tree exactly as reviewed on
+the branches.
+
+Verified on the `headless` configuration only: full build clean, CTest **11/11 passing**,
+including the architecture boundary, its negative fixtures, file sizes and the CLI checks.
+**The Qt desktop harness and `editor_ui_tests` were not built or run** — no Qt in the
+integration environment — so no desktop verification is claimed, per `docs/BUILDING.md`.
+Building also required `nlohmann-json3-dev`, which a clean checkout must install first.
+
+Neither the M0 acceptance gate nor the M1 gate is closed by this merge; merged code is
+not a passed gate. `Next` is unchanged apart from its base note.
+
+---
 
 ### 2026-09-12 — native editor M1.1–M1.3 implemented (D16)
 
