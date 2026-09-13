@@ -1,1 +1,1 @@
-Planned project loading, saving, structural parsing, revisions and transactions. No persistence implemented yet.
+M0 strict JSON fixture/catalog loading and diagnostic serialization. Versioned project saving, revisions and transactions remain M1.

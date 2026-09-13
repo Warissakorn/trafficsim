@@ -1,0 +1,79 @@
+#include "network.hpp"
+#include "../../core/validate.hpp"
+#include <algorithm>
+#include <cmath>
+#include <set>
+#include <utility>
+
+namespace trafficsim {
+std::vector<ValidationIssue> validateNetwork(const Network& network) {
+    std::vector<ValidationIssue> issues;
+    const auto add = [&](const std::string& code, const std::string& path) { issues.push_back({code, path}); };
+    std::set<std::string> ids;
+    const auto id = [&](const std::string& value, const std::string& path) {
+        if (value.find_first_not_of(" \t\n\r") == std::string::npos) add("INVALID_ID", path);
+        else if (!ids.insert(value).second) add("DUPLICATE_ID", path);
+    };
+    const auto geometry = [&](const std::vector<Point>& points, const std::string& path) {
+        bool valid = points.size() >= 2 && std::isfinite(polylineLength(points)) && polylineLength(points) > 0;
+        for (std::size_t i = 0; i < points.size(); ++i)
+            if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y) ||
+                (i > 0 && points[i] == points[i - 1])) valid = false;
+        if (!valid) add("INVALID_GEOMETRY", path);
+    };
+    const auto resolve = [&](const LaneReference& ref, const std::string& path) -> const Link* {
+        for (const auto& link : network.links)
+            if (link.id == ref.linkId && std::any_of(link.lanes.begin(), link.lanes.end(),
+                [&](const auto& lane) { return lane.id == ref.laneId; })) return &link;
+        add("UNKNOWN_LANE", path);
+        return nullptr;
+    };
+    id(network.id, "id");
+    const bool validSide = network.drivingSide == DrivingSide::left || network.drivingSide == DrivingSide::right;
+    if (!validSide) add("INVALID_DRIVING_SIDE", "drivingSide");
+    if (network.links.empty()) add("EMPTY_NETWORK", "links");
+    for (std::size_t i = 0; i < network.links.size(); ++i) {
+        const auto& link = network.links[i];
+        const auto p = "links[" + std::to_string(i) + "]";
+        id(link.id, p + ".id"); geometry(link.geometry, p + ".geometry");
+        if (link.lanes.empty()) add("NO_LANES", p + ".lanes");
+        for (std::size_t j = 0; j < link.lanes.size(); ++j) {
+            const auto q = p + ".lanes[" + std::to_string(j) + "]";
+            id(link.lanes[j].id, q + ".id");
+            if (!std::isfinite(link.lanes[j].width) || link.lanes[j].width <= 0) add("INVALID_WIDTH", q + ".width");
+        }
+    }
+    std::set<std::pair<std::string, std::string>> connections;
+    for (std::size_t i = 0; i < network.connectors.size(); ++i) {
+        const auto& c = network.connectors[i];
+        const auto p = "connectors[" + std::to_string(i) + "]";
+        id(c.id, p + ".id"); geometry(c.geometry, p + ".geometry");
+        const auto* from = resolve(c.from, p + ".from"); const auto* to = resolve(c.to, p + ".to");
+        if (!connections.emplace(c.from.laneId, c.to.laneId).second) add("DUPLICATE_CONNECTION", p);
+        const auto check = [&](const Link* link, const LaneReference& ref, bool end) {
+            if (!link || link->geometry.size() < 2 || c.geometry.empty() || !validSide) return;
+            const auto points = laneGeometry(*link, ref.laneId, network.drivingSide);
+            const auto expected = end ? points.back() : points.front();
+            const auto endpoint = end ? c.geometry.front() : c.geometry.back();
+            if (std::hypot(endpoint.x - expected.x, endpoint.y - expected.y) > 0.01)
+                add("DISCONNECTED_GEOMETRY", p + (end ? ".from" : ".to"));
+        };
+        check(from, c.from, true); check(to, c.to, false);
+    }
+    for (std::size_t i = 0; i < network.signalHeads.size(); ++i) {
+        const auto& head = network.signalHeads[i];
+        const auto p = "signalHeads[" + std::to_string(i) + "]";
+        id(head.id, p + ".id");
+        const auto* link = resolve(head.lane, p + ".lane");
+        if (head.programId.find_first_not_of(" \t\r\n") == std::string::npos) add("INVALID_ID", p + ".programId");
+        if (!std::isfinite(head.position) || head.position < 0 || (link && validSide &&
+            head.position > polylineLength(laneGeometry(*link, head.lane.laneId, network.drivingSide))))
+            add("INVALID_POSITION", p + ".position");
+    }
+    return issues;
+}
+void assertValidNetwork(const Network& network) {
+    auto issues = validateNetwork(network);
+    if (!issues.empty()) throw ValidationError(std::move(issues));
+}
+}

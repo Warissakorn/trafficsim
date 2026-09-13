@@ -8,20 +8,19 @@ long.
 
 ## Next
 
-**Review the M0 acceptance gate in the running development harness.**
+**Review the owner's M0 plausibility gate in the native Qt desktop.**
 
-1. Run `npm ci`, `npm test`, `npm run build`, then `npm run dev`.
-2. Inspect the default seed 42 crossing: acceleration, the western approach queue at red,
-   green discharge, and retained source demand.
-3. Record the owner's plausibility judgement here. Automated replay and collision checks
-   do not close the traffic-engineering gate.
-4. If a behaviour defect is found, add the smallest failing scenario and fix the core.
-   Do not add lane changing or priority control to disguise an M0 defect.
-5. Only after the owner passes M0, start M1 with the command/model/project contracts and
-   one undoable link edit. Keep the authoring model outside `core/`.
+1. Follow `docs/BUILDING.md`; build the `desktop` preset and run CTest.
+2. Launch `trafficsim-desktop` and inspect seed 42: acceleration, western red queue,
+   green discharge, connector transitions and retained source demand.
+3. Record the owner's judgement here. Native migration checks and baseline agreement
+   do not close the traffic-engineering gate. Installer acceptance remains M7.
+4. If a behaviour defect is found, add the smallest failing C++ scenario and fix it.
+5. After M0 passes, start M1 with commands/undo/project contracts and one undoable link
+   edit. Build all new application code in C++; keep Qt and JSON outside the core.
 
-**Implementation reference:** `docs/SIMULATION.md`; core API in `src/core/index.ts`;
-network API in `src/model/network/index.ts`.
+**Implementation:** `docs/SIMULATION.md`; `src/core/simulation.hpp`;
+`src/model/network/network.hpp`. Migration evidence: `docs/MIGRATION.md`.
 
 ---
 
@@ -33,7 +32,7 @@ network API in `src/model/network/index.ts`.
 - [x] Reduced Wiedemann-inspired car-following; vehicles queue behind each other
 - [x] Fixed-time signal; vehicles stop at red, discharge at green
 - [x] Vehicle input generating arrivals from a seeded stream, retaining blocked arrivals
-- [x] Canvas development harness: vehicles as dots on links
+- [x] Native Qt harness: vehicles as dots on links (former canvas preserved in Git history)
 - [x] Headless completed-trip delay diagnostic and seeded replay regression
 - [ ] Owner's M0 plausibility acceptance  ← **Next**
 
@@ -79,9 +78,54 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D13 | 2026-09-11 | **M0 uses a clearly labelled reduced Wiedemann-inspired longitudinal model; unsupported merges are rejected** | A small auditable prototype is enough to exercise the M0 architecture and queue/discharge behaviour. The published W74 safety-distance shape is an inspiration, not permission to claim a faithful W74/W99 implementation. Accepting merging paths without gap acceptance would silently invent unsafe right-of-way semantics. | If M0 plausibility fails, fix or replace the approximation before closing M0; do not remove the unvalidated marker. |
 | D14 | 2026-09-11 | **Pin TypeScript 5.9.3 and the dependency lockfile** | The boundary guard uses the TypeScript compiler AST API, including type imports and dynamic imports. The initially resolved TypeScript 7 package lacks that API. Pinning the compatible compiler makes the guard executable, with deliberate negative tests. | When the guard is migrated to a supported replacement AST API and verified against the same forbidden-import fixtures. |
 
+| D15 | 2026-09-11 | **C++20 throughout the application, Qt 6 Widgets desktop, CMake/CTest**; supersedes D3's initial stack, D4's web-first loop and D14's active TS tooling | The owner asked whether the whole program could move to C++, then authorized the proposed migration. Port the existing M0 core/model and harness together; preserve old source in Git and four frozen regression fixtures. Keep Qt/JSON outside the engine and existing modelling limitations explicit. This supersedes one-system scheduling guidance for the migration. | If behaviour diverges from the saved baseline or desktop controls cannot run, fix the port before M1. Cross-toolchain math uses an explicit tolerance; scientific fidelity still requires M6. |
+
 ---
 
 ## Log
+
+
+### 2026-09-11 — native C++ migration implemented (D15)
+
+Replaced the active TypeScript/Vite application with C++20 libraries for core, network,
+scenario loading and evaluation, a native CLI, and a Qt 6 Widgets desktop harness.
+CMake presets cover desktop, headless and Release. All executable developer checks
+are now C++; JSON remains the catalog/locale/fixture format. The original application
+is preserved at GitHub commit `70383db6ab884c718baef97a8ab81292fdc9d1b0`.
+
+The port preserves fixed ticks, explicitly sequenced xorshift32 draws, canonical IDs,
+source queues, upstream tails, red/amber stops and all unsupported-topology guards.
+`SimState` is a value snapshot sharing a detached const scenario. Qt, JSON and I/O stay
+outside the core. CLI diagnostics include engine/compiler versions, unfinished counts
+and optional JSONL events. M0 fixture loading is read-only, not project persistence.
+
+The Qt harness supports Run/Pause/Step/Reset, seed validation/reset, playback speed,
+scenario loading and English/Thai switching. Bundled Noto Sans Thai (unmodified OFL 1.1
+font with license) fixes missing Thai glyphs on minimal systems. Desktop file-dialog
+paths use native wide paths on Windows. Manual screenshot inspection confirmed Thai
+text and a queued crossing scene at 640 pixels wide.
+
+**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.12.0, CMake 4.4.3 on Linux.
+The original 40 tests and production build passed before capture. Native tests include
+30 named C++ cases, four frozen TS baseline seeds, full same-build event replay, core
+and network safety/validation, strict JSON/seed handling and locale key agreement.
+Debug and Release desktop builds passed all 11 CTest suites, including interactive
+control actions and an entire desktop run matching CLI/baseline. Headless also built
+and passed independently without Qt. Address/undefined-behaviour sanitizer tests passed;
+LeakSanitizer was disabled because this container cannot inspect process tasks.
+The architecture negative fixtures, 500-line check and `git diff --check` passed.
+An installed CLI run from a different working directory found its adjacent data and
+reproduced seed 42: 31 completed, 0 active, 0 pending, 0 safety clamps and mean delay
+29.249359418430977 seconds. No performance or scientific fidelity claim is made.
+
+Added GitHub Actions definitions for Linux desktop/headless/Release and Windows MSVC
+headless builds. Windows desktop execution and macOS deployment have not been tested
+in this Linux workspace. See `docs/BUILDING.md`, `docs/MIGRATION.md`, updated architecture,
+simulation contracts and `tools/README.md` for setup and precise limitations.
+
+**Status:** M0.1 technical migration checks passed on Linux. Owner M0 plausibility
+acceptance remains open. No M1 editor, movement LOS, right-of-way model, calibration
+or M7 installer is claimed complete. Next remains owner review, then one undoable link.
 
 ### 2026-09-11 — M0 simulation core and network model implemented
 

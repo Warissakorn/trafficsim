@@ -1,1 +1,1 @@
-Authoring data and compilation. Implemented network subset: network/. Built-in fixture loader: demo.ts.
+C++ authoring model and scenario compilation in network/. M0 JSON fixture/catalog loading lives in ../project/.

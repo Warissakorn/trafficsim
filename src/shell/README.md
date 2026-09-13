@@ -1,1 +1,1 @@
-English and Thai translation data for the M0 harness. Full workspace layout and command palette remain planned.
+Qt Widgets desktop harness. Run/Pause/Step/Reset, seed, playback, scenario loading and English/Thai UI from data/locales/.

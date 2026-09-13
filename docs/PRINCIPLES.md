@@ -25,9 +25,11 @@ batch runner, and portable to a native build. **The day the core imports a UI ty
 project has lost its most valuable property.**
 
 ### 3. Anything a report depends on must be reproducible from a seed
-Same scenario + same seed = same trajectory, forever. No wall-clock, no unordered iteration,
-no floating-point that depends on thread scheduling. A number that goes to a regulator must
-be reconstructible two years later. This constrains real design choices — accept them.
+Same scenario + same seed + same engine/toolchain = the same trajectory. No wall-clock,
+no unordered iteration, no floating-point that depends on thread scheduling. Preserve
+engine, compiler and runtime versions with future report runs so results remain
+reconstructible. D15 introduces explicit cross-language tolerance for the native port;
+it does not promise bit-identical transcendental math across JS and C++ libraries.
 
 ### 4. Never claim fidelity we have not measured
 No screen, document, or marketing sentence may suggest results match Vissim, or that a
@@ -39,7 +41,7 @@ A session that cannot get to green reverts to the last green commit and records 
 `PROGRESS.md`. A red build costs the next session an hour before it can do anything.
 
 ### 6. Files stay near ~500 lines
-Checked with `python tools/check_file_sizes.py .` before committing. Split along the seam
+Checked with `trafficsim-check-file-sizes .` before committing. Split along the seam
 already in the file (rendering vs. logic, one concept per file), never at an arbitrary
 midpoint.
 

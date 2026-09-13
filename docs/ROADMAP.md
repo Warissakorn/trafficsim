@@ -19,15 +19,30 @@ The smallest thing that is genuinely a traffic simulator, end to end. Every laye
 miniature, so wrong assumptions surface while they are still cheap.
 
 **Scope:** two crossing links · one connector each way · one fixed-time signal · one vehicle
-input · Wiedemann-style car-following · a canvas showing vehicles as dots · a headless run
+input · Wiedemann-style car-following · a native 2D view showing vehicles as dots · a headless run
 that prints average delay.
 
-**Done when:** `npm run dev` shows vehicles accelerating, queueing at red, and discharging at
-green in a way a traffic engineer would recognise as plausible — and `npm test` proves the
-same seed produces the same run.
+**Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
+discharging at green in a way a traffic engineer recognises as plausible — and CTest
+proves the same seed produces the same run on a fixed engine/toolchain.
 
 **Explicitly not in M0:** lane changing, editing anything, saving anything, LOS, multiple
 seeds, priority control. The slice is about the *shape*, not the feature set.
+
+---
+
+## M0.1 — Native C++ migration (D15)
+
+**Status:** implemented; Linux native/desktop checks passed. Owner M0 acceptance remains open.
+
+**Technical scope:** C++20 core/model/evaluation and CLI, CMake/CTest, Qt Widgets harness,
+strict JSON loading, four TypeScript baseline fixtures, and native developer checks.
+The former TS application remains in Git history. All new application development is C++.
+
+**Done when:** core/network behaviour passes the saved baseline comparisons and native
+regressions; the desktop compiles and passes Run/Pause/Step/Reset/seed/language smoke tests;
+and the native build/run instructions are usable. This does not close the owner's M0
+plausibility gate, the M1 editor or M7 installer.
 
 ---
 
@@ -133,9 +148,9 @@ Offline install, native file dialogs, no server required.
 **Done when:** a non-technical user installs from a single file on Windows and macOS, opens a
 project by double-clicking it, and works with no network connection.
 
-> Desktop is **last as a milestone but first as a constraint.** The stack is chosen so this
-> is packaging work, not a rewrite (decision D3). A smoke test that the app builds and boots
-> in a desktop shell runs from M1 onward, so this never becomes a surprise.
+> The Qt desktop now exists from M0.1 (D15), with an automated controls smoke test.
+> M7 still owns installers, clean-machine deployment, platform integration and file
+> associations on Windows/macOS. A developer executable does not close M7.
 
 ---
 

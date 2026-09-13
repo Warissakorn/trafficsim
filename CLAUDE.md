@@ -14,11 +14,11 @@ traffic impact studies require. Deliberately **not** a front end over another en
 see D11. Do not rename the project, the repository, or any package before then.
 
 **Current milestone:** M0 — vertical slice
-**Done when:** `npm run dev` shows vehicles accelerating, queueing at red, and discharging at
-green plausibly, and `npm test` proves the same seed reproduces the same run.
+**Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
+discharging at green plausibly, and CTest proves seeded replay.
 
-**Status: M0 core and network model implemented; acceptance gate still open.** A Vite
-development harness and a headless CLI exercise both systems. Read `docs/SIMULATION.md`
+**Status: M0 C++ core and network model implemented; acceptance gate still open.** A Qt
+Widgets desktop harness and native CLI exercise both systems. Read `docs/SIMULATION.md`
 for the current contracts and explicit limitations, then `Next` in `docs/PROGRESS.md`.
 
 ## Read these before working
@@ -33,18 +33,24 @@ for the current contracts and explicit limitations, then `Next` in `docs/PROGRES
 
 ## Stack
 
-TypeScript, `strict: true`, Vite. Simulation core is plain TypeScript with **no imports from
-anywhere else in the repo** — see decision D3 for why the core is written to be portable to a
-compiled language later without touching anything above it.
+C++20, CMake 3.24+, Qt 6.4+ Widgets for the desktop, and nlohmann/json outside the core.
+`core/` depends only on its own headers and the standard C++ library. No Qt, file I/O,
+JSON, model types or wall clock may reach it. D15 supersedes the initial D3/D4 stack.
+See `docs/BUILDING.md` and `docs/MIGRATION.md`.
 
 ## Commands
 
 ```bash
-npm run dev     # run it
-npm test        # test it
-npm run build   # strict type check and production build
-npm run simulate -- 42  # headless seeded diagnostic
+cmake --preset desktop
+cmake --build --preset desktop
+ctest --preset desktop
+./build/desktop/bin/trafficsim-desktop
+./build/desktop/bin/trafficsim-cli 42
+cmake --build build/desktop --target check
 ```
+
+Use `--preset headless` when Qt is unavailable. Do not claim desktop verification
+from a headless-only build.
 
 If either fails on a clean checkout, fixing that comes before any feature work.
 
@@ -56,7 +62,7 @@ get broken by accident:
 1. **`core/` imports nothing.** No UI, no I/O, no framework. The moment it does, the engine
    stops being testable, batchable and portable, and that is the project's most valuable
    property.
-2. **Reproducibility is not optional.** Same scenario + same seed = same trajectory, forever.
+2. **Reproducibility is not optional.** Same scenario + seed + engine/toolchain = the same trajectory.
    No wall-clock, no unordered iteration, no thread-dependent floating point in `core/` or
    `eval/`.
 3. **One source of truth.** If two places need the same value, the boundary is wrong — move
@@ -65,7 +71,7 @@ get broken by accident:
    carries a "not yet validated" marker.
 5. **Content is data, not code.** Vehicle types, behaviour presets, LOS thresholds live in
    `data/`. If adding the 50th one needs a code edit, fix the boundary instead.
-6. **Files stay near 500 lines.** Check with `python tools/check_file_sizes.py .`
+6. **Files stay near 500 lines.** Check with `trafficsim-check-file-sizes .`
 7. **Never leave the build red.** If it cannot be made green, revert to the last green commit
    and write down what was attempted.
 8. **Never close a milestone that has not met its gate.** Merged code is not a passed gate.
@@ -119,5 +125,9 @@ tests/
   are never translated**, so users can find them in the project file.
 - Current car-following is a reduced Wiedemann-inspired prototype, not W74/W99. Never
   remove its unvalidated marker or accept merging paths before right-of-way is implemented.
-- Use `npm ci` with the committed lockfile. TypeScript 5.9.3 is pinned because the core
-  boundary checker uses its public compiler AST API; TypeScript 7 has a different API.
+- The previous TypeScript application is retained in Git history, not as a second engine.
+- Native tests compare four TS baselines with a 1e-7 physical-value tolerance and exact
+  same-build replay. Never regenerate baseline fixtures to make a failing port pass.
+- UI text lives in `data/locales/`. Runtime catalogs are copied beside executables.
+- The owner authorized the full stack migration (D15); it supersedes one-system scheduling
+  guidance for that migration only. Existing M0/M1 acceptance gates still apply.

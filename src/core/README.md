@@ -1,1 +1,1 @@
-Pure deterministic simulation engine. Public API: index.ts; contract: types.ts. Imports stay inside this directory.
+C++20 deterministic engine. Public API: simulation.hpp; contract: types.hpp. Only local and reviewed standard C++ headers. No Qt, JSON, model or I/O.
