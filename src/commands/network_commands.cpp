@@ -1,4 +1,6 @@
 #include "network_commands.hpp"
+#include "connector_commands.hpp"
+#include "detail.hpp"
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -8,24 +10,7 @@ Link& editableLink(ProjectDocument& d, const std::string& id) {
     for (auto& l : d.network.links) if (l.id == id) return l;
     throw std::invalid_argument("EDIT_UNKNOWN_LINK");
 }
-namespace {
-void reanchor(ProjectDocument& d) {
-    for (auto& c : d.network.connectors) {
-        const auto from = laneGeometry(editableLink(d, c.from.linkId), c.from.laneId, d.network.drivingSide).back();
-        const auto to = laneGeometry(editableLink(d, c.to.linkId), c.to.laneId, d.network.drivingSide).front();
-        const auto a = c.geometry.front(), b = c.geometry.back();
-        const auto total = polylineLength(c.geometry);
-        double length = 0;
-        const auto old = c.geometry;
-        for (std::size_t i = 0; i < old.size(); ++i) {
-            if (i) length += std::hypot(old[i].x - old[i-1].x, old[i].y - old[i-1].y);
-            const double t = length / total;
-            c.geometry[i] = {old[i].x + (from.x-a.x)*(1-t) + (to.x-b.x)*t,
-                             old[i].y + (from.y-a.y)*(1-t) + (to.y-b.y)*t};
-        }
-    }
-}
-void removeRoutes(ProjectDocument& d, const std::set<std::string>& segments) {
+void detail::removeRoutesUsingSegments(ProjectDocument& d, const std::set<std::string>& segments) {
     if (d.definition.is_null()) return;
     std::set<std::string> routes;
     auto& rs = d.definition["routes"];
@@ -34,7 +19,6 @@ void removeRoutes(ProjectDocument& d, const std::set<std::string>& segments) {
     std::erase_if(rs.get_ref<Json::array_t&>(), [&](const auto& r) { return routes.contains(r.at("id").template get<std::string>()); });
     auto& inputs = d.definition["inputs"].get_ref<Json::array_t&>();
     std::erase_if(inputs, [&](const auto& i) { return routes.contains(i.at("routeId").template get<std::string>()); });
-}
 }
 std::string addLink(ProjectDocument& d, const std::vector<Point>& geometry, int lanes, double width) {
     if (lanes < 1 || lanes > 12 || !std::isfinite(width) || width <= 0) throw std::invalid_argument("EDIT_LANES");
@@ -48,7 +32,7 @@ void changeGeometry(ProjectDocument& d, const std::string& id, const std::vector
     for (std::size_t i=0; i<geometry.size(); ++i)
         if (!std::isfinite(geometry[i].x) || !std::isfinite(geometry[i].y) || (i && geometry[i]==geometry[i-1]))
             throw std::invalid_argument("INVALID_GEOMETRY");
-    editableLink(d, id).geometry = geometry; reanchor(d);
+    editableLink(d, id).geometry = geometry; reanchorConnectors(d);
 }
 void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<double>& widths) {
     if (widths.empty() || widths.size() > 12) throw std::invalid_argument("EDIT_LANES");
@@ -64,7 +48,7 @@ void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<do
     while (l.lanes.size() < widths.size()) l.lanes.push_back({allocateId(d, "lane"), widths[l.lanes.size()]});
     l.lanes.resize(widths.size());
     for (std::size_t i = 0; i < widths.size(); ++i) l.lanes[i].width = widths[i];
-    reanchor(d);
+    reanchorConnectors(d);
 }
 void deleteLink(ProjectDocument& d, const std::string& id) {
     const auto l = editableLink(d, id);
@@ -74,9 +58,9 @@ void deleteLink(ProjectDocument& d, const std::string& id) {
     std::erase_if(d.network.connectors, [&](const auto& c) { return removed.contains(c.id); });
     std::erase_if(d.network.signalHeads, [&](const auto& h) { return h.lane.linkId == id; });
     std::erase_if(d.network.links, [&](const auto& link) { return link.id == id; });
-    removeRoutes(d, removed);
+    detail::removeRoutesUsingSegments(d, removed);
 }
-void changeDrivingSide(ProjectDocument& d, DrivingSide side) { d.network.drivingSide = side; reanchor(d); }
+void changeDrivingSide(ProjectDocument& d, DrivingSide side) { d.network.drivingSide = side; reanchorConnectors(d); }
 std::string oppositeLink(ProjectDocument& d, const std::string& id, double gap) {
     if (!std::isfinite(gap) || gap < 0) throw std::invalid_argument("EDIT_GAP");
     const auto original = editableLink(d, id);

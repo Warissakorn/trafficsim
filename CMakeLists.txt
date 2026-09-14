@@ -39,7 +39,7 @@ add_library(trafficsim_core STATIC
 target_link_libraries(trafficsim_core PRIVATE trafficsim_options)
 
 add_library(trafficsim_model STATIC src/model/network/geometry.cpp
-    src/model/network/compile.cpp src/model/network/validate.cpp)
+    src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
@@ -47,7 +47,8 @@ add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
-add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp src/commands/split_link.cpp)
+add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp
+    src/commands/split_link.cpp src/commands/connector_commands.cpp)
 target_link_libraries(trafficsim_commands PUBLIC trafficsim_project PRIVATE trafficsim_options)
 
 function(trafficsim_runtime_data target)
@@ -76,10 +77,11 @@ add_custom_target(check
 
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
-        tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp)
+        tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp
+        tests/connector_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-    foreach(group core network reference project editor)
+    foreach(group core network reference project editor connectors)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
     add_test(NAME architecture COMMAND trafficsim-check-architecture "${PROJECT_SOURCE_DIR}")

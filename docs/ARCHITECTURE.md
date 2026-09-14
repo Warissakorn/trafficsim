@@ -2,7 +2,7 @@
 
 **Current stack: C++20, CMake, Qt 6 Widgets.** D15 supersedes the initial TypeScript stack.
 M0 core/network functionality has been ported, with a native desktop harness and CLI.
-The traffic-engineering acceptance gate remains open. M1.1–M1.3 editing is implemented; full M1 acceptance remains open.
+The traffic-engineering acceptance gate remains open. M1.1–M1.3 and M1.4 editing are implemented; M1.3.1 and full M1 acceptance remain open.
 
 ## Boundaries
 
@@ -21,7 +21,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
 | `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and version-1 authoring document codec |
-| `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, Link/Lane operations |
+| `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, Link/Lane/Connector operations |
 | `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point |
@@ -75,6 +75,13 @@ transient and one release submits one command. `EditorWindow` composes native ac
 inspector controls, translation, save prompts and QSaveFile atomic replacement. It is
 independent from the M0 simulation window; run handoff remains M1.7. Qt stays out of
 project/model/core. Embedded background bytes are immutable and shared across history.
+`connectorCurve` in the model returns a sampled cubic aligned to the endpoint lane
+directions. Only its polyline is persisted; its interior points are the editable curve
+handles. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
+deletion. Link/Lane/driving-side edits use the same `reanchorConnectors` path.
+Retargeting a connector used by a route is rejected; deletion removes affected routes
+and their inputs through shared command-side reference cleanup. No runtime merge or
+right-of-way support is implied by authoring these connections.
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 
 ## Remaining systems
@@ -82,7 +89,7 @@ See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 | System | Location | Required boundary |
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
-| Extended editor | `src/editor/` | General connectors, tables and diagnostics remain |
+| Extended editor | `src/editor/` | Connector tools implemented; tables and diagnostics remain |
 | Project persistence | `src/project/` | Versioned authoring file, transactions and revisions |
 | Editable demand/control | `src/model/demand/`, `src/model/control/` | Model data compiles into core contracts |
 | Movement evaluation | `src/eval/` | Events to delay, LOS, queues and travel times |

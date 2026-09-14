@@ -17,6 +17,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QAbstractButton>
+#include <QTabWidget>
 #include <cmath>
 
 namespace trafficsim {
@@ -54,7 +55,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     files->addWidget(language_);
     addToolBarBreak(); auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
-    for(int i=0;i<5;++i) tool_->addItem("",i);
+    for(int i=0;i<6;++i) tool_->addItem("",i);
     tools->addWidget(tool_);
     tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
@@ -71,14 +72,32 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     coordinates_=new QLabel(this); statusBar()->addPermanentWidget(coordinates_);
     buildInspector(); tools->addAction(actions_.at("editorInspector"));
     connect(language_,&QComboBox::currentIndexChanged,this,[this]{translate();});
-    connect(tool_,&QComboBox::currentIndexChanged,this,[this](int index){canvas_->setTool(static_cast<EditorCanvas::Tool>(index));});
+    connect(tool_,&QComboBox::currentIndexChanged,this,[this](int index){
+        canvas_->setTool(static_cast<EditorCanvas::Tool>(index));
+        if (index==5) properties_->setCurrentIndex(1);
+        else if (index==4) properties_->setCurrentIndex(2);
+        else if (index==1 || index==2) properties_->setCurrentIndex(0);
+    });
     connect(grid_,&QDoubleSpinBox::valueChanged,this,[this](double n){canvas_->grid=n;canvas_->redraw();});
-    canvas_->selectionChanged=[this]{refresh(false);};
+    canvas_->selectionChanged=[this]{
+        refresh(false);
+        if (!canvas_->selected().empty()) properties_->setCurrentIndex(canvas_->selectedConnector()?1:0);
+    };
     canvas_->cursorMoved=[this](Point p){coordinates_->setText(QString("x %1 m   y %2 m").arg(p.x,0,'f',2).arg(p.y,0,'f',2));};
     canvas_->createLink=[this](const auto& points){
         std::string created; if(execute("editorDraw",[&](auto& d){created=addLink(d,points,count_->value(),width_->value());})) canvas_->select(created);
     };
-    canvas_->editGeometry=[this](const auto& id,const auto& points){execute("editorGeometry",[&](auto& d){changeGeometry(d,id,points);});};
+    canvas_->editGeometry=[this](const auto& id,const auto& points){
+        const bool connector=canvas_->selectedConnector()!=nullptr;
+        execute("editorGeometry",[&](auto& d){
+            if (connector) changeConnectorGeometry(d,id,points); else changeGeometry(d,id,points);
+        });
+    };
+    canvas_->createConnector=[this](const auto& from,const auto& to){addConnection(from,to);};
+    canvas_->connectorSourcePicked=[this](const auto& lane){
+        connectorFrom_->setCurrentIndex(connectorFrom_->findData(QString::fromStdString(lane.laneId)));
+    };
+    canvas_->connectorDraftChanged=[this]{connectorHint();};
     canvas_->splitAt=[this](const auto& id,double distance){
         std::string created; if(execute("editorSplit",[&](auto& d){created=splitLink(d,id,distance);})) canvas_->select(created);
     };
@@ -97,8 +116,10 @@ void EditorWindow::translate() {
         else if(auto* dock=qobject_cast<QDockWidget*>(w)) dock->setWindowTitle(text(key));
         else if(auto* bar=qobject_cast<QToolBar*>(w)) bar->setWindowTitle(text(key));
     }
-    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate"};
-    for(int i=0;i<5;++i) tool_->setItemText(i,text(modes[i]));
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect"};
+    for(int i=0;i<6;++i) tool_->setItemText(i,text(modes[i]));
+    const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
+    for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     error_->clear(); refresh();
@@ -118,13 +139,15 @@ void EditorWindow::refresh(bool modelChanged) {
     for(const auto& l:history_.document().network.links) if(l.id==selected) link=&l;
     id_->setText(QString::fromStdString(selected));
     widths_->setEnabled(link); actions_.at("editorApplyLanes")->setEnabled(link);
-    for(const auto* key:{"editorDeleteLink","editorDeleteVertex","editorOpposite","editorPocket","editorSplitHere"}) actions_.at(key)->setEnabled(link);
+    for(const auto* key:{"editorDeleteLink","editorOpposite","editorPocket","editorSplitHere"}) actions_.at(key)->setEnabled(link);
+    actions_.at("editorDeleteVertex")->setEnabled(link || canvas_->selectedConnector());
     if(link) {
         count_->setValue(static_cast<int>(link->lanes.size()));
         QStringList widths; for(const auto& lane:link->lanes) widths<<QString::number(lane.width,'g',10);
         widths_->setText(widths.join(", "));
         selectionInfo_->setText(text("editorLength").arg(polylineLength(link->geometry),0,'f',2));
     } else {widths_->clear();selectionInfo_->setText(text("editorNoSelection"));}
+    refreshConnector();
     {const QSignalBlocker block(side_);side_->setCurrentIndex(history_.document().network.drivingSide==DrivingSide::left?0:1);}
     const auto& b=history_.document().background;
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);

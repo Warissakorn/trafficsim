@@ -1,4 +1,4 @@
-# Network editor — M1.1–M1.3
+# Network editor — Link, Lane and Connector tools
 
 The native editor creates an authoring network. It does not simulate edited projects yet.
 The existing M0 simulation window remains available and retains its unvalidated marker.
@@ -39,8 +39,10 @@ The world uses x east/right, y north/up, and metres. The image origin is its top
 pixel. Positive image rotation is counter-clockwise in world coordinates.
 The Properties toolbar action (Ctrl+I) hides or restores the inspector; it can also be
 resized or detached. Selection tolerances and control handles use screen pixels, so they remain usable at
-different zoom levels. Only one link is selected in this slice; multi-selection and
-object tables belong to M1.5. Crossing lines are not automatically connected.
+different zoom levels. One link or connector can be selected at a time; multi-selection
+and object tables belong to M1.5. Properties has separate Links, Connectors and Image
+tabs; selecting an object opens its corresponding tab. Crossing lines are not
+automatically connected.
 
 ## Opposite carriageway and turn pockets
 
@@ -58,7 +60,8 @@ runtime segments. Existing routes referencing a split lane are expanded in order
 **Split + add downstream lane** also adds one lane on the median side of the downstream
 link. This creates the authoring geometry for a turn pocket with constant lane widths
 per link. The added lane has no automatically invented input, lane change or turn
-movement. Variable-width tapers and general connector editing are not in this slice.
+movement. Use the Connector tools below to author the turn movement explicitly.
+Variable-width tapers remain unsupported.
 
 For left-hand traffic lane order runs from the left shoulder towards the median; the
 geometric ordering mirrors for right-hand traffic. Changing drivingSide recomputes
@@ -69,6 +72,47 @@ Edits reanchor existing connector endpoints. Intermediate connector points recei
 arc-length-weighted endpoint displacement, then the complete result is validated.
 This is not a curvature/turning-radius guarantee. Tight hairpins and complex junction
 geometry need engineering inspection; no swept-path validation is claimed.
+
+## Connect lanes and edit curves (M1.4)
+
+1. Choose **Connect lanes** in the drawing tools. Orange circles mark the end of every
+   source lane. Click one, then click a teal circle at the start of the target lane.
+   Hovering a target previews the curve. Two clicks commit one undoable command.
+   Endpoint picking ignores grid snap so the connection lands on the exact lane end.
+   Escape, changing tools, opening a project or Undo cancels an unfinished connection.
+2. Alternatively, open **Properties → Connectors**, choose **from** and **to** lane
+   references, then **Create connector**. The controls show actual link/lane IDs.
+3. Switch to **Select / move** and click a connector line, or choose its ID in
+   **Properties → Connectors → Connector** (useful for short or overlapping connections).
+   Drag a white interior point
+   to reshape it. Double-click the line to insert a point; select an interior point and
+   press Delete (or **Remove selected point**) to remove it. One drag is one command;
+   Escape cancels an in-progress drag. Grid snap applies to interior-point dragging.
+4. Square endpoint handles are locked to their lanes. The connector body selects the
+   object; it does not translate the attached endpoints. To attach an unreferenced
+   connector to different lanes, choose its **from / to** values and **Apply from / to
+   lanes**. This displaces the existing curve; it does not replace it with a new curve.
+5. **Reset curve to lane directions** replaces the current shape with a sampled cubic
+   aligned to the travel directions at the two lane endpoints. **Make straight** reduces
+   it to its two endpoints. Both actions are undoable, including on imported connectors.
+6. **Delete connector** confirms removal of the connector, routes using it and those
+   routes' vehicle inputs. Undo restores all of them together. Links and signal heads
+   remain in place.
+
+The initial curve is a cubic sampled into 12 straight spans (13 points), using tangent
+handles one-third of the endpoint separation from the ends. The resulting polyline
+is the sole authoring geometry, stored in the existing version-1 `geometry` field.
+There are no separately persisted Bézier handles. Moving/inserting/removing interior
+points edits that polyline directly; arbitrary point edits need not remain smooth.
+This is not a minimum-radius, conflict, clearance or swept-path check. Inspect tight
+turns and U-turns. Coincident lane endpoints cannot generate a default curve; leave a
+positive gap between the links. Duplicate connections between the same two lanes are
+rejected without consuming IDs or losing the saved state or Redo history.
+
+A connector used by an existing route may be reshaped, but its lane references cannot
+be changed until that route is revised or removed. M1.4 does not invent a replacement
+route or vehicle demand. Authoring can express merges; the existing M0 compiler still
+rejects unsupported merging paths. Saving a drawing does not certify it for simulation.
 
 ## Background image
 
@@ -118,8 +162,8 @@ Splitting a link carrying a signal head is currently rejected: preserving contro
 stationing through a split needs a dedicated policy, tracked as M1.3.1 in ROADMAP.
 Moving/shrinking a link that would place a head beyond its lane is also rejected.
 
-M1.4 owns general connector creation/editing. M1.5 owns tables, multi-selection and
-structured problem navigation. M1.6 owns the full persistence/recovery workflow.
+M1.4 implements general connector creation/editing as described above. M1.5 owns
+tables, multi-selection and structured problem navigation. M1.6 owns the full persistence/recovery workflow.
 M1.7 owns edited-project simulation handoff and the timed four-leg acceptance exercise.
 The M0 core still rejects merges and does not resolve geometric crossing conflicts or
 lane changing; an editable intersection is not a validated runnable intersection.
@@ -133,6 +177,13 @@ splits, both driving sides, lane widths, ID collisions and immutable image shari
 The UI check exercises real mouse/keyboard drawing and dragging, pan/zoom, cancellation,
 per-lane editing, pockets, opposite links, image calibration, Unicode file paths,
 failed saves/loads, deletion/Undo, unsaved-work cancellation and Thai translation.
+The `connectors` model suite checks both driving sides, turns/U-turns, invalid and
+duplicate connections, exact persistence, endpoint locks and reanchoring, retargeting,
+route/input cleanup and the runtime merge guard. The `connector-ui` workflow uses
+actual mouse/keyboard endpoint picking, preview/cancellation, curve-point dragging,
+insertion/removal, endpoint locks, Properties actions, Unicode save/reopen and Thai
+feedback. It also verifies that deleting an imported connector restores its routes
+and inputs on Undo.
 
 These tests do not close the owner's M0 plausibility gate or M1's ten-minute usability
 criterion. Windows/macOS GUI execution, installers and large-network performance remain

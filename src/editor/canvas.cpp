@@ -29,33 +29,52 @@ const Link* EditorCanvas::selectedLink() const {
     if (document_) for (const auto& l : document_->network.links) if (l.id == selected_) return &l;
     return nullptr;
 }
+const Connector* EditorCanvas::selectedConnector() const {
+    if (document_) for (const auto& c : document_->network.connectors) if (c.id == selected_) return &c;
+    return nullptr;
+}
+const std::vector<Point>* EditorCanvas::selectedGeometry() const {
+    if (const auto* link = selectedLink()) return &link->geometry;
+    if (const auto* connector = selectedConnector()) return &connector->geometry;
+    return nullptr;
+}
 void EditorCanvas::setDocument(const ProjectDocument* d) {
-    document_ = d; cancel(); if (!selectedLink()) selected_.clear(); redraw();
+    document_ = d; cancel(); if (!selectedGeometry()) selected_.clear(); redraw();
 }
 void EditorCanvas::select(const std::string& id) {
     cancel(); selected_ = id; vertex_ = -1; redraw(); if (selectionChanged) selectionChanged();
 }
-void EditorCanvas::setTool(Tool tool) { cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); }
-void EditorCanvas::cancel() { draft_.clear(); preview_.clear(); original_.clear(); dragging_ = false; panning_ = false; redraw(); }
+void EditorCanvas::setTool(Tool tool) {
+    cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
+}
+void EditorCanvas::cancel() {
+    draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1;
+    connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
+    if (connectorDraftChanged) connectorDraftChanged();
+    redraw();
+}
 Point EditorCanvas::world(QPoint position, bool snapped) const {
     const auto p = mapToScene(position); Point result{p.x(), p.y()};
     if (snapped && snap && grid > 0) { result.x = std::round(result.x/grid)*grid; result.y = std::round(result.y/grid)*grid; }
     return result;
 }
-std::pair<std::string, double> EditorCanvas::hit(Point p) const {
+std::pair<std::string, double> EditorCanvas::hit(Point p, bool connectors) const {
     std::pair<std::string, double> found; double best = 10 / std::abs(transform().m11());
     if (!document_) return found;
-    for (const auto& l : document_->network.links) {
+    const auto check = [&](const std::string& id, const std::vector<Point>& geometry) {
         double station = 0;
-        for (std::size_t i = 1; i < l.geometry.size(); ++i) {
-            const auto a=l.geometry[i-1], b=l.geometry[i];
+        for (std::size_t i = 1; i < geometry.size(); ++i) {
+            const auto a=geometry[i-1], b=geometry[i];
             const double dx=b.x-a.x, dy=b.y-a.y, len=std::hypot(dx,dy);
+            if (len <= 0) continue;
             const double t=std::clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/(len*len),0.0,1.0);
             const double dist=std::hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);
-            if (dist < best) { best=dist; found={l.id,station+t*len}; }
+            if (dist < best) { best=dist; found={id,station+t*len}; }
             station += len;
         }
-    }
+    };
+    for (const auto& l : document_->network.links) check(l.id, l.geometry);
+    if (connectors) for (const auto& c : document_->network.connectors) check(c.id, c.geometry);
     return found;
 }
 void EditorCanvas::redraw() {
@@ -96,8 +115,7 @@ void EditorCanvas::redraw() {
                 QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(5);
         }
     }
-    QPen connection(QColor("#b269d0"),2); connection.setCosmetic(true);
-    for (const auto& c : document_->network.connectors) scene_.addPath(path(c.geometry),connection)->setZValue(3);
+    drawConnectors();
     if (!draft_.empty()) {
         QPen pen(QColor("#de8618"),2,Qt::DashLine); pen.setCosmetic(true);
         scene_.addPath(path(draft_),pen)->setZValue(8);

@@ -122,4 +122,9 @@ The `editor` native test group covers ProjectDocument and command transactions w
 Qt. The `editor-ui` CTest entry exercises the Qt editor through mouse/keyboard actions,
 including saving, images and calibration. The architecture guard additionally rejects
 project imports of commands/editor/shell/render and Qt, with negative fixtures.
+The `connectors` native group covers lane mappings, editable curves, endpoint
+maintenance, atomic failures and route/input preservation. The `connector-ui` CTest
+entry exercises lane-end gestures, curve-point editing, ID/Properties controls,
+reference-safe deletion/Undo, persistence and English/Thai feedback. Both UI entries
+require a desktop build; headless results do not verify them.
 See [NETWORK_EDITOR.md](../docs/NETWORK_EDITOR.md) for the editing workflow and limits.
