@@ -101,6 +101,39 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — packaging workflow fixed: an action major that does not exist
+
+The manually dispatched **Package binaries** run on `main` failed. The Windows x64 job died in
+*Prepare all required actions*, before checkout or any compilation:
+
+```
+Unable to resolve action `jurplel/install-qt-action@v5`, unable to find version `v5`
+```
+
+Cause: `26d7399` ("ci: bump actions to Node 24 majors") rewrote five action references from
+`@v4` to `@v5` across both workflows. Three were right — `actions/checkout@v5` and
+`actions/upload-artifact@v5` are real Node 24 majors. **One was wrong: `jurplel/install-qt-action`
+has no `v5`.** The bump was applied by pattern rather than by checking each action's own tags.
+Reverted that one reference to `@v4`, with a comment naming this commit so the next
+bump-everything pass does not redo it. The `actions/*` majors are left at `v5`.
+
+Two things this was **not**: it was not M1.5, and it was not the main CI. `Native C++` is green
+on all four jobs for `eb64079` — `linux (desktop)`, `linux (headless)`, `linux (release)` and
+`windows-core` on MSVC — each running `--target check`, so the full suite passed on Windows too.
+`native.yml` survived the same bump only because its Windows job uses vcpkg and never installs
+Qt. The evidence that `@v4` works is in this repository: the packaging run 16 minutes earlier,
+at `cf170d9`, built, tested, `windeployqt`-bundled and uploaded a Windows archive with it.
+
+Also corrected a misplaced include found while tracing this: `src/editor/canvas_select.cpp`
+uses `QLineF` for the rubber-band segment/rectangle test but did not include it, while
+`src/editor/canvas.cpp`, which does not use it, did. It compiled only through transitive
+inclusion from `<QGraphicsView>`. Moved to the file that uses it. No behaviour change.
+
+**Verification:** 17/17 desktop CTest and 13/13 headless after the include move, `check` target
+clean, `package.yml` parses. **The workflow fix itself is only proven by re-dispatching
+Package binaries on `main`** — action resolution happens on GitHub's runners and nothing local
+reproduces it.
+
 ### 2026-09-14 — M1.5 inspection and diagnostics implemented (D18)
 
 Added a bottom Objects dock with Links, Connectors, Signal heads and Problems tables. Rows

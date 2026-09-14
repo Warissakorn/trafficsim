@@ -56,7 +56,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install Qt
-        uses: jurplel/install-qt-action@v5
+        # This action's latest major is v4; there is no v5. Do not bump it alongside the
+        # actions/* steps - a blanket major bump broke packaging in 26d7399.
+        uses: jurplel/install-qt-action@v4
         with:
           version: '6.5.3'
           host: windows

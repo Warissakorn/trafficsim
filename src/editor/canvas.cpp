@@ -8,7 +8,6 @@
 #include <cmath>
 #include <algorithm>
 #include <numbers>
-#include <QLineF>
 
 namespace trafficsim {
 namespace {
