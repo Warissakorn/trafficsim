@@ -41,10 +41,12 @@ void EditorCanvas::pickConnector(Point p) {
 }
 void EditorCanvas::drawConnectors() {
     const double radius=4/std::abs(transform().m11());
+    const auto primary=selected();
     for (const auto& c : document_->network.connectors) {
-        const bool chosen=c.id==selected_;
-        const auto& geometry=chosen&&!preview_.empty()?preview_:c.geometry;
-        QPen pen(chosen?QColor("#b33f8d"):QColor("#8b4cac"),chosen?3:2); pen.setCosmetic(true);
+        const bool chosen=isSelected(c.id);
+        const auto& geometry=c.id==primary&&!preview_.empty()?preview_:c.geometry;
+        const QColor colour=c.id==primary?QColor("#b33f8d"):chosen?QColor("#c877b0"):QColor("#8b4cac");
+        QPen pen(colour,chosen?3:2); pen.setCosmetic(true);
         scene_.addPath(path(geometry),pen)->setZValue(4);
         const double length=polylineLength(geometry);
         if (length>0) {
@@ -55,7 +57,7 @@ void EditorCanvas::drawConnectors() {
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
             scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(pen.color()))->setZValue(5);
         }
-        if (chosen) for (std::size_t i=0; i<geometry.size(); ++i) {
+        if (c.id==primary) for (std::size_t i=0; i<geometry.size(); ++i) {
             const auto p=geometry[i];
             if (i==0 || i+1==geometry.size()) {
                 scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#334155"))->setZValue(6);

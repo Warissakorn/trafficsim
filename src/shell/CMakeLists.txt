@@ -1,6 +1,7 @@
 add_library(trafficsim_shell STATIC main_window.cpp ../render/network_view.cpp
     editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp
-    ../editor/canvas.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp)
+    editor_tables.cpp editor_diagnostics.cpp
+    ../editor/canvas.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)
 qt_add_executable(trafficsim-desktop main.cpp)
 target_link_libraries(trafficsim-desktop PRIVATE trafficsim_shell trafficsim_options)
@@ -22,5 +23,9 @@ if(BUILD_TESTING)
     target_link_libraries(trafficsim-connector-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     add_test(NAME connector-ui COMMAND trafficsim-connector-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(connector-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
-    add_dependencies(check trafficsim-desktop-tests trafficsim-editor-tests trafficsim-connector-tests)
+    add_executable(trafficsim-table-tests ../../tests/table_ui_tests.cpp)
+    target_link_libraries(trafficsim-table-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    add_test(NAME tables-ui COMMAND trafficsim-table-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(tables-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    add_dependencies(check trafficsim-desktop-tests trafficsim-editor-tests trafficsim-connector-tests trafficsim-table-tests)
 endif()

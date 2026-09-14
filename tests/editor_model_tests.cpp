@@ -87,3 +87,39 @@ TEST(editor, invalid_geometry_and_signal_split_are_atomic) {
     test::throws([&]{h.execute("split signal",[](auto& d){splitLink(d,"west",50);});},"EDIT_SPLIT_SIGNAL");
     CHECK(documentJson(h.document())==before);
 }
+
+TEST(editor, delete_objects_is_one_undoable_transaction) {
+    History h;h.reset(sample());const auto before=documentJson(h.document());const auto revision=h.revision();
+    CHECK(h.execute("delete selection",[](auto& d){deleteObjects(d,{"west","south-north"});}));
+    CHECK(h.revision()!=revision);
+    const auto& n=h.document().network;
+    CHECK(n.links.size()==3);                                  // west removed, the other three remain
+    CHECK(n.connectors.empty());                               // west-east cascaded, south-north named
+    CHECK(n.signalHeads.size()==1);                            // west-head cascaded with its link
+    CHECK(h.document().definition.at("routes").empty());       // both routes used a removed segment
+    CHECK(h.document().definition.at("inputs").empty());
+    h.undo();
+    // One Undo, everything back: links, connectors, heads, routes and their vehicle inputs.
+    CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
+}
+TEST(editor, delete_objects_skips_cascaded_ids_and_rejects_unknown) {
+    History h;h.reset(sample());const auto before=documentJson(h.document());
+    // "west-east" belongs to "west" and is already gone by the time its turn comes.
+    CHECK(h.execute("delete selection",[](auto& d){deleteObjects(d,{"west-east","west"});}));
+    CHECK(h.document().network.connectors.size()==1);
+    h.undo();CHECK(documentJson(h.document())==before);
+    for (const auto& ids : std::vector<std::vector<std::string>>{{"ghost"},{"west","ghost"},{"west-1"}}) {
+        test::throws([&]{h.execute("delete selection",[&](auto& d){deleteObjects(d,ids);});},"EDIT_UNKNOWN_OBJECT");
+        CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
+    }
+}
+TEST(editor, signal_bearing_link_split_is_still_rejected) {
+    // M1.3.1 guard: preserving control stationing through a split needs a policy that does not
+    // exist yet, so the command must refuse rather than silently move the head.
+    History h;h.reset(sample());const auto before=documentJson(h.document());
+    for (const auto* id : {"west","south"}) {
+        test::throws([&]{h.execute("split",[&](auto& d){splitLink(d,id,50);});},"EDIT_SPLIT_SIGNAL");
+        test::throws([&]{h.execute("pocket",[&](auto& d){splitLink(d,id,50,true);});},"EDIT_SPLIT_SIGNAL");
+    }
+    CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
+}

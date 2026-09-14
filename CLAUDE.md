@@ -13,7 +13,7 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current work:** M1.1–M1.3 and M1.4 native editor implemented; M1.3.1 and owner gates remain open
+**Current work:** M1.1–M1.5 native editor implemented; M1.3.1, M1.5.1 and owner gates remain open
 **Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
 discharging at green plausibly, and CTest proves seeded replay.
 

@@ -71,6 +71,9 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     grid_=new QDoubleSpinBox(this); grid_->setRange(0.1,100); grid_->setValue(1); grid_->setSuffix(" m"); grid_->setObjectName("editorGrid"); tools->addWidget(grid_);
     coordinates_=new QLabel(this); statusBar()->addPermanentWidget(coordinates_);
     buildInspector(); tools->addAction(actions_.at("editorInspector"));
+    tools->addAction(action("editorDeleteSelected",{},[this]{deleteSelected();}));
+    buildObjectTables(); tools->addAction(actions_.at("editorObjects"));
+    tools->addAction(actions_.at("editorRecheck"));
     connect(language_,&QComboBox::currentIndexChanged,this,[this]{translate();});
     connect(tool_,&QComboBox::currentIndexChanged,this,[this](int index){
         canvas_->setTool(static_cast<EditorCanvas::Tool>(index));
@@ -121,15 +124,35 @@ void EditorWindow::translate() {
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
+    retranslateTables();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     error_->clear(); refresh();
 }
 bool EditorWindow::execute(const std::string& name,const std::function<void(ProjectDocument&)>& change) {
-    try {const bool changed=history_.execute(name,change);error_->clear();refresh();return changed;}
+    try {const bool changed=history_.execute(name,change);error_->clear();rejected_.clear();refresh();return changed;}
     catch(const std::exception& e){showError(e);canvas_->setDocument(&history_.document());return false;}
 }
+void EditorWindow::deleteSelected() {
+    const auto ids=canvas_->selection();
+    if (ids.empty()) return;
+    QMessageBox box(QMessageBox::Question,text("editorDeleteSelected"),text("editorDeleteSelectedWarning"),QMessageBox::Yes|QMessageBox::No,this);
+    box.button(QMessageBox::Yes)->setText(text("editorConfirm"));box.button(QMessageBox::No)->setText(text("editorCancel"));box.setDefaultButton(QMessageBox::No);
+    if (box.exec()==QMessageBox::Yes) execute("editorDeleteSelected",[&](auto& d){deleteObjects(d,ids);});
+}
 void EditorWindow::showError(const std::exception& e) {
+    // Keep the structured issues instead of collapsing them into one line: the red label says
+    // what went wrong, the Problems tab says which objects it happened to.
+    rejected_.clear();
+    if (const auto* invalid=dynamic_cast<const ValidationError*>(&e))
+        for (const auto& issue : invalid->issues) {
+            const auto& network=history_.document().network;
+            auto object=objectIdForPath(network,issue.path);
+            auto select=selectableFor(network,object);
+            rejected_.push_back({issue.code,issue.path,std::move(object),std::move(select),DiagnosticSeverity::draft});
+        }
     const auto translated=text(e.what()); error_->setText(translated.isEmpty()?text("editorError")+" "+QString::fromUtf8(e.what()):translated);
+    refreshDiagnostics();
+    if (!rejected_.empty()) objects_->setCurrentIndex(3);
 }
 void EditorWindow::refresh(bool modelChanged) {
     if(modelChanged) canvas_->setDocument(&history_.document());
@@ -147,9 +170,15 @@ void EditorWindow::refresh(bool modelChanged) {
         widths_->setText(widths.join(", "));
         selectionInfo_->setText(text("editorLength").arg(polylineLength(link->geometry),0,'f',2));
     } else {widths_->clear();selectionInfo_->setText(text("editorNoSelection"));}
+    // Property edits always act on the primary object, so say so rather than letting a
+    // multi-selection look as if lane or geometry changes will apply to all of it.
+    if (canvas_->selection().size()>1)
+        selectionInfo_->setText(text("editorSelectionCount").arg(canvas_->selection().size()));
     refreshConnector();
     {const QSignalBlocker block(side_);side_->setCurrentIndex(history_.document().network.drivingSide==DrivingSide::left?0:1);}
     const auto& b=history_.document().background;
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
+    actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
+    refreshTables(modelChanged);refreshDiagnostics();
 }
 }

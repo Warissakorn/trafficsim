@@ -8,6 +8,7 @@
 #include <cmath>
 #include <algorithm>
 #include <numbers>
+#include <QLineF>
 
 namespace trafficsim {
 namespace {
@@ -26,11 +27,15 @@ EditorCanvas::EditorCanvas(QWidget* parent) : QGraphicsView(parent), scene_(this
     scene_.setSceneRect(-10000, -10000, 20000, 20000); centerOn(0, 0);
 }
 const Link* EditorCanvas::selectedLink() const {
-    if (document_) for (const auto& l : document_->network.links) if (l.id == selected_) return &l;
+    const auto primary = selected();
+    if (document_ && !primary.empty())
+        for (const auto& l : document_->network.links) if (l.id == primary) return &l;
     return nullptr;
 }
 const Connector* EditorCanvas::selectedConnector() const {
-    if (document_) for (const auto& c : document_->network.connectors) if (c.id == selected_) return &c;
+    const auto primary = selected();
+    if (document_ && !primary.empty())
+        for (const auto& c : document_->network.connectors) if (c.id == primary) return &c;
     return nullptr;
 }
 const std::vector<Point>* EditorCanvas::selectedGeometry() const {
@@ -39,16 +44,21 @@ const std::vector<Point>* EditorCanvas::selectedGeometry() const {
     return nullptr;
 }
 void EditorCanvas::setDocument(const ProjectDocument* d) {
-    document_ = d; cancel(); if (!selectedGeometry()) selected_.clear(); redraw();
-}
-void EditorCanvas::select(const std::string& id) {
-    cancel(); selected_ = id; vertex_ = -1; redraw(); if (selectionChanged) selectionChanged();
+    document_ = d; cancel();
+    // Drop ids the new document no longer has, rather than clearing an otherwise valid selection.
+    std::erase_if(selection_, [&](const auto& id) {
+        if (!document_) return true;
+        for (const auto& link : document_->network.links) if (link.id == id) return false;
+        for (const auto& c : document_->network.connectors) if (c.id == id) return false;
+        return true;
+    });
+    redraw();
 }
 void EditorCanvas::setTool(Tool tool) {
     cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
 }
 void EditorCanvas::cancel() {
-    draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1;
+    draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
     if (connectorDraftChanged) connectorDraftChanged();
     redraw();
@@ -91,12 +101,14 @@ void EditorCanvas::redraw() {
         image->setTransform(QTransform(std::cos(a)*s,std::sin(a)*s,std::sin(a)*s,-std::cos(a)*s,bg.x,bg.y));
         image->setOpacity(bg.opacity); image->setZValue(-10);
     }
+    const auto primary = selected();
     for (auto link : document_->network.links) {
-        const bool chosen=link.id==selected_;
+        const bool chosen=isSelected(link.id);
         if (chosen && !preview_.empty()) link.geometry=preview_;
         for (const auto& lane : link.lanes) {
             const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
-            auto* item=scene_.addPath(path(geometry),QPen(chosen?QColor("#167b98"):QColor("#49596d"),lane.width,Qt::SolidLine,Qt::FlatCap,Qt::RoundJoin));
+            const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor("#49596d");
+            auto* item=scene_.addPath(path(geometry),QPen(colour,lane.width,Qt::SolidLine,Qt::FlatCap,Qt::RoundJoin));
             item->setZValue(1);
             QPen centre(QColor("#d0dfeb"),1,Qt::DashLine); centre.setCosmetic(true);
             scene_.addPath(path(geometry),centre)->setZValue(2);
@@ -109,13 +121,19 @@ void EditorCanvas::redraw() {
         QPolygonF arrow;
         for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
         scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(3);
-        if (chosen) for (std::size_t i=0;i<link.geometry.size();++i) {
+        // Handles belong to the primary alone; drawing them for every selected link would
+        // suggest a group drag that M1.5 deliberately does not implement.
+        if (link.id==primary) for (std::size_t i=0;i<link.geometry.size();++i) {
             const auto p=link.geometry[i]; const double radius=4/std::abs(transform().m11());
             scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,QPen(Qt::NoPen),
                 QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(5);
         }
     }
     drawConnectors();
+    if (band_) {
+        QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);
+        scene_.addRect(*band_,pen,QBrush(QColor(22,123,152,30)))->setZValue(9);
+    }
     if (!draft_.empty()) {
         QPen pen(QColor("#de8618"),2,Qt::DashLine); pen.setCosmetic(true);
         scene_.addPath(path(draft_),pen)->setZValue(8);

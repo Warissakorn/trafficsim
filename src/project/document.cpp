@@ -1,5 +1,6 @@
 #include "document.hpp"
 #include "../core/validate.hpp"
+#include "../model/network/diagnostics.hpp"
 #include <cmath>
 #include <set>
 #include <limits>
@@ -32,7 +33,8 @@ Json documentJson(const ProjectDocument& d) {
 }
 void validateDocument(const ProjectDocument& d) {
     auto issues = validateNetwork(d.network);
-    std::erase_if(issues, [](const auto& i) { return i.code == "EMPTY_NETWORK"; });
+    // blocksDraft owns the "an empty network is a legal draft" rule, for this and the editor alike.
+    std::erase_if(issues, [](const auto& i) { return !blocksDraft(i.code); });
     if (!issues.empty()) throw ValidationError(issues);
     if (!d.nextId || d.nextId == std::numeric_limits<std::uint64_t>::max() || d.revision == std::numeric_limits<std::uint64_t>::max()) throw std::invalid_argument("EDIT_ID_LIMIT");
     const auto& b = d.background;

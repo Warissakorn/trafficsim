@@ -95,7 +95,20 @@ swept-path or turning-radius validation. See NETWORK_EDITOR.md.
 
 ### M1.5 — Inspection and diagnostics
 
-Object tables, multi-selection and structured validation with jump-to-object navigation.
+Implemented: Links, Connectors and Signal heads tables with two-way selection, canvas
+multi-selection by Ctrl-click and rubber band, delete-many as one undoable transaction, and
+structured diagnostics whose rows name an object and jump to it. Draft validity still blocks
+an edit; runnability against the M0 compiler is reported on demand and never blocks. Exact
+limits: property and geometry edits act on one object, there is no group drag, and
+vehicle-type/behaviour references are not judged without a catalog. See NETWORK_EDITOR.md.
+
+### M1.5.1 — Demand object tables and editing
+
+Not implemented. Routes and vehicle inputs have no authoring model — they are untyped JSON
+inside the project document — so M1.5 lists and names them in diagnostics but gives them no
+table and no commands. Define the authoring types and their undoable edits, then table them
+alongside the network objects. This is an explicit follow-up, not a claim that demand can
+already be authored; if M2 lands first, fold this into it.
 
 ### M1.6 — Complete persistence workflow
 

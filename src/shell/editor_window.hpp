@@ -1,6 +1,8 @@
 #pragma once
 #include "../commands/network_commands.hpp"
 #include "../commands/connector_commands.hpp"
+#include "../project/diagnostics.hpp"
+#include "../core/validate.hpp"
 #include "../editor/canvas.hpp"
 #include <QMainWindow>
 #include <QJsonObject>
@@ -17,6 +19,7 @@ class QLabel;
 class QFormLayout;
 class QCloseEvent;
 class QTabWidget;
+class QTableWidget;
 namespace trafficsim {
 class EditorWindow : public QMainWindow {
 public:
@@ -36,7 +39,13 @@ private:
     EditorCanvas* canvas_{};
     QComboBox *language_{}, *tool_{}, *side_{};
     QComboBox *connectorObject_{}, *connectorFrom_{}, *connectorTo_{};
-    QTabWidget* properties_{};
+    QTabWidget *properties_{}, *objects_{};
+    QTableWidget *linkTable_{}, *connectorTable_{}, *signalTable_{}, *problemTable_{};
+    // Diagnostics of the current revision, plus the issues of the most recent rejected edit.
+    // Both are derived views; the document stays the single source of truth.
+    std::vector<Diagnostic> diagnostics_, rejected_;
+    std::uint64_t tableRevision_{}, diagnosticRevision_{};
+    bool syncing_{};
     QLabel* connectorHint_{};
     QSpinBox* count_{};
     QDoubleSpinBox *width_{}, *grid_{}, *split_{}, *gap_{}, *bgX_{}, *bgY_{}, *bgScale_{}, *bgAngle_{}, *bgOpacity_{};
@@ -46,6 +55,13 @@ private:
     void buildInspector();
     QWidget* buildConnectorInspector();
     void refreshConnector();
+    void buildObjectTables();
+    void buildDiagnostics();
+    void refreshTables(bool modelChanged);
+    void refreshDiagnostics();
+    void retranslateTables();
+    void jumpTo(int row);
+    void deleteSelected();
     void addConnection(const LaneReference& from, const LaneReference& to);
     void connectorHint();
     void refresh(bool modelChanged = true);
