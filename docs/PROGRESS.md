@@ -92,6 +92,12 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — MIT License added
+
+Added a top-level `LICENSE` (MIT, copyright 2026 Warissakorn) and a README License section.
+The bundled Noto Sans Thai font keeps its SIL OFL 1.1 terms and Qt keeps its own; the MIT
+grant covers this repository's own source and documentation only. No code change.
+
 ### 2026-09-14 — M1.4 Connector editor implemented (D17)
 
 Added general lane-to-lane creation using two canvas endpoint clicks or Properties.
