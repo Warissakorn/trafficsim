@@ -10,6 +10,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; panStart_=e->pos(); return; }
     if (e->button()!=Qt::LeftButton) return;
     auto p=world(e->pos());
+    if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
     if (tool_==Tool::draw || tool_==Tool::measure || tool_==Tool::calibrate) {
         if (tool_!=Tool::draw) p=world(e->pos(),false);
         if (draft_.empty() || draft_.back()!=p) draft_.push_back(p);
@@ -19,16 +20,23 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         }
         redraw(); return;
     }
-    const auto picked=hit(world(e->pos(),false));
+    const auto picked=hit(world(e->pos(),false),tool_!=Tool::split);
     if (tool_==Tool::split) { if (!picked.first.empty() && splitAt) splitAt(picked.first,picked.second); return; }
     vertex_=-1;
-    if (const auto* l=selectedLink()) for(std::size_t i=0;i<l->geometry.size();++i) {
-        const auto screen=mapFromScene(l->geometry[i].x,l->geometry[i].y);
-        if ((screen-e->pos()).manhattanLength()<=12) { vertex_=static_cast<int>(i); break; }
+    if (const auto* geometry=selectedGeometry()) {
+        // Pick the nearest handle: dense curve points must not steal each other's drags.
+        int best=12;
+        for(std::size_t i=0;i<geometry->size();++i) {
+            const auto screen=mapFromScene((*geometry)[i].x,(*geometry)[i].y);
+            const int distance=(screen-e->pos()).manhattanLength();
+            if (distance<best) { best=distance; vertex_=static_cast<int>(i); }
+        }
     }
     if (vertex_<0) selected_=picked.first;
-    if (const auto* l=selectedLink()) {
-        original_=l->geometry; preview_=original_; dragging_=true; dragStart_=p;
+    if (const auto* geometry=selectedGeometry()) {
+        // Connector endpoints are read-only. Body selection never translates attached endpoints.
+        const bool locked=selectedConnector() && (vertex_<=0 || vertex_==static_cast<int>(geometry->size())-1);
+        if (!locked) { original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; }
     }
     redraw(); if(selectionChanged) selectionChanged();
 }
@@ -38,6 +46,11 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         const auto delta=e->pos()-panStart_; panStart_=e->pos();
         horizontalScrollBar()->setValue(horizontalScrollBar()->value()-delta.x());
         verticalScrollBar()->setValue(verticalScrollBar()->value()-delta.y()); return;
+    }
+    if (tool_==Tool::connect && connectorFrom_) {
+        const auto hovered=hitLaneEnd(world(e->pos(),false),false);
+        if (hovered!=connectorHover_) { connectorHover_=hovered; redraw(); }
+        return;
     }
     if(dragging_) {
         const auto p=world(e->pos()); preview_=original_;
@@ -63,7 +76,8 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     const auto picked=hit(world(e->pos(),false));
     if(picked.first.empty()) return;
     select(picked.first);
-    const auto* l=selectedLink(); auto geometry=l->geometry;
+    const auto* selected=selectedGeometry(); if (!selected) return;
+    auto geometry=*selected;
     const auto inserted=pointAlong(geometry,picked.second);
     double distance=0;
     for(std::size_t i=1;i<geometry.size();++i) {
@@ -85,8 +99,10 @@ void EditorCanvas::finishDrawing() {
     redraw();
 }
 void EditorCanvas::removeVertex() {
-    if(vertex_<0 || !selectedLink()) return;
-    auto geometry=selectedLink()->geometry;
+    if(vertex_<0 || !selectedGeometry()) return;
+    auto geometry=*selectedGeometry();
+    if (static_cast<std::size_t>(vertex_)>=geometry.size()) return;
+    if (selectedConnector() && (vertex_==0 || vertex_==static_cast<int>(geometry.size())-1)) return;
     if(geometry.size()<=2) return;
     geometry.erase(geometry.begin()+vertex_); vertex_=-1;
     if(editGeometry) editGeometry(selected_,geometry);

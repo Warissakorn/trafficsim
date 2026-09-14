@@ -8,24 +8,23 @@ long.
 
 ## Next
 
-**Review the M1.1–M1.3 native editor, then implement M1.4 connector tools.**
+**Review M1.4 Connector tools, then implement M1.5 inspection and diagnostics.**
 
 1. Build the desktop, run CTest, and launch `trafficsim-desktop --editor --language th`.
-2. Follow `docs/NETWORK_EDITOR.md`: draw a road over a calibrated image, reshape it,
-   change lane widths, make a pocket/opposite carriageway, Undo/Redo and save/reopen.
-3. Check the owner's M0 plausibility acceptance separately. The owner explicitly
-   authorized this editor slice (D16); it does not close the M0 or full M1 gates.
-4. M1.4: add general lane-to-lane connectors and editable curves through the existing
-   History command path. Do not put mutations in the renderer or command imports in project.
-5. M1.3.1 remains explicit: splitting a link carrying a signal head is rejected until
-   control stationing/remapping is designed and tested. Preserve that guard.
-6. M1.5/M1.6/M1.7 retain multi-selection/tables, recovery, run handoff and the timed
-   four-leg usability/reopen exercise. No edited-network simulation is claimed yet.
+2. Follow `docs/NETWORK_EDITOR.md`: connect lanes by endpoint picking or Properties,
+   reshape a curve, change lane widths/drivingSide, Undo/Redo, then save and reopen.
+   Existing short/overlapping connectors can be selected by ID in Properties.
+3. M1.5: add object tables and multi-selection through the existing History path. Add
+   structured authoring diagnostics with object IDs and jump-to-object navigation;
+   keep draft validity separate from the M0 compiler's unsupported runtime features.
+4. Preserve the M1.3.1 signal-bearing-link split guard. That follow-up still needs a
+   stationing/remapping policy for heads in upstream/downstream and connector spans.
+5. M1.6 owns recovery/assets; M1.7 owns revision-to-run handoff and the timed four-leg,
+   aerial-image, ten-minute/reopen exercise. M0 and full M1 owner gates remain open.
 
-**Implementation:** `src/project/document.hpp`, `src/commands/history.hpp`,
-`src/commands/network_commands.hpp`, `src/editor/canvas.hpp`, `src/shell/editor_window.hpp`.
-Base: the native migration, integrated into `main` on 2026-09-13 together with this
-editor slice.
+**Implementation:** `src/commands/connector_commands.hpp`,
+`src/model/network/connector_geometry.cpp`, `src/editor/canvas_connectors.cpp`,
+`src/shell/editor_connectors.cpp`. Based on `main` commit `8ff7a53` (2026-09-13).
 
 ---
 
@@ -87,9 +86,43 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 | D16 | 2026-09-12 | **Implement M1.1–M1.3 together on the native C++ base** | The owner approved the editor plan and explicitly requested these three slices. This supersedes the earlier one-system scheduling and M0-only Next for this scoped work. Implement document/history, canvas/background and Link/Lane tools together with basic saving so drawings persist. Existing scientific and full M1 usability gates remain open. | If later connectors, demand or runtime behaviour are introduced without their own scope decision. |
 
+| D17 | 2026-09-14 | **Continue M1 with the planned M1.4 Connector editor; preserve one version-1 geometry source** | The owner requested continued Network editor development. `Next` already called for M1.4, so this session implements that slice and retains M1.3.1's split guard. A lane-aligned cubic is sampled into editable polyline points, avoiding a second curve store and an unnecessary schema change. Referenced connectors may be reshaped but not retargeted; deleting one removes its affected routes and inputs atomically instead of inventing new paths. | If engineering workflows require persistent tangent handles or measured radius constraints, define their model/schema explicitly; do not claim the sampled curve provides those guarantees. |
+
 ---
 
 ## Log
+
+### 2026-09-14 — M1.4 Connector editor implemented (D17)
+
+Added general lane-to-lane creation using two canvas endpoint clicks or Properties.
+Source/target markers, hover previews and cancellation are transient; committing creates
+one History entry. Connectors can be selected on the canvas or by ID (including short
+split connectors), reshaped by dragging/inserting/removing interior points, reset to a
+lane-aligned sampled curve, or made straight. Endpoints remain attached to their lanes.
+Properties now has Links, Connectors and Image tabs, with English/Thai controls.
+
+Connector commands share endpoint maintenance with Link/Lane/driving-side edits and
+route/input cleanup with link deletion. Retargeting preserves an unreferenced curve's
+interior points by weighted displacement; referenced retargeting is rejected. Duplicate,
+invalid and failed edits preserve revision, ID allocation, saved state and Redo. Confirmed
+connector deletion restores related routes/inputs together on Undo. The existing format
+persists exactly the edited polyline and IDs; no new schema, Qt dependency in the model,
+simulation physics, demand or right-of-way behaviour was introduced.
+
+**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.11.3, CMake 3.28.3 on Linux.
+The unchanged base first passed all 13 desktop CTest suites. The extended Debug and
+Release desktop builds pass 15/15, and the independent Qt-free build passes 12/12.
+There are 46 named native cases, including eight new Connector cases. UI workflows
+exercise real endpoint picking, curve drags, insert/delete, cancellation and locked
+endpoints, plus ID selection, Properties actions, reference-safe deletion/Undo, Unicode
+save/reopen and Thai errors. Four TS baselines, seeded replay and M0 controls still pass.
+Architecture/negative fixtures, the 500-line budget and whitespace checks pass. The Thai
+Connector tab and curve were visually inspected at 1000×760.
+
+M1.3.1 remains open, along with M1.5–M1.7 and the owner's M0/M1 acceptance gates.
+These are local Linux results; Windows/macOS GUI execution and hosted CI are not
+established by them. Curves are editable sampled polylines, not swept-path validation.
+
 
 ### 2026-09-13 — native migration and editor branches integrated into `main`
 

@@ -9,6 +9,7 @@
 #include <QScrollArea>
 #include <QSpinBox>
 #include <QToolButton>
+#include <QTabWidget>
 #include <QVBoxLayout>
 
 namespace trafficsim {
@@ -20,7 +21,15 @@ void EditorWindow::buildInspector() {
     auto* dock=new QDockWidget(this);dock->setObjectName("editorInspectorDock");texts_["editorInspector"]=dock;
     dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetClosable);
     auto* scroll=new QScrollArea(dock);scroll->setWidgetResizable(true);
-    auto* body=new QWidget(scroll);auto* form=new QFormLayout(body);form->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    auto* body=new QWidget(scroll);auto* layout=new QVBoxLayout(body);
+    auto* common=new QFormLayout;common->setRowWrapPolicy(QFormLayout::WrapLongRows);layout->addLayout(common);
+    id_=new QLineEdit(body);id_->setReadOnly(true);label(common,"editorId",id_);
+    selectionInfo_=new QLabel(body);selectionInfo_->setWordWrap(true);common->addRow(selectionInfo_);
+    side_=new QComboBox(body);side_->addItems({"",""});label(common,"editorDrivingSide",side_);
+    connect(side_,&QComboBox::currentIndexChanged,this,[this](int index){execute("editorDrivingSide",[&](auto& d){changeDrivingSide(d,index==0?DrivingSide::left:DrivingSide::right);});});
+    properties_=new QTabWidget(body);properties_->setObjectName("editorPropertyTabs");layout->addWidget(properties_);
+    auto* linkPage=new QWidget(properties_);auto* form=new QFormLayout(linkPage);
+    form->setRowWrapPolicy(QFormLayout::WrapLongRows);properties_->addTab(linkPage,QString());
     auto number=[&](double min,double max,double value,int decimals=2){
         auto* s=new QDoubleSpinBox(body);s->setDecimals(decimals);s->setRange(min,max);s->setValue(value);return s;
     };
@@ -29,8 +38,6 @@ void EditorWindow::buildInspector() {
     };
     auto heading=[&](const std::string& key){auto* h=new QLabel(body);h->setStyleSheet("font-weight:600;margin-top:8px;");texts_[key]=h;form->addRow(h);};
     heading("editorRoadProperties");
-    id_=new QLineEdit(body);id_->setReadOnly(true);label(form,"editorId",id_);
-    selectionInfo_=new QLabel(body);selectionInfo_->setWordWrap(true);form->addRow(selectionInfo_);
     count_=new QSpinBox(body);count_->setRange(1,12);count_->setValue(2);label(form,"editorLaneCount",count_);
     width_=number(0.1,20,3.5);label(form,"editorDefaultWidth",width_);
     widths_=new QLineEdit(body);label(form,"editorLaneWidths",widths_);
@@ -52,8 +59,9 @@ void EditorWindow::buildInspector() {
     button("editorOpposite",[this]{
         std::string id;if(execute("editorOpposite",[&](auto& d){id=oppositeLink(d,canvas_->selected(),gap_->value());}))canvas_->select(id);
     });
-    side_=new QComboBox(body);side_->addItems({"",""});label(form,"editorDrivingSide",side_);
-    connect(side_,&QComboBox::currentIndexChanged,this,[this](int index){execute("editorDrivingSide",[&](auto& d){changeDrivingSide(d,index==0?DrivingSide::left:DrivingSide::right);});});
+    properties_->addTab(buildConnectorInspector(),QString());
+    auto* imagePage=new QWidget(properties_);form=new QFormLayout(imagePage);
+    form->setRowWrapPolicy(QFormLayout::WrapLongRows);properties_->addTab(imagePage,QString());
     heading("editorBackground");button("editorImportImage",[this]{importImage();});
     bgX_=number(-1000000,1000000,0,4);label(form,"editorImageX",bgX_);
     bgY_=number(-1000000,1000000,0,4);label(form,"editorImageY",bgY_);
@@ -62,7 +70,8 @@ void EditorWindow::buildInspector() {
     bgOpacity_=number(0,1,0.5);bgOpacity_->setSingleStep(0.1);label(form,"editorImageOpacity",bgOpacity_);
     button("editorApplyImage",[this]{applyBackground();});
     button("editorRemoveImage",[this]{execute("editorRemoveImage",[](auto& d){d.background={};});});
-    auto* help=new QLabel(body);help->setWordWrap(true);texts_["editorHelp"]=help;form->addRow(help);
+    auto* help=new QLabel(body);help->setWordWrap(true);texts_["editorHelp"]=help;layout->addWidget(help);
+    layout->addStretch();
     actions_["editorInspector"]=dock->toggleViewAction();
     actions_["editorInspector"]->setShortcut(QKeySequence("Ctrl+I"));
     scroll->setWidget(body);dock->setWidget(scroll);addDockWidget(Qt::RightDockWidgetArea,dock);

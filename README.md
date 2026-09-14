@@ -7,8 +7,9 @@ Widgets desktop interface**, aimed at the modelling workflow of traffic impact s
 **M0 native implementation available; owner acceptance remains open.** The desktop harness
 shows seeded vehicles accelerating, queueing at fixed-time signals and crossing explicit
 connectors. It has English/Thai controls, Run/Pause/Step/Reset, seed and playback speed,
-and read-only scenario loading. A separate M1.1–M1.3 Network Editor now provides
-undoable drawing, image calibration and basic project save/open (see below).
+and read-only scenario loading. A separate Network Editor now provides undoable
+Link/Lane drawing, lane-to-lane connector editing, image calibration and basic project
+save/open (M1.1–M1.3 and M1.4; see below).
 A bundled Noto Sans Thai font provides offline Thai text rendering.
 
 **Not yet validated:** the longitudinal model is a reduced Wiedemann-inspired prototype,
@@ -60,8 +61,8 @@ See [`tools/README.md`](tools/README.md) for all CLI and developer-tool commands
 | Diagnostic | `tools/run_simulation.cpp` | Single-seed run, completed-trip delay, active/pending counts and optional JSONL events |
 
 The runtime rejects merging paths, internal sources and cyclic routes. Lane changing,
-crossing conflicts, priority rules, editing, project saving, batch evaluation and LOS are
-future milestones. Read [`docs/SIMULATION.md`](docs/SIMULATION.md) for numerical behaviour.
+crossing conflicts, priority rules, edited-project run handoff, batch evaluation and LOS
+are future milestones. Read [`docs/SIMULATION.md`](docs/SIMULATION.md) for numerical behaviour.
 
 ## Migration evidence
 
@@ -88,7 +89,10 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 
 ## Native network editor
 
-M1.1–M1.3 now provides undoable Link/Lane drawing, background-image calibration and
-basic project save/open. Launch `trafficsim-desktop --editor` or use the Network Editor
-entry in the simulation window. See [the editor guide](docs/NETWORK_EDITOR.md).
-Edited-network simulation and general connector tools are later M1 stages.
+M1.1–M1.3 and M1.4 provide undoable Link/Lane drawing, lane-to-lane connectors with
+editable curve points, background-image calibration and basic project save/open.
+Launch `trafficsim-desktop --editor` or use the Network Editor entry in the simulation
+window. Choose **Connect lanes**, then a source lane end and a target lane start.
+See [the editor guide](docs/NETWORK_EDITOR.md) for the Properties workflow and controls.
+Signal-bearing link splits (M1.3.1), tables/diagnostics, recovery and edited-network
+simulation remain open, as does the full M1 usability gate.

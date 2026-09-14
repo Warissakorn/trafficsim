@@ -1,5 +1,6 @@
 #pragma once
 #include "../commands/network_commands.hpp"
+#include "../commands/connector_commands.hpp"
 #include "../editor/canvas.hpp"
 #include <QMainWindow>
 #include <QJsonObject>
@@ -15,6 +16,7 @@ class QLineEdit;
 class QLabel;
 class QFormLayout;
 class QCloseEvent;
+class QTabWidget;
 namespace trafficsim {
 class EditorWindow : public QMainWindow {
 public:
@@ -33,12 +35,19 @@ private:
     std::map<std::string,QWidget*> texts_;
     EditorCanvas* canvas_{};
     QComboBox *language_{}, *tool_{}, *side_{};
+    QComboBox *connectorObject_{}, *connectorFrom_{}, *connectorTo_{};
+    QTabWidget* properties_{};
+    QLabel* connectorHint_{};
     QSpinBox* count_{};
     QDoubleSpinBox *width_{}, *grid_{}, *split_{}, *gap_{}, *bgX_{}, *bgY_{}, *bgScale_{}, *bgAngle_{}, *bgOpacity_{};
     QLineEdit *id_{}, *widths_{};
     QLabel *error_{}, *coordinates_{}, *selectionInfo_{};
     QString text(const std::string& key) const;
     void buildInspector();
+    QWidget* buildConnectorInspector();
+    void refreshConnector();
+    void addConnection(const LaneReference& from, const LaneReference& to);
+    void connectorHint();
     void refresh(bool modelChanged = true);
     void translate();
     bool execute(const std::string& name, const std::function<void(ProjectDocument&)>& action);

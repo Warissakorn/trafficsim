@@ -87,7 +87,11 @@ explicit follow-up, not a claim that arbitrary controlled networks can already b
 
 ### M1.4 — Connector editor
 
-General lane-to-lane connector creation, curve handles and endpoint maintenance.
+Implemented: lane-to-lane creation by endpoint picking or Properties, editable interior
+curve points, straight/curve reset, selection, reference-safe deletion and retargeting,
+and shared endpoint maintenance after Link/Lane/driving-side edits. All changes use
+History and the existing version-1 geometry format. Curves are sampled polylines, not
+swept-path or turning-radius validation. See NETWORK_EDITOR.md.
 
 ### M1.5 — Inspection and diagnostics
 
