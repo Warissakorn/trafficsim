@@ -96,3 +96,10 @@ window. Choose **Connect lanes**, then a source lane end and a target lane start
 See [the editor guide](docs/NETWORK_EDITOR.md) for the Properties workflow and controls.
 Signal-bearing link splits (M1.3.1), tables/diagnostics, recovery and edited-network
 simulation remain open, as does the full M1 usability gate.
+
+## License
+
+This project is released under the [MIT License](LICENSE). The bundled Noto Sans Thai
+font in `data/fonts/` stays under the SIL Open Font License 1.1 (see
+[`data/fonts/README.md`](data/fonts/README.md)), and Qt is used under its own terms —
+see [`docs/BUILDING.md`](docs/BUILDING.md).
