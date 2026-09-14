@@ -20,6 +20,8 @@ replay/recovery workflow and new native range tests. The remaining table asserti
 expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
 offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
 Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
+The first gesture run exposed a test timer firing before mouse release opened its
+modal; confirmation now waits for the dialog and never throws through a Qt callback.
 
 Validation runs through GitHub Actions because the session executor is intermittently
 unavailable and local Qt/CMake installation could not complete. No local interactive GUI
@@ -56,7 +58,7 @@ The remaining validation and acceptance work follows on the same branch; no mile
 
 ## Next
 
-**Finish PR #14 verification, then run the owner acceptance exercise.**
+**Review PR #14 and its CI, then run the owner acceptance exercise.**
 
 1. Review the latest Native C++ run on `codex/complete-m1-network-editor`; require Linux
    headless/desktop/release and Windows core checks to pass on the PR head.

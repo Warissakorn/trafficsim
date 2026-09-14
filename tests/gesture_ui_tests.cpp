@@ -22,12 +22,19 @@ void drag(EditorCanvas* c,Point a,Point b,Qt::MouseButton button,Qt::KeyboardMod
     QTest::mouseRelease(c->viewport(),button,modifiers,pixel(c,b));
 }
 void confirm(const char* expected) {
-    QTimer::singleShot(10,[expected]{
-        auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());require(dialog,"Creation dialog absent");
-        require(dialog->objectName()==expected,"Wrong creation dialog");
+    // QTest's mouse events process timers before release opens the modal. Wait for
+    // the actual dialog; never throw through a Qt event handler.
+    auto* timer=new QTimer(qApp);
+    QObject::connect(timer,&QTimer::timeout,timer,[timer,expected]{
+        auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());if(!dialog)return;
+        timer->stop();timer->deleteLater();
+        if(dialog->objectName()!=expected){std::cerr<<"Unexpected dialog: "<<dialog->objectName().toStdString()<<'\n';dialog->reject();return;}
         if(auto* count=dialog->findChild<QSpinBox*>("editorGestureLaneCount"))count->setValue(3);
-        item<QDialogButtonBox>(*dialog,"")->button(QDialogButtonBox::Ok)->click();
+        auto* buttons=dialog->findChild<QDialogButtonBox*>();
+        if(buttons && buttons->button(QDialogButtonBox::Ok))buttons->button(QDialogButtonBox::Ok)->click();
+        else {std::cerr<<"Missing confirmation button\n";dialog->reject();}
     });
+    timer->start(5);
 }
 }
 int main(int argc,char** argv) {
