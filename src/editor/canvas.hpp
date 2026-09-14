@@ -3,6 +3,7 @@
 #include <QGraphicsView>
 #include <functional>
 #include <optional>
+#include <map>
 
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
@@ -23,6 +24,12 @@ public:
     std::vector<std::string> inRectangle(Point a, Point b) const;
     const Connector* selectedConnector() const;
     bool pickingConnectorTarget() const { return connectorFrom_.has_value(); }
+    void setRunNetwork(const Network&);
+    void setRunFrame(const SimState&);
+    void clearRunFrame();
+    std::size_t renderedVehicles() const { return runFrame_.vehicles.size(); }
+    std::function<void()> stopRequested;
+    std::function<void()> deleteRequested;
     void redraw();
     void fitNetwork();
     void cancel();
@@ -47,7 +54,10 @@ protected:
     void wheelEvent(QWheelEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
     void drawBackground(QPainter*, const QRectF&) override;
+    void drawForeground(QPainter*, const QRectF&) override;
 private:
+    SimState runFrame_;
+    std::map<std::string,std::vector<Point>> runGeometry_;
     const ProjectDocument* document_{};
     QGraphicsScene scene_;
     std::shared_ptr<const std::string> cachedImage_;

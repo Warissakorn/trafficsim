@@ -117,7 +117,7 @@ TEST(connectors, deletion_and_undo_preserve_routes_inputs_and_heads) {
     CHECK(h.document().network.links.size()==4);CHECK(h.document().network.connectors.size()==1);
     CHECK(h.document().network.signalHeads.size()==2);
     CHECK(h.document().definition->routes.size()==1);CHECK(h.document().definition->inputs.size()==1);
-    CHECK(h.document().definition->routes[0].id==before["definition"]["routes"][1]["id"]);
+    CHECK(h.document().definition->routes[0].id==before["definition"]["routes"][1]["id"].get<std::string>());
     h.undo();CHECK(documentJson(h.document())==before);
     h.redo();CHECK(h.document().network.connectors.size()==1);
 }

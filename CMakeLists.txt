@@ -81,10 +81,10 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp
-        tests/connector_tests.cpp tests/diagnostics_tests.cpp)
+        tests/connector_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-    foreach(group core network reference project editor connectors diagnostics)
+    foreach(group core network reference project editor connectors diagnostics demand)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
     add_test(NAME architecture COMMAND trafficsim-check-architecture "${PROJECT_SOURCE_DIR}")

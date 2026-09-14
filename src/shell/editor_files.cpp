@@ -26,7 +26,7 @@ void EditorWindow::openFile(const QString& file) {
         if(!size.isValid()||static_cast<qint64>(size.width())*size.height()>32000000||reader.read().isNull())
             throw std::runtime_error("EDIT_BACKGROUND_INVALID");
     }
-    history_.reset(std::move(document));file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
+    clearRun(); history_.reset(std::move(document));file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
 }
 void EditorWindow::openFileOrReport(const QString& file) {
     try { openFile(file); } catch (const std::exception& e) { showError(e); }

@@ -26,7 +26,7 @@ void EditorWindow::buildDiagnostics() {
     // On demand, never on every refresh: compiling the document per mouse-up would be wasteful,
     // and a verdict that reappears on its own reads as a claim the editor has not re-earned.
     action("editorRecheck",{},[this]{
-        diagnostics_=documentDiagnostics(history_.document());
+        diagnostics_=runDiagnostics(history_.document(),data_);
         diagnosticRevision_=history_.revision();
         refreshDiagnostics();
         objects_->setCurrentIndex(3);
@@ -57,6 +57,7 @@ void EditorWindow::refreshDiagnostics() {
         for (int column=0; column<4; ++column) {
             auto* cell=new QTableWidgetItem(values[column]);
             cell->setData(Qt::UserRole,QString::fromStdString(item.selectId));
+            cell->setData(Qt::UserRole+1,QString::fromStdString(item.objectId));
             if (item.selectId.empty()) cell->setToolTip(text("EDIT_UNKNOWN_OBJECT"));
             problemTable_->setItem(row,column,cell);
         }
@@ -67,7 +68,7 @@ void EditorWindow::jumpTo(int row) {
     const auto* cell=problemTable_->item(row,0);
     if (!cell) return;
     const auto id=cell->data(Qt::UserRole).toString().toStdString();
-    if (id.empty()) return; // A network-wide or demand finding names nothing to show.
+    if (id.empty()) {selectDemand(cell->data(Qt::UserRole+1).toString().toStdString());return;}
     canvas_->select(id);
     canvas_->frame(id);
 }

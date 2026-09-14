@@ -21,7 +21,7 @@
 #include <cmath>
 
 namespace trafficsim {
-EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& language,QWidget* parent) : QMainWindow(parent) {
+EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& language,QWidget* parent) : QMainWindow(parent), data_(data) {
     setObjectName("networkEditor");
     const int font=QFontDatabase::addApplicationFont(displayPath(data/"fonts/NotoSansThai.ttf"));
     if(font<0) throw std::runtime_error("Cannot load bundled Thai font");
@@ -41,7 +41,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     error_=new QLabel(central); error_->setObjectName("editorError"); error_->setWordWrap(true);
     error_->setStyleSheet("color:#a5263c"); layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
-    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
+    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRun(); history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
         if(!confirmDiscard()) return;
         const auto file=QFileDialog::getOpenFileName(this,text("editorOpen"),{},text("editorFilter"));
@@ -50,8 +50,8 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     files->addAction(action("editorSave",QKeySequence::Save,[this]{saveDialog();}));
     files->addAction(action("editorSaveAs",QKeySequence::SaveAs,[this]{saveDialog(true);}));
     files->addSeparator();
-    files->addAction(action("editorUndo",QKeySequence::Undo,[this]{history_.undo();refresh();}));
-    files->addAction(action("editorRedo",QKeySequence::Redo,[this]{history_.redo();refresh();}));
+    files->addAction(action("editorUndo",QKeySequence::Undo,[this]{clearRun();history_.undo();refresh();}));
+    files->addAction(action("editorRedo",QKeySequence::Redo,[this]{clearRun();history_.redo();refresh();}));
     files->addWidget(language_);
     addToolBarBreak(); auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
@@ -105,6 +105,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         std::string created; if(execute("editorSplit",[&](auto& d){created=splitLink(d,id,distance);})) canvas_->select(created);
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
+    buildDemandTables(); buildRunControls();
     history_.reset(); translate(); refresh(); resize(1280,850); canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {
@@ -124,12 +125,12 @@ void EditorWindow::translate() {
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables();
+    retranslateTables(); translateDemand();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     error_->clear(); refresh();
 }
 bool EditorWindow::execute(const std::string& name,const std::function<void(ProjectDocument&)>& change) {
-    try {const bool changed=history_.execute(name,change);error_->clear();rejected_.clear();refresh();return changed;}
+    try {const bool changed=history_.execute(name,change);if(changed)clearRun();error_->clear();rejected_.clear();refresh();return changed;}
     catch(const std::exception& e){showError(e);canvas_->setDocument(&history_.document());return false;}
 }
 void EditorWindow::deleteSelected() {
@@ -179,6 +180,6 @@ void EditorWindow::refresh(bool modelChanged) {
     const auto& b=history_.document().background;
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
     actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
-    refreshTables(modelChanged);refreshDiagnostics();
+    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshDiagnostics();refreshRun();
 }
 }

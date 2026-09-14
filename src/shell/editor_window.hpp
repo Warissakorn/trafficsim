@@ -2,6 +2,10 @@
 #include "../commands/network_commands.hpp"
 #include "../commands/connector_commands.hpp"
 #include "../project/diagnostics.hpp"
+#include "../project/run.hpp"
+#include "../commands/demand_commands.hpp"
+#include <QTimer>
+#include <QElapsedTimer>
 #include "../core/validate.hpp"
 #include "../editor/canvas.hpp"
 #include <QMainWindow>
@@ -35,6 +39,37 @@ protected:
     void closeEvent(QCloseEvent*) override;
 private:
     History history_;
+    std::filesystem::path data_;
+    QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{};
+    void buildDemandTables();
+    void refreshDemand();
+    void translateDemand();
+    void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
+    void editInput(const std::string& id = {});
+    void editProgram(const std::string& id = {});
+    void editHead(const std::string& id = {});
+    void editRunSettings();
+    void deleteDemand(const std::string& kind, const std::string& id);
+    void selectDemand(const std::string& id);
+    void buildRunControls();
+    void refreshRun();
+    bool prepareRun();
+    void toggleRun();
+    void stepRun();
+    void tickRun();
+    void clearRun();
+    void pauseRun();
+    QTimer runTimer_;
+    QElapsedTimer runElapsed_;
+    double runCredit_{};
+    std::optional<RunSnapshot> runSnapshot_;
+    SimState runState_;
+    QLineEdit* runSeed_{};
+    QComboBox* runSpeed_{};
+    QLabel* runInfo_{};
+public:
+    const SimState& runState() const { return runState_; }
+private:
     QString file_;
     std::map<QString,QJsonObject> locales_;
     std::map<std::string,QAction*> actions_;

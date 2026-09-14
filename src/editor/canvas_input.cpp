@@ -132,7 +132,7 @@ void EditorCanvas::removeVertex() {
     if(editGeometry) editGeometry(selected(),geometry);
 }
 void EditorCanvas::keyPressEvent(QKeyEvent* e) {
-    if(e->key()==Qt::Key_Escape) { cancel(); return; }
+    if(e->key()==Qt::Key_Escape) { if(stopRequested)stopRequested(); cancel(); return; }
     if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) { finishDrawing(); return; }
     if(e->key()==Qt::Key_Delete) { removeVertex(); return; }
     QGraphicsView::keyPressEvent(e);

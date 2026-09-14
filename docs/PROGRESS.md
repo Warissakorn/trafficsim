@@ -15,7 +15,7 @@ Base d456b121 passed Native C++ run 34824423877. No local desktop execution is c
 First slice replaces the document's untyped definition with optional typed authoring values,
 retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
 route/input/program/head commands, and introduces catalog resolution and revision snapshots.
-Runtime limitations remain separate from draft validity. Further M1 UI, persistence, geometry
+Runtime limitations remain separate from draft validity. The second slice adds route/input/program/head dialogs and tables plus in-editor fixed-step Run/Pause/Step/Reset with seed and speed. Successful edits invalidate the run snapshot; frames repaint without rebuilding the scene. The first CI failure was a JSON-to-string comparison in the migrated regression test, corrected with explicit extraction. Further M1 persistence, geometry
 and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
 
 ## Next
