@@ -39,9 +39,9 @@ The world uses x east/right, y north/up, and metres. The image origin is its top
 pixel. Positive image rotation is counter-clockwise in world coordinates.
 The Properties toolbar action (Ctrl+I) hides or restores the inspector; it can also be
 resized or detached. Selection tolerances and control handles use screen pixels, so they remain usable at
-different zoom levels. One link or connector can be selected at a time; multi-selection
-and object tables belong to M1.5. Properties has separate Links, Connectors and Image
-tabs; selecting an object opens its corresponding tab. Crossing lines are not
+different zoom levels. Several objects can be selected at once (see M1.5 below), but
+property edits act on the last one selected. Properties has separate Links, Connectors and
+Image tabs; selecting an object opens its corresponding tab. Crossing lines are not
 automatically connected.
 
 ## Opposite carriageway and turn pockets
@@ -114,6 +114,55 @@ be changed until that route is revised or removed. M1.4 does not invent a replac
 route or vehicle demand. Authoring can express merges; the existing M0 compiler still
 rejects unsupported merging paths. Saving a drawing does not certify it for simulation.
 
+## Object tables, multi-selection and problems (M1.5)
+
+The **Objects and problems** dock (Ctrl+B) sits below the canvas with four tabs.
+
+1. **Links**, **Connectors** and **Signal heads** list every object of that kind with its ID,
+   and with lane counts, endpoints, lengths, positions and programs as applicable. Selecting
+   rows selects those objects on the canvas and moves the view onto the last one. Selecting
+   on the canvas highlights the matching rows. The tables are read-only; they are rebuilt
+   from the document, never edited in place. A signal head is not a canvas object, so
+   selecting its row selects the link that carries it.
+2. **Ctrl-click** or **Shift-click** on the canvas adds or removes one object. **Dragging on
+   empty space** draws a selection box; every link and connector the box touches is selected,
+   in network order. The last object added is the **primary**: it keeps the white control
+   handles, and lane counts, widths, splits, opposite carriageways, connector endpoints and
+   geometry all act on it alone. The inspector says how many objects are selected so this is
+   never ambiguous. **There is no group drag** — moving many objects at once would have to
+   reanchor every attached connector, and that is not in this slice.
+3. **Delete selected objects** removes every selected link and connector in one transaction,
+   together with attached connectors, signal heads, affected routes and their vehicle inputs.
+   One Undo restores all of it. An object that a link's own cascade already removed is
+   skipped rather than reported as an error, so the result does not depend on click order.
+
+### Draft problems and runnability
+
+These are different questions and the dock keeps them apart.
+
+- **Draft** problems are what makes a drawing incoherent — an unknown lane, a non-positive
+  width, a signal head past the end of its lane. These **block** an edit, and always have:
+  a rejected edit leaves the document untouched. What M1.5 adds is that the rejection is no
+  longer one line of red text. Each issue now names the object it is about and selects and
+  frames it when you pick the row. Because commits are validated, a *saved* drawing can never
+  carry a draft problem, so this list is normally empty; that is the design, not a defect.
+- **Runnability** problems are what the M0 simulation core cannot run. Press **Check
+  runnability** to compile the current document and list them. They **never** block an edit
+  or a save. The standing example is a merge: two connectors feeding one lane is legitimate
+  authoring that the core has no gap acceptance for, so it is reported, not refused.
+  The check is on demand, and its result is discarded as soon as the document changes, so a
+  verdict is never shown for a revision it was not computed on.
+
+A clean runnability check means the M0 core accepts this topology. It is **not** a statement
+that the network is correct, buildable, or validated — M6 owns validation, and the
+not-yet-validated marker stands regardless. A project with no simulation definition is
+checked for topology only; vehicle type and driver behaviour references are not judged at
+all, because those catalogs live in `data/` rather than in the project file, and resolving
+them before a run belongs to M1.7. The dock says so rather than reporting them as unknown.
+
+Routes and vehicle inputs are named by their own IDs in problems, but have no table and no
+editing: they have no authoring model yet. That is M1.5.1.
+
 ## Background image
 
 Import a local PNG/JPEG/BMP. The image is converted to PNG and embedded in the project,
@@ -162,8 +211,7 @@ Splitting a link carrying a signal head is currently rejected: preserving contro
 stationing through a split needs a dedicated policy, tracked as M1.3.1 in ROADMAP.
 Moving/shrinking a link that would place a head beyond its lane is also rejected.
 
-M1.4 implements general connector creation/editing as described above. M1.5 owns
-tables, multi-selection and structured problem navigation. M1.6 owns the full persistence/recovery workflow.
+M1.4 implements general connector creation/editing as described above. M1.6 owns the full persistence/recovery workflow.
 M1.7 owns edited-project simulation handoff and the timed four-leg acceptance exercise.
 The M0 core still rejects merges and does not resolve geometric crossing conflicts or
 lane changing; an editable intersection is not a validated runnable intersection.
@@ -184,6 +232,17 @@ actual mouse/keyboard endpoint picking, preview/cancellation, curve-point draggi
 insertion/removal, endpoint locks, Properties actions, Unicode save/reopen and Thai
 feedback. It also verifies that deleting an imported connector restores its routes
 and inputs on Undo.
+
+The `diagnostics` model suite covers index-path-to-object-ID resolution including malformed
+and out-of-range paths, draft issues naming the right object, an empty network staying a
+legal draft, an authored merge being reported as unrunnable while remaining committable, the
+runtime pass being skipped rather than throwing on an invalid drawing, missing and malformed
+definitions being reported rather than thrown, catalog-dependent findings being withheld, and
+every code the validators can emit having a non-empty English and Thai string. The
+`tables-ui` workflow drives real gestures: table rows following draws and Undo, row selection
+selecting and framing, Ctrl-click, rubber banding, cancelled and confirmed multi-delete
+restored by a single Undo, a rejected edit populating Problems, jump-to-object from both a
+draft and a runtime row, and Thai tabs, column headers and messages.
 
 These tests do not close the owner's M0 plausibility gate or M1's ten-minute usability
 criterion. Windows/macOS GUI execution, installers and large-network performance remain

@@ -8,23 +8,27 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ## Next
 
-**Review M1.4 Connector tools, then implement M1.5 inspection and diagnostics.**
+**Review M1.5 inspection and diagnostics, then implement M1.6 persistence and recovery.**
 
 1. Build the desktop, run CTest, and launch `trafficsim-desktop --editor --language th`.
-2. Follow `docs/NETWORK_EDITOR.md`: connect lanes by endpoint picking or Properties,
-   reshape a curve, change lane widths/drivingSide, Undo/Redo, then save and reopen.
-   Existing short/overlapping connectors can be selected by ID in Properties.
-3. M1.5: add object tables and multi-selection through the existing History path. Add
-   structured authoring diagnostics with object IDs and jump-to-object navigation;
-   keep draft validity separate from the M0 compiler's unsupported runtime features.
-4. Preserve the M1.3.1 signal-bearing-link split guard. That follow-up still needs a
-   stationing/remapping policy for heads in upstream/downstream and connector spans.
-5. M1.6 owns recovery/assets; M1.7 owns revision-to-run handoff and the timed four-leg,
-   aerial-image, ten-minute/reopen exercise. M0 and full M1 owner gates remain open.
+   A clean checkout needs `qt6-base-dev` and `nlohmann-json3-dev` installed first.
+2. Follow `docs/NETWORK_EDITOR.md` §"Object tables, multi-selection and problems": draw a
+   few links, pick rows in the Objects dock, Ctrl-click and rubber-band on the canvas,
+   delete several objects and confirm one Undo restores all of them, force a rejected edit
+   and jump to the object from Problems, then author a merge and press Check runnability.
+3. M1.6: autosave/recovery, robust asset and catalog handling, and a future-schema
+   migration policy. Version-1 atomic save/open and embedded images already exist.
+4. Preserve the M1.3.1 signal-bearing-link split guard, now pinned by
+   `TEST(editor, signal_bearing_link_split_is_still_rejected)`. That follow-up still needs
+   a stationing/remapping policy for heads in upstream/downstream and connector spans.
+5. M1.5.1 owns demand object tables; M1.7 owns revision-to-run handoff, catalog resolution
+   before Run, and the timed four-leg, aerial-image, ten-minute/reopen exercise. The M0 and
+   full M1 owner gates remain open.
 
-**Implementation:** `src/commands/connector_commands.hpp`,
-`src/model/network/connector_geometry.cpp`, `src/editor/canvas_connectors.cpp`,
-`src/shell/editor_connectors.cpp`. Based on `main` commit `8ff7a53` (2026-09-13).
+**Implementation:** `src/model/network/diagnostics.cpp`, `src/project/diagnostics.cpp`,
+`src/commands/delete_objects.cpp`, `src/editor/canvas_select.cpp`,
+`src/shell/editor_tables.cpp`, `src/shell/editor_diagnostics.cpp`.
+Based on `main` commit `5c97511` (2026-09-14).
 
 ---
 
@@ -88,9 +92,64 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 | D17 | 2026-09-14 | **Continue M1 with the planned M1.4 Connector editor; preserve one version-1 geometry source** | The owner requested continued Network editor development. `Next` already called for M1.4, so this session implements that slice and retains M1.3.1's split guard. A lane-aligned cubic is sampled into editable polyline points, avoiding a second curve store and an unnecessary schema change. Referenced connectors may be reshaped but not retargeted; deleting one removes its affected routes and inputs atomically instead of inventing new paths. | If engineering workflows require persistent tangent handles or measured radius constraints, define their model/schema explicitly; do not claim the sampled curve provides those guarantees. |
 
+| D18a | 2026-09-14 | **Diagnostics resolve object IDs in the model layer; `ValidationIssue` stays frozen** | Adding an `objectId` field to `ValidationIssue` in `src/core/types.hpp` would have compiled — no test compares a whole issue — but it is the wrong boundary. `core/` validates a `Scenario` whose only objects are segments, so the field would be empty for nearly every core code, and it would duplicate what the index path already locates (hard rule 3). Deriving the ID on read from the index path keeps `src/core/` untouched by M1.5 entirely, which is also what puts the four frozen TypeScript baselines and the trajectory digest structurally out of reach. | If an index path ever needs to survive an edit and be re-resolved later, a stored ID becomes the cheaper representation. It is not needed for a panel that is rebuilt per revision. |
+| D18b | 2026-09-14 | **Draft validity blocks an edit; runtime supportability only informs, and only on demand** | These answer different questions and must not be merged. `validateNetwork` asks "is this a coherent drawing" and `History::execute` rightly refuses anything else. `validateScenario` asks "can the M0 core run this", and the authoring model deliberately expresses things the core cannot yet run — a merge is the standing example. Making the second blocking would forbid legal authoring; making the first advisory would let broken documents be saved. **A structural consequence the UI must own: because `validateDocument` throws on every non-`EMPTY_NETWORK` issue, a committed document can never carry a draft-invalid object, so the draft list is fed only by a blank document and by the issues of a *rejected* edit** — which is exactly where the object IDs earn their keep. | Nothing, unless the runtime gains merge arbitration, at which point `UNSUPPORTED_MERGE` stops being a finding. Do not "fix" the usually-empty draft list by loosening commit validation. |
+| D18c | 2026-09-14 | **M1.5 tables cover network objects only; demand tables carve out to M1.5.1** | Routes and vehicle inputs have no model struct — they are untyped JSON under `ProjectDocument::definition` — so tabling them means designing an authoring demand model, which is M2's subject. Diagnostics still name routes and inputs by their own IDs, which is what the milestone actually required. Carved into a numbered milestone in the same session rather than left as a note, per hard rule 8. | If M2 demand authoring lands first, M1.5.1 is absorbed into it rather than done separately. |
+| D18d | 2026-09-14 | **Vehicle-type and behaviour findings are withheld, not reported, when no catalog is loaded** | Those catalogs live in `data/`, not in the project file, so a document alone genuinely cannot resolve them. Reporting `UNKNOWN_VEHICLE_TYPE` for every input of an otherwise valid M0 fixture would blame the drawing for an absence that is by design, and would train users to ignore the panel. One `EDIT_NO_CATALOG` row says what was not checked instead. | When M1.7 resolves catalogs at run handoff, the check becomes real and the withholding should be removed rather than left as a permanent blind spot. |
+
 ---
 
 ## Log
+
+### 2026-09-14 — M1.5 inspection and diagnostics implemented (D18)
+
+Added a bottom Objects dock with Links, Connectors, Signal heads and Problems tables. Rows
+are assembled on read from the document, carry the object ID they name, and select and frame
+that object; the canvas selection is mirrored back into the tables. No selection state is
+stored twice.
+
+Canvas selection became an ordered list with the last-added object as primary. Ctrl- or
+Shift-click toggles, and a drag on empty space rubber-bands links and connectors in network
+order. `selected()` still returns the primary, so every existing single-object gesture —
+vertex drags, point insertion and removal, connector endpoint locks, lane and split edits —
+behaves exactly as before; the `editor-ui` and `connector-ui` suites pass unchanged.
+**Group geometry dragging is deliberately not implemented**; property edits act on the
+primary alone and say so. `deleteObjects` removes any number of links and connectors as one
+History entry that one Undo restores whole, skipping IDs a link's own cascade already took.
+
+Diagnostics are now structured and navigable. `validateNetwork` and `validateScenario` still
+emit index paths; a model-layer resolver derives link, lane, connector and head IDs from
+them on read, so `src/core/` was not touched at all. A rejected edit no longer throws its
+`ValidationError::issues` away — they fill the Problems tab with the objects they name, and
+selecting a row jumps to it. Runnability is separate and non-blocking: **Check runnability**
+compiles the document and lists what the M0 core cannot run, such as an authored merge,
+without blocking that edit or any later one. `compileScenario` was split so diagnostics can
+assemble a scenario without throwing; its validate→build→validate order is unchanged.
+
+A drawing with no demand is still checked for topology against a probe definition, with
+demand findings dropped as meaningless rather than shown. Vehicle-type and behaviour
+references are withheld with an explicit row when no catalog is loaded (D18d) instead of
+being reported as unknown. 51 locale strings were added in both English and Thai, including
+the 8 draft codes and 17 runtime codes that previously had no message at all.
+
+**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.11.3, CMake 3.28.3 on Linux. The
+unchanged base first passed all 15 desktop CTest suites; the extended tree passes **17/17**
+desktop and **13/13** on the independent Qt-free headless build. There are 57 named native
+cases, including 8 new `diagnostics` cases and 3 new `editor` cases. The new `tables-ui`
+suite drives real mouse and keyboard gestures: table-row selection, Ctrl-click, rubber
+banding, cancelled and confirmed multi-delete with a single Undo, a rejected edit populating
+Problems, jump-to-object from both a draft and a runtime row, and Thai tabs, headers and
+messages. `TEST(diagnostics, every_emitted_code_has_a_translation)` derives its code list
+from the validators rather than a hand-kept list. The four TS baselines, the trajectory
+digest, seeded replay and the exact `29.24935` CLI pin still pass. Architecture and negative
+fixtures, the 500-line budget and whitespace checks pass. A Thai screenshot at 1280×900 was
+visually inspected.
+
+**Not claimed:** no simulation, physics, right-of-way or demand behaviour changed. A clean
+runnability check means the M0 core accepts the topology — it is not a fidelity claim, and
+the not-yet-validated marker stands. These are local Linux results; Windows and macOS GUI
+execution are not established by them. M1.3.1, M1.5.1, M1.6, M1.7 and the owner's M0 and M1
+acceptance gates all remain open.
 
 ### 2026-09-14 — hot path 5: OccupiedSpan carries a segment index, not a segment name
 
@@ -352,132 +411,3 @@ Building also required `nlohmann-json3-dev`, which a clean checkout must install
 
 Neither the M0 acceptance gate nor the M1 gate is closed by this merge; merged code is
 not a passed gate. `Next` is unchanged apart from its base note.
-
----
-
-### 2026-09-12 — native editor M1.1–M1.3 implemented (D16)
-
-Added a version-1 ProjectDocument and a Qt-free command library. Every committed edit
-validates a candidate before publishing it; a failed edit preserves both history and
-the model. Undo/Redo keeps up to 100 document snapshots, persists the current revision
-and ID counter in project files, and tracks the last saved revision. Embedded PNG data
-is shared immutably between snapshots rather than copied for every gesture.
-
-The independent Qt editor is available from the M0 window or `--editor`. It provides
-metric grid/snap, pan/zoom/fit, single-link selection, point/link dragging, point insertion
-and removal, lane count and individual widths, left/right driving side, opposite
-carriageways, split links and an extra downstream pocket lane. Splits introduce a 0.2 m
-continuity span with explicit lane connectors and remap existing routes. A link deletion
-confirms its affected connectors/heads/routes/inputs and restores all of them on Undo.
-Referenced lane removal is rejected. Connector endpoints reanchor on geometry edits.
-
-Local background images are embedded, calibrated from two picked points and a known
-real distance, positioned/rotated/scaled and given opacity. All background changes are
-undoable. Basic Open/Save/Save As use a versioned JSON document and QSaveFile atomic
-replacement; failed load/save preserves the current work. New/Open/Close ask about
-unsaved changes. Native prompts and editor controls support English and Thai. The
-inspector can be hidden, resized or detached. No new simulation behaviour was added.
-
-Boundary enforcement now also rejects project-to-command/editor/Qt imports, with
-negative fixtures. `docs/NETWORK_EDITOR.md` records operation, format and exact limits.
-M1.3.1 explicitly tracks the unsupported signal-bearing-link split rather than moving
-signal stationing silently. General connectors, tables, recovery and run handoff remain
-M1.4–M1.7. Windows/macOS GUI execution and the owner's usability gate remain unverified.
-
-**Verification:** GCC 13.3 / Qt 6.4.2 on Linux. Fresh isolated Debug and Release
-builds passed all 13 CTest suites; a separate Qt-free build passed all 11 suites.
-The native test executable contains 38 named cases (8 new editor model cases), and
-Qt UI checks exercise actual mouse/keyboard drawing, dragging, insertion/removal,
-pan/zoom, cancellation, per-lane widths, pockets, opposite carriageways, driving side,
-confirmed deletion/Undo, image transforms/two-point calibration, Unicode paths,
-failed save/load preservation, unsaved-work cancellation and Thai translation.
-The existing four TS regression fixtures, deterministic core replay, CLI and M0
-controls still pass. Architecture/negative checks, the 500-line limit and whitespace
-checks pass. A Thai editor screenshot at 1000×760 was visually inspected. GUI behaviour
-on Windows/macOS and GitHub-hosted runner execution are not claimed verified here.
-
-
-### 2026-09-11 — native C++ migration implemented (D15)
-
-Replaced the active TypeScript/Vite application with C++20 libraries for core, network,
-scenario loading and evaluation, a native CLI, and a Qt 6 Widgets desktop harness.
-CMake presets cover desktop, headless and Release. All executable developer checks
-are now C++; JSON remains the catalog/locale/fixture format. The original application
-is preserved at GitHub commit `70383db6ab884c718baef97a8ab81292fdc9d1b0`.
-
-The port preserves fixed ticks, explicitly sequenced xorshift32 draws, canonical IDs,
-source queues, upstream tails, red/amber stops and all unsupported-topology guards.
-`SimState` is a value snapshot sharing a detached const scenario. Qt, JSON and I/O stay
-outside the core. CLI diagnostics include engine/compiler versions, unfinished counts
-and optional JSONL events. M0 fixture loading is read-only, not project persistence.
-
-The Qt harness supports Run/Pause/Step/Reset, seed validation/reset, playback speed,
-scenario loading and English/Thai switching. Bundled Noto Sans Thai (unmodified OFL 1.1
-font with license) fixes missing Thai glyphs on minimal systems. Desktop file-dialog
-paths use native wide paths on Windows. Manual screenshot inspection confirmed Thai
-text and a queued crossing scene at 640 pixels wide.
-
-**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.12.0, CMake 4.4.3 on Linux.
-The original 40 tests and production build passed before capture. Native tests include
-30 named C++ cases, four frozen TS baseline seeds, full same-build event replay, core
-and network safety/validation, strict JSON/seed handling and locale key agreement.
-Debug and Release desktop builds passed all 11 CTest suites, including interactive
-control actions and an entire desktop run matching CLI/baseline. Headless also built
-and passed independently without Qt. Address/undefined-behaviour sanitizer tests passed;
-LeakSanitizer was disabled because this container cannot inspect process tasks.
-The architecture negative fixtures, 500-line check and `git diff --check` passed.
-An installed CLI run from a different working directory found its adjacent data and
-reproduced seed 42: 31 completed, 0 active, 0 pending, 0 safety clamps and mean delay
-29.249359418430977 seconds. No performance or scientific fidelity claim is made.
-
-Added GitHub Actions definitions for Linux desktop/headless/Release and Windows MSVC
-headless builds. Windows desktop execution and macOS deployment have not been tested
-in this Linux workspace. See `docs/BUILDING.md`, `docs/MIGRATION.md`, updated architecture,
-simulation contracts and `tools/README.md` for setup and precise limitations.
-
-**Status:** M0.1 technical migration checks passed on Linux. Owner M0 plausibility
-acceptance remains open. No M1 editor, movement LOS, right-of-way model, calibration
-or M7 installer is claimed complete. Next remains owner review, then one undoable link.
-
-### 2026-09-11 — M0 simulation core and network model implemented
-
-The repository previously contained documentation only. Added a strict TypeScript/Vite/
-Vitest toolchain and lockfile, the directory skeleton, and an AST-based core dependency
-guard that is tested against intentionally invalid imports.
-
-**Network:** link/lane/connector authoring types; left/right driving-side lane geometry;
-mid-link signal heads; geometry/reference/range validation; and a detached scenario
-compiler. Junctions are not authored, and no second persisted network format was added.
-
-**Core:** fixed timestep; explicit xorshift32 seed state; immutable snapshots and pure
-steps; Poisson source arrivals with persistent external queues; reduced four-regime
-following; fixed-time red/amber/green signals; route transitions with residual distance;
-upstream vehicle-tail occupancy; and a streaming event interface. The final subinterval's
-arrivals remain pending instead of disappearing at the run horizon.
-
-**Integration:** a crossing scenario and vehicle/behaviour catalogs in data files; a
-passive canvas harness with run/pause/step/reset, playback speed, seed reset and English/
-Thai text; a headless CLI; and an explicitly unvalidated completed-trip delay diagnostic.
-The engine still has no UI, model, I/O or wall-clock imports.
-
-**Verification:** 40 automated tests cover replay (including a reference trajectory
-fingerprint), pure stepping, source queues, conservation, signal timing, free acceleration,
-red stops/green discharge, upstream tails, short connectors, invalid scenarios, authoring
-geometry and the import boundary. Production type checking/build and the source-size
-check pass. A Chromium 152 browser smoke test passed dev boot, single-step, run/pause,
-seed reset, Thai translation, an entire run matching the headless output, invalid-seed
-handling and a 375-pixel viewport with no horizontal overflow. No page errors occurred.
-In a separate clean detached checkout, `npm ci --offline` (using the package cache),
-all 40 tests, the production build, the headless example and file-size checks also passed.
-
-**Reference run:** seed 42, 180 simulated seconds, 31 completed trips, 0 active and 0
-pending at the horizon, 0 numerical safety clamps. Mean completed-trip delay is
-29.249359418430977 s (includes source wait and acceleration, not HCM control delay).
-This is a reproducibility fixture, not a capacity or fidelity benchmark.
-
-**Limits remain explicit:** no lane changing, merge arbitration, geometric crossing-conflict
-resolution, priority rules, full W74/W99, project persistence, movement LOS or batch
-aggregation. Merges, internal inputs and repeated-route segments fail validation.
-M0 remains open for the owner's plausibility acceptance. No later milestone was closed.
-
-See D12–D14 and `docs/SIMULATION.md` for the reasoning and precise interfaces.

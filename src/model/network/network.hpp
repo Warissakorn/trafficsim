@@ -24,5 +24,7 @@ std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, Dri
 std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to);
 std::vector<ValidationIssue> validateNetwork(const Network& network);
 void assertValidNetwork(const Network& network);
+// Unchecked assembly, for diagnostics that must not throw. Requires an already-valid network.
+Scenario buildScenario(const Network& network, const ScenarioDefinition& definition);
 Scenario compileScenario(const Network& network, const ScenarioDefinition& definition);
 }

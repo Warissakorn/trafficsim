@@ -22,23 +22,40 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     }
     const auto picked=hit(world(e->pos(),false),tool_!=Tool::split);
     if (tool_==Tool::split) { if (!picked.first.empty() && splitAt) splitAt(picked.first,picked.second); return; }
-    vertex_=-1;
-    if (const auto* geometry=selectedGeometry()) {
-        // Pick the nearest handle: dense curve points must not steal each other's drags.
-        int best=12;
-        for(std::size_t i=0;i<geometry->size();++i) {
-            const auto screen=mapFromScene((*geometry)[i].x,(*geometry)[i].y);
-            const int distance=(screen-e->pos()).manhattanLength();
-            if (distance<best) { best=distance; vertex_=static_cast<int>(i); }
-        }
+    const bool additive=(e->modifiers()&(Qt::ControlModifier|Qt::ShiftModifier))!=0;
+    if (additive) {
+        // Adding to a selection is never also a drag: the two gestures would fight over the press.
+        if (picked.first.empty()) { additive_=true; band_=QRectF(p.x,p.y,0,0); dragStart_=p; redraw(); }
+        else toggle(picked.first);
+        return;
     }
-    if (vertex_<0) selected_=picked.first;
+    if (picked.first.empty() && vertexAt(e->pos())<0) {
+        // A plain drag on empty space did nothing before, so the band displaces no gesture.
+        additive_=false; band_=QRectF(p.x,p.y,0,0); dragStart_=p;
+        if (!selection_.empty()) { selection_.clear(); if(selectionChanged) selectionChanged(); }
+        redraw(); return;
+    }
+    vertex_=vertexAt(e->pos());
+    if (vertex_<0 && !isSelected(picked.first)) { selection_={picked.first}; vertex_=vertexAt(e->pos()); }
     if (const auto* geometry=selectedGeometry()) {
         // Connector endpoints are read-only. Body selection never translates attached endpoints.
         const bool locked=selectedConnector() && (vertex_<=0 || vertex_==static_cast<int>(geometry->size())-1);
-        if (!locked) { original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; }
+        // Geometry editing stays strictly single-object; a group translate is not in this slice.
+        if (!locked && selection_.size()==1) { original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; }
     }
     redraw(); if(selectionChanged) selectionChanged();
+}
+int EditorCanvas::vertexAt(QPoint position) const {
+    // Pick the nearest handle: dense curve points must not steal each other's drags.
+    const auto* geometry=selectedGeometry();
+    if (!geometry || selection_.size()!=1) return -1;
+    int best=12, found=-1;
+    for(std::size_t i=0;i<geometry->size();++i) {
+        const auto screen=mapFromScene((*geometry)[i].x,(*geometry)[i].y);
+        const int distance=(screen-position).manhattanLength();
+        if (distance<best) { best=distance; found=static_cast<int>(i); }
+    }
+    return found;
 }
 void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if(cursorMoved) cursorMoved(world(e->pos(),false));
@@ -52,6 +69,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         if (hovered!=connectorHover_) { connectorHover_=hovered; redraw(); }
         return;
     }
+    if(band_) { const auto p=world(e->pos(),false); band_=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized(); redraw(); return; }
     if(dragging_) {
         const auto p=world(e->pos()); preview_=original_;
         if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]=p;
@@ -61,10 +79,16 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
 }
 void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
     if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=false; return; }
+    if(e->button()==Qt::LeftButton && band_) {
+        const auto box=*band_; const bool additive=additive_; band_.reset(); additive_=false;
+        auto found=inRectangle({box.left(),box.top()},{box.right(),box.bottom()});
+        if (additive) { auto merged=selection_; for(auto& id:found) merged.push_back(std::move(id)); found=std::move(merged); }
+        setSelection(std::move(found)); return;
+    }
     if(e->button()==Qt::LeftButton && dragging_) {
         dragging_=false;
         const auto geometry=preview_; preview_.clear();
-        if(geometry!=original_ && editGeometry) editGeometry(selected_,geometry);
+        if(geometry!=original_ && editGeometry) editGeometry(selected(),geometry);
         original_.clear(); redraw();
     }
 }
@@ -76,8 +100,8 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     const auto picked=hit(world(e->pos(),false));
     if(picked.first.empty()) return;
     select(picked.first);
-    const auto* selected=selectedGeometry(); if (!selected) return;
-    auto geometry=*selected;
+    const auto* current=selectedGeometry(); if (!current) return;
+    auto geometry=*current;
     const auto inserted=pointAlong(geometry,picked.second);
     double distance=0;
     for(std::size_t i=1;i<geometry.size();++i) {
@@ -85,7 +109,7 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
         if(picked.second<=distance+length) {
             if (picked.second-distance>0.01 && distance+length-picked.second>0.01) {
                 geometry.insert(geometry.begin()+static_cast<std::ptrdiff_t>(i),inserted);
-                if(editGeometry) editGeometry(selected_,geometry);
+                if(editGeometry) editGeometry(selected(),geometry);
             }
             break;
         }
@@ -105,7 +129,7 @@ void EditorCanvas::removeVertex() {
     if (selectedConnector() && (vertex_==0 || vertex_==static_cast<int>(geometry.size())-1)) return;
     if(geometry.size()<=2) return;
     geometry.erase(geometry.begin()+vertex_); vertex_=-1;
-    if(editGeometry) editGeometry(selected_,geometry);
+    if(editGeometry) editGeometry(selected(),geometry);
 }
 void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     if(e->key()==Qt::Key_Escape) { cancel(); return; }
