@@ -92,6 +92,35 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — hot path 1/3: route geometry resolved once per run
+
+`routeParts` was recomputed for every vehicle on every tick — 1,867,548 calls in an
+8-corridor profile — even though it is a pure function of an immutable `Scenario`. A
+`ScenarioIndex` now resolves it once in `createSimulation` and is carried through `SimState`
+as a `shared_ptr`, so per-tick state copies share it rather than duplicating it. Routes live
+in a contiguous vector, so `partsFor` recovers a route's index from its own address in O(1)
+with no extra lookup. The index is built from the **canonical** scenario, so part order
+matches the sorted routes.
+
+The uncached `routeParts`, `locateVehicle` and `occupiedSpans` overloads are retained for
+`src/render/` and the existing tests; cached and uncached paths share one implementation each
+so they cannot drift. `stepSimulation` tolerates a hand-built state without an index by
+building one, rather than requiring every caller to change.
+
+**Measured** (Release, GCC 13.3, median of 3, identical commands as the baseline entry above):
+600 s of simulation on 1/2/4/8/16/32 corridors went 0.067/0.142/0.488/1.739/4.876/17.724 s to
+0.036/0.079/0.285/1.157/3.257/11.327 s, i.e. **-33% to -46%, -36% at 466 vehicles**. The
+O(V^1.85) growth is unchanged and is deliberately left to the next slice; this change removes
+constant work per call, not the quadratic term.
+
+No behaviour change was intended and none was observed: 12/12 headless CTest including the new
+trajectory digest and the exact `29.24935` CLI pin, plus 12 multi-seed multi-size CLI runs
+(4 network sizes x 3 seeds) byte-identical to the pre-change binary.
+
+**Verification:** headless preset only. Qt is absent in this container, so the three desktop
+suites were not built or run; `src/render/` compiles against the unchanged overloads but no
+desktop verification is claimed.
+
 ### 2026-09-14 — core hot-path optimization: measurement baseline and trajectory guard
 
 Profiling (Release, GCC 13.3, callgrind) of a synthetic multi-corridor scenario shows engine

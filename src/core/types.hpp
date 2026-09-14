@@ -44,6 +44,11 @@ struct Scenario : ScenarioDefinition {
     std::vector<Segment> segments;
     std::vector<SignalHead> signalHeads;
 };
+struct RoutePart { std::string segmentId; double start{}, length{}; };
+// Route geometry is a pure function of an immutable Scenario, so it is resolved once per run
+// instead of per vehicle per tick. parts[i] corresponds to Scenario::routes[i] after
+// canonicalisation; nothing here is derived from vehicle state.
+struct ScenarioIndex { std::vector<std::vector<RoutePart>> parts; };
 enum class FollowingMode { free, approaching, following, braking };
 struct PendingVehicle {
     std::uint64_t id{};
@@ -94,6 +99,8 @@ using SimEvent = std::variant<SignalEvent, DepartedEvent, MovedEvent,
 struct SimState {
     // Detached at createSimulation; copies share only this immutable scenario.
     std::shared_ptr<const Scenario> scenario;
+    // Derived from scenario alone; shared, never copied per tick.
+    std::shared_ptr<const ScenarioIndex> index;
     std::uint32_t seed{}, randomState{};
     std::uint64_t tick{}, nextVehicleId{1}, completed{};
     double time{};

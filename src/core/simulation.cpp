@@ -41,6 +41,8 @@ SimState createSimulation(const Scenario& scenario, std::uint32_t seed) {
     assertValidScenario(scenario);
     SimState state;
     state.scenario = std::make_shared<const Scenario>(canonicalScenario(scenario));
+    // Built from the canonical scenario, so part order matches the sorted routes.
+    state.index = std::make_shared<const ScenarioIndex>(buildScenarioIndex(*state.scenario));
     state.seed = seed;
     state.randomState = seed == 0 ? 0x6d2b79f5U : seed;
     detail::initializeInputs(state);
@@ -58,7 +60,12 @@ SimState stepSimulation(const SimState& state, double dt) {
     if (dt != state.scenario->timeStep) throw std::invalid_argument("dt must equal scenario.timeStep");
     if (state.tick >= totalTicks(*state.scenario)) return state;
     const auto& scenario = *state.scenario;
+    // States built by createSimulation always carry an index; tolerate a hand-built one.
+    const auto indexOwner = state.index ? state.index
+                                        : std::make_shared<const ScenarioIndex>(buildScenarioIndex(scenario));
+    const auto& index = *indexOwner;
     SimState next = state; // Value copy of state; scenario alone is shared and const.
+    next.index = indexOwner;
     next.events.clear();
     detail::generateArrivals(next); // At START of tick, before insertion or movement.
     const auto tick = state.tick + 1;
@@ -80,7 +87,8 @@ SimState stepSimulation(const SimState& state, double dt) {
         Vehicle vehicle;
         static_cast<PendingVehicle&>(vehicle) = pending;
         vehicle.enteredTime = state.time;
-        const auto leader = closestVehicle(vehicle, routeParts(scenario, route), occupiedSpans(scenario, vehicles));
+        const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route),
+                                           occupiedSpans(scenario, vehicles, index));
         if (leader && leader->gap < behaviour.standstillDistance) continue;
         vehicles.push_back(vehicle);
         for (auto& input : next.inputs)
@@ -89,12 +97,12 @@ SimState stepSimulation(const SimState& state, double dt) {
                                          vehicle.scheduledTime, vehicle.desiredSpeed});
     }
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
-    const auto spans = occupiedSpans(scenario, vehicles); // Everyone sees the SAME pre-step state.
+    const auto spans = occupiedSpans(scenario, vehicles, index); // Everyone sees the SAME pre-step state.
     next.vehicles.clear();
     for (const auto& vehicle : vehicles) {
         const auto& type = detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId);
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
-        const auto parts = routeParts(scenario, detail::byId(scenario.routes, vehicle.routeId));
+        const auto& parts = partsFor(index, scenario, detail::byId(scenario.routes, vehicle.routeId));
         auto leader = closestVehicle(vehicle, parts, spans);
         double allowedDistance = leader ? std::max(0.0, leader->gap - behaviour.standstillDistance) :
                                           std::numeric_limits<double>::infinity();
@@ -132,7 +140,7 @@ SimState stepSimulation(const SimState& state, double dt) {
                 vehicle.enteredTime - vehicle.scheduledTime, routeLength / vehicle.desiredSpeed});
         } else {
             next.vehicles.push_back(moved);
-            const auto location = locateVehicle(scenario, moved);
+            const auto location = locateVehicle(scenario, moved, index);
             events.emplace_back(MovedEvent{time, vehicle.id, location.segmentId, location.position, speed, acceleration});
         }
     }
