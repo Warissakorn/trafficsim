@@ -53,6 +53,7 @@ void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneRef
     if (d.definition) for (const auto& r : d.definition->routes)
         for (const auto& segment : r.segmentIds)
             if (segment == id) throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
+    for(const auto& h:d.network.signalHeads)if(h.connectorId==id)throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
     uniqueConnection(d, from, to, id);
     c.from = from; c.to = to;
     reanchor(d, c);
@@ -66,6 +67,7 @@ void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straigh
 void deleteConnector(ProjectDocument& d, const std::string& id) {
     (void)editableConnector(d, id);
     std::erase_if(d.network.connectors, [&](const auto& c) { return c.id == id; });
+    std::erase_if(d.network.signalHeads,[&](const auto& h){return h.connectorId==id;});
     detail::removeRoutesUsingSegments(d, {id});
 }
 }

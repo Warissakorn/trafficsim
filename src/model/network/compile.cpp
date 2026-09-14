@@ -14,7 +14,7 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     for (const auto& connector : network.connectors)
         scenario.segments.push_back({connector.id, polylineLength(connector.geometry), {connector.to.laneId}});
     for (const auto& head : network.signalHeads)
-        scenario.signalHeads.push_back({head.id, head.lane.laneId, head.position, head.programId});
+        scenario.signalHeads.push_back({head.id, signalSegment(head), head.position, head.programId});
     return scenario; // All fields are owned values, independent of the editor model.
 }
 Scenario compileScenario(const Network& network, const ScenarioDefinition& definition) {

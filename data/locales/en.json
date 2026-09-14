@@ -236,5 +236,15 @@
   "editorRunStatus": "Revision %1 · seed %2 · %3 s · active %4 · pending %5 · completed %6",
   "EDIT_REFERENCED_PROGRAM": "This program is used by a signal head. Reassign or delete the head first.",
   "EDIT_CATALOG_READ": "Could not read vehicle or driver catalogs. Check the selected data directory and JSON files.",
-  "EDIT_NO_INPUTS": "Add a route and vehicle input before running this project."
+  "EDIT_NO_INPUTS": "Add a route and vehicle input before running this project.",
+  "EDIT_HEAD_REFERENCE": "Choose either a lane or a connector for a signal head, not both.",
+  "editorRecover": "Recover work",
+  "editorEmbedCatalogs": "Embed catalogs for portable save",
+  "editorRecovered": "Recovered as an unsaved project. Save to choose its destination.",
+  "editorNoRecovery": "No recoverable work was found.",
+  "editorRecoveryFound": "Unsaved work from a previous session is available. Review recovery copies?",
+  "editorChooseRecovery": "Choose a recovery copy (newest first).",
+  "EDIT_RECOVERY_LOCK": "This recovery copy is in use by another editor.",
+  "EDIT_FILE_FORMAT": "The file is not a valid TrafficSim JSON document.",
+  "EDIT_FILE_TOO_LARGE": "The project exceeds the 48 MB file limit."
 }

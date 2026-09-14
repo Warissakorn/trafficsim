@@ -71,7 +71,8 @@ Network parseNetwork(const Json& value) {
         network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from")), reference(member(c, "to")), points(c)});
     for (const auto& h : array(value, "signalHeads"))
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane")),
-                                      field<double>(h, "position"), field<std::string>(h, "programId")});
+                                      field<double>(h, "position"), field<std::string>(h, "programId"),
+                                      present(h,"connectorId")?field<std::string>(h,"connectorId"):std::string{}});
     return network;
 }
 DriverBehaviour parseBehaviour(const Json& b) {

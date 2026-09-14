@@ -97,7 +97,7 @@ void EditorWindow::refreshTables(bool modelChanged) {
         signalTable_->setRowCount(static_cast<int>(network.signalHeads.size()));
         for (int row=0; row<signalTable_->rowCount(); ++row) {
             const auto& head=network.signalHeads[static_cast<std::size_t>(row)];
-            fill(signalTable_,row,{QString::fromStdString(head.id),laneOf(head.lane),metres(head.position),
+            fill(signalTable_,row,{QString::fromStdString(head.id),head.connectorId.empty()?laneOf(head.lane):QString::fromStdString(head.connectorId),metres(head.position),
                 QString::fromStdString(head.programId)},QString::fromStdString(head.id));
         }
     }

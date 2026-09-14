@@ -53,6 +53,7 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
         // any field is read, or a project's legitimate "definition": null reads as corruption.
         if (!value.is_object()) code = "SCENARIO_NOT_JSON_OBJECT";
         else if (!present(value, "network")) code = "SCENARIO_NO_NETWORK";
+        else if (value.contains("schemaVersion")) code = "SCENARIO_IS_PROJECT";
         else if (!present(value, "definition"))
             // Not value("format", ...): that throws type_error.302 when the key is present but
             // not a string, which is the very leak this classification exists to prevent.

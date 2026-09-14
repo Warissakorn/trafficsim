@@ -54,7 +54,7 @@ void deleteLink(ProjectDocument& d, const std::string& id) {
     for (const auto& lane : l.lanes) removed.insert(lane.id);
     for (const auto& c : d.network.connectors) if (c.from.linkId == id || c.to.linkId == id) removed.insert(c.id);
     std::erase_if(d.network.connectors, [&](const auto& c) { return removed.contains(c.id); });
-    std::erase_if(d.network.signalHeads, [&](const auto& h) { return h.lane.linkId == id; });
+    std::erase_if(d.network.signalHeads, [&](const auto& h) { return h.lane.linkId == id || removed.contains(h.connectorId); });
     std::erase_if(d.network.links, [&](const auto& link) { return link.id == id; });
     detail::removeRoutesUsingSegments(d, removed);
 }

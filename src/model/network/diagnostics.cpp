@@ -49,7 +49,7 @@ std::string selectableFor(const Network& network, const std::string& objectId) {
         for (const auto& lane : link.lanes) if (lane.id == objectId) return link.id;
     }
     for (const auto& connector : network.connectors) if (connector.id == objectId) return connector.id;
-    for (const auto& head : network.signalHeads) if (head.id == objectId) return head.lane.linkId;
+    for (const auto& head : network.signalHeads) if (head.id == objectId) return head.connectorId.empty()?head.lane.linkId:head.connectorId;
     return {};
 }
 namespace {

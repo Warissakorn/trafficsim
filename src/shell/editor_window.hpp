@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <QKeySequence>
 
+class QLockFile;
 class QAction;
 class QComboBox;
 class QSpinBox;
@@ -28,6 +29,10 @@ namespace trafficsim {
 class EditorWindow : public QMainWindow {
 public:
     explicit EditorWindow(const std::filesystem::path& data, const QString& language = "en", QWidget* parent = nullptr);
+    ~EditorWindow() override;
+    void autosaveNow();
+    void recoverFile(const QString&);
+    QString recoveryPath() const { return recoveryFile_; }
     const History& history() const { return history_; }
     EditorCanvas* canvas() const { return canvas_; }
     void openFile(const QString& path); // Parse and validate before replacing the document.
@@ -40,6 +45,13 @@ protected:
 private:
     History history_;
     std::filesystem::path data_;
+    QString recoveryDirectory_, recoveryFile_;
+    std::unique_ptr<QLockFile> recoveryLock_;
+    QTimer autosaveTimer_;
+    std::optional<std::uint64_t> autosavedRevision_;
+    void buildRecovery();
+    void clearRecovery();
+    void recoverDialog(bool startup = false);
     QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{};
     void buildDemandTables();
     void refreshDemand();

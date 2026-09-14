@@ -68,6 +68,8 @@ void EditorWindow::editHead(const std::string& id) {
         lane->addItem(QString::fromStdString(link.id+" / "+l.id),QString::fromStdString(l.id));
         lane->setItemData(lane->count()-1,QString::fromStdString(link.id),Qt::UserRole+1);
     }
+    for(const auto& c:history_.document().network.connectors)lane->addItem(QString::fromStdString(c.id),QString::fromStdString(c.id));
+    if(!value.connectorId.empty())lane->setCurrentIndex(lane->findData(QString::fromStdString(value.connectorId)));
     if(!value.lane.laneId.empty())lane->setCurrentIndex(lane->findData(QString::fromStdString(value.lane.laneId)));
     auto* program=new QComboBox(&dialog);program->setObjectName("editorHeadProgram");
     if(history_.document().definition)for(const auto& p:history_.document().definition->signalPrograms)program->addItem(QString::fromStdString(p.id));
@@ -81,6 +83,8 @@ void EditorWindow::editHead(const std::string& id) {
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
     if(dialog.exec()!=QDialog::Accepted)return;
     value.lane={lane->currentData(Qt::UserRole+1).toString().toStdString(),lane->currentData().toString().toStdString()};
+    value.connectorId.clear();
+    if(value.lane.linkId.empty()){value.connectorId=value.lane.laneId;value.lane={};}
     value.position=station->value();value.programId=program->currentText().toStdString();
     execute("editorEditHead",[&](auto& d){putSignalHead(d,value);});
 }

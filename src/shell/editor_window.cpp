@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLockFile>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QSignalBlocker>
@@ -41,7 +42,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     error_=new QLabel(central); error_->setObjectName("editorError"); error_->setWordWrap(true);
     error_->setStyleSheet("color:#a5263c"); layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
-    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRun(); history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
+    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
         if(!confirmDiscard()) return;
         const auto file=QFileDialog::getOpenFileName(this,text("editorOpen"),{},text("editorFilter"));
@@ -105,7 +106,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         std::string created; if(execute("editorSplit",[&](auto& d){created=splitLink(d,id,distance);})) canvas_->select(created);
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
-    buildDemandTables(); buildRunControls();
+    buildDemandTables(); buildRunControls(); buildRecovery();
     history_.reset(); translate(); refresh(); resize(1280,850); canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {

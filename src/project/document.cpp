@@ -25,9 +25,9 @@ Json documentJson(const ProjectDocument& d) {
     for (const auto& c : d.network.connectors)
         network["connectors"].push_back({{"id", c.id}, {"from", reference(c.from)}, {"to", reference(c.to)}, {"geometry", points(c.geometry)}});
     for (const auto& h : d.network.signalHeads)
-        network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}});
+        network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}});
     const auto& b = d.background;
-    return {{"format", "TrafficSim"}, {"schemaVersion", 1}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
+    return {{"format", "TrafficSim"}, {"schemaVersion", 2}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
@@ -50,7 +50,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || j.at("schemaVersion") != 1 ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") != 1 && j.at("schemaVersion") != 2) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
