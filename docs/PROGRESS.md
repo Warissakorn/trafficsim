@@ -92,6 +92,24 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — CI packaging workflow for testable binaries
+
+Added `.github/workflows/package.yml`, a manually dispatched (`workflow_dispatch`) and
+`v*`-tag workflow that builds, tests and uploads runnable binaries so the owner can try a
+build without a local toolchain. Linux uses the `release` preset with apt Qt 6 and
+`ctest --preset release` under the offscreen platform; Windows uses MSVC 2022, vcpkg
+nlohmann/json and an aqt-installed Qt 6.5.3, then `windeployqt` so the archive runs on a
+clean machine. Both stage the existing `install()` rules into `dist/` (desktop, CLI, data
+catalogs) and add a `RUN.txt` that repeats the not-yet-validated marker.
+
+Existing `native.yml` push/PR verification is unchanged; packaging is deliberately a
+separate workflow so a slow Qt install never sits in the pull-request path. These are
+unsigned test builds — installer work still belongs to M7, and no milestone gate is
+affected. No engine, model or UI code changed.
+
+**Verification:** workflow YAML parsed locally; the build itself is proven by the CI run,
+not by this container, which has neither Qt nor nlohmann/json installed.
+
 ### 2026-09-14 — MIT License added
 
 Added a top-level `LICENSE` (MIT, copyright 2026 Warissakorn) and a README License section.
