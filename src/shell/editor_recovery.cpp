@@ -39,7 +39,8 @@ void EditorWindow::buildRecovery() {
     QTimer::singleShot(0,this,[this]{recoverDialog(true);});
 }
 void EditorWindow::autosaveNow() {
-    if(!history_.dirty() || (autosavedRevision_ && *autosavedRevision_==history_.revision()))return;
+    if(!history_.dirty()){clearRecovery();return;}
+    if(autosavedRevision_ && *autosavedRevision_==history_.revision())return;
     if(!recoveryLock_ || !recoveryLock_->isLocked())throw std::runtime_error("EDIT_RECOVERY_LOCK");
     validateDocument(history_.document());
     auto j=documentJson(history_.document());

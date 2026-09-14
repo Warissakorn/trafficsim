@@ -72,6 +72,10 @@ int main(int argc,char** argv) {
         const auto saved=directory.path()+QString::fromUtf8("/โครงการ.traffic.json");
         w.saveFile(saved);require(!w.history().dirty(),"save after recovery");
         require(!QFile::exists(copy),"successful save left consumed recovery copy");
+        item<QComboBox>(w,"editorDrivingSide")->setCurrentIndex(1);w.autosaveNow();
+        require(QFile::exists(w.recoveryPath()),"dirty edit did not create recovery");
+        action(w,"editorUndo");require(!w.history().dirty(),"Undo did not reach save point");
+        w.autosaveNow();require(!QFile::exists(w.recoveryPath()),"clean revision retained stale recovery");
         w.openFile(saved);action(w,"editorStep");require(w.runState().tick==1,"reopened project cannot run");
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);
         require(item<QAction>(w,"editorRun")->text().contains(QString::fromUtf8("จำลอง")),"Thai run label missing");

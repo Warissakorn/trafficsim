@@ -20,6 +20,8 @@ QPoint pixel(EditorCanvas* c,Point p){const auto q=c->mapFromScene(p.x,p.y);requ
 void drag(EditorCanvas* c,Point a,Point b,Qt::MouseButton button,Qt::KeyboardModifiers modifiers={}) {
     QTest::mousePress(c->viewport(),button,modifiers,pixel(c,a));QTest::mouseMove(c->viewport(),pixel(c,b));
     QTest::mouseRelease(c->viewport(),button,modifiers,pixel(c,b));
+    // Modal teardown queues activation/focus events; let the canvas receive keys again.
+    QTest::qWait(10);c->setFocus();QApplication::processEvents();
 }
 void confirm(const char* expected) {
     // QTest's mouse events process timers before release opens the modal. Wait for
@@ -51,7 +53,7 @@ int main(int argc,char** argv) {
         const auto links=w.history().document().network.links;
         const auto from=laneGeometry(links[0],links[0].lanes[0].id,DrivingSide::left).back();
         const auto to=laneGeometry(links[1],links[1].lanes[0].id,DrivingSide::left).front();
-        QTest::keyClick(c,Qt::Key_C);const auto before=documentJson(w.history().document());
+        QTest::keyClick(c,Qt::Key_C);require(item<QListWidget>(w,"editorObjectPalette")->currentRow()==2,"C did not select Connectors");const auto before=documentJson(w.history().document());
         QTest::mousePress(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,from));
         QTest::mouseMove(c->viewport(),pixel(c,to));QTest::keyClick(c,Qt::Key_Escape);
         QTest::mouseRelease(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,to));
