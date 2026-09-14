@@ -1,5 +1,7 @@
 #include "test.hpp"
+#include "../src/project/document.hpp"
 #include <fstream>
+#include <tuple>
 
 using namespace trafficsim;
 TEST(project, strict_seed_parser) {
@@ -35,4 +37,73 @@ TEST(project, catalog_and_translation_keys) {
         CHECK(value.is_string()); CHECK(!value.get<std::string>().empty());
         CHECK(th.at(key).is_string()); CHECK(!th.at(key).get<std::string>().empty());
     }
+}
+// The reported failure: an editor project opened in the simulation window used to surface
+// "[json.exception.type_error.304] cannot use at() with null" because a drawn network is
+// legitimately saved with "definition": null. It must name the file kind instead.
+TEST(project, file_kind_is_named_not_thrown_as_a_parser_error) {
+    const auto directory = std::filesystem::temp_directory_path() / "trafficsim-project-tests";
+    std::filesystem::create_directories(directory);
+    const auto data = test::root() / "data";
+    const auto write = [&](const std::string& name, const Json& value) {
+        const auto path = directory / name;
+        std::ofstream(path) << value.dump(2);
+        return path;
+    };
+    ProjectDocument drawn;
+    drawn.network = test::demo().network;
+    const auto project = documentJson(drawn);
+    CHECK(project.at("definition").is_null()); // the shape that produced the report
+    for (const auto& [name, value, code] : std::vector<std::tuple<std::string, Json, std::string>>{
+            {"network.traffic.json", project, "SCENARIO_IS_PROJECT"},
+            {"no-definition.json", Json{{"network", project.at("network")}}, "SCENARIO_NO_DEFINITION"},
+            {"null-network.json", Json{{"network", nullptr}, {"definition", Json::object()}}, "SCENARIO_NO_NETWORK"},
+            {"array.json", Json::array(), "SCENARIO_NOT_JSON_OBJECT"}}) {
+        const auto path = write(name, value);
+        try {
+            loadScenario(path, data);
+            throw std::runtime_error("Expected a load failure for " + name);
+        } catch (const ScenarioLoadError& error) {
+            CHECK(error.code == code);
+            CHECK(std::string(error.what()).find("json.exception") == std::string::npos);
+        }
+    }
+    std::filesystem::remove_all(directory);
+}
+TEST(project, editor_rejects_null_sections_with_named_codes) {
+    auto project = documentJson(ProjectDocument{});
+    CHECK(parseDocument(project).network.links.empty()); // the round trip still works
+    auto broken = project; broken["background"] = nullptr;
+    test::throws([&] { parseDocument(broken); }, "EDIT_BACKGROUND_INVALID");
+    broken = project; broken["background"]["metresPerPixel"] = nullptr;
+    test::throws([&] { parseDocument(broken); }, "EDIT_BACKGROUND_INVALID");
+    broken = project; broken["network"] = nullptr;
+    test::throws([&] { parseDocument(broken); }, "EDIT_NO_NETWORK");
+    broken = project; broken["nextId"] = nullptr;
+    test::throws([&] { parseDocument(broken); }, "EDIT_ID_LIMIT");
+    broken = project; broken["format"] = nullptr;
+    test::throws([&] { parseDocument(broken); }, "EDIT_VERSION");
+    test::throws([&] { parseDocument(Json(nullptr)); }, "EDIT_VERSION");
+}
+// No load path may surface an nlohmann exception: a null anywhere in a scenario must produce
+// a sentence naming the field, not "cannot use at() with null" / "type must be ... but is null".
+TEST(project, no_null_field_leaks_a_parser_exception) {
+    std::ifstream file(test::root() / "data/scenarios/crossing.json");
+    const auto source = Json::parse(file);
+    const auto nulled = [&](const std::function<void(Json&)>& breakIt) {
+        auto copy = source; breakIt(copy);
+        try { parseNetwork(copy.at("network")); parseDefinition(copy.at("definition")); }
+        catch (const std::exception& error) {
+            CHECK(std::string(error.what()).find("json.exception") == std::string::npos);
+            return;
+        }
+        throw std::runtime_error("Expected a rejection");
+    };
+    nulled([](Json& j) { j["network"]["links"][0]["id"] = nullptr; });
+    nulled([](Json& j) { j["network"]["links"][0]["lanes"][0]["width"] = nullptr; });
+    nulled([](Json& j) { j["network"]["connectors"][0]["from"] = nullptr; });
+    nulled([](Json& j) { j["network"]["signalHeads"][0]["lane"]["laneId"] = nullptr; });
+    nulled([](Json& j) { j["definition"]["routes"][0]["segmentIds"][0] = nullptr; });
+    nulled([](Json& j) { j["definition"]["signalPrograms"][0]["phases"] = nullptr; });
+    nulled([](Json& j) { j["definition"]["inputs"][0]["vehiclesPerHour"] = nullptr; });
 }

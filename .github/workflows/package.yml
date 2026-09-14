@@ -44,7 +44,7 @@ jobs:
 
           Results are NOT yet validated against field or reference data.
           EOF
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: trafficsim-linux-x86_64
           path: dist/
@@ -94,7 +94,7 @@ jobs:
 
           Results are NOT yet validated against field or reference data.
           '@ | Set-Content dist/RUN.txt
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: trafficsim-windows-x64
           path: dist/

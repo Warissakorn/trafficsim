@@ -1,5 +1,6 @@
 #include "../src/shell/main_window.hpp"
 #include "../src/shell/path.hpp"
+#include "../src/project/document.hpp"
 #include <QApplication>
 #include <QComboBox>
 #include <QLabel>
@@ -7,6 +8,7 @@
 #include <QPushButton>
 #include <QTest>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 
 namespace {
@@ -52,6 +54,19 @@ int main(int argc, char** argv) {
         catch (const std::exception&) { rejected = true; }
         require(rejected, "Missing file accepted");
         require(window.state().scenario == before, "Failed load changed current scenario");
+        {   // A network drawn in the editor is a project, not a runnable scenario: this window
+            // must say which kind of file it is, never relay a JSON parser exception.
+            const trafficsim::ProjectDocument drawn; // an empty network is a legal draft
+            const auto path = std::filesystem::temp_directory_path() / "trafficsim-desktop-tests" / "network.traffic.json";
+            std::filesystem::create_directories(path.parent_path());
+            std::ofstream(path) << trafficsim::documentJson(drawn).dump(2);
+            std::string code;
+            try { window.loadFile(path); }
+            catch (const trafficsim::ScenarioLoadError& error) { code = error.code; }
+            require(code == "SCENARIO_IS_PROJECT", "Editor project was not recognised as a project");
+            require(window.state().scenario == before, "Rejected project changed current scenario");
+            std::filesystem::remove_all(path.parent_path());
+        }
         window.resize(640, 760); language->setCurrentIndex(1); QTest::qWait(50);
         require(window.centralWidget()->geometry().width() <= window.width(), "Layout overflow");
         if (argc > 2) {

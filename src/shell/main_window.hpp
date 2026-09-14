@@ -22,8 +22,10 @@ public:
     RunSummary summary() const { return summary_.summary(); }
     bool isRunning() const { return timer_.isActive(); }
     void loadFile(const std::filesystem::path& file);
+    void openEditor(const QString& file = {});
 private:
     QString text(const char* key) const;
+    void showLoadError(const std::exception& error, const QString& file);
     void changeLanguage();
     void refresh();
     void reset();
