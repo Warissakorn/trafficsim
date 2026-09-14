@@ -14,7 +14,7 @@ void appendSpans(std::vector<OccupiedSpan>& spans, const std::vector<RoutePart>&
                  const Vehicle& vehicle, double length) {
     for (const auto& part : parts)
         if (vehicle.distance >= part.start && vehicle.distance - length < part.start + part.length)
-            spans.push_back({vehicle.id, part.segmentId,
+            spans.push_back({vehicle.id, part.segmentId, part.segmentIndex,
                 std::max(0.0, vehicle.distance - length - part.start),
                 std::min(part.length, vehicle.distance - part.start), vehicle.speed});
 }
@@ -23,9 +23,11 @@ std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route) 
     double start = 0;
     std::vector<RoutePart> parts;
     for (const auto& id : route.segmentIds) {
-        const double length = detail::byId(scenario.segments, id).length;
-        parts.push_back({id, start, length});
-        start += length;
+        const auto& segment = detail::byId(scenario.segments, id);
+        // Segments are contiguous, so the segment's own address gives its index.
+        parts.push_back({id, static_cast<std::size_t>(&segment - scenario.segments.data()),
+                         start, segment.length});
+        start += segment.length;
     }
     return parts;
 }

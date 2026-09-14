@@ -19,13 +19,31 @@ Scenario canonicalScenario(Scenario scenario) {
     sort(scenario.inputs); sort(scenario.signalPrograms); sort(scenario.signalHeads);
     return scenario;
 }
+// Spans grouped by segment, flat (CSR) so grouping costs three allocations, not one per segment.
+// items keeps each segment's spans in their original relative order, which is what makes the
+// strictly-less-than tie-break below select exactly the same span as a full scan would.
+struct SpanBuckets {
+    std::vector<std::uint32_t> start, items;
+};
+SpanBuckets bucketSpans(const std::vector<OccupiedSpan>& spans, std::size_t segmentCount) {
+    SpanBuckets buckets;
+    buckets.start.assign(segmentCount + 1, 0);
+    for (const auto& span : spans) ++buckets.start[span.segmentIndex + 1];
+    for (std::size_t i = 0; i < segmentCount; ++i) buckets.start[i + 1] += buckets.start[i];
+    buckets.items.resize(spans.size());
+    auto cursor = buckets.start;
+    for (std::uint32_t i = 0; i < spans.size(); ++i) buckets.items[cursor[spans[i].segmentIndex]++] = i;
+    return buckets;
+}
 std::optional<Leader> closestVehicle(const Vehicle& vehicle, const std::vector<RoutePart>& parts,
-                                     const std::vector<OccupiedSpan>& spans) {
+                                     const std::vector<OccupiedSpan>& spans, const SpanBuckets& buckets) {
     std::optional<Leader> nearest;
     for (const auto& part : parts) {
         if (part.start + part.length < vehicle.distance) continue;
-        for (const auto& span : spans) {
-            if (span.vehicleId == vehicle.id || span.segmentId != part.segmentId ||
+        // Only this segment's spans; the segmentId comparison the full scan did is now implicit.
+        for (auto i = buckets.start[part.segmentIndex]; i < buckets.start[part.segmentIndex + 1]; ++i) {
+            const auto& span = spans[buckets.items[i]];
+            if (span.vehicleId == vehicle.id ||
                 part.start + span.front < vehicle.distance - 1e-9) continue;
             const double gap = part.start + span.rear - vehicle.distance;
             if (!nearest || gap < nearest->gap) nearest = Leader{gap, span.speed};
@@ -87,8 +105,9 @@ SimState stepSimulation(const SimState& state, double dt) {
         Vehicle vehicle;
         static_cast<PendingVehicle&>(vehicle) = pending;
         vehicle.enteredTime = state.time;
-        const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route),
-                                           occupiedSpans(scenario, vehicles, index));
+        const auto candidateSpans = occupiedSpans(scenario, vehicles, index);
+        const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route), candidateSpans,
+                                           bucketSpans(candidateSpans, scenario.segments.size()));
         if (leader && leader->gap < behaviour.standstillDistance) continue;
         vehicles.push_back(vehicle);
         for (auto& input : next.inputs)
@@ -98,12 +117,13 @@ SimState stepSimulation(const SimState& state, double dt) {
     }
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
     const auto spans = occupiedSpans(scenario, vehicles, index); // Everyone sees the SAME pre-step state.
+    const auto buckets = bucketSpans(spans, scenario.segments.size());
     next.vehicles.clear();
     for (const auto& vehicle : vehicles) {
         const auto& type = detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId);
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         const auto& parts = partsFor(index, scenario, detail::byId(scenario.routes, vehicle.routeId));
-        auto leader = closestVehicle(vehicle, parts, spans);
+        auto leader = closestVehicle(vehicle, parts, spans, buckets);
         double allowedDistance = leader ? std::max(0.0, leader->gap - behaviour.standstillDistance) :
                                           std::numeric_limits<double>::infinity();
         for (const auto& head : scenario.signalHeads) {

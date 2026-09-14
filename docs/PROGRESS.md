@@ -92,6 +92,38 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — hot path 2/3: leader search grouped by segment
+
+`closestVehicle` scanned every occupied span for every route part of every vehicle on every
+tick, rejecting non-matching ones with an `std::string` segment comparison. That nested scan
+was 39% of total instructions and carried the quadratic growth term.
+
+Spans are now grouped by segment in a flat CSR layout (`start` offsets plus an `items` index
+array), so a vehicle only ever looks at spans on the segments its own route actually uses.
+`RoutePart` and `OccupiedSpan` carry a resolved `segmentIndex`, recovered during index
+construction from the segment's address in the contiguous `segments` vector, so grouping needs
+no string hashing. CSR rather than a vector-per-segment keeps this to three allocations
+instead of one per segment, which matters because the pending-vehicle loop regroups per
+candidate.
+
+**Order is the correctness argument.** The bucket fill is stable, so each segment's spans keep
+their original relative order, and the outer loop still walks route parts in order. The set and
+sequence of spans that survive to the `gap < nearest->gap` test is therefore exactly what the
+full scan produced, and that strict comparison keeps first-encountered-wins tie-breaking
+unchanged. The dropped `span.segmentId != part.segmentId` test is now implicit in the bucket.
+
+**Measured** (Release, GCC 13.3, median of 3, identical commands):
+0.031/0.058/0.152/0.433/1.196/**3.731 s** for 1/2/4/8/16/32 corridors — **-67% against the
+previous slice at 466 vehicles, -78.9% against the session baseline of 17.724 s**. Growth fell
+from O(V^1.85) to about **O(V^1.6)**. The residual superlinear term is the per-candidate
+`occupiedSpans` rebuild and the per-vehicle signal-head scan, both untouched here.
+
+Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
+value pin, plus the same 12 multi-seed multi-size CLI runs byte-identical to the pre-session
+binary.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
 ### 2026-09-14 — hot path 1/3: route geometry resolved once per run
 
 `routeParts` was recomputed for every vehicle on every tick — 1,867,548 calls in an

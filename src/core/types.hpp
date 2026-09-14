@@ -44,7 +44,7 @@ struct Scenario : ScenarioDefinition {
     std::vector<Segment> segments;
     std::vector<SignalHead> signalHeads;
 };
-struct RoutePart { std::string segmentId; double start{}, length{}; };
+struct RoutePart { std::string segmentId; std::size_t segmentIndex{}; double start{}, length{}; };
 // Route geometry is a pure function of an immutable Scenario, so it is resolved once per run
 // instead of per vehicle per tick. parts[i] corresponds to Scenario::routes[i] after
 // canonicalisation; nothing here is derived from vehicle state.

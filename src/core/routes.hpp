@@ -4,7 +4,8 @@
 namespace trafficsim {
 struct VehicleLocation { std::string segmentId; double position{}; };
 struct OccupiedSpan {
-    std::uint64_t vehicleId{}; std::string segmentId; double rear{}, front{}, speed{};
+    std::uint64_t vehicleId{}; std::string segmentId; std::size_t segmentIndex{};
+    double rear{}, front{}, speed{};
 };
 std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route);
 // Resolved once per run; parts[i] corresponds to scenario.routes[i].
