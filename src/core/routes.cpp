@@ -81,6 +81,10 @@ std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vec
                     scenario.vehicleTypes[refs[i].type].length);
     return spans;
 }
+void appendVehicleSpans(std::vector<OccupiedSpan>& spans, const Scenario& scenario,
+                        const ScenarioIndex& index, const Vehicle& vehicle, const VehicleRefs& refs) {
+    appendSpans(spans, index.parts[refs.route], vehicle, scenario.vehicleTypes[refs.type].length);
+}
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle) {
     return locate(routeParts(scenario, detail::byId(scenario.routes, vehicle.routeId)), vehicle);
 }

@@ -97,19 +97,38 @@ SimState stepSimulation(const SimState& state, double dt) {
         return a.scheduledTime == b.scheduledTime ? a.id < b.id : a.scheduledTime < b.scheduledTime;
     });
     std::set<std::string> attemptedSources;
+    // Built at most once per tick rather than per candidate, and only once a candidate actually
+    // survives the source filter - most ticks have no arrival at all and must stay free.
+    // Insertions append to both, reproducing exactly what a full rebuild over the grown vehicle
+    // list would have produced.
+    std::vector<VehicleRefs> candidateRefs;
+    std::vector<OccupiedSpan> candidateSpans;
+    SpanBuckets candidateBuckets;
+    bool spansBuilt = false;
     for (const auto& pending : candidates) {
         const auto& route = detail::byId(scenario.routes, pending.routeId);
         if (!attemptedSources.insert(route.segmentIds.front()).second) continue;
         const auto& type = detail::byId(scenario.vehicleTypes, pending.vehicleTypeId);
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
+        if (!spansBuilt) {
+            candidateRefs = resolveRefs(scenario, vehicles);
+            candidateSpans = occupiedSpans(scenario, vehicles, index, candidateRefs);
+            candidateBuckets = bucketSpans(candidateSpans, scenario.segments.size());
+            spansBuilt = true;
+        }
         Vehicle vehicle;
         static_cast<PendingVehicle&>(vehicle) = pending;
         vehicle.enteredTime = state.time;
-        const auto candidateSpans = occupiedSpans(scenario, vehicles, index);
         const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route), candidateSpans,
-                                           bucketSpans(candidateSpans, scenario.segments.size()));
+                                           candidateBuckets);
         if (leader && leader->gap < behaviour.standstillDistance) continue;
+        const VehicleRefs inserted{static_cast<std::size_t>(&route - scenario.routes.data()),
+                                   static_cast<std::size_t>(&type - scenario.vehicleTypes.data()),
+                                   static_cast<std::size_t>(&behaviour - scenario.behaviours.data())};
         vehicles.push_back(vehicle);
+        candidateRefs.push_back(inserted);
+        appendVehicleSpans(candidateSpans, scenario, index, vehicle, inserted);
+        candidateBuckets = bucketSpans(candidateSpans, scenario.segments.size());
         for (auto& input : next.inputs)
             if (input.id == pending.inputId) { input.queue.erase(input.queue.begin()); break; }
         events.emplace_back(DepartedEvent{state.time, vehicle.id, vehicle.routeId,

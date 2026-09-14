@@ -22,4 +22,8 @@ std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vec
                                         const ScenarioIndex& index);
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
                                         const ScenarioIndex& index, const std::vector<VehicleRefs>& refs);
+// Appends exactly the spans occupiedSpans would have produced for this one vehicle, so a caller
+// that adds vehicles one at a time ends up with a byte-identical span list.
+void appendVehicleSpans(std::vector<OccupiedSpan>& spans, const Scenario& scenario,
+                        const ScenarioIndex& index, const Vehicle& vehicle, const VehicleRefs& refs);
 }
