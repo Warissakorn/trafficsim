@@ -28,6 +28,10 @@ sidebar and creation/duplication/overlap gestures. Unequal ranges may author mer
 still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
 duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
 and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
+The fourth-slice CI passed Linux headless and Windows core. Desktop compilation passed;
+three UI regressions exposed a topology-diagnostics early return, a fixture outside the
+new viewport, and a seeded arrival later than the fixed sampling time. These are corrected
+and range compilation, reference safety, duplication and migration regressions are added.
 The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
 
 ## Next

@@ -1,8 +1,9 @@
 #include "run.hpp"
+#include "diagnostics.hpp"
 #include "../core/validate.hpp"
 namespace trafficsim {
 std::vector<Diagnostic> runDiagnostics(const ProjectDocument& d, const std::filesystem::path& data) {
-    if (!d.definition) return {{"EDIT_NO_DEFINITION","definition",{},{},DiagnosticSeverity::runtime}};
+    if (!d.definition) return documentDiagnostics(d);
     try {
         auto rows=runtimeDiagnostics(d.network,resolveCatalogs(*d.definition,data));
         if (d.definition->inputs.empty())

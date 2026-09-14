@@ -50,6 +50,9 @@ int main(int argc,char** argv) {
         require(argc>=2,"Expected data directory");QTemporaryDir directory;require(directory.isValid(),"temp directory");
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(30);
         auto* c=w.canvas();auto* tool=item<QComboBox>(w,"editorTool");
+        // Fit the fixture's drawing area to the actual viewport after docks have laid out.
+        c->fitInView(QRectF(-75,-40,150,100),Qt::KeepAspectRatio);
+        c->centerOn(0,10);
         const auto draw=[&](Point a,Point b){tool->setCurrentIndex(1);click(c,a);click(c,b);QTest::keyClick(c,Qt::Key_Return);};
         draw({-65,-30},{-15,-30});draw({15,0},{15,50});draw({25,-30},{65,-30});
         require(w.history().document().network.links.size()==3,"Road drawing failed");action(w,"editorFit");
