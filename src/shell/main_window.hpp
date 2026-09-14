@@ -22,9 +22,13 @@ public:
     RunSummary summary() const { return summary_.summary(); }
     bool isRunning() const { return timer_.isActive(); }
     void loadFile(const std::filesystem::path& file);
+    // Load and, on failure, explain it in this window rather than killing the process: a
+    // startup --scenario that names an editor project must still reach the editor offer.
+    void openScenario(const std::filesystem::path& file);
     void openEditor(const QString& file = {});
 private:
     QString text(const char* key) const;
+    QString explain(const std::exception& error) const; // translated code, else raw detail
     void showLoadError(const std::exception& error, const QString& file);
     void changeLanguage();
     void refresh();

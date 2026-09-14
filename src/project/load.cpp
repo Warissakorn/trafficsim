@@ -37,7 +37,10 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
         if (!value.is_object()) code = "SCENARIO_NOT_JSON_OBJECT";
         else if (!present(value, "network")) code = "SCENARIO_NO_NETWORK";
         else if (!present(value, "definition"))
-            code = value.contains("schemaVersion") || value.value("format", std::string{}) == "TrafficSim"
+            // Not value("format", ...): that throws type_error.302 when the key is present but
+            // not a string, which is the very leak this classification exists to prevent.
+            code = value.contains("schemaVersion") ||
+                   (value.contains("format") && value.at("format").is_string() && value.at("format") == "TrafficSim")
                 ? "SCENARIO_IS_PROJECT" : "SCENARIO_NO_DEFINITION";
         if (!code.empty()) throw std::invalid_argument(code);
         const auto& declared = section(value, "definition");

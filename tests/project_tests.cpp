@@ -107,3 +107,26 @@ TEST(project, no_null_field_leaks_a_parser_exception) {
     nulled([](Json& j) { j["definition"]["signalPrograms"][0]["phases"] = nullptr; });
     nulled([](Json& j) { j["definition"]["inputs"][0]["vehiclesPerHour"] = nullptr; });
 }
+// Root-level metadata is where classification itself reads, and it was the one place a
+// parser exception still escaped: value("format", std::string{}) throws when the key is
+// present but not a string. Drive these through loadScenario, not the section parsers.
+TEST(project, file_kind_classification_survives_broken_metadata) {
+    const auto directory = std::filesystem::temp_directory_path() / "trafficsim-metadata-tests";
+    std::filesystem::create_directories(directory);
+    std::ifstream source(test::root() / "data/scenarios/crossing.json");
+    const auto scenario = Json::parse(source);
+    for (const auto& metadata : {Json(nullptr), Json(42), Json(Json::array()), Json("TrafficSim"), Json("other")})
+        for (const auto* key : {"format", "schemaVersion"}) {
+            auto broken = scenario; broken.erase("definition"); broken[key] = metadata;
+            const auto path = directory / "broken.json";
+            std::ofstream(path) << broken.dump(2);
+            try {
+                loadScenario(path, test::root() / "data");
+                throw std::runtime_error("Expected a load failure");
+            } catch (const ScenarioLoadError& error) {
+                CHECK(std::string(error.what()).find("json.exception") == std::string::npos);
+                CHECK(error.code == "SCENARIO_IS_PROJECT" || error.code == "SCENARIO_NO_DEFINITION");
+            }
+        }
+    std::filesystem::remove_all(directory);
+}

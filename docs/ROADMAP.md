@@ -148,9 +148,18 @@ Not implemented. The edit mode is a six-entry `QComboBox`, connectors are create
 at a time, `Delete` removes a geometry vertex rather than the selected objects, and no shortcut
 selects a tool at all. See [`VISSIM_PARITY.md`](VISSIM_PARITY.md) §1–2 for the measured gap.
 
-**Scope:** a permanent network-objects sidebar replacing the tool dropdown; connector creation
-in one gesture across a lane range rather than per pair; `Delete` acting on the selection with
-vertex removal moved to a modifier; a shortcut per object type.
+**Scope:** a permanent network-objects sidebar replacing the tool dropdown; `Ctrl`+right-drag as
+the single creation chord for every object type, which is what the sidebar disambiguates;
+connector creation in one gesture across a **lane range**; `Delete` acting on the selection with
+vertex removal moved to a modifier; a shortcut per object type and `Tab` to cycle overlapping
+objects; and a decision on the two chords Vissim already uses for something else —
+`Ctrl`+left-click (duplicate there, extend-selection here) and `Ctrl+B` (background image there,
+Objects dock here).
+
+**Not a UI-only milestone.** One Vissim gesture connects a *range* of lanes; `Connector { from,
+to }` holds a single lane pair (`src/model/network/network.hpp`), so the gesture cannot be
+adopted honestly without widening the connector model and everything that reanchors it. Size it
+as a model change with a gesture on top.
 
 **Done when:** an engineer who uses Vissim daily draws a four-leg intersection here without
 looking for a control that is not where their hand expects it.

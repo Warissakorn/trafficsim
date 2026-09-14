@@ -21,20 +21,42 @@ not-yet-validated marker (D5, hard rule 4) stands over everything below.
 This is the part that decides whether an engineer feels at home in the first ten minutes, and
 it is where the editor diverges most.
 
+**Source note.** The Vissim column below is the owner's reference material (2026-09-14),
+not the PTV manual. Rows it states explicitly are marked ✔; rows carried over from the first
+draft of this review and *not* confirmed by it are marked **?** and must be checked against
+Vissim itself before M1.9 designs against them. An earlier revision of this file asserted
+plain right-drag for creation and Ctrl+right-drag for panning — **that was backwards**, and it
+invalidated the conclusion drawn from it. Do not restore it.
+
 | | Vissim | Today | Gap |
 |---|---|---|---|
-| Choosing what you are about to create | Click a type in the **Network Objects** sidebar; the sidebar is the mode, and it stays visible | A `QComboBox` of six tools: `select, draw, split, measure, calibrate, connect` (`src/editor/canvas.hpp:10`, wired at `src/shell/editor_window.cpp:57-59`) | The current mode is a collapsed dropdown showing one line of text. Vissim's is a permanent list — you can see every object type you *could* be placing |
-| Creating a link | Right-drag on empty space, then a dialog for lanes and width | Pick **Draw link**, set lane count and width in the inspector, click each centreline point, Enter or double-click to finish (`docs/NETWORK_EDITOR.md` §Draw) | Different but defensible — polyline-by-clicks suits tracing an aerial image better than Vissim's drag. Keep |
-| Creating a connector | **Right-drag from the source link to the target link**, then one dialog choosing the lane range at each end | Two clicks: an orange circle at a source lane end, then a teal circle at a target lane start (`src/editor/canvas_connectors.cpp`), or two combo boxes in **Properties → Connectors** | The real cost: a four-lane-to-four-lane movement is **one** right-drag in Vissim and **four** two-click pairs here. This is the owner's third priority |
-| Panning | Ctrl+right-drag; right-drag alone is object creation | Right-button **or** middle-button drag (`src/editor/canvas_input.cpp`) | Right-drag is spent on pan here, which is exactly why connector creation had to become two clicks. The two decisions are one decision |
-| Zooming | Wheel | Wheel, around the pointer | Matches |
-| Opening an object's properties | Double-click the object | Double-click **inserts a geometry point**; properties are a separate always-open inspector dock | Divergent, and mildly hostile: the Vissim reflex edits geometry here |
-| Adding to a selection | Ctrl+click | Ctrl+click or Shift+click, plus rubber band on empty space (`src/editor/canvas_select.cpp`) | Matches |
-| Deleting the selection | Delete key | Delete on the canvas removes a **geometry vertex** (`src/editor/canvas_input.cpp:135-137`); deleting objects is a toolbar button with a confirmation dialog | Divergent, and the most likely source of a wrong-thing-deleted moment. Worth fixing with M1.9 |
-| Moving several objects | Drag the selection | Not possible — "There is no group drag" (`docs/NETWORK_EDITOR.md` §M1.5) | Known and documented. Reanchoring every attached connector is the reason; it is real work, not an oversight |
+| Choosing what you are about to create | Click a type in the **Network Objects** sidebar; the sidebar is the mode, and it stays visible ✔ | A `QComboBox` of six tools: `select, draw, split, measure, calibrate, connect` (`src/editor/canvas.hpp:10`, wired at `src/shell/editor_window.cpp:57-59`) | The current mode is a collapsed dropdown showing one line of text. Vissim's is a permanent list — you can see every object type you *could* be placing |
+| Creating a link | **`Ctrl` + right-drag** from start to end on empty space, then a **Link Data** dialog for lane count and widths ✔ | Pick **Draw link**, set lane count and width in the inspector, click each centreline point, Enter or double-click to finish (`docs/NETWORK_EDITOR.md` §Draw) | Ours is a polyline of clicks, Vissim's is one drag plus a dialog. Defensible: tracing an aerial image wants per-point placement. But the **creation chord** should still be `Ctrl`+right-drag so the reflex transfers |
+| Adding curve points to a link | **`Ctrl` + right-click** on the link ✔ | Double-click the centreline (`docs/NETWORK_EDITOR.md` §Draw) | Divergent, and it collides with the Vissim reflex below |
+| Rotating a link | **`Alt` + left-drag** on the selection ✔ | Not possible at all | Absent. Cheap to add once group transforms exist; blocked by the same connector-reanchoring problem as group drag |
+| Creating a connector | **`Ctrl` + right-drag** from the source link to the target link, then a **Connector** dialog choosing the lane range at each end; **left-click during the drag adds spline points** ✔ | Two clicks: an orange circle at a source lane end, then a teal circle at a target lane start (`src/editor/canvas_connectors.cpp`), or two combo boxes in **Properties → Connectors** | The real cost: a four-lane-to-four-lane movement is **one** `Ctrl`+right-drag in Vissim and **four** two-click pairs here. Vissim also shapes the curve in the same gesture; we require a separate editing pass. Owner's third priority |
+| Adjusting lane count across a connector | **Corner drag points** on the connector when source and target lane counts differ ✔ | Not possible — a connector is one lane to one lane (`src/model/network/network.hpp`) | Structural, not cosmetic: our connector model has no lane *range*. M1.9 has to widen the model, not just the gesture |
+| Panning | Plain right-drag is **not** spent on object creation — creation is `Ctrl`+right-drag ✔ | Right-button **or** middle-button drag (`src/editor/canvas_input.cpp`) | **No conflict.** Our right-drag pan can stay exactly as it is and `Ctrl`+right-drag creation can be added on top. This removes the only reason the two-click connector flow existed |
+| Zooming | Wheel ✔ (implied) | Wheel, around the pointer | Matches |
+| Opening an object's properties | Double-click the object **?** — unconfirmed by the reference, which shows dialogs opening on *creation* | Double-click **inserts a geometry point**; properties are a separate always-open inspector dock | Verify before acting. Our always-visible inspector may be the better design regardless |
+| Adding to a selection | Not stated. The reference gives **`Ctrl` + left-click = duplicate the selection** ✔ | `Ctrl`+click or Shift+click adds/removes one object; rubber band on empty space (`src/editor/canvas_select.cpp`) | **Direct semantic collision on the same chord**: the gesture that extends a selection here *copies an object* there. A Vissim user reaching for `Ctrl`+click expects a duplicate. This is more dangerous than a missing feature |
+| Cycling overlapping objects | **`Tab`** at the click position ✔ | Nothing — `hit()` returns the nearest object and there is no way to reach the one behind it (`src/editor/canvas.hpp:64`) | Absent, and genuinely needed: links and connectors overlap constantly at a junction. `hit()` already ranks by distance, so the ordered list this needs mostly exists |
+| Deleting the selection | `Delete` **?** — not in the reference | `Delete` on the canvas removes a **geometry vertex** (`src/editor/canvas_input.cpp:135-137`); deleting objects is a toolbar button with a confirmation dialog | Divergent from near-universal convention regardless of Vissim. Worth fixing with M1.9 |
+| Moving several objects | Drag the selection **?** | Not possible — "There is no group drag" (`docs/NETWORK_EDITOR.md` §M1.5) | Known and documented. Reanchoring every attached connector is the reason; it is real work, not an oversight |
 
-**Summary.** Selection is already Vissim-shaped. Creation and deletion are not, and both trace
-back to one root choice: right-drag was given to panning.
+**Summary, corrected.** Vissim's creation verb is **`Ctrl` + right-drag**, uniformly, for every
+network object. That single fact changes the M1.9 design in two ways:
+
+1. **Right-drag panning is not the obstacle.** The first draft of this review claimed the
+   two-click connector flow was forced by giving right-drag to panning. It was not — the chord
+   Vissim uses is still free here. Adopting it costs nothing we currently have.
+2. **The blocker is the model, not the mouse.** One Vissim gesture creates a connector across a
+   *lane range*; `Connector { from, to }` holds one lane pair. The gesture cannot be adopted
+   honestly until the connector model carries a range, so M1.9 is a model change with a gesture
+   on top — not a UI-only milestone. Sizing it as UI-only would be wrong.
+
+The `Ctrl`+left-click collision is the one item here that can destroy work rather than merely
+annoy, and it should be settled before any other gesture change.
 
 ---
 
@@ -43,10 +65,12 @@ back to one root choice: right-drag was given to panning.
 Vissim users work with one hand on the keyboard. The current set is thin — this is the honest
 inventory, not a curated one.
 
+### What the editor binds today
+
 | Action | Today | Source |
 |---|---|---|
 | New / Open / Save / Save As | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | `src/shell/editor_window.cpp:44-51` |
-| Undo / Redo | Platform defaults | `src/shell/editor_window.cpp:53-54` |
+| Undo / Redo | Qt platform defaults — Redo is `Ctrl+Shift+Z` on Linux, `Ctrl+Y` on Windows | `src/shell/editor_window.cpp:53-54` |
 | Fit network | `F` | `src/shell/editor_window.cpp:61` |
 | Properties dock | `Ctrl+I` | `src/shell/editor_inspector.cpp:76` |
 | Objects and problems dock | `Ctrl+B` | `src/shell/editor_tables.cpp:59` |
@@ -54,13 +78,53 @@ inventory, not a curated one.
 | Finish the link being drawn | `Enter` | `src/editor/canvas_input.cpp:136` |
 | Remove the selected geometry point | `Delete` | `src/editor/canvas_input.cpp:137` |
 
-**Absent entirely:** any shortcut that selects a tool. Every mode change is a trip to the
-dropdown with the mouse — the single most repeated motion in a drawing session, and the one
-with no keyboard path at all.
+The **simulation window binds no shortcut at all** — Run, Step and Reset are buttons only
+(`src/shell/main_window.cpp`; no `setShortcut` anywhere in it).
 
-Proposed with M1.9, in the shape Vissim users expect: a digit or letter per network object
-type, `Delete` acting on the selected **objects** with vertex removal moved to a modifier,
-`Ctrl+Shift+click` for the second endpoint, and `Space` to toggle the last two tools.
+### Collisions with Vissim
+
+Not "missing" — **bound to something else**. These are the rows that will actively mislead a
+Vissim user, listed before the gaps because a wrong action is worse than an absent one.
+
+| Chord | Vissim ✔ | Here | Severity |
+|---|---|---|---|
+| `Ctrl+B` | Show/hide the **background image** | Toggle the Objects and problems dock | **High** — the editor *has* a background image (M1.2), so both meanings are live and plausible in the same window |
+| `Ctrl` + left-click | **Duplicate** the selection | Add/remove one object from the selection | **High** — see §1; the same chord, two incompatible verbs |
+| `Ctrl+N` | Toggle simple network display | New project | Medium — `Ctrl+N` = New is near-universal outside Vissim. A deliberate choice to make, not an automatic change |
+| `Ctrl+A` | Toggle wireframe / normal link display | Unbound | Low — free to take |
+| `Esc` | **Stop the simulation** | Cancel the current drawing gesture | Deferred — harmless today, becomes live the moment M1.8 puts Run in this window |
+| Redo | `Ctrl+Y` | Platform default (`Ctrl+Shift+Z` on Linux) | Low — Windows already matches; Linux does not |
+
+### Absent, and worth taking
+
+| Vissim ✔ | Purpose | Where it belongs |
+|---|---|---|
+| `F5` / `F6` / `Space` / `Esc` / `+` / `-` | Run continuously · single step · next step · stop · faster · slower | **M1.8** — adopt this set wholesale rather than inventing one; note `Esc` above |
+| `Tab` | Cycle objects overlapping the click point | M1.9 |
+| `Ctrl+C` / `Ctrl+V` | Copy / paste network objects | Not booked — needs an ID-allocation policy for pasted objects |
+| `Ctrl+Q` | Quick mode (draw less, simulate faster) | M1.8, if the vehicle layer needs it |
+| Per-object-type keys | Select the active network object type | M1.9 — today **no shortcut selects a tool at all**, so the most repeated action in a drawing session has no keyboard path |
+
+`Ctrl+D` (3D), `Ctrl+U` (time format), `Ctrl+T` and the 3D navigation keys (`K` `I` `J` `L`
+`Q` `A`) are out of scope: there is no 3D mode and no wall-clock display to toggle.
+
+---
+
+## 2b. Creation gestures for the objects we do not have yet
+
+Recorded now because M1.5.1 is the **next** milestone and it authors two of these. Adopting the
+gesture at the same time as the model is far cheaper than retrofitting it.
+
+| Object | Vissim gesture ✔ | Status here |
+|---|---|---|
+| **Vehicle routes (static)** | `Ctrl`+right-click on the link/connector at the routing decision, then left-click the destination section | No authoring model — untyped JSON under `ProjectDocument::definition`. **M1.5.1** |
+| **Nodes** | Right-click-drag a polygon over the junction, double-click the first point to close | Absent entirely. Nodes are how Vissim aggregates delay and queue per junction — the output a traffic impact study needs. Belongs with **M5 evaluation**, not the editor |
+| **Signal controllers** | `Signal Control > Signal Controllers` table, right-click → **Add…**, then **Edit signal groups** | We have `NetworkSignalHead { programId }` and a flat `SignalProgram` — no controller, no signal groups, no head-to-group mapping. **M4** |
+| **Parking lots** | **Car Park Creator** generates bays and their connectors from a drawn area | Absent. Not booked (§4) |
+
+The pattern worth extracting: in Vissim **one chord creates everything**, and the object type
+comes from the sidebar, not from the gesture. That is the actual argument for the sidebar in
+M1.9 — it is not decoration, it is what makes a single creation chord unambiguous.
 
 ---
 
@@ -158,22 +222,30 @@ are not attempted. **Whatever is built, the not-yet-validated marker stays** unt
 ## 6. Ranked gaps
 
 Ranked by how much each one costs a Vissim user per hour of drawing, against the work it takes.
+Re-ranked 2026-09-14 against the owner's gesture/hotkey reference: two items moved **up** because
+they mislead rather than merely lack, and item 3 grew because it is a model change, not a gesture.
 
 | # | Gap | Cost to the user | Booked as |
 |---|---|---|---|
 | 1 | No Run in the editor | Breaks the core loop; sends them to a window that rejects their file | **M1.8** (needs M1.5.1 + M1.7) |
-| 2 | No Network Objects sidebar | Every mode change is a dropdown trip; the object vocabulary is invisible | **M1.9** |
-| 3 | Connector creation is per-lane-pair | A four-lane movement costs four gestures instead of one | **M1.9** |
-| 4 | `Delete` deletes a vertex, not the selection | Wrong-thing-deleted; contradicts the Vissim reflex | **M1.9** |
-| 5 | No tool shortcuts at all | The most repeated action has no keyboard path | **M1.9** |
-| 6 | No levels, no display types | Overlapping geometry cannot be ordered or styled | **M1.10** |
-| 7 | Double-click inserts a point instead of opening properties | Minor; the inspector is always visible | M1.9, if it fits |
-| 8 | Object tables are read-only | A Vissim user will try to type in them | Not booked — M1.5 limit, revisit with M1.5.1 |
-| 9 | No group drag | Real, documented, and expensive (connector reanchoring) | Not booked |
-| 10 | Missing object types (priority rules, stop signs, reduced speed areas, …) | Large, but each one needs engine behaviour first | Not booked — see §4 |
+| 2 | `Ctrl`+left-click extends the selection; in Vissim it **duplicates** | The one collision that can destroy work rather than annoy — settle it before any other gesture change | **M1.9**, first |
+| 3 | Connector creation is per-lane-pair, and the model has no lane range | A four-lane movement costs four gestures instead of one `Ctrl`+right-drag — and cannot be fixed in the UI alone | **M1.9** (model + gesture) |
+| 4 | No Network Objects sidebar | Every mode change is a dropdown trip; and without it a single creation chord has no way to say *what* it creates | **M1.9** |
+| 5 | `Ctrl+B` toggles the Objects dock; in Vissim it toggles the **background image** | Both meanings are live in this window — the editor has a background image | **M1.9** |
+| 6 | `Delete` deletes a vertex, not the selection | Wrong-thing-deleted; contradicts near-universal convention | **M1.9** |
+| 7 | No tool shortcuts at all; no `Tab` to cycle overlapping objects | The most repeated action has no keyboard path; objects behind others are unreachable | **M1.9** |
+| 8 | No levels, no display types | Overlapping geometry cannot be ordered or styled | **M1.10** |
+| 9 | Object tables are read-only | A Vissim user will try to type in them | Not booked — M1.5 limit, revisit with M1.5.1 |
+| 10 | No group drag, no `Alt`-drag rotate, no copy/paste | Real, documented, and expensive (connector reanchoring; ID allocation for pasted objects) | Not booked |
+| 11 | Missing object types (nodes, priority rules, stop signs, reduced speed areas, parking lots, signal groups, …) | Large, but each one needs engine behaviour first | Not booked — see §4 and §2b |
 
-Items 8–10 are recorded deliberately without a milestone. Booking work the engine cannot yet
+Items 9–11 are recorded deliberately without a milestone. Booking work the engine cannot yet
 honour is how a roadmap stops being true (`ROADMAP.md` rule 2).
+
+**Nodes are the one omission worth re-reading later.** They are absent here and unbooked, but in
+Vissim they are how delay and queue are aggregated per junction — which is the output a traffic
+impact study is actually paid for (`PROBLEM.md`). They belong to M5 evaluation, not the editor,
+but M5 should not rediscover them from scratch.
 
 ---
 

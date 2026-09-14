@@ -27,6 +27,9 @@ public:
     const History& history() const { return history_; }
     EditorCanvas* canvas() const { return canvas_; }
     void openFile(const QString& path); // Parse and validate before replacing the document.
+    // Same, but reports a failure through this window's translated error surface instead of
+    // throwing a bare code at a caller that has no locale to resolve it with.
+    void openFileOrReport(const QString& path);
     void saveFile(const QString& path); // Atomic replacement; failures preserve dirty state.
 protected:
     void closeEvent(QCloseEvent*) override;

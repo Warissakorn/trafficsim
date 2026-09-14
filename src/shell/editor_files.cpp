@@ -28,6 +28,9 @@ void EditorWindow::openFile(const QString& file) {
     }
     history_.reset(std::move(document));file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
 }
+void EditorWindow::openFileOrReport(const QString& file) {
+    try { openFile(file); } catch (const std::exception& e) { showError(e); }
+}
 void EditorWindow::saveFile(const QString& file) {
     validateDocument(history_.document());
     const auto bytes=documentJson(history_.document()).dump(2)+"\n";
