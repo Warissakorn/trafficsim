@@ -22,7 +22,8 @@ offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner
 Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
 The first gesture run exposed a test timer firing before mouse release opened its
 modal; confirmation now waits for the dialog and never throws through a Qt callback.
-Gesture tests also drain modal focus events before sending the next canvas shortcut.
+Gesture tests explicitly reactivate the editor after a modal and release Ctrl before
+sending the next canvas shortcut: the offscreen platform has no window manager.
 A persistence review found that Undo to the saved revision could leave an older recovery
 copy; the next checkpoint now removes it, with a UI regression covering that case.
 

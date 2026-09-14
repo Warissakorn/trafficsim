@@ -20,8 +20,11 @@ QPoint pixel(EditorCanvas* c,Point p){const auto q=c->mapFromScene(p.x,p.y);requ
 void drag(EditorCanvas* c,Point a,Point b,Qt::MouseButton button,Qt::KeyboardModifiers modifiers={}) {
     QTest::mousePress(c->viewport(),button,modifiers,pixel(c,a));QTest::mouseMove(c->viewport(),pixel(c,b));
     QTest::mouseRelease(c->viewport(),button,modifiers,pixel(c,b));
-    // Modal teardown queues activation/focus events; let the canvas receive keys again.
-    QTest::qWait(10);c->setFocus();QApplication::processEvents();
+    // The offscreen platform has no window manager to reactivate the editor after
+    // a modal closes. Supply that activation, and release the creation modifier.
+    QApplication::setActiveWindow(c->window());c->setFocus();
+    if(modifiers&Qt::ControlModifier)QTest::keyRelease(c,Qt::Key_Control);
+    QTest::qWait(10);QApplication::processEvents();
 }
 void confirm(const char* expected) {
     // QTest's mouse events process timers before release opens the modal. Wait for
