@@ -4,7 +4,19 @@ The point of D1 is a tool that behaves like the modelling surface its audience a
 This file measures how far the native editor is from that, **feature by feature and gesture by
 gesture**, so the gap is a list of decisions rather than a feeling.
 
-Written against commit state 2026-09-14, after M1.1–M1.5. Every "today" row cites the code.
+**Historical review:** sections 1–6 describe the 2026-09-14 pre-completion state after
+M1.1–M1.5. Their "today" columns and line references are retained as the original gap
+assessment, not current implementation claims. Use the status below and ROADMAP for
+current work.
+
+**M1 completion update (2026-09-14):** typed demand/control editing, in-editor Run with
+revision snapshots, locked recovery, controlled-link splits, the Network Objects
+sidebar, Ctrl+right creation, connector lane ranges/corner handles, duplication,
+Delete/Ctrl+Delete, Tab overlap cycling, levels and data-driven display types now
+exist. Ctrl+B toggles the image and Ctrl+Shift+O toggles tables; Shift extends selection.
+[NETWORK_EDITOR.md](NETWORK_EDITOR.md) documents the exact controls and limitations.
+Group drag/rotation, additional network object types and editable table cells were
+not added to M1. Owner usability and engine-validation gates remain open.
 
 **How to read it.** A gap is not automatically work. `PROBLEM.md` owns scope and `ROADMAP.md`
 owns sequence; this file only tells the truth about the distance and proposes where each item

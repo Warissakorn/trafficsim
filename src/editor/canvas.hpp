@@ -22,7 +22,7 @@ public:
     // single-object gesture behaves exactly as it did before multi-selection existed.
     void select(const std::string& id);                   // replaces the selection with this object
     void setSelection(std::vector<std::string> ids);      // replaces; notifies once
-    void toggle(const std::string& id);                   // Ctrl/Shift-click semantics
+    void toggle(const std::string& id);                   // Shift-click selection semantics
     void frame(const std::string& id);                    // centre it, zooming only if it does not fit
     const std::vector<std::string>& selection() const { return selection_; }
     std::string selected() const { return selection_.empty() ? std::string{} : selection_.back(); }

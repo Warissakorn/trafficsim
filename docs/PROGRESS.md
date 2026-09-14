@@ -6,6 +6,26 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-14 — M1 workflow completion and verification
+
+Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
+commands and dialogs, revision-bound in-editor Run, controlled splits, schema migration,
+locked recovery, connector lane ranges, sidebar gestures, levels and display catalogs.
+The core and its capability/fidelity guards are unchanged. README, architecture, roadmap
+and the editor guide now describe the implemented surface; M1_ACCEPTANCE.md supplies the
+original timed acceptance task and a blank result record. M0/M1 owner gates remain open.
+
+CI on ff4995a passed 19 of 20 desktop suites, including the complete drawing/demand/run/
+replay/recovery workflow and new native range tests. The remaining table assertion still
+expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
+offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
+Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
+
+Validation runs through GitHub Actions because the session executor is intermittently
+unavailable and local Qt/CMake installation could not complete. No local interactive GUI
+or owner timing result is claimed. The parity review is explicitly retained as a historical
+assessment with a current implementation addendum.
+
 ## 2026-09-14 — M1 completion implementation in progress
 
 The owner authorized the remaining M1 editor work together. The session executor is offline;
@@ -36,34 +56,19 @@ The remaining validation and acceptance work follows on the same branch; no mile
 
 ## Next
 
-**Implement M1.5.1 demand object tables, so M1.7 and then M1.8 have something to run.**
+**Finish PR #14 verification, then run the owner acceptance exercise.**
 
-1. Build the desktop, run CTest, and launch `trafficsim-desktop --editor --language th`.
-   A clean checkout needs `qt6-base-dev` and `nlohmann-json3-dev` installed first.
-2. M1.5.1: routes and vehicle inputs are still untyped JSON under `ProjectDocument::definition`.
-   Define the authoring structs beside `Link`/`Connector` in `src/model/network/network.hpp`,
-   give them undoable commands in `src/commands/`, and table them next to the existing three
-   tabs in `src/shell/editor_tables.cpp`. Reference-safety already exists for connectors —
-   follow `deleteConnector`'s cascade, do not invent a second one.
-3. Then M1.7 (catalog resolution and revision-to-run snapshot), then M1.8 (Run inside the
-   editor). **M1.8 is the owner's first priority** but is blocked on 2 and 3: without demand
-   there is nothing to run. Do not start M1.8 before M1.5.1 exists.
-4. M1.6 (autosave/recovery, future-schema migration) is still open and independent; take it
-   if demand authoring is blocked. Version-1 atomic save/open and embedded images exist.
-5. Preserve the M1.3.1 signal-bearing-link split guard, pinned by
-   `TEST(editor, signal_bearing_link_split_is_still_rejected)`. That follow-up still needs
-   a stationing/remapping policy for heads in upstream/downstream and connector spans.
-6. **M1.9 is a model change, not a UI change.** One Vissim `Ctrl`+right-drag connects a *range*
-   of lanes; `Connector { from, to }` holds one pair, so the gesture cannot be adopted without
-   widening the model and everything that reanchors it. Two chords also mean something else in
-   Vissim — `Ctrl`+left-click (duplicate there, extend-selection here) and `Ctrl+B` (background
-   image there, Objects dock here); settle those before any other gesture work.
-7. `docs/VISSIM_PARITY.md` §6 ranks the remaining editor gaps and says which are booked
-   (M1.8/M1.9/M1.10) and which are deliberately not. Read it before proposing editor work.
-   The M0 and full M1 owner gates remain open.
+1. Review the latest Native C++ run on `codex/complete-m1-network-editor`; require Linux
+   headless/desktop/release and Windows core checks to pass on the PR head.
+2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
+   and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
+3. Record the M0 queue/red/green plausibility observation separately. Keep the
+   not-yet-validated marker and the merge/internal-source/cyclic-route guards.
+4. Fix concrete usability failures before claiming acceptance. Do not begin M2
+   implementation until its pre-registered honesty-test criteria are committed.
 
-**Implementation:** `src/model/network/network.hpp`, `src/commands/`, `src/shell/editor_tables.cpp`.
-Based on `main` commit `45ec8bf` (2026-09-14).
+Implementation: `src/model/demand/`, `src/model/network/`, `src/commands/`,
+`src/project/`, `src/editor/` and `src/shell/`. Current behavior is in NETWORK_EDITOR.md.
 
 ---
 

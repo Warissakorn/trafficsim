@@ -94,16 +94,16 @@ int main(int argc,char** argv) {
         require(pixel(c,midpoint(drawn[2].geometry)).x()>0,"Framed object is outside the viewport");
         action(w,"editorFit"); // Framing moved the view onto one road; bring them all back.
 
-        // --- Ctrl-click and rubber band select several ---------------------------------
+        // --- Shift-click and rubber band select several ---------------------------------
         click(c,midpoint(drawn[0].geometry));
         require(c->selection().size()==1 && c->selected()==drawn[0].id,"Plain click did not replace selection");
         click(c,midpoint(drawn[1].geometry),Qt::ShiftModifier);
-        require(c->selection().size()==2,"Ctrl-click did not add to the selection");
+        require(c->selection().size()==2,"Shift-click did not add to the selection");
         require(c->selected()==drawn[1].id,"Last object clicked is not primary");
         require(links->selectedItems().size()==8,"Table did not mirror the canvas selection");
         require(item<QLineEdit>(w,"editorId")->text()==QString::fromStdString(drawn[1].id),"Inspector lost the primary");
         click(c,midpoint(drawn[1].geometry),Qt::ShiftModifier);
-        require(c->selection().size()==1,"Ctrl-click did not toggle off");
+        require(c->selection().size()==1,"Shift-click did not toggle off");
         // The two western roads lie left of x = 0; the eastern one does not.
         const auto west=[&]{return std::pair{Point{inset(c,0.02,0.05).x,inset(c,0,0.05).y},Point{0,inset(c,0,0.95).y}};};
         band(c,west().first,west().second);
@@ -193,8 +193,9 @@ int main(int argc,char** argv) {
             require(!links->horizontalHeaderItem(column)->text().isEmpty(),"Untranslated column header");
         require(links->horizontalHeaderItem(1)->text()==QString::fromUtf8("จำนวนเลน"),"Thai column header missing");
         action(w,"editorRecheck");
-        require(lists(problems,QString::fromUtf8("ยังไม่ได้ตรวจการอ้างอิงประเภทยานพาหนะและพฤติกรรมผู้ขับ เพราะแคตตาล็อกเหล่านั้นอยู่ใน data/ ไม่ได้อยู่ในไฟล์โครงการ")),
-            "Thai runnability finding missing");
+        // M1 resolves the real catalogs before checking; a valid fixture has no findings.
+        require(problems->rowCount()==1 && problems->item(0,1)->text().isEmpty(),"Valid catalog-backed scenario reported a problem");
+        require(!problems->item(0,0)->text().isEmpty(),"Thai no-problems message missing");
         if (argc>2) require(w.grab().save(QString::fromUtf8(argv[2])),"Screenshot failed");
         std::cout<<"Object tables, multi-selection, delete-many, diagnostics and jump-to-object passed\n";
         return 0;
