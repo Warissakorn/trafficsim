@@ -28,7 +28,7 @@ Json documentJson(const ProjectDocument& d) {
         network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}});
     const auto& b = d.background;
     return {{"format", "TrafficSim"}, {"schemaVersion", 1}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
-        {"definition", d.definition}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
+        {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
 void validateDocument(const ProjectDocument& d) {
@@ -42,7 +42,7 @@ void validateDocument(const ProjectDocument& d) {
         !std::isfinite(b.metresPerPixel) || b.metresPerPixel <= 0 || !std::isfinite(b.opacity) ||
         b.opacity < 0 || b.opacity > 1 || b.pngBase64->size() > 32 * 1024 * 1024)
         throw std::invalid_argument("EDIT_BACKGROUND_INVALID");
-    if (!d.definition.is_null()) (void)parseDefinition(d.definition);
+    validateAuthoredDemand(d);
 }
 ProjectDocument parseDocument(const Json& j) {
     ProjectDocument d;
@@ -67,7 +67,7 @@ ProjectDocument parseDocument(const Json& j) {
     }
     if (!present(j, "network")) throw std::invalid_argument("EDIT_NO_NETWORK");
     d.network = parseNetwork(j.at("network"));
-    d.definition = j.value("definition", Json(nullptr));
+    if (present(j, "definition")) d.definition = parseAuthoringDefinition(j.at("definition"));
     validateDocument(d);
     return d;
 }
@@ -76,6 +76,11 @@ std::string allocateId(ProjectDocument& d, const std::string& prefix) {
     for (const auto& l : d.network.links) { used.insert(l.id); for (const auto& lane : l.lanes) used.insert(lane.id); }
     for (const auto& c : d.network.connectors) used.insert(c.id);
     for (const auto& h : d.network.signalHeads) used.insert(h.id);
+    if (d.definition) {
+        for (const auto& r : d.definition->routes) used.insert(r.id);
+        for (const auto& i : d.definition->inputs) used.insert(i.id);
+        for (const auto& p : d.definition->signalPrograms) used.insert(p.id);
+    }
     for (;;) {
         if (d.nextId >= std::numeric_limits<std::uint64_t>::max() - 1) throw std::invalid_argument("EDIT_ID_LIMIT");
         auto id = prefix + "-" + std::to_string(d.nextId++);

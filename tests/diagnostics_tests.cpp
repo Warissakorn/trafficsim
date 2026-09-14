@@ -93,9 +93,9 @@ TEST(diagnostics, invalid_network_skips_the_runtime_pass_without_throwing) {
 }
 TEST(diagnostics, missing_or_broken_definition_is_reported_not_thrown) {
     auto d = merging();
-    CHECK(d.definition.is_null());
+    CHECK(!d.definition);
     CHECK(find(documentDiagnostics(d), "EDIT_NO_DEFINITION"));
-    d.definition = Json::object();                        // present but unparseable
+    d.definition.emplace(); d.definition->timeStep = -1; // Invalid typed demand is diagnosed.
     const auto rows = documentDiagnostics(d);
     CHECK(!rows.empty() && !find(rows, "EDIT_NO_DEFINITION"));
     CHECK(rows.back().severity == DiagnosticSeverity::runtime);
@@ -126,7 +126,7 @@ TEST(diagnostics, every_emitted_code_has_a_translation) {
     for (const auto& row : networkDiagnostics(broken.network)) codes.insert(row.code);
     for (const auto& row : documentDiagnostics(ProjectDocument{})) codes.insert(row.code);
     auto runtime = crossing();
-    auto definition = parseDefinition(runtime.definition);
+    auto definition = *runtime.definition;
     definition.timeStep = 5; definition.duration = 0.3;
     definition.routes.push_back({"cycle", {"north-1", "north-1"}});
     definition.inputs.push_back({"bad", "ghost-route", "ghost-type", -1, 10, 1});

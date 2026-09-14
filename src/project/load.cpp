@@ -1,5 +1,6 @@
 #include "load.hpp"
 #include "json.hpp"
+#include "run.hpp"
 #include <algorithm>
 #include <charconv>
 #include <cstdlib>
@@ -24,6 +25,22 @@ std::vector<Json> catalog(const std::filesystem::path& directory) {
     return result;
 }
 }
+ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
+    ScenarioDefinition definition=authored;
+    try {
+        if (authored.externalVehicleTypes) {
+            definition.vehicleTypes.clear();
+            for (const auto& item : catalog(dataDirectory / "vehicle-types"))
+                definition.vehicleTypes.push_back(parseVehicleType(item));
+        }
+        if (authored.externalBehaviours) {
+            definition.behaviours.clear();
+            for (const auto& item : catalog(dataDirectory / "driver-behaviour"))
+                definition.behaviours.push_back(parseBehaviour(item));
+        }
+    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    return definition;
+}
 ScenarioLoadError::ScenarioLoadError(std::filesystem::path path, std::string errorCode, const std::string& text)
     : std::runtime_error(path.string() + ": " + text), file(std::move(path)), code(std::move(errorCode)), detail(text) {}
 LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesystem::path& dataDirectory) {
@@ -45,11 +62,7 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
         if (!code.empty()) throw std::invalid_argument(code);
         const auto& declared = section(value, "definition");
         auto network = parseNetwork(section(value, "network"));
-        auto definition = parseDefinition(declared);
-        if (!declared.contains("vehicleTypes"))
-            for (const auto& item : catalog(dataDirectory / "vehicle-types")) definition.vehicleTypes.push_back(parseVehicleType(item));
-        if (!declared.contains("behaviours"))
-            for (const auto& item : catalog(dataDirectory / "driver-behaviour")) definition.behaviours.push_back(parseBehaviour(item));
+        auto definition = resolveCatalogs(parseAuthoringDefinition(declared),dataDirectory);
         auto scenario = compileScenario(network, definition);
         return {std::move(network), std::move(scenario)};
     } catch (const std::exception& error) {

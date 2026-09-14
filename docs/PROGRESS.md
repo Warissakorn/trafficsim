@@ -6,6 +6,18 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-14 — M1 completion implementation in progress
+
+The owner authorized the remaining M1 editor work together. The session executor is offline;
+changes are prepared through the GitHub connector and verified by the repository's CI.
+Base d456b121 passed Native C++ run 34824423877. No local desktop execution is claimed.
+
+First slice replaces the document's untyped definition with optional typed authoring values,
+retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
+route/input/program/head commands, and introduces catalog resolution and revision snapshots.
+Runtime limitations remain separate from draft validity. Further M1 UI, persistence, geometry
+and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
+
 ## Next
 
 **Implement M1.5.1 demand object tables, so M1.7 and then M1.8 have something to run.**

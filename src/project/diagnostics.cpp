@@ -30,7 +30,7 @@ std::vector<Diagnostic> documentDiagnostics(const ProjectDocument& document) {
             result.push_back({"EDIT_RUNTIME_SKIPPED", {}, {}, {}, DiagnosticSeverity::runtime});
             return result;
         }
-        if (document.definition.is_null()) {
+        if (!document.definition) {
             result.push_back({"EDIT_NO_DEFINITION", "definition", {}, {}, DiagnosticSeverity::runtime});
             // Compiling against a default ScenarioDefinition reports INVALID_NUMBER for timeStep
             // and duration, so the probe carries usable values and only topology rows are kept.
@@ -39,13 +39,7 @@ std::vector<Diagnostic> documentDiagnostics(const ProjectDocument& document) {
                 if (aboutTopology(row)) result.push_back(std::move(row));
             return result;
         }
-        ScenarioDefinition definition;
-        try {
-            definition = parseDefinition(document.definition);
-        } catch (const std::exception& error) {
-            result.push_back({error.what(), "definition", {}, {}, DiagnosticSeverity::runtime});
-            return result;
-        }
+        const ScenarioDefinition& definition = *document.definition;
         const bool catalogs = !definition.vehicleTypes.empty() && !definition.behaviours.empty();
         bool withheld = false;
         for (auto& row : runtimeDiagnostics(document.network, definition)) {

@@ -48,14 +48,14 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
         const auto b = laneGeometry(downstream, nextLane, d.network.drivingSide).front();
         d.network.connectors.push_back({connector, {id, lane.id}, {downstream.id, nextLane}, {a, b}});
     }
-    if (!d.definition.is_null()) for (auto& r : d.definition["routes"]) {
-        Json ids = Json::array();
-        for (const auto& s : r.at("segmentIds")) {
+    if (d.definition) for (auto& r : d.definition->routes) {
+        std::vector<std::string> ids;
+        for (const auto& s : r.segmentIds) {
             ids.push_back(s);
-            const auto match = replacements.find(s.get<std::string>());
+            const auto match = replacements.find(s);
             if (match != replacements.end()) { ids.push_back(match->second.first); ids.push_back(match->second.second); }
         }
-        r["segmentIds"] = std::move(ids);
+        r.segmentIds = std::move(ids);
     }
     return downstream.id;
 }

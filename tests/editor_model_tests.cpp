@@ -37,14 +37,14 @@ TEST(editor, referenced_edits_reanchor_and_undo) {
     h.execute("delete",[](auto& d){deleteLink(d,"west");});
     CHECK(h.document().network.links.size()==3);CHECK(h.document().network.signalHeads.size()==1);
     CHECK(h.document().network.signalHeads.front().id=="south-head");
-    CHECK(h.document().network.connectors.size()==1);CHECK(h.document().definition["routes"].size()==1);
-    CHECK(h.document().definition["inputs"].size()==1);h.undo();CHECK(documentJson(h.document())==before);
+    CHECK(h.document().network.connectors.size()==1);CHECK(h.document().definition->routes.size()==1);
+    CHECK(h.document().definition->inputs.size()==1);h.undo();CHECK(documentJson(h.document())==before);
 }
 TEST(editor, split_remaps_routes_and_preserves_old_snapshot) {
     History h;h.reset(sample());const auto old=documentJson(h.document());std::string downstream;
     h.execute("split",[&](auto& d){downstream=splitLink(d,"east",70);});
     CHECK(h.document().network.links.size()==5);CHECK(h.document().network.connectors.size()==3);
-    const auto& ids=h.document().definition["routes"][0]["segmentIds"];
+    const auto& ids=h.document().definition->routes[0].segmentIds;
     CHECK(ids.size()==5);CHECK(h.document().network.connectors[0].to.linkId=="east");
     const auto& n=h.document().network;CHECK(validateNetwork(n).empty());
     h.undo();CHECK(documentJson(h.document())==old);h.redo();CHECK(h.document().network.links.back().id==downstream);
@@ -59,7 +59,7 @@ TEST(editor, turn_pocket_and_opposite_both_driving_sides) {
         h.execute("pocket",[&](auto& d){splitLink(d,road,60,true);});
         CHECK(h.document().network.links.back().lanes.size()==3);
         CHECK(h.document().network.connectors.size()==2);CHECK(validateNetwork(h.document().network).empty());
-        CHECK(!h.document().definition.is_object());
+        CHECK(!h.document().definition.has_value());
     }
 }
 TEST(editor, lane_removal_does_not_dangle_references) {
@@ -96,8 +96,8 @@ TEST(editor, delete_objects_is_one_undoable_transaction) {
     CHECK(n.links.size()==3);                                  // west removed, the other three remain
     CHECK(n.connectors.empty());                               // west-east cascaded, south-north named
     CHECK(n.signalHeads.size()==1);                            // west-head cascaded with its link
-    CHECK(h.document().definition.at("routes").empty());       // both routes used a removed segment
-    CHECK(h.document().definition.at("inputs").empty());
+    CHECK(h.document().definition->routes.empty());       // both routes used a removed segment
+    CHECK(h.document().definition->inputs.empty());
     h.undo();
     // One Undo, everything back: links, connectors, heads, routes and their vehicle inputs.
     CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());

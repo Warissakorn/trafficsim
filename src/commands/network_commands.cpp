@@ -11,14 +11,12 @@ Link& editableLink(ProjectDocument& d, const std::string& id) {
     throw std::invalid_argument("EDIT_UNKNOWN_LINK");
 }
 void detail::removeRoutesUsingSegments(ProjectDocument& d, const std::set<std::string>& segments) {
-    if (d.definition.is_null()) return;
+    if (!d.definition) return;
     std::set<std::string> routes;
-    auto& rs = d.definition["routes"];
-    for (const auto& r : rs) for (const auto& segment : r.at("segmentIds"))
-        if (segments.contains(segment.get<std::string>())) routes.insert(r.at("id").get<std::string>());
-    std::erase_if(rs.get_ref<Json::array_t&>(), [&](const auto& r) { return routes.contains(r.at("id").template get<std::string>()); });
-    auto& inputs = d.definition["inputs"].get_ref<Json::array_t&>();
-    std::erase_if(inputs, [&](const auto& i) { return routes.contains(i.at("routeId").template get<std::string>()); });
+    for (const auto& r : d.definition->routes) for (const auto& segment : r.segmentIds)
+        if (segments.contains(segment)) routes.insert(r.id);
+    std::erase_if(d.definition->routes, [&](const auto& r) { return routes.contains(r.id); });
+    std::erase_if(d.definition->inputs, [&](const auto& i) { return routes.contains(i.routeId); });
 }
 std::string addLink(ProjectDocument& d, const std::vector<Point>& geometry, int lanes, double width) {
     if (lanes < 1 || lanes > 12 || !std::isfinite(width) || width <= 0) throw std::invalid_argument("EDIT_LANES");
@@ -43,8 +41,8 @@ void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<do
         if (removed.contains(c.from.laneId) || removed.contains(c.to.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
     for (const auto& h : d.network.signalHeads)
         if (removed.contains(h.lane.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
-    if (!d.definition.is_null()) for (const auto& r : d.definition.at("routes")) for (const auto& s : r.at("segmentIds"))
-        if (removed.contains(s.get<std::string>())) throw std::invalid_argument("EDIT_REFERENCED_LANE");
+    if (d.definition) for (const auto& r : d.definition->routes) for (const auto& s : r.segmentIds)
+        if (removed.contains(s)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
     while (l.lanes.size() < widths.size()) l.lanes.push_back({allocateId(d, "lane"), widths[l.lanes.size()]});
     l.lanes.resize(widths.size());
     for (std::size_t i = 0; i < widths.size(); ++i) l.lanes[i].width = widths[i];

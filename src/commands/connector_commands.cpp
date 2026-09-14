@@ -50,8 +50,8 @@ void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const st
 void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneReference from, LaneReference to) {
     auto& c = editableConnector(d, id);
     if (c.from == from && c.to == to) return;
-    if (!d.definition.is_null()) for (const auto& r : d.definition.at("routes"))
-        for (const auto& segment : r.at("segmentIds"))
+    if (d.definition) for (const auto& r : d.definition->routes)
+        for (const auto& segment : r.segmentIds)
             if (segment == id) throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
     uniqueConnection(d, from, to, id);
     c.from = from; c.to = to;

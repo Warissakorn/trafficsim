@@ -134,7 +134,7 @@ int main(int argc,char** argv) {
         require(documentJson(w.history().document())==controlled,"Cancelled delete changed document");
         answer(QMessageBox::Yes);action(w,"editorDeleteConnector");
         require(w.history().document().network.connectors.size()==1,"Confirmed connector delete failed");
-        require(w.history().document().definition["routes"].size()==1 && w.history().document().definition["inputs"].size()==1,"Delete left dangling routes or inputs");
+        require(w.history().document().definition->routes.size()==1 && w.history().document().definition->inputs.size()==1,"Delete left dangling routes or inputs");
         action(w,"editorUndo");require(documentJson(w.history().document())==controlled,"Delete undo lost related objects");
 
         w.openFile(file);item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);c->select(id);
