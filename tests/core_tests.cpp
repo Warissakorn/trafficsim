@@ -96,7 +96,8 @@ TEST(core, upstream_tail_and_gap) {
     s.routes = {{"route", {"road", "connector", "exit"}}};
     auto state = test::withVehicles(s, {test::vehicle(1, 102.5), test::vehicle(2, 95, 15)});
     const auto spans = occupiedSpans(s, state.vehicles);
-    CHECK(std::any_of(spans.begin(), spans.end(), [](const auto& x) { return x.vehicleId == 1 && x.segmentId == "road"; }));
+    CHECK(std::any_of(spans.begin(), spans.end(),
+        [&](const auto& x) { return x.vehicleId == 1 && s.segments[x.segmentIndex].id == "road"; }));
     for (int i = 0; i < 80; ++i) {
         state = stepSimulation(state);
         if (state.vehicles.size() == 2) CHECK(state.vehicles[0].distance - 4.5 - state.vehicles[1].distance >= 2 - 1e-8);

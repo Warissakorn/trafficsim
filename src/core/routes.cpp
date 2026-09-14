@@ -14,7 +14,7 @@ void appendSpans(std::vector<OccupiedSpan>& spans, const std::vector<RoutePart>&
                  const Vehicle& vehicle, double length) {
     for (const auto& part : parts)
         if (vehicle.distance >= part.start && vehicle.distance - length < part.start + part.length)
-            spans.push_back({vehicle.id, part.segmentId, part.segmentIndex,
+            spans.push_back({vehicle.id, part.segmentIndex,
                 std::max(0.0, vehicle.distance - length - part.start),
                 std::min(part.length, vehicle.distance - part.start), vehicle.speed});
 }

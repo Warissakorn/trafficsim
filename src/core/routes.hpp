@@ -3,8 +3,11 @@
 
 namespace trafficsim {
 struct VehicleLocation { std::string segmentId; double position{}; };
+// The segment is carried as an index into Scenario::segments, not as a string: a span is
+// rebuilt for every vehicle on every tick, and copying the id was the single largest
+// remaining cost in the step loop. Resolve the name via scenario.segments[segmentIndex].id.
 struct OccupiedSpan {
-    std::uint64_t vehicleId{}; std::string segmentId; std::size_t segmentIndex{};
+    std::uint64_t vehicleId{}; std::size_t segmentIndex{};
     double rear{}, front{}, speed{};
 };
 std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route);

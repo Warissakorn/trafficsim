@@ -92,6 +92,33 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — hot path 5: OccupiedSpan carries a segment index, not a segment name
+
+After the previous slices, string copying was the largest remaining cost in the profile
+(`_M_construct` 9.6%, string move-assign 5.5%, move-construct 4.2%). `OccupiedSpan::segmentId`
+was the main source: a span is rebuilt for every vehicle on every tick, and since the
+segment-bucketing slice nothing in `src/` read the field — `closestVehicle` uses
+`segmentIndex`. The only reader left in the whole repository was one test assertion.
+
+Dropping the string also removes a duplicated source of truth (hard rule 3): `segmentId` and
+`segmentIndex` were two representations of the same fact, kept in step by hand. Callers that
+want the name resolve it with `scenario.segments[segmentIndex].id`.
+
+**This is an internal API shape change to `OccupiedSpan`**, recorded here deliberately rather
+than slipped in: no observable output changes, `core/` has no consumers outside this
+repository, and the compiler finds every use. `render/` and `eval/` never touched the field.
+
+**Measured** (Release, GCC 13.3, median of 5): a uniform **-5.5%** across every network size;
+1.499 s -> **1.416 s** at 466 vehicles. **The gain was much smaller than the 15-20% predicted
+when this item was ranked.** The reason is short-string optimisation: ids like `road` and
+`a0-1` fit inline, so the copies were never heap allocations, only inline byte moves. The
+prediction was wrong in the plan and is corrected here so the mistake is not repeated.
+
+Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
+value pin, plus 12 multi-seed multi-size CLI runs byte-identical to the pre-session binary.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
 ### 2026-09-14 — hot path 4: pending-vehicle insertion stops rebuilding every span
 
 The pending-vehicle loop called `occupiedSpans` over the whole vehicle list **once per
