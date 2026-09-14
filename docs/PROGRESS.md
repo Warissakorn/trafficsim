@@ -92,6 +92,34 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — core hot-path optimization: measurement baseline and trajectory guard
+
+Profiling (Release, GCC 13.3, callgrind) of a synthetic multi-corridor scenario shows engine
+cost growing at **O(V^1.85)** in active vehicle count: 466 vehicles take 17.7 s of wall time
+for 600 s of simulation. Attribution: `__memcmp_avx2_movbe` 30.9% of all instructions (linear
+`detail::byId` searches over `std::string` IDs), `closestVehicle` 39.3% inclusive (nested
+`parts x spans` scan, the quadratic term), `routeParts` ~35% inclusive over **1,867,548 calls**
+recomputing a value that is constant for an entire run.
+
+Before changing any engine code, per-tick trajectory is now pinned. The four frozen TypeScript
+baselines deliberately exclude `MovedEvent`, so positions between the every-100-tick checkpoints
+were unguarded. `tests/reference/trajectory-digest.json` records weighted means over the full
+`MovedEvent` stream for the same four seeds; means (not sums) keep magnitudes physical so the
+existing 1e-7 tolerance applies unchanged, and order/segment/vehicle weights make a reordering
+visible that plain sums would hide. The four TypeScript baselines were **not** touched.
+
+The guard was verified non-vacuous: perturbing only the reported position in `locateVehicle`
+by 1e-6 relative — which changes `MovedEvent` but not checkpointed `distance` — fails
+`meanOrderWeightedPosition` on all four seeds. A 1e-9 relative perturbation of acceleration is
+caught by the pre-existing checkpoint comparison. Both perturbations were reverted.
+
+These digests characterize what the engine currently does. They are not a fidelity claim and
+do not affect the not-yet-validated marker or any milestone gate.
+
+**Verification:** headless preset, 12/12 CTest. Qt is not installed in this container, so the
+three desktop suites were not built or run and no desktop verification is claimed.
+
+
 ### 2026-09-14 — CI packaging workflow for testable binaries
 
 Added `.github/workflows/package.yml`, a manually dispatched (`workflow_dispatch`) and

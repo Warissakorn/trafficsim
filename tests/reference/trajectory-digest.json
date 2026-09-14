@@ -1,0 +1,6 @@
+{
+  "seed-0": {"count":16486,"meanAcceleration":0.2980278245940881,"meanOrderWeightedPosition":4269.710563358213,"meanPosition":87.19035567563724,"meanSegmentWeightedSpeed":321.18212447104696,"meanSpeed":6.793199697602608,"meanVehicleWeightedAcceleration":5.566733835421793},
+  "seed-42": {"count":16077,"meanAcceleration":0.24451285644087287,"meanOrderWeightedPosition":4284.861399782717,"meanPosition":87.53119104818477,"meanSegmentWeightedSpeed":266.52458750215555,"meanSpeed":6.169620174910155,"meanVehicleWeightedAcceleration":3.9423578716663954},
+  "seed-43": {"count":21007,"meanAcceleration":0.20469568787992448,"meanOrderWeightedPosition":4241.797007460181,"meanPosition":86.69347466859614,"meanSegmentWeightedSpeed":254.31363795005242,"meanSpeed":5.938478440310251,"meanVehicleWeightedAcceleration":3.904171309667933},
+  "seed-4294967295": {"count":25065,"meanAcceleration":0.19249164282682932,"meanOrderWeightedPosition":4100.082810566262,"meanPosition":83.58177327849216,"meanSegmentWeightedSpeed":209.4592000449632,"meanSpeed":5.143546671028676,"meanVehicleWeightedAcceleration":4.226626989716409}
+}
