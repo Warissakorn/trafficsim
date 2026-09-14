@@ -2,21 +2,43 @@
 #include <stdexcept>
 
 namespace trafficsim {
+bool present(const Json& value, const char* name) {
+    return value.is_object() && value.contains(name) && !value.at(name).is_null();
+}
+const Json& section(const Json& value, const char* name) {
+    if (!present(value, name)) throw std::invalid_argument(std::string("Missing section: ") + name);
+    return value.at(name);
+}
 namespace {
+// Every accessor goes through this: reaching .at() on a null or a non-object is how an
+// nlohmann type_error escapes to the user instead of a sentence naming the missing field.
+const Json& member(const Json& value, const char* name) {
+    if (!value.is_object()) throw std::invalid_argument(std::string("Expected an object containing: ") + name);
+    if (!value.contains(name)) throw std::invalid_argument(std::string("Missing field: ") + name);
+    if (value.at(name).is_null()) throw std::invalid_argument(std::string("Field is null: ") + name);
+    return value.at(name);
+}
 template<class T> T field(const Json& value, const char* name) {
-    const auto& item = value.at(name);
+    const auto& item = member(value, name);
     if constexpr (std::is_same_v<T, double>) {
         if (!item.is_number()) throw std::invalid_argument(std::string("Expected number: ") + name);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+        if (!item.is_string()) throw std::invalid_argument(std::string("Expected text: ") + name);
     }
     return item.get<T>();
 }
 const Json& array(const Json& value, const char* name) {
-    const auto& items = value.at(name);
+    const auto& items = member(value, name);
     if (!items.is_array()) throw std::invalid_argument(std::string("Expected array: ") + name);
     return items;
 }
 std::vector<std::string> strings(const Json& value, const char* name) {
-    return array(value, name).get<std::vector<std::string>>();
+    std::vector<std::string> result;
+    for (const auto& item : array(value, name)) {
+        if (!item.is_string()) throw std::invalid_argument(std::string("Expected strings: ") + name);
+        result.push_back(item.get<std::string>());
+    }
+    return result;
 }
 std::vector<Point> points(const Json& value) {
     std::vector<Point> result;
@@ -46,9 +68,9 @@ Network parseNetwork(const Json& value) {
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors"))
-        network.connectors.push_back({field<std::string>(c, "id"), reference(c.at("from")), reference(c.at("to")), points(c)});
+        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from")), reference(member(c, "to")), points(c)});
     for (const auto& h : array(value, "signalHeads"))
-        network.signalHeads.push_back({field<std::string>(h, "id"), reference(h.at("lane")),
+        network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane")),
                                       field<double>(h, "position"), field<std::string>(h, "programId")});
     return network;
 }
@@ -58,7 +80,7 @@ DriverBehaviour parseBehaviour(const Json& b) {
         field<double>(b, "followingTime"), field<double>(b, "speedThreshold")};
 }
 VehicleType parseVehicleType(const Json& t) {
-    const auto& range = t.at("desiredSpeed");
+    const auto& range = member(t, "desiredSpeed");
     return {field<std::string>(t, "id"), field<double>(t, "length"), field<double>(t, "width"),
         {field<double>(range, "min"), field<double>(range, "max")}, field<double>(t, "maxAcceleration"),
         field<double>(t, "comfortableDeceleration"), field<double>(t, "maxDeceleration"), field<std::string>(t, "behaviourId")};

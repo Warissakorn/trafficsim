@@ -1,7 +1,9 @@
 # Network editor — Link, Lane and Connector tools
 
-The native editor creates an authoring network. It does not simulate edited projects yet.
-The existing M0 simulation window remains available and retains its unvalidated marker.
+The native editor creates an authoring network. It does not simulate edited projects yet —
+running a drawn network inside the editor is tracked as M1.8 in [ROADMAP.md](ROADMAP.md), and
+[VISSIM_PARITY.md](VISSIM_PARITY.md) §5 sets out what has to exist first. The existing M0
+simulation window remains available and retains its unvalidated marker.
 
 ## Start
 
@@ -197,6 +199,31 @@ the allocator skips imported IDs. Undo restores the allocator with the document.
 Revision numbers distinguish local committed edits, not globally unique studies or
 simulation provenance. Undo history is in memory, limited to 100 operations, and resets
 on load. It is not a crash-recovery journal; autosave/recovery remains M1.6.
+
+### Two file kinds
+
+The project produces two JSON kinds, and they are not interchangeable.
+
+| | M0 scenario | Editor project |
+|---|---|---|
+| Typical name | `data/scenarios/crossing.json` | `network.traffic.json` |
+| Root keys | `network`, `definition` | `format`, `schemaVersion`, `nextId`, `revision`, `network`, `definition`, `background` |
+| `definition` | Required and complete | **Null for any network drawn from scratch** — correct, not corrupt |
+| Opened by | The simulation window | This editor |
+| Runs today | Yes | No: it has no demand yet |
+
+The editor opens both — a file without `schemaVersion` is read as a bare M0 network — and
+always saves the versioned project format. The simulation window opens scenarios only, and
+classifies the file **before** reading any field, so a project no longer fails as a parser
+error about a null. Its codes: `SCENARIO_IS_PROJECT` (an editor project, offered to the
+editor with one click), `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
+`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`. The editor's equivalents for a
+hand-edited file are `EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, `EDIT_VERSION` and
+`EDIT_ID_LIMIT`. Save and Open default to `*.traffic.json` here and `*.json` there.
+
+The two formats are deliberately **not** merged. One format would make every drawing look
+runnable, which is exactly the fidelity claim hard rule 4 forbids. They converge when M1.8
+gives a project a real Run — by adding demand to projects, not by blurring the formats.
 
 Project JSON conversion and validation are Qt-free. The shell uses QSaveFile with no
 direct-write fallback for atomic file replacement. Saving marks a revision clean only

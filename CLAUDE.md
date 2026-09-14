@@ -13,13 +13,16 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current work:** M1.1–M1.5 native editor implemented; M1.3.1, M1.5.1 and owner gates remain open
+**Current work:** M1.1–M1.5 native editor implemented; M1.3.1, M1.5.1 and owner gates remain open.
+M1.8–M1.10 (Run inside the editor, Vissim sidebar/gestures, levels) are booked from the parity review
 **Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
 discharging at green plausibly, and CTest proves seeded replay.
 
 **Status: M0 C++ core and network model implemented; acceptance gate still open.** A Qt
 Widgets desktop harness and native CLI exercise both systems. Read `docs/SIMULATION.md`
 for the current simulation contracts, `docs/NETWORK_EDITOR.md` for the editor, then `Next` in `docs/PROGRESS.md`.
+Scenario JSON and editor `*.traffic.json` projects are two formats on purpose — see
+`docs/NETWORK_EDITOR.md` §"Two file kinds" and D19a before touching either loader.
 
 ## Read these before working
 
@@ -30,6 +33,7 @@ for the current simulation contracts, `docs/NETWORK_EDITOR.md` for the editor, t
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Before adding a system. Update when the map changes. |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | To see which milestone this is and what closes it. |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Every session. Read `Next` first. |
+| [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. Says which gaps are booked and which are deliberately not. |
 
 ## Stack
 

@@ -24,19 +24,33 @@ std::vector<Json> catalog(const std::filesystem::path& directory) {
     return result;
 }
 }
+ScenarioLoadError::ScenarioLoadError(std::filesystem::path path, std::string errorCode, const std::string& text)
+    : std::runtime_error(path.string() + ": " + text), file(std::move(path)), code(std::move(errorCode)), detail(text) {}
 LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesystem::path& dataDirectory) {
+    std::string code = "SCENARIO_FILE_READ";
     try {
         const auto value = readJson(file);
-        auto network = parseNetwork(value.at("network"));
-        auto definition = parseDefinition(value.at("definition"));
-        if (!value.at("definition").contains("vehicleTypes"))
+        code.clear();
+        // Two file kinds share the .json extension: M0 authoring scenarios, which this window
+        // runs, and version-1 editor projects, which it cannot. Say which one this is before
+        // any field is read, or a project's legitimate "definition": null reads as corruption.
+        if (!value.is_object()) code = "SCENARIO_NOT_JSON_OBJECT";
+        else if (!present(value, "network")) code = "SCENARIO_NO_NETWORK";
+        else if (!present(value, "definition"))
+            code = value.contains("schemaVersion") || value.value("format", std::string{}) == "TrafficSim"
+                ? "SCENARIO_IS_PROJECT" : "SCENARIO_NO_DEFINITION";
+        if (!code.empty()) throw std::invalid_argument(code);
+        const auto& declared = section(value, "definition");
+        auto network = parseNetwork(section(value, "network"));
+        auto definition = parseDefinition(declared);
+        if (!declared.contains("vehicleTypes"))
             for (const auto& item : catalog(dataDirectory / "vehicle-types")) definition.vehicleTypes.push_back(parseVehicleType(item));
-        if (!value.at("definition").contains("behaviours"))
+        if (!declared.contains("behaviours"))
             for (const auto& item : catalog(dataDirectory / "driver-behaviour")) definition.behaviours.push_back(parseBehaviour(item));
         auto scenario = compileScenario(network, definition);
         return {std::move(network), std::move(scenario)};
     } catch (const std::exception& error) {
-        throw std::runtime_error(file.string() + ": " + error.what());
+        throw ScenarioLoadError(file, code, error.what());
     }
 }
 std::uint32_t parseSeed(const std::string& text) {

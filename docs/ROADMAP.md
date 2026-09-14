@@ -123,6 +123,58 @@ exercise above. The M0 owner gate remains open; editor work does not waive it.
 
 ---
 
+### M1.8 — Run inside the network editor
+
+Not implemented. Today the editor cannot simulate and the simulation window is a separate
+`MainWindow` that loads M0 scenario JSON — a user who draws a network and looks for a play
+button finds a window that rejects their file. Vissim runs the simulation **in** the network
+editor, and that single property is most of why it feels like one tool.
+
+**Scope:** Run/Pause/Step/Reset and a speed control on the editor's own canvas, vehicles drawn
+over the network as drawn, and the run attributed to one explicit document revision.
+
+**Depends on:** M1.5.1 (demand has no authoring model, so there is nothing to run) and M1.7
+(catalog resolution and revision-to-snapshot). M1.7 stays the plumbing; M1.8 is the surface.
+
+**Done when:** an engineer draws a network, authors demand, presses Run without leaving the
+editor, and watches vehicles traverse it — with the not-yet-validated marker still displayed.
+
+**Explicitly not in M1.8:** results tables, per-movement delay or LOS (M2 onwards), and any
+relaxation of D5. Running a network is not evidence that its numbers mean anything.
+
+### M1.9 — Network Objects sidebar, Vissim gestures and shortcuts
+
+Not implemented. The edit mode is a six-entry `QComboBox`, connectors are created one lane pair
+at a time, `Delete` removes a geometry vertex rather than the selected objects, and no shortcut
+selects a tool at all. See [`VISSIM_PARITY.md`](VISSIM_PARITY.md) §1–2 for the measured gap.
+
+**Scope:** a permanent network-objects sidebar replacing the tool dropdown; connector creation
+in one gesture across a lane range rather than per pair; `Delete` acting on the selection with
+vertex removal moved to a modifier; a shortcut per object type.
+
+**Done when:** an engineer who uses Vissim daily draws a four-leg intersection here without
+looking for a control that is not where their hand expects it.
+
+**Explicitly not in M1.9:** new network object types (§4 of the parity review), editable object
+tables, and group drag.
+
+### M1.10 — Levels and display types
+
+Not implemented. There is no `level` anywhere in the model, so overlapping geometry — flyovers,
+underpasses — cannot be ordered, and draw styles are fixed in rendering code.
+
+**Scope:** a level on links and connectors that orders drawing and selection, and named display
+types. Both are **content, not code** (hard rule 5): adding the fiftieth display type must not
+need a code edit, so they live in `data/`.
+
+**Done when:** a grade-separated junction draws and selects correctly at every zoom, and a new
+display type is a data file.
+
+**Explicitly not in M1.10:** 3D, and any change to how levels affect simulation — this is a
+drawing and selection concern only.
+
+---
+
 ## M2 — Demand, run, first numbers · **GATE**
 
 Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay

@@ -8,27 +8,60 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ## Next
 
-**Review M1.5 inspection and diagnostics, then implement M1.6 persistence and recovery.**
+**Implement M1.5.1 demand object tables, so M1.7 and then M1.8 have something to run.**
 
 1. Build the desktop, run CTest, and launch `trafficsim-desktop --editor --language th`.
    A clean checkout needs `qt6-base-dev` and `nlohmann-json3-dev` installed first.
-2. Follow `docs/NETWORK_EDITOR.md` §"Object tables, multi-selection and problems": draw a
-   few links, pick rows in the Objects dock, Ctrl-click and rubber-band on the canvas,
-   delete several objects and confirm one Undo restores all of them, force a rejected edit
-   and jump to the object from Problems, then author a merge and press Check runnability.
-3. M1.6: autosave/recovery, robust asset and catalog handling, and a future-schema
-   migration policy. Version-1 atomic save/open and embedded images already exist.
-4. Preserve the M1.3.1 signal-bearing-link split guard, now pinned by
+2. M1.5.1: routes and vehicle inputs are still untyped JSON under `ProjectDocument::definition`.
+   Define the authoring structs beside `Link`/`Connector` in `src/model/network/network.hpp`,
+   give them undoable commands in `src/commands/`, and table them next to the existing three
+   tabs in `src/shell/editor_tables.cpp`. Reference-safety already exists for connectors —
+   follow `deleteConnector`'s cascade, do not invent a second one.
+3. Then M1.7 (catalog resolution and revision-to-run snapshot), then M1.8 (Run inside the
+   editor). **M1.8 is the owner's first priority** but is blocked on 2 and 3: without demand
+   there is nothing to run. Do not start M1.8 before M1.5.1 exists.
+4. M1.6 (autosave/recovery, future-schema migration) is still open and independent; take it
+   if demand authoring is blocked. Version-1 atomic save/open and embedded images exist.
+5. Preserve the M1.3.1 signal-bearing-link split guard, pinned by
    `TEST(editor, signal_bearing_link_split_is_still_rejected)`. That follow-up still needs
    a stationing/remapping policy for heads in upstream/downstream and connector spans.
-5. M1.5.1 owns demand object tables; M1.7 owns revision-to-run handoff, catalog resolution
-   before Run, and the timed four-leg, aerial-image, ten-minute/reopen exercise. The M0 and
-   full M1 owner gates remain open.
+6. `docs/VISSIM_PARITY.md` §6 ranks the remaining editor gaps and says which are booked
+   (M1.8/M1.9/M1.10) and which are deliberately not. Read it before proposing editor work.
+   The M0 and full M1 owner gates remain open.
 
-**Implementation:** `src/model/network/diagnostics.cpp`, `src/project/diagnostics.cpp`,
-`src/commands/delete_objects.cpp`, `src/editor/canvas_select.cpp`,
-`src/shell/editor_tables.cpp`, `src/shell/editor_diagnostics.cpp`.
-Based on `main` commit `5c97511` (2026-09-14).
+**Implementation:** `src/model/network/network.hpp`, `src/commands/`, `src/shell/editor_tables.cpp`.
+Based on `main` commit `45ec8bf` (2026-09-14).
+
+---
+
+## 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
+
+**Reported:** opening `network.traffic.json` in the simulation window failed with
+`Could not open this scenario. … [json.exception.type_error.304] cannot use at() with null`.
+
+**Cause, not a corrupt file.** `documentJson` always writes `definition`, and a network drawn
+from scratch has none, so every such project saves `"definition": null` — correct for a
+project. The simulation window's Open filter was `*.json`, which listed the editor's own
+default save name `network.traffic.json`; `loadScenario` then called
+`parseDefinition(value.at("definition"))` unguarded, landing on `.at("duration")` on a null.
+The raw nlohmann text reached the user because the handler appended `e.what()` verbatim.
+
+**Changed, in outcomes.** Picking an editor project in the simulation window now says what
+kind of file it is, in English or Thai, and offers **Open in Network Editor** — one click and
+the drawing opens in the window that can hold it. No load path can surface an nlohmann
+exception any more: `loadScenario` classifies the file before reading a field
+(`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
+`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`, carried on a typed `ScenarioLoadError`), and
+`parseDocument` guards the mirror-image holes a hand-edited project could hit
+(`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
+dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
+a saved empty project must be *recognised*, not parsed and rejected.
+
+**Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
+window layout, objects, and the run/output story — and ranks the gaps. The three the owner
+accepted are carved into `ROADMAP.md` as **M1.8** (Run inside the editor), **M1.9** (network
+objects sidebar, Vissim gestures and shortcuts) and **M1.10** (levels and display types).
+No milestone was closed and no editor feature work was done: 17/17 CTest green, 59/59 native.
 
 ---
 
@@ -96,6 +129,9 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D18b | 2026-09-14 | **Draft validity blocks an edit; runtime supportability only informs, and only on demand** | These answer different questions and must not be merged. `validateNetwork` asks "is this a coherent drawing" and `History::execute` rightly refuses anything else. `validateScenario` asks "can the M0 core run this", and the authoring model deliberately expresses things the core cannot yet run — a merge is the standing example. Making the second blocking would forbid legal authoring; making the first advisory would let broken documents be saved. **A structural consequence the UI must own: because `validateDocument` throws on every non-`EMPTY_NETWORK` issue, a committed document can never carry a draft-invalid object, so the draft list is fed only by a blank document and by the issues of a *rejected* edit** — which is exactly where the object IDs earn their keep. | Nothing, unless the runtime gains merge arbitration, at which point `UNSUPPORTED_MERGE` stops being a finding. Do not "fix" the usually-empty draft list by loosening commit validation. |
 | D18c | 2026-09-14 | **M1.5 tables cover network objects only; demand tables carve out to M1.5.1** | Routes and vehicle inputs have no model struct — they are untyped JSON under `ProjectDocument::definition` — so tabling them means designing an authoring demand model, which is M2's subject. Diagnostics still name routes and inputs by their own IDs, which is what the milestone actually required. Carved into a numbered milestone in the same session rather than left as a note, per hard rule 8. | If M2 demand authoring lands first, M1.5.1 is absorbed into it rather than done separately. |
 | D18d | 2026-09-14 | **Vehicle-type and behaviour findings are withheld, not reported, when no catalog is loaded** | Those catalogs live in `data/`, not in the project file, so a document alone genuinely cannot resolve them. Reporting `UNKNOWN_VEHICLE_TYPE` for every input of an otherwise valid M0 fixture would blame the drawing for an absence that is by design, and would train users to ignore the panel. One `EDIT_NO_CATALOG` row says what was not checked instead. | When M1.7 resolves catalogs at run handoff, the check becomes real and the withholding should be removed rather than left as a permanent blind spot. |
+| D19a | 2026-09-14 | **Keep M0 scenarios and editor projects as two formats; classify the file instead of merging them** | The reported 304 was a category error, not a corruption: a drawn network legitimately has no `definition`, and the simulation window had no way to tell a project from a scenario because both matched `*.json`. Merging the two schemas would have removed the failure by making every drawing claim it is runnable, which is precisely the fidelity claim hard rule 4 exists to prevent — a drawing has no demand, so it cannot run, and the format should keep saying so. Classifying the file before any field is read, and routing a project to the window that can open it, fixes the user's actual problem without that claim. | If M1.8 gives projects a real Run **and** demand authoring (M1.5.1) makes `definition` non-optional in practice, the distinction stops earning its keep and one format becomes honest. Converge then, not before. |
+| D19b | 2026-09-14 | **Load errors carry a code on a typed exception, not a formatted message** | The shell already translates `EDIT_*` codes by locale key (`EditorWindow::showError`); the simulation window instead concatenated `e.what()`, which is how nlohmann's text reached a user running `--language th`. `ScenarioLoadError` carries file, code and detail separately so the shell can translate, show the path, and offer an action, while an unknown parser detail still falls back to raw text rather than a blank dialog. One error channel, one lookup, two windows. | If load errors ever need structured per-object issues the way `ValidationError` does, promote the code to an issue list rather than growing the string. |
+| D19c | 2026-09-14 | **The parity review books three milestones and deliberately leaves seven gaps unbooked** | `VISSIM_PARITY.md` §6 ranks ten gaps; only in-editor Run, the sidebar/gesture set and levels/display types are carved into `ROADMAP.md`. The rest — editable object tables, group drag, and the absent Vissim object types (priority rules, stop signs, reduced speed areas, conflict areas) — need engine behaviour that does not exist yet. Booking authoring for an object the core cannot honour would invite a user to believe it is modelled, and would put a date on work whose prerequisites are unscheduled. Recording them without a milestone keeps the roadmap true (`ROADMAP.md` rule 2) while keeping the finding. | When M3 lands right-of-way, conflict areas and priority rules stop being unhonourable and should be booked immediately — the review section is the list to work from. |
 
 ---
 

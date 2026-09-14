@@ -46,16 +46,26 @@ void validateDocument(const ProjectDocument& d) {
 }
 ProjectDocument parseDocument(const Json& j) {
     ProjectDocument d;
+    if (!j.is_object()) throw std::invalid_argument("EDIT_VERSION");
     if (j.contains("schemaVersion")) {
-        if (!j.at("schemaVersion").is_number_integer() || j.at("schemaVersion") != 1 || j.at("format") != "TrafficSim")
+        // Every read here is guarded: a hand-edited null section must name itself, not surface
+        // as an nlohmann type_error the user cannot act on.
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || j.at("schemaVersion") != 1 ||
+            !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
-        if (!j.at("nextId").is_number_unsigned() || !j.at("revision").is_number_unsigned()) throw std::invalid_argument("EDIT_ID_LIMIT");
+        if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
+            !present(j, "revision") || !j.at("revision").is_number_unsigned()) throw std::invalid_argument("EDIT_ID_LIMIT");
         d.nextId = j.at("nextId").get<std::uint64_t>();
         d.revision = j.at("revision").get<std::uint64_t>();
+        if (!present(j, "background")) throw std::invalid_argument("EDIT_BACKGROUND_INVALID");
         const auto& b = j.at("background");
+        if (!b.is_object() || !b.contains("pngBase64") || !b.at("pngBase64").is_string()) throw std::invalid_argument("EDIT_BACKGROUND_INVALID");
+        for (const char* number : {"x", "y", "metresPerPixel", "rotation", "opacity"})
+            if (!present(b, number) || !b.at(number).is_number()) throw std::invalid_argument("EDIT_BACKGROUND_INVALID");
         d.background = {std::make_shared<const std::string>(b.at("pngBase64").get<std::string>()), b.at("x").get<double>(), b.at("y").get<double>(),
             b.at("metresPerPixel").get<double>(), b.at("rotation").get<double>(), b.at("opacity").get<double>()};
     }
+    if (!present(j, "network")) throw std::invalid_argument("EDIT_NO_NETWORK");
     d.network = parseNetwork(j.at("network"));
     d.definition = j.value("definition", Json(nullptr));
     validateDocument(d);
