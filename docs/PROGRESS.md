@@ -25,7 +25,12 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 5. Preserve the M1.3.1 signal-bearing-link split guard, pinned by
    `TEST(editor, signal_bearing_link_split_is_still_rejected)`. That follow-up still needs
    a stationing/remapping policy for heads in upstream/downstream and connector spans.
-6. `docs/VISSIM_PARITY.md` §6 ranks the remaining editor gaps and says which are booked
+6. **M1.9 is a model change, not a UI change.** One Vissim `Ctrl`+right-drag connects a *range*
+   of lanes; `Connector { from, to }` holds one pair, so the gesture cannot be adopted without
+   widening the model and everything that reanchors it. Two chords also mean something else in
+   Vissim — `Ctrl`+left-click (duplicate there, extend-selection here) and `Ctrl+B` (background
+   image there, Objects dock here); settle those before any other gesture work.
+7. `docs/VISSIM_PARITY.md` §6 ranks the remaining editor gaps and says which are booked
    (M1.8/M1.9/M1.10) and which are deliberately not. Read it before proposing editor work.
    The M0 and full M1 owner gates remain open.
 
@@ -56,6 +61,17 @@ exception any more: `loadScenario` classifies the file before reading a field
 (`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
 dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
 a saved empty project must be *recognised*, not parsed and rejected.
+
+**Second pass, same day.** A scrutiny round found the classifier had the same defect it was
+added to prevent: `value.value("format", std::string{})` throws `type_error.302` when the key is
+present but not a string — including null — so `{"network":{…},"format":null}` still leaked an
+nlohmann message. Fixed, and `TEST(project, file_kind_classification_survives_broken_metadata)`
+pins it (verified to fail against the previous classifier). A second finding: `what()` on a
+classification failure is the bare code, and two paths showed it untranslated — startup
+`--scenario` via `main.cpp`, and the editor-launch fallback. Both now route through one
+`MainWindow::explain` / `EditorWindow::openFileOrReport`, and a `--scenario` the simulation
+window cannot run is explained **in** the window, with the editor offered, instead of a fatal
+modal carrying an identifier.
 
 **Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
 window layout, objects, and the run/output story — and ranks the gaps. The three the owner
@@ -131,6 +147,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D18d | 2026-09-14 | **Vehicle-type and behaviour findings are withheld, not reported, when no catalog is loaded** | Those catalogs live in `data/`, not in the project file, so a document alone genuinely cannot resolve them. Reporting `UNKNOWN_VEHICLE_TYPE` for every input of an otherwise valid M0 fixture would blame the drawing for an absence that is by design, and would train users to ignore the panel. One `EDIT_NO_CATALOG` row says what was not checked instead. | When M1.7 resolves catalogs at run handoff, the check becomes real and the withholding should be removed rather than left as a permanent blind spot. |
 | D19a | 2026-09-14 | **Keep M0 scenarios and editor projects as two formats; classify the file instead of merging them** | The reported 304 was a category error, not a corruption: a drawn network legitimately has no `definition`, and the simulation window had no way to tell a project from a scenario because both matched `*.json`. Merging the two schemas would have removed the failure by making every drawing claim it is runnable, which is precisely the fidelity claim hard rule 4 exists to prevent — a drawing has no demand, so it cannot run, and the format should keep saying so. Classifying the file before any field is read, and routing a project to the window that can open it, fixes the user's actual problem without that claim. | If M1.8 gives projects a real Run **and** demand authoring (M1.5.1) makes `definition` non-optional in practice, the distinction stops earning its keep and one format becomes honest. Converge then, not before. |
 | D19b | 2026-09-14 | **Load errors carry a code on a typed exception, not a formatted message** | The shell already translates `EDIT_*` codes by locale key (`EditorWindow::showError`); the simulation window instead concatenated `e.what()`, which is how nlohmann's text reached a user running `--language th`. `ScenarioLoadError` carries file, code and detail separately so the shell can translate, show the path, and offer an action, while an unknown parser detail still falls back to raw text rather than a blank dialog. One error channel, one lookup, two windows. | If load errors ever need structured per-object issues the way `ValidationError` does, promote the code to an issue list rather than growing the string. |
+| D19d | 2026-09-14 | **Error codes are resolved in exactly one place per window; no caller formats `what()` itself** | The first cut of D19b gave `ScenarioLoadError` a code but left three callers printing `what()`, which for a classification failure *is* the bare code — so `--scenario` on an editor project went from an unreadable nlohmann string to an unreadable identifier. Worse, not better: the user lost the one sentence the old message did contain. `MainWindow::explain` and `EditorWindow::openFileOrReport` are now the only places a code becomes text, and startup no longer dies on a file it could have explained. | If a third window appears, the two `text()` lookups become genuine duplication and should be hoisted to a shared locale helper rather than copied a third time. |
 | D19c | 2026-09-14 | **The parity review books three milestones and deliberately leaves seven gaps unbooked** | `VISSIM_PARITY.md` §6 ranks ten gaps; only in-editor Run, the sidebar/gesture set and levels/display types are carved into `ROADMAP.md`. The rest — editable object tables, group drag, and the absent Vissim object types (priority rules, stop signs, reduced speed areas, conflict areas) — need engine behaviour that does not exist yet. Booking authoring for an object the core cannot honour would invite a user to believe it is modelled, and would put a date on work whose prerequisites are unscheduled. Recording them without a milestone keeps the roadmap true (`ROADMAP.md` rule 2) while keeping the finding. | When M3 lands right-of-way, conflict areas and priority rules stop being unhonourable and should be booked immediately — the review section is the list to work from. |
 
 ---

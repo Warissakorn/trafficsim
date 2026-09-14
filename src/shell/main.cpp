@@ -19,16 +19,20 @@ int main(int argc, char** argv) {
     try {
         const auto data = parser.isSet("data-dir") ? trafficsim::nativePath(parser.value("data-dir")) :
             trafficsim::findDataDirectory(trafficsim::nativePath(QCoreApplication::applicationFilePath()));
-        const auto file = parser.isSet("scenario") ? trafficsim::nativePath(parser.value("scenario")) :
-                                                    data / "scenarios/crossing.json";
+        const auto fixture = data / "scenarios/crossing.json";
         if (parser.value("language") != "en" && parser.value("language") != "th") throw std::invalid_argument("Unknown language");
         if (parser.isSet("editor")) {
             trafficsim::EditorWindow editor(data, parser.value("language"));
-            if (parser.isSet("scenario")) editor.openFile(parser.value("scenario"));
-            editor.show(); return app.exec();
+            editor.show();
+            if (parser.isSet("scenario")) editor.openFileOrReport(parser.value("scenario"));
+            return app.exec();
         }
-        trafficsim::MainWindow window(data, file, parser.value("language"));
+        // Start on the fixture, then load what was asked for: a --scenario this window cannot
+        // run (an editor project, say) is then explained in the window, with the editor offered,
+        // instead of a modal carrying an untranslated error code.
+        trafficsim::MainWindow window(data, fixture, parser.value("language"));
         window.show();
+        if (parser.isSet("scenario")) window.openScenario(trafficsim::nativePath(parser.value("scenario")));
         return app.exec();
     } catch (const std::exception& error) {
         QMessageBox::critical(nullptr, QCoreApplication::applicationName(), QString::fromUtf8(error.what()));

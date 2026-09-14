@@ -109,17 +109,27 @@ void MainWindow::openEditor(const QString& file) {
     editor->setAttribute(Qt::WA_DeleteOnClose); editor->setWindowFlag(Qt::Window);
     // A file this window rejected can still fail here (a project is validated on open). Say so
     // rather than presenting an empty editor as if the drawing had loaded.
-    if (!file.isEmpty()) try { editor->openFile(file); }
-        catch (const std::exception& e) { error_->setText(text("loadError") + "\n" + file + "\n" + QString::fromUtf8(e.what())); error_->show(); }
     editor->show();
+    if (!file.isEmpty()) editor->openFileOrReport(file); // the editor translates its own failure
+}
+void MainWindow::openScenario(const std::filesystem::path& file) {
+    try { loadFile(file); error_->hide(); }
+    catch (const std::exception& e) { showLoadError(e, displayPath(file)); }
+}
+QString MainWindow::explain(const std::exception& error) const {
+    // Error codes are locale keys. Every path that shows one to a user comes through here, so a
+    // bare identifier like SCENARIO_IS_PROJECT can never reach a dialog untranslated.
+    const auto* load = dynamic_cast<const ScenarioLoadError*>(&error);
+    const auto key = load ? load->code : std::string(error.what());
+    const auto translated = key.empty() ? QString{} : text(key.c_str());
+    if (!translated.isEmpty()) return translated;
+    return QString::fromUtf8(load ? load->detail.c_str() : error.what());
 }
 void MainWindow::showLoadError(const std::exception& error, const QString& file) {
     // A network drawn in the editor is a project, not a runnable scenario. Saying so — and
     // offering the window that can open it — is the whole answer; a parser message is not.
     const auto* load = dynamic_cast<const ScenarioLoadError*>(&error);
-    const auto code = load ? text(load->code.c_str()) : QString{};
-    const auto detail = QString::fromUtf8(load ? load->detail.c_str() : error.what());
-    error_->setText(text("loadError") + "\n" + file + "\n" + (code.isEmpty() ? detail : code));
+    error_->setText(text("loadError") + "\n" + file + "\n" + explain(error));
     error_->show();
     if (!load || load->code != "SCENARIO_IS_PROJECT") return;
     QMessageBox box(QMessageBox::Information, text("title"), text("SCENARIO_IS_PROJECT"), QMessageBox::Open | QMessageBox::Cancel, this);
