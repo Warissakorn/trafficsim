@@ -92,6 +92,43 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 ## Log
 
+### 2026-09-14 — hot path 3/3: scenario lookups resolved once per tick
+
+After the first two slices, string handling was still about half of all instructions, almost
+all of it `detail::byId` doing a linear scan with an `std::string` compare per element. The
+fix is to call it far less often rather than to make it cleverer:
+
+- `resolveRefs` resolves each vehicle's route, type and behaviour **once per tick** into
+  indices, replacing roughly six lookups per vehicle across the step loop, `occupiedSpans`
+  and `locateVehicle`.
+- `ScenarioIndex::routeHeads` precomputes, per route, the signal heads actually on it with the
+  station of the first matching part — replacing an `std::find_if` over route parts with a
+  string compare, run per head per vehicle per tick.
+- `ScenarioIndex::programOfHead` plus a per-tick `headColors` vector evaluates each head's
+  colour once per tick instead of once per head per vehicle; colour depends only on the tick's
+  time, so every vehicle was recomputing the same answer.
+- `locateOnParts` lets the step loop reuse the parts it already holds instead of looking the
+  route up again.
+
+Equivalence rests on order again: `routeHeads` is built in `signalHeads` order and records only
+the first matching part, so each vehicle sees an identical sequence of heads and stations, and
+the `allowedDistance`/leader updates fold in the same order as before. `byId` itself is
+unchanged and still linear; it is simply no longer on the per-vehicle path.
+
+**Measured** (Release, GCC 13.3, median of 3, identical commands):
+0.028/0.048/0.117/0.298/0.740/**2.130 s** for 1/2/4/8/16/32 corridors — **-43% against the
+previous slice at 466 vehicles**. Growth is now about **O(V^1.3-1.5)**.
+
+**Cumulative for the three slices: 17.724 s -> 2.130 s at 466 vehicles, -88%**, and
+0.067 s -> 0.028 s on the single-corridor case. Total instruction count on the profiling
+scenario fell from 3.31 G to well under 1 G.
+
+Behaviour unchanged throughout: 12/12 headless CTest including the trajectory digest and the
+exact `29.24935` CLI pin, plus 12 multi-seed multi-size CLI runs byte-identical to the
+pre-session binary at every slice.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
 ### 2026-09-14 — hot path 2/3: leader search grouped by segment
 
 `closestVehicle` scanned every occupied span for every route part of every vehicle on every

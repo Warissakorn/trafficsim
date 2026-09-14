@@ -12,9 +12,14 @@ std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route);
 ScenarioIndex buildScenarioIndex(const Scenario& scenario);
 // O(1): routes live in a contiguous vector, so the route's own address gives its index.
 const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenario& scenario, const Route& route);
+// Callers that already hold the route's parts avoid a route lookup entirely.
+VehicleLocation locateOnParts(const std::vector<RoutePart>& parts, const Vehicle& vehicle);
+std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector<Vehicle>& vehicles);
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle);
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle, const ScenarioIndex& index);
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles);
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
                                         const ScenarioIndex& index);
+std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
+                                        const ScenarioIndex& index, const std::vector<VehicleRefs>& refs);
 }

@@ -35,12 +35,51 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
     ScenarioIndex index;
     index.parts.reserve(scenario.routes.size());
     for (const auto& route : scenario.routes) index.parts.push_back(routeParts(scenario, route));
+    index.programOfHead.reserve(scenario.signalHeads.size());
+    for (const auto& head : scenario.signalHeads) {
+        const auto& program = detail::byId(scenario.signalPrograms, head.programId);
+        index.programOfHead.push_back(static_cast<std::size_t>(&program - scenario.signalPrograms.data()));
+    }
+    index.routeHeads.resize(scenario.routes.size());
+    for (std::size_t r = 0; r < scenario.routes.size(); ++r)
+        // signalHeads order is preserved, and only the first matching part is recorded, so the
+        // per-vehicle find_if this replaces sees an identical sequence of heads and stations.
+        for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h) {
+            const auto& parts = index.parts[r];
+            const auto part = std::find_if(parts.begin(), parts.end(),
+                [&](const auto& item) { return item.segmentId == scenario.signalHeads[h].segmentId; });
+            if (part != parts.end()) index.routeHeads[r].push_back({h, part->start});
+        }
     return index;
 }
 const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenario& scenario, const Route& route) {
     const auto offset = static_cast<std::size_t>(&route - scenario.routes.data());
     if (offset >= index.parts.size()) throw std::logic_error("Route does not belong to this scenario");
     return index.parts[offset];
+}
+VehicleLocation locateOnParts(const std::vector<RoutePart>& parts, const Vehicle& vehicle) {
+    return locate(parts, vehicle);
+}
+std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector<Vehicle>& vehicles) {
+    std::vector<VehicleRefs> refs;
+    refs.reserve(vehicles.size());
+    for (const auto& vehicle : vehicles) {
+        const auto& route = detail::byId(scenario.routes, vehicle.routeId);
+        const auto& type = detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId);
+        const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
+        refs.push_back({static_cast<std::size_t>(&route - scenario.routes.data()),
+                        static_cast<std::size_t>(&type - scenario.vehicleTypes.data()),
+                        static_cast<std::size_t>(&behaviour - scenario.behaviours.data())});
+    }
+    return refs;
+}
+std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
+                                        const ScenarioIndex& index, const std::vector<VehicleRefs>& refs) {
+    std::vector<OccupiedSpan> spans;
+    for (std::size_t i = 0; i < vehicles.size(); ++i)
+        appendSpans(spans, index.parts[refs[i].route], vehicles[i],
+                    scenario.vehicleTypes[refs[i].type].length);
+    return spans;
 }
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle) {
     return locate(routeParts(scenario, detail::byId(scenario.routes, vehicle.routeId)), vehicle);

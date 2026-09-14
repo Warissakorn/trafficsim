@@ -116,24 +116,29 @@ SimState stepSimulation(const SimState& state, double dt) {
                                          vehicle.scheduledTime, vehicle.desiredSpeed});
     }
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
-    const auto spans = occupiedSpans(scenario, vehicles, index); // Everyone sees the SAME pre-step state.
+    // Resolved once per tick rather than roughly six times per vehicle.
+    const auto refs = resolveRefs(scenario, vehicles);
+    const auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.
     const auto buckets = bucketSpans(spans, scenario.segments.size());
+    // Signal colour depends only on the tick's time, so it is the same for every vehicle.
+    std::vector<SignalColor> headColors;
+    headColors.reserve(scenario.signalHeads.size());
+    for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h)
+        headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], state.time));
     next.vehicles.clear();
-    for (const auto& vehicle : vehicles) {
-        const auto& type = detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId);
-        const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
-        const auto& parts = partsFor(index, scenario, detail::byId(scenario.routes, vehicle.routeId));
+    for (std::size_t v = 0; v < vehicles.size(); ++v) {
+        const auto& vehicle = vehicles[v];
+        const auto& type = scenario.vehicleTypes[refs[v].type];
+        const auto& behaviour = scenario.behaviours[refs[v].behaviour];
+        const auto& parts = index.parts[refs[v].route];
         auto leader = closestVehicle(vehicle, parts, spans, buckets);
         double allowedDistance = leader ? std::max(0.0, leader->gap - behaviour.standstillDistance) :
                                           std::numeric_limits<double>::infinity();
-        for (const auto& head : scenario.signalHeads) {
-            const auto part = std::find_if(parts.begin(), parts.end(),
-                [&](const auto& item) { return item.segmentId == head.segmentId; });
-            if (part == parts.end()) continue;
-            const double gap = part->start + head.position - vehicle.distance;
+        for (const auto& routeHead : index.routeHeads[refs[v].route]) {
+            const auto& head = scenario.signalHeads[routeHead.headIndex];
+            const double gap = routeHead.partStart + head.position - vehicle.distance;
             if (gap < -1e-9) continue;
-            if (signalColorAt(detail::byId(scenario.signalPrograms, head.programId), state.time) == SignalColor::green)
-                continue;
+            if (headColors[routeHead.headIndex] == SignalColor::green) continue;
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
             if (!leader || gap < leader->gap) leader = Leader{gap, 0};
         }
@@ -160,7 +165,7 @@ SimState stepSimulation(const SimState& state, double dt) {
                 vehicle.enteredTime - vehicle.scheduledTime, routeLength / vehicle.desiredSpeed});
         } else {
             next.vehicles.push_back(moved);
-            const auto location = locateVehicle(scenario, moved, index);
+            const auto location = locateOnParts(parts, moved);
             events.emplace_back(MovedEvent{time, vehicle.id, location.segmentId, location.position, speed, acceleration});
         }
     }
