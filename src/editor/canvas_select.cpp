@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include <QLineF>
 #include <algorithm>
 #include <cmath>
 
