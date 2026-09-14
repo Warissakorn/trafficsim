@@ -44,6 +44,20 @@ struct Scenario : ScenarioDefinition {
     std::vector<Segment> segments;
     std::vector<SignalHead> signalHeads;
 };
+struct RoutePart { std::string segmentId; std::size_t segmentIndex{}; double start{}, length{}; };
+// Route geometry is a pure function of an immutable Scenario, so it is resolved once per run
+// instead of per vehicle per tick. parts[i] corresponds to Scenario::routes[i] after
+// canonicalisation; nothing here is derived from vehicle state.
+// A signal head that lies on a route, with the start station of the FIRST route part
+// carrying that head's segment - the part the per-vehicle scan used to search for.
+struct RouteHead { std::size_t headIndex{}; double partStart{}; };
+struct ScenarioIndex {
+    std::vector<std::vector<RoutePart>> parts;
+    std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
+    std::vector<std::vector<RouteHead>> routeHeads;  // parallel to Scenario::routes, in signalHeads order
+};
+// Scenario lookups for one vehicle, resolved once per tick instead of once per use.
+struct VehicleRefs { std::size_t route{}, type{}, behaviour{}; };
 enum class FollowingMode { free, approaching, following, braking };
 struct PendingVehicle {
     std::uint64_t id{};
@@ -94,6 +108,8 @@ using SimEvent = std::variant<SignalEvent, DepartedEvent, MovedEvent,
 struct SimState {
     // Detached at createSimulation; copies share only this immutable scenario.
     std::shared_ptr<const Scenario> scenario;
+    // Derived from scenario alone; shared, never copied per tick.
+    std::shared_ptr<const ScenarioIndex> index;
     std::uint32_t seed{}, randomState{};
     std::uint64_t tick{}, nextVehicleId{1}, completed{};
     double time{};

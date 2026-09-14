@@ -2,7 +2,7 @@
 
 Append-only. Newest entry at the top. **This is what a session with no memory reads to rejoin
 the work.** Never delete an entry; move old blocks to `PROGRESS-archive.md` whole if this gets
-long.
+long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-archive.md).
 
 ---
 
@@ -91,6 +91,193 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 ---
 
 ## Log
+
+### 2026-09-14 — hot path 5: OccupiedSpan carries a segment index, not a segment name
+
+After the previous slices, string copying was the largest remaining cost in the profile
+(`_M_construct` 9.6%, string move-assign 5.5%, move-construct 4.2%). `OccupiedSpan::segmentId`
+was the main source: a span is rebuilt for every vehicle on every tick, and since the
+segment-bucketing slice nothing in `src/` read the field — `closestVehicle` uses
+`segmentIndex`. The only reader left in the whole repository was one test assertion.
+
+Dropping the string also removes a duplicated source of truth (hard rule 3): `segmentId` and
+`segmentIndex` were two representations of the same fact, kept in step by hand. Callers that
+want the name resolve it with `scenario.segments[segmentIndex].id`.
+
+**This is an internal API shape change to `OccupiedSpan`**, recorded here deliberately rather
+than slipped in: no observable output changes, `core/` has no consumers outside this
+repository, and the compiler finds every use. `render/` and `eval/` never touched the field.
+
+**Measured** (Release, GCC 13.3, median of 5): a uniform **-5.5%** across every network size;
+1.499 s -> **1.416 s** at 466 vehicles. **The gain was much smaller than the 15-20% predicted
+when this item was ranked.** The reason is short-string optimisation: ids like `road` and
+`a0-1` fit inline, so the copies were never heap allocations, only inline byte moves. The
+prediction was wrong in the plan and is corrected here so the mistake is not repeated.
+
+Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
+value pin, plus 12 multi-seed multi-size CLI runs byte-identical to the pre-session binary.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
+### 2026-09-14 — hot path 4: pending-vehicle insertion stops rebuilding every span
+
+The pending-vehicle loop called `occupiedSpans` over the whole vehicle list **once per
+candidate**, which was 42% of all span construction (122,061 of 288,400 `appendSpans` calls in
+the profile). Spans and their buckets are now built once per tick and extended in place:
+`appendVehicleSpans` adds exactly the spans a full rebuild would have appended for the newly
+inserted vehicle, and the bucket fill is stable, so the grown structures are identical to what
+a rebuild produced. Equivalence again rests on order, not on arithmetic.
+
+**A first attempt built the structures unconditionally before the loop and was measurably
+worse on small networks** — +21% at one corridor, +16% at four — because most ticks have no
+arrival at all and previously did no span work whatsoever. Building lazily, only once a
+candidate has survived the source filter, removes that cost: small networks return to parity
+(+0.3% to +1.3%, inside run-to-run noise) and large ones keep the gain. The regression and its
+cause are recorded here because the obvious eager version looks correct and is not.
+
+**Measured** (Release, GCC 13.3, median of 5, identical commands):
+0.028/0.049/0.117/0.292/0.670/**1.499 s** for 1/2/4/8/16/32 corridors — **-29.6% against the
+previous slice at 466 vehicles**. Growth is now about **O(V^1.2)**.
+
+Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
+value pin, plus 12 multi-seed multi-size CLI runs byte-identical to the pre-session binary.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
+### 2026-09-14 — PROGRESS.md split, oldest entries archived
+
+`PROGRESS.md` reached 513 lines and failed the 500-line budget (hard rule 6). Following this
+file's own instruction, the naming-era entries of 2026-09-10/11 were moved **whole** into a new
+`docs/PROGRESS-archive.md`; nothing was edited or summarised. `Next`, the backlog, the open
+questions and the decision table all stay here, so a session with no memory still reads one
+file to rejoin the work. The naming history those entries carry is already summarised in the
+D9-D11 rows, which were not moved.
+
+### 2026-09-14 — hot path 3/3: scenario lookups resolved once per tick
+
+After the first two slices, string handling was still about half of all instructions, almost
+all of it `detail::byId` doing a linear scan with an `std::string` compare per element. The
+fix is to call it far less often rather than to make it cleverer:
+
+- `resolveRefs` resolves each vehicle's route, type and behaviour **once per tick** into
+  indices, replacing roughly six lookups per vehicle across the step loop, `occupiedSpans`
+  and `locateVehicle`.
+- `ScenarioIndex::routeHeads` precomputes, per route, the signal heads actually on it with the
+  station of the first matching part — replacing an `std::find_if` over route parts with a
+  string compare, run per head per vehicle per tick.
+- `ScenarioIndex::programOfHead` plus a per-tick `headColors` vector evaluates each head's
+  colour once per tick instead of once per head per vehicle; colour depends only on the tick's
+  time, so every vehicle was recomputing the same answer.
+- `locateOnParts` lets the step loop reuse the parts it already holds instead of looking the
+  route up again.
+
+Equivalence rests on order again: `routeHeads` is built in `signalHeads` order and records only
+the first matching part, so each vehicle sees an identical sequence of heads and stations, and
+the `allowedDistance`/leader updates fold in the same order as before. `byId` itself is
+unchanged and still linear; it is simply no longer on the per-vehicle path.
+
+**Measured** (Release, GCC 13.3, median of 3, identical commands):
+0.028/0.048/0.117/0.298/0.740/**2.130 s** for 1/2/4/8/16/32 corridors — **-43% against the
+previous slice at 466 vehicles**. Growth is now about **O(V^1.3-1.5)**.
+
+**Cumulative for the three slices: 17.724 s -> 2.130 s at 466 vehicles, -88%**, and
+0.067 s -> 0.028 s on the single-corridor case. Total instruction count on the profiling
+scenario fell from 3.31 G to well under 1 G.
+
+Behaviour unchanged throughout: 12/12 headless CTest including the trajectory digest and the
+exact `29.24935` CLI pin, plus 12 multi-seed multi-size CLI runs byte-identical to the
+pre-session binary at every slice.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
+### 2026-09-14 — hot path 2/3: leader search grouped by segment
+
+`closestVehicle` scanned every occupied span for every route part of every vehicle on every
+tick, rejecting non-matching ones with an `std::string` segment comparison. That nested scan
+was 39% of total instructions and carried the quadratic growth term.
+
+Spans are now grouped by segment in a flat CSR layout (`start` offsets plus an `items` index
+array), so a vehicle only ever looks at spans on the segments its own route actually uses.
+`RoutePart` and `OccupiedSpan` carry a resolved `segmentIndex`, recovered during index
+construction from the segment's address in the contiguous `segments` vector, so grouping needs
+no string hashing. CSR rather than a vector-per-segment keeps this to three allocations
+instead of one per segment, which matters because the pending-vehicle loop regroups per
+candidate.
+
+**Order is the correctness argument.** The bucket fill is stable, so each segment's spans keep
+their original relative order, and the outer loop still walks route parts in order. The set and
+sequence of spans that survive to the `gap < nearest->gap` test is therefore exactly what the
+full scan produced, and that strict comparison keeps first-encountered-wins tie-breaking
+unchanged. The dropped `span.segmentId != part.segmentId` test is now implicit in the bucket.
+
+**Measured** (Release, GCC 13.3, median of 3, identical commands):
+0.031/0.058/0.152/0.433/1.196/**3.731 s** for 1/2/4/8/16/32 corridors — **-67% against the
+previous slice at 466 vehicles, -78.9% against the session baseline of 17.724 s**. Growth fell
+from O(V^1.85) to about **O(V^1.6)**. The residual superlinear term is the per-candidate
+`occupiedSpans` rebuild and the per-vehicle signal-head scan, both untouched here.
+
+Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
+value pin, plus the same 12 multi-seed multi-size CLI runs byte-identical to the pre-session
+binary.
+
+**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
+
+### 2026-09-14 — hot path 1/3: route geometry resolved once per run
+
+`routeParts` was recomputed for every vehicle on every tick — 1,867,548 calls in an
+8-corridor profile — even though it is a pure function of an immutable `Scenario`. A
+`ScenarioIndex` now resolves it once in `createSimulation` and is carried through `SimState`
+as a `shared_ptr`, so per-tick state copies share it rather than duplicating it. Routes live
+in a contiguous vector, so `partsFor` recovers a route's index from its own address in O(1)
+with no extra lookup. The index is built from the **canonical** scenario, so part order
+matches the sorted routes.
+
+The uncached `routeParts`, `locateVehicle` and `occupiedSpans` overloads are retained for
+`src/render/` and the existing tests; cached and uncached paths share one implementation each
+so they cannot drift. `stepSimulation` tolerates a hand-built state without an index by
+building one, rather than requiring every caller to change.
+
+**Measured** (Release, GCC 13.3, median of 3, identical commands as the baseline entry above):
+600 s of simulation on 1/2/4/8/16/32 corridors went 0.067/0.142/0.488/1.739/4.876/17.724 s to
+0.036/0.079/0.285/1.157/3.257/11.327 s, i.e. **-33% to -46%, -36% at 466 vehicles**. The
+O(V^1.85) growth is unchanged and is deliberately left to the next slice; this change removes
+constant work per call, not the quadratic term.
+
+No behaviour change was intended and none was observed: 12/12 headless CTest including the new
+trajectory digest and the exact `29.24935` CLI pin, plus 12 multi-seed multi-size CLI runs
+(4 network sizes x 3 seeds) byte-identical to the pre-change binary.
+
+**Verification:** headless preset only. Qt is absent in this container, so the three desktop
+suites were not built or run; `src/render/` compiles against the unchanged overloads but no
+desktop verification is claimed.
+
+### 2026-09-14 — core hot-path optimization: measurement baseline and trajectory guard
+
+Profiling (Release, GCC 13.3, callgrind) of a synthetic multi-corridor scenario shows engine
+cost growing at **O(V^1.85)** in active vehicle count: 466 vehicles take 17.7 s of wall time
+for 600 s of simulation. Attribution: `__memcmp_avx2_movbe` 30.9% of all instructions (linear
+`detail::byId` searches over `std::string` IDs), `closestVehicle` 39.3% inclusive (nested
+`parts x spans` scan, the quadratic term), `routeParts` ~35% inclusive over **1,867,548 calls**
+recomputing a value that is constant for an entire run.
+
+Before changing any engine code, per-tick trajectory is now pinned. The four frozen TypeScript
+baselines deliberately exclude `MovedEvent`, so positions between the every-100-tick checkpoints
+were unguarded. `tests/reference/trajectory-digest.json` records weighted means over the full
+`MovedEvent` stream for the same four seeds; means (not sums) keep magnitudes physical so the
+existing 1e-7 tolerance applies unchanged, and order/segment/vehicle weights make a reordering
+visible that plain sums would hide. The four TypeScript baselines were **not** touched.
+
+The guard was verified non-vacuous: perturbing only the reported position in `locateVehicle`
+by 1e-6 relative — which changes `MovedEvent` but not checkpointed `distance` — fails
+`meanOrderWeightedPosition` on all four seeds. A 1e-9 relative perturbation of acceleration is
+caught by the pre-existing checkpoint comparison. Both perturbations were reverted.
+
+These digests characterize what the engine currently does. They are not a fidelity claim and
+do not affect the not-yet-validated marker or any milestone gate.
+
+**Verification:** headless preset, 12/12 CTest. Qt is not installed in this container, so the
+three desktop suites were not built or run and no desktop verification is claimed.
+
 
 ### 2026-09-14 — CI packaging workflow for testable binaries
 
@@ -294,94 +481,3 @@ aggregation. Merges, internal inputs and repeated-route segments fail validation
 M0 remains open for the owner's plausibility acceptance. No later milestone was closed.
 
 See D12–D14 and `docs/SIMULATION.md` for the reasoning and precise interfaces.
-
-### 2026-09-11 — reverted to the working name TrafficSim, naming deferred (D11)
-
-Three renames in two days with no code written. The owner called it: go back to the working
-name and decide the real one once the program has shape.
-
-Headings across `CLAUDE.md`, `README.md`, `ARCHITECTURE.md`, `ROADMAP.md` and this file are
-back to `TrafficSim`, now explicitly marked as a working name so no future session reads it
-as settled. D9 and D10 keep their full reasoning and are marked superseded — this file is
-append-only, and the collision findings gathered over those rounds are the main thing worth
-keeping from them, so they are consolidated into the D11 row. The next naming round starts
-from evidence, not from zero.
-
-**Two pieces of queued work are cancelled, not postponed:** the GitHub repository rename (the
-repo is still `Warissakorn/trafficsim` and the remote already points there, so there is
-nothing to do) and the npm/PyPI/domain registrations for `velk`.
-
-**Two defects in this file were found and fixed while making this change**, both introduced by
-earlier sessions of this conversation:
-
-1. **The D10 log entry below was never actually written.** The edit that should have added it
-   matched no text, and the guard around that edit only checked that *something* in the file
-   had changed — which was true because other edits in the same batch succeeded. It has been
-   reconstructed below from the commit message and the D10 row. Guards on edits to this file
-   now assert an exact match count per edit.
-2. **Entries were in oldest-first order**, contradicting this file's own header. Reordered
-   newest-first. No entry text was altered.
-
-Nothing about scope, architecture or the roadmap changed. D1–D8 stand.
-
-### 2026-09-11 — renamed to Velk (D10)
-
-*Reconstructed on 2026-09-11 — see defect 1 in the entry above.*
-
-`Veytrix` replaced throughout the documentation. `velk` verified free on npm and PyPI with no
-brand or company found using it; `velk.dev` and `velk.app` free, `velk.com` and `velk.io`
-held — ordinary for a four-letter word and irrelevant to a repository or package name, so
-accepted as a known risk.
-
-`MicroFlow Simulator` was proposed first this session and dropped after its collision check:
-`microflow` taken on npm and PyPI, at least seven GitHub projects carrying the name along
-with two orgs and a GitHub Topic, and both obvious domains held. Recorded in D10 so it is not
-raised again.
-
-Also noted at the time: the MicroFlow brand write-up claimed "extends to both microscopic and
-macroscopic" as a strength, which contradicts `PROBLEM.md` §5 where macroscopic assignment is
-a non-goal. **§5 was left unchanged** — that is a scope decision, not a naming one.
-
-### 2026-09-10 — named Veytrix (D9)
-
-Working name `TrafficSim` replaced throughout the documentation. `veytrix` is free on npm
-and PyPI; `veytrix.com` is taken and `Vectrix` (electric scooters) is phonetically close —
-both recorded in D9 as accepted, known risks rather than discovered later.
-
-**Still to do by hand:** the GitHub repository is still called `trafficsim`. Renaming it needs
-repository-admin access, which this session's GitHub app does not have — the owner renames it
-in the repository settings, after which the git remote here needs updating.
-
-
-### 2026-09-10 — Q1 and Q3 answered (D7, D8)
-
-- **Q1 → international from the start** (D7). Consequences recorded: HCM as the default LOS
-  pack with jurisdictions as swappable data, metric internally with switchable display units,
-  and **left-hand/right-hand traffic as a first-class setting from M1** — added to the M1
-  scope in `ROADMAP.md` because retrofitting it touches every geometry routine.
-- **Q3 → the project owner performs the M2 gate alone** (D8). Recorded honestly as a
-  weakening of the gate, with a mandatory mitigation: the M2 pass/fail criteria must be
-  written into `ROADMAP.md` and committed **before** M2 implementation starts. `ROADMAP.md`
-  now carries an unfilled placeholder for those criteria; starting M2 without filling it
-  voids the gate.
-- **Q5 opened:** final product name. `Veytrix` is a placeholder. `Headway` was considered
-  and rejected — `headwaymaps/headway` is an existing open-source maps stack, too close a
-  neighbour in the same field.
-
-### 2026-09-10 — repository initialized, documentation spine written
-
-Created a fresh repo for a new project, separate from the prior SUMO-wrapper effort.
-
-**Written:** `PROBLEM.md` (who this is for, the engine-level walls that motivate D1, non-goals,
-and what would make the project wrong), `PRINCIPLES.md` (hard rules, deliberate non-goals, and
-measured discipline inherited from the prior effort), `ARCHITECTURE.md` (the five-layer map,
-marked planned throughout), `ROADMAP.md` (M0–M7 with done-conditions and two hard gates),
-`CLAUDE.md` (standing orders), this file.
-
-**Decisions:** D1–D6 above. D1 is the one everything else rests on, and it has an explicit
-falsification test at the M2 gate.
-
-**No code was written.** The Systems table in `ARCHITECTURE.md` describes intent, not reality;
-every row is marked `planned`.
-
-**Next:** toolchain setup — see the `Next` section above.
