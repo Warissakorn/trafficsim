@@ -7,9 +7,41 @@
 namespace trafficsim {
 void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     setFocus();
+    if(creating_ && e->button()==Qt::LeftButton) {
+        draft_.back()=world(e->pos());draft_.push_back(draft_.back());redraw();return;
+    }
+    if(e->button()==Qt::RightButton && (e->modifiers()&Qt::ControlModifier)) {
+        lastPick_=world(e->pos(),false);
+        if(tool_==Tool::route || tool_==Tool::input || tool_==Tool::head) {
+            const auto lane=nearestLane(lastPick_);
+            if(lane && createDemandGesture)createDemandGesture(*lane,tool_);
+            return;
+        }
+        creating_=true;draft_={world(e->pos()),world(e->pos())};
+        if(tool_==Tool::connect) {
+            gestureFrom_=nearestLane(lastPick_);
+            if(!gestureFrom_){cancel();return;}
+            for(const auto& l:document_->network.links)if(l.id==gestureFrom_->linkId)
+                draft_.front()=laneGeometry(l,gestureFrom_->laneId,document_->network.drivingSide).back();
+        }
+        return;
+    }
     if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; panStart_=e->pos(); return; }
     if (e->button()!=Qt::LeftButton) return;
-    auto p=world(e->pos());
+    auto p=world(e->pos());lastPick_=world(e->pos(),false);
+    if((e->modifiers()&Qt::ControlModifier) && tool_==Tool::select) {
+        if(duplicateRequested)duplicateRequested(p);return;
+    }
+    if(tool_==Tool::route || tool_==Tool::input || tool_==Tool::head)return;
+    if(tool_==Tool::select)if(const auto* c=selectedConnector();c && std::max(c->fromLaneCount,c->toLaneCount)>1) {
+        const auto paths=connectorPaths(document_->network,*c);
+        const auto a=paths.back().geometry.front(),b=paths.back().geometry.back();
+        const auto pa=mapFromScene(a.x,a.y),pb=mapFromScene(b.x,b.y);
+        if((pa-e->pos()).manhattanLength()<10 || (pb-e->pos()).manhattanLength()<10) {
+            rangeCorner_=(pa-e->pos()).manhattanLength()<(pb-e->pos()).manhattanLength()?1:2;
+            previewFromCount_=c->fromLaneCount;previewToCount_=c->toLaneCount;return;
+        }
+    }
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
     if (tool_==Tool::draw || tool_==Tool::measure || tool_==Tool::calibrate) {
         if (tool_!=Tool::draw) p=world(e->pos(),false);
@@ -22,7 +54,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     }
     const auto picked=hit(world(e->pos(),false),tool_!=Tool::split);
     if (tool_==Tool::split) { if (!picked.first.empty() && splitAt) splitAt(picked.first,picked.second); return; }
-    const bool additive=(e->modifiers()&(Qt::ControlModifier|Qt::ShiftModifier))!=0;
+    const bool additive=(e->modifiers()&Qt::ShiftModifier)!=0;
     if (additive) {
         // Adding to a selection is never also a drag: the two gestures would fight over the press.
         if (picked.first.empty()) { additive_=true; band_=QRectF(p.x,p.y,0,0); dragStart_=p; redraw(); }
@@ -59,6 +91,27 @@ int EditorCanvas::vertexAt(QPoint position) const {
 }
 void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if(cursorMoved) cursorMoved(world(e->pos(),false));
+    if(creating_) {
+        draft_.back()=world(e->pos());
+        if(tool_==Tool::connect) {
+            const auto target=nearestLane(world(e->pos(),false));
+            if(target)for(const auto& l:document_->network.links)if(l.id==target->linkId)
+                draft_.back()=laneGeometry(l,target->laneId,document_->network.drivingSide).front();
+        }
+        redraw();return;
+    }
+    if(rangeCorner_) {
+        const auto* c=selectedConnector();const auto lane=nearestLane(world(e->pos(),false));
+        if(c && lane) {
+            const auto& first=rangeCorner_==1?c->from:c->to;
+            if(first.linkId==lane->linkId)for(const auto& l:document_->network.links)if(l.id==first.linkId) {
+                int begin=-1,end=-1;
+                for(int i=0;i<static_cast<int>(l.lanes.size());++i){if(l.lanes[i].id==first.laneId)begin=i;if(l.lanes[i].id==lane->laneId)end=i;}
+                if(begin>=0 && end>=begin){if(rangeCorner_==1)previewFromCount_=end-begin+1;else previewToCount_=end-begin+1;redraw();}
+            }
+        }
+        return;
+    }
     if(panning_) {
         const auto delta=e->pos()-panStart_; panStart_=e->pos();
         horizontalScrollBar()->setValue(horizontalScrollBar()->value()-delta.x());
@@ -78,6 +131,17 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     }
 }
 void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
+    if(e->button()==Qt::RightButton && creating_) {
+        const auto points=draft_;const auto from=gestureFrom_;const auto target=nearestLane(world(e->pos(),false));
+        const auto mode=tool_;cancel();
+        if(mode==Tool::draw && points.size()>=2 && points.front()!=points.back() && createLinkGesture)createLinkGesture(points);
+        else if(mode==Tool::connect && from && target && createRangeGesture)createRangeGesture(*from,*target,points);
+        else if(mode==Tool::select && points.front()==points.back())insertVertex(lastPick_);
+        return;
+    }
+    if(e->button()==Qt::LeftButton && rangeCorner_) {
+        rangeCorner_=0;if(resizeRangeRequested)resizeRangeRequested(previewFromCount_,previewToCount_);redraw();return;
+    }
     if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=false; return; }
     if(e->button()==Qt::LeftButton && band_) {
         const auto box=*band_; const bool additive=additive_; band_.reset(); additive_=false;
@@ -97,7 +161,10 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     if(tool_==Tool::draw) { finishDrawing(); return; }
     if(tool_!=Tool::select) return;
     dragging_=false; preview_.clear(); original_.clear();
-    const auto picked=hit(world(e->pos(),false));
+    insertVertex(world(e->pos(),false));
+}
+void EditorCanvas::insertVertex(Point p) {
+    const auto picked=hit(p);
     if(picked.first.empty()) return;
     select(picked.first);
     const auto* current=selectedGeometry(); if (!current) return;
@@ -134,7 +201,8 @@ void EditorCanvas::removeVertex() {
 void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     if(e->key()==Qt::Key_Escape) { if(stopRequested)stopRequested(); cancel(); return; }
     if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) { finishDrawing(); return; }
-    if(e->key()==Qt::Key_Delete) { removeVertex(); return; }
+    if(e->key()==Qt::Key_Tab) {cycleOverlap();return;}
+    if(e->key()==Qt::Key_Delete) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
     QGraphicsView::keyPressEvent(e);
 }
 }

@@ -43,7 +43,7 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
         const auto& [connector, nextLane] = replacements.at(lane.id);
         const auto a = laneGeometry(editableLink(d, id), lane.id, d.network.drivingSide).back();
         const auto b = laneGeometry(downstream, nextLane, d.network.drivingSide).front();
-        d.network.connectors.push_back({connector, {id, lane.id}, {downstream.id, nextLane}, {a, b}});
+        d.network.connectors.push_back({connector, {id, lane.id}, {downstream.id, nextLane}, {a, b},1,1,original.level,original.displayType});
     }
     // Classify by centreline station, then project the original world point onto the new
     // owning lane/span. At the first cut boundary the upstream lane owns the head; at

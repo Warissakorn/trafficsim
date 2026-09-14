@@ -40,18 +40,18 @@ target_link_libraries(trafficsim_core PRIVATE trafficsim_options)
 
 add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
-    src/model/network/diagnostics.cpp)
+    src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
-    src/project/document.cpp src/project/definition.cpp src/project/run.cpp src/project/diagnostics.cpp)
+    src/project/document.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp)
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
 add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp
     src/commands/split_link.cpp src/commands/connector_commands.cpp src/commands/delete_objects.cpp
-    src/commands/demand_commands.cpp)
+    src/commands/demand_commands.cpp src/commands/appearance_commands.cpp)
 target_link_libraries(trafficsim_commands PUBLIC trafficsim_project PRIVATE trafficsim_options)
 
 function(trafficsim_runtime_data target)

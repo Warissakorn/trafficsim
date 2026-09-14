@@ -37,8 +37,8 @@ void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<do
     auto& l = editableLink(d, id);
     std::set<std::string> removed;
     for (std::size_t i = widths.size(); i < l.lanes.size(); ++i) removed.insert(l.lanes[i].id);
-    for (const auto& c : d.network.connectors)
-        if (removed.contains(c.from.laneId) || removed.contains(c.to.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
+    for (const auto& c : d.network.connectors) for(const auto& path:connectorPaths(d.network,c))
+        if (removed.contains(path.from.laneId) || removed.contains(path.to.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
     for (const auto& h : d.network.signalHeads)
         if (removed.contains(h.lane.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
     if (d.definition) for (const auto& r : d.definition->routes) for (const auto& s : r.segmentIds)
@@ -52,7 +52,8 @@ void deleteLink(ProjectDocument& d, const std::string& id) {
     const auto l = editableLink(d, id);
     std::set<std::string> removed;
     for (const auto& lane : l.lanes) removed.insert(lane.id);
-    for (const auto& c : d.network.connectors) if (c.from.linkId == id || c.to.linkId == id) removed.insert(c.id);
+    for (const auto& c : d.network.connectors) if (c.from.linkId == id || c.to.linkId == id)
+        for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)removed.insert(connectorPathId(c,i));
     std::erase_if(d.network.connectors, [&](const auto& c) { return removed.contains(c.id); });
     std::erase_if(d.network.signalHeads, [&](const auto& h) { return h.lane.linkId == id || removed.contains(h.connectorId); });
     std::erase_if(d.network.links, [&](const auto& link) { return link.id == id; });
@@ -72,6 +73,7 @@ std::string oppositeLink(ProjectDocument& d, const std::string& id, double gap) 
     const auto created = addLink(d, geometry, static_cast<int>(original.lanes.size()), original.lanes.front().width);
     std::vector<double> widths;
     for (const auto& lane : original.lanes) widths.push_back(lane.width);
-    changeLanes(d, created, widths); return created;
+    changeLanes(d, created, widths);
+    auto& other=editableLink(d,created);other.level=original.level;other.displayType=original.displayType;return created;
 }
 }

@@ -36,6 +36,7 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         const auto& link = network.links[i];
         const auto p = "links[" + std::to_string(i) + "]";
         id(link.id, p + ".id"); geometry(link.geometry, p + ".geometry");
+        if(link.level < -1000 || link.level > 1000 || link.displayType.empty())add("EDIT_DISPLAY_VALUE",p+".displayType");
         if (link.lanes.empty()) add("NO_LANES", p + ".lanes");
         for (std::size_t j = 0; j < link.lanes.size(); ++j) {
             const auto q = p + ".lanes[" + std::to_string(j) + "]";
@@ -48,8 +49,15 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         const auto& c = network.connectors[i];
         const auto p = "connectors[" + std::to_string(i) + "]";
         id(c.id, p + ".id"); geometry(c.geometry, p + ".geometry");
+        if(c.level < -1000 || c.level > 1000 || c.displayType.empty())add("EDIT_DISPLAY_VALUE",p+".displayType");
         const auto* from = resolve(c.from, p + ".from"); const auto* to = resolve(c.to, p + ".to");
-        if (!connections.emplace(c.from.laneId, c.to.laneId).second) add("DUPLICATE_CONNECTION", p);
+        if(from && to && validSide) try {
+            for(const auto& path:connectorPaths(network,c)) {
+                if(path.id!=c.id)id(path.id,p+".id");
+                geometry(path.geometry,p+".geometry");
+                if(!connections.emplace(path.from.laneId,path.to.laneId).second)add("DUPLICATE_CONNECTION",p);
+            }
+        }catch(const std::exception&){add("EDIT_LANE_RANGE",p);}
         const auto check = [&](const Link* link, const LaneReference& ref, bool end) {
             if (!link || link->geometry.size() < 2 || c.geometry.empty() || !validSide) return;
             const auto points = laneGeometry(*link, ref.laneId, network.drivingSide);
@@ -69,7 +77,9 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             const auto* link = resolve(head.lane, p + ".lane");
             if(link && validSide) length=polylineLength(laneGeometry(*link,head.lane.laneId,network.drivingSide));
         } else {
-            for(const auto& c:network.connectors)if(c.id==head.connectorId)length=polylineLength(c.geometry);
+            for(const auto& c:network.connectors)try {
+                for(const auto& path:connectorPaths(network,c))if(path.id==head.connectorId)length=polylineLength(path.geometry);
+            }catch(const std::exception&){ /* Range errors are already reported above. */ }
             if(length<0) add("UNKNOWN_SEGMENT",p+".connectorId");
             if(!head.lane.linkId.empty() || !head.lane.laneId.empty())add("EDIT_HEAD_REFERENCE",p+".lane");
         }

@@ -85,14 +85,14 @@ int main(int argc,char** argv) {
         const auto shape=w.history().document().network.connectors[0].geometry;
         drag(c,shape[6],{shape[6].x+4,shape[6].y+3},true);
         require(documentJson(w.history().document())==reshaped,"Cancelled handle drag committed");
-        drag(c,shape.front(),{shape.front().x+5,shape.front().y+5});QTest::keyClick(c,Qt::Key_Delete);
+        drag(c,shape.front(),{shape.front().x+5,shape.front().y+5});QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(documentJson(w.history().document())==reshaped,"Source endpoint moved or was removed");
-        drag(c,shape.back(),{shape.back().x+5,shape.back().y+5});QTest::keyClick(c,Qt::Key_Delete);
+        drag(c,shape.back(),{shape.back().x+5,shape.back().y+5});QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(documentJson(w.history().document())==reshaped,"Target endpoint moved or was removed");
         const Point insert{(shape[3].x+shape[4].x)/2,(shape[3].y+shape[4].y)/2};
         QTest::mouseDClick(c->viewport(),Qt::LeftButton,{},pixel(c,insert));
         require(w.history().document().network.connectors[0].geometry.size()==shape.size()+1,"Point insertion failed");
-        click(c,w.history().document().network.connectors[0].geometry[4]);QTest::keyClick(c,Qt::Key_Delete);
+        click(c,w.history().document().network.connectors[0].geometry[4]);QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(w.history().document().network.connectors[0].geometry==shape,"Point removal changed other points");
         action(w,"editorStraightConnector");require(w.history().document().network.connectors[0].geometry.size()==2,"Straighten failed");
         action(w,"editorResetCurve");require(w.history().document().network.connectors[0].geometry==created.geometry,"Curve reset failed");

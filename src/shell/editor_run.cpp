@@ -37,7 +37,8 @@ void EditorWindow::clearRun(){
 bool EditorWindow::prepareRun() {
     if(runSnapshot_)return true;
     try {
-        const auto seed=parseSeed(runSeed_->text().toStdString());
+        std::uint32_t seed{};
+        try{seed=parseSeed(runSeed_->text().toStdString());}catch(const std::exception&){throw std::invalid_argument("invalidSeed");}
         auto snapshot=compileDocument(history_.document(),data_);
         auto state=createSimulation(snapshot.scenario,seed);
         runSnapshot_=std::move(snapshot);runState_=std::move(state);

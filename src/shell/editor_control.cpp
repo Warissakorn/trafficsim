@@ -68,7 +68,7 @@ void EditorWindow::editHead(const std::string& id) {
         lane->addItem(QString::fromStdString(link.id+" / "+l.id),QString::fromStdString(l.id));
         lane->setItemData(lane->count()-1,QString::fromStdString(link.id),Qt::UserRole+1);
     }
-    for(const auto& c:history_.document().network.connectors)lane->addItem(QString::fromStdString(c.id),QString::fromStdString(c.id));
+    for(const auto& c:history_.document().network.connectors)for(const auto& p:connectorPaths(history_.document().network,c))lane->addItem(QString::fromStdString(p.id),QString::fromStdString(p.id));
     if(!value.connectorId.empty())lane->setCurrentIndex(lane->findData(QString::fromStdString(value.connectorId)));
     if(!value.lane.laneId.empty())lane->setCurrentIndex(lane->findData(QString::fromStdString(value.lane.laneId)));
     auto* program=new QComboBox(&dialog);program->setObjectName("editorHeadProgram");

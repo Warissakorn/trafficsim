@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QSignalBlocker>
+#include <QSpinBox>
 #include <QToolButton>
 
 namespace trafficsim {
@@ -25,6 +26,9 @@ QWidget* EditorWindow::buildConnectorInspector() {
         box->setMinimumContentsLength(12);
     }
     label(form,"editorConnectorFrom",connectorFrom_);label(form,"editorConnectorTo",connectorTo_);
+    connectorFromCount_=new QSpinBox(page);connectorToCount_=new QSpinBox(page);
+    connectorFromCount_->setRange(1,12);connectorToCount_->setRange(1,12);
+    label(form,"editorFromLaneCount",connectorFromCount_);label(form,"editorToLaneCount",connectorToCount_);
     connect(connectorObject_,&QComboBox::currentIndexChanged,this,[this]{
         canvas_->select(connectorObject_->currentData().toString().toStdString());
     });
@@ -40,7 +44,7 @@ QWidget* EditorWindow::buildConnectorInspector() {
         try {
             const auto from=reference(connectorFrom_), to=reference(connectorTo_);
             const auto id=canvas_->selected();
-            execute("editorApplyConnector",[&](auto& d){changeConnectorEndpoints(d,id,from,to);});
+            execute("editorApplyConnector",[&](auto& d){changeConnectorEndpoints(d,id,from,to);changeConnectorRange(d,id,connectorFromCount_->value(),connectorToCount_->value());});
         } catch (const std::exception& e) {showError(e);}
     });
     button("editorResetCurve",[this]{execute("editorResetCurve",[&](auto& d){resetConnectorCurve(d,canvas_->selected());});});
@@ -62,7 +66,7 @@ void EditorWindow::connectorHint() {
 }
 void EditorWindow::addConnection(const LaneReference& from,const LaneReference& to) {
     std::string id;
-    if (execute("editorCreateConnector",[&](auto& d){id=addConnector(d,from,to);})) canvas_->select(id);
+    if (execute("editorCreateConnector",[&](auto& d){id=addConnectorRange(d,from,to,connectorFromCount_->value(),connectorToCount_->value());})) canvas_->select(id);
 }
 void EditorWindow::refreshConnector() {
     const auto* connector=canvas_->selectedConnector();
@@ -85,6 +89,7 @@ void EditorWindow::refreshConnector() {
     for (const auto* key : {"editorApplyConnector","editorResetCurve","editorStraightConnector","editorDeleteConnector"})
         actions_.at(key)->setEnabled(connector);
     actions_.at("editorCreateConnector")->setEnabled(connectorFrom_->count()>1);
+    if(connector){connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);}
     if (connector) selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2));
     connectorHint();
 }

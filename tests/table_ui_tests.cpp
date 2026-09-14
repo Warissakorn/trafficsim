@@ -97,12 +97,12 @@ int main(int argc,char** argv) {
         // --- Ctrl-click and rubber band select several ---------------------------------
         click(c,midpoint(drawn[0].geometry));
         require(c->selection().size()==1 && c->selected()==drawn[0].id,"Plain click did not replace selection");
-        click(c,midpoint(drawn[1].geometry),Qt::ControlModifier);
+        click(c,midpoint(drawn[1].geometry),Qt::ShiftModifier);
         require(c->selection().size()==2,"Ctrl-click did not add to the selection");
         require(c->selected()==drawn[1].id,"Last object clicked is not primary");
         require(links->selectedItems().size()==8,"Table did not mirror the canvas selection");
         require(item<QLineEdit>(w,"editorId")->text()==QString::fromStdString(drawn[1].id),"Inspector lost the primary");
-        click(c,midpoint(drawn[1].geometry),Qt::ControlModifier);
+        click(c,midpoint(drawn[1].geometry),Qt::ShiftModifier);
         require(c->selection().size()==1,"Ctrl-click did not toggle off");
         // The two western roads lie left of x = 0; the eastern one does not.
         const auto west=[&]{return std::pair{Point{inset(c,0.02,0.05).x,inset(c,0,0.05).y},Point{0,inset(c,0,0.95).y}};};

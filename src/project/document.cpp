@@ -20,10 +20,11 @@ Json documentJson(const ProjectDocument& d) {
     for (const auto& l : d.network.links) {
         Json lanes = Json::array();
         for (const auto& lane : l.lanes) lanes.push_back({{"id", lane.id}, {"width", lane.width}});
-        network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}});
+        network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}, {"level",l.level}, {"displayType",l.displayType}});
     }
     for (const auto& c : d.network.connectors)
-        network["connectors"].push_back({{"id", c.id}, {"from", reference(c.from)}, {"to", reference(c.to)}, {"geometry", points(c.geometry)}});
+        network["connectors"].push_back({{"id", c.id}, {"from", reference(c.from)}, {"to", reference(c.to)}, {"geometry", points(c.geometry)}, {"fromLaneCount",c.fromLaneCount}, {"toLaneCount",c.toLaneCount},
+            {"level",c.level}, {"displayType",c.displayType}});
     for (const auto& h : d.network.signalHeads)
         network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}});
     const auto& b = d.background;
@@ -74,7 +75,8 @@ ProjectDocument parseDocument(const Json& j) {
 std::string allocateId(ProjectDocument& d, const std::string& prefix) {
     std::set<std::string> used{d.network.id};
     for (const auto& l : d.network.links) { used.insert(l.id); for (const auto& lane : l.lanes) used.insert(lane.id); }
-    for (const auto& c : d.network.connectors) used.insert(c.id);
+    for (const auto& c : d.network.connectors)
+        for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)used.insert(connectorPathId(c,i));
     for (const auto& h : d.network.signalHeads) used.insert(h.id);
     if (d.definition) {
         for (const auto& r : d.definition->routes) used.insert(r.id);

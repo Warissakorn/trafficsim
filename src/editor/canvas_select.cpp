@@ -49,9 +49,9 @@ std::vector<std::string> EditorCanvas::inRectangle(Point a, Point b) const {
     const QRectF box = QRectF(QPointF(a.x, a.y), QPointF(b.x, b.y)).normalized();
     // Network order, links before connectors, so the same band always yields the same list.
     for (const auto& link : document_->network.links)
-        if (touches(link.geometry, box)) result.push_back(link.id);
+        if (levelVisible(link.level) && touches(link.geometry, box)) result.push_back(link.id);
     for (const auto& connector : document_->network.connectors)
-        if (touches(connector.geometry, box)) result.push_back(connector.id);
+        if (levelVisible(connector.level) && touches(connector.geometry, box)) result.push_back(connector.id);
     return result;
 }
 void EditorCanvas::frame(const std::string& id) {

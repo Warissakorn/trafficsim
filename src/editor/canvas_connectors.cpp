@@ -17,7 +17,7 @@ QPainterPath path(const std::vector<Point>& points) {
 std::optional<LaneReference> EditorCanvas::hitLaneEnd(Point p, bool outgoing) const {
     std::optional<LaneReference> result;
     double best=12/std::abs(transform().m11());
-    if (document_) for (const auto& link : document_->network.links) for (const auto& lane : link.lanes) {
+    if (document_) for (const auto& link : document_->network.links) if(levelVisible(link.level)) for (const auto& lane : link.lanes) {
         const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
         const auto end=outgoing?geometry.back():geometry.front();
         const double distance=std::hypot(end.x-p.x,end.y-p.y);
@@ -43,11 +43,20 @@ void EditorCanvas::drawConnectors() {
     const double radius=4/std::abs(transform().m11());
     const auto primary=selected();
     for (const auto& c : document_->network.connectors) {
+        if(!levelVisible(c.level))continue;
+        const double z=c.level*100.;
         const bool chosen=isSelected(c.id);
         const auto& geometry=c.id==primary&&!preview_.empty()?preview_:c.geometry;
-        const QColor colour=c.id==primary?QColor("#b33f8d"):chosen?QColor("#c877b0"):QColor("#8b4cac");
+        const QColor colour=c.id==primary?QColor("#b33f8d"):chosen?QColor("#c877b0"):QColor(QString::fromStdString(style(c.displayType).connectorColor));
         QPen pen(colour,chosen?3:2); pen.setCosmetic(true);
-        scene_.addPath(path(geometry),pen)->setZValue(4);
+        auto preview=c;preview.geometry=geometry;
+        if(c.id==primary && rangeCorner_){preview.fromLaneCount=previewFromCount_;preview.toLaneCount=previewToCount_;}
+        for(const auto& lanePath:connectorPaths(document_->network,preview))scene_.addPath(path(lanePath.geometry),pen)->setZValue(z+4);
+        if(chosen && std::max(c.fromLaneCount,c.toLaneCount)>1) {
+            const auto paths=connectorPaths(document_->network,preview);
+            const auto a=paths.back().geometry.front(),b=paths.back().geometry.back();
+            for(const auto p:{a,b})scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#ffb454"))->setZValue(z+6);
+        }
         const double length=polylineLength(geometry);
         if (length>0) {
             const auto mid=pointAlong(geometry,length/2), ahead=pointAlong(geometry,length/2+length/100);
@@ -55,12 +64,12 @@ void EditorCanvas::drawConnectors() {
             QPolygonF arrow;
             for (double offset : {0.0,2.5,-2.5})
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
-            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(pen.color()))->setZValue(5);
+            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(pen.color()))->setZValue(z+5);
         }
         if (c.id==primary) for (std::size_t i=0; i<geometry.size(); ++i) {
             const auto p=geometry[i];
             if (i==0 || i+1==geometry.size()) {
-                scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#334155"))->setZValue(6);
+                scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#334155"))->setZValue(z+6);
             } else {
                 const auto color=static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff");
                 scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(color))->setZValue(6);
@@ -73,10 +82,10 @@ void EditorCanvas::drawConnectors() {
         const auto p=connectorFrom_?geometry.front():geometry.back();
         const QColor color=connectorFrom_?QColor("#087d82"):QColor("#b9660b");
         QPen pen(color,2); pen.setCosmetic(true);
-        scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(Qt::white))->setZValue(7);
+        scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(Qt::white))->setZValue(200007);
         if (connectorFrom_ && connectorFrom_->laneId==lane.id) {
             const auto from=geometry.back();
-            scene_.addEllipse(from.x-radius,from.y-radius,2*radius,2*radius,pen,QBrush("#ffb454"))->setZValue(8);
+            scene_.addEllipse(from.x-radius,from.y-radius,2*radius,2*radius,pen,QBrush("#ffb454"))->setZValue(200008);
         }
     }
     if (connectorFrom_ && connectorHover_) {

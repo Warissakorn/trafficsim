@@ -56,7 +56,7 @@ void EditorWindow::buildObjectTables() {
         });
     dock->setWidget(body); addDockWidget(Qt::BottomDockWidgetArea,dock);
     actions_["editorObjects"]=dock->toggleViewAction();
-    actions_["editorObjects"]->setShortcut(QKeySequence("Ctrl+B"));
+    actions_["editorObjects"]->setShortcut(QKeySequence("Ctrl+Shift+O"));
     resizeDocks({dock},{230},Qt::Vertical);
 }
 void EditorWindow::retranslateTables() {

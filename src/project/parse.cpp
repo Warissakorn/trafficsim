@@ -40,6 +40,12 @@ std::vector<std::string> strings(const Json& value, const char* name) {
     }
     return result;
 }
+int integer(const Json& value,const char* key,int fallback) {
+    if(!value.contains(key))return fallback;
+    const auto& v=member(value,key);
+    if(!v.is_number_integer() || v < -1000 || v > 1000)throw std::invalid_argument("EDIT_DISPLAY_VALUE");
+    return v.get<int>();
+}
 std::vector<Point> points(const Json& value) {
     std::vector<Point> result;
     for (const auto& p : array(value, "geometry")) result.push_back({field<double>(p, "x"), field<double>(p, "y")});
@@ -65,10 +71,14 @@ Network parseNetwork(const Json& value) {
         Link link{field<std::string>(item, "id"), points(item), {}};
         for (const auto& lane : array(item, "lanes"))
             link.lanes.push_back({field<std::string>(lane, "id"), field<double>(lane, "width")});
+        link.level=integer(item,"level",0);
+        if(item.contains("displayType"))link.displayType=field<std::string>(item,"displayType");
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors"))
-        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from")), reference(member(c, "to")), points(c)});
+        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from")), reference(member(c, "to")), points(c),
+            integer(c,"fromLaneCount",1),integer(c,"toLaneCount",1),integer(c,"level",0),
+            c.contains("displayType")?field<std::string>(c,"displayType"):"default"});
     for (const auto& h : array(value, "signalHeads"))
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane")),
                                       field<double>(h, "position"), field<std::string>(h, "programId"),

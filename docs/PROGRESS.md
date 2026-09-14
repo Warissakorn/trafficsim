@@ -22,7 +22,13 @@ The runtime core is unchanged. CI compiled the second slice, then the file-size 
 PROGRESS.md at 511 lines; older entries were moved whole to the existing archive.
 An offscreen end-to-end workflow now covers drawing, demand dialogs, Run/Step/Reset,
 seed replay, invalidation after Undo, recovery, Unicode persistence and Thai controls.
-Further interaction and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
+The fourth slice adds contiguous connector lane ranges, stable derived runtime path IDs,
+level-aware scene ordering/hit-testing, data-driven display catalogs, the Network Objects
+sidebar and creation/duplication/overlap gestures. Unequal ranges may author merges; M0
+still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
+duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
+and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
+The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
 
 ## Next
 

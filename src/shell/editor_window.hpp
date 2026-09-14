@@ -3,6 +3,8 @@
 #include "../commands/connector_commands.hpp"
 #include "../project/diagnostics.hpp"
 #include "../project/run.hpp"
+#include "../project/display.hpp"
+#include "../commands/appearance_commands.hpp"
 #include "../commands/demand_commands.hpp"
 #include <QTimer>
 #include <QElapsedTimer>
@@ -14,6 +16,7 @@
 #include <filesystem>
 #include <QKeySequence>
 
+class QListWidget;
 class QLockFile;
 class QAction;
 class QComboBox;
@@ -45,6 +48,16 @@ protected:
 private:
     History history_;
     std::filesystem::path data_;
+    DisplayCatalog displayCatalog_;
+    QListWidget* palette_{};
+    QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
+    QSpinBox *connectorFromCount_{},*connectorToCount_{};
+    void buildPalette();
+    void translatePalette();
+    void buildAppearance(QFormLayout*);
+    void refreshAppearance();
+    void createLinkDialog(const std::vector<Point>&);
+    void createRangeDialog(LaneReference,LaneReference,const std::vector<Point>&);
     QString recoveryDirectory_, recoveryFile_;
     std::unique_ptr<QLockFile> recoveryLock_;
     QTimer autosaveTimer_;

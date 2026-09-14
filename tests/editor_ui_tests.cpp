@@ -50,7 +50,7 @@ int main(int argc,char** argv){
         action(w,"editorUndo");
         QTest::mouseDClick(c->viewport(),Qt::LeftButton,{},c->mapFromScene(0,0));
         require(w.history().document().network.links[0].geometry.size()==3,"Insert vertex failed");
-        click(c,0,0);QTest::keyClick(c,Qt::Key_Delete);
+        click(c,0,0);QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(w.history().document().network.links[0].geometry.size()==2,"Remove vertex failed");
         // Whole-link drag, cancellation, pan and zoom exercise input handling beyond commands.
         const auto beforeMove=documentJson(w.history().document());
