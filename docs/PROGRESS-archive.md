@@ -8,6 +8,35 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-14 — M1 completion implementation in progress
+
+The owner authorized the remaining M1 editor work together. The session executor is offline;
+changes are prepared through the GitHub connector and verified by the repository's CI.
+Base d456b121 passed Native C++ run 34824423877. No local desktop execution is claimed.
+
+First slice replaces the document's untyped definition with optional typed authoring values,
+retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
+route/input/program/head commands, and introduces catalog resolution and revision snapshots.
+Runtime limitations remain separate from draft validity. The second slice adds route/input/program/head dialogs and tables plus in-editor fixed-step Run/Pause/Step/Reset with seed and speed. Successful edits invalidate the run snapshot; frames repaint without rebuilding the scene. The first CI failure was a JSON-to-string comparison in the migrated regression test, corrected with explicit extraction. The third slice adds locked per-window recovery copies, atomic autosave, catalog embedding,
+schema-1-to-2 loading and controlled-link splitting. Split heads are classified by their
+original centreline station and projected onto the owning new lane or connector span.
+The runtime core is unchanged. CI compiled the second slice, then the file-size gate caught
+PROGRESS.md at 511 lines; older entries were moved whole to the existing archive.
+An offscreen end-to-end workflow now covers drawing, demand dialogs, Run/Step/Reset,
+seed replay, invalidation after Undo, recovery, Unicode persistence and Thai controls.
+The fourth slice adds contiguous connector lane ranges, stable derived runtime path IDs,
+level-aware scene ordering/hit-testing, data-driven display catalogs, the Network Objects
+sidebar and creation/duplication/overlap gestures. Unequal ranges may author merges; M0
+still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
+duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
+and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
+The fourth-slice CI passed Linux headless and Windows core. Desktop compilation passed;
+three UI regressions exposed a topology-diagnostics early return, a fixture outside the
+new viewport, and a seeded arrival later than the fixed sampling time. These are corrected
+and range compilation, reference safety, duplication and migration regressions are added.
+The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
+---
+
 ### 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
 
 **Reported:** opening `network.traffic.json` in the simulation window failed with

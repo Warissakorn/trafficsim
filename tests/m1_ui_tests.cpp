@@ -82,6 +82,25 @@ int main(int argc,char** argv) {
         require(item<QLabel>(w,"editorRunInfo")->text().contains(QString::fromUtf8("รุ่น")),"Thai revision missing");
         item<QLineEdit>(w,"editorSeed")->setText("4294967296");action(w,"editorRun");
         require(!w.runState().scenario,"invalid seed ran");
-        w.close();std::cout<<"M1 demand, run, replay and recovery workflow passed\n";return 0;
+        w.close();
+        // A window that cannot take its recovery lock keeps every unrelated control and stays
+        // usable; only autosave is withheld. Point the data location at a regular file so the
+        // lock cannot be created for any user, including root.
+        const auto blocked=directory.path()+"/not-a-directory";
+        {QFile f(blocked);require(f.open(QIODevice::WriteOnly),"blocking file");f.write("x");}
+        const auto previous=qgetenv("XDG_DATA_HOME");
+        qputenv("XDG_DATA_HOME",blocked.toUtf8());
+        {
+            EditorWindow locked{std::filesystem::path(argv[1])};locked.show();QTest::qWait(30);
+            require(locked.findChild<QAction*>("editorEmbedCatalogs"),"lock failure removed catalog embedding");
+            require(locked.findChild<QAction*>("editorRecover"),"lock failure removed recovery browsing");
+            require(!locked.autosaveActive(),"autosave ran without a recovery lock");
+            require(locked.recoveryPath().isEmpty(),"unlocked window kept a recovery path");
+            item<QSpinBox>(locked,"editorLaneCount")->setValue(1);
+            require(!locked.history().dirty(),"fresh window started dirty");
+            locked.close();
+        }
+        previous.isEmpty()?qunsetenv("XDG_DATA_HOME"):qputenv("XDG_DATA_HOME",previous);
+        std::cout<<"M1 demand, run, replay and recovery workflow passed\n";return 0;
     }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 }

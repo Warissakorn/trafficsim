@@ -15,11 +15,21 @@ void EditorCanvas::setRunNetwork(const Network& network) {
     }
 }
 void EditorCanvas::setRunFrame(const SimState& frame) {runFrame_=frame;drawRunItems();}
-void EditorCanvas::clearRunFrame() {runFrame_={};runGeometry_.clear();drawRunItems();}
+// Clear all three together: marker() relies on the geometry, level and style maps holding
+// the same keys, so dropping only the geometry would leave the others describing a run that
+// no longer exists.
+void EditorCanvas::clearRunFrame() {runFrame_={};runGeometry_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
 void EditorCanvas::drawRunItems() {
     for(auto* item:runItems_){scene_.removeItem(item);delete item;}runItems_.clear();
     if(!runFrame_.scenario)return;
     const double radius=3/std::abs(transform().m11());
+    // style() already falls back to the default type, so resolve without at(): a segment
+    // missing here must degrade like one missing from marker()'s geometry map, not throw
+    // out of a paint callback.
+    const auto styleOf=[&](const std::string& segment)->const DisplayType& {
+        const auto it=runStyles_.find(segment);
+        return style(it==runStyles_.end()?std::string{}:it->second);
+    };
     const auto marker=[&](const std::string& segment,double station,QColor color,double size,int layer){
         const auto it=runGeometry_.find(segment);if(it==runGeometry_.end() || !levelVisible(runLevels_.at(segment)))return;
         const auto p=pointAlong(it->second,station);
@@ -32,7 +42,7 @@ void EditorCanvas::drawRunItems() {
     }
     for(const auto& v:runFrame_.vehicles) {
         const auto location=locateVehicle(*runFrame_.scenario,v);
-        marker(location.segmentId,location.position,QColor(QString::fromStdString(style(runStyles_.at(location.segmentId)).vehicleColor)),radius,11);
+        marker(location.segmentId,location.position,QColor(QString::fromStdString(styleOf(location.segmentId).vehicleColor)),radius,11);
     }
     viewport()->update();
 }

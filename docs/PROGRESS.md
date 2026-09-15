@@ -6,6 +6,34 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-15 — Recovery lock failure and the run overlay's style lookup
+
+`buildRecovery` returned as soon as `QLockFile::tryLock` failed, which also skipped the two
+toolbar actions built below it. A session that could not take its recovery lock therefore lost
+`editorEmbedCatalogs`, an unrelated feature, and ran with autosave silently off after a single
+error message. The lock now only gates autosave: both actions are always built, the failure
+clears the stale recovery path, and the timer stays stopped rather than re-reporting the same
+failure every 15 seconds. Recovery browsing is deliberately still offered, because
+`recoverFile` acquires its own lock — adopting one now starts autosave through `startAutosave`,
+so a window that began unlocked becomes protected as soon as it recovers a draft.
+
+`drawRunItems` evaluated `runStyles_.at(location.segmentId)` as an argument to `marker`, so it
+ran before `marker`'s own missing-segment guard. `style()` already falls back to the default
+type, so the lookup is now total and an absent segment degrades exactly as one absent from the
+geometry map. The underlying asymmetry is also gone: `clearRunFrame` cleared only the geometry
+map while `setRunNetwork` clears all three, so the three maps now always hold the same keys.
+
+Qt 6.4.2 and nlohmann/json are available from the Ubuntu archive, so this session built the
+desktop preset and ran all 21 tests, including the six UI suites that earlier entries could
+only send to CI. That also covers the previous entry's compilation change. A new case in
+`m1_ui_tests` forces a lock failure by pointing `XDG_DATA_HOME` at a regular file, which
+defeats the lock for root as well, and asserts the window keeps both actions, leaves autosave
+stopped and stays editable. Against the previous code it fails with "lock failure removed
+catalog embedding". The run overlay change has no dedicated test: reaching it needs a
+segment-id desync that compilation and `setRunNetwork` currently make impossible.
+
+M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
 ## 2026-09-15 — Scenario compilation cost and split re-projection coverage
 
 Review of the merged M1 branch found `buildScenario` resolving `connectorPaths` inside the
@@ -33,7 +61,7 @@ build and the four UI suites this branch added remain unverified locally. `nlohm
 also absent and was supplied through `TRAFFICSIM_JSON_INCLUDE_DIR`; no repository dependency
 changed. M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
 
-The same review left two smaller Qt-side items unaddressed, both carried into `Next` below.
+The same review left two smaller Qt-side items, both since fixed — see the entry above.
 
 ## 2026-09-14 — M1 workflow completion and verification
 
@@ -61,56 +89,20 @@ unavailable and local Qt/CMake installation could not complete. No local interac
 or owner timing result is claimed. The parity review is explicitly retained as a historical
 assessment with a current implementation addendum.
 
-## 2026-09-14 — M1 completion implementation in progress
-
-The owner authorized the remaining M1 editor work together. The session executor is offline;
-changes are prepared through the GitHub connector and verified by the repository's CI.
-Base d456b121 passed Native C++ run 34824423877. No local desktop execution is claimed.
-
-First slice replaces the document's untyped definition with optional typed authoring values,
-retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
-route/input/program/head commands, and introduces catalog resolution and revision snapshots.
-Runtime limitations remain separate from draft validity. The second slice adds route/input/program/head dialogs and tables plus in-editor fixed-step Run/Pause/Step/Reset with seed and speed. Successful edits invalidate the run snapshot; frames repaint without rebuilding the scene. The first CI failure was a JSON-to-string comparison in the migrated regression test, corrected with explicit extraction. The third slice adds locked per-window recovery copies, atomic autosave, catalog embedding,
-schema-1-to-2 loading and controlled-link splitting. Split heads are classified by their
-original centreline station and projected onto the owning new lane or connector span.
-The runtime core is unchanged. CI compiled the second slice, then the file-size gate caught
-PROGRESS.md at 511 lines; older entries were moved whole to the existing archive.
-An offscreen end-to-end workflow now covers drawing, demand dialogs, Run/Step/Reset,
-seed replay, invalidation after Undo, recovery, Unicode persistence and Thai controls.
-The fourth slice adds contiguous connector lane ranges, stable derived runtime path IDs,
-level-aware scene ordering/hit-testing, data-driven display catalogs, the Network Objects
-sidebar and creation/duplication/overlap gestures. Unequal ranges may author merges; M0
-still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
-duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
-and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
-The fourth-slice CI passed Linux headless and Windows core. Desktop compilation passed;
-three UI regressions exposed a topology-diagnostics early return, a fixture outside the
-new viewport, and a seeded arrival later than the fixed sampling time. These are corrected
-and range compilation, reference safety, duplication and migration regressions are added.
-The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
-
 ## Next
 
-**Run the owner acceptance exercise.** PR #14 is merged; its review is done and the two
-code findings from it are items 5 and 6 below.
+**Run the owner acceptance exercise.** PR #14 is merged, its review is done and both code
+findings from that review are fixed, so the owner gate is the only thing left open.
 
 1. Require Linux headless/desktop/release and Windows core checks to pass on the branch head.
-   Qt 6 is unavailable in the session container, so the desktop and UI suites are CI-only.
+   Qt 6.4 and nlohmann/json install from the Ubuntu archive in this container, so the desktop
+   preset and all 21 tests can be run locally; do that before relying on CI.
 2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
    and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
 3. Record the M0 queue/red/green plausibility observation separately. Keep the
    not-yet-validated marker and the merge/internal-source/cyclic-route guards.
 4. Fix concrete usability failures before claiming acceptance. Do not begin M2
    implementation until its pre-registered honesty-test criteria are committed.
-5. `src/shell/editor_recovery.cpp:23` returns early when the recovery lock fails, which also
-   skips starting the autosave timer and adding the unrelated `editorEmbedCatalogs` action.
-   Build that action outside the lock guard and show a persistent indicator rather than a
-   one-shot error, so a lock failure cannot silently disable autosave for a whole session.
-6. `src/editor/canvas_run.cpp:35` evaluates `runStyles_.at(location.segmentId)` as an argument
-   to `marker`, before `marker`'s own missing-segment guard runs. Not reachable today, since
-   compilation and `setRunNetwork` derive ids from the same `connectorPaths` call over the
-   same snapshot, but it turns a benign desync into a throw from a paint path. Move the
-   lookup inside the guard.
 
 Implementation: `src/model/demand/`, `src/model/network/`, `src/commands/`,
 `src/project/`, `src/editor/` and `src/shell/`. Current behavior is in NETWORK_EDITOR.md.
