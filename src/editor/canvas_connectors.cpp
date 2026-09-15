@@ -14,19 +14,21 @@ QPainterPath path(const std::vector<Point>& points) {
     return result;
 }
 }
-std::optional<LaneReference> EditorCanvas::hitLaneEnd(Point p, bool outgoing) const {
-    std::optional<LaneReference> result;
-    double best=12/std::abs(transform().m11());
-    if (document_) for (const auto& link : document_->network.links) if(levelVisible(link.level)) for (const auto& lane : link.lanes) {
-        const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
-        const auto end=outgoing?geometry.back():geometry.front();
-        const double distance=std::hypot(end.x-p.x,end.y-p.y);
-        if (distance<best) { best=distance; result=LaneReference{link.id,lane.id}; }
+std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoing) const {
+    auto result=nearestLane(p);if(!result)return {};
+    for(const auto& l:document_->network.links)if(l.id==result->linkId) {
+        const auto g=laneGeometry(l,result->laneId,document_->network.drivingSide);
+        const double length=polylineLength(g),station=stationOfClosestPoint(g,p);
+        const double tolerance=4/std::abs(transform().m11());
+        double fraction=station/length;
+        if(station<tolerance)fraction=0;
+        else if(length-station<tolerance)fraction=1;
+        if(fraction!=(outgoing?1.:0.))result->fraction=fraction;
     }
     return result;
 }
 void EditorCanvas::pickConnector(Point p) {
-    const auto lane=hitLaneEnd(p,!connectorFrom_);
+    const auto lane=hitLanePosition(p,!connectorFrom_);
     if (!lane) return;
     if (!connectorFrom_) {
         connectorFrom_=lane;
@@ -52,11 +54,6 @@ void EditorCanvas::drawConnectors() {
         auto preview=c;preview.geometry=geometry;
         if(c.id==primary && rangeCorner_){preview.fromLaneCount=previewFromCount_;preview.toLaneCount=previewToCount_;}
         for(const auto& lanePath:connectorPaths(document_->network,preview))scene_.addPath(path(lanePath.geometry),pen)->setZValue(z+4);
-        if(chosen && std::max(c.fromLaneCount,c.toLaneCount)>1) {
-            const auto paths=connectorPaths(document_->network,preview);
-            const auto a=paths.back().geometry.front(),b=paths.back().geometry.back();
-            for(const auto p:{a,b})scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#ffb454"))->setZValue(z+6);
-        }
         const double length=polylineLength(geometry);
         if (length>0) {
             const auto mid=pointAlong(geometry,length/2), ahead=pointAlong(geometry,length/2+length/100);
@@ -72,26 +69,19 @@ void EditorCanvas::drawConnectors() {
                 scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#334155"))->setZValue(z+6);
             } else {
                 const auto color=static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff");
-                scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(color))->setZValue(6);
+                scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(color))->setZValue(z+6);
             }
         }
     }
     if (tool_!=Tool::connect) return;
-    for (const auto& link : document_->network.links) for (const auto& lane : link.lanes) {
-        const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
-        const auto p=connectorFrom_?geometry.front():geometry.back();
-        const QColor color=connectorFrom_?QColor("#087d82"):QColor("#b9660b");
-        QPen pen(color,2); pen.setCosmetic(true);
-        scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(Qt::white))->setZValue(200007);
-        if (connectorFrom_ && connectorFrom_->laneId==lane.id) {
-            const auto from=geometry.back();
-            scene_.addEllipse(from.x-radius,from.y-radius,2*radius,2*radius,pen,QBrush("#ffb454"))->setZValue(200008);
-        }
+    if(connectorFrom_) {
+        const auto p=laneAttachment(document_->network,*connectorFrom_,true);
+        scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,QPen("#087d82"),QBrush("#ffb454"))->setZValue(200008);
     }
     if (connectorFrom_ && connectorHover_) {
         try {
             QPen pen(QColor("#b33f8d"),2,Qt::DashLine); pen.setCosmetic(true);
-            scene_.addPath(path(connectorCurve(document_->network,*connectorFrom_,*connectorHover_)),pen)->setZValue(7);
+            scene_.addPath(path(connectorCurve(document_->network,*connectorFrom_,*connectorHover_)),pen)->setZValue(200007);
         } catch (const std::exception&) { /* Coincident endpoints have no default curve preview. */ }
     }
 }

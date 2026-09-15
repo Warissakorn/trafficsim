@@ -101,6 +101,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->createConnector=[this](const auto& from,const auto& to){addConnection(from,to);};
     canvas_->connectorSourcePicked=[this](const auto& lane){
         connectorFrom_->setCurrentIndex(connectorFrom_->findData(QString::fromStdString(lane.laneId)));
+        connectorFromPosition_->setValue(lane.fraction.value_or(1.)*100);
     };
     canvas_->connectorDraftChanged=[this]{connectorHint();};
     canvas_->splitAt=[this](const auto& id,double distance){
@@ -112,6 +113,15 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->resizeRangeRequested=[this](int from,int to){
         execute("editorApplyConnector",[&](auto& d){changeConnectorRange(d,canvas_->selected(),from,to);});
     };
+    canvas_->resizeLinkRequested=[this](int count){
+        execute("editorApplyLanes",[&](auto& d){
+            const auto& link=editableLink(d,canvas_->selected());std::vector<double> widths;
+            for(const auto& lane:link.lanes)widths.push_back(lane.width);
+            widths.resize(static_cast<std::size_t>(count),widths.back());
+            changeLanes(d,link.id,widths);
+        });
+    };
+    canvas_->creationRejected=[this]{showError(std::invalid_argument("EDIT_CREATION_TARGET"));};
     canvas_->duplicateRequested=[this](Point p){
         const auto ids=canvas_->selection();if(ids.empty())return;
         Point anchor{};bool found=false;

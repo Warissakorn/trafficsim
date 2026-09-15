@@ -53,6 +53,7 @@ private:
     QListWidget* palette_{};
     QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
     QSpinBox *connectorFromCount_{},*connectorToCount_{};
+    QDoubleSpinBox *connectorFromPosition_{},*connectorToPosition_{};
     void buildPalette();
     void translatePalette();
     void buildAppearance(QFormLayout*);
@@ -120,6 +121,7 @@ private:
     void buildInspector();
     QWidget* buildConnectorInspector();
     void refreshConnector();
+    void refreshConnectorRanges();
     void buildObjectTables();
     void buildDiagnostics();
     void refreshTables(bool modelChanged);

@@ -26,9 +26,20 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
         scenario.signalHeads.push_back({head.id, signalSegment(head), head.position, head.programId});
     return scenario; // All fields are owned values, independent of the editor model.
 }
+std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {
+    std::vector<ValidationIssue> issues;
+    for(std::size_t i=0;i<network.connectors.size();++i) {
+        const auto& c=network.connectors[i];
+        if(c.from.fraction.value_or(1.)!=1. || c.to.fraction.value_or(0.)!=0.)
+            issues.push_back({"UNSUPPORTED_CONNECTOR_POSITION","connectors["+std::to_string(i)+"]"});
+    }
+    return issues;
+}
 Scenario compileScenario(const Network& network, const ScenarioDefinition& definition) {
     // Order is load-bearing: the network pass reports UNKNOWN_LANE before laneGeometry can throw.
     assertValidNetwork(network);
+    auto issues=connectorRuntimeIssues(network);
+    if(!issues.empty())throw ValidationError(std::move(issues));
     auto scenario = buildScenario(network, definition);
     assertValidScenario(scenario);
     return scenario;

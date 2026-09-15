@@ -4,6 +4,7 @@
 #include <cmath>
 #include <set>
 #include <utility>
+#include <tuple>
 
 namespace trafficsim {
 std::vector<ValidationIssue> validateNetwork(const Network& network) {
@@ -22,6 +23,9 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         if (!valid) add("INVALID_GEOMETRY", path);
     };
     const auto resolve = [&](const LaneReference& ref, const std::string& path) -> const Link* {
+        if(ref.fraction && (!std::isfinite(*ref.fraction) || *ref.fraction<0 || *ref.fraction>1)) {
+            add("EDIT_CONNECTOR_POSITION",path+".fraction");return nullptr;
+        }
         for (const auto& link : network.links)
             if (link.id == ref.linkId && std::any_of(link.lanes.begin(), link.lanes.end(),
                 [&](const auto& lane) { return lane.id == ref.laneId; })) return &link;
@@ -44,7 +48,7 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             if (!std::isfinite(link.lanes[j].width) || link.lanes[j].width <= 0) add("INVALID_WIDTH", q + ".width");
         }
     }
-    std::set<std::pair<std::string, std::string>> connections;
+    std::set<std::tuple<std::string,double,std::string,double>> connections;
     for (std::size_t i = 0; i < network.connectors.size(); ++i) {
         const auto& c = network.connectors[i];
         const auto p = "connectors[" + std::to_string(i) + "]";
@@ -55,13 +59,12 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             for(const auto& path:connectorPaths(network,c)) {
                 if(path.id!=c.id)id(path.id,p+".id");
                 geometry(path.geometry,p+".geometry");
-                if(!connections.emplace(path.from.laneId,path.to.laneId).second)add("DUPLICATE_CONNECTION",p);
+                if(!connections.emplace(path.from.laneId,path.from.fraction.value_or(1.),path.to.laneId,path.to.fraction.value_or(0.)).second)add("DUPLICATE_CONNECTION",p);
             }
         }catch(const std::exception&){add("EDIT_LANE_RANGE",p);}
         const auto check = [&](const Link* link, const LaneReference& ref, bool end) {
             if (!link || link->geometry.size() < 2 || c.geometry.empty() || !validSide) return;
-            const auto points = laneGeometry(*link, ref.laneId, network.drivingSide);
-            const auto expected = end ? points.back() : points.front();
+            const auto expected = laneAttachment(network,ref,end);
             const auto endpoint = end ? c.geometry.front() : c.geometry.back();
             if (std::hypot(endpoint.x - expected.x, endpoint.y - expected.y) > 0.01)
                 add("DISCONNECTED_GEOMETRY", p + (end ? ".from" : ".to"));

@@ -290,3 +290,20 @@ The two kinds were **not** merged into one schema, deliberately. A single format
 every drawing look runnable, which is the fidelity claim hard rule 4 exists to prevent. They
 converge when M1.8 gives a project a real Run — not before, and by adding demand to projects,
 not by blurring the formats.
+
+
+## 2026-09-15 follow-up — Reported Network Editor failures
+
+The earlier M1.9 endpoint-only behavior did not satisfy body-to-body authoring. The
+Ctrl+right-drag preview in Select mode also had no Link commit branch, and release used
+stale move state. M1.11 addresses these with release-position commits, body attachment
+fractions, source/target/middle range handles and a Link lane-count handle.
+
+Review also covered cancellation, hidden-level picking, inspector range bounds, shape-handle
+z-order, duplicate connections at distinct positions, schema migration, duplication,
+reanchoring, splits and runtime diagnostics. A split through an attachment is rejected;
+other attachments are remapped onto the proper child Link. The current whole-lane runtime
+cannot honor body attachments and explicitly blocks Run (M1.11.1). First-lane selection
+remains in Properties/the creation dialog. The middle handle changes both ranges together;
+there is no independent arbitrary Connector lane topology. Group transforms, editable
+tables and additional object types retain their earlier status. Owner acceptance remains open.

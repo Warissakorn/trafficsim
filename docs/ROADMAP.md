@@ -94,7 +94,7 @@ one undoable transaction, including both driving sides and turn-pocket splits.
 Implemented: lane-to-lane creation by endpoint picking or Properties, editable interior
 curve points, straight/curve reset, selection, reference-safe deletion and retargeting,
 and shared endpoint maintenance after Link/Lane/driving-side edits. All changes use
-History and persisted polyline geometry (schema 1 is migrated to schema 2). Curves are sampled polylines, not
+History and persisted polyline geometry (schema 1/2 is migrated to schema 3). Curves are sampled polylines, not
 swept-path or turning-radius validation. See NETWORK_EDITOR.md.
 
 ### M1.5 — Inspection and diagnostics
@@ -119,7 +119,7 @@ Vehicle compositions, turning proportions and movement evaluation remain M2.
 Implemented. Atomic, bounded save/open and asset validation are shared with 15-second
 dirty-revision recovery copies. Per-window locks exclude active editors; restored
 documents open untitled and dirty. Vehicle/behaviour catalogs can be embedded explicitly.
-Schema 1 and bare M0 authoring files load without changing IDs; saves write schema 2,
+Schema 1 and bare M0 authoring files load without changing IDs; saves now write schema 3,
 with default ranges/levels/styles for older files. Unknown future versions are rejected.
 
 ### M1.7 — Run handoff and owner acceptance
@@ -192,6 +192,31 @@ included; the owner should inspect a representative junction as part of acceptan
 
 **Explicitly not in M1.10:** 3D or simulation effects from elevation. A drawn flyover
 does not add right-of-way, merging or crossing-conflict logic.
+
+---
+
+### M1.11 — Body attachments and direct lane resizing
+
+Implemented in the Network Editor: Select/Links Ctrl+right-drag creates a Link from empty
+space or a Connector between lane positions. Two-click connection also picks lane bodies.
+Source/target positions persist in schema 3. Source, target and middle side handles resize
+ranges from one lane; a Link side handle resizes its lane list. Undo/Redo, cancellation,
+link edits, duplication and split attachment remapping share the existing command boundary.
+The middle handle sets both ranges together; the Connector path count remains their maximum.
+First-lane changes use the dialog or Properties. This does not claim independent arbitrary
+internal Connector lane topology or close the owner's usability gate.
+
+### M1.11.1 — Compile interior attachments into runtime lane sections
+
+**Open.** The engine currently traverses whole lanes. Before running a body-attached
+Connector, derive lane sections at attachment stations, preserve stable authoring IDs,
+map routes and signal positions, and render vehicle progress against the same sections.
+Retain the existing merge, internal-input and repeated-segment guards. Until verified,
+Run rejects these networks with an object-linked `UNSUPPORTED_CONNECTOR_POSITION` diagnostic.
+Do not introduce persisted duplicate runtime networks or change the engine's fidelity claim.
+
+**Done when:** a vehicle leaves and enters at the drawn stations, travels the correct
+partial-lane distances, obeys section-mounted signals, and retains deterministic replay.
 
 ---
 

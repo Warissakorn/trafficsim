@@ -65,6 +65,7 @@ int main(int argc,char** argv) {
         require(documentJson(w.history().document())==beforeDraw,"First click changed document");
         QTest::keyClick(c,Qt::Key_Escape);click(c,to);
         require(w.history().document().network.connectors.empty(),"Escape did not cancel source");
+        QTest::keyClick(c,Qt::Key_Escape); // A target start is now also a legal source position.
         click(c,from);tool->setCurrentIndex(0);require(!c->pickingConnectorTarget(),"Tool switch retained source");
         tool->setCurrentIndex(5);click(c,from);
         QTest::mouseMove(c->viewport(),pixel(c,to));

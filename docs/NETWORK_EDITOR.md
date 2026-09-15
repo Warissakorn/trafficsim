@@ -25,8 +25,10 @@ Objects and problems dock is below. Switching language updates controls and mess
 
 ## Draw and navigate
 
-Select **Links (L)** in Network Objects, hold Ctrl and right-drag a centreline from
-start to end, then confirm lane count and width in Link Data. Left-click while creating
+In **Select (S)** or **Links (L)**, Ctrl+right-drag from empty space creates a Link.
+Confirm lane count and width in Link Data. Starting the same drag on a Link and ending
+on another Link creates a Connector instead. The release position is used even if the
+last mouse-move event was coalesced or Ctrl was released before the mouse button. Left-click while creating
 adds intermediate points. The existing click-polyline workflow also works: click each
 point and press Enter or double-click to finish. Escape cancels an unfinished gesture.
 
@@ -109,9 +111,12 @@ lane. The dialog chooses the first lane and contiguous lane count at each end. L
 during creation can add intermediate points. One completed gesture creates one connector
 object even when it carries several lanes.
 
-The two-click workflow remains: pick an orange source endpoint, then a teal target
-start, to create a single-lane connector. Properties → Connectors also creates and
-retargets connections using actual link/lane IDs.
+Both ends can attach anywhere on the **body** of their Link; endpoints remain valid.
+The two-click workflow (C) also picks positions on lane bodies. Near a lane end, picking
+snaps to that endpoint. Hidden levels cannot be picked. Properties → Connectors exposes
+actual link/lane IDs and `from.fraction` / `to.fraction` as percentages of lane arclength.
+Changing lanes preserves the selected fractions. Releasing outside a target Link reports
+why nothing was created. Esc and Cancel leave the document and history unchanged.
 
 A connector stores a base polyline and source/target lane counts. Its lane paths are
 derived in monotone order, with stable IDs: the first uses the connector ID and subsequent
@@ -119,8 +124,19 @@ paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference t
 Unequal counts express fan-outs or merges in the drawing; merging still fails the M0
 run check. Connector ranges are limited by the existing lanes, at most 12 per end.
 
-Select a range connector in Select mode and drag its source/target outer corner handle
-to adjust the last lane. Properties exposes both counts as an alternative. Retargeting
+In Select (S), orange **side handles** exist even on a one-lane Connector:
+
+- Source handle: grow/shrink the contiguous source lane range.
+- Target handle: grow/shrink the contiguous target lane range independently.
+- Middle handle: set both ends to the same count, limited by available lanes.
+- A selected Link has its own side handle to add/remove lanes (up to 12). Existing
+  widths are retained and added lanes use the outer lane width. The Link stays centred.
+
+Drag outward to add lanes and inward to remove them; the number and geometry preview
+update during the drag. One release is one undo entry. Esc cancels. First-lane selection
+is available in the creation dialog and Properties; side handles adjust the last lane.
+Connector path count is the larger of its source and target counts, not a third independent
+lane topology. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
@@ -129,8 +145,20 @@ into 12 spans; Make straight retains only endpoints. There are no separate persi
 Bézier handles and arbitrary edits need not remain smooth, though a reshaped curve is
 held to the same geometry rules as a link: no non-finite coordinates, no repeated
 consecutive points and a positive total length. Coincident endpoints cannot
-generate a default curve; leave a positive gap. Duplicate lane-pair connections are
-rejected, including pairs already covered by another connector range.
+generate a default curve; leave a positive gap. Duplicate lane-pair connections at the same source/target fractions are
+rejected, including pairs already covered by another connector range. Separate stations
+on the same lane pair may own separate Connectors.
+
+Positions persist with each lane reference. Moving a Link, changing its lane widths or
+driving side reanchors the Connector at the same arclength fraction. Splitting remaps both
+source and target attachments to the appropriate child Link. A cut through an attachment
+inside the 0.2 m continuity span is rejected; move the split at least 0.1 m away.
+
+**Runtime limit:** body attachments are authorable, editable and saveable. Run and
+Diagnostics report `UNSUPPORTED_CONNECTOR_POSITION` for non-end-to-start attachments.
+The current engine uses whole-lane segments; it must not silently run the full source
+lane or restart at the target's beginning. Lane-section compilation is tracked in
+M1.11.1. Existing endpoint-only projects keep their runtime behavior and capability guards.
 
 Deleting a connector removes heads on its paths, affected routes and their vehicle
 inputs in the same undoable transaction. Heads on unaffected links remain.
@@ -223,10 +251,13 @@ without modifying the saved image.
 
 ## Save, recovery and formats
 
-Save/Open uses `*.traffic.json`. Schema 2 stores format, schemaVersion, revision, nextId,
+Save/Open uses `*.traffic.json`. Schema 3 stores format, schemaVersion, revision, nextId,
 network, optional typed definition and background/transform. It never stores a second
 editable runtime network. Schema 1 migrates with one-lane connector counts, level 0 and
-default display type while preserving IDs. Unknown future versions are rejected.
+default display type while preserving IDs. Schema 1/2 references without `fraction`
+retain source-end/target-start semantics. Schema 3 makes the new attachment contract
+explicit so earlier applications reject these files instead of discarding positions.
+Unknown future versions are rejected.
 
 | File kind | M0 scenario | Editor project |
 |---|---|---|
@@ -236,7 +267,7 @@ default display type while preserving IDs. Unknown future versions are rejected.
 | Opened by | Simulation window or editor | Editor |
 | Runs | M0 harness | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and schema-1/2 projects and saves schema 2.
+The editor opens bare M0 authoring files and schema-1/2/3 projects and saves schema 3.
 The M0 simulation window recognizes an editor project before reading its fields and
 offers to open it in the editor, even if that project already contains demand.
 

@@ -1,5 +1,6 @@
 #include "../src/shell/editor_window.hpp"
 #include <QApplication>
+#include <QGraphicsItem>
 #include <QAction>
 #include <QComboBox>
 #include <QDialog>
@@ -68,7 +69,12 @@ int main(int argc,char** argv) {
         require(w.history().revision()==3,"Range gesture was not one command");
         const auto paths=connectorPaths(w.history().document().network,connector);
         QTest::keyClick(c,Qt::Key_S);c->select(connector.id);const auto full=documentJson(w.history().document());
-        drag(c,paths.back().geometry.front(),paths[1].geometry.front(),Qt::LeftButton);
+        Point resize{};bool found=false;
+        for(auto* item:c->scene()->items())if(item->data(0).toString()=="lane-resize" && item->data(1).toInt()==1) {
+            const auto p=item->sceneBoundingRect().center();resize={p.x(),p.y()};found=true;break;
+        }
+        require(found,"Source side handle missing");
+        drag(c,resize,{resize.x,resize.y+3.5},Qt::LeftButton);
         require(w.history().document().network.connectors.front().fromLaneCount==2,"Corner did not resize range");
         action(w,"editorUndo");require(documentJson(w.history().document())==full,"Range Undo changed data");
 
