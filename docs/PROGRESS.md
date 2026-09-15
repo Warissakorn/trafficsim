@@ -6,6 +6,39 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-15 — Windows packaging build broken by a Linux-only test mechanism
+
+`Package binaries` run 6 failed on `main` at 53f58e5: Windows x64, `m1-workflow`, "autosave
+ran without a recovery lock". `Native C++` passed on every commit of the branch, and run 5 on
+the previous `main` was green, so the break arrived with PR #15.
+
+**Cause.** The lock-failure case added to `m1_ui_tests` forced `QLockFile::tryLock` to fail by
+pointing `XDG_DATA_HOME` at a regular file. That variable is an XDG convention: Windows
+resolves `AppLocalDataLocation` from `%LOCALAPPDATA%` and ignores it. On Windows the recovery
+directory was therefore valid, the lock succeeded, autosave started, and the assertion that
+autosave stays stopped fired — reporting a product bug that does not exist. The setup no-oped;
+the product behaved correctly.
+
+**Two failures, not one.** The mechanism was platform-specific, and the assertions were
+ordered so that a no-op setup read as a product defect instead of a broken test. The test now
+occupies the recovery directory's own path with a regular file, which no OS lets a file be
+created inside, and checks `recoveryPath()` is empty *first*, failing with "could not force a
+recovery lock failure on this platform" if the setup ever stops working. Verified both ways on
+Linux: disabling the blocking file now reports the mechanism, not autosave.
+`QStandardPaths::setTestModeEnabled(true)` also keeps the whole binary out of the real profile,
+which it had been reading and deleting recovery copies from.
+
+**Why it reached main.** `native.yml` gates every push and pull request, but its Windows job
+configures `-DTRAFFICSIM_BUILD_DESKTOP=OFF`, so no UI suite ran there. The only Windows desktop
+build lived in `package.yml`, which is `workflow_dispatch` and gates nothing. A Windows-only UI
+regression could merge green by construction. `native.yml` now carries a `windows-desktop` job
+building the full desktop under MSVC and running all 21 tests.
+
+Recorded in CLAUDE.md so the next session does not repeat it: assert that a forced failure was
+forced before asserting its consequence, never force one with a platform-specific mechanism,
+and do not read a green Linux run as cross-platform evidence.
+
+
 ## 2026-09-15 — Connector reshaping made path-independent, and the cost of one edit
 
 Review of M1.3/M1.4 found that `reanchor` displaced a connector's interior points relative to
@@ -69,35 +102,6 @@ catalog embedding". The run overlay change has no dedicated test: reaching it ne
 segment-id desync that compilation and `setRunNetwork` currently make impossible.
 
 M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
-
-## 2026-09-15 — Scenario compilation cost and split re-projection coverage
-
-Review of the merged M1 branch found `buildScenario` resolving `connectorPaths` inside the
-per-lane, per-connector loop. `connectorPaths` linear-scans `network.links` to resolve each
-end, so compilation scaled roughly cubically in network size. This is not a batch-only path:
-`refreshDemand` compiles on every model change and `validateDocument` compiles on every
-15-second autosave, so a large network stalled the editor on ordinary edits.
-
-Connector paths depend only on the network, so they are now derived once and indexed by
-originating lane. Measured on a straight corridor with three lanes per link and three-lane
-range connectors: 400 links fell from 10809 ms to 11.8 ms, and 800 links now compile in
-44.6 ms where the old shape did not finish in reasonable time. Segment order, `next` order
-and therefore replay are unchanged — the `cli` test still pins 29.24935 exactly.
-
-`signal_bearing_split_preserves_control_and_routes` asserted which link or connector each
-head lands on but never its re-projected station, leaving the lane-arc-length to
-centreline-station conversion untested. It now pins the downstream station and, for the
-non-pocket case, the exact world point on the gap connector. A pocket widens the downstream
-link and shifts its lanes, so only the station is stable there; the world-point check is
-deliberately scoped to the case where no lane moves. Verified non-vacuous by mutation: a
-0.05 m drift applied only to the downstream head is caught here and by no pre-existing check.
-
-Verified on the headless preset only. Qt 6 is unavailable in this environment, so the desktop
-build and the four UI suites this branch added remain unverified locally. `nlohmann/json` is
-also absent and was supplied through `TRAFFICSIM_JSON_INCLUDE_DIR`; no repository dependency
-changed. M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
-
-The same review left two smaller Qt-side items, both since fixed — see the entry above.
 
 ## Next
 

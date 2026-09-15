@@ -17,6 +17,30 @@ jobs:
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} --parallel 2
       - run: cmake --build build/${{ matrix.preset }} --target check
+  # The UI suites are platform-sensitive: they touch real user paths, locks and window
+  # activation. Until 2026-09-15 they ran on Windows only in the manual packaging workflow,
+  # so a Windows-only UI failure merged to main green and surfaced days later. This job
+  # gates it on every push and pull request instead.
+  windows-desktop:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Qt
+        # This action's latest major is v4; there is no v5. Do not bump it alongside the
+        # actions/* steps - a blanket major bump broke packaging in 26d7399.
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          cache: true
+      - name: Install JSON headers
+        run: vcpkg install nlohmann-json:x64-windows
+      - name: Configure MSVC
+        run: cmake -S . -B build/desktop -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+      - run: cmake --build build/desktop --config Release --parallel 2
+      - run: ctest --test-dir build/desktop -C Release --output-on-failure
   windows-core:
     runs-on: windows-2022
     steps:

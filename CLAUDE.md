@@ -133,6 +133,12 @@ tests/
 - Native tests compare four TS baselines with a 1e-7 physical-value tolerance and exact
   same-build replay. Never regenerate baseline fixtures to make a failing port pass.
 - UI text lives in `data/locales/`. Runtime catalogs are copied beside executables.
+- **A test that forces a failure must first assert that the forcing worked**, then assert the
+  consequence. Order it the other way and a platform where the setup silently no-ops reports a
+  product bug that is not there. Never force one with a platform-specific mechanism — POSIX
+  permissions, root behaviour, or `XDG_*` variables, which Windows and macOS ignore.
+- Qt UI suites run on Linux **and Windows** in `native.yml`. "Verified locally" means Linux
+  only; say so, and do not read a green Linux run as cross-platform evidence.
 - The owner authorized the full stack migration (D15); it supersedes one-system scheduling
   guidance for that migration only. Existing M0/M1 acceptance gates still apply.
 
