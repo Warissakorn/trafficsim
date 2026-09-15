@@ -25,7 +25,7 @@ TEST(editor, document_roundtrip_and_version_guards) {
     auto d=sample();d.background.x=12.75;d.background.rotation=32;d.background.metresPerPixel=0.07;
     auto j=documentJson(d);CHECK(documentJson(parseDocument(Json::parse(j.dump())))==j);
     CHECK(documentJson(parseDocument(documentJson(ProjectDocument{})))==documentJson(ProjectDocument{}));
-    j["schemaVersion"]=2;test::throws([&]{parseDocument(j);},"EDIT_VERSION");
+    j["schemaVersion"]=999;test::throws([&]{parseDocument(j);},"EDIT_VERSION");
     j=documentJson(d);j["background"]["metresPerPixel"]=-1;test::throws([&]{parseDocument(j);},"EDIT_BACKGROUND_INVALID");
     j=documentJson(d);j["nextId"]=-1;test::throws([&]{parseDocument(j);},"EDIT_ID_LIMIT");
 }
@@ -37,14 +37,14 @@ TEST(editor, referenced_edits_reanchor_and_undo) {
     h.execute("delete",[](auto& d){deleteLink(d,"west");});
     CHECK(h.document().network.links.size()==3);CHECK(h.document().network.signalHeads.size()==1);
     CHECK(h.document().network.signalHeads.front().id=="south-head");
-    CHECK(h.document().network.connectors.size()==1);CHECK(h.document().definition["routes"].size()==1);
-    CHECK(h.document().definition["inputs"].size()==1);h.undo();CHECK(documentJson(h.document())==before);
+    CHECK(h.document().network.connectors.size()==1);CHECK(h.document().definition->routes.size()==1);
+    CHECK(h.document().definition->inputs.size()==1);h.undo();CHECK(documentJson(h.document())==before);
 }
 TEST(editor, split_remaps_routes_and_preserves_old_snapshot) {
     History h;h.reset(sample());const auto old=documentJson(h.document());std::string downstream;
     h.execute("split",[&](auto& d){downstream=splitLink(d,"east",70);});
     CHECK(h.document().network.links.size()==5);CHECK(h.document().network.connectors.size()==3);
-    const auto& ids=h.document().definition["routes"][0]["segmentIds"];
+    const auto& ids=h.document().definition->routes[0].segmentIds;
     CHECK(ids.size()==5);CHECK(h.document().network.connectors[0].to.linkId=="east");
     const auto& n=h.document().network;CHECK(validateNetwork(n).empty());
     h.undo();CHECK(documentJson(h.document())==old);h.redo();CHECK(h.document().network.links.back().id==downstream);
@@ -59,7 +59,7 @@ TEST(editor, turn_pocket_and_opposite_both_driving_sides) {
         h.execute("pocket",[&](auto& d){splitLink(d,road,60,true);});
         CHECK(h.document().network.links.back().lanes.size()==3);
         CHECK(h.document().network.connectors.size()==2);CHECK(validateNetwork(h.document().network).empty());
-        CHECK(!h.document().definition.is_object());
+        CHECK(!h.document().definition.has_value());
     }
 }
 TEST(editor, lane_removal_does_not_dangle_references) {
@@ -78,14 +78,12 @@ TEST(editor, ids_skip_imported_collisions_and_image_is_shared) {
     CHECK(h.document().background.pngBase64==d.background.pngBase64);h.undo();CHECK(h.document().background.pngBase64==d.background.pngBase64);
 }
 
-TEST(editor, invalid_geometry_and_signal_split_are_atomic) {
+TEST(editor, invalid_geometry_is_atomic) {
     History h;h.reset(sample());const auto before=documentJson(h.document());
     for (const std::vector<Point>& geometry : std::vector<std::vector<Point>>{{},{{0,0}},{{0,0},{0,0}},{{0,0},{NAN,0}}}) {
         test::throws([&]{h.execute("bad geometry",[&](auto& d){changeGeometry(d,"west",geometry);});});
         CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
     }
-    test::throws([&]{h.execute("split signal",[](auto& d){splitLink(d,"west",50);});},"EDIT_SPLIT_SIGNAL");
-    CHECK(documentJson(h.document())==before);
 }
 
 TEST(editor, delete_objects_is_one_undoable_transaction) {
@@ -96,8 +94,8 @@ TEST(editor, delete_objects_is_one_undoable_transaction) {
     CHECK(n.links.size()==3);                                  // west removed, the other three remain
     CHECK(n.connectors.empty());                               // west-east cascaded, south-north named
     CHECK(n.signalHeads.size()==1);                            // west-head cascaded with its link
-    CHECK(h.document().definition.at("routes").empty());       // both routes used a removed segment
-    CHECK(h.document().definition.at("inputs").empty());
+    CHECK(h.document().definition->routes.empty());       // both routes used a removed segment
+    CHECK(h.document().definition->inputs.empty());
     h.undo();
     // One Undo, everything back: links, connectors, heads, routes and their vehicle inputs.
     CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
@@ -113,13 +111,23 @@ TEST(editor, delete_objects_skips_cascaded_ids_and_rejects_unknown) {
         CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
     }
 }
-TEST(editor, signal_bearing_link_split_is_still_rejected) {
-    // M1.3.1 guard: preserving control stationing through a split needs a policy that does not
-    // exist yet, so the command must refuse rather than silently move the head.
-    History h;h.reset(sample());const auto before=documentJson(h.document());
-    for (const auto* id : {"west","south"}) {
-        test::throws([&]{h.execute("split",[&](auto& d){splitLink(d,id,50);});},"EDIT_SPLIT_SIGNAL");
-        test::throws([&]{h.execute("pocket",[&](auto& d){splitLink(d,id,50,true);});},"EDIT_SPLIT_SIGNAL");
+TEST(editor, signal_bearing_split_preserves_control_and_routes) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right})for(const bool pocket:{false,true}) {
+        History h;auto d=sample();d.network.drivingSide=side;
+        d.network.signalHeads={{"up",{"west","west-1"},20,"east-west-program"},
+            {"span",{"west","west-1"},50,"east-west-program"},
+            {"down",{"west","west-1"},100,"east-west-program"}};
+        h.reset(d);const auto before=documentJson(h.document());
+        std::string downstream;h.execute("split",[&](auto& doc){downstream=splitLink(doc,"west",50,pocket);});
+        const auto& n=h.document().network;
+        CHECK(n.signalHeads[0].lane.linkId=="west");test::near(n.signalHeads[0].position,20);
+        CHECK(!n.signalHeads[1].connectorId.empty());CHECK(n.signalHeads[1].lane.laneId.empty());
+        CHECK(n.signalHeads[2].lane.linkId==downstream);
+        CHECK(validateNetwork(n).empty());
+        const auto& ids=h.document().definition->routes.front().segmentIds;
+        CHECK(ids.size()==5);CHECK(ids[1]==n.signalHeads[1].connectorId);
+        for(const auto& head:n.signalHeads)CHECK(head.programId=="east-west-program");
+        CHECK(documentJson(parseDocument(Json::parse(documentJson(h.document()).dump())))==documentJson(h.document()));
+        h.undo();CHECK(documentJson(h.document())==before);h.redo();CHECK(h.document().network.links.size()==5);
     }
-    CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
 }

@@ -1,9 +1,24 @@
 #include "network.hpp"
+#include <limits>
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 namespace trafficsim {
+std::string signalSegment(const NetworkSignalHead& head) {
+    return head.connectorId.empty()?head.lane.laneId:head.connectorId;
+}
+double stationOfClosestPoint(const std::vector<Point>& geometry, Point p) {
+    double best=std::numeric_limits<double>::infinity(), station=0, result=0;
+    for(std::size_t i=1;i<geometry.size();++i) {
+        const auto a=geometry[i-1],b=geometry[i];const double dx=b.x-a.x,dy=b.y-a.y,len=std::hypot(dx,dy);
+        if(len<=0)continue;
+        const double t=std::clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/(len*len),0.,1.);
+        const double distance=std::hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);
+        if(distance<best){best=distance;result=station+t*len;}station+=len;
+    }
+    return result;
+}
 double polylineLength(const std::vector<Point>& points) {
     double length = 0;
     for (std::size_t i = 1; i < points.size(); ++i)

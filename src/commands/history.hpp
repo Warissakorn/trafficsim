@@ -13,6 +13,7 @@ public:
     bool canRedo() const { return !redo_.empty(); }
     void reset(ProjectDocument document = {});
     void markSaved() { saved_ = revision(); }
+    void markUnsaved() { saved_ = ~std::uint64_t{}; } // A recovered document requires an explicit save.
     bool execute(const std::string& name, const std::function<void(ProjectDocument&)>& change);
     void undo();
     void redo();

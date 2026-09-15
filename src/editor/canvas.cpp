@@ -57,6 +57,7 @@ void EditorCanvas::setTool(Tool tool) {
     cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
 }
 void EditorCanvas::cancel() {
+    creating_=false;gestureFrom_.reset();rangeCorner_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
     if (connectorDraftChanged) connectorDraftChanged();
@@ -67,30 +68,15 @@ Point EditorCanvas::world(QPoint position, bool snapped) const {
     if (snapped && snap && grid > 0) { result.x = std::round(result.x/grid)*grid; result.y = std::round(result.y/grid)*grid; }
     return result;
 }
-std::pair<std::string, double> EditorCanvas::hit(Point p, bool connectors) const {
-    std::pair<std::string, double> found; double best = 10 / std::abs(transform().m11());
-    if (!document_) return found;
-    const auto check = [&](const std::string& id, const std::vector<Point>& geometry) {
-        double station = 0;
-        for (std::size_t i = 1; i < geometry.size(); ++i) {
-            const auto a=geometry[i-1], b=geometry[i];
-            const double dx=b.x-a.x, dy=b.y-a.y, len=std::hypot(dx,dy);
-            if (len <= 0) continue;
-            const double t=std::clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/(len*len),0.0,1.0);
-            const double dist=std::hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);
-            if (dist < best) { best=dist; found={id,station+t*len}; }
-            station += len;
-        }
-    };
-    for (const auto& l : document_->network.links) check(l.id, l.geometry);
-    if (connectors) for (const auto& c : document_->network.connectors) check(c.id, c.geometry);
-    return found;
+std::pair<std::string, double> EditorCanvas::hit(Point p,bool connectors) const {
+    const auto hits=hitObjects(p,connectors);
+    return hits.empty()?std::pair<std::string,double>{}:hits.front();
 }
 void EditorCanvas::redraw() {
-    scene_.clear();
+    runItems_.clear();scene_.clear();
     if (!document_) return;
     const auto& bg=document_->background;
-    if (!bg.pngBase64->empty()) {
+    if (backgroundVisible_ && !bg.pngBase64->empty()) {
         if (cachedImage_ != bg.pngBase64) {
             image_.loadFromData(QByteArray::fromBase64(QByteArray::fromStdString(*bg.pngBase64)), "PNG");
             cachedImage_ = bg.pngBase64;
@@ -98,19 +84,21 @@ void EditorCanvas::redraw() {
         auto* image=scene_.addPixmap(image_);
         const double a=bg.rotation*std::numbers::pi/180, s=bg.metresPerPixel;
         image->setTransform(QTransform(std::cos(a)*s,std::sin(a)*s,std::sin(a)*s,-std::cos(a)*s,bg.x,bg.y));
-        image->setOpacity(bg.opacity); image->setZValue(-10);
+        image->setOpacity(bg.opacity); image->setZValue(-200000);
     }
     const auto primary = selected();
     for (auto link : document_->network.links) {
+        if(!levelVisible(link.level))continue;
+        const auto& appearance=style(link.displayType);const double z=link.level*100.;
         const bool chosen=isSelected(link.id);
-        if (chosen && !preview_.empty()) link.geometry=preview_;
+        if (link.id==primary && !preview_.empty()) link.geometry=preview_;
         for (const auto& lane : link.lanes) {
             const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
-            const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor("#49596d");
+            const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
             auto* item=scene_.addPath(path(geometry),QPen(colour,lane.width,Qt::SolidLine,Qt::FlatCap,Qt::RoundJoin));
-            item->setZValue(1);
-            QPen centre(QColor("#d0dfeb"),1,Qt::DashLine); centre.setCosmetic(true);
-            scene_.addPath(path(geometry),centre)->setZValue(2);
+            item->setZValue(z+1);
+            QPen centre(QColor(QString::fromStdString(appearance.laneColor)),1,Qt::DashLine); centre.setCosmetic(true);
+            scene_.addPath(path(geometry),centre)->setZValue(z+2);
         }
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
         if (polylineLength(link.geometry) <= 0) continue;
@@ -119,27 +107,39 @@ void EditorCanvas::redraw() {
         const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());
         QPolygonF arrow;
         for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
-        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(3);
+        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+3);
         // Handles belong to the primary alone; drawing them for every selected link would
         // suggest a group drag that M1.5 deliberately does not implement.
         if (link.id==primary) for (std::size_t i=0;i<link.geometry.size();++i) {
             const auto p=link.geometry[i]; const double radius=4/std::abs(transform().m11());
             scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,QPen(Qt::NoPen),
-                QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(5);
+                QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(z+5);
         }
     }
     drawConnectors();
+    for(const auto& head:document_->network.signalHeads) {
+        std::vector<Point> geometry;int level=0;
+        if(head.connectorId.empty()) {
+            for(const auto& l:document_->network.links)if(l.id==head.lane.linkId) {
+                geometry=laneGeometry(l,head.lane.laneId,document_->network.drivingSide);level=l.level;
+            }
+        } else for(const auto& c:document_->network.connectors)for(const auto& p:connectorPaths(document_->network,c))
+            if(p.id==head.connectorId){geometry=p.geometry;level=c.level;}
+        if(geometry.empty() || !levelVisible(level))continue;
+        const auto p=pointAlong(geometry,head.position);const double r=3/std::abs(transform().m11());
+        scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,QPen(Qt::darkGray),QBrush(Qt::white))->setZValue(level*100.+10);
+    }
     if (band_) {
         QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);
-        scene_.addRect(*band_,pen,QBrush(QColor(22,123,152,30)))->setZValue(9);
+        scene_.addRect(*band_,pen,QBrush(QColor(22,123,152,30)))->setZValue(200009);
     }
     if (!draft_.empty()) {
         QPen pen(QColor("#de8618"),2,Qt::DashLine); pen.setCosmetic(true);
-        scene_.addPath(path(draft_),pen)->setZValue(8);
+        scene_.addPath(path(draft_),pen)->setZValue(200008);
         for (auto p:draft_) { const double r=3/std::abs(transform().m11()); scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,pen)->setZValue(8); }
     }
     scene_.setSceneRect(scene_.itemsBoundingRect().adjusted(-10000,-10000,10000,10000).united(QRectF(-10000,-10000,20000,20000)));
-    viewport()->update();
+    drawRunItems();viewport()->update();
 }
 void EditorCanvas::fitNetwork() {
     auto bounds=scene_.itemsBoundingRect(); if (bounds.isEmpty()) bounds=QRectF(-50,-50,100,100);

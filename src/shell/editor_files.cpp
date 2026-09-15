@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "editor_storage.hpp"
 #include <QBuffer>
 #include <QCloseEvent>
 #include <QDoubleSpinBox>
@@ -14,30 +15,17 @@
 
 namespace trafficsim {
 void EditorWindow::openFile(const QString& file) {
-    QFile input(file);
-    if(!input.open(QIODevice::ReadOnly) || input.size()>48*1024*1024) throw std::runtime_error("EDIT_FILE_READ");
-    const auto bytes=input.readAll();
-    auto document=parseDocument(Json::parse(bytes.constData(),bytes.constData()+bytes.size()));
-    if(!document.background.pngBase64->empty()) {
-        auto encoded=QByteArray::fromBase64Encoding(QByteArray::fromStdString(*document.background.pngBase64),QByteArray::AbortOnBase64DecodingErrors);
-        if(!encoded) throw std::runtime_error("EDIT_BACKGROUND_INVALID");
-        QBuffer imageBytes(&encoded.decoded);imageBytes.open(QIODevice::ReadOnly);QImageReader reader(&imageBytes,"PNG");
-        const auto size=reader.size();
-        if(!size.isValid()||static_cast<qint64>(size.width())*size.height()>32000000||reader.read().isNull())
-            throw std::runtime_error("EDIT_BACKGROUND_INVALID");
-    }
-    history_.reset(std::move(document));file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
+    auto document=readEditorDocument(file); // Decode and validate before touching the live document.
+    clearRecovery(); clearRun(); history_.reset(std::move(document));file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
 }
 void EditorWindow::openFileOrReport(const QString& file) {
     try { openFile(file); } catch (const std::exception& e) { showError(e); }
 }
 void EditorWindow::saveFile(const QString& file) {
+    if(file==recoveryFile_)throw std::runtime_error("EDIT_FILE_WRITE");
     validateDocument(history_.document());
-    const auto bytes=documentJson(history_.document()).dump(2)+"\n";
-    QSaveFile output(file); // No direct-write fallback: failed replacement must preserve the previous file.
-    if(!output.open(QIODevice::WriteOnly) || output.write(bytes.data(),static_cast<qint64>(bytes.size()))!=static_cast<qint64>(bytes.size()) || !output.commit())
-        throw std::runtime_error("EDIT_FILE_WRITE");
-    file_=file;history_.markSaved();error_->clear();refresh();
+    writeEditorDocument(file,documentJson(history_.document()));
+    clearRecovery();file_=file;history_.markSaved();error_->clear();refresh();
 }
 bool EditorWindow::saveDialog(bool as) {
     auto file=file_;
@@ -54,7 +42,7 @@ bool EditorWindow::confirmDiscard() {
     if(answer==QMessageBox::Save)return saveDialog();
     return answer==QMessageBox::Discard;
 }
-void EditorWindow::closeEvent(QCloseEvent* event) { if(confirmDiscard()) event->accept();else event->ignore(); }
+void EditorWindow::closeEvent(QCloseEvent* event) { if(confirmDiscard()) {clearRecovery();event->accept();}else event->ignore(); }
 void EditorWindow::importImage() {
     const auto file=QFileDialog::getOpenFileName(this,text("editorImportImage"),{},text("editorImageFilter"));
     if(file.isEmpty())return;

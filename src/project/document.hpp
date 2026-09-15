@@ -1,5 +1,6 @@
 #pragma once
 #include "json.hpp"
+#include "../model/demand/definition.hpp"
 
 namespace trafficsim {
 struct BackgroundImage {
@@ -8,11 +9,14 @@ struct BackgroundImage {
 };
 struct ProjectDocument {
     Network network{"network", DrivingSide::left, {}, {}, {}};
-    Json definition = nullptr; // Optional M0 authoring definition, never a compiled scenario.
+    std::optional<AuthoringDefinition> definition; // Typed authoring values, never a compiled scenario.
     BackgroundImage background;
     std::uint64_t nextId{1};
     std::uint64_t revision{};
 };
+AuthoringDefinition parseAuthoringDefinition(const Json&);
+Json definitionJson(const AuthoringDefinition&);
+void validateAuthoredDemand(const ProjectDocument&);
 Json documentJson(const ProjectDocument& document);
 ProjectDocument parseDocument(const Json& json);
 void validateDocument(const ProjectDocument& document); // Empty networks are valid drafts.

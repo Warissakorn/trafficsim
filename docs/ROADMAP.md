@@ -51,6 +51,9 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
+**Status:** M1.1–M1.10 implementation is available. The owner acceptance in M1.7 remains open;
+M1 is not closed until its timed gate passes.
+
 **Done when:** an engineer draws a four-leg intersection with turn pockets from scratch, over
 an aerial image, in under 10 minutes, without reading documentation — and reopening the file
 gives back exactly what they drew.
@@ -80,23 +83,24 @@ with these tools so drawings are not disposable. See NETWORK_EDITOR.md for the e
 
 ### M1.3.1 — Split links carrying signal heads
 
-Not implemented. Current split commands reject these links without changing the document.
-Define stationing/remapping for heads on upstream/downstream portions and inside the
-split connector span, then test control and route preservation together. This is an
-explicit follow-up, not a claim that arbitrary controlled networks can already be split.
+Implemented. Heads are located on the original lane geometry, classified by their
+projection onto the original centreline, and projected onto the owning upstream lane,
+downstream lane or split connector path. Heads inside the 0.2 m connector span become
+connector-mounted controls. Route order, head IDs and program IDs are preserved in
+one undoable transaction, including both driving sides and turn-pocket splits.
 
 ### M1.4 — Connector editor
 
 Implemented: lane-to-lane creation by endpoint picking or Properties, editable interior
 curve points, straight/curve reset, selection, reference-safe deletion and retargeting,
 and shared endpoint maintenance after Link/Lane/driving-side edits. All changes use
-History and the existing version-1 geometry format. Curves are sampled polylines, not
+History and persisted polyline geometry (schema 1 is migrated to schema 2). Curves are sampled polylines, not
 swept-path or turning-radius validation. See NETWORK_EDITOR.md.
 
 ### M1.5 — Inspection and diagnostics
 
 Implemented: Links, Connectors and Signal heads tables with two-way selection, canvas
-multi-selection by Ctrl-click and rubber band, delete-many as one undoable transaction, and
+multi-selection by Shift-click and rubber band, delete-many as one undoable transaction, and
 structured diagnostics whose rows name an object and jump to it. Draft validity still blocks
 an edit; runnability against the M0 compiler is reported on demand and never blocks. Exact
 limits: property and geometry edits act on one object, there is no group drag, and
@@ -104,83 +108,81 @@ vehicle-type/behaviour references are not judged without a catalog. See NETWORK_
 
 ### M1.5.1 — Demand object tables and editing
 
-Not implemented. Routes and vehicle inputs have no authoring model — they are untyped JSON
-inside the project document — so M1.5 lists and names them in diagnostics but gives them no
-table and no commands. Define the authoring types and their undoable edits, then table them
-alongside the network objects. This is an explicit follow-up, not a claim that demand can
-already be authored; if M2 lands first, fold this into it.
+Implemented. Optional typed authoring demand replaces the untyped JSON field.
+Routes, vehicle inputs, fixed-time programs and heads have validated atomic commands
+and native dialogs; routes, inputs and programs have their own tables. Route deletion
+cascades inputs; referenced program deletion and topology-changing retargets are rejected.
+Vehicle compositions, turning proportions and movement evaluation remain M2.
 
 ### M1.6 — Complete persistence workflow
 
-Autosave/recovery, robust asset/catalog handling and future-schema migration policy.
-Basic version-1 atomic save/open and embedded images already exist.
+Implemented. Atomic, bounded save/open and asset validation are shared with 15-second
+dirty-revision recovery copies. Per-window locks exclude active editors; restored
+documents open untitled and dirty. Vehicle/behaviour catalogs can be embedded explicitly.
+Schema 1 and bare M0 authoring files load without changing IDs; saves write schema 2,
+with default ranges/levels/styles for older files. Unknown future versions are rejected.
 
 ### M1.7 — Run handoff and owner acceptance
 
-Compile an explicit document revision into a run snapshot, expose unsupported simulation
-features before Run, and perform the four-leg/aerial-image/ten-minute/reopen acceptance
-exercise above. The M0 owner gate remains open; editor work does not waive it.
+Run handoff implemented: compile one document revision with resolved catalogs into a
+detached network/scenario snapshot. Unsupported features are exposed before Run;
+successful edits invalidate a run. The engine's existing capability guards remain.
+
+**Owner acceptance remains open.** Perform the four-leg/aerial-image/ten-minute/reopen
+exercise in [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). The M0 plausibility gate also remains
+open. No automated test or implementation status closes either gate.
 
 ---
 
 ### M1.8 — Run inside the network editor
 
-Not implemented. Today the editor cannot simulate and the simulation window is a separate
-`MainWindow` that loads M0 scenario JSON — a user who draws a network and looks for a play
-button finds a window that rejects their file. Vissim runs the simulation **in** the network
-editor, and that single property is most of why it feels like one tool.
+Implemented. Run/Pause (F5), Step (F6 or Space on the canvas), Reset, seed and playback
+speed control operate in the editor. Vehicles and fixed-time heads render over the
+drawn network; status identifies the document revision and seed. Every fixed step
+uses the unchanged core and the not-yet-validated marker stays visible.
 
-**Scope:** Run/Pause/Step/Reset and a speed control on the editor's own canvas, vehicles drawn
-over the network as drawn, and the run attributed to one explicit document revision.
+**Done when:** an engineer draws a network, authors demand and watches it run without
+leaving the editor. The automated drawing/demand/run/replay workflow covers the software
+path; the owner's hands-on exercise remains in M1.7.
 
-**Depends on:** M1.5.1 (demand has no authoring model, so there is nothing to run) and M1.7
-(catalog resolution and revision-to-snapshot). M1.7 stays the plumbing; M1.8 is the surface.
-
-**Done when:** an engineer draws a network, authors demand, presses Run without leaving the
-editor, and watches vehicles traverse it — with the not-yet-validated marker still displayed.
-
-**Explicitly not in M1.8:** results tables, per-movement delay or LOS (M2 onwards), and any
-relaxation of D5. Running a network is not evidence that its numbers mean anything.
+**Explicitly not in M1.8:** movement results, control delay, LOS or relaxation of D5.
 
 ### M1.9 — Network Objects sidebar, Vissim gestures and shortcuts
 
-Not implemented. The edit mode is a six-entry `QComboBox`, connectors are created one lane pair
-at a time, `Delete` removes a geometry vertex rather than the selected objects, and no shortcut
-selects a tool at all. See [`VISSIM_PARITY.md`](VISSIM_PARITY.md) §1–2 for the measured gap.
+Implemented. A permanent Network Objects sidebar selects the creation type.
+Ctrl+right-drag opens link and connector data dialogs; one connector owns contiguous
+lane ranges. Ctrl+right-click opens demand/control creation or inserts a geometry point
+in Select mode. Connector corner drags resize unreferenced ranges. Left-click during
+creation adds intermediate polyline points.
 
-**Scope:** a permanent network-objects sidebar replacing the tool dropdown; `Ctrl`+right-drag as
-the single creation chord for every object type, which is what the sidebar disambiguates;
-connector creation in one gesture across a **lane range**; `Delete` acting on the selection with
-vertex removal moved to a modifier; a shortcut per object type and `Tab` to cycle overlapping
-objects; and a decision on the two chords Vissim already uses for something else —
-`Ctrl`+left-click (duplicate there, extend-selection here) and `Ctrl+B` (background image there,
-Objects dock here).
+Shift-click extends selection; Ctrl+left-click duplicates selected links and their
+internal connectors/heads with fresh IDs, preserving programs without doubling demand.
+Delete removes selected objects; Ctrl+Delete removes a vertex. Tool shortcuts and Tab
+overlap cycling are available. Ctrl+B toggles the background; Ctrl+Shift+O toggles tables.
 
-**Not a UI-only milestone.** One Vissim gesture connects a *range* of lanes; `Connector { from,
-to }` holds a single lane pair (`src/model/network/network.hpp`), so the gesture cannot be
-adopted honestly without widening the connector model and everything that reanchors it. Size it
-as a model change with a gesture on top.
+The model derives stable per-lane paths for compilation, reanchoring and reference
+cleanup. Unequal ranges may express merges in authoring; the core still rejects them.
 
-**Done when:** an engineer who uses Vissim daily draws a four-leg intersection here without
-looking for a control that is not where their hand expects it.
+**Done when:** a daily Vissim user draws the four-leg intersection without searching for
+controls. Implementation and automated gesture checks do not replace this owner test.
 
-**Explicitly not in M1.9:** new network object types (§4 of the parity review), editable object
-tables, and group drag.
+**Explicitly not in M1.9:** new network types from the parity review, editable table cells,
+group drag and rotation.
 
 ### M1.10 — Levels and display types
 
-Not implemented. There is no `level` anywhere in the model, so overlapping geometry — flyovers,
-underpasses — cannot be ordered, and draw styles are fixed in rendering code.
+Implemented. Links and connectors persist a level and named display type. Rendering,
+vehicle/head overlays, hit testing and visible-level filtering use level order; Tab
+can select an overlapping lower object. Levels and styles live in `data/levels/` and
+`data/display-types/`; adding a style needs no C++ change. Unknown style IDs retain
+their value and use the default appearance.
 
-**Scope:** a level on links and connectors that orders drawing and selection, and named display
-types. Both are **content, not code** (hard rule 5): adding the fiftieth display type must not
-need a code edit, so they live in `data/`.
+**Done when:** a grade-separated junction draws and selects correctly at different
+zooms and a new display type is a data file. Automated gesture/persistence coverage is
+included; the owner should inspect a representative junction as part of acceptance.
 
-**Done when:** a grade-separated junction draws and selects correctly at every zoom, and a new
-display type is a data file.
-
-**Explicitly not in M1.10:** 3D, and any change to how levels affect simulation — this is a
-drawing and selection concern only.
+**Explicitly not in M1.10:** 3D or simulation effects from elevation. A drawn flyover
+does not add right-of-way, merging or crossing-conflict logic.
 
 ---
 

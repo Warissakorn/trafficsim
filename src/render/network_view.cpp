@@ -18,7 +18,7 @@ void NetworkView::setNetwork(const Network& network) {
     double maxX = -minX, maxY = maxX;
     for (const auto& link : network.links)
         for (const auto& lane : link.lanes) geometry_[lane.id] = laneGeometry(link, lane.id, network.drivingSide);
-    for (const auto& connector : network.connectors) geometry_[connector.id] = connector.geometry;
+    for (const auto& connector : network.connectors)for(const auto& path:connectorPaths(network,connector))geometry_[path.id]=path.geometry;
     for (const auto& [id, points] : geometry_) for (const auto& p : points) {
         minX = std::min(minX, p.x); maxX = std::max(maxX, p.x);
         minY = std::min(minY, p.y); maxY = std::max(maxY, p.y);
@@ -46,7 +46,7 @@ void NetworkView::paintEvent(QPaintEvent*) {
     };
     for (const auto& link : network_.links)
         for (const auto& lane : link.lanes) draw(geometry_.at(lane.id), lane.width, QColor("#536c7c"));
-    for (const auto& connector : network_.connectors) draw(connector.geometry, 2.5, QColor("#386b78"));
+    for (const auto& connector : network_.connectors)for(const auto& p:connectorPaths(network_,connector))draw(p.geometry, 2.5, QColor("#386b78"));
     for (const auto& head : frame_.scenario->signalHeads) {
         const auto found = std::find_if(frame_.scenario->signalPrograms.begin(), frame_.scenario->signalPrograms.end(),
             [&](const auto& p) { return p.id == head.programId; });

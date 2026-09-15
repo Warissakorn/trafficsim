@@ -1,0 +1,11 @@
+{
+  "id": "default",
+  "name": {
+    "en": "Default road",
+    "th": "ถนนทั่วไป"
+  },
+  "linkColor": "#49596d",
+  "connectorColor": "#8b4cac",
+  "laneColor": "#d0dfeb",
+  "vehicleColor": "#facc15"
+}

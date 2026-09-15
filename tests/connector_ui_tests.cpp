@@ -50,6 +50,9 @@ int main(int argc,char** argv) {
         require(argc>=2,"Expected data directory");QTemporaryDir directory;require(directory.isValid(),"temp directory");
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(30);
         auto* c=w.canvas();auto* tool=item<QComboBox>(w,"editorTool");
+        // Fit the fixture's drawing area to the actual viewport after docks have laid out.
+        c->fitInView(QRectF(-75,-40,150,100),Qt::KeepAspectRatio);
+        c->centerOn(0,10);
         const auto draw=[&](Point a,Point b){tool->setCurrentIndex(1);click(c,a);click(c,b);QTest::keyClick(c,Qt::Key_Return);};
         draw({-65,-30},{-15,-30});draw({15,0},{15,50});draw({25,-30},{65,-30});
         require(w.history().document().network.links.size()==3,"Road drawing failed");action(w,"editorFit");
@@ -85,14 +88,14 @@ int main(int argc,char** argv) {
         const auto shape=w.history().document().network.connectors[0].geometry;
         drag(c,shape[6],{shape[6].x+4,shape[6].y+3},true);
         require(documentJson(w.history().document())==reshaped,"Cancelled handle drag committed");
-        drag(c,shape.front(),{shape.front().x+5,shape.front().y+5});QTest::keyClick(c,Qt::Key_Delete);
+        drag(c,shape.front(),{shape.front().x+5,shape.front().y+5});QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(documentJson(w.history().document())==reshaped,"Source endpoint moved or was removed");
-        drag(c,shape.back(),{shape.back().x+5,shape.back().y+5});QTest::keyClick(c,Qt::Key_Delete);
+        drag(c,shape.back(),{shape.back().x+5,shape.back().y+5});QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(documentJson(w.history().document())==reshaped,"Target endpoint moved or was removed");
         const Point insert{(shape[3].x+shape[4].x)/2,(shape[3].y+shape[4].y)/2};
         QTest::mouseDClick(c->viewport(),Qt::LeftButton,{},pixel(c,insert));
         require(w.history().document().network.connectors[0].geometry.size()==shape.size()+1,"Point insertion failed");
-        click(c,w.history().document().network.connectors[0].geometry[4]);QTest::keyClick(c,Qt::Key_Delete);
+        click(c,w.history().document().network.connectors[0].geometry[4]);QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(w.history().document().network.connectors[0].geometry==shape,"Point removal changed other points");
         action(w,"editorStraightConnector");require(w.history().document().network.connectors[0].geometry.size()==2,"Straighten failed");
         action(w,"editorResetCurve");require(w.history().document().network.connectors[0].geometry==created.geometry,"Curve reset failed");
@@ -134,7 +137,7 @@ int main(int argc,char** argv) {
         require(documentJson(w.history().document())==controlled,"Cancelled delete changed document");
         answer(QMessageBox::Yes);action(w,"editorDeleteConnector");
         require(w.history().document().network.connectors.size()==1,"Confirmed connector delete failed");
-        require(w.history().document().definition["routes"].size()==1 && w.history().document().definition["inputs"].size()==1,"Delete left dangling routes or inputs");
+        require(w.history().document().definition->routes.size()==1 && w.history().document().definition->inputs.size()==1,"Delete left dangling routes or inputs");
         action(w,"editorUndo");require(documentJson(w.history().document())==controlled,"Delete undo lost related objects");
 
         w.openFile(file);item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);c->select(id);

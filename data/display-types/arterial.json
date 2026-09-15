@@ -1,0 +1,11 @@
+{
+  "id": "arterial",
+  "name": {
+    "en": "Arterial",
+    "th": "ถนนสายหลัก"
+  },
+  "linkColor": "#455a64",
+  "connectorColor": "#00796b",
+  "laneColor": "#d0dfeb",
+  "vehicleColor": "#facc15"
+}

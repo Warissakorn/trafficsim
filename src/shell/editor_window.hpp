@@ -2,6 +2,12 @@
 #include "../commands/network_commands.hpp"
 #include "../commands/connector_commands.hpp"
 #include "../project/diagnostics.hpp"
+#include "../project/run.hpp"
+#include "../project/display.hpp"
+#include "../commands/appearance_commands.hpp"
+#include "../commands/demand_commands.hpp"
+#include <QTimer>
+#include <QElapsedTimer>
 #include "../core/validate.hpp"
 #include "../editor/canvas.hpp"
 #include <QMainWindow>
@@ -10,6 +16,8 @@
 #include <filesystem>
 #include <QKeySequence>
 
+class QListWidget;
+class QLockFile;
 class QAction;
 class QComboBox;
 class QSpinBox;
@@ -24,6 +32,10 @@ namespace trafficsim {
 class EditorWindow : public QMainWindow {
 public:
     explicit EditorWindow(const std::filesystem::path& data, const QString& language = "en", QWidget* parent = nullptr);
+    ~EditorWindow() override;
+    void autosaveNow();
+    void recoverFile(const QString&);
+    QString recoveryPath() const { return recoveryFile_; }
     const History& history() const { return history_; }
     EditorCanvas* canvas() const { return canvas_; }
     void openFile(const QString& path); // Parse and validate before replacing the document.
@@ -35,6 +47,54 @@ protected:
     void closeEvent(QCloseEvent*) override;
 private:
     History history_;
+    std::filesystem::path data_;
+    DisplayCatalog displayCatalog_;
+    QListWidget* palette_{};
+    QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
+    QSpinBox *connectorFromCount_{},*connectorToCount_{};
+    void buildPalette();
+    void translatePalette();
+    void buildAppearance(QFormLayout*);
+    void refreshAppearance();
+    void createLinkDialog(const std::vector<Point>&);
+    void createRangeDialog(LaneReference,LaneReference,const std::vector<Point>&);
+    QString recoveryDirectory_, recoveryFile_;
+    std::unique_ptr<QLockFile> recoveryLock_;
+    QTimer autosaveTimer_;
+    std::optional<std::uint64_t> autosavedRevision_;
+    void buildRecovery();
+    void clearRecovery();
+    void recoverDialog(bool startup = false);
+    QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{};
+    void buildDemandTables();
+    void refreshDemand();
+    void translateDemand();
+    void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
+    void editInput(const std::string& id = {});
+    void editProgram(const std::string& id = {});
+    void editHead(const std::string& id = {});
+    void editRunSettings();
+    void deleteDemand(const std::string& kind, const std::string& id);
+    void selectDemand(const std::string& id);
+    void buildRunControls();
+    void refreshRun();
+    bool prepareRun();
+    void toggleRun();
+    void stepRun();
+    void tickRun();
+    void clearRun();
+    void pauseRun();
+    QTimer runTimer_;
+    QElapsedTimer runElapsed_;
+    double runCredit_{};
+    std::optional<RunSnapshot> runSnapshot_;
+    SimState runState_;
+    QLineEdit* runSeed_{};
+    QComboBox* runSpeed_{};
+    QLabel* runInfo_{};
+public:
+    const SimState& runState() const { return runState_; }
+private:
     QString file_;
     std::map<QString,QJsonObject> locales_;
     std::map<std::string,QAction*> actions_;

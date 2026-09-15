@@ -36,7 +36,7 @@ TEST(connectors, create_turn_straight_and_uturn_on_both_driving_sides) {
         anchored(d);validateDocument(d);
         const auto json=documentJson(d);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
-        CHECK(json["schemaVersion"]==1);
+        CHECK(json["schemaVersion"]==2);
     }
 }
 TEST(connectors, invalid_creation_preserves_ids_revision_savepoint_and_redo) {
@@ -108,7 +108,7 @@ TEST(connectors, referenced_connector_can_reshape_but_cannot_retarget) {
     test::throws([&]{h.execute("retarget",[](auto& m){changeConnectorEndpoints(m,"west-east",{"west","west-1"},{"north","north-1"});});},"EDIT_REFERENCED_CONNECTOR");
     CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
     h.execute("reshape",[](auto& m){changeConnectorGeometry(m,"west-east",{{-10,0},{0,3},{10,0}});});
-    CHECK(h.document().definition==d.definition);anchored(h.document());
+    CHECK(documentJson(h.document())["definition"]==documentJson(d)["definition"]);anchored(h.document());
     h.undo();CHECK(documentJson(h.document())==before);
 }
 TEST(connectors, deletion_and_undo_preserve_routes_inputs_and_heads) {
@@ -116,8 +116,8 @@ TEST(connectors, deletion_and_undo_preserve_routes_inputs_and_heads) {
     h.execute("delete",[](auto& d){deleteConnector(d,"west-east");});
     CHECK(h.document().network.links.size()==4);CHECK(h.document().network.connectors.size()==1);
     CHECK(h.document().network.signalHeads.size()==2);
-    CHECK(h.document().definition["routes"].size()==1);CHECK(h.document().definition["inputs"].size()==1);
-    CHECK(h.document().definition["routes"][0]["id"]==before["definition"]["routes"][1]["id"]);
+    CHECK(h.document().definition->routes.size()==1);CHECK(h.document().definition->inputs.size()==1);
+    CHECK(h.document().definition->routes[0].id==before["definition"]["routes"][1]["id"].get<std::string>());
     h.undo();CHECK(documentJson(h.document())==before);
     h.redo();CHECK(h.document().network.connectors.size()==1);
 }

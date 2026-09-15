@@ -48,8 +48,15 @@ std::string selectableFor(const Network& network, const std::string& objectId) {
         if (link.id == objectId) return link.id;
         for (const auto& lane : link.lanes) if (lane.id == objectId) return link.id;
     }
-    for (const auto& connector : network.connectors) if (connector.id == objectId) return connector.id;
-    for (const auto& head : network.signalHeads) if (head.id == objectId) return head.lane.linkId;
+    for (const auto& connector : network.connectors)
+        for(int i=0;i<std::max(connector.fromLaneCount,connector.toLaneCount);++i)
+            if(connectorPathId(connector,i)==objectId)return connector.id;
+    for (const auto& head : network.signalHeads) if (head.id == objectId) {
+        if(head.connectorId.empty())return head.lane.linkId;
+        for(const auto& c:network.connectors)for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)
+            if(connectorPathId(c,i)==head.connectorId)return c.id;
+        return {};
+    }
     return {};
 }
 namespace {

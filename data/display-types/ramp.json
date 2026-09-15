@@ -1,0 +1,11 @@
+{
+  "id": "ramp",
+  "name": {
+    "en": "Ramp",
+    "th": "ทางลาด"
+  },
+  "linkColor": "#795548",
+  "connectorColor": "#ef6c00",
+  "laneColor": "#d0dfeb",
+  "vehicleColor": "#facc15"
+}

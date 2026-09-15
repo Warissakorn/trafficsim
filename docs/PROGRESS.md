@@ -6,36 +6,75 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-14 — M1 workflow completion and verification
+
+Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
+commands and dialogs, revision-bound in-editor Run, controlled splits, schema migration,
+locked recovery, connector lane ranges, sidebar gestures, levels and display catalogs.
+The core and its capability/fidelity guards are unchanged. README, architecture, roadmap
+and the editor guide now describe the implemented surface; M1_ACCEPTANCE.md supplies the
+original timed acceptance task and a blank result record. M0/M1 owner gates remain open.
+
+CI on ff4995a passed 19 of 20 desktop suites, including the complete drawing/demand/run/
+replay/recovery workflow and new native range tests. The remaining table assertion still
+expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
+offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
+Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
+The first gesture run exposed a test timer firing before mouse release opened its
+modal; confirmation now waits for the dialog and never throws through a Qt callback.
+Gesture tests explicitly reactivate the editor after a modal and release Ctrl before
+sending the next canvas shortcut: the offscreen platform has no window manager.
+A persistence review found that Undo to the saved revision could leave an older recovery
+copy; the next checkpoint now removes it, with a UI regression covering that case.
+
+Validation runs through GitHub Actions because the session executor is intermittently
+unavailable and local Qt/CMake installation could not complete. No local interactive GUI
+or owner timing result is claimed. The parity review is explicitly retained as a historical
+assessment with a current implementation addendum.
+
+## 2026-09-14 — M1 completion implementation in progress
+
+The owner authorized the remaining M1 editor work together. The session executor is offline;
+changes are prepared through the GitHub connector and verified by the repository's CI.
+Base d456b121 passed Native C++ run 34824423877. No local desktop execution is claimed.
+
+First slice replaces the document's untyped definition with optional typed authoring values,
+retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
+route/input/program/head commands, and introduces catalog resolution and revision snapshots.
+Runtime limitations remain separate from draft validity. The second slice adds route/input/program/head dialogs and tables plus in-editor fixed-step Run/Pause/Step/Reset with seed and speed. Successful edits invalidate the run snapshot; frames repaint without rebuilding the scene. The first CI failure was a JSON-to-string comparison in the migrated regression test, corrected with explicit extraction. The third slice adds locked per-window recovery copies, atomic autosave, catalog embedding,
+schema-1-to-2 loading and controlled-link splitting. Split heads are classified by their
+original centreline station and projected onto the owning new lane or connector span.
+The runtime core is unchanged. CI compiled the second slice, then the file-size gate caught
+PROGRESS.md at 511 lines; older entries were moved whole to the existing archive.
+An offscreen end-to-end workflow now covers drawing, demand dialogs, Run/Step/Reset,
+seed replay, invalidation after Undo, recovery, Unicode persistence and Thai controls.
+The fourth slice adds contiguous connector lane ranges, stable derived runtime path IDs,
+level-aware scene ordering/hit-testing, data-driven display catalogs, the Network Objects
+sidebar and creation/duplication/overlap gestures. Unequal ranges may author merges; M0
+still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
+duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
+and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
+The fourth-slice CI passed Linux headless and Windows core. Desktop compilation passed;
+three UI regressions exposed a topology-diagnostics early return, a fixture outside the
+new viewport, and a seeded arrival later than the fixed sampling time. These are corrected
+and range compilation, reference safety, duplication and migration regressions are added.
+The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
+
 ## Next
 
-**Implement M1.5.1 demand object tables, so M1.7 and then M1.8 have something to run.**
+**Review PR #14 and its CI, then run the owner acceptance exercise.**
 
-1. Build the desktop, run CTest, and launch `trafficsim-desktop --editor --language th`.
-   A clean checkout needs `qt6-base-dev` and `nlohmann-json3-dev` installed first.
-2. M1.5.1: routes and vehicle inputs are still untyped JSON under `ProjectDocument::definition`.
-   Define the authoring structs beside `Link`/`Connector` in `src/model/network/network.hpp`,
-   give them undoable commands in `src/commands/`, and table them next to the existing three
-   tabs in `src/shell/editor_tables.cpp`. Reference-safety already exists for connectors —
-   follow `deleteConnector`'s cascade, do not invent a second one.
-3. Then M1.7 (catalog resolution and revision-to-run snapshot), then M1.8 (Run inside the
-   editor). **M1.8 is the owner's first priority** but is blocked on 2 and 3: without demand
-   there is nothing to run. Do not start M1.8 before M1.5.1 exists.
-4. M1.6 (autosave/recovery, future-schema migration) is still open and independent; take it
-   if demand authoring is blocked. Version-1 atomic save/open and embedded images exist.
-5. Preserve the M1.3.1 signal-bearing-link split guard, pinned by
-   `TEST(editor, signal_bearing_link_split_is_still_rejected)`. That follow-up still needs
-   a stationing/remapping policy for heads in upstream/downstream and connector spans.
-6. **M1.9 is a model change, not a UI change.** One Vissim `Ctrl`+right-drag connects a *range*
-   of lanes; `Connector { from, to }` holds one pair, so the gesture cannot be adopted without
-   widening the model and everything that reanchors it. Two chords also mean something else in
-   Vissim — `Ctrl`+left-click (duplicate there, extend-selection here) and `Ctrl+B` (background
-   image there, Objects dock here); settle those before any other gesture work.
-7. `docs/VISSIM_PARITY.md` §6 ranks the remaining editor gaps and says which are booked
-   (M1.8/M1.9/M1.10) and which are deliberately not. Read it before proposing editor work.
-   The M0 and full M1 owner gates remain open.
+1. Review the latest Native C++ run on `codex/complete-m1-network-editor`; require Linux
+   headless/desktop/release and Windows core checks to pass on the PR head.
+2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
+   and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
+3. Record the M0 queue/red/green plausibility observation separately. Keep the
+   not-yet-validated marker and the merge/internal-source/cyclic-route guards.
+4. Fix concrete usability failures before claiming acceptance. Do not begin M2
+   implementation until its pre-registered honesty-test criteria are committed.
 
-**Implementation:** `src/model/network/network.hpp`, `src/commands/`, `src/shell/editor_tables.cpp`.
-Based on `main` commit `45ec8bf` (2026-09-14).
+Implementation: `src/model/demand/`, `src/model/network/`, `src/commands/`,
+`src/project/`, `src/editor/` and `src/shell/`. Current behavior is in NETWORK_EDITOR.md.
 
 ---
 
@@ -448,52 +487,3 @@ Added a top-level `LICENSE` (MIT, copyright 2026 Warissakorn) and a README Licen
 The bundled Noto Sans Thai font keeps its SIL OFL 1.1 terms and Qt keeps its own; the MIT
 grant covers this repository's own source and documentation only. No code change.
 
-### 2026-09-14 — M1.4 Connector editor implemented (D17)
-
-Added general lane-to-lane creation using two canvas endpoint clicks or Properties.
-Source/target markers, hover previews and cancellation are transient; committing creates
-one History entry. Connectors can be selected on the canvas or by ID (including short
-split connectors), reshaped by dragging/inserting/removing interior points, reset to a
-lane-aligned sampled curve, or made straight. Endpoints remain attached to their lanes.
-Properties now has Links, Connectors and Image tabs, with English/Thai controls.
-
-Connector commands share endpoint maintenance with Link/Lane/driving-side edits and
-route/input cleanup with link deletion. Retargeting preserves an unreferenced curve's
-interior points by weighted displacement; referenced retargeting is rejected. Duplicate,
-invalid and failed edits preserve revision, ID allocation, saved state and Redo. Confirmed
-connector deletion restores related routes/inputs together on Undo. The existing format
-persists exactly the edited polyline and IDs; no new schema, Qt dependency in the model,
-simulation physics, demand or right-of-way behaviour was introduced.
-
-**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.11.3, CMake 3.28.3 on Linux.
-The unchanged base first passed all 13 desktop CTest suites. The extended Debug and
-Release desktop builds pass 15/15, and the independent Qt-free build passes 12/12.
-There are 46 named native cases, including eight new Connector cases. UI workflows
-exercise real endpoint picking, curve drags, insert/delete, cancellation and locked
-endpoints, plus ID selection, Properties actions, reference-safe deletion/Undo, Unicode
-save/reopen and Thai errors. Four TS baselines, seeded replay and M0 controls still pass.
-Architecture/negative fixtures, the 500-line budget and whitespace checks pass. The Thai
-Connector tab and curve were visually inspected at 1000×760.
-
-M1.3.1 remains open, along with M1.5–M1.7 and the owner's M0/M1 acceptance gates.
-These are local Linux results; Windows/macOS GUI execution and hosted CI are not
-established by them. Curves are editable sampled polylines, not swept-path validation.
-
-
-### 2026-09-13 — native migration and editor branches integrated into `main`
-
-Merged `codex/cpp-desktop-migration` (D15) and `codex/network-editor-m1-1-3` (D16) into
-`main` as two explicit merge commits. The migration commit is an ancestor of the editor
-commit, so both branches shared one merge base at the last TypeScript commit `70383db`
-and neither merge produced a conflict. No source or documentation was edited to make the
-integration succeed; `main` now carries the C++20/CMake/Qt tree exactly as reviewed on
-the branches.
-
-Verified on the `headless` configuration only: full build clean, CTest **11/11 passing**,
-including the architecture boundary, its negative fixtures, file sizes and the CLI checks.
-**The Qt desktop harness and `editor_ui_tests` were not built or run** — no Qt in the
-integration environment — so no desktop verification is claimed, per `docs/BUILDING.md`.
-Building also required `nlohmann-json3-dev`, which a clean checkout must install first.
-
-Neither the M0 acceptance gate nor the M1 gate is closed by this merge; merged code is
-not a passed gate. `Next` is unchanged apart from its base note.

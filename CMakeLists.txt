@@ -40,17 +40,18 @@ target_link_libraries(trafficsim_core PRIVATE trafficsim_options)
 
 add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
-    src/model/network/diagnostics.cpp)
+    src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
-    src/project/document.cpp src/project/diagnostics.cpp)
+    src/project/document.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp)
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
 add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp
-    src/commands/split_link.cpp src/commands/connector_commands.cpp src/commands/delete_objects.cpp)
+    src/commands/split_link.cpp src/commands/connector_commands.cpp src/commands/delete_objects.cpp
+    src/commands/demand_commands.cpp src/commands/appearance_commands.cpp)
 target_link_libraries(trafficsim_commands PUBLIC trafficsim_project PRIVATE trafficsim_options)
 
 function(trafficsim_runtime_data target)
@@ -80,10 +81,10 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp
-        tests/connector_tests.cpp tests/diagnostics_tests.cpp)
+        tests/connector_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-    foreach(group core network reference project editor connectors diagnostics)
+    foreach(group core network reference project editor connectors diagnostics demand ranges)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
     add_test(NAME architecture COMMAND trafficsim-check-architecture "${PROJECT_SOURCE_DIR}")

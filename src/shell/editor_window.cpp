@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLockFile>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QSignalBlocker>
@@ -21,8 +22,8 @@
 #include <cmath>
 
 namespace trafficsim {
-EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& language,QWidget* parent) : QMainWindow(parent) {
-    setObjectName("networkEditor");
+EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& language,QWidget* parent) : QMainWindow(parent), data_(data) {
+    setObjectName("networkEditor");displayCatalog_=loadDisplayCatalog(data);
     const int font=QFontDatabase::addApplicationFont(displayPath(data/"fonts/NotoSansThai.ttf"));
     if(font<0) throw std::runtime_error("Cannot load bundled Thai font");
     setFont(QFont(QFontDatabase::applicationFontFamilies(font).front(),10));
@@ -37,11 +38,11 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     auto* central=new QWidget(this); auto* layout=new QVBoxLayout(central);
     auto* scope=new QLabel(central); scope->setWordWrap(true); texts_["editorScope"]=scope; layout->addWidget(scope);
     scope->setStyleSheet("background:#fff3cd;color:#614700;padding:8px;");
-    canvas_=new EditorCanvas(central); layout->addWidget(canvas_,1);
+    canvas_=new EditorCanvas(central);canvas_->setDisplayCatalog(displayCatalog_); layout->addWidget(canvas_,1);
     error_=new QLabel(central); error_->setObjectName("editorError"); error_->setWordWrap(true);
     error_->setStyleSheet("color:#a5263c"); layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
-    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
+    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
         if(!confirmDiscard()) return;
         const auto file=QFileDialog::getOpenFileName(this,text("editorOpen"),{},text("editorFilter"));
@@ -50,13 +51,13 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     files->addAction(action("editorSave",QKeySequence::Save,[this]{saveDialog();}));
     files->addAction(action("editorSaveAs",QKeySequence::SaveAs,[this]{saveDialog(true);}));
     files->addSeparator();
-    files->addAction(action("editorUndo",QKeySequence::Undo,[this]{history_.undo();refresh();}));
-    files->addAction(action("editorRedo",QKeySequence::Redo,[this]{history_.redo();refresh();}));
+    files->addAction(action("editorUndo",QKeySequence::Undo,[this]{clearRun();history_.undo();refresh();}));
+    files->addAction(action("editorRedo",QKeySequence::Redo,[this]{clearRun();history_.redo();refresh();}));
     files->addWidget(language_);
     addToolBarBreak(); auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
-    for(int i=0;i<6;++i) tool_->addItem("",i);
-    tools->addWidget(tool_);
+    for(int i=0;i<9;++i) tool_->addItem("",i);
+    tool_->hide();
     tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
     tools->addAction(action("editorDeleteVertex",{},[this]{canvas_->removeVertex();}));
@@ -88,7 +89,8 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     };
     canvas_->cursorMoved=[this](Point p){coordinates_->setText(QString("x %1 m   y %2 m").arg(p.x,0,'f',2).arg(p.y,0,'f',2));};
     canvas_->createLink=[this](const auto& points){
-        std::string created; if(execute("editorDraw",[&](auto& d){created=addLink(d,points,count_->value(),width_->value());})) canvas_->select(created);
+        std::string created; if(execute("editorDraw",[&](auto& d){created=addLink(d,points,count_->value(),width_->value());
+            changeAppearance(d,created,objectLevel_->currentData().toInt(),objectDisplay_->currentData().toString().toStdString());})) canvas_->select(created);
     };
     canvas_->editGeometry=[this](const auto& id,const auto& points){
         const bool connector=canvas_->selectedConnector()!=nullptr;
@@ -104,7 +106,28 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->splitAt=[this](const auto& id,double distance){
         std::string created; if(execute("editorSplit",[&](auto& d){created=splitLink(d,id,distance);})) canvas_->select(created);
     };
+    canvas_->deleteRequested=[this]{deleteSelected();};
+    canvas_->createLinkGesture=[this](const auto& points){createLinkDialog(points);};
+    canvas_->createRangeGesture=[this](auto from,auto to,const auto& points){createRangeDialog(from,to,points);};
+    canvas_->resizeRangeRequested=[this](int from,int to){
+        execute("editorApplyConnector",[&](auto& d){changeConnectorRange(d,canvas_->selected(),from,to);});
+    };
+    canvas_->duplicateRequested=[this](Point p){
+        const auto ids=canvas_->selection();if(ids.empty())return;
+        Point anchor{};bool found=false;
+        for(const auto& l:history_.document().network.links)if(l.id==canvas_->selected()){anchor=l.geometry.front();found=true;}
+        if(!found)for(const auto& l:history_.document().network.links)
+            if(canvas_->isSelected(l.id)){anchor=l.geometry.front();break;}
+        std::vector<std::string> copied;
+        if(execute("editorDuplicate",[&](auto& d){copied=duplicateObjects(d,ids,{p.x-anchor.x,p.y-anchor.y});}))canvas_->setSelection(copied);
+    };
+    canvas_->createDemandGesture=[this](const auto& lane,auto mode){
+        if(mode==EditorCanvas::Tool::route)editRoute({}, {lane.laneId});
+        else if(mode==EditorCanvas::Tool::input)editInput();
+        else editHead();
+    };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
+    buildDemandTables(); buildRunControls(); buildRecovery(); buildPalette();
     history_.reset(); translate(); refresh(); resize(1280,850); canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {
@@ -119,17 +142,17 @@ void EditorWindow::translate() {
         else if(auto* dock=qobject_cast<QDockWidget*>(w)) dock->setWindowTitle(text(key));
         else if(auto* bar=qobject_cast<QToolBar*>(w)) bar->setWindowTitle(text(key));
     }
-    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect"};
-    for(int i=0;i<6;++i) tool_->setItemText(i,text(modes[i]));
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable"};
+    for(int i=0;i<9;++i) tool_->setItemText(i,text(modes[i]));
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables();
+    retranslateTables(); translateDemand(); translatePalette();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     error_->clear(); refresh();
 }
 bool EditorWindow::execute(const std::string& name,const std::function<void(ProjectDocument&)>& change) {
-    try {const bool changed=history_.execute(name,change);error_->clear();rejected_.clear();refresh();return changed;}
+    try {const bool changed=history_.execute(name,change);if(changed)clearRun();error_->clear();rejected_.clear();refresh();return changed;}
     catch(const std::exception& e){showError(e);canvas_->setDocument(&history_.document());return false;}
 }
 void EditorWindow::deleteSelected() {
@@ -174,11 +197,11 @@ void EditorWindow::refresh(bool modelChanged) {
     // multi-selection look as if lane or geometry changes will apply to all of it.
     if (canvas_->selection().size()>1)
         selectionInfo_->setText(text("editorSelectionCount").arg(canvas_->selection().size()));
-    refreshConnector();
+    refreshConnector();refreshAppearance();
     {const QSignalBlocker block(side_);side_->setCurrentIndex(history_.document().network.drivingSide==DrivingSide::left?0:1);}
     const auto& b=history_.document().background;
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
     actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
-    refreshTables(modelChanged);refreshDiagnostics();
+    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshDiagnostics();refreshRun();
 }
 }

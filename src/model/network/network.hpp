@@ -4,10 +4,20 @@
 namespace trafficsim {
 struct Point { double x{}, y{}; bool operator==(const Point&) const = default; };
 struct Lane { std::string id; double width{}; };
-struct Link { std::string id; std::vector<Point> geometry; std::vector<Lane> lanes; };
+struct Link { std::string id; std::vector<Point> geometry; std::vector<Lane> lanes; int level{}; std::string displayType{"default"}; };
 struct LaneReference { std::string linkId, laneId; bool operator==(const LaneReference&) const = default; };
-struct Connector { std::string id; LaneReference from, to; std::vector<Point> geometry; };
-struct NetworkSignalHead { std::string id; LaneReference lane; double position{}; std::string programId; };
+struct Connector {
+    std::string id; LaneReference from, to; std::vector<Point> geometry;
+    int fromLaneCount{1}, toLaneCount{1}, level{};
+    std::string displayType{"default"};
+};
+// One authored connector owns a contiguous range at each end. Individual runtime
+// paths are derived, with stable ids; they are never stored as duplicate objects.
+struct Network;
+struct ConnectorPath { std::string id; LaneReference from, to; std::vector<Point> geometry; };
+std::string connectorPathId(const Connector&, int index);
+std::vector<ConnectorPath> connectorPaths(const Network&, const Connector&);
+struct NetworkSignalHead { std::string id; LaneReference lane; double position{}; std::string programId; std::string connectorId; };
 enum class DrivingSide { left, right };
 struct Network {
     std::string id;
@@ -17,6 +27,8 @@ struct Network {
     std::vector<NetworkSignalHead> signalHeads;
 };
 double polylineLength(const std::vector<Point>& points);
+double stationOfClosestPoint(const std::vector<Point>&, Point);
+std::string signalSegment(const NetworkSignalHead&);
 Point pointAlong(const std::vector<Point>& points, double distance);
 std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, DrivingSide side);
 // A sampled cubic between lane endpoints, aligned with their travel directions.

@@ -13,10 +13,10 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current work:** M1.1–M1.5 native editor implemented; M1.3.1, M1.5.1 and owner gates remain open.
-M1.8–M1.10 (Run inside the editor, Vissim sidebar/gestures, levels) are booked from the parity review
-**Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
-discharging at green plausibly, and CTest proves seeded replay.
+**Current work:** M1 implementation covers M1.1–M1.10, including controlled splits,
+demand/control editing, recovery, in-editor Run, connector ranges and levels/display types.
+**Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
+`docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 
 **Status: M0 C++ core and network model implemented; acceptance gate still open.** A Qt
 Widgets desktop harness and native CLI exercise both systems. Read `docs/SIMULATION.md`

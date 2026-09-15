@@ -22,9 +22,6 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
     if (!std::isfinite(distance) || distance <= 0.2 || distance >= total - 0.2)
         throw std::invalid_argument("EDIT_SPLIT_RANGE");
     if (pocket && original.lanes.size() >= 12) throw std::invalid_argument("EDIT_LANES");
-    // Moving an existing head at a split requires a stationing policy; never silently shift it.
-    for (const auto& h : d.network.signalHeads) if (h.lane.linkId == id)
-        throw std::invalid_argument("EDIT_SPLIT_SIGNAL");
     auto downstream = original;
     downstream.id = allocateId(d, "link");
     downstream.geometry = section(original.geometry, distance + 0.1, total);
@@ -46,16 +43,35 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
         const auto& [connector, nextLane] = replacements.at(lane.id);
         const auto a = laneGeometry(editableLink(d, id), lane.id, d.network.drivingSide).back();
         const auto b = laneGeometry(downstream, nextLane, d.network.drivingSide).front();
-        d.network.connectors.push_back({connector, {id, lane.id}, {downstream.id, nextLane}, {a, b}});
+        d.network.connectors.push_back({connector, {id, lane.id}, {downstream.id, nextLane}, {a, b},1,1,original.level,original.displayType});
     }
-    if (!d.definition.is_null()) for (auto& r : d.definition["routes"]) {
-        Json ids = Json::array();
-        for (const auto& s : r.at("segmentIds")) {
+    // Classify by centreline station, then project the original world point onto the new
+    // owning lane/span. At the first cut boundary the upstream lane owns the head; at
+    // the second boundary the downstream lane owns it. Interior gap heads stay on the
+    // explicit connector, never silently shifted to a lane endpoint.
+    for(auto& h:d.network.signalHeads) if(h.connectorId.empty() && h.lane.linkId==id) {
+        const auto oldLane=h.lane.laneId;
+        const auto world=pointAlong(laneGeometry(original,oldLane,d.network.drivingSide),h.position);
+        const double station=stationOfClosestPoint(original.geometry,world);
+        const auto& [connector,nextLane]=replacements.at(oldLane);
+        std::vector<Point> geometry;
+        if(station<=distance-0.1) geometry=laneGeometry(editableLink(d,id),oldLane,d.network.drivingSide);
+        else if(station>=distance+0.1) {
+            h.lane={downstream.id,nextLane};geometry=laneGeometry(downstream,nextLane,d.network.drivingSide);
+        } else {
+            h.connectorId=connector;h.lane={};
+            for(const auto& c:d.network.connectors)if(c.id==connector)geometry=c.geometry;
+        }
+        h.position=stationOfClosestPoint(geometry,world);
+    }
+    if (d.definition) for (auto& r : d.definition->routes) {
+        std::vector<std::string> ids;
+        for (const auto& s : r.segmentIds) {
             ids.push_back(s);
-            const auto match = replacements.find(s.get<std::string>());
+            const auto match = replacements.find(s);
             if (match != replacements.end()) { ids.push_back(match->second.first); ids.push_back(match->second.second); }
         }
-        r["segmentIds"] = std::move(ids);
+        r.segmentIds = std::move(ids);
     }
     return downstream.id;
 }

@@ -2,7 +2,7 @@
 
 **Current stack: C++20, CMake, Qt 6 Widgets.** D15 supersedes the initial TypeScript stack.
 M0 core/network functionality has been ported, with a native desktop harness and CLI.
-The traffic-engineering acceptance gate remains open. M1.1–M1.3 and M1.4 editing are implemented; M1.3.1 and full M1 acceptance remain open.
+The traffic-engineering acceptance gate remains open. M1 editing and in-editor simulation are implemented; owner M0/M1 acceptance remains open.
 
 ## Boundaries
 
@@ -20,8 +20,8 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and version-1 authoring document codec |
-| `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, Link/Lane/Connector operations |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-2 authoring codec, schema-1 migration and revision run snapshots |
+| `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point |
@@ -65,7 +65,7 @@ renderer or the M1 editor.
 
 ## Editor boundary
 
-`ProjectDocument` owns the authoring network, optional M0 definition, background,
+`ProjectDocument` owns the authoring network, optional typed AuthoringDefinition, background,
 revision and ID counter. `History` commits a candidate only after validation and keeps
 bounded before/after snapshots. Failed edits never mutate the published document.
 Project never imports commands; a boundary check and negative fixtures enforce this.
@@ -73,15 +73,33 @@ Project never imports commands; a boundary check and negative fixtures enforce t
 `EditorCanvas` renders a const document and sends gesture callbacks. Drag previews are
 transient and one release submits one command. `EditorWindow` composes native actions,
 inspector controls, translation, save prompts and QSaveFile atomic replacement. It is
-independent from the M0 simulation window; run handoff remains M1.7. Qt stays out of
+independent from the M0 simulation window and runs its own compiled revision. Qt stays out of
 project/model/core. Embedded background bytes are immutable and shared across history.
 `connectorCurve` in the model returns a sampled cubic aligned to the endpoint lane
 directions. Only its polyline is persisted; its interior points are the editable curve
 handles. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
 deletion. Link/Lane/driving-side edits use the same `reanchorConnectors` path.
-Retargeting a connector used by a route is rejected; deletion removes affected routes
+Retargeting/range changes to a connector used by a route or head are rejected; deletion removes affected routes
 and their inputs through shared command-side reference cleanup. No runtime merge or
 right-of-way support is implied by authoring these connections.
+A connector stores one base polyline plus contiguous source/target lane counts.
+`connectorPaths` derives stable per-lane paths; the first retains the connector ID,
+then `id/lane-2`, `id/lane-3`, etc. Compilation, heads, validation and reference
+cleanup share these IDs. No derived path is persisted as a second editable object.
+
+`AuthoringDefinition` reuses core value contracts for routes, inputs and fixed-time
+programs, with explicit flags distinguishing external catalogs from embedded overrides.
+`compileDocument(document, dataDirectory)` resolves catalogs once and returns a
+`RunSnapshot` containing revision, network and scenario values. The shell schedules
+fixed steps and clears the snapshot after a successful edit, Undo/Redo, open or seed
+change. Dynamic vehicle/head scene items are ordered by their authored level.
+
+`editor_storage` shares bounded asset decoding and atomic QSaveFile replacement
+between Save and recovery. Each editor owns a UUID recovery file and a QLockFile;
+restoration validates before replacing the document and starts untitled and dirty.
+Schema 1 loads with default one-lane connector ranges, level 0 and default display
+type; saves write schema 2. Unsupported future versions fail before mutation.
+
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 
 ## Remaining systems
@@ -89,9 +107,7 @@ See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 | System | Location | Required boundary |
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
-| Extended editor | `src/editor/` | Connector tools implemented; tables and diagnostics remain |
-| Project persistence | `src/project/` | Versioned authoring file, transactions and revisions |
-| Editable demand/control | `src/model/demand/`, `src/model/control/` | Model data compiles into core contracts |
+| Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 adds compositions and turning proportions |
 | Movement evaluation | `src/eval/` | Events to delay, LOS, queues and travel times |
 | Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
 | Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
@@ -104,6 +120,9 @@ Adding a command must never teach `project/` its implementation. The correspondi
 - `data/vehicle-types/`, `data/driver-behaviour/`: all JSON catalog files are loaded in
   filename order. Adding a new entry needs no C++ change. Explicit catalogs inside a
   scenario definition override the directory catalogs for that definition.
+- `data/levels/`, `data/display-types/`: ordered levels and named styles loaded by
+  `loadDisplayCatalog`. Model objects store IDs/levels; rendering owns their appearance.
+  These values never alter simulation topology or conflict handling.
 - `data/locales/`: English key source and Thai UI text, copied with runtime data.
 - LOS packs remain planned and must be jurisdiction-specific data, never compiled constants.
 

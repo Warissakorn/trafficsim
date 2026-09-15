@@ -227,3 +227,53 @@ falsification test at the M2 gate.
 every row is marked `planned`.
 
 **Next:** toolchain setup — see the `Next` section above.
+
+### 2026-09-14 — M1.4 Connector editor implemented (D17)
+
+Added general lane-to-lane creation using two canvas endpoint clicks or Properties.
+Source/target markers, hover previews and cancellation are transient; committing creates
+one History entry. Connectors can be selected on the canvas or by ID (including short
+split connectors), reshaped by dragging/inserting/removing interior points, reset to a
+lane-aligned sampled curve, or made straight. Endpoints remain attached to their lanes.
+Properties now has Links, Connectors and Image tabs, with English/Thai controls.
+
+Connector commands share endpoint maintenance with Link/Lane/driving-side edits and
+route/input cleanup with link deletion. Retargeting preserves an unreferenced curve's
+interior points by weighted displacement; referenced retargeting is rejected. Duplicate,
+invalid and failed edits preserve revision, ID allocation, saved state and Redo. Confirmed
+connector deletion restores related routes/inputs together on Undo. The existing format
+persists exactly the edited polyline and IDs; no new schema, Qt dependency in the model,
+simulation physics, demand or right-of-way behaviour was introduced.
+
+**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.11.3, CMake 3.28.3 on Linux.
+The unchanged base first passed all 13 desktop CTest suites. The extended Debug and
+Release desktop builds pass 15/15, and the independent Qt-free build passes 12/12.
+There are 46 named native cases, including eight new Connector cases. UI workflows
+exercise real endpoint picking, curve drags, insert/delete, cancellation and locked
+endpoints, plus ID selection, Properties actions, reference-safe deletion/Undo, Unicode
+save/reopen and Thai errors. Four TS baselines, seeded replay and M0 controls still pass.
+Architecture/negative fixtures, the 500-line budget and whitespace checks pass. The Thai
+Connector tab and curve were visually inspected at 1000×760.
+
+M1.3.1 remains open, along with M1.5–M1.7 and the owner's M0/M1 acceptance gates.
+These are local Linux results; Windows/macOS GUI execution and hosted CI are not
+established by them. Curves are editable sampled polylines, not swept-path validation.
+
+
+### 2026-09-13 — native migration and editor branches integrated into `main`
+
+Merged `codex/cpp-desktop-migration` (D15) and `codex/network-editor-m1-1-3` (D16) into
+`main` as two explicit merge commits. The migration commit is an ancestor of the editor
+commit, so both branches shared one merge base at the last TypeScript commit `70383db`
+and neither merge produced a conflict. No source or documentation was edited to make the
+integration succeed; `main` now carries the C++20/CMake/Qt tree exactly as reviewed on
+the branches.
+
+Verified on the `headless` configuration only: full build clean, CTest **11/11 passing**,
+including the architecture boundary, its negative fixtures, file sizes and the CLI checks.
+**The Qt desktop harness and `editor_ui_tests` were not built or run** — no Qt in the
+integration environment — so no desktop verification is claimed, per `docs/BUILDING.md`.
+Building also required `nlohmann-json3-dev`, which a clean checkout must install first.
+
+Neither the M0 acceptance gate nor the M1 gate is closed by this merge; merged code is
+not a passed gate. `Next` is unchanged apart from its base note.

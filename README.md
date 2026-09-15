@@ -7,9 +7,10 @@ Widgets desktop interface**, aimed at the modelling workflow of traffic impact s
 **M0 native implementation available; owner acceptance remains open.** The desktop harness
 shows seeded vehicles accelerating, queueing at fixed-time signals and crossing explicit
 connectors. It has English/Thai controls, Run/Pause/Step/Reset, seed and playback speed,
-and read-only scenario loading. A separate Network Editor now provides undoable
-Link/Lane drawing, lane-to-lane connector editing, image calibration and basic project
-save/open (M1.1–M1.3 and M1.4; see below).
+and read-only scenario loading. The Network Editor provides undoable
+Link/Lane drawing, connector lane ranges, image calibration, typed demand and signal
+editing, project recovery, and simulation on the same canvas (M1 implementation).
+The owner's timed M1 acceptance exercise remains open.
 A bundled Noto Sans Thai font provides offline Thai text rendering.
 
 **Not yet validated:** the longitudinal model is a reduced Wiedemann-inspired prototype,
@@ -72,7 +73,7 @@ installer — M7 owns installation.
 | Diagnostic | `tools/run_simulation.cpp` | Single-seed run, completed-trip delay, active/pending counts and optional JSONL events |
 
 The runtime rejects merging paths, internal sources and cyclic routes. Lane changing,
-crossing conflicts, priority rules, edited-project run handoff, batch evaluation and LOS
+crossing conflicts, priority rules, batch evaluation and LOS
 are future milestones. Read [`docs/SIMULATION.md`](docs/SIMULATION.md) for numerical behaviour.
 
 ## Migration evidence
@@ -100,13 +101,19 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 
 ## Native network editor
 
-M1.1–M1.3 and M1.4 provide undoable Link/Lane drawing, lane-to-lane connectors with
-editable curve points, background-image calibration and basic project save/open.
-Launch `trafficsim-desktop --editor` or use the Network Editor entry in the simulation
-window. Choose **Connect lanes**, then a source lane end and a target lane start.
-See [the editor guide](docs/NETWORK_EDITOR.md) for the Properties workflow and controls.
-Signal-bearing link splits (M1.3.1), tables/diagnostics, recovery and edited-network
-simulation remain open, as does the full M1 usability gate.
+Launch `trafficsim-desktop --editor --language th` or use the Network Editor entry
+in the simulation window. The Network Objects sidebar provides Links, Connectors,
+Routes, Vehicle inputs and Signal heads. Ctrl+right-drag creates links and connector
+lane ranges; the Objects dock has demand and signal-program editing actions.
+
+Draw a network, add a route and vehicle input, then Run (F5) in the editor. Step (F6),
+Reset, seed and playback speed operate on one explicit document revision. Successful
+edits invalidate that run. Save/Open preserves geometry, demand, embedded images,
+levels and display types; locked recovery copies protect unsaved work.
+
+See [the editor guide](docs/NETWORK_EDITOR.md) for controls and file semantics, and
+[the acceptance exercise](docs/M1_ACCEPTANCE.md) for the remaining owner gate.
+M1 implementation does not close M0/M1 owner acceptance or engine validation.
 
 ## License
 

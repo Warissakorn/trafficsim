@@ -27,6 +27,7 @@ void EditorWindow::buildInspector() {
     selectionInfo_=new QLabel(body);selectionInfo_->setWordWrap(true);common->addRow(selectionInfo_);
     side_=new QComboBox(body);side_->addItems({"",""});label(common,"editorDrivingSide",side_);
     connect(side_,&QComboBox::currentIndexChanged,this,[this](int index){execute("editorDrivingSide",[&](auto& d){changeDrivingSide(d,index==0?DrivingSide::left:DrivingSide::right);});});
+    buildAppearance(common);
     properties_=new QTabWidget(body);properties_->setObjectName("editorPropertyTabs");layout->addWidget(properties_);
     auto* linkPage=new QWidget(properties_);auto* form=new QFormLayout(linkPage);
     form->setRowWrapPolicy(QFormLayout::WrapLongRows);properties_->addTab(linkPage,QString());

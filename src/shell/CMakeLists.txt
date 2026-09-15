@@ -1,7 +1,7 @@
 add_library(trafficsim_shell STATIC main_window.cpp ../render/network_view.cpp
     editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp
-    editor_tables.cpp editor_diagnostics.cpp
-    ../editor/canvas.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp)
+    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_control.cpp editor_run.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
+    ../editor/canvas.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)
 qt_add_executable(trafficsim-desktop main.cpp)
 target_link_libraries(trafficsim-desktop PRIVATE trafficsim_shell trafficsim_options)
@@ -27,5 +27,15 @@ if(BUILD_TESTING)
     target_link_libraries(trafficsim-table-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     add_test(NAME tables-ui COMMAND trafficsim-table-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(tables-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    add_executable(trafficsim-m1-tests ../../tests/m1_ui_tests.cpp)
+    target_link_libraries(trafficsim-m1-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    add_test(NAME m1-workflow COMMAND trafficsim-m1-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(m1-workflow PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-m1-tests)
+    add_executable(trafficsim-gesture-tests ../../tests/gesture_ui_tests.cpp)
+    target_link_libraries(trafficsim-gesture-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    add_test(NAME editor-gestures COMMAND trafficsim-gesture-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(editor-gestures PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-gesture-tests)
     add_dependencies(check trafficsim-desktop-tests trafficsim-editor-tests trafficsim-connector-tests trafficsim-table-tests)
 endif()

@@ -1,14 +1,17 @@
-# Network editor — Link, Lane and Connector tools
+# Native network editor
 
-The native editor creates an authoring network. It does not simulate edited projects yet —
-running a drawn network inside the editor is tracked as M1.8 in [ROADMAP.md](ROADMAP.md), and
-[VISSIM_PARITY.md](VISSIM_PARITY.md) §5 sets out what has to exist first. The existing M0
-simulation window remains available and retains its unvalidated marker.
+The editor supports network drawing, demand and fixed-time control editing, persistence
+and recovery, and simulation on the same canvas. The M0 core remains an unvalidated
+prototype: merges, internal sources and cyclic routes are rejected at Run; geometric
+crossing conflicts, lane changing and priority control are not implemented.
+
+The owner's M0 plausibility and M1 timed usability gates remain open. See
+[M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). Running a drawing is not scientific validation.
 
 ## Start
 
-Build the desktop as described in [BUILDING.md](BUILDING.md), then either select
-**TrafficSim — Network Editor** in the simulation window, or run:
+Build as described in [BUILDING.md](BUILDING.md), then select Network Editor in the
+simulation window or run:
 
 ```bash
 ./build/desktop/bin/trafficsim-desktop --editor
@@ -16,261 +19,242 @@ Build the desktop as described in [BUILDING.md](BUILDING.md), then either select
 ./build/desktop/bin/trafficsim-desktop --editor --scenario network.traffic.json
 ```
 
-A new editor opens an empty document. Opening a second editor creates an independent
-project; it is not a live view of the simulation window. Existing M0 authoring JSON can
-be opened through the editor's Open command. Saving it writes the versioned editor
-format, so use Save As if you want to retain the original fixture format.
+A new editor starts empty. Multiple editors own independent documents and recovery
+locks. The Network Objects sidebar stays visible; Properties is on the right and the
+Objects and problems dock is below. Switching language updates controls and messages.
 
-## Draw, select and edit
+## Draw and navigate
 
-1. Select **Draw link**, set the lane count and new-link lane width, and click the
-   centreline points. Press Enter or double-click to finish; Escape cancels the draft.
-2. Select **Select / move**. Click near a link centreline to select it. Drag a white
-   control point to reshape it, or drag the centreline between points to move the link.
-   One drag creates one undo entry, regardless of the number of mouse movements.
-3. Double-click a centreline to insert a point. Click a point then press Delete or
-   **Remove selected point** to remove it. A link must retain at least two distinct points.
-4. Change **Number of lanes** and **width per lane**, then select **Apply lane count /
-   widths**. Enter one width for all lanes, or comma-separated values for every lane.
-   Values are in metres; use a decimal point. IDs of retained lanes do not change.
-5. Right-button or middle-button drag pans. The wheel zooms around the pointer. **Fit
-   network** (F) frames the drawing and background. Grid spacing is in metres; **Snap**
-   snaps drawing/dragging to the grid. Measurement/calibration bypass grid snapping.
+Select **Links (L)** in Network Objects, hold Ctrl and right-drag a centreline from
+start to end, then confirm lane count and width in Link Data. Left-click while creating
+adds intermediate points. The existing click-polyline workflow also works: click each
+point and press Enter or double-click to finish. Escape cancels an unfinished gesture.
 
-The world uses x east/right, y north/up, and metres. The image origin is its top-left
-pixel. Positive image rotation is counter-clockwise in world coordinates.
-The Properties toolbar action (Ctrl+I) hides or restores the inspector; it can also be
-resized or detached. Selection tolerances and control handles use screen pixels, so they remain usable at
-different zoom levels. Several objects can be selected at once (see M1.5 below), but
-property edits act on the last one selected. Properties has separate Links, Connectors and
-Image tabs; selecting an object opens its corresponding tab. Crossing lines are not
-automatically connected.
+Select **Select / move (S)** to pick a link body or connector path. Drag a link control
+point to reshape it, or drag its body between control points to translate it. Every
+completed drag is one undo entry. A connector's endpoints stay attached to their lanes;
+only its interior points can move.
 
-## Opposite carriageway and turn pockets
+Ctrl+right-click or double-click a line in Select mode inserts a geometry point.
+Select an interior point and press Ctrl+Delete, or use Remove selected point, to remove
+it. A link/connector must keep at least two distinct points. Delete by itself removes
+selected objects after confirmation.
 
-**Create opposite carriageway** makes a separate directed link with reversed travel
-geometry and a centreline offset based on the combined lane widths plus the specified
-carriageway gap. It is placed on the median side for the current drivingSide. It is a
-copy, not a live mirrored pair: subsequent edits are independent.
+The world uses metres, x east/right and y north/up. Right-button or middle-button drag
+pans; the wheel zooms at the pointer. F fits the network and background. Grid spacing
+is in metres, and Snap affects drawing/dragging. Measuring and calibration bypass snap.
 
-**Split at distance** measures from the beginning of the selected centreline. The
-click-to-split tool projects the clicked point onto that centreline. A split creates
-an upstream link, a downstream link and explicit one-to-one lane connectors. There is
-a 0.2 m longitudinal connector span centred on the split location; this avoids zero-length
-runtime segments. Existing routes referencing a split lane are expanded in order.
+| Shortcut | Action |
+|---|---|
+| S / L / C | Select / Links / Connectors |
+| R / V / H | Routes / Vehicle inputs / Signal heads |
+| X / M / K | Split / Measure / Calibrate |
+| F | Fit network |
+| Shift+click | Add/remove an object in the selection |
+| Ctrl+left-click | Duplicate selected links at the clicked position |
+| Tab on the canvas | Cycle objects overlapping the last click position |
+| Delete / Ctrl+Delete | Delete objects / remove selected geometry point |
+| Ctrl+B / Ctrl+I / Ctrl+Shift+O | Toggle background / Properties / object tables |
+| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
+| Platform Undo/Redo; Ctrl+Y | Undo/Redo; additional Redo binding |
+| F5 / F6 | Run or Pause / Step |
+| Space / + / − on canvas | Step / faster / slower |
+| Escape | Cancel gesture and pause playback |
 
-**Split + add downstream lane** also adds one lane on the median side of the downstream
-link. This creates the authoring geometry for a turn pocket with constant lane widths
-per link. The added lane has no automatically invented input, lane change or turn
-movement. Use the Connector tools below to author the turn movement explicitly.
-Variable-width tapers remain unsupported.
+Tool, overlap and playback convenience keys apply to the canvas so text fields remain
+editable. Normal file actions use the platform shortcut conventions.
 
-For left-hand traffic lane order runs from the left shoulder towards the median; the
-geometric ordering mirrors for right-hand traffic. Changing drivingSide recomputes
-lane offsets and reanchors existing connectors without swapping their referenced IDs.
-It does not relocate independently drawn opposite carriageways.
+## Lanes, opposite carriageways and turn pockets
 
-Edits reanchor existing connector endpoints. Intermediate connector points receive an
-arc-length-weighted endpoint displacement, then the complete result is validated.
-This is not a curvature/turning-radius guarantee. Tight hairpins and complex junction
-geometry need engineering inspection; no swept-path validation is claimed.
+Properties → Links edits lane count and widths together. Enter one width for all lanes
+or comma-separated widths per lane, using decimal points. Retained lane IDs do not
+change. Shrinking away a lane referenced by a connector range, head or route is rejected.
 
-## Connect lanes and edit curves (M1.4)
+Create opposite carriageway makes a separate directed link with reversed geometry,
+offset on the median side according to combined lane widths and the carriageway gap.
+It copies level/style. It is independent after creation.
 
-1. Choose **Connect lanes** in the drawing tools. Orange circles mark the end of every
-   source lane. Click one, then click a teal circle at the start of the target lane.
-   Hovering a target previews the curve. Two clicks commit one undoable command.
-   Endpoint picking ignores grid snap so the connection lands on the exact lane end.
-   Escape, changing tools, opening a project or Undo cancels an unfinished connection.
-2. Alternatively, open **Properties → Connectors**, choose **from** and **to** lane
-   references, then **Create connector**. The controls show actual link/lane IDs.
-3. Switch to **Select / move** and click a connector line, or choose its ID in
-   **Properties → Connectors → Connector** (useful for short or overlapping connections).
-   Drag a white interior point
-   to reshape it. Double-click the line to insert a point; select an interior point and
-   press Delete (or **Remove selected point**) to remove it. One drag is one command;
-   Escape cancels an in-progress drag. Grid snap applies to interior-point dragging.
-4. Square endpoint handles are locked to their lanes. The connector body selects the
-   object; it does not translate the attached endpoints. To attach an unreferenced
-   connector to different lanes, choose its **from / to** values and **Apply from / to
-   lanes**. This displaces the existing curve; it does not replace it with a new curve.
-5. **Reset curve to lane directions** replaces the current shape with a sampled cubic
-   aligned to the travel directions at the two lane endpoints. **Make straight** reduces
-   it to its two endpoints. Both actions are undoable, including on imported connectors.
-6. **Delete connector** confirms removal of the connector, routes using it and those
-   routes' vehicle inputs. Undo restores all of them together. Links and signal heads
-   remain in place.
+Split at distance measures from the selected centreline's start. The split tool
+projects a click onto that centreline. Splitting produces upstream and downstream
+links with explicit continuity connectors across a 0.2 m span. Existing routes expand
+in travel order and attached external connectors are reanchored.
 
-The initial curve is a cubic sampled into 12 straight spans (13 points), using tangent
-handles one-third of the endpoint separation from the ends. The resulting polyline
-is the sole authoring geometry, stored in the existing version-1 `geometry` field.
-There are no separately persisted Bézier handles. Moving/inserting/removing interior
-points edits that polyline directly; arbitrary point edits need not remain smooth.
-This is not a minimum-radius, conflict, clearance or swept-path check. Inspect tight
-turns and U-turns. Coincident lane endpoints cannot generate a default curve; leave a
-positive gap between the links. Duplicate connections between the same two lanes are
-rejected without consuming IDs or losing the saved state or Redo history.
+Split + add downstream lane also adds a median-side lane to the downstream portion.
+This is a constant-width turn-pocket approach, not a variable-width taper. The new lane
+has no invented demand, turn movement or lane change; author its connections explicitly.
 
-A connector used by an existing route may be reshaped, but its lane references cannot
-be changed until that route is revised or removed. M1.4 does not invent a replacement
-route or vehicle demand. Authoring can express merges; the existing M0 compiler still
-rejects unsupported merging paths. Saving a drawing does not certify it for simulation.
+For a signal-bearing split, each head's original lane position is projected onto the
+original centreline to decide which portion owns it. Its world position is then
+projected onto the new lane or connector path to obtain valid stationing. Heads strictly
+inside the connector span become connector-mounted; boundary heads belong to the adjacent
+link. Head/program IDs and route order survive, and one Undo restores the entire edit.
 
-## Object tables, multi-selection and problems (M1.5)
+Lane ordering runs from the left shoulder towards the median for left-hand traffic,
+mirrored for right-hand traffic. Changing drivingSide recomputes lane geometry and
+reanchors connectors without swapping IDs. Independently drawn opposite links do not
+move when this setting changes.
 
-The **Objects and problems** dock (Ctrl+B) sits below the canvas with four tabs.
+Reanchoring distributes endpoint displacement over intermediate connector points by
+arc length. It is not a turning-radius or swept-path guarantee; inspect tight turns.
 
-1. **Links**, **Connectors** and **Signal heads** list every object of that kind with its ID,
-   and with lane counts, endpoints, lengths, positions and programs as applicable. Selecting
-   rows selects those objects on the canvas and moves the view onto the last one. Selecting
-   on the canvas highlights the matching rows. The tables are read-only; they are rebuilt
-   from the document, never edited in place. A signal head is not a canvas object, so
-   selecting its row selects the link that carries it.
-2. **Ctrl-click** or **Shift-click** on the canvas adds or removes one object. **Dragging on
-   empty space** draws a selection box; every link and connector the box touches is selected,
-   in network order. The last object added is the **primary**: it keeps the white control
-   handles, and lane counts, widths, splits, opposite carriageways, connector endpoints and
-   geometry all act on it alone. The inspector says how many objects are selected so this is
-   never ambiguous. **There is no group drag** — moving many objects at once would have to
-   reanchor every attached connector, and that is not in this slice.
-3. **Delete selected objects** removes every selected link and connector in one transaction,
-   together with attached connectors, signal heads, affected routes and their vehicle inputs.
-   One Undo restores all of it. An object that a link's own cascade already removed is
-   skipped rather than reported as an error, so the result does not depend on click order.
+## Connector lane ranges
 
-### Draft problems and runnability
+Select **Connectors (C)**, then Ctrl+right-drag from a source link lane to a target link
+lane. The dialog chooses the first lane and contiguous lane count at each end. Left-click
+during creation can add intermediate points. One completed gesture creates one connector
+object even when it carries several lanes.
 
-These are different questions and the dock keeps them apart.
+The two-click workflow remains: pick an orange source endpoint, then a teal target
+start, to create a single-lane connector. Properties → Connectors also creates and
+retargets connections using actual link/lane IDs.
 
-- **Draft** problems are what makes a drawing incoherent — an unknown lane, a non-positive
-  width, a signal head past the end of its lane. These **block** an edit, and always have:
-  a rejected edit leaves the document untouched. What M1.5 adds is that the rejection is no
-  longer one line of red text. Each issue now names the object it is about and selects and
-  frames it when you pick the row. Because commits are validated, a *saved* drawing can never
-  carry a draft problem, so this list is normally empty; that is the design, not a defect.
-- **Runnability** problems are what the M0 simulation core cannot run. Press **Check
-  runnability** to compile the current document and list them. They **never** block an edit
-  or a save. The standing example is a merge: two connectors feeding one lane is legitimate
-  authoring that the core has no gap acceptance for, so it is reported, not refused.
-  The check is on demand, and its result is discarded as soon as the document changes, so a
-  verdict is never shown for a revision it was not computed on.
+A connector stores a base polyline and source/target lane counts. Its lane paths are
+derived in monotone order, with stable IDs: the first uses the connector ID and subsequent
+paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference those paths.
+Unequal counts express fan-outs or merges in the drawing; merging still fails the M0
+run check. Connector ranges are limited by the existing lanes, at most 12 per end.
 
-A clean runnability check means the M0 core accepts this topology. It is **not** a statement
-that the network is correct, buildable, or validated — M6 owns validation, and the
-not-yet-validated marker stands regardless. A project with no simulation definition is
-checked for topology only; vehicle type and driver behaviour references are not judged at
-all, because those catalogs live in `data/` rather than in the project file, and resolving
-them before a run belongs to M1.7. The dock says so rather than reporting them as unknown.
+Select a range connector in Select mode and drag its source/target outer corner handle
+to adjust the last lane. Properties exposes both counts as an alternative. Retargeting
+or resizing a connector used by a route or head is rejected; revise those references
+first. Reshaping its curve remains allowed if the whole document validates.
 
-Routes and vehicle inputs are named by their own IDs in problems, but have no table and no
-editing: they have no authoring model yet. That is M1.5.1.
+Interior points are editable. Reset curve to lane directions creates a cubic sampled
+into 12 spans; Make straight retains only endpoints. There are no separate persisted
+Bézier handles and arbitrary edits need not remain smooth. Coincident endpoints cannot
+generate a default curve; leave a positive gap. Duplicate lane-pair connections are
+rejected, including pairs already covered by another connector range.
+
+Deleting a connector removes heads on its paths, affected routes and their vehicle
+inputs in the same undoable transaction. Heads on unaffected links remain.
+
+## Selection, tables and display
+
+Click replaces the selection; Shift-click toggles an object. Dragging on empty space
+selects touched links/connectors in a rectangle. The last selected object is primary;
+property and geometry edits act on it alone. Group dragging and rotation are not included.
+
+Ctrl+left-click duplicates selected links so the primary link's first point lands at
+the click. Internal connectors and heads are copied with new IDs, geometry offsets and
+level/style values. Heads share their existing programs. Routes/inputs are not copied,
+because copying a drawing must not silently double arrivals. Connector-only duplication
+is rejected. Delete selected objects cascades dependent connectors, heads, routes and
+inputs; one Undo restores all of them.
+
+Links, Connectors and Signal heads tables mirror network objects and support selection
+and framing on the canvas. Selecting a head selects its carrying link or connector.
+Routes, Vehicle inputs and Signal programs have Add/Edit/Delete actions and dialogs;
+double-click their rows to edit. Table cells are read-only views of the document.
+
+Properties → Level and Display type apply to the primary link/connector. Level orders
+drawing and picking; vehicles and heads use their carrying object's level. The sidebar
+filters to all levels or one catalog level. Tab can reach a lower overlapping object.
+
+Definitions live in `data/levels/*.json` and `data/display-types/*.json`, loaded in filename
+order. Add a JSON entry with English/Thai names to add a level or style; no C++ edit is
+needed. Catalogs require ground level 0 and a default style. Unknown stored styles keep
+their ID and render with the default, with a missing-style indication in Properties.
+Levels only affect display and selection; they do not change runtime conflicts.
+
+## Routes, inputs and fixed-time signals
+
+1. Draw a continuous path using links and connectors.
+2. In Routes, choose Add and append lane/connector segments in travel order. The next
+   segment menu lists valid continuations. Remove last backs up a choice. R followed
+   by Ctrl+right-click on a lane starts the route dialog with that lane.
+3. In Vehicle inputs, choose Add, select a route and vehicle type, and enter vehicles
+   per hour and the start/end interval. The initial interval is the project duration.
+   Source routes must begin at a supported external entry for Run.
+4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal
+   head on a lane or derived connector path, choose a program and position in metres.
+   Program deletion is blocked while a head references it.
+5. Run settings edits duration and fixed timeStep together. All demand/control changes
+   validate and commit through the same Undo/Redo history as network edits.
+
+Vehicle types and driver behaviours normally resolve from `data/`. Embed catalogs
+stores explicit copies in the project for portability. Explicit empty overrides remain
+empty and do not silently fall back to installed data. Intrinsic demand errors block
+edits; unsupported runtime topology is a separate diagnostic.
+
+## Check and Run
+
+Check runnability resolves catalogs and validates the current document revision.
+Problems name the object and can jump to its canvas object or demand row. A document
+without demand still receives topology diagnostics plus the missing-definition finding.
+A committed edit clears stale findings. Rejected edits show draft issues without
+changing the document or losing its previous save point or Redo history.
+
+A clean check means the current core accepts the scenario. It does not certify traffic
+engineering correctness. The permanent not-yet-validated marker remains visible.
+
+Run (F5) compiles one revision into a detached snapshot, initializes the selected
+32-bit seed and plays fixed simulation steps on the editor canvas. Pause keeps the
+state; Step advances one timeStep; Reset recreates the initial state for the same seed.
+Playback speed changes scheduling only. Status shows revision, seed, time and
+active/pending/completed counts. Seeded arrivals are stochastic, so an initially empty
+view can be normal.
+
+Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run;
+the next Run compiles the current document. No simulation runs against a stale edit.
+This is the existing prototype core, with no lane changing, right-of-way or movement
+LOS added by the editor.
 
 ## Background image
 
-Import a local PNG/JPEG/BMP. The image is converted to PNG and embedded in the project,
-so moving the project file does not lose the background. Limits: 24 MB input file,
-32 megapixels, and 32 MB encoded image payload. The project input limit is 48 MB.
+Import a local PNG/JPEG/BMP. The project embeds a PNG copy; input is limited to 24 MB,
+32 megapixels and 32 MB encoded payload. The project input limit is 48 MB.
 
-Use **Calibrate image: two points** to select two locations with a known real distance,
-then enter that distance in metres. Calibration keeps the first selected world point
-fixed and changes image scale around it. It does not rescale roads already drawn.
-Calibrate before tracing roads. **Measure two points** reports the current world distance.
+Calibrate image: two points measures known locations and asks for their real distance.
+It preserves the first world point while changing metresPerPixel around it. Roads
+already drawn are not rescaled: calibrate before tracing. Measure two points reports
+world distance. Image x/y, scale, rotation and opacity commit together in Properties.
+The image origin is its top-left pixel; positive rotation is counter-clockwise.
 
-The inspector also exposes x, y, metresPerPixel, rotation and opacity. Press **Apply
-image transform** to commit them together. Import, calibration, transform and removal
-are all undoable. Background bytes are shared immutably between history snapshots;
-they are not copied per edit. The canvas caches the decoded image.
+Import, transform, calibration and removal are undoable. History shares immutable
+background bytes, and the canvas caches the decoded image. Ctrl+B changes visibility
+without modifying the saved image.
 
-## Save and history
+## Save, recovery and formats
 
-- Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S: new / open / save / save as.
-- Undo/Redo use the native platform shortcuts and toolbar actions.
-- The title's asterisk marks a document different from its last saved revision.
-  Undoing back to that revision clears it; branching after Undo discards Redo.
-- New, Open and Close prompt to Save, Discard or Cancel when the document is dirty.
-- A failed edit or load leaves the previous model intact. Failed save leaves the
-  previous destination intact and keeps the current dirty state.
-- A completely empty network can be saved. A project need not be runnable to be saved.
+Save/Open uses `*.traffic.json`. Schema 2 stores format, schemaVersion, revision, nextId,
+network, optional typed definition and background/transform. It never stores a second
+editable runtime network. Schema 1 migrates with one-lane connector counts, level 0 and
+default display type while preserving IDs. Unknown future versions are rejected.
 
-The version-1 JSON contains format, schemaVersion, revision, nextId, the authoring
-network, an optional M0 definition and the embedded background/transform. It does not
-persist a second compiled runtime network. IDs are retained on edits/save/reopen;
-the allocator skips imported IDs. Undo restores the allocator with the document.
-Revision numbers distinguish local committed edits, not globally unique studies or
-simulation provenance. Undo history is in memory, limited to 100 operations, and resets
-on load. It is not a crash-recovery journal; autosave/recovery remains M1.6.
-
-### Two file kinds
-
-The project produces two JSON kinds, and they are not interchangeable.
-
-| | M0 scenario | Editor project |
+| File kind | M0 scenario | Editor project |
 |---|---|---|
-| Typical name | `data/scenarios/crossing.json` | `network.traffic.json` |
-| Root keys | `network`, `definition` | `format`, `schemaVersion`, `nextId`, `revision`, `network`, `definition`, `background` |
-| `definition` | Required and complete | **Null for any network drawn from scratch** — correct, not corrupt |
-| Opened by | The simulation window | This editor |
-| Runs today | Yes | No: it has no demand yet |
+| Typical name | `crossing.json` | `network.traffic.json` |
+| Root keys | `network`, `definition` | Versioned envelope plus network, definition and background |
+| Definition | Required | Optional until demand/control is authored |
+| Opened by | Simulation window or editor | Editor |
+| Runs | M0 harness | Editor after demand/catalog/runtime checks |
 
-The editor opens both — a file without `schemaVersion` is read as a bare M0 network — and
-always saves the versioned project format. The simulation window opens scenarios only, and
-classifies the file **before** reading any field, so a project no longer fails as a parser
-error about a null. Its codes: `SCENARIO_IS_PROJECT` (an editor project, offered to the
-editor with one click), `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
-`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`. The editor's equivalents for a
-hand-edited file are `EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, `EDIT_VERSION` and
-`EDIT_ID_LIMIT`. Save and Open default to `*.traffic.json` here and `*.json` there.
+The editor opens bare M0 authoring files and schema-1/2 projects and saves schema 2.
+The M0 simulation window recognizes an editor project before reading its fields and
+offers to open it in the editor, even if that project already contains demand.
 
-The two formats are deliberately **not** merged. One format would make every drawing look
-runnable, which is exactly the fidelity claim hard rule 4 forbids. They converge when M1.8
-gives a project a real Run — by adding demand to projects, not by blurring the formats.
+Save uses atomic QSaveFile replacement without direct-write fallback. A failed save
+keeps the previous destination and dirty state; a failed load keeps the current model.
+An empty or unrunnable drawing can be saved. New/Open/Close prompt Save/Discard/Cancel.
+Undo history is in memory, bounded to 100 operations; saved-revision tracking determines
+the title's asterisk and history resets on load.
 
-Project JSON conversion and validation are Qt-free. The shell uses QSaveFile with no
-direct-write fallback for atomic file replacement. Saving marks a revision clean only
-after commit succeeds. Future schema versions are rejected rather than guessed.
-
-## Referential safety and limits
-
-Deleting a link asks for confirmation that attached connectors, heads, affected routes
-and their inputs will be removed as one transaction. Undo restores them together.
-Removing an individual lane referenced by a connector, signal or route is rejected.
-Splitting a link carrying a signal head is currently rejected: preserving control
-stationing through a split needs a dedicated policy, tracked as M1.3.1 in ROADMAP.
-Moving/shrinking a link that would place a head beyond its lane is also rejected.
-
-M1.4 implements general connector creation/editing as described above. M1.6 owns the full persistence/recovery workflow.
-M1.7 owns edited-project simulation handoff and the timed four-leg acceptance exercise.
-The M0 core still rejects merges and does not resolve geometric crossing conflicts or
-lane changing; an editable intersection is not a validated runnable intersection.
+Every 15 seconds, a dirty revision is atomically written to a separate recovery copy in
+the platform's application-data recovery directory. Per-window UUIDs and process locks
+prevent offering copies owned by active editors. Startup offers stale copies; Recover
+can inspect them later. Recovery validates before replacing the document, then opens
+untitled and dirty so Save asks for a real destination. A successful save or intentional
+discard removes the consumed copy. Recovery is a checkpoint, not a persisted Undo log;
+up to 15 seconds of recent edits may be absent after a crash.
 
 ## Verification
 
-`ctest --test-dir build/desktop --output-on-failure` includes the `editor` model suite
-and `editor-ui` native offscreen workflow. Model checks cover atomic failure, save-point
-Undo/Redo/branching, JSON versions, reference-safe deletion, route remapping through
-splits, both driving sides, lane widths, ID collisions and immutable image sharing.
-The UI check exercises real mouse/keyboard drawing and dragging, pan/zoom, cancellation,
-per-lane editing, pockets, opposite links, image calibration, Unicode file paths,
-failed saves/loads, deletion/Undo, unsaved-work cancellation and Thai translation.
-The `connectors` model suite checks both driving sides, turns/U-turns, invalid and
-duplicate connections, exact persistence, endpoint locks and reanchoring, retargeting,
-route/input cleanup and the runtime merge guard. The `connector-ui` workflow uses
-actual mouse/keyboard endpoint picking, preview/cancellation, curve-point dragging,
-insertion/removal, endpoint locks, Properties actions, Unicode save/reopen and Thai
-feedback. It also verifies that deleting an imported connector restores its routes
-and inputs on Undo.
+CTest includes core/baseline replay, model/project/command suites and native offscreen
+UI workflows. These cover controlled splits, both driving sides, connector ranges,
+catalog override semantics, atomic rollback, reference-safe deletion, persistence,
+migration, demand dialogs, in-editor Run and deterministic Reset, recovery, Thai UI,
+creation/cancellation gestures and level-aware overlap selection.
 
-The `diagnostics` model suite covers index-path-to-object-ID resolution including malformed
-and out-of-range paths, draft issues naming the right object, an empty network staying a
-legal draft, an authored merge being reported as unrunnable while remaining committable, the
-runtime pass being skipped rather than throwing on an invalid drawing, missing and malformed
-definitions being reported rather than thrown, catalog-dependent findings being withheld, and
-every code the validators can emit having a non-empty English and Thai string. The
-`tables-ui` workflow drives real gestures: table rows following draws and Undo, row selection
-selecting and framing, Ctrl-click, rubber banding, cancelled and confirmed multi-delete
-restored by a single Undo, a rejected edit populating Problems, jump-to-object from both a
-draft and a runtime row, and Thai tabs, column headers and messages.
-
-These tests do not close the owner's M0 plausibility gate or M1's ten-minute usability
-criterion. Windows/macOS GUI execution, installers and large-network performance remain
-unverified until measured on those platforms/workloads.
+These checks do not perform the owner's timed exercise, establish model fidelity, or
+measure large-network performance. Windows core checks do not imply Windows/macOS GUI
+verification; installers and clean-machine packaging remain M7.

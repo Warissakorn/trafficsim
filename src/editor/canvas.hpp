@@ -1,21 +1,28 @@
 #pragma once
 #include "../project/document.hpp"
+#include "../model/network/display.hpp"
 #include <QGraphicsView>
 #include <functional>
 #include <optional>
+#include <map>
 
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
 public:
-    enum class Tool { select, draw, split, measure, calibrate, connect };
+    enum class Tool { select, draw, split, measure, calibrate, connect, route, input, head };
     explicit EditorCanvas(QWidget* parent = nullptr);
+    void setDisplayCatalog(DisplayCatalog catalog) { display_=std::move(catalog); redraw(); }
+    void setVisibleLevel(std::optional<int> level) { visibleLevel_=level; cancel(); }
+    void setBackgroundVisible(bool visible) { backgroundVisible_=visible; redraw(); }
+    void cycleOverlap();
+    std::vector<std::pair<std::string,double>> hitObjects(Point,bool connectors = true) const;
     void setDocument(const ProjectDocument* document);
     void setTool(Tool tool);
     // One object is "primary": the last one added. Property edits act on it alone, so every
     // single-object gesture behaves exactly as it did before multi-selection existed.
     void select(const std::string& id);                   // replaces the selection with this object
     void setSelection(std::vector<std::string> ids);      // replaces; notifies once
-    void toggle(const std::string& id);                   // Ctrl/Shift-click semantics
+    void toggle(const std::string& id);                   // Shift-click selection semantics
     void frame(const std::string& id);                    // centre it, zooming only if it does not fit
     const std::vector<std::string>& selection() const { return selection_; }
     std::string selected() const { return selection_.empty() ? std::string{} : selection_.back(); }
@@ -23,6 +30,12 @@ public:
     std::vector<std::string> inRectangle(Point a, Point b) const;
     const Connector* selectedConnector() const;
     bool pickingConnectorTarget() const { return connectorFrom_.has_value(); }
+    void setRunNetwork(const Network&);
+    void setRunFrame(const SimState&);
+    void clearRunFrame();
+    std::size_t renderedVehicles() const { return runFrame_.vehicles.size(); }
+    std::function<void()> stopRequested;
+    std::function<void()> deleteRequested;
     void redraw();
     void fitNetwork();
     void cancel();
@@ -30,6 +43,11 @@ public:
     void removeVertex();
     bool snap{true};
     double grid{1};
+    std::function<void(const std::vector<Point>&)> createLinkGesture;
+    std::function<void(LaneReference,LaneReference,const std::vector<Point>&)> createRangeGesture;
+    std::function<void(LaneReference,Tool)> createDemandGesture;
+    std::function<void(Point)> duplicateRequested;
+    std::function<void(int,int)> resizeRangeRequested;
     std::function<void()> selectionChanged;
     std::function<void(const std::vector<Point>&)> createLink;
     std::function<void(const LaneReference&, const LaneReference&)> createConnector;
@@ -47,7 +65,24 @@ protected:
     void wheelEvent(QWheelEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
     void drawBackground(QPainter*, const QRectF&) override;
+    bool focusNextPrevChild(bool) override;
 private:
+    DisplayCatalog display_;
+    std::optional<int> visibleLevel_;
+    bool backgroundVisible_{true}, creating_{};
+    std::optional<LaneReference> gestureFrom_;
+    int rangeCorner_{}, previewFromCount_{1}, previewToCount_{1};
+    Point lastPick_{};
+    bool levelVisible(int level) const { return !visibleLevel_ || *visibleLevel_==level; }
+    const DisplayType& style(const std::string&) const;
+    std::optional<LaneReference> nearestLane(Point) const;
+    void insertVertex(Point);
+    void drawRunItems();
+    std::vector<QGraphicsItem*> runItems_;
+    std::map<std::string,int> runLevels_;
+    std::map<std::string,std::string> runStyles_;
+    SimState runFrame_;
+    std::map<std::string,std::vector<Point>> runGeometry_;
     const ProjectDocument* document_{};
     QGraphicsScene scene_;
     std::shared_ptr<const std::string> cachedImage_;

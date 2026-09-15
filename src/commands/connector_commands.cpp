@@ -40,6 +40,24 @@ std::string addConnector(ProjectDocument& d, const LaneReference& from, const La
     d.network.connectors.push_back({id, from, to, std::move(geometry)});
     return id;
 }
+bool connectorReferenced(const ProjectDocument& d,const Connector& c) {
+    std::set<std::string> ids;
+    for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)ids.insert(connectorPathId(c,i));
+    if(d.definition)for(const auto& r:d.definition->routes)for(const auto& s:r.segmentIds)if(ids.contains(s))return true;
+    for(const auto& h:d.network.signalHeads)if(ids.contains(h.connectorId))return true;
+    return false;
+}
+std::string addConnectorRange(ProjectDocument& d,const LaneReference& from,const LaneReference& to,int fromCount,int toCount) {
+    const auto id=addConnector(d,from,to);
+    auto& c=editableConnector(d,id);c.fromLaneCount=fromCount;c.toLaneCount=toCount;
+    c.level=editableLink(d,from.linkId).level;c.displayType=editableLink(d,from.linkId).displayType;
+    (void)connectorPaths(d.network,c);return id;
+}
+void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount,int toCount) {
+    auto& c=editableConnector(d,id);if(c.fromLaneCount==fromCount && c.toLaneCount==toCount)return;
+    if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
+    c.fromLaneCount=fromCount;c.toLaneCount=toCount;(void)connectorPaths(d.network,c);
+}
 void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const std::vector<Point>& geometry) {
     auto& c = editableConnector(d, id);
     if (geometry.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
@@ -50,9 +68,7 @@ void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const st
 void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneReference from, LaneReference to) {
     auto& c = editableConnector(d, id);
     if (c.from == from && c.to == to) return;
-    if (!d.definition.is_null()) for (const auto& r : d.definition.at("routes"))
-        for (const auto& segment : r.at("segmentIds"))
-            if (segment == id) throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
+    if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
     uniqueConnection(d, from, to, id);
     c.from = from; c.to = to;
     reanchor(d, c);
@@ -64,8 +80,10 @@ void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straigh
     c.geometry = std::move(geometry);
 }
 void deleteConnector(ProjectDocument& d, const std::string& id) {
-    (void)editableConnector(d, id);
-    std::erase_if(d.network.connectors, [&](const auto& c) { return c.id == id; });
-    detail::removeRoutesUsingSegments(d, {id});
+    const auto c=editableConnector(d,id);std::set<std::string> paths;
+    for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)paths.insert(connectorPathId(c,i));
+    std::erase_if(d.network.connectors, [&](const auto& item) { return item.id == id; });
+    std::erase_if(d.network.signalHeads,[&](const auto& h){return paths.contains(h.connectorId);});
+    detail::removeRoutesUsingSegments(d, paths);
 }
 }
