@@ -78,9 +78,34 @@ TEST(connectors, reanchor_preserves_points_and_lane_references) {
     const auto old=c;History h;h.reset(d);const auto before=documentJson(d);
     h.execute("move",[](auto& m){changeGeometry(m,"in",{{-80,10},{0,10}});});
     const auto moved=h.document().network.connectors[0];
-    const double t=std::hypot(old.geometry[1].x-old.geometry[0].x,old.geometry[1].y-old.geometry[0].y)/polylineLength(old.geometry);
-    test::near(moved.geometry[1].y,old.geometry[1].y+10*(1-t));
+    // Reanchoring is a similarity transform of the endpoint chord, so the curve's shape is
+    // carried rigidly: every interior point keeps its position relative to the chord.
+    const auto shape=[](const Connector& c){
+        std::vector<Point> local;
+        const double vx=c.geometry.back().x-c.geometry.front().x,vy=c.geometry.back().y-c.geometry.front().y;
+        const double chord=vx*vx+vy*vy;
+        for(std::size_t i=1;i+1<c.geometry.size();++i) {
+            const double px=c.geometry[i].x-c.geometry.front().x,py=c.geometry[i].y-c.geometry.front().y;
+            local.push_back({(px*vx+py*vy)/chord,(py*vx-px*vy)/chord});
+        }
+        return local;
+    };
+    const auto before_shape=shape(old),after_shape=shape(moved);
+    CHECK(before_shape.size()==after_shape.size());
+    for(std::size_t i=0;i<before_shape.size();++i) {
+        test::near(after_shape[i].x,before_shape[i].x);test::near(after_shape[i].y,before_shape[i].y);
+    }
     CHECK(moved.from==old.from && moved.to==old.to);CHECK(moved.geometry.size()==old.geometry.size());anchored(h.document());
+    // Path independence is the point: returning the link to where it started must restore the
+    // curve exactly, not leave it deformed by however many edits took it there.
+    h.execute("away",[](auto& m){changeGeometry(m,"in",{{-90,44},{-7,-3}});});
+    h.execute("back",[](auto& m){changeGeometry(m,"in",{{-80,10},{0,10}});});
+    const auto returned=h.document().network.connectors[0];
+    CHECK(returned.geometry.size()==moved.geometry.size());
+    for(std::size_t i=0;i<returned.geometry.size();++i) {
+        test::near(returned.geometry[i].x,moved.geometry[i].x);test::near(returned.geometry[i].y,moved.geometry[i].y);
+    }
+    h.undo();h.undo();
     h.execute("widths",[](auto& m){changeLanes(m,"out",{5,2});});anchored(h.document());
     h.execute("right",[](auto& m){changeDrivingSide(m,DrivingSide::right);});anchored(h.document());
     h.undo();h.undo();h.undo();CHECK(documentJson(h.document())==before);

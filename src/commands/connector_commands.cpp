@@ -15,19 +15,25 @@ void uniqueConnection(const ProjectDocument& d, const LaneReference& from, const
     for (const auto& c : d.network.connectors)
         if (c.id != except && c.from == from && c.to == to) throw std::invalid_argument("DUPLICATE_CONNECTION");
 }
+// Carry the interior points with the similarity transform that maps the old endpoint chord
+// onto the new one. Writing each point as the complex number z = (p-a)/(b-a) makes z an
+// invariant of the curve's shape, so the transform depends only on where the endpoints are
+// now, never on how they got there: moving a link away and back restores the curve exactly.
+// A displacement blend relative to the current geometry cannot do this — it composes, so a
+// round trip through two edits silently deformed hand-tuned curves.
 void reanchor(ProjectDocument& d, Connector& c) {
     const auto from = laneGeometry(editableLink(d, c.from.linkId), c.from.laneId, d.network.drivingSide).back();
     const auto to = laneGeometry(editableLink(d, c.to.linkId), c.to.laneId, d.network.drivingSide).front();
-    const double total = polylineLength(c.geometry);
-    if (!std::isfinite(total) || total <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
+    if (c.geometry.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
     const auto old = c.geometry;
     const auto a = old.front(), b = old.back();
-    double length = 0;
+    const double vx = b.x-a.x, vy = b.y-a.y, chord = vx*vx + vy*vy;
+    const double wx = to.x-from.x, wy = to.y-from.y;
+    if (!std::isfinite(chord) || chord <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
     for (std::size_t i = 1; i+1 < old.size(); ++i) {
-        length += std::hypot(old[i].x-old[i-1].x, old[i].y-old[i-1].y);
-        const double t = length/total;
-        c.geometry[i] = {old[i].x+(from.x-a.x)*(1-t)+(to.x-b.x)*t,
-                         old[i].y+(from.y-a.y)*(1-t)+(to.y-b.y)*t};
+        const double px = old[i].x-a.x, py = old[i].y-a.y;
+        const double zr = (px*vx + py*vy)/chord, zi = (py*vx - px*vy)/chord;
+        c.geometry[i] = {from.x + zr*wx - zi*wy, from.y + zr*wy + zi*wx};
     }
     c.geometry.front() = from; c.geometry.back() = to;
 }
@@ -60,7 +66,13 @@ void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount
 }
 void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const std::vector<Point>& geometry) {
     auto& c = editableConnector(d, id);
-    if (geometry.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
+    // Hold this to the same contract as changeGeometry: a command validates its own input
+    // rather than relying on the surrounding transaction to catch it.
+    if (geometry.size() < 2 || !std::isfinite(polylineLength(geometry)) || polylineLength(geometry) <= 0)
+        throw std::invalid_argument("INVALID_GEOMETRY");
+    for (std::size_t i = 0; i < geometry.size(); ++i)
+        if (!std::isfinite(geometry[i].x) || !std::isfinite(geometry[i].y) || (i && geometry[i] == geometry[i-1]))
+            throw std::invalid_argument("INVALID_GEOMETRY");
     if (geometry.front() != c.geometry.front() || geometry.back() != c.geometry.back())
         throw std::invalid_argument("EDIT_CONNECTOR_ENDPOINTS");
     c.geometry = geometry;

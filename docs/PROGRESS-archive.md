@@ -8,6 +8,33 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-14 — M1 workflow completion and verification
+
+Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
+commands and dialogs, revision-bound in-editor Run, controlled splits, schema migration,
+locked recovery, connector lane ranges, sidebar gestures, levels and display catalogs.
+The core and its capability/fidelity guards are unchanged. README, architecture, roadmap
+and the editor guide now describe the implemented surface; M1_ACCEPTANCE.md supplies the
+original timed acceptance task and a blank result record. M0/M1 owner gates remain open.
+
+CI on ff4995a passed 19 of 20 desktop suites, including the complete drawing/demand/run/
+replay/recovery workflow and new native range tests. The remaining table assertion still
+expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
+offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
+Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
+The first gesture run exposed a test timer firing before mouse release opened its
+modal; confirmation now waits for the dialog and never throws through a Qt callback.
+Gesture tests explicitly reactivate the editor after a modal and release Ctrl before
+sending the next canvas shortcut: the offscreen platform has no window manager.
+A persistence review found that Undo to the saved revision could leave an older recovery
+copy; the next checkpoint now removes it, with a UI regression covering that case.
+
+Validation runs through GitHub Actions because the session executor is intermittently
+unavailable and local Qt/CMake installation could not complete. No local interactive GUI
+or owner timing result is claimed. The parity review is explicitly retained as a historical
+assessment with a current implementation addendum.
+---
+
 ### 2026-09-14 — M1 completion implementation in progress
 
 The owner authorized the remaining M1 editor work together. The session executor is offline;

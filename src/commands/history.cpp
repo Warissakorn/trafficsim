@@ -1,4 +1,5 @@
 #include "history.hpp"
+#include <limits>
 
 namespace trafficsim {
 void History::reset(ProjectDocument document) {
@@ -9,9 +10,14 @@ bool History::execute(const std::string& name, const std::function<void(ProjectD
     auto candidate = document_;
     change(candidate);
     validateDocument(candidate); // Failed commands leave model, history, saved state untouched.
-    if (documentJson(candidate) == documentJson(document_)) return false;
+    // Value comparison, not serialisation: documentJson-ing both documents on every edit cost
+    // more than the command and its validation together on a large network.
+    if (candidate == document_) return false;
+    // Only the revision changed since validateDocument above, and the sole thing it checks
+    // about a revision is that it has not run out; re-validating the whole document again
+    // would recompile the scenario for that one test.
+    if (nextRevision_ == std::numeric_limits<std::uint64_t>::max()) throw std::invalid_argument("EDIT_ID_LIMIT");
     candidate.revision = nextRevision_;
-    validateDocument(candidate);
     ++nextRevision_;
     Entry entry{name, document_, std::move(candidate)};
     document_ = entry.after;

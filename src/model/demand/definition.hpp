@@ -7,5 +7,6 @@ namespace trafficsim {
 struct AuthoringDefinition : ScenarioDefinition {
     bool externalVehicleTypes{true}, externalBehaviours{true};
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
+    bool operator==(const AuthoringDefinition&) const = default;
 };
 }

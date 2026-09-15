@@ -6,6 +6,42 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-15 — Connector reshaping made path-independent, and the cost of one edit
+
+Review of M1.3/M1.4 found that `reanchor` displaced a connector's interior points relative to
+its *current* geometry, so the transform composed across edits instead of depending only on
+where the endpoints are. Moving a link away and back to exactly the same place left a
+hand-tuned curve permanently deformed by 3.76 m on a 30 m connector, and two sequential moves
+that together were a pure translation distorted it by 8.17 m. Undo was unaffected, because
+History restores whole-document snapshots rather than replaying the command.
+
+Interior points are now carried by the similarity transform mapping the old endpoint chord
+onto the new one, written as the complex invariant z = (p-a)/(b-a). Returning the endpoints
+restores the curve to 3.6e-15 m, sequential moves are rigid to 2.6e-14 m, and a simultaneous
+move stays rigid as before. `reanchor` runs only from `changeGeometry`, `changeLanes` and
+`changeDrivingSide`, never on load, so stored geometry is untouched until a project is edited.
+`reanchor_preserves_points_and_lane_references` pinned the old displacement formula; it now
+asserts chord-relative shape and an explicit away-and-back round trip, and fails against the
+previous implementation.
+
+`History::execute` serialised both documents to JSON on every edit to detect no-op commands.
+Measured at 400 links that was 63 ms of roughly 83 ms, more than the command and its
+validation together. The model types now carry value equality — `BackgroundImage` compares
+image bytes rather than the shared pointer — and the check is a struct comparison. The second
+full `validateDocument` is replaced by the revision-exhaustion test that was the only thing it
+added. One edit on a 200-link network fell from 62.0 ms to 3.8 ms.
+
+`changeConnectorGeometry` now rejects non-finite points, zero length and duplicate consecutive
+points, matching `changeGeometry`; previously only the surrounding transaction caught them.
+`changeLanes` no longer reports a pre-existing bad connector range as `EDIT_REFERENCED_LANE`.
+
+Verified on both presets: 21 desktop tests including the six UI suites, 15 headless,
+architecture and file-size guards. Two randomised invariant sweeps (300 trials each, both
+driving sides, with signal heads, routes, inputs, splits, retargeting, curve edits and
+deletions) report no dangling references and no detached connector endpoints before or after
+every edit. The `cli` test still pins 29.24935, so replay is unchanged. M0 plausibility and the
+M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
 ## 2026-09-15 — Recovery lock failure and the run overlay's style lookup
 
 `buildRecovery` returned as soon as `QLockFile::tryLock` failed, which also skipped the two
@@ -62,32 +98,6 @@ also absent and was supplied through `TRAFFICSIM_JSON_INCLUDE_DIR`; no repositor
 changed. M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
 
 The same review left two smaller Qt-side items, both since fixed — see the entry above.
-
-## 2026-09-14 — M1 workflow completion and verification
-
-Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
-commands and dialogs, revision-bound in-editor Run, controlled splits, schema migration,
-locked recovery, connector lane ranges, sidebar gestures, levels and display catalogs.
-The core and its capability/fidelity guards are unchanged. README, architecture, roadmap
-and the editor guide now describe the implemented surface; M1_ACCEPTANCE.md supplies the
-original timed acceptance task and a blank result record. M0/M1 owner gates remain open.
-
-CI on ff4995a passed 19 of 20 desktop suites, including the complete drawing/demand/run/
-replay/recovery workflow and new native range tests. The remaining table assertion still
-expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
-offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
-Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
-The first gesture run exposed a test timer firing before mouse release opened its
-modal; confirmation now waits for the dialog and never throws through a Qt callback.
-Gesture tests explicitly reactivate the editor after a modal and release Ctrl before
-sending the next canvas shortcut: the offscreen platform has no window manager.
-A persistence review found that Undo to the saved revision could leave an older recovery
-copy; the next checkpoint now removes it, with a UI regression covering that case.
-
-Validation runs through GitHub Actions because the session executor is intermittently
-unavailable and local Qt/CMake installation could not complete. No local interactive GUI
-or owner timing result is claimed. The parity review is explicitly retained as a historical
-assessment with a current implementation addendum.
 
 ## Next
 
