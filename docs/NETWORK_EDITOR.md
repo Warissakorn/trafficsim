@@ -94,8 +94,13 @@ mirrored for right-hand traffic. Changing drivingSide recomputes lane geometry a
 reanchors connectors without swapping IDs. Independently drawn opposite links do not
 move when this setting changes.
 
-Reanchoring distributes endpoint displacement over intermediate connector points by
-arc length. It is not a turning-radius or swept-path guarantee; inspect tight turns.
+Reanchoring applies the similarity transform that maps a connector's previous endpoint
+chord onto its new one, so every interior point keeps its position relative to that chord
+and the curve is carried rigidly, scaling uniformly if the ends move apart. The result
+depends only on where the endpoints are now, never on the edits that put them there:
+returning a link to an earlier position restores a hand-edited curve exactly, rather than
+leaving it deformed by however many moves took it away. It is not a turning-radius or
+swept-path guarantee; inspect tight turns.
 
 ## Connector lane ranges
 
@@ -121,7 +126,9 @@ first. Reshaping its curve remains allowed if the whole document validates.
 
 Interior points are editable. Reset curve to lane directions creates a cubic sampled
 into 12 spans; Make straight retains only endpoints. There are no separate persisted
-Bézier handles and arbitrary edits need not remain smooth. Coincident endpoints cannot
+Bézier handles and arbitrary edits need not remain smooth, though a reshaped curve is
+held to the same geometry rules as a link: no non-finite coordinates, no repeated
+consecutive points and a positive total length. Coincident endpoints cannot
 generate a default curve; leave a positive gap. Duplicate lane-pair connections are
 rejected, including pairs already covered by another connector range.
 
