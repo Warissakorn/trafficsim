@@ -3,6 +3,8 @@
 #include <QAbstractButton>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QDoubleSpinBox>
+#include <cmath>
 #include <QLabel>
 #include <QMessageBox>
 #include <QSignalBlocker>
@@ -29,6 +31,22 @@ QWidget* EditorWindow::buildConnectorInspector() {
     connectorFromCount_=new QSpinBox(page);connectorToCount_=new QSpinBox(page);
     connectorFromCount_->setRange(1,12);connectorToCount_->setRange(1,12);
     label(form,"editorFromLaneCount",connectorFromCount_);label(form,"editorToLaneCount",connectorToCount_);
+    connectorFromPosition_=new QDoubleSpinBox(page);connectorToPosition_=new QDoubleSpinBox(page);
+    for(auto* position:{connectorFromPosition_,connectorToPosition_}){position->setRange(0,100);position->setDecimals(6);position->setSuffix(" %");}
+    connectorFromPosition_->setValue(100);
+    label(form,"editorFromPosition",connectorFromPosition_);label(form,"editorToPosition",connectorToPosition_);
+    connect(connectorFrom_,&QComboBox::currentIndexChanged,this,[this]{refreshConnectorRanges();});
+    connect(connectorTo_,&QComboBox::currentIndexChanged,this,[this]{refreshConnectorRanges();});
+    const auto positioned=[this](bool outgoing) {
+        auto ref=reference(outgoing?connectorFrom_:connectorTo_);
+        const double percent=(outgoing?connectorFromPosition_:connectorToPosition_)->value();
+        if(const auto* c=canvas_->selectedConnector()) {
+            const auto& old=outgoing?c->from:c->to;
+            if(std::round(old.fraction.value_or(outgoing?1.:0.)*1e8)/1e6==percent){ref.fraction=old.fraction;return ref;}
+        }
+        if(percent!=(outgoing?100.:0.))ref.fraction=percent/100.;
+        return ref;
+    };
     connect(connectorObject_,&QComboBox::currentIndexChanged,this,[this]{
         canvas_->select(connectorObject_->currentData().toString().toStdString());
     });
@@ -36,13 +54,13 @@ QWidget* EditorWindow::buildConnectorInspector() {
         auto* b=new QToolButton(page);b->setToolButtonStyle(Qt::ToolButtonTextOnly);
         b->setDefaultAction(action(key,{},callback));form->addRow(b);
     };
-    button("editorCreateConnector",[this]{
-        try {addConnection(reference(connectorFrom_),reference(connectorTo_));}
+    button("editorCreateConnector",[this,positioned]{
+        try {addConnection(positioned(true),positioned(false));}
         catch (const std::exception& e) {showError(e);}
     });
-    button("editorApplyConnector",[this]{
+    button("editorApplyConnector",[this,positioned]{
         try {
-            const auto from=reference(connectorFrom_), to=reference(connectorTo_);
+            const auto from=positioned(true), to=positioned(false);
             const auto id=canvas_->selected();
             execute("editorApplyConnector",[&](auto& d){changeConnectorEndpoints(d,id,from,to);changeConnectorRange(d,id,connectorFromCount_->value(),connectorToCount_->value());});
         } catch (const std::exception& e) {showError(e);}
@@ -65,8 +83,21 @@ void EditorWindow::connectorHint() {
     connectorHint_->setText(text(key));
 }
 void EditorWindow::addConnection(const LaneReference& from,const LaneReference& to) {
+    const auto count=[this](const LaneReference& ref,int requested) {
+        for(const auto& l:history_.document().network.links)for(std::size_t i=0;i<l.lanes.size();++i)
+            if(l.id==ref.linkId && l.lanes[i].id==ref.laneId)return std::min(requested,static_cast<int>(l.lanes.size()-i));
+        return requested;
+    };
     std::string id;
-    if (execute("editorCreateConnector",[&](auto& d){id=addConnectorRange(d,from,to,connectorFromCount_->value(),connectorToCount_->value());})) canvas_->select(id);
+    if (execute("editorCreateConnector",[&](auto& d){id=addConnectorRange(d,from,to,count(from,connectorFromCount_->value()),count(to,connectorToCount_->value()));})) canvas_->select(id);
+}
+void EditorWindow::refreshConnectorRanges() {
+    for(auto pair:{std::pair{connectorFrom_,connectorFromCount_},std::pair{connectorTo_,connectorToCount_}}) {
+        int available=1;
+        for(const auto& l:history_.document().network.links)for(std::size_t i=0;i<l.lanes.size();++i)
+            if(QString::fromStdString(l.lanes[i].id)==pair.first->currentData().toString())available=static_cast<int>(l.lanes.size()-i);
+        pair.second->setMaximum(available);
+    }
 }
 void EditorWindow::refreshConnector() {
     const auto* connector=canvas_->selectedConnector();
@@ -89,7 +120,11 @@ void EditorWindow::refreshConnector() {
     for (const auto* key : {"editorApplyConnector","editorResetCurve","editorStraightConnector","editorDeleteConnector"})
         actions_.at(key)->setEnabled(connector);
     actions_.at("editorCreateConnector")->setEnabled(connectorFrom_->count()>1);
-    if(connector){connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);}
+    if(connector){
+        connectorFromPosition_->setValue(connector->from.fraction.value_or(1.)*100);
+        connectorToPosition_->setValue(connector->to.fraction.value_or(0.)*100);
+        refreshConnectorRanges();
+        connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);}
     if (connector) selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2));
     connectorHint();
 }

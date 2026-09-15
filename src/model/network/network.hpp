@@ -9,7 +9,12 @@ struct Link {
     int level{}; std::string displayType{"default"};
     bool operator==(const Link&) const = default;
 };
-struct LaneReference { std::string linkId, laneId; bool operator==(const LaneReference&) const = default; };
+struct LaneReference {
+    std::string linkId, laneId;
+    // Fraction of lane arclength. Absent means the legacy source end / target start.
+    std::optional<double> fraction{};
+    bool operator==(const LaneReference&) const = default;
+};
 struct Connector {
     std::string id; LaneReference from, to; std::vector<Point> geometry;
     int fromLaneCount{1}, toLaneCount{1}, level{};
@@ -41,7 +46,9 @@ double stationOfClosestPoint(const std::vector<Point>&, Point);
 std::string signalSegment(const NetworkSignalHead&);
 Point pointAlong(const std::vector<Point>& points, double distance);
 std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, DrivingSide side);
-// A sampled cubic between lane endpoints, aligned with their travel directions.
+Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
+std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
+// A sampled cubic between lane attachments, aligned with their local travel directions.
 // The returned polyline is the editable/persisted geometry; no second curve is stored.
 std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to);
 std::vector<ValidationIssue> validateNetwork(const Network& network);

@@ -52,7 +52,9 @@ std::vector<Point> points(const Json& value) {
     return result;
 }
 LaneReference reference(const Json& value) {
-    return {field<std::string>(value, "linkId"), field<std::string>(value, "laneId")};
+    LaneReference result{field<std::string>(value,"linkId"),field<std::string>(value,"laneId")};
+    if(value.contains("fraction"))result.fraction=field<double>(value,"fraction");
+    return result;
 }
 SignalColor color(const std::string& text) {
     if (text == "red") return SignalColor::red;

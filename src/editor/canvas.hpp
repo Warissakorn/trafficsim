@@ -48,6 +48,8 @@ public:
     std::function<void(LaneReference,Tool)> createDemandGesture;
     std::function<void(Point)> duplicateRequested;
     std::function<void(int,int)> resizeRangeRequested;
+    std::function<void(int)> resizeLinkRequested;
+    std::function<void()> creationRejected;
     std::function<void()> selectionChanged;
     std::function<void(const std::vector<Point>&)> createLink;
     std::function<void(const LaneReference&, const LaneReference&)> createConnector;
@@ -70,6 +72,8 @@ private:
     DisplayCatalog display_;
     std::optional<int> visibleLevel_;
     bool backgroundVisible_{true}, creating_{};
+    Tool creationTool_{Tool::draw};
+    QPoint creationStart_;
     std::optional<LaneReference> gestureFrom_;
     int rangeCorner_{}, previewFromCount_{1}, previewToCount_{1};
     Point lastPick_{};
@@ -102,9 +106,16 @@ private:
     const std::vector<Point>* selectedGeometry() const;
     std::pair<std::string, double> hit(Point p, bool connectors = true) const;
     int vertexAt(QPoint position) const;
-    std::optional<LaneReference> hitLaneEnd(Point p, bool outgoing) const;
+    std::optional<LaneReference> hitLanePosition(Point p, bool outgoing) const;
     void pickConnector(Point p);
     void notifySelection();
     void drawConnectors();
+    struct LaneHandle { Point position, direction; double width; int kind, count, maximum; };
+    std::vector<LaneHandle> laneHandles() const;
+    bool startLaneResize(QPoint);
+    void updateLaneResize(QPoint);
+    void drawLaneHandles();
+    std::optional<LaneHandle> laneResize_;
+    int previewLinkCount_{};
 };
 }

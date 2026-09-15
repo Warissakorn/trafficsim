@@ -13,16 +13,12 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
         for(const auto& l:n.links)if(l.id==ref.linkId) {
             const auto it=std::find_if(l.lanes.begin(),l.lanes.end(),[&](const auto& lane){return lane.id==ref.laneId;});
             if(it==l.lanes.end() || std::distance(it,l.lanes.end())<count)break;
-            for(int i=0;i<count;++i)result.push_back({l.id,(it+i)->id});
+            for(int i=0;i<count;++i)result.push_back({l.id,(it+i)->id,ref.fraction});
             return result;
         }
         throw std::invalid_argument("EDIT_LANE_RANGE");
     };
     const auto from=range(c.from,c.fromLaneCount),to=range(c.to,c.toLaneCount);
-    const auto geometry=[&](const LaneReference& ref) {
-        for(const auto& l:n.links)if(l.id==ref.linkId)return laneGeometry(l,ref.laneId,n.drivingSide);
-        throw std::invalid_argument("UNKNOWN_LANE");
-    };
     const int count=std::max(c.fromLaneCount,c.toLaneCount);
     std::vector<ConnectorPath> result;
     for(int i=0;i<count;++i) {
@@ -30,7 +26,7 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
         const int b=count==1?0:i*(c.toLaneCount-1)/(count-1);
         auto shape=c.geometry;
         if(i && !shape.empty()) {
-            const auto start=geometry(from[a]).back(),end=geometry(to[b]).front();
+            const auto start=laneAttachment(n,from[a],true),end=laneAttachment(n,to[b],false);
             const auto oldStart=shape.front(),oldEnd=shape.back();const double length=polylineLength(shape);
             double station=0;
             for(std::size_t j=1;j+1<shape.size();++j) {

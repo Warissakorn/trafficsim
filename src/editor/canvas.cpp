@@ -57,7 +57,7 @@ void EditorCanvas::setTool(Tool tool) {
     cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
 }
 void EditorCanvas::cancel() {
-    creating_=false;gestureFrom_.reset();rangeCorner_=0;
+    creating_=false;gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
     if (connectorDraftChanged) connectorDraftChanged();
@@ -92,6 +92,11 @@ void EditorCanvas::redraw() {
         const auto& appearance=style(link.displayType);const double z=link.level*100.;
         const bool chosen=isSelected(link.id);
         if (link.id==primary && !preview_.empty()) link.geometry=preview_;
+        if(link.id==primary && laneResize_ && laneResize_->kind==4) {
+            while(static_cast<int>(link.lanes.size())<previewLinkCount_)
+                link.lanes.push_back({"preview-"+std::to_string(link.lanes.size()),link.lanes.back().width});
+            link.lanes.resize(static_cast<std::size_t>(previewLinkCount_));
+        }
         for (const auto& lane : link.lanes) {
             const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
             const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
@@ -117,6 +122,7 @@ void EditorCanvas::redraw() {
         }
     }
     drawConnectors();
+    drawLaneHandles();
     for(const auto& head:document_->network.signalHeads) {
         std::vector<Point> geometry;int level=0;
         if(head.connectorId.empty()) {

@@ -20,7 +20,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-2 authoring codec, schema-1 migration and revision run snapshots |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-3 authoring codec, schema-1/2 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
@@ -98,7 +98,12 @@ change. Dynamic vehicle/head scene items are ordered by their authored level.
 between Save and recovery. Each editor owns a UUID recovery file and a QLockFile;
 restoration validates before replacing the document and starts untitled and dirty.
 Schema 1 loads with default one-lane connector ranges, level 0 and default display
-type; saves write schema 2. Unsupported future versions fail before mutation.
+type. Schema 1/2 endpoint references retain their default attachments; saves write schema 3.
+Optional `LaneReference::fraction` stores a normalized lane-arclength position.
+`laneAttachment` is shared by curve construction, derived paths, validation and reanchoring.
+The editor's side-resize gestures submit one Link/range command on release; preview data
+never enters History. Interior attachments are blocked at Run by `connectorRuntimeIssues`
+until M1.11.1 derives runtime lane sections. Unsupported future versions fail before mutation.
 
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 

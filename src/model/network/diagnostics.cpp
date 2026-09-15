@@ -98,6 +98,8 @@ std::vector<Diagnostic> runtimeDiagnostics(const Network& network, const Scenari
         if (blocksDraft(issue.code))
             return {{"EDIT_RUNTIME_SKIPPED", {}, {}, {}, DiagnosticSeverity::runtime}};
     std::vector<Diagnostic> result;
+    for(const auto& issue:connectorRuntimeIssues(network))
+        result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
     try {
         const auto scenario = buildScenario(network, definition);
         for (const auto& issue : validateScenario(scenario)) {

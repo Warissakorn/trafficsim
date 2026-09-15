@@ -22,8 +22,8 @@ void uniqueConnection(const ProjectDocument& d, const LaneReference& from, const
 // A displacement blend relative to the current geometry cannot do this — it composes, so a
 // round trip through two edits silently deformed hand-tuned curves.
 void reanchor(ProjectDocument& d, Connector& c) {
-    const auto from = laneGeometry(editableLink(d, c.from.linkId), c.from.laneId, d.network.drivingSide).back();
-    const auto to = laneGeometry(editableLink(d, c.to.linkId), c.to.laneId, d.network.drivingSide).front();
+    const auto from = laneAttachment(d.network,c.from,true);
+    const auto to = laneAttachment(d.network,c.to,false);
     if (c.geometry.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
     const auto old = c.geometry;
     const auto a = old.front(), b = old.back();

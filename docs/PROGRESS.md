@@ -2,9 +2,56 @@
 
 Append-only. Newest entry at the top. **This is what a session with no memory reads to rejoin
 the work.** Never delete an entry; move old blocks to `PROGRESS-archive.md` whole if this gets
-long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-archive.md).
+long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-archive.md)
+and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
+
+## 2026-09-15 — Ctrl-right release, body attachments and lane side handles
+
+The owner reported a disappearing Ctrl+right-drag preview, endpoint-only Connectors,
+and missing direct lane-count manipulation. The Select tool entered creation preview
+but its release branch only supported Draw and Connect; release also trusted the last
+mouse-move event. Select/Links now infer Link creation from empty space and Connector
+creation from a lane, and commit the actual release position regardless of released Ctrl.
+Esc, tool changes and dialog Cancel discard the gesture. Invalid targets report an error.
+
+`LaneReference::fraction` stores an optional normalized lane-arclength attachment.
+Missing values retain source-end/target-start semantics. Schema 3 persists positions and
+rejects older readers; schemas 1/2 and bare M0 networks remain readable. Curve tangents,
+reanchoring, per-lane paths, validation, duplication and split remapping use the same
+attachment semantics. Distinct station pairs on the same lanes may own distinct
+Connectors; duplicate pairs at the same stations remain rejected. A split through an
+attachment within its 0.2 m continuity span is rejected before mutation.
+
+Selected Connectors expose orange source/target side handles from one lane onwards.
+The middle handle sets both ranges to the same count. Selected Links have a side handle
+that adds/removes lanes while retaining existing widths. Counts and geometry preview
+without changing History; one release commits one command, Esc cancels. Range limits,
+referenced-lane/Connector guards, Undo/Redo and lane IDs retain their existing contracts.
+The first lane is chosen in the dialog/Properties; the number of derived Connector paths
+remains the maximum of its two ranges, not an independent internal lane topology.
+
+Related review fixes: body picking honors visible levels; curve-handle z-order follows
+its object; the inspector preserves precise fractions on unchanged Apply and bounds
+counts by the selected lanes. Help now describes body picking, side handles and
+Ctrl+Delete, and the tables footer correctly says Shift-click for multi-selection.
+
+**Runtime boundary:** M0 still traverses whole lanes. `connectorRuntimeIssues` names and
+selects interior attachments in Diagnostics, and compile/Run rejects them with
+`UNSUPPORTED_CONNECTOR_POSITION`. Authoring and saving remain allowed. M1.11.1 books
+lane-section compilation, route/control remapping and matching vehicle rendering;
+no engine capability guard or fidelity marker was weakened to make a drawing runnable.
+
+**Validation:** Linux Qt 6.4 desktop build and all 23 CTest suites passed (including seven
+UI suites). New cases cover release without a preceding mouse-move, releasing Ctrl first,
+Select-mode creation, two-click and drag body attachments, one-lane range growth,
+independent end counts, middle/Link handles, invalid-target feedback, cancellation,
+Undo/Redo, precise inspector Apply, schema round-trip, both driving sides, duplication,
+link/width edits, splitting and runtime rejection. The existing four reference replays,
+CLI result, architecture and file-size checks pass. A rendered Thai editor screenshot
+was inspected. Local evidence is Linux only; Windows and other build presets are CI gates.
+M0/M1 owner acceptance remains open.
 
 ## 2026-09-15 — Windows packaging build broken by a Linux-only test mechanism
 
@@ -105,12 +152,15 @@ M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
 
 ## Next
 
-**Run the owner acceptance exercise.** PR #14 is merged, its review is done and both code
-findings from that review are fixed, so the owner gate is the only thing left open.
+**Review M1.11 and run the owner acceptance exercise.** The reported gesture and
+body-attachment authoring failures are addressed. Test the workflow on the owner's
+Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
+lane sections for interior attachments; Run correctly blocks those networks today.
 
 1. Require Linux headless/desktop/release and Windows core checks to pass on the branch head.
-   Qt 6.4 and nlohmann/json install from the Ubuntu archive in this container, so the desktop
-   preset and all 21 tests can be run locally; do that before relying on CI.
+   Qt 6.4 and nlohmann/json are available from the Ubuntu archive; all 23 desktop tests
+   passed locally. Local dependencies were extracted into scratch because the package
+   cache was not writable; no dependency workaround was added to the repository.
 2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
    and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
 3. Record the M0 queue/red/green plausibility observation separately. Keep the
@@ -408,85 +458,4 @@ value pin, plus the same 12 multi-seed multi-size CLI runs byte-identical to the
 binary.
 
 **Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
-
-### 2026-09-14 — hot path 1/3: route geometry resolved once per run
-
-`routeParts` was recomputed for every vehicle on every tick — 1,867,548 calls in an
-8-corridor profile — even though it is a pure function of an immutable `Scenario`. A
-`ScenarioIndex` now resolves it once in `createSimulation` and is carried through `SimState`
-as a `shared_ptr`, so per-tick state copies share it rather than duplicating it. Routes live
-in a contiguous vector, so `partsFor` recovers a route's index from its own address in O(1)
-with no extra lookup. The index is built from the **canonical** scenario, so part order
-matches the sorted routes.
-
-The uncached `routeParts`, `locateVehicle` and `occupiedSpans` overloads are retained for
-`src/render/` and the existing tests; cached and uncached paths share one implementation each
-so they cannot drift. `stepSimulation` tolerates a hand-built state without an index by
-building one, rather than requiring every caller to change.
-
-**Measured** (Release, GCC 13.3, median of 3, identical commands as the baseline entry above):
-600 s of simulation on 1/2/4/8/16/32 corridors went 0.067/0.142/0.488/1.739/4.876/17.724 s to
-0.036/0.079/0.285/1.157/3.257/11.327 s, i.e. **-33% to -46%, -36% at 466 vehicles**. The
-O(V^1.85) growth is unchanged and is deliberately left to the next slice; this change removes
-constant work per call, not the quadratic term.
-
-No behaviour change was intended and none was observed: 12/12 headless CTest including the new
-trajectory digest and the exact `29.24935` CLI pin, plus 12 multi-seed multi-size CLI runs
-(4 network sizes x 3 seeds) byte-identical to the pre-change binary.
-
-**Verification:** headless preset only. Qt is absent in this container, so the three desktop
-suites were not built or run; `src/render/` compiles against the unchanged overloads but no
-desktop verification is claimed.
-
-### 2026-09-14 — core hot-path optimization: measurement baseline and trajectory guard
-
-Profiling (Release, GCC 13.3, callgrind) of a synthetic multi-corridor scenario shows engine
-cost growing at **O(V^1.85)** in active vehicle count: 466 vehicles take 17.7 s of wall time
-for 600 s of simulation. Attribution: `__memcmp_avx2_movbe` 30.9% of all instructions (linear
-`detail::byId` searches over `std::string` IDs), `closestVehicle` 39.3% inclusive (nested
-`parts x spans` scan, the quadratic term), `routeParts` ~35% inclusive over **1,867,548 calls**
-recomputing a value that is constant for an entire run.
-
-Before changing any engine code, per-tick trajectory is now pinned. The four frozen TypeScript
-baselines deliberately exclude `MovedEvent`, so positions between the every-100-tick checkpoints
-were unguarded. `tests/reference/trajectory-digest.json` records weighted means over the full
-`MovedEvent` stream for the same four seeds; means (not sums) keep magnitudes physical so the
-existing 1e-7 tolerance applies unchanged, and order/segment/vehicle weights make a reordering
-visible that plain sums would hide. The four TypeScript baselines were **not** touched.
-
-The guard was verified non-vacuous: perturbing only the reported position in `locateVehicle`
-by 1e-6 relative — which changes `MovedEvent` but not checkpointed `distance` — fails
-`meanOrderWeightedPosition` on all four seeds. A 1e-9 relative perturbation of acceleration is
-caught by the pre-existing checkpoint comparison. Both perturbations were reverted.
-
-These digests characterize what the engine currently does. They are not a fidelity claim and
-do not affect the not-yet-validated marker or any milestone gate.
-
-**Verification:** headless preset, 12/12 CTest. Qt is not installed in this container, so the
-three desktop suites were not built or run and no desktop verification is claimed.
-
-
-### 2026-09-14 — CI packaging workflow for testable binaries
-
-Added `.github/workflows/package.yml`, a manually dispatched (`workflow_dispatch`) and
-`v*`-tag workflow that builds, tests and uploads runnable binaries so the owner can try a
-build without a local toolchain. Linux uses the `release` preset with apt Qt 6 and
-`ctest --preset release` under the offscreen platform; Windows uses MSVC 2022, vcpkg
-nlohmann/json and an aqt-installed Qt 6.5.3, then `windeployqt` so the archive runs on a
-clean machine. Both stage the existing `install()` rules into `dist/` (desktop, CLI, data
-catalogs) and add a `RUN.txt` that repeats the not-yet-validated marker.
-
-Existing `native.yml` push/PR verification is unchanged; packaging is deliberately a
-separate workflow so a slow Qt install never sits in the pull-request path. These are
-unsigned test builds — installer work still belongs to M7, and no milestone gate is
-affected. No engine, model or UI code changed.
-
-**Verification:** workflow YAML parsed locally; the build itself is proven by the CI run,
-not by this container, which has neither Qt nor nlohmann/json installed.
-
-### 2026-09-14 — MIT License added
-
-Added a top-level `LICENSE` (MIT, copyright 2026 Warissakorn) and a README License section.
-The bundled Noto Sans Thai font keeps its SIL OFL 1.1 terms and Qt keeps its own; the MIT
-grant covers this repository's own source and documentation only. No code change.
 

@@ -23,7 +23,7 @@ std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<s
     for(auto c:source.connectors)if(links.contains(c.from.linkId) && links.contains(c.to.linkId)) {
         const auto original=c;c.id=allocateId(d,"connector");
         for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)paths[connectorPathId(original,i)]=connectorPathId(c,i);
-        c.from={links.at(c.from.linkId),lanes.at(c.from.laneId)};c.to={links.at(c.to.linkId),lanes.at(c.to.laneId)};
+        c.from={links.at(c.from.linkId),lanes.at(c.from.laneId),c.from.fraction};c.to={links.at(c.to.linkId),lanes.at(c.to.laneId),c.to.fraction};
         for(auto& p:c.geometry){p.x+=offset.x;p.y+=offset.y;}
         created.push_back(c.id);d.network.connectors.push_back(std::move(c));
     }
