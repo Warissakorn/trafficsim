@@ -11,6 +11,9 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTableWidget>
+#include <QDir>
+#include <QFileInfo>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
@@ -24,6 +27,9 @@ void accept(QDialog& dialog){item<QDialogButtonBox>(dialog,"")->button(QDialogBu
 }
 int main(int argc,char** argv) {
     QApplication app(argc,argv);
+    // Recovery copies live under AppLocalDataLocation. Test mode redirects that on every
+    // platform, so this binary never reads or deletes a real editor session's drafts.
+    QStandardPaths::setTestModeEnabled(true);
     try {
         require(argc>1,"data path");QTemporaryDir directory;require(directory.isValid(),"temporary directory");
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(30);
@@ -84,23 +90,28 @@ int main(int argc,char** argv) {
         require(!w.runState().scenario,"invalid seed ran");
         w.close();
         // A window that cannot take its recovery lock keeps every unrelated control and stays
-        // usable; only autosave is withheld. Point the data location at a regular file so the
-        // lock cannot be created for any user, including root.
-        const auto blocked=directory.path()+"/not-a-directory";
-        {QFile f(blocked);require(f.open(QIODevice::WriteOnly),"blocking file");f.write("x");}
-        const auto previous=qgetenv("XDG_DATA_HOME");
-        qputenv("XDG_DATA_HOME",blocked.toUtf8());
+        // usable; only autosave is withheld. Occupy the recovery directory's own path with a
+        // regular file: no OS lets a file be created inside a file, so the lock fails for any
+        // user on any platform. An environment variable cannot do this -- XDG_DATA_HOME is
+        // ignored on Windows and macOS, where the earlier version of this test silently took
+        // the lock and failed on the autosave assertion instead.
+        const auto recovery=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)+"/recovery";
+        QDir(recovery).removeRecursively();
+        QDir().mkpath(QFileInfo(recovery).path());
+        {QFile f(recovery);require(f.open(QIODevice::WriteOnly),"blocking file");f.write("x");}
         {
             EditorWindow locked{std::filesystem::path(argv[1])};locked.show();QTest::qWait(30);
+            // Check the mechanism before the behaviour. If a platform ever lets the lock
+            // through, this must read as a broken test rather than a passing one.
+            require(locked.recoveryPath().isEmpty(),"could not force a recovery lock failure on this platform");
             require(locked.findChild<QAction*>("editorEmbedCatalogs"),"lock failure removed catalog embedding");
             require(locked.findChild<QAction*>("editorRecover"),"lock failure removed recovery browsing");
             require(!locked.autosaveActive(),"autosave ran without a recovery lock");
-            require(locked.recoveryPath().isEmpty(),"unlocked window kept a recovery path");
             item<QSpinBox>(locked,"editorLaneCount")->setValue(1);
             require(!locked.history().dirty(),"fresh window started dirty");
             locked.close();
         }
-        previous.isEmpty()?qunsetenv("XDG_DATA_HOME"):qputenv("XDG_DATA_HOME",previous);
+        QFile::remove(recovery);
         std::cout<<"M1 demand, run, replay and recovery workflow passed\n";return 0;
     }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 }
