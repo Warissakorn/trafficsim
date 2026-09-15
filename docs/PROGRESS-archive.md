@@ -8,6 +8,103 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-14 — M1 workflow completion and verification
+
+Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
+commands and dialogs, revision-bound in-editor Run, controlled splits, schema migration,
+locked recovery, connector lane ranges, sidebar gestures, levels and display catalogs.
+The core and its capability/fidelity guards are unchanged. README, architecture, roadmap
+and the editor guide now describe the implemented surface; M1_ACCEPTANCE.md supplies the
+original timed acceptance task and a blank result record. M0/M1 owner gates remain open.
+
+CI on ff4995a passed 19 of 20 desktop suites, including the complete drawing/demand/run/
+replay/recovery workflow and new native range tests. The remaining table assertion still
+expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
+offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
+Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
+The first gesture run exposed a test timer firing before mouse release opened its
+modal; confirmation now waits for the dialog and never throws through a Qt callback.
+Gesture tests explicitly reactivate the editor after a modal and release Ctrl before
+sending the next canvas shortcut: the offscreen platform has no window manager.
+A persistence review found that Undo to the saved revision could leave an older recovery
+copy; the next checkpoint now removes it, with a UI regression covering that case.
+
+Validation runs through GitHub Actions because the session executor is intermittently
+unavailable and local Qt/CMake installation could not complete. No local interactive GUI
+or owner timing result is claimed. The parity review is explicitly retained as a historical
+assessment with a current implementation addendum.
+---
+
+### 2026-09-14 — M1 completion implementation in progress
+
+The owner authorized the remaining M1 editor work together. The session executor is offline;
+changes are prepared through the GitHub connector and verified by the repository's CI.
+Base d456b121 passed Native C++ run 34824423877. No local desktop execution is claimed.
+
+First slice replaces the document's untyped definition with optional typed authoring values,
+retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
+route/input/program/head commands, and introduces catalog resolution and revision snapshots.
+Runtime limitations remain separate from draft validity. The second slice adds route/input/program/head dialogs and tables plus in-editor fixed-step Run/Pause/Step/Reset with seed and speed. Successful edits invalidate the run snapshot; frames repaint without rebuilding the scene. The first CI failure was a JSON-to-string comparison in the migrated regression test, corrected with explicit extraction. The third slice adds locked per-window recovery copies, atomic autosave, catalog embedding,
+schema-1-to-2 loading and controlled-link splitting. Split heads are classified by their
+original centreline station and projected onto the owning new lane or connector span.
+The runtime core is unchanged. CI compiled the second slice, then the file-size gate caught
+PROGRESS.md at 511 lines; older entries were moved whole to the existing archive.
+An offscreen end-to-end workflow now covers drawing, demand dialogs, Run/Step/Reset,
+seed replay, invalidation after Undo, recovery, Unicode persistence and Thai controls.
+The fourth slice adds contiguous connector lane ranges, stable derived runtime path IDs,
+level-aware scene ordering/hit-testing, data-driven display catalogs, the Network Objects
+sidebar and creation/duplication/overlap gestures. Unequal ranges may author merges; M0
+still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
+duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
+and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
+The fourth-slice CI passed Linux headless and Windows core. Desktop compilation passed;
+three UI regressions exposed a topology-diagnostics early return, a fixture outside the
+new viewport, and a seeded arrival later than the fixed sampling time. These are corrected
+and range compilation, reference safety, duplication and migration regressions are added.
+The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
+---
+
+### 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
+
+**Reported:** opening `network.traffic.json` in the simulation window failed with
+`Could not open this scenario. … [json.exception.type_error.304] cannot use at() with null`.
+
+**Cause, not a corrupt file.** `documentJson` always writes `definition`, and a network drawn
+from scratch has none, so every such project saves `"definition": null` — correct for a
+project. The simulation window's Open filter was `*.json`, which listed the editor's own
+default save name `network.traffic.json`; `loadScenario` then called
+`parseDefinition(value.at("definition"))` unguarded, landing on `.at("duration")` on a null.
+The raw nlohmann text reached the user because the handler appended `e.what()` verbatim.
+
+**Changed, in outcomes.** Picking an editor project in the simulation window now says what
+kind of file it is, in English or Thai, and offers **Open in Network Editor** — one click and
+the drawing opens in the window that can hold it. No load path can surface an nlohmann
+exception any more: `loadScenario` classifies the file before reading a field
+(`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
+`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`, carried on a typed `ScenarioLoadError`), and
+`parseDocument` guards the mirror-image holes a hand-edited project could hit
+(`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
+dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
+a saved empty project must be *recognised*, not parsed and rejected.
+
+**Second pass, same day.** A scrutiny round found the classifier had the same defect it was
+added to prevent: `value.value("format", std::string{})` throws `type_error.302` when the key is
+present but not a string — including null — so `{"network":{…},"format":null}` still leaked an
+nlohmann message. Fixed, and `TEST(project, file_kind_classification_survives_broken_metadata)`
+pins it (verified to fail against the previous classifier). A second finding: `what()` on a
+classification failure is the bare code, and two paths showed it untranslated — startup
+`--scenario` via `main.cpp`, and the editor-launch fallback. Both now route through one
+`MainWindow::explain` / `EditorWindow::openFileOrReport`, and a `--scenario` the simulation
+window cannot run is explained **in** the window, with the editor offered, instead of a fatal
+modal carrying an identifier.
+
+**Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
+window layout, objects, and the run/output story — and ranks the gaps. The three the owner
+accepted are carved into `ROADMAP.md` as **M1.8** (Run inside the editor), **M1.9** (network
+objects sidebar, Vissim gestures and shortcuts) and **M1.10** (levels and display types).
+No milestone was closed and no editor feature work was done: 17/17 CTest green, 59/59 native.
+---
+
 ### 2026-09-12 — native editor M1.1–M1.3 implemented (D16)
 
 Added a version-1 ProjectDocument and a Qt-free command library. Every committed edit

@@ -6,66 +6,107 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
-## 2026-09-14 — M1 workflow completion and verification
+## 2026-09-15 — Connector reshaping made path-independent, and the cost of one edit
 
-Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
-commands and dialogs, revision-bound in-editor Run, controlled splits, schema migration,
-locked recovery, connector lane ranges, sidebar gestures, levels and display catalogs.
-The core and its capability/fidelity guards are unchanged. README, architecture, roadmap
-and the editor guide now describe the implemented surface; M1_ACCEPTANCE.md supplies the
-original timed acceptance task and a blank result record. M0/M1 owner gates remain open.
+Review of M1.3/M1.4 found that `reanchor` displaced a connector's interior points relative to
+its *current* geometry, so the transform composed across edits instead of depending only on
+where the endpoints are. Moving a link away and back to exactly the same place left a
+hand-tuned curve permanently deformed by 3.76 m on a 30 m connector, and two sequential moves
+that together were a pure translation distorted it by 8.17 m. Undo was unaffected, because
+History restores whole-document snapshots rather than replaying the command.
 
-CI on ff4995a passed 19 of 20 desktop suites, including the complete drawing/demand/run/
-replay/recovery workflow and new native range tests. The remaining table assertion still
-expected unresolved catalogs; it now checks the catalog-resolved valid scenario. A new
-offscreen gesture suite exercises Ctrl-right creation/cancellation, range corner resize,
-Ctrl-left duplication, level order at two zooms, Tab, filtering and exact reopen.
-The first gesture run exposed a test timer firing before mouse release opened its
-modal; confirmation now waits for the dialog and never throws through a Qt callback.
-Gesture tests explicitly reactivate the editor after a modal and release Ctrl before
-sending the next canvas shortcut: the offscreen platform has no window manager.
-A persistence review found that Undo to the saved revision could leave an older recovery
-copy; the next checkpoint now removes it, with a UI regression covering that case.
+Interior points are now carried by the similarity transform mapping the old endpoint chord
+onto the new one, written as the complex invariant z = (p-a)/(b-a). Returning the endpoints
+restores the curve to 3.6e-15 m, sequential moves are rigid to 2.6e-14 m, and a simultaneous
+move stays rigid as before. `reanchor` runs only from `changeGeometry`, `changeLanes` and
+`changeDrivingSide`, never on load, so stored geometry is untouched until a project is edited.
+`reanchor_preserves_points_and_lane_references` pinned the old displacement formula; it now
+asserts chord-relative shape and an explicit away-and-back round trip, and fails against the
+previous implementation.
 
-Validation runs through GitHub Actions because the session executor is intermittently
-unavailable and local Qt/CMake installation could not complete. No local interactive GUI
-or owner timing result is claimed. The parity review is explicitly retained as a historical
-assessment with a current implementation addendum.
+`History::execute` serialised both documents to JSON on every edit to detect no-op commands.
+Measured at 400 links that was 63 ms of roughly 83 ms, more than the command and its
+validation together. The model types now carry value equality — `BackgroundImage` compares
+image bytes rather than the shared pointer — and the check is a struct comparison. The second
+full `validateDocument` is replaced by the revision-exhaustion test that was the only thing it
+added. One edit on a 200-link network fell from 62.0 ms to 3.8 ms.
 
-## 2026-09-14 — M1 completion implementation in progress
+`changeConnectorGeometry` now rejects non-finite points, zero length and duplicate consecutive
+points, matching `changeGeometry`; previously only the surrounding transaction caught them.
+`changeLanes` no longer reports a pre-existing bad connector range as `EDIT_REFERENCED_LANE`.
 
-The owner authorized the remaining M1 editor work together. The session executor is offline;
-changes are prepared through the GitHub connector and verified by the repository's CI.
-Base d456b121 passed Native C++ run 34824423877. No local desktop execution is claimed.
+Verified on both presets: 21 desktop tests including the six UI suites, 15 headless,
+architecture and file-size guards. Two randomised invariant sweeps (300 trials each, both
+driving sides, with signal heads, routes, inputs, splits, retargeting, curve edits and
+deletions) report no dangling references and no detached connector endpoints before or after
+every edit. The `cli` test still pins 29.24935, so replay is unchanged. M0 plausibility and the
+M1 owner gate in `M1_ACCEPTANCE.md` remain open.
 
-First slice replaces the document's untyped definition with optional typed authoring values,
-retains version-1 JSON compatibility and explicit catalog override semantics, adds atomic
-route/input/program/head commands, and introduces catalog resolution and revision snapshots.
-Runtime limitations remain separate from draft validity. The second slice adds route/input/program/head dialogs and tables plus in-editor fixed-step Run/Pause/Step/Reset with seed and speed. Successful edits invalidate the run snapshot; frames repaint without rebuilding the scene. The first CI failure was a JSON-to-string comparison in the migrated regression test, corrected with explicit extraction. The third slice adds locked per-window recovery copies, atomic autosave, catalog embedding,
-schema-1-to-2 loading and controlled-link splitting. Split heads are classified by their
-original centreline station and projected onto the owning new lane or connector span.
-The runtime core is unchanged. CI compiled the second slice, then the file-size gate caught
-PROGRESS.md at 511 lines; older entries were moved whole to the existing archive.
-An offscreen end-to-end workflow now covers drawing, demand dialogs, Run/Step/Reset,
-seed replay, invalidation after Undo, recovery, Unicode persistence and Thai controls.
-The fourth slice adds contiguous connector lane ranges, stable derived runtime path IDs,
-level-aware scene ordering/hit-testing, data-driven display catalogs, the Network Objects
-sidebar and creation/duplication/overlap gestures. Unequal ranges may author merges; M0
-still rejects those at Run. Keyboard decisions: Shift extends selection, Ctrl-left-click
-duplicates links and internal connectors/heads without demand, Ctrl+B toggles the image,
-and Ctrl+Shift+O toggles object tables. Delete removes objects; Ctrl+Delete removes a vertex.
-The fourth-slice CI passed Linux headless and Windows core. Desktop compilation passed;
-three UI regressions exposed a topology-diagnostics early return, a fixture outside the
-new viewport, and a seeded arrival later than the fixed sampling time. These are corrected
-and range compilation, reference safety, duplication and migration regressions are added.
-The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
+## 2026-09-15 — Recovery lock failure and the run overlay's style lookup
+
+`buildRecovery` returned as soon as `QLockFile::tryLock` failed, which also skipped the two
+toolbar actions built below it. A session that could not take its recovery lock therefore lost
+`editorEmbedCatalogs`, an unrelated feature, and ran with autosave silently off after a single
+error message. The lock now only gates autosave: both actions are always built, the failure
+clears the stale recovery path, and the timer stays stopped rather than re-reporting the same
+failure every 15 seconds. Recovery browsing is deliberately still offered, because
+`recoverFile` acquires its own lock — adopting one now starts autosave through `startAutosave`,
+so a window that began unlocked becomes protected as soon as it recovers a draft.
+
+`drawRunItems` evaluated `runStyles_.at(location.segmentId)` as an argument to `marker`, so it
+ran before `marker`'s own missing-segment guard. `style()` already falls back to the default
+type, so the lookup is now total and an absent segment degrades exactly as one absent from the
+geometry map. The underlying asymmetry is also gone: `clearRunFrame` cleared only the geometry
+map while `setRunNetwork` clears all three, so the three maps now always hold the same keys.
+
+Qt 6.4.2 and nlohmann/json are available from the Ubuntu archive, so this session built the
+desktop preset and ran all 21 tests, including the six UI suites that earlier entries could
+only send to CI. That also covers the previous entry's compilation change. A new case in
+`m1_ui_tests` forces a lock failure by pointing `XDG_DATA_HOME` at a regular file, which
+defeats the lock for root as well, and asserts the window keeps both actions, leaves autosave
+stopped and stays editable. Against the previous code it fails with "lock failure removed
+catalog embedding". The run overlay change has no dedicated test: reaching it needs a
+segment-id desync that compilation and `setRunNetwork` currently make impossible.
+
+M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
+## 2026-09-15 — Scenario compilation cost and split re-projection coverage
+
+Review of the merged M1 branch found `buildScenario` resolving `connectorPaths` inside the
+per-lane, per-connector loop. `connectorPaths` linear-scans `network.links` to resolve each
+end, so compilation scaled roughly cubically in network size. This is not a batch-only path:
+`refreshDemand` compiles on every model change and `validateDocument` compiles on every
+15-second autosave, so a large network stalled the editor on ordinary edits.
+
+Connector paths depend only on the network, so they are now derived once and indexed by
+originating lane. Measured on a straight corridor with three lanes per link and three-lane
+range connectors: 400 links fell from 10809 ms to 11.8 ms, and 800 links now compile in
+44.6 ms where the old shape did not finish in reasonable time. Segment order, `next` order
+and therefore replay are unchanged — the `cli` test still pins 29.24935 exactly.
+
+`signal_bearing_split_preserves_control_and_routes` asserted which link or connector each
+head lands on but never its re-projected station, leaving the lane-arc-length to
+centreline-station conversion untested. It now pins the downstream station and, for the
+non-pocket case, the exact world point on the gap connector. A pocket widens the downstream
+link and shifts its lanes, so only the station is stable there; the world-point check is
+deliberately scoped to the case where no lane moves. Verified non-vacuous by mutation: a
+0.05 m drift applied only to the downstream head is caught here and by no pre-existing check.
+
+Verified on the headless preset only. Qt 6 is unavailable in this environment, so the desktop
+build and the four UI suites this branch added remain unverified locally. `nlohmann/json` is
+also absent and was supplied through `TRAFFICSIM_JSON_INCLUDE_DIR`; no repository dependency
+changed. M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
+The same review left two smaller Qt-side items, both since fixed — see the entry above.
 
 ## Next
 
-**Review PR #14 and its CI, then run the owner acceptance exercise.**
+**Run the owner acceptance exercise.** PR #14 is merged, its review is done and both code
+findings from that review are fixed, so the owner gate is the only thing left open.
 
-1. Review the latest Native C++ run on `codex/complete-m1-network-editor`; require Linux
-   headless/desktop/release and Windows core checks to pass on the PR head.
+1. Require Linux headless/desktop/release and Windows core checks to pass on the branch head.
+   Qt 6.4 and nlohmann/json install from the Ubuntu archive in this container, so the desktop
+   preset and all 21 tests can be run locally; do that before relying on CI.
 2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
    and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
 3. Record the M0 queue/red/green plausibility observation separately. Keep the
@@ -75,48 +116,6 @@ The remaining validation and acceptance work follows on the same branch; no mile
 
 Implementation: `src/model/demand/`, `src/model/network/`, `src/commands/`,
 `src/project/`, `src/editor/` and `src/shell/`. Current behavior is in NETWORK_EDITOR.md.
-
----
-
-## 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
-
-**Reported:** opening `network.traffic.json` in the simulation window failed with
-`Could not open this scenario. … [json.exception.type_error.304] cannot use at() with null`.
-
-**Cause, not a corrupt file.** `documentJson` always writes `definition`, and a network drawn
-from scratch has none, so every such project saves `"definition": null` — correct for a
-project. The simulation window's Open filter was `*.json`, which listed the editor's own
-default save name `network.traffic.json`; `loadScenario` then called
-`parseDefinition(value.at("definition"))` unguarded, landing on `.at("duration")` on a null.
-The raw nlohmann text reached the user because the handler appended `e.what()` verbatim.
-
-**Changed, in outcomes.** Picking an editor project in the simulation window now says what
-kind of file it is, in English or Thai, and offers **Open in Network Editor** — one click and
-the drawing opens in the window that can hold it. No load path can surface an nlohmann
-exception any more: `loadScenario` classifies the file before reading a field
-(`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
-`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`, carried on a typed `ScenarioLoadError`), and
-`parseDocument` guards the mirror-image holes a hand-edited project could hit
-(`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
-dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
-a saved empty project must be *recognised*, not parsed and rejected.
-
-**Second pass, same day.** A scrutiny round found the classifier had the same defect it was
-added to prevent: `value.value("format", std::string{})` throws `type_error.302` when the key is
-present but not a string — including null — so `{"network":{…},"format":null}` still leaked an
-nlohmann message. Fixed, and `TEST(project, file_kind_classification_survives_broken_metadata)`
-pins it (verified to fail against the previous classifier). A second finding: `what()` on a
-classification failure is the bare code, and two paths showed it untranslated — startup
-`--scenario` via `main.cpp`, and the editor-launch fallback. Both now route through one
-`MainWindow::explain` / `EditorWindow::openFileOrReport`, and a `--scenario` the simulation
-window cannot run is explained **in** the window, with the editor offered, instead of a fatal
-modal carrying an identifier.
-
-**Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
-window layout, objects, and the run/output story — and ranks the gaps. The three the owner
-accepted are carved into `ROADMAP.md` as **M1.8** (Run inside the editor), **M1.9** (network
-objects sidebar, Vissim gestures and shortcuts) and **M1.10** (levels and display types).
-No milestone was closed and no editor feature work was done: 17/17 CTest green, 59/59 native.
 
 ---
 

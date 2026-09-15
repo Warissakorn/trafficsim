@@ -117,12 +117,27 @@ TEST(editor, signal_bearing_split_preserves_control_and_routes) {
         d.network.signalHeads={{"up",{"west","west-1"},20,"east-west-program"},
             {"span",{"west","west-1"},50,"east-west-program"},
             {"down",{"west","west-1"},100,"east-west-program"}};
+        Link west;for(const auto& l:d.network.links)if(l.id=="west")west=l;
+        const auto spanWorld=pointAlong(laneGeometry(west,"west-1",side),50);
         h.reset(d);const auto before=documentJson(h.document());
         std::string downstream;h.execute("split",[&](auto& doc){downstream=splitLink(doc,"west",50,pocket);});
         const auto& n=h.document().network;
         CHECK(n.signalHeads[0].lane.linkId=="west");test::near(n.signalHeads[0].position,20);
         CHECK(!n.signalHeads[1].connectorId.empty());CHECK(n.signalHeads[1].lane.laneId.empty());
         CHECK(n.signalHeads[2].lane.linkId==downstream);
+        // Stations are re-projected onto the new owner, never carried over: the downstream
+        // link now starts 50.1 along the original, so the head authored at 100 sits at 49.9.
+        test::near(n.signalHeads[2].position,49.9);
+        // Without a pocket no lane moves, so the spanning head must keep its exact world
+        // point on the 0.2 m gap connector. A pocket widens the downstream link and shifts
+        // its lanes, so there only the station is preserved.
+        if(!pocket) {
+            test::near(n.signalHeads[1].position,0.1);
+            std::vector<Point> span;
+            for(const auto& c:n.connectors)if(c.id==n.signalHeads[1].connectorId)span=c.geometry;
+            const auto at=pointAlong(span,n.signalHeads[1].position);
+            test::near(at.x,spanWorld.x);test::near(at.y,spanWorld.y);
+        }
         CHECK(validateNetwork(n).empty());
         const auto& ids=h.document().definition->routes.front().segmentIds;
         CHECK(ids.size()==5);CHECK(ids[1]==n.signalHeads[1].connectorId);

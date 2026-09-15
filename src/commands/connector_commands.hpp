@@ -15,6 +15,8 @@ void changeConnectorEndpoints(ProjectDocument&, const std::string& id, LaneRefer
 void resetConnectorCurve(ProjectDocument&, const std::string& id, bool straight = false);
 // Deletes affected routes and their inputs in the same undoable transaction.
 void deleteConnector(ProjectDocument&, const std::string& id);
-// Shared by Link/Lane/driving-side edits; preserves interior points by weighted displacement.
+// Shared by Link/Lane/driving-side edits. Carries interior points by the similarity transform
+// between the old and new endpoint chords, so reshaping depends only on where the endpoints
+// are, never on the path taken to get there.
 void reanchorConnectors(ProjectDocument&);
 }

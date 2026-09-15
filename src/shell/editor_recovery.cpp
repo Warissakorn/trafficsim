@@ -20,7 +20,10 @@ void EditorWindow::buildRecovery() {
     recoveryFile_=recoveryDirectory_+"/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".traffic.json";
     recoveryLock_=std::make_unique<QLockFile>(recoveryFile_+".lock");
     recoveryLock_->setStaleLockTime(0);
-    if(!recoveryLock_->tryLock()) {showError(std::runtime_error("EDIT_RECOVERY_LOCK"));return;}
+    // A lock failure costs autosave, nothing else. Returning here also skipped the toolbar
+    // actions below, so an unrelated feature disappeared and the session ran unprotected.
+    const bool locked=recoveryLock_->tryLock();
+    if(!locked){recoveryLock_.reset();recoveryFile_.clear();showError(std::runtime_error("EDIT_RECOVERY_LOCK"));}
     auto* files=findChild<QToolBar*>("editorFiles");
     files->addAction(action("editorRecover",{},[this]{recoverDialog();}));
     files->addAction(action("editorEmbedCatalogs",{},[this]{
@@ -35,8 +38,13 @@ void EditorWindow::buildRecovery() {
     connect(&autosaveTimer_,&QTimer::timeout,this,[this]{
         try{autosaveNow();}catch(const std::exception& e){showError(e);}
     });
-    autosaveTimer_.start(15000);
+    // Recovering another draft adopts its lock, so offer the dialog either way; without a
+    // lock the timer stays stopped rather than reporting the same failure every 15 seconds.
+    if(locked)startAutosave();
     QTimer::singleShot(0,this,[this]{recoverDialog(true);});
+}
+void EditorWindow::startAutosave() {
+    if(recoveryLock_ && recoveryLock_->isLocked() && !autosaveTimer_.isActive())autosaveTimer_.start(15000);
 }
 void EditorWindow::autosaveNow() {
     if(!history_.dirty()){clearRecovery();return;}
@@ -58,7 +66,7 @@ void EditorWindow::recoverFile(const QString& file) {
     auto document=readEditorDocument(file);
     // Restored documents are untitled, so Save asks for a destination before replacing anything.
     clearRecovery();clearRun();history_.reset(std::move(document));history_.markUnsaved();file_.clear();
-    recoveryLock_=std::move(lock);recoveryFile_=file;autosavedRevision_.reset();
+    recoveryLock_=std::move(lock);recoveryFile_=file;autosavedRevision_.reset();startAutosave();
     canvas_->select("");refresh();canvas_->fitNetwork();error_->setText(text("editorRecovered"));
 }
 void EditorWindow::recoverDialog(bool startup) {

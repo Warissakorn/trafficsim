@@ -36,6 +36,7 @@ public:
     void autosaveNow();
     void recoverFile(const QString&);
     QString recoveryPath() const { return recoveryFile_; }
+    bool autosaveActive() const { return autosaveTimer_.isActive(); }
     const History& history() const { return history_; }
     EditorCanvas* canvas() const { return canvas_; }
     void openFile(const QString& path); // Parse and validate before replacing the document.
@@ -63,6 +64,7 @@ private:
     QTimer autosaveTimer_;
     std::optional<std::uint64_t> autosavedRevision_;
     void buildRecovery();
+    void startAutosave();
     void clearRecovery();
     void recoverDialog(bool startup = false);
     QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{};

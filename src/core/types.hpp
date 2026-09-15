@@ -10,27 +10,36 @@
 namespace trafficsim {
 // Runtime contract: metres, seconds, m/s and m/s². No UI or file-format types.
 struct Segment { std::string id; double length{}; std::vector<std::string> next; };
-struct Route { std::string id; std::vector<std::string> segmentIds; };
+struct Route {
+    std::string id; std::vector<std::string> segmentIds;
+    bool operator==(const Route&) const = default;
+};
 struct DriverBehaviour {
     std::string id;
     double standstillDistance{}, additiveSafetyDistance{}, multiplicativeSafetyDistance{};
     double followingTime{}, speedThreshold{};
+    bool operator==(const DriverBehaviour&) const = default;
 };
-struct SpeedRange { double min{}, max{}; };
+struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };
 struct VehicleType {
     std::string id;
     double length{}, width{};
     SpeedRange desiredSpeed;
     double maxAcceleration{}, comfortableDeceleration{}, maxDeceleration{};
     std::string behaviourId;
+    bool operator==(const VehicleType&) const = default;
 };
 struct VehicleInput {
     std::string id, routeId, vehicleTypeId;
     double vehiclesPerHour{}, startTime{}, endTime{};
+    bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };
-struct SignalPhase { double duration{}; SignalColor color{}; };
-struct SignalProgram { std::string id; double offset{}; std::vector<SignalPhase> phases; };
+struct SignalPhase { double duration{}; SignalColor color{}; bool operator==(const SignalPhase&) const = default; };
+struct SignalProgram {
+    std::string id; double offset{}; std::vector<SignalPhase> phases;
+    bool operator==(const SignalProgram&) const = default;
+};
 struct SignalHead { std::string id, segmentId; double position{}; std::string programId; };
 struct ScenarioDefinition {
     double duration{}, timeStep{};
@@ -39,6 +48,8 @@ struct ScenarioDefinition {
     std::vector<DriverBehaviour> behaviours;
     std::vector<VehicleInput> inputs;
     std::vector<SignalProgram> signalPrograms;
+    // Value equality, so callers can tell "this edit changed nothing" without serialising.
+    bool operator==(const ScenarioDefinition&) const = default;
 };
 struct Scenario : ScenarioDefinition {
     std::vector<Segment> segments;

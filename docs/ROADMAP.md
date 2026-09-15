@@ -169,6 +169,15 @@ controls. Implementation and automated gesture checks do not replace this owner 
 **Explicitly not in M1.9:** new network types from the parity review, editable table cells,
 group drag and rotation.
 
+Connector reanchoring is no longer part of what makes those two expensive. VISSIM_PARITY
+§1 and §6 item 10 cite it as a blocker, and that text stays as the 2026-09-14 assessment,
+but reanchoring is now a similarity transform of the connector's endpoint chord, so
+applying one transform as a sequence of single-object edits composes exactly. Measured on
+a hand-edited curve between two links, a shared translation applied as two separate link
+moves fell from 8.17 m of distortion to 2.6e-14 m, and a shared rotation from 5.53 m to
+7.1e-15 m. What these gestures still need is selection-wide transform plumbing, and for
+paste the ID allocation the parity review also names — not connector geometry.
+
 ### M1.10 — Levels and display types
 
 Implemented. Links and connectors persist a level and named display type. Rendering,

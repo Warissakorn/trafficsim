@@ -37,8 +37,15 @@ void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<do
     auto& l = editableLink(d, id);
     std::set<std::string> removed;
     for (std::size_t i = widths.size(); i < l.lanes.size(); ++i) removed.insert(l.lanes[i].id);
-    for (const auto& c : d.network.connectors) for(const auto& path:connectorPaths(d.network,c))
-        if (removed.contains(path.from.laneId) || removed.contains(path.to.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
+    // A connector whose range is already invalid cannot be reported as a lane reference; leave
+    // that to validation, which names it properly, instead of throwing EDIT_LANE_RANGE here.
+    for (const auto& c : d.network.connectors) {
+        std::vector<ConnectorPath> paths;
+        try { paths = connectorPaths(d.network, c); } catch (const std::exception&) { continue; }
+        for (const auto& path : paths)
+            if (removed.contains(path.from.laneId) || removed.contains(path.to.laneId))
+                throw std::invalid_argument("EDIT_REFERENCED_LANE");
+    }
     for (const auto& h : d.network.signalHeads)
         if (removed.contains(h.lane.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
     if (d.definition) for (const auto& r : d.definition->routes) for (const auto& s : r.segmentIds)
