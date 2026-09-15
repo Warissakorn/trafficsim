@@ -6,6 +6,35 @@ long. Older entries have been moved whole to [`PROGRESS-archive.md`](PROGRESS-ar
 
 ---
 
+## 2026-09-15 — Scenario compilation cost and split re-projection coverage
+
+Review of the merged M1 branch found `buildScenario` resolving `connectorPaths` inside the
+per-lane, per-connector loop. `connectorPaths` linear-scans `network.links` to resolve each
+end, so compilation scaled roughly cubically in network size. This is not a batch-only path:
+`refreshDemand` compiles on every model change and `validateDocument` compiles on every
+15-second autosave, so a large network stalled the editor on ordinary edits.
+
+Connector paths depend only on the network, so they are now derived once and indexed by
+originating lane. Measured on a straight corridor with three lanes per link and three-lane
+range connectors: 400 links fell from 10809 ms to 11.8 ms, and 800 links now compile in
+44.6 ms where the old shape did not finish in reasonable time. Segment order, `next` order
+and therefore replay are unchanged — the `cli` test still pins 29.24935 exactly.
+
+`signal_bearing_split_preserves_control_and_routes` asserted which link or connector each
+head lands on but never its re-projected station, leaving the lane-arc-length to
+centreline-station conversion untested. It now pins the downstream station and, for the
+non-pocket case, the exact world point on the gap connector. A pocket widens the downstream
+link and shifts its lanes, so only the station is stable there; the world-point check is
+deliberately scoped to the case where no lane moves. Verified non-vacuous by mutation: a
+0.05 m drift applied only to the downstream head is caught here and by no pre-existing check.
+
+Verified on the headless preset only. Qt 6 is unavailable in this environment, so the desktop
+build and the four UI suites this branch added remain unverified locally. `nlohmann/json` is
+also absent and was supplied through `TRAFFICSIM_JSON_INCLUDE_DIR`; no repository dependency
+changed. M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
+The same review left two smaller Qt-side items unaddressed, both carried into `Next` below.
+
 ## 2026-09-14 — M1 workflow completion and verification
 
 Implemented the remaining M1 editor scope authorized by the owner: typed demand/control
@@ -62,61 +91,29 @@ The remaining validation and acceptance work follows on the same branch; no mile
 
 ## Next
 
-**Review PR #14 and its CI, then run the owner acceptance exercise.**
+**Run the owner acceptance exercise.** PR #14 is merged; its review is done and the two
+code findings from it are items 5 and 6 below.
 
-1. Review the latest Native C++ run on `codex/complete-m1-network-editor`; require Linux
-   headless/desktop/release and Windows core checks to pass on the PR head.
+1. Require Linux headless/desktop/release and Windows core checks to pass on the branch head.
+   Qt 6 is unavailable in the session container, so the desktop and UI suites are CI-only.
 2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
    and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
 3. Record the M0 queue/red/green plausibility observation separately. Keep the
    not-yet-validated marker and the merge/internal-source/cyclic-route guards.
 4. Fix concrete usability failures before claiming acceptance. Do not begin M2
    implementation until its pre-registered honesty-test criteria are committed.
+5. `src/shell/editor_recovery.cpp:23` returns early when the recovery lock fails, which also
+   skips starting the autosave timer and adding the unrelated `editorEmbedCatalogs` action.
+   Build that action outside the lock guard and show a persistent indicator rather than a
+   one-shot error, so a lock failure cannot silently disable autosave for a whole session.
+6. `src/editor/canvas_run.cpp:35` evaluates `runStyles_.at(location.segmentId)` as an argument
+   to `marker`, before `marker`'s own missing-segment guard runs. Not reachable today, since
+   compilation and `setRunNetwork` derive ids from the same `connectorPaths` call over the
+   same snapshot, but it turns a benign desync into a throw from a paint path. Move the
+   lookup inside the guard.
 
 Implementation: `src/model/demand/`, `src/model/network/`, `src/commands/`,
 `src/project/`, `src/editor/` and `src/shell/`. Current behavior is in NETWORK_EDITOR.md.
-
----
-
-## 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
-
-**Reported:** opening `network.traffic.json` in the simulation window failed with
-`Could not open this scenario. … [json.exception.type_error.304] cannot use at() with null`.
-
-**Cause, not a corrupt file.** `documentJson` always writes `definition`, and a network drawn
-from scratch has none, so every such project saves `"definition": null` — correct for a
-project. The simulation window's Open filter was `*.json`, which listed the editor's own
-default save name `network.traffic.json`; `loadScenario` then called
-`parseDefinition(value.at("definition"))` unguarded, landing on `.at("duration")` on a null.
-The raw nlohmann text reached the user because the handler appended `e.what()` verbatim.
-
-**Changed, in outcomes.** Picking an editor project in the simulation window now says what
-kind of file it is, in English or Thai, and offers **Open in Network Editor** — one click and
-the drawing opens in the window that can hold it. No load path can surface an nlohmann
-exception any more: `loadScenario` classifies the file before reading a field
-(`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
-`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`, carried on a typed `ScenarioLoadError`), and
-`parseDocument` guards the mirror-image holes a hand-edited project could hit
-(`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
-dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
-a saved empty project must be *recognised*, not parsed and rejected.
-
-**Second pass, same day.** A scrutiny round found the classifier had the same defect it was
-added to prevent: `value.value("format", std::string{})` throws `type_error.302` when the key is
-present but not a string — including null — so `{"network":{…},"format":null}` still leaked an
-nlohmann message. Fixed, and `TEST(project, file_kind_classification_survives_broken_metadata)`
-pins it (verified to fail against the previous classifier). A second finding: `what()` on a
-classification failure is the bare code, and two paths showed it untranslated — startup
-`--scenario` via `main.cpp`, and the editor-launch fallback. Both now route through one
-`MainWindow::explain` / `EditorWindow::openFileOrReport`, and a `--scenario` the simulation
-window cannot run is explained **in** the window, with the editor offered, instead of a fatal
-modal carrying an identifier.
-
-**Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
-window layout, objects, and the run/output story — and ranks the gaps. The three the owner
-accepted are carved into `ROADMAP.md` as **M1.8** (Run inside the editor), **M1.9** (network
-objects sidebar, Vissim gestures and shortcuts) and **M1.10** (levels and display types).
-No milestone was closed and no editor feature work was done: 17/17 CTest green, 59/59 native.
 
 ---
 

@@ -8,6 +8,47 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
+
+**Reported:** opening `network.traffic.json` in the simulation window failed with
+`Could not open this scenario. … [json.exception.type_error.304] cannot use at() with null`.
+
+**Cause, not a corrupt file.** `documentJson` always writes `definition`, and a network drawn
+from scratch has none, so every such project saves `"definition": null` — correct for a
+project. The simulation window's Open filter was `*.json`, which listed the editor's own
+default save name `network.traffic.json`; `loadScenario` then called
+`parseDefinition(value.at("definition"))` unguarded, landing on `.at("duration")` on a null.
+The raw nlohmann text reached the user because the handler appended `e.what()` verbatim.
+
+**Changed, in outcomes.** Picking an editor project in the simulation window now says what
+kind of file it is, in English or Thai, and offers **Open in Network Editor** — one click and
+the drawing opens in the window that can hold it. No load path can surface an nlohmann
+exception any more: `loadScenario` classifies the file before reading a field
+(`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
+`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`, carried on a typed `ScenarioLoadError`), and
+`parseDocument` guards the mirror-image holes a hand-edited project could hit
+(`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
+dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
+a saved empty project must be *recognised*, not parsed and rejected.
+
+**Second pass, same day.** A scrutiny round found the classifier had the same defect it was
+added to prevent: `value.value("format", std::string{})` throws `type_error.302` when the key is
+present but not a string — including null — so `{"network":{…},"format":null}` still leaked an
+nlohmann message. Fixed, and `TEST(project, file_kind_classification_survives_broken_metadata)`
+pins it (verified to fail against the previous classifier). A second finding: `what()` on a
+classification failure is the bare code, and two paths showed it untranslated — startup
+`--scenario` via `main.cpp`, and the editor-launch fallback. Both now route through one
+`MainWindow::explain` / `EditorWindow::openFileOrReport`, and a `--scenario` the simulation
+window cannot run is explained **in** the window, with the editor offered, instead of a fatal
+modal carrying an identifier.
+
+**Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
+window layout, objects, and the run/output story — and ranks the gaps. The three the owner
+accepted are carved into `ROADMAP.md` as **M1.8** (Run inside the editor), **M1.9** (network
+objects sidebar, Vissim gestures and shortcuts) and **M1.10** (levels and display types).
+No milestone was closed and no editor feature work was done: 17/17 CTest green, 59/59 native.
+---
+
 ### 2026-09-12 — native editor M1.1–M1.3 implemented (D16)
 
 Added a version-1 ProjectDocument and a Qt-free command library. Every committed edit
