@@ -51,10 +51,22 @@ std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, Dri
 // Boundary 0 is before the first lane; boundary N is after the last.
 std::vector<Point> laneBoundaryGeometry(const Link&, std::size_t boundary, DrivingSide);
 std::vector<Point> offsetGeometry(const std::vector<Point>&, double offset);
+// The centreline of the whole lane bundle: the reference polyline shifted by laneOffset.
+// Grips, labels and direction markers belong here, never on the reference polyline, which
+// sits at an arbitrary edge once lanes have been added to one side.
+std::vector<Point> linkCentreline(const Link&, DrivingSide);
 void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
 std::vector<double> connectorBlendWeights(const Connector&);
 void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
 std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connector&);
+// The same idea for a connector: the middle of its whole width, point for point with its
+// stored geometry, which is the first lane's path.
+std::vector<Point> connectorCentreline(const Network&, const Connector&);
+// Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
+int lanesFromReference(const Network&, const LaneReference&);
+// Move a connector onto its current attachments, carrying the interior points with the
+// similarity transform that maps the old endpoint chord onto the new one.
+void reanchorConnector(const Network&, Connector&);
 Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // A sampled cubic between lane attachments, aligned with their local travel directions.

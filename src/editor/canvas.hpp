@@ -54,6 +54,8 @@ public:
     std::function<void()> selectionChanged;
     std::function<void(const std::vector<Point>&)> createLink;
     std::function<void(const LaneReference&, const LaneReference&)> createConnector;
+    // Dragging a connector's end grip onto another lane or another position along it.
+    std::function<void(bool leading, LaneReference)> moveConnectorEndpoint;
     std::function<void(const LaneReference&)> connectorSourcePicked;
     std::function<void()> connectorDraftChanged;
     std::function<void(const std::string&, const std::vector<Point>&)> editGeometry;
@@ -112,12 +114,19 @@ private:
     const Link* selectedLink() const;
     const std::vector<Point>* selectedGeometry() const;
     std::pair<std::string, double> hit(Point p, bool connectors = true) const;
+    // Where the primary object's geometry points are shown: the middle of the whole bundle,
+    // point for point with the stored polyline. Dragging maps back through the same offsets.
+    std::vector<Point> handleGeometry() const;
+    Point handleOffset_{};
+    std::optional<bool> endpointDrag_;          // set while a connector end grip is held
+    std::optional<LaneReference> endpointDraft_; // where that end would land
+    std::optional<LaneReference> connectorEndpointTarget(Point, bool leading) const;
     int vertexAt(QPoint position) const;
     std::optional<LaneReference> hitLanePosition(Point p, bool outgoing) const;
     void pickConnector(Point p);
     void notifySelection();
     void drawConnectors();
-    struct LaneHandle { Point position, direction; double width; int kind, count, maximum; };
+    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; };
     std::vector<LaneHandle> laneHandles() const;
     bool startLaneResize(QPoint);
     void updateLaneResize(QPoint);

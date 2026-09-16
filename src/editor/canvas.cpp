@@ -57,8 +57,26 @@ void EditorCanvas::setDocument(const ProjectDocument* d) {
 void EditorCanvas::setTool(Tool tool) {
     cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
 }
+std::vector<Point> EditorCanvas::handleGeometry() const {
+    const auto* geometry=selectedGeometry();
+    if(!document_ || !geometry)return {};
+    const auto& points=preview_.empty()?*geometry:preview_;
+    try {
+        if(const auto* link=selectedLink()) {
+            auto preview=*link;preview.geometry=points;
+            return linkCentreline(preview,document_->network.drivingSide);
+        }
+        if(const auto* connector=selectedConnector()) {
+            auto preview=*connector;preview.geometry=points;
+            if(points.size()!=connector->geometry.size())preview.laneBlend.clear();
+            return connectorCentreline(document_->network,preview);
+        }
+    } catch(const std::exception&) { /* An invalid draft still needs draggable grips. */ }
+    return points;
+}
 void EditorCanvas::cancel() {
     copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
+    endpointDrag_.reset();endpointDraft_.reset();handleOffset_={};
     creating_=false;gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
@@ -115,7 +133,7 @@ void EditorCanvas::redraw() {
         }
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
         if (polylineLength(link.geometry) <= 0) continue;
-        const auto road=offsetGeometry(link.geometry,link.laneOffset*(document_->network.drivingSide==DrivingSide::left?1.:-1.));
+        const auto road=linkCentreline(link,document_->network.drivingSide);
         const auto mid=pointAlong(road,polylineLength(road)/2);
         const auto ahead=pointAlong(road,polylineLength(road)/2+0.05);
         const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());
@@ -124,10 +142,15 @@ void EditorCanvas::redraw() {
         scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+3);
         // Handles belong to the primary alone; drawing them for every selected link would
         // suggest a group drag that M1.5 deliberately does not implement.
-        if (link.id==primary) for (std::size_t i=0;i<link.geometry.size();++i) {
-            const auto p=link.geometry[i]; const double radius=4/std::abs(transform().m11());
-            scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,QPen(Qt::NoPen),
-                QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(z+5);
+        // Grips sit on the bundle centreline, where Vissim shows them, not on the reference
+        // polyline, which ends up at one edge as soon as lanes are added to a single side.
+        if (link.id==primary) {
+            const auto handles=linkCentreline(link,document_->network.drivingSide);
+            const double radius=4/std::abs(transform().m11());
+            QPen outline(QColor("#334155"),1);outline.setCosmetic(true);
+            for (std::size_t i=0;i<handles.size();++i)
+                scene_.addEllipse(handles[i].x-radius,handles[i].y-radius,2*radius,2*radius,outline,
+                    QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(z+5);
         }
     }
     drawConnectors();

@@ -66,10 +66,22 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     vertex_=vertexAt(e->pos());
     if (vertex_<0 && !isSelected(picked.first)) { selection_={picked.first}; vertex_=vertexAt(e->pos()); }
     if (const auto* geometry=selectedGeometry()) {
-        // Connector endpoints are read-only. Body selection never translates attached endpoints.
-        const bool locked=selectedConnector() && (vertex_<=0 || vertex_==static_cast<int>(geometry->size())-1);
-        // Geometry editing stays strictly single-object; a group translate is not in this slice.
-        if (!locked && selection_.size()==1) { original_=*geometry; preview_=original_; dragging_=true; dragStart_=p;dragPress_=e->pos(); }
+        const auto handles=handleGeometry();
+        const bool end=selectedConnector() && vertex_>=0 && (vertex_==0 || vertex_==static_cast<int>(geometry->size())-1);
+        // A connector end is not a free point: it rides a lane. Dragging it re-attaches the
+        // connector instead of editing the polyline, which the attachment owns.
+        if (end) { endpointDrag_=vertex_==0; endpointDraft_.reset(); dragStart_=p; dragPress_=e->pos(); }
+        // A connector body cannot be translated: both of its ends are attached elsewhere.
+        else if (!selectedConnector() || vertex_>0) {
+            // Geometry editing stays strictly single-object; a group translate is not in this slice.
+            if (selection_.size()==1) {
+                original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; dragPress_=e->pos();
+                handleOffset_= vertex_>=0 && static_cast<std::size_t>(vertex_)<handles.size()
+                    ? Point{handles[static_cast<std::size_t>(vertex_)].x-(*geometry)[static_cast<std::size_t>(vertex_)].x,
+                            handles[static_cast<std::size_t>(vertex_)].y-(*geometry)[static_cast<std::size_t>(vertex_)].y}
+                    : Point{};
+            }
+        }
     }
     redraw(); if(selectionChanged) selectionChanged();
 }
@@ -77,9 +89,11 @@ int EditorCanvas::vertexAt(QPoint position) const {
     // Pick the nearest handle: dense curve points must not steal each other's drags.
     const auto* geometry=selectedGeometry();
     if (!geometry || selection_.size()!=1) return -1;
+    const auto handles=handleGeometry();
+    if (handles.size()!=geometry->size()) return -1;
     int best=12, found=-1;
-    for(std::size_t i=0;i<geometry->size();++i) {
-        const auto screen=mapFromScene((*geometry)[i].x,(*geometry)[i].y);
+    for(std::size_t i=0;i<handles.size();++i) {
+        const auto screen=mapFromScene(handles[i].x,handles[i].y);
         const int distance=(screen-position).manhattanLength();
         if (distance<best) { best=distance; found=static_cast<int>(i); }
     }
@@ -99,6 +113,11 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         copyDragging_=copyArmed_ && (e->pos()-copyStart_).manhattanLength()>=QApplication::startDragDistance();
         const auto p=world(e->pos());copyOffset_={p.x-dragStart_.x,p.y-dragStart_.y};redraw();return;
     }
+    if(endpointDrag_) {
+        if((e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance())
+            endpointDraft_=connectorEndpointTarget(world(e->pos(),false),*endpointDrag_);
+        redraw();return;
+    }
     if(laneResize_) {updateLaneResize(e->pos());return;}
     if(panning_) {
         const auto delta=e->pos()-panStart_; panStart_=e->pos();
@@ -114,7 +133,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if(dragging_) {
         if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance())return;
         const auto p=world(e->pos()); preview_=original_;
-        if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]=p;
+        if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
         else for(auto& point:preview_) { point.x+=p.x-dragStart_.x; point.y+=p.y-dragStart_.y; }
         redraw();
     }
@@ -142,6 +161,16 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         else {auto ids=selection_;if(!isSelected(picked))ids.push_back(picked);setSelection(std::move(ids));}
         redraw();return;
     }
+    if(e->button()==Qt::LeftButton && endpointDrag_) {
+        const bool leading=*endpointDrag_;
+        // The release position is authoritative, exactly as it is for creation gestures.
+        std::optional<LaneReference> target;
+        if((e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance())
+            target=connectorEndpointTarget(world(e->pos(),false),leading);
+        endpointDrag_.reset();endpointDraft_.reset();
+        if(target && moveConnectorEndpoint)moveConnectorEndpoint(leading,*target);
+        redraw();return;
+    }
     if(e->button()==Qt::LeftButton && laneResize_) {
         updateLaneResize(e->pos());
         const int kind=laneResize_->kind, from=previewFromCount_,to=previewToCount_,count=previewLinkCount_;
@@ -160,7 +189,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
     if(e->button()==Qt::LeftButton && dragging_) {
         if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance()) {dragging_=false;preview_.clear();original_.clear();redraw();return;}
         const auto p=world(e->pos());preview_=original_;
-        if(vertex_>=0)preview_[static_cast<std::size_t>(vertex_)]=p;
+        if(vertex_>=0)preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
         else for(auto& point:preview_){point.x+=p.x-dragStart_.x;point.y+=p.y-dragStart_.y;}
         dragging_=false;
         const auto geometry=preview_; preview_.clear();

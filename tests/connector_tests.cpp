@@ -1,6 +1,7 @@
 #include "test.hpp"
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/network_commands.hpp"
+#include <cmath>
 #include <fstream>
 using namespace trafficsim;
 namespace {
@@ -151,4 +152,36 @@ TEST(connectors, authoring_merge_does_not_enable_unsupported_runtime_merging) {
     addConnector(d,{"in","in-2"},{"out","out-1"});validateDocument(d);
     auto definition=test::straight();definition.routes.clear();definition.inputs.clear();
     test::throws([&]{compileScenario(d.network,definition);},"UNSUPPORTED_MERGE");
+}
+TEST(connectors, moving_an_end_narrows_the_range_to_the_lanes_that_are_there) {
+    auto d=roads();
+    // The forcing: "other" really is narrower than the two lanes this connector carries.
+    CHECK(editableLink(d,"out").lanes.size()==2);CHECK(editableLink(d,"other").lanes.size()==1);
+    const auto id=addConnectorRange(d,{"in","in-1"},{"out","out-1"},2,2);
+    History h;h.reset(d);
+    h.execute("narrow",[&](auto& m){auto c=editableConnector(m,id);changeConnectorEndpoints(m,id,c.from,{"other","other-1"});});
+    const auto narrowed=h.document().network.connectors[0];
+    CHECK(narrowed.to.linkId=="other");CHECK(narrowed.toLaneCount==1);CHECK(narrowed.fromLaneCount==2);
+    CHECK(validateNetwork(h.document().network).empty());
+    // A wider link is not an instruction to carry more lanes: the range stays where it was put.
+    h.execute("back",[&](auto& m){auto c=editableConnector(m,id);changeConnectorEndpoints(m,id,c.from,{"out","out-1"});});
+    CHECK(h.document().network.connectors[0].toLaneCount==1);
+    const auto before=documentJson(h.document());
+    test::throws([&]{h.execute("missing",[&](auto& m){auto c=editableConnector(m,id);changeConnectorEndpoints(m,id,c.from,{"out","absent"});});});
+    CHECK(documentJson(h.document())==before);
+    h.undo();h.undo();CHECK(documentJson(h.document())==documentJson(d));
+}
+TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
+    auto d=roads();const auto id=addConnectorRange(d,{"in","in-1"},{"out","out-1"},2,2);
+    const auto& c=d.network.connectors[0];
+    const auto centre=connectorCentreline(d.network,c);
+    const auto boundaries=connectorBoundaries(d.network,c);
+    CHECK(centre.size()==c.geometry.size());
+    // The stored polyline is the first lane's path, so it is an edge of the ribbon, not its middle.
+    CHECK(std::hypot(centre.front().x-c.geometry.front().x,centre.front().y-c.geometry.front().y)>1);
+    for(std::size_t i=0;i<centre.size();++i) {
+        test::near(centre[i].x,(boundaries.front()[i].x+boundaries.back()[i].x)/2,1e-9);
+        test::near(centre[i].y,(boundaries.front()[i].y+boundaries.back()[i].y)/2,1e-9);
+    }
+    CHECK(editableConnector(d,id).geometry==c.geometry);
 }

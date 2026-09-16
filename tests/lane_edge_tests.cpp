@@ -135,3 +135,19 @@ TEST(attachments, opposite_road_keeps_requested_gap_after_asymmetric_lane_growth
         test::near(std::abs(median.front().y-opposite.back().y),5);
     }
 }
+TEST(attachments, grips_stay_on_the_bundle_centreline_after_one_sided_growth) {
+    for(auto side:{DrivingSide::left,DrivingSide::right})for(bool leading:{false,true}) {
+        History h;h.reset(roads(side));
+        h.execute("grow",[&](auto& m){resizeLinkLanes(m,"a",5,leading);});
+        const auto& link=h.document().network.links.front();
+        // The forcing: growing one edge moves the reference polyline off the middle of the road.
+        CHECK(link.laneOffset!=0);
+        const auto centre=linkCentreline(link,side);
+        CHECK(centre!=link.geometry);
+        const auto left=laneBoundaryGeometry(link,0,side),right=laneBoundaryGeometry(link,link.lanes.size(),side);
+        for(std::size_t i=0;i<centre.size();++i) {
+            test::near(centre[i].x,(left[i].x+right[i].x)/2,1e-9);
+            test::near(centre[i].y,(left[i].y+right[i].y)/2,1e-9);
+        }
+    }
+}

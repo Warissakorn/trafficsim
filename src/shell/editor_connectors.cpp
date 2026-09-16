@@ -125,7 +125,12 @@ void EditorWindow::refreshConnector() {
         connectorToPosition_->setValue(connector->to.fraction.value_or(0.)*100);
         refreshConnectorRanges();
         connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);}
-    if (connector) selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2));
+    if (connector) {
+        // Say how many lanes each end carries. A connector that drops or gains lanes is legal
+        // to author, and seeing 3 -> 2 on the canvas is how the author notices it is a merge.
+        selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2)+"   "+
+            text("editorConnectorLanes").arg(connector->fromLaneCount).arg(connector->toLaneCount));
+    }
     connectorHint();
 }
 }

@@ -81,6 +81,27 @@ int main(int argc,char** argv) {
         require(connector.from.fraction.value_or(1.)>.5 && connector.from.fraction.value_or(1.)<.7,"Source snapped to endpoint");
         require(connector.to.fraction.value_or(0.)>.3 && connector.to.fraction.value_or(0.)<.5,"Target snapped to endpoint");
         attached(w.history().document());
+        // A connector end is a grip that rides its lane: dragging it re-attaches the connector
+        // and the ribbon follows. Esc before the release leaves the attachment exactly as it was.
+        const auto grip=[&](bool leading){
+            for(auto* item:c->scene()->items())
+                if(item->data(0).toString()=="connector-end" && item->data(2).toBool()==leading) {
+                    const auto at=item->sceneBoundingRect().center();return Point{at.x(),at.y()};
+                }
+            throw std::runtime_error("Missing connector end grip");
+        };
+        const auto attachedBefore=documentJson(w.history().document());
+        releaseDrag(c,grip(true),lanePoint(0,2,.3),Qt::LeftButton,true);
+        require(documentJson(w.history().document())==attachedBefore,"Esc committed an end move");
+        releaseDrag(c,grip(true),{0,45},Qt::LeftButton);
+        require(documentJson(w.history().document())==attachedBefore,"Dropping an end off the network moved it");
+        releaseDrag(c,grip(true),lanePoint(0,2,.3),Qt::LeftButton);
+        connector=w.history().document().network.connectors.front();
+        require(connector.from.laneId==links[0].lanes[2].id,"Source end did not follow the pointer to another lane");
+        require(std::abs(connector.from.fraction.value_or(1.)-.3)<.05,"Source end did not move along its lane");
+        attached(w.history().document());
+        action(w,"editorUndo");
+        require(documentJson(w.history().document())==attachedBefore,"Moving an end was not one undoable edit");
         auto p=handle(c,1);releaseDrag(c,p,{p.x,p.y-3.5},Qt::LeftButton);
         require(w.history().document().network.connectors.front().fromLaneCount==2,"Single lane source cannot grow");
         p=handle(c,2);releaseDrag(c,p,{p.x,p.y-7},Qt::LeftButton);
