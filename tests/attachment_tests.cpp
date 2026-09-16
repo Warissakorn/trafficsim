@@ -29,7 +29,7 @@ TEST(attachments, interior_positions_ranges_persistence_edits_and_history) {
         auto d=roads(side);const auto id=addConnectorRange(d,{"a","a1",.4},{"b","b1",.6},3,3);
         attached(d);const auto& c=d.network.connectors.front();
         CHECK(c.geometry.front()!=d.network.links.front().geometry.back());
-        const auto json=documentJson(d);CHECK(json["schemaVersion"]==3);
+        const auto json=documentJson(d);CHECK(json["schemaVersion"]==4);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
         History h;h.reset(d);h.execute("move",[](auto& m){changeGeometry(m,"a",{{0,10},{30,10},{80,20}});});
         attached(h.document());CHECK(h.document().network.connectors.front().from.fraction==.4);

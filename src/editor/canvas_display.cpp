@@ -1,5 +1,6 @@
 #include "canvas.hpp"
 #include <QKeyEvent>
+#include <QPainterPathStroker>
 #include <algorithm>
 #include <cmath>
 namespace trafficsim {
@@ -13,24 +14,28 @@ std::vector<std::pair<std::string,double>> EditorCanvas::hitObjects(Point p,bool
     std::vector<Hit> hits;
     if(!document_)return {};
     const double tolerance=6/std::abs(transform().m11());
+    QPainterPathStroker stroke;stroke.setWidth(tolerance*2);
+    const auto contains=[&](const std::string& id) {
+        const auto shape=objectShape(id);return shape.contains(QPointF(p.x,p.y)) || stroke.createStroke(shape).contains(QPointF(p.x,p.y));
+    };
     const auto proximity=[&](const std::vector<Point>& geometry){
         const auto point=pointAlong(geometry,stationOfClosestPoint(geometry,p));return std::hypot(point.x-p.x,point.y-p.y);
     };
     for(const auto& l:document_->network.links)if(levelVisible(l.level)) {
-        double distance=proximity(l.geometry);
-        bool inside=distance<=tolerance;
+        double distance=1e300;
         for(const auto& lane:l.lanes) {
             const auto gap=proximity(laneGeometry(l,lane.id,document_->network.drivingSide));
-            if(gap<=lane.width/2+tolerance)inside=true;
             distance=std::min(distance,gap);
         }
-        if(inside)hits.push_back({l.id,stationOfClosestPoint(l.geometry,p),distance,l.level,1});
+        if(contains(l.id))hits.push_back({l.id,stationOfClosestPoint(l.geometry,p),distance,l.level,1});
     }
     if(connectors)for(const auto& c:document_->network.connectors)if(levelVisible(c.level)) {
         double distance=proximity(c.geometry);
         for(const auto& path:connectorPaths(document_->network,c))distance=std::min(distance,proximity(path.geometry));
-        if(distance<=tolerance)hits.push_back({c.id,stationOfClosestPoint(c.geometry,p),distance,c.level,4});
+        if(contains(c.id))hits.push_back({c.id,stationOfClosestPoint(c.geometry,p),distance,c.level,4});
     }
+    if(connectors)for(const auto& h:document_->network.signalHeads)if(const auto at=headPosition(h))
+        if(levelVisible(at->second) && contains(h.id))hits.push_back({h.id,h.position,-1,at->second,10});
     std::stable_sort(hits.begin(),hits.end(),[](const auto& a,const auto& b){
         if(a.level!=b.level)return a.level>b.level;
         if(std::abs(a.distance-b.distance)>1e-7)return a.distance<b.distance;

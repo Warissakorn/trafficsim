@@ -7,6 +7,7 @@ struct Lane { std::string id; double width{}; bool operator==(const Lane&) const
 struct Link {
     std::string id; std::vector<Point> geometry; std::vector<Lane> lanes;
     int level{}; std::string displayType{"default"};
+    double laneOffset{}; // Bundle offset from reference geometry, in lane-order coordinates.
     bool operator==(const Link&) const = default;
 };
 struct LaneReference {
@@ -19,6 +20,7 @@ struct Connector {
     std::string id; LaneReference from, to; std::vector<Point> geometry;
     int fromLaneCount{1}, toLaneCount{1}, level{};
     std::string displayType{"default"};
+    std::vector<double> laneBlend{}; // Frozen interpolation weights when rebasing the first lane.
     bool operator==(const Connector&) const = default;
 };
 // One authored connector owns a contiguous range at each end. Individual runtime
@@ -46,6 +48,13 @@ double stationOfClosestPoint(const std::vector<Point>&, Point);
 std::string signalSegment(const NetworkSignalHead&);
 Point pointAlong(const std::vector<Point>& points, double distance);
 std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, DrivingSide side);
+// Boundary 0 is before the first lane; boundary N is after the last.
+std::vector<Point> laneBoundaryGeometry(const Link&, std::size_t boundary, DrivingSide);
+std::vector<Point> offsetGeometry(const std::vector<Point>&, double offset);
+void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
+std::vector<double> connectorBlendWeights(const Connector&);
+void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
+std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connector&);
 Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // A sampled cubic between lane attachments, aligned with their local travel directions.

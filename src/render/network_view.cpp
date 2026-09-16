@@ -38,15 +38,24 @@ void NetworkView::paintEvent(QPaintEvent*) {
     transform.scale(scale, -scale);
     transform.translate(-bounds_.center().x(), -bounds_.center().y());
     painter.setTransform(transform);
-    const auto draw = [&](const std::vector<Point>& points, double width, const QColor& color) {
-        QPolygonF polygon;
-        for (const auto& p : points) polygon << QPointF(p.x, p.y);
-        painter.setPen(QPen(color, width, Qt::SolidLine, Qt::FlatCap, Qt::RoundJoin));
-        painter.drawPolyline(polygon);
+    const auto road=[&](const std::vector<std::vector<Point>>& boundaries,const QColor& color) {
+        QPolygonF surface;
+        for(const auto& p:boundaries.front())surface<<QPointF(p.x,p.y);
+        for(auto it=boundaries.back().rbegin();it!=boundaries.back().rend();++it)surface<<QPointF(it->x,it->y);
+        painter.setPen(Qt::NoPen);painter.setBrush(color);painter.drawPolygon(surface);painter.setBrush(Qt::NoBrush);
+        for(std::size_t i=0;i<boundaries.size();++i) {
+            QPen pen(QColor("#d9e5eb"),1,(i==0 || i+1==boundaries.size())?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            painter.setPen(pen);QPolygonF marking;
+            for(const auto& p:boundaries[i])marking<<QPointF(p.x,p.y);
+            painter.drawPolyline(marking);
+        }
     };
-    for (const auto& link : network_.links)
-        for (const auto& lane : link.lanes) draw(geometry_.at(lane.id), lane.width, QColor("#536c7c"));
-    for (const auto& connector : network_.connectors)for(const auto& p:connectorPaths(network_,connector))draw(p.geometry, 2.5, QColor("#386b78"));
+    for(const auto& link:network_.links) {
+        std::vector<std::vector<Point>> boundaries;
+        for(std::size_t i=0;i<=link.lanes.size();++i)boundaries.push_back(laneBoundaryGeometry(link,i,network_.drivingSide));
+        road(boundaries,QColor("#536c7c"));
+    }
+    for(const auto& connector:network_.connectors)road(connectorBoundaries(network_,connector),QColor("#386b78"));
     for (const auto& head : frame_.scenario->signalHeads) {
         const auto found = std::find_if(frame_.scenario->signalPrograms.begin(), frame_.scenario->signalPrograms.end(),
             [&](const auto& p) { return p.id == head.programId; });

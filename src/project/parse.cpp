@@ -74,13 +74,19 @@ Network parseNetwork(const Json& value) {
         for (const auto& lane : array(item, "lanes"))
             link.lanes.push_back({field<std::string>(lane, "id"), field<double>(lane, "width")});
         link.level=integer(item,"level",0);
+        if(item.contains("laneOffset"))link.laneOffset=field<double>(item,"laneOffset");
         if(item.contains("displayType"))link.displayType=field<std::string>(item,"displayType");
         network.links.push_back(std::move(link));
     }
-    for (const auto& c : array(value, "connectors"))
+    for (const auto& c : array(value, "connectors")) {
         network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from")), reference(member(c, "to")), points(c),
             integer(c,"fromLaneCount",1),integer(c,"toLaneCount",1),integer(c,"level",0),
             c.contains("displayType")?field<std::string>(c,"displayType"):"default"});
+        if(c.contains("laneBlend"))for(const auto& t:array(c,"laneBlend")) {
+            if(!t.is_number())throw std::invalid_argument("INVALID_GEOMETRY");
+            network.connectors.back().laneBlend.push_back(t.get<double>());
+        }
+    }
     for (const auto& h : array(value, "signalHeads"))
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane")),
                                       field<double>(h, "position"), field<std::string>(h, "programId"),

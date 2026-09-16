@@ -3,7 +3,7 @@
 
 namespace trafficsim {
 std::string addConnectorRange(ProjectDocument&, const LaneReference&, const LaneReference&, int fromCount, int toCount);
-void changeConnectorRange(ProjectDocument&, const std::string&, int fromCount, int toCount);
+void changeConnectorRange(ProjectDocument&, const std::string&, int fromCount, int toCount, bool leading = false);
 bool connectorReferenced(const ProjectDocument&, const Connector&);
 // Run mutations through History::execute for validation, rollback and Undo/Redo.
 Connector& editableConnector(ProjectDocument&, const std::string& id);

@@ -80,7 +80,14 @@ int main(int argc,char** argv) {
 
         c->select(links[0].id);
         QTest::mouseClick(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,links[0].geometry.front()));
-        require(w.history().document().network.links.size()==3,"Ctrl-left-click did not duplicate link");
+        require(w.history().document().network.links.size()==2,"Ctrl-click duplicated instead of selecting");
+        const auto beforeCopy=documentJson(w.history().document());
+        QTest::mouseClick(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,{50,0}));
+        require(c->selection().size()==2,"Ctrl-click did not extend selection");
+        require(documentJson(w.history().document())==beforeCopy,"Selection mutated document");
+        c->select(links[0].id);
+        drag(c,{-50,0},{-45,0},Qt::LeftButton,Qt::ControlModifier);
+        require(w.history().document().network.links.size()==3,"Ctrl-drag did not duplicate link");
         const auto upper=c->selected();require(upper!=links[0].id,"Duplicate reused ID");
         auto* level=item<QComboBox>(w,"editorObjectLevel");level->setCurrentIndex(level->findData(1));
         auto* style=item<QComboBox>(w,"editorDisplayType");style->setCurrentIndex(style->findData(QStringLiteral("ramp")));action(w,"editorApplyDisplay");

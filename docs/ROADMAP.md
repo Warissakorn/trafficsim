@@ -94,7 +94,7 @@ one undoable transaction, including both driving sides and turn-pocket splits.
 Implemented: lane-to-lane creation by endpoint picking or Properties, editable interior
 curve points, straight/curve reset, selection, reference-safe deletion and retargeting,
 and shared endpoint maintenance after Link/Lane/driving-side edits. All changes use
-History and persisted polyline geometry (schema 1/2 is migrated to schema 3). Curves are sampled polylines, not
+History and persisted polyline geometry (schema 1/2 is migrated to schema 4). Curves are sampled polylines, not
 swept-path or turning-radius validation. See NETWORK_EDITOR.md.
 
 ### M1.5 — Inspection and diagnostics
@@ -119,7 +119,7 @@ Vehicle compositions, turning proportions and movement evaluation remain M2.
 Implemented. Atomic, bounded save/open and asset validation are shared with 15-second
 dirty-revision recovery copies. Per-window locks exclude active editors; restored
 documents open untitled and dirty. Vehicle/behaviour catalogs can be embedded explicitly.
-Schema 1 and bare M0 authoring files load without changing IDs; saves now write schema 3,
+Schema 1 and bare M0 authoring files load without changing IDs; saves now write schema 4,
 with default ranges/levels/styles for older files. Unknown future versions are rejected.
 
 ### M1.7 — Run handoff and owner acceptance
@@ -155,7 +155,7 @@ lane ranges. Ctrl+right-click opens demand/control creation or inserts a geometr
 in Select mode. Connector corner drags resize unreferenced ranges. Left-click during
 creation adds intermediate polyline points.
 
-Shift-click extends selection; Ctrl+left-click duplicates selected links and their
+Ctrl-click extends selection; Ctrl+left-drag duplicates selected spatial objects and their
 internal connectors/heads with fresh IDs, preserving programs without doubling demand.
 Delete removes selected objects; Ctrl+Delete removes a vertex. Tool shortcuts and Tab
 overlap cycling are available. Ctrl+B toggles the background; Ctrl+Shift+O toggles tables.
@@ -205,6 +205,16 @@ link edits, duplication and split attachment remapping share the existing comman
 The middle handle sets both ranges together; the Connector path count remains their maximum.
 First-lane changes use the dialog or Properties. This does not claim independent arbitrary
 internal Connector lane topology or close the owner's usability gate.
+
+### M1.12 — Fixed lane edges, road markings and selection/copy gestures
+
+Implemented following the owner's 1–3 lane examples: Link handles on both sides,
+source/target/middle Connector handles on both sides, fixed surviving lane positions,
+and shared edge/divider rendering in the editor and diagnostic view. Schema 4 stores
+lane offsets and stable Connector interpolation weights. Ctrl-click adds selection;
+Ctrl-drag selected Links, Connectors or Signal heads creates a single undoable copy.
+Invalid attached-object drops roll back the entire edit. Tables select heads directly.
+Owner Windows interaction and timed acceptance remain open; this does not close M1.11.1.
 
 ### M1.11.1 — Compile interior attachments into runtime lane sections
 

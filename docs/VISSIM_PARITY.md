@@ -18,6 +18,12 @@ exist. Ctrl+B toggles the image and Ctrl+Shift+O toggles tables; Shift extends s
 Group drag/rotation, additional network object types and editable table cells were
 not added to M1. Owner usability and engine-validation gates remain open.
 
+**Owner correction (2026-09-15, M1.12):** Ctrl+click adds selection; Ctrl+drag already
+selected objects duplicates them. This supersedes the historical Ctrl+click claim below.
+Lane handles now work on both sides without recentering existing lanes. Outer road
+markings and internal dividers replace lane-centre dashes. Independent Connector and
+Signal head copies require valid attachments; see NETWORK_EDITOR for exact behavior.
+
 **How to read it.** A gap is not automatically work. `PROBLEM.md` owns scope and `ROADMAP.md`
 owns sequence; this file only tells the truth about the distance and proposes where each item
 belongs. The gaps the owner accepted are carved into **M1.8, M1.9 and M1.10** in

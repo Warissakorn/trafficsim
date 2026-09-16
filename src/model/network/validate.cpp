@@ -41,6 +41,7 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         const auto p = "links[" + std::to_string(i) + "]";
         id(link.id, p + ".id"); geometry(link.geometry, p + ".geometry");
         if(link.level < -1000 || link.level > 1000 || link.displayType.empty())add("EDIT_DISPLAY_VALUE",p+".displayType");
+        if(!std::isfinite(link.laneOffset))add("INVALID_GEOMETRY",p+".laneOffset");
         if (link.lanes.empty()) add("NO_LANES", p + ".lanes");
         for (std::size_t j = 0; j < link.lanes.size(); ++j) {
             const auto q = p + ".lanes[" + std::to_string(j) + "]";

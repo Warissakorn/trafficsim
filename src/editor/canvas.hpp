@@ -2,6 +2,7 @@
 #include "../project/document.hpp"
 #include "../model/network/display.hpp"
 #include <QGraphicsView>
+#include <QPainterPath>
 #include <functional>
 #include <optional>
 #include <map>
@@ -47,8 +48,8 @@ public:
     std::function<void(LaneReference,LaneReference,const std::vector<Point>&)> createRangeGesture;
     std::function<void(LaneReference,Tool)> createDemandGesture;
     std::function<void(Point)> duplicateRequested;
-    std::function<void(int,int)> resizeRangeRequested;
-    std::function<void(int)> resizeLinkRequested;
+    std::function<void(int,int,bool)> resizeRangeRequested;
+    std::function<void(int,bool)> resizeLinkRequested;
     std::function<void()> creationRejected;
     std::function<void()> selectionChanged;
     std::function<void(const std::vector<Point>&)> createLink;
@@ -73,7 +74,13 @@ private:
     std::optional<int> visibleLevel_;
     bool backgroundVisible_{true}, creating_{};
     Tool creationTool_{Tool::draw};
-    QPoint creationStart_;
+    QPoint creationStart_, copyStart_;
+    std::string copyPick_;
+    bool copyArmed_{}, copyDragging_{};
+    Point copyOffset_{};
+    void drawCopyPreview();
+    QPainterPath objectShape(const std::string&) const;
+    std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;
     std::optional<LaneReference> gestureFrom_;
     int rangeCorner_{}, previewFromCount_{1}, previewToCount_{1};
     Point lastPick_{};
@@ -99,7 +106,7 @@ private:
     std::optional<LaneReference> connectorFrom_, connectorHover_;
     int vertex_{-1};
     bool dragging_{}, panning_{};
-    QPoint panStart_;
+    QPoint panStart_, dragPress_;
     Point dragStart_{};
     Point world(QPoint position, bool snapped = true) const;
     const Link* selectedLink() const;

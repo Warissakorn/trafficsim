@@ -51,12 +51,7 @@ std::string selectableFor(const Network& network, const std::string& objectId) {
     for (const auto& connector : network.connectors)
         for(int i=0;i<std::max(connector.fromLaneCount,connector.toLaneCount);++i)
             if(connectorPathId(connector,i)==objectId)return connector.id;
-    for (const auto& head : network.signalHeads) if (head.id == objectId) {
-        if(head.connectorId.empty())return head.lane.linkId;
-        for(const auto& c:network.connectors)for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)
-            if(connectorPathId(c,i)==head.connectorId)return c.id;
-        return {};
-    }
+    for(const auto& head:network.signalHeads)if(head.id==objectId)return head.id;
     return {};
 }
 namespace {

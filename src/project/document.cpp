@@ -24,15 +24,15 @@ Json documentJson(const ProjectDocument& d) {
     for (const auto& l : d.network.links) {
         Json lanes = Json::array();
         for (const auto& lane : l.lanes) lanes.push_back({{"id", lane.id}, {"width", lane.width}});
-        network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}, {"level",l.level}, {"displayType",l.displayType}});
+        network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}, {"level",l.level}, {"displayType",l.displayType}, {"laneOffset",l.laneOffset}});
     }
     for (const auto& c : d.network.connectors)
         network["connectors"].push_back({{"id", c.id}, {"from", reference(c.from)}, {"to", reference(c.to)}, {"geometry", points(c.geometry)}, {"fromLaneCount",c.fromLaneCount}, {"toLaneCount",c.toLaneCount},
-            {"level",c.level}, {"displayType",c.displayType}});
+            {"level",c.level}, {"displayType",c.displayType}, {"laneBlend",c.laneBlend}});
     for (const auto& h : d.network.signalHeads)
         network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}});
     const auto& b = d.background;
-    return {{"format", "TrafficSim"}, {"schemaVersion", 3}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
+    return {{"format", "TrafficSim"}, {"schemaVersion", 4}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
@@ -55,7 +55,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") != 1 && j.at("schemaVersion") != 2 && j.at("schemaVersion") != 3) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") != 1 && j.at("schemaVersion") != 2 && j.at("schemaVersion") != 3 && j.at("schemaVersion") != 4) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
