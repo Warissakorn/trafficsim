@@ -85,8 +85,8 @@ struct ConnectorMarking { std::vector<Point> geometry; bool edge{}; };
 std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);
-// Move a connector onto its current attachments, carrying the interior points with the
-// similarity transform that maps the old endpoint chord onto the new one.
+// Move a connector onto its current attachments the way Vissim does: the one poly point that
+// is attached to each Link moves, and the points the author placed stay where they are.
 void reanchorConnector(const Network&, Connector&);
 Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
 // The station a reference resolves to, filling in the end/start its absent value means.
@@ -98,9 +98,17 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // Advisory only, and deliberately not part of connectorRuntimeIssues, which blocks Run: a turn
 // tighter than the Connector's own half-width is undrivable but still a legal drawing.
 std::vector<ValidationIssue> connectorShapeIssues(const Network&);
-// A sampled cubic between lane attachments, aligned with their local travel directions.
-// The returned polyline is the editable/persisted geometry; no second curve is stored.
-std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to);
+// The default shape between two lane attachments: the two attachments and
+// kDefaultIntermediatePoints intermediate points along the arc-like cubic that joins them,
+// aligned with each lane's local travel direction. A Connector is drawn straight between its
+// points and mitered at each one, exactly as a Link is -- what the count buys is how closely the
+// polygon follows the turn, which is what Vissim's Intermediate points field does.
+inline constexpr int kDefaultIntermediatePoints=3;
+std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to,
+                                  int intermediatePoints=kDefaultIntermediatePoints);
+// The travel directions a Connector's two ends leave and arrive on, which clamp its spline.
+std::pair<Point,Point> connectorTangents(const Network&, const LaneReference& from, const LaneReference& to);
+
 std::vector<ValidationIssue> validateNetwork(const Network& network);
 void assertValidNetwork(const Network& network);
 // Unchecked assembly, for diagnostics that must not throw. Requires an already-valid network.

@@ -13,10 +13,14 @@ void changeConnectorGeometry(ProjectDocument&, const std::string& id, const std:
 // Referenced connectors cannot be retargeted: doing so would change route topology.
 void changeConnectorEndpoints(ProjectDocument&, const std::string& id, LaneReference from, LaneReference to);
 void resetConnectorCurve(ProjectDocument&, const std::string& id, bool straight = false);
+// Vissim's Intermediate points field. The Connector's current road is re-laid with `count`
+// interior points at equal spacing along it, so raising or lowering the count re-fairs the shape
+// the author already has rather than throwing it away for the default curve.
+void resampleConnectorPoints(ProjectDocument&, const std::string& id, int count);
 // Deletes affected routes and their inputs in the same undoable transaction.
 void deleteConnector(ProjectDocument&, const std::string& id);
-// Shared by Link/Lane/driving-side edits. Carries interior points by the similarity transform
-// between the old and new endpoint chords, so reshaping depends only on where the endpoints
-// are, never on the path taken to get there.
+// Shared by Link/Lane/driving-side edits. Moves the one poly point attached to each Link, the
+// way Vissim does, so reshaping depends only on where the endpoints are and never on the path
+// taken to get there.
 void reanchorConnectors(ProjectDocument&);
 }

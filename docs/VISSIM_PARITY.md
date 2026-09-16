@@ -402,58 +402,51 @@ Vissim leaves an impossible turn to the author; we do the same but say so, with 
 `TIGHT_CONNECTOR_RADIUS` row. Stored geometry is never rewritten, so existing drawings are
 untouched — only newly created curves and Reset curve use the new reach.
 
-## 2026-09-16 second follow-up — A Connector carries lanes, not a ribbon
+> Earlier 2026-09-16 follow-ups are in
+> [`VISSIM_PARITY-archive-2026-09-16.md`](VISSIM_PARITY-archive-2026-09-16.md).
 
-**Every lane narrowed instead of one tapering.** On a two-into-one the whole ribbon shrank
-together: the lane that continues measured 2.62 m half way along and 1.75 m at the mouth, so
-vehicles drove a lane that pinched. Vissim keeps the through lane at its own width and drops the
-surplus one as a taper. Ours does now: the cross-section is assembled from the lane widths at
-each end rather than interpolated between the two mouths, so the continuing lane holds the width
-its links give it point for point, and the extra lane closes onto it as a wedge. The divider
-between them is a lane edge for its whole length, which is why it now arrives on the *edge* of
-the lane the two merge into instead of part way down its middle — the marking trim from the
-previous round is no longer what keeps it off the traffic.
+## 2026-09-16 fifth follow-up — Intermediate points, and what the Connector dialog still lacks
 
-Vissim requires a connector's two ends to carry the same number of lanes and leaves the taper to
-a separate lane drop. We allow the unequal range and draw the taper ourselves; the lane pairing
-follows the ranges in lane order, so re-anchoring a range moves the taper to the other side.
+**A Connector is a polyline through a settable number of intermediate points.** We stored a
+13-point sample of a cubic, so every sample was a grip, dragging one put a corner in a shape the
+author had no count over, and the dialog had no field for it.
 
-**A reverse curve was read as no turn at all.** The control reach came from the angle between the
-two tangents, which is zero for an S even when each end leaves the chord steeply; a measured S
-bent to 0.18 of its chord. Reading each end against the chord instead gives 0.22 there and is
-identical, to the last bit, for straight runs and symmetric turns.
+The owner settled what the line actually is by sending a Vissim connector with `Intermediate
+points` set to **2**: four dots, three straight legs, a mitered corner on each dot, a visible step
+at each mouth where the polygon overlaps the link, and no tangency to the links at all. It is the
+same rule a Link is drawn by. A first pass here read it as a spline and drew a smooth curve
+through the points; that was wrong and is reverted. What survives is the model — a Connector
+stores its two attachments and its intermediate points, nothing baked — and the field. The owner
+set the default at 3.
 
-## 2026-09-16 third follow-up — The cross-section follows the road
+Changing the count does not re-derive the default curve. Raising it splits the longest leg, so no
+point the author placed is lost and the drawn line does not move; lowering it spaces the points
+evenly along the shape that is there. `Reset curve` remains the one thing that goes back to the
+arc, and laying more points along that arc follows the turn more closely: 2.29 m of sag at one
+point, 0.60 m at three, under 0.10 m at fifteen.
 
-Review of the merged change found a regression it had introduced. The cross-section the lane widths
-are measured across was interpolated between the two mouths, which says nothing about where the
-Connector points in between: on a reverse curve the mouths are parallel, so it never turned while
-the path swung 50-60 degrees away, and the lane was drawn its own width times the cosine of that
-angle. Measured square to the road, a 3.50 m lane came out 1.06 m at its narrowest on a tight S —
-worse than the 2.90 m the pre-change code drew, and a reverse curve is one of the shapes the owner
-reported. It now takes the path's own normal, corrected onto each mouth, and measures 3.34 m there;
-symmetric shapes (quarter turn, U-turn) are unchanged, and both mouths still meet their links
-exactly. The test that was supposed to guard this measured width *along* the cross-section, which is
-the lane width by construction at any angle; it now measures square to the road as well.
+**The default curve could leave its own junction.** The arc reach that shapes a new Connector is
+`(2/3)·chord·tan(α/2)/sin(α)`, which is 0.67 of the chord at a right angle and 11.05 at 160
+degrees. Drawn where two links nearly touch — the owner's picture — the curve ran to 11.0 times
+its own chord. It is held at the 120-degree value, `(4/3)·chord`; every ordinary turn, U-turn
+included, is unchanged to the last bit, and the hairpin now measures 1.9. It is still an
+undrivable turn for a 3.5 m lane and still says so, as `TIGHT_CONNECTOR_RADIUS`.
 
-## 2026-09-16 fourth follow-up — One poly point, and a constant offset
+**Reviewed against Vissim's Connector dialog, and still missing.** Booked here so the next
+session does not have to rediscover them; none is in this slice.
 
-Two answers from the owner, both now the rule here.
+| Vissim field | Ours | Verdict |
+|---|---|---|
+| `No.` | A generated id string, not an editable integer | Cosmetic, but ids are what a project file is read by. Not booked |
+| `Name` | **Absent from the model entirely** (`Connector` has no name member) | The cheapest real gap on this list, and the second field a Vissim user reaches for. **Booked: M1.12.1** |
+| `Intermediate points` | Present, as of this entry | Done |
+| `Link length` | Shown beside the lane counts, measured on the road | Done |
+| `Link behavior type` | Not modelled anywhere | Already out of scope (§ "not modelled") |
+| `Display type` | In the shared appearance row | Done |
+| `from link / to link`, `At:` | Lane combos plus a metres position each | Done |
+| `Lanes` tab — per-lane `Width` | Derived from the links the Connector joins (`laneWidthOf`) | Not previously recorded as a gap. A Connector cannot be given a width of its own, so a widening taper has to be authored on the links. **Booked: M1.12.1** |
+| `Lanes` tab — per-lane `MarkingType` | Derived (`connectorMarkings`): edges solid, interior dashed | Same entry. **Booked: M1.12.1** |
+| `Lanes` tab — `BlockedVeh`, `NoLnCh`, `Has overtaking lane` | Absent; lane-change behaviour is not modelled | Blocked on the lane-changing model (Q2), not on the dialog |
+| `Reverse parking` | Absent | Parking is not modelled at all (§4) |
 
-**"Vissim moves only the one poly point that is attached to the Link."** `reanchorConnector` used to
-carry the whole curve rigidly through a similarity transform of its endpoint chord, so a Link edit
-dragged points the author had placed by hand. It now moves the attached endpoint and nothing else.
-Path independence, which the transform was written for, comes for free: the point returns to where
-the lane puts it and no other point was ever touched.
-
-**"Should the offset from the lane centreline be the same all along?"** Yes, and that is the Vissim
-rule: the polygon is the axis offset by half the total width, measured square to the axis at every
-point. Links already did this — measured 3.500 m of a 3.500 m lane at every bend from 30 to 170
-degrees, because `offsetGeometry` miters each corner. Connectors now go through the same function,
-with a per-point offset so a tapering lane keeps its neighbours at full width. The two ends are cut square to the Connector as well,
-not to the links, which is what the owner's own Vissim screenshot shows: a constant-width ribbon
-whose end simply overlaps the link it meets. Measured after a Link was rotated 90 degrees under a
-drawn Connector, every sample including the joint is 3.500 m, against 0.46 m from the interpolated
-cross-section and a wedge at the joint from cutting the ends on the link. The joint gap that
-replaces it is 0 on a straight connection and 0.12-0.29 m where the sampled curve leaves the lane
-at an angle -- an overlap, not a missing lane.
+Group drag, `Alt`-drag rotate and copy/paste stay declined for the reason already on file.

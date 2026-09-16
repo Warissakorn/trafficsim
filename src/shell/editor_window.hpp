@@ -52,7 +52,7 @@ private:
     DisplayCatalog displayCatalog_;
     QListWidget* palette_{};
     QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
-    QSpinBox *connectorFromCount_{},*connectorToCount_{};
+    QSpinBox *connectorFromCount_{},*connectorToCount_{},*connectorPoints_{};
     QDoubleSpinBox *connectorFromPosition_{},*connectorToPosition_{};
     void buildPalette();
     void translatePalette();
