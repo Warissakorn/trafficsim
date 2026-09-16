@@ -11,6 +11,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <cmath>
 #include <iostream>
 using namespace trafficsim;
 namespace {
@@ -82,6 +83,44 @@ int main(int argc,char** argv) {
         require(w.history().document().network.connectors.front().fromLaneCount==2,"Corner did not resize range");
         action(w,"editorUndo");require(documentJson(w.history().document())==full,"Range Undo changed data");
 
+        // A drag on a multi-selection moves all of it, connectors and heads included.
+        c->setSelection({links[0].id,links[1].id});
+        const auto beforeMove=w.history().document();
+        QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,{-50,0}));
+        require(w.history().document()==beforeMove,"A click on a selected object moved something");
+        c->setSelection({links[0].id,links[1].id});
+        drag(c,{-50,0},{-40,5},Qt::LeftButton);
+        const auto& after=w.history().document().network;
+        const auto moved=[&](const std::vector<Point>& was,const std::vector<Point>& now,const char* what) {
+            require(was.size()==now.size(),what);
+            for(std::size_t i=0;i<was.size();++i)
+                require(std::abs(now[i].x-was[i].x-10)<1e-9 && std::abs(now[i].y-was[i].y-5)<1e-9,what);
+        };
+        moved(beforeMove.network.links[0].geometry,after.links[0].geometry,"First link did not move");
+        moved(beforeMove.network.links[1].geometry,after.links[1].geometry,"Second link did not move");
+        moved(beforeMove.network.connectors[0].geometry,after.connectors[0].geometry,"Connector did not ride its links");
+        // One Undo takes the whole move back, which is what makes it one command and not one per object.
+        action(w,"editorUndo");require(w.history().document()==beforeMove,"Group move was not one undoable command");
+        // Hand tremor must not move a whole selection, even when the two pixels fall either
+        // side of a grid line and so snap a metre apart. Nothing else guards that case: the
+        // press and release pixels differ, so the delta is not zero.
+        c->setTransform(QTransform::fromScale(40,-40));c->centerOn(-50,0);
+        c->setSelection({links[0].id,links[1].id});
+        const auto beforeJitter=w.history().document();
+        const auto press=pixel(c,{-50.6,0});
+        QTest::mousePress(c->viewport(),Qt::LeftButton,{},press);
+        QTest::mouseMove(c->viewport(),press+QPoint(8,0));QTest::mouseRelease(c->viewport(),Qt::LeftButton,{},press+QPoint(8,0));
+        require(w.history().document()==beforeJitter,"A jitter under the drag threshold moved the selection");
+        // The forcing: the same press pixel, dragged far enough to count, does move the
+        // selection -- so the check above is the threshold, not a dead press point.
+        QTest::qWait(600);
+        QTest::mousePress(c->viewport(),Qt::LeftButton,{},press);
+        QTest::mouseMove(c->viewport(),press+QPoint(60,0));QTest::mouseRelease(c->viewport(),Qt::LeftButton,{},press+QPoint(60,0));
+        require(w.history().document()!=beforeJitter,"A drag past the threshold moved nothing");
+        require(std::abs(w.history().document().network.links[1].geometry.front().x
+                        -beforeJitter.network.links[1].geometry.front().x-2)<1e-9,"Both links did not move together");
+        action(w,"editorUndo");require(w.history().document()==beforeJitter,"Jitter-drag Undo changed data");
+        c->fitInView(QRectF(-100,-40,200,80),Qt::KeepAspectRatio);c->centerOn(0,0);
         c->select(links[0].id);
         QTest::mouseClick(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,links[0].geometry.front()));
         require(w.history().document().network.links.size()==2,"Ctrl-click duplicated instead of selecting");

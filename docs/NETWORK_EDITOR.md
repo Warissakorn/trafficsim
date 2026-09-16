@@ -273,7 +273,15 @@ Dragging on empty space selects touched Links, Connectors and Signal heads in a 
 Ctrl/Shift adds that rectangle to the existing selection. Picking, framing and the band
 follow the visible road surface, including roads expanded away from the reference line.
 The last selected object is primary; property and geometry edits act on it alone.
-Group translation without copying and rotation are not included.
+
+**Moving several objects.** Left-drag any member of a multi-selection and the whole selection
+moves, with the same translucent outline the copy drag shows. Only Links carry geometry, so
+they are what actually moves: a Connector whose two Links are both moving keeps its shape
+within the junction, one whose Links are not both moving stays attached where it is, and a
+signal head rides a station and needs no moving at all. A selection with no Link in it cannot
+be moved and says so. The move is one undo entry, and a drag shorter than the system drag
+threshold is a click — it neither moves anything nor changes the selection. Rotation is still
+not included.
 
 Hold Ctrl and left-drag an already selected object to duplicate the whole selection.
 A translucent outline previews the drag offset; release commits once, including when

@@ -131,6 +131,10 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         std::vector<std::string> copied;
         if(execute("editorDuplicate",[&](auto& d){copied=duplicateObjects(d,ids,delta);}))canvas_->setSelection(copied);
     };
+    canvas_->translateRequested=[this](Point delta){
+        const auto ids=canvas_->selection();if(ids.empty())return;
+        execute("editorMove",[&](auto& d){translateObjects(d,ids,delta);});
+    };
     canvas_->createDemandGesture=[this](const auto& lane,auto mode){
         if(mode==EditorCanvas::Tool::route)editRoute({}, {lane.laneId});
         else if(mode==EditorCanvas::Tool::input)editInput();

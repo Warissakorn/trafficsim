@@ -463,7 +463,7 @@ than against the table. Five gaps, ranked by gain ÷ (risk × effort):
 |---|---|---|---|
 | 1 | Nothing could be named | No `name` member on `Link`, `Connector` or `NetworkSignalHead`; no field in `editor_inspector.cpp` | **Done: M1.15** |
 | 2 | Object lists are read-only | `editor_tables.cpp` sets `NoEditTriggers`; four (now five) fixed columns per tab | Vissim's Lists are its power-user surface — typed cells, sorting, multi-select-and-set. Not booked |
-| 3 | No group move, no `Alt`-drag rotate | `canvas_input.cpp`: "Geometry editing stays strictly single-object" (`Ctrl`+drag duplicates, but a multi-selection cannot be moved) | The reanchoring that once blocked it now exists (`reanchorConnector` moves one poly point). Not booked |
+| 3 | No group move, no `Alt`-drag rotate | `canvas_input.cpp`: "Geometry editing stays strictly single-object" (`Ctrl`+drag duplicates, but a multi-selection cannot be moved) | Group move **done: M1.16** — the reanchoring that once blocked it now exists. `Alt`-drag rotate is not booked |
 | 4 | `No.` is a string, not an integer | `allocateId(d,"link")` yields `link-1` | **Advised against for now:** it churns the file format and every reference for a mostly cosmetic win, and M1.15 buys most of the same benefit |
 | 5 | Missing object types | 9 tools in `canvas.hpp` against Vissim's Network Objects palette; nodes, priority rules, conflict areas, reduced-speed areas, stop signs, parking | **Deliberately not booked:** each needs engine behaviour first (ROADMAP rule 2). Nodes are the one that matters for the deliverable, and belong to M5 |
 

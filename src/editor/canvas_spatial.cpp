@@ -31,10 +31,13 @@ QPainterPath EditorCanvas::objectShape(const std::string& id) const {
     return {};
 }
 void EditorCanvas::drawCopyPreview() {
-    if(!copyDragging_)return;
+    // The same outline serves the copy and the group move: both show where the selection, and
+    // everything that rides with it, is about to land.
+    if(!copyDragging_ && !groupDragging_)return;
+    const auto offset=copyDragging_?copyOffset_:groupOffset_;
     QPen pen(QColor("#de8618"),2,Qt::DashLine);pen.setCosmetic(true);
     const auto draw=[&](const std::string& id) {
-        auto shape=objectShape(id);shape.translate(copyOffset_.x,copyOffset_.y);
+        auto shape=objectShape(id);shape.translate(offset.x,offset.y);
         auto* item=scene_.addPath(shape,pen,QBrush(QColor(222,134,24,60)));
         item->setZValue(200008);item->setData(0,QStringLiteral("copy-preview"));
     };

@@ -48,6 +48,7 @@ public:
     std::function<void(LaneReference,LaneReference,const std::vector<Point>&)> createRangeGesture;
     std::function<void(LaneReference,Tool)> createDemandGesture;
     std::function<void(Point)> duplicateRequested;
+    std::function<void(Point)> translateRequested;
     std::function<void(int,int,bool)> resizeRangeRequested;
     std::function<void(int,bool)> resizeLinkRequested;
     std::function<void()> creationRejected;
@@ -80,6 +81,11 @@ private:
     std::string copyPick_;
     bool copyArmed_{}, copyDragging_{};
     Point copyOffset_{};
+    // A drag on a multi-selection moves the whole of it. groupDrag_ is armed on the press;
+    // groupDragging_ turns on once the pointer has travelled far enough to be a drag and not
+    // a click, which is what keeps a plain click on a selected object from moving anything.
+    bool groupDrag_{}, groupDragging_{};
+    Point groupOffset_{};
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;

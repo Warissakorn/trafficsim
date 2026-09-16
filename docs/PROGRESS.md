@@ -8,6 +8,38 @@ long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-arch
 
 ---
 
+## 2026-09-16 — Moving several objects at once
+
+The second gap the owner picked from the audit. Left-dragging a multi-selection did nothing:
+`canvas_input.cpp` said in as many words that geometry editing stays single-object. Vissim has
+always moved a selection, and the reason ours could not — reanchoring every attached Connector
+— stopped being true with M1.14, where reanchoring became "move the one poly point attached to
+the Link that moved".
+
+**What moves.** Only Links carry geometry of their own, so they are what a move actually moves.
+A Connector whose two Links are both in the moving set travels whole, keeping the points the
+author placed in their places within the junction; one with a single end moving is an ordinary
+Link edit, and reanchoring already does the right thing with it. Signal heads ride a station,
+so they need no moving at all and must not get any. A selection holding no Link is a gesture
+with no meaning rather than a move of nothing, and says `EDIT_MOVE_TARGET`.
+
+**The drag threshold earns its line.** A press and release on the same pixel is already a delta
+of zero, so it is safe without any threshold. What is not safe is a two-pixel tremor during a
+click: if those two pixels fall either side of a grid line, the snap makes them a metre apart
+and a whole junction jumps. The threshold is the only thing standing between a click and that,
+and the gesture test pins it with a press point proven live by a longer drag from the same
+pixel.
+
+The preview outline is the copy drag's, which already drew the whole selection plus everything
+riding with it at an offset; it now takes the offset from whichever gesture is running.
+
+Four negative checks each broke a named assertion: leaving a Connector behind when both its
+Links move, dragging a Connector whole when only one end moves, removing the drag threshold,
+and never starting the group branch at all. Booked as M1.16; `Alt`-drag rotation is still not
+implemented and still not booked.
+
+---
+
 ## 2026-09-16 — A Name on every object, and the audit that found it
 
 The owner asked what else still differs from Vissim. §§1–6 of `VISSIM_PARITY.md` are a
@@ -91,69 +123,6 @@ still stood and **removed**: it moved the measured numbers by 0.3 degrees and 3 
 
 ---
 
-## 2026-09-16 — The ends are square to the Connector, as Vissim draws them
-
-The owner circled the joints in the render from the entry below and sent a Vissim screenshot beside
-them: a constant-width ribbon whose ends are cut square to itself and simply overlap the link.
-
-The joints were still being cut on the **links'** cross-sections. Where a Connector leaves or
-arrives across a lane rather than along it -- which is exactly the state a moved Link leaves behind
--- that cut is nearly parallel to the road, so the last sample stretched into a slanted wedge. It is
-the same mistake as the one below, surviving at the two end samples after being removed from the
-body.
-
-Both ends now take the same mitered offset as every other sample, so a Connector is one constant
-width from end to end. Measured with a Link rotated 30/60/90 degrees under a drawn Connector: 3.500
-m at **every** sample, joint included, against 1.96 m and 0.46 m before. Reverse curves, U-turns,
-tapers and the merge/diverge wedges are unchanged or better. What replaces the wedge is an overlap
-at the joint: nothing at all on a straight connection, and 0.12-0.29 m where the sampled curve
-leaves its lane at an angle, because the square cut is square to the polyline the author actually
-has. Vissim overlaps there too.
-
-The tests now pin the rule rather than the old symptom: every boundary end has no component along
-the Connector's own end direction (exact, to 1e-9), and lands within a joint's reach of the link's
-lane edge. Reverting to the link-cut ends fails three of them.
-
-**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
-`native.yml`. Two reverts each failed tests: cutting the ends on the links, and dropping the miter.
-No stored geometry changes, so no baseline fixture could move and none was regenerated.
-
----
-
-## 2026-09-16 — One poly point moves, and the offset is constant along the road
-
-The owner traced a real interchange over an aerial image, moved a Link, and the Connectors came out
-deformed. Two rules settled it, both theirs.
-
-**"Vissim moves only the one poly point that is attached to the Link."** `reanchorConnector` carried
-the whole curve through a similarity transform of its endpoint chord, so every Link edit dragged
-points the author had placed by hand. It now sets the attached endpoint and leaves the rest alone.
-The path independence the transform existed for is stronger this way, not weaker: the point returns
-to where the lane puts it, and nothing else was ever touched. The test that pinned the old rule now
-pins this one — interior points identical to 1e-12, endpoint on the lane to 1e-12.
-
-**"Should a Connector and a Link both keep the same offset from the lane centreline all along?"**
-Yes. A road's polygon is its axis offset by half its width, square to the axis at every point.
-Links already did this: measured 3.500 m of a 3.500 m lane at every bend from 30 to 170 degrees,
-because `offsetGeometry` miters each corner. Connectors did not — they stacked widths on a
-cross-section that was only correct at the two mouths. Measured on the owner's case, a Connector
-whose target Link had been rotated 90 degrees drew its 3.50 m lane at **0.46 m**.
-
-Connector boundaries now go through `offsetGeometry` itself, via a new overload that takes an offset
-per point so a tapering lane leaves its neighbours at full width; one implementation of "how a road
-edge is offset" serves Links and Connectors alike. After the same 90-degree rotation the body holds
-**3.500 m** at every sample, and only the last two — the joint, where the Connector arrives across
-the lane and is cut on that lane's cross-section — are shorter through the corner, which is the
-notch Vissim shows there too. Reverse curves came out 3.476-3.499 m against a 3.5 m nominal, better
-than either earlier version. The mouths still land on their links' lane edges exactly.
-
-**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
-`native.yml`. Three separate reverts each failed a test: interpolating the cross-section between the
-mouths, dropping the miter, and dragging the whole curve on reanchor. Stored geometry only changes
-where a Link edit moves an attachment, which is the edit itself; no baseline fixture was regenerated.
-
----
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -176,7 +145,9 @@ drew, a count of 2 draws three straight legs with a corner on each point as Viss
 Connector drawn between two links that nearly touch stays inside the junction and is reported as
 a tight radius rather than drawn as a crumpled wedge. Old `*.traffic.json` files predating that
 change were deliberately not migrated and will open with all of their stored points as poly
-points. Check the Name work
+points. Check the group move: select two Links with a Connector between
+them, drag, and see the junction move as one shape that one Undo puts back; check that a
+selection of only Connectors or heads refuses with a reason. Check the Name work
 too: name a Link, a Connector and a signal head, see each in its list, reopen the file and find
 them still there. **Next after the review: M1.11.1**, which can now split a lane
 at an attachment station that no longer moves. Test the workflow on the owner's

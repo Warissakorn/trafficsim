@@ -277,6 +277,22 @@ object, and undoes as one entry.
 
 **Done:** an interchange is authored in the author's own words rather than in `link-17`.
 
+### M1.16 — Moving several objects at once
+
+**Implemented.** Left-dragging any member of a multi-selection moves the whole selection, which
+Vissim has always done and this editor refused to do. Links carry the geometry; a Connector
+rides the junction rigidly when both of its Links are moving and stays attached when they are
+not; signal heads ride a station and need no moving. A selection holding no Link reports
+`EDIT_MOVE_TARGET` rather than doing nothing quietly. One drag is one undo entry, and a drag
+under the system drag threshold stays a click — without that, a two-pixel tremor either side of
+a grid line moved a whole junction by a metre.
+
+The reason this was expensive is gone: reanchoring a Connector now moves the one poly point
+attached to the Link that moved (M1.14), so the group move had only to decide which Connectors
+travel whole. `Alt`-drag rotation is still not implemented and is not booked.
+
+**Done:** two Links and the Connector between them move as one shape, and one Undo puts them back.
+
 ### M1.12.1 — A Connector's own lane widths and markings
 
 **Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found
