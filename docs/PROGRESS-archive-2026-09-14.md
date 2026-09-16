@@ -132,3 +132,47 @@ Building also required `nlohmann-json3-dev`, which a clean checkout must install
 
 Neither the M0 acceptance gate nor the M1 gate is closed by this merge; merged code is
 not a passed gate. `Next` is unchanged apart from its base note.
+
+### 2026-09-10 — named Veytrix (D9)
+
+Working name `TrafficSim` replaced throughout the documentation. `veytrix` is free on npm
+and PyPI; `veytrix.com` is taken and `Vectrix` (electric scooters) is phonetically close —
+both recorded in D9 as accepted, known risks rather than discovered later.
+
+**Still to do by hand:** the GitHub repository is still called `trafficsim`. Renaming it needs
+repository-admin access, which this session's GitHub app does not have — the owner renames it
+in the repository settings, after which the git remote here needs updating.
+
+
+### 2026-09-10 — Q1 and Q3 answered (D7, D8)
+
+- **Q1 → international from the start** (D7). Consequences recorded: HCM as the default LOS
+  pack with jurisdictions as swappable data, metric internally with switchable display units,
+  and **left-hand/right-hand traffic as a first-class setting from M1** — added to the M1
+  scope in `ROADMAP.md` because retrofitting it touches every geometry routine.
+- **Q3 → the project owner performs the M2 gate alone** (D8). Recorded honestly as a
+  weakening of the gate, with a mandatory mitigation: the M2 pass/fail criteria must be
+  written into `ROADMAP.md` and committed **before** M2 implementation starts. `ROADMAP.md`
+  now carries an unfilled placeholder for those criteria; starting M2 without filling it
+  voids the gate.
+- **Q5 opened:** final product name. `Veytrix` is a placeholder. `Headway` was considered
+  and rejected — `headwaymaps/headway` is an existing open-source maps stack, too close a
+  neighbour in the same field.
+
+### 2026-09-10 — repository initialized, documentation spine written
+
+Created a fresh repo for a new project, separate from the prior SUMO-wrapper effort.
+
+**Written:** `PROBLEM.md` (who this is for, the engine-level walls that motivate D1, non-goals,
+and what would make the project wrong), `PRINCIPLES.md` (hard rules, deliberate non-goals, and
+measured discipline inherited from the prior effort), `ARCHITECTURE.md` (the five-layer map,
+marked planned throughout), `ROADMAP.md` (M0–M7 with done-conditions and two hard gates),
+`CLAUDE.md` (standing orders), this file.
+
+**Decisions:** D1–D6 above. D1 is the one everything else rests on, and it has an explicit
+falsification test at the M2 gate.
+
+**No code was written.** The Systems table in `ARCHITECTURE.md` describes intent, not reality;
+every row is marked `planned`.
+
+**Next:** toolchain setup — see the `Next` section above.

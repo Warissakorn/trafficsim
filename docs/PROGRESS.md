@@ -7,6 +7,52 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — Merge markings and the shape of a tight turn
+
+Two owner findings from a U-turn screenshot, both about how a Connector is drawn.
+
+**A dashed divider ran down the middle of a single lane.** Where a Connector's ends carry
+different lane counts, `connectorBoundaries` pins the interior boundary at the narrow end to
+`endEdge(..., boundary=1/2, count=1)`, which interpolates between that one lane's two edges —
+its exact centre — and `drawConnectors` dashed every non-outer boundary end to end. The ribbon
+was already right: measured across a two-into-one it tapers 7.000 m to 3.500 m. Only the
+marking was wrong.
+
+Markings are now their own model function, `connectorMarkings`, used by the editor and the
+diagnostic view alike. An interior divider keeps the longest run where the two paths it
+separates are at least half their full spacing apart, and stops where they converge; on the
+same fixture it covers 7 of 13 points instead of all 13. Two lanes into two keep a full-length
+divider, one into one has none.
+
+**A U-turn was drawn at less than half the radius it needs.** `connectorCurve` reached
+`chord/3` for every turn. That value is exactly the theta -> 0 limit of the cubic that stands in
+for a circular arc, `(2/3)*chord*tan(theta/4)/sin(theta/2)`, so it was only ever right for a
+gentle turn. Measured on the owner's shape: minimum radius 2.286 m on a 13 m chord, 0.176 of the
+chord, tighter than the 3 m lane it carries — so the ribbon's inner edge crossed itself, and
+Qt's even-odd default punched the overlap out as a hole. That hole is the X in the screenshot.
+
+The reach is now the arc value for the actual turn angle: bit-identical for a straight-through
+connection, 5.904 m on the same U-turn (0.454 of the chord, a half circle is 0.5). Surfaces fill
+by winding rule, so any self-overlap that remains reads as road rather than a tear. Stored
+geometry is never rewritten — only new curves and Reset curve — so no existing project moves and
+no baseline can.
+
+A turn still tighter than the Connector's own width is reported as `TIGHT_CONNECTOR_RADIUS`,
+deliberately through a new `connectorShapeIssues` rather than `connectorRuntimeIssues`, because
+`compileScenario` throws on the latter and an undrivable drawing must not block Run. It is
+advisory in both languages and survives a document with no demand authored yet.
+
+Also closed the last lane-count leak: the Properties count boxes double as the creation form, so
+picking a source lane now resets them to one, like the drag dialog.
+
+Coverage: a merge's divider is shorter than its boundary and keeps clear of the merge point,
+while 2->2 keeps a full-length one and 1->1 has none; a U-turn's minimum radius exceeds 0.4 of
+its chord and its lane width, and a straight-through connection stays exactly on the chord; the
+advisory fires once on a hairpin, names its Connector, and `compileScenario` still succeeds; the
+connector surface fills by winding. Reverting the trim and the arc reach in turn makes those
+tests fail. All 23 CTest suites and both guards passed, the four TS baselines and the pinned
+29.249359418430977 untouched and not regenerated. Linux only; Windows is CI's.
+
 ## 2026-09-16 — M1.13: attachment stations in metres
 
 `LaneReference::fraction` became `station`: metres along the link's reference polyline, as
@@ -133,35 +179,6 @@ The Linux desktop build and all 23 CTest suites passed; the Thai editor screensh
 inspected. M1.11.1 runtime lane sections and the owner's Windows/timed M0/M1 acceptance
 gates remain open.
 
-## 2026-09-16 — Fixed lane edges, road boundaries and Ctrl-drag copies (M1.12)
-
-The owner's 1–3 lane examples exposed recentering and lane-centre dashes. Links now
-have resize handles on both sides. `laneOffset` keeps the reference polyline and all
-surviving lane positions fixed when one edge grows/shrinks, including curved links.
-Inspector count changes and downstream pockets use the same edge anchoring. Opposite
-carriageways retain the requested median gap after asymmetric growth/unequal widths.
-Connectors have source, target and middle handles on both sides. Leading edits rebase
-the first path with frozen `laneBlend` weights; surviving lane pairs keep their curves.
-Schema 4 persists those values; schemas 1–3 retain their old zero-offset/arc-weight defaults.
-
-Shared model boundaries supply solid road edges and dashed internal dividers in the
-editor and diagnostic view. Picking, box selection and framing use road surfaces.
-Ctrl-click adds selection, and Ctrl-drag of an already selected object previews and
-commits one copy on release. Click jitter does not create copies or geometry edits.
-Links copy internal Connectors/heads; standalone Connectors and Signal heads may copy
-onto valid lanes at their original levels. Invalid drops roll back all selected objects.
-Signal heads select themselves on canvas/tables and support copy/delete. Table selection
-preserves multiple rows and Ctrl/Shift selection across object types. Demand is not copied.
-
-Regression coverage includes curved/unequal-width links on both driving sides, fixed
-opposite edges, Connector rebasing, migration, save/reopen, reference rejection and
-atomic copy/delete. UI suites cover both-side handles, real Ctrl click/drag, release-only
-copies, invalid drops, Escape, group dependencies, heads and one-step Undo. English/Thai
-help and NETWORK_EDITOR describe the changed gestures. The Linux desktop build and all
-23 CTest suites (seven UI suites) passed; the Thai editor screenshot was inspected.
-M1.11.1 lane-section compilation
-and the owner's Windows/timed M0/M1 acceptance gates remain open.
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -172,8 +189,9 @@ including onto a narrower Link, where the range narrows to the lanes that are th
 bent Link keeps its width through the corner, and that a drag from one lane creates a one-lane
 Connector. M1.13 is implemented: check that a Connector stays where it was
 drawn when you stretch its Link, that shortening a Link clamps rather than refuses, and that a
-project saved by an older build opens with its Connectors in the same places. **Next after the
-review: M1.11.1**, which can now split a lane at an attachment station that no longer moves. Test the workflow on the owner's
+project saved by an older build opens with its Connectors in the same places. Check a U-turn Connector draws as one clean ribbon and that no dashed line
+runs down a single-lane stretch. **Next after the review: M1.11.1**, which can now split a lane
+at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.
 

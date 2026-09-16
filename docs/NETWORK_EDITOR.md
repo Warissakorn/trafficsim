@@ -152,12 +152,16 @@ Lane edges are mitered at a bend: a corner vertex is offset by `width/2 / cos(th
 distance to where the two offset legs meet, so the carriageway keeps its full width through
 the corner instead of pinching to `width * cos(theta/2)` — 30% narrower at a right angle. A
 straight polyline is unaffected, bit for bit. A turn sharper than about 151 degrees is cut
-back to four times the offset so a hairpin cannot spike. Known limitation, shared with Vissim:
-on a bend tighter than the offset itself the inner edge still crosses itself; draw the turn
-with a wider radius or split it into a Connector.
+back to four times the offset so a hairpin cannot spike. Where a bend is tighter than the offset
+itself the inner edge still crosses itself, but the surface is filled by winding rule, so the
+overlap stays road instead of being punched out as a hole.
 
 Road surfaces use the same geometry as lane positions: outer boundaries are solid and
-internal lane boundaries are dashed. There is no dashed line down a lane centre. The
+internal lane boundaries are dashed. There is no dashed line down a lane centre. On a Connector
+whose ends carry different lane counts, an interior divider is drawn only over the stretch where
+the two lanes it separates are genuinely side by side — at least half their full spacing apart —
+and stops where they converge, rather than continuing down the middle of the single lane they
+merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. The
 small centre arrows show travel direction; white dots are editable geometry handles.
 
 Geometry handles sit on the **centreline of the whole bundle**, as Vissim shows them, not on
@@ -179,7 +183,13 @@ or resizing a connector used by a route or head is rejected; revise those refere
 first. Reshaping its curve remains allowed if the whole document validates.
 
 Interior points are editable. Reset curve to lane directions creates a cubic sampled
-into 12 spans; Make straight retains only endpoints. There are no separate persisted
+into 12 spans, with its control points reaching `(2/3)·chord·tan(θ/4)/sin(θ/2)` for a turn of
+θ — the cubic that stands in for a circular arc on that chord. That is `chord/3` for a gentle
+turn, the constant every turn used to get, and `(2/3)·chord` for a U-turn, which used to be
+drawn at less than half the radius it needs (0.18 of the chord instead of 0.45) and pinched its
+own ribbon. A Connector that still turns tighter than its own width is reported in Objects and
+issues as `TIGHT_CONNECTOR_RADIUS`; the drawing is kept and Run is not blocked.
+Make straight retains only endpoints. There are no separate persisted
 Bézier handles and arbitrary edits need not remain smooth, though a reshaped curve is
 held to the same geometry rules as a link: no non-finite coordinates, no repeated
 consecutive points and a positive total length. Coincident endpoints cannot

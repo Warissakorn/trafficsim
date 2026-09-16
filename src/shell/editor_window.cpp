@@ -108,6 +108,9 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->connectorSourcePicked=[this](const auto& lane){
         connectorFrom_->setCurrentIndex(connectorFrom_->findData(QString::fromStdString(lane.laneId)));
         connectorFromPosition_->setValue(attachmentStation(history_.document().network,lane,true));
+        // These boxes double as the creation form. A fresh pick starts at one lane, like the
+        // drag dialog, instead of inheriting the width of whatever Connector was selected.
+        connectorFromCount_->setValue(1);connectorToCount_->setValue(1);
     };
     canvas_->connectorDraftChanged=[this]{connectorHint();};
     canvas_->splitAt=[this](const auto& id,double distance){

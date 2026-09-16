@@ -38,24 +38,30 @@ void NetworkView::paintEvent(QPaintEvent*) {
     transform.scale(scale, -scale);
     transform.translate(-bounds_.center().x(), -bounds_.center().y());
     painter.setTransform(transform);
-    const auto road=[&](const std::vector<std::vector<Point>>& boundaries,const QColor& color) {
+    const auto road=[&](const std::vector<std::vector<Point>>& boundaries,
+                        const std::vector<ConnectorMarking>& markings,const QColor& color) {
         QPolygonF surface;
         for(const auto& p:boundaries.front())surface<<QPointF(p.x,p.y);
         for(auto it=boundaries.back().rbegin();it!=boundaries.back().rend();++it)surface<<QPointF(it->x,it->y);
-        painter.setPen(Qt::NoPen);painter.setBrush(color);painter.drawPolygon(surface);painter.setBrush(Qt::NoBrush);
-        for(std::size_t i=0;i<boundaries.size();++i) {
-            QPen pen(QColor("#d9e5eb"),1,(i==0 || i+1==boundaries.size())?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
-            painter.setPen(pen);QPolygonF marking;
-            for(const auto& p:boundaries[i])marking<<QPointF(p.x,p.y);
-            painter.drawPolyline(marking);
+        // Winding, so a ribbon that overlaps itself on a tight turn stays road instead of
+        // punching the overlap out as a hole.
+        painter.setPen(Qt::NoPen);painter.setBrush(color);
+        painter.drawPolygon(surface,Qt::WindingFill);painter.setBrush(Qt::NoBrush);
+        for(const auto& marking:markings) {
+            QPen pen(QColor("#d9e5eb"),1,marking.edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            painter.setPen(pen);QPolygonF line;
+            for(const auto& p:marking.geometry)line<<QPointF(p.x,p.y);
+            painter.drawPolyline(line);
         }
     };
     for(const auto& link:network_.links) {
-        std::vector<std::vector<Point>> boundaries;
+        std::vector<std::vector<Point>> boundaries;std::vector<ConnectorMarking> markings;
         for(std::size_t i=0;i<=link.lanes.size();++i)boundaries.push_back(laneBoundaryGeometry(link,i,network_.drivingSide));
-        road(boundaries,QColor("#536c7c"));
+        for(std::size_t i=0;i<boundaries.size();++i)markings.push_back({boundaries[i],i==0 || i+1==boundaries.size()});
+        road(boundaries,markings,QColor("#536c7c"));
     }
-    for(const auto& connector:network_.connectors)road(connectorBoundaries(network_,connector),QColor("#386b78"));
+    for(const auto& connector:network_.connectors)
+        road(connectorBoundaries(network_,connector),connectorMarkings(network_,connector),QColor("#386b78"));
     for (const auto& head : frame_.scenario->signalHeads) {
         const auto found = std::find_if(frame_.scenario->signalPrograms.begin(), frame_.scenario->signalPrograms.end(),
             [&](const auto& p) { return p.id == head.programId; });

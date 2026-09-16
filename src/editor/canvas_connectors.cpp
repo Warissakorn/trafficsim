@@ -87,11 +87,15 @@ void EditorCanvas::drawConnectors() {
         const auto boundaries=connectorBoundaries(document_->network,preview);
         auto surface=path(boundaries.front());
         for(auto it=boundaries.back().rbegin();it!=boundaries.back().rend();++it)surface.lineTo(it->x,it->y);
-        surface.closeSubpath();scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+4);
-        for(std::size_t i=0;i<boundaries.size();++i) {
-            QPen marking(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
-                         (i==0 || i+1==boundaries.size())?Qt::SolidLine:Qt::DashLine);marking.setCosmetic(true);
-            auto* item=scene_.addPath(path(boundaries[i]),marking);item->setZValue(z+4.5);
+        surface.closeSubpath();
+        // A ribbon that overlaps itself on a tight turn is still road there. The even-odd
+        // default punched the overlap out as a hole, which read as a tear in the surface.
+        surface.setFillRule(Qt::WindingFill);
+        scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+4);
+        for(const auto& marking:connectorMarkings(document_->network,preview)) {
+            QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
+                     marking.edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            auto* item=scene_.addPath(path(marking.geometry),pen);item->setZValue(z+4.5);
             item->setData(0,QStringLiteral("road-marking"));item->setData(1,QString::fromStdString(c.id));
         }
         const double length=polylineLength(geometry);

@@ -6,7 +6,10 @@ namespace {
 // reachability checks read segments alone. Demand findings against a probe definition would
 // only report the absence we already report once, so they are dropped rather than shown.
 bool aboutTopology(const Diagnostic& row) {
-    return row.path.rfind("segments", 0) == 0 || row.code.rfind("EDIT_", 0) == 0 || row.code=="UNSUPPORTED_CONNECTOR_POSITION";
+    // A shape advisory is a property of the drawing alone, so it survives a document that has
+    // no demand authored yet, exactly like the attachment row beside it.
+    return row.path.rfind("segments", 0) == 0 || row.code.rfind("EDIT_", 0) == 0 ||
+           row.code=="UNSUPPORTED_CONNECTOR_POSITION" || row.code=="TIGHT_CONNECTOR_RADIUS";
 }
 // Vehicle types and driver behaviours are catalog content (data/), not document content, so a
 // document alone cannot resolve them. Claiming they are unknown would blame the drawing for an

@@ -70,6 +70,33 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     }
     return result;
 }
+std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {
+    const auto boundaries=connectorBoundaries(n,c);
+    const auto paths=connectorPaths(n,c);
+    std::vector<ConnectorMarking> result;
+    result.push_back({boundaries.front(),true});
+    for(std::size_t i=1;i+1<boundaries.size();++i) {
+        // How far apart these two lanes are where they are both fully present. Below half of
+        // that the paths have merged, and one lane has no divider down its middle.
+        double widest=0;
+        for(std::size_t j=0;j<paths[i-1].geometry.size();++j)
+            widest=std::max(widest,std::hypot(paths[i].geometry[j].x-paths[i-1].geometry[j].x,
+                                              paths[i].geometry[j].y-paths[i-1].geometry[j].y));
+        // One divider is one line: take the longest run that qualifies, never a dotted trail
+        // of disconnected pieces.
+        std::size_t best=0,bestFrom=0,run=0,from=0;
+        for(std::size_t j=0;j<boundaries[i].size();++j) {
+            const double apart=std::hypot(paths[i].geometry[j].x-paths[i-1].geometry[j].x,
+                                          paths[i].geometry[j].y-paths[i-1].geometry[j].y);
+            if(apart>=widest/2){if(run==0)from=j;++run;if(run>best){best=run;bestFrom=from;}}
+            else run=0;
+        }
+        if(best>=2)result.push_back({{boundaries[i].begin()+static_cast<std::ptrdiff_t>(bestFrom),
+                                      boundaries[i].begin()+static_cast<std::ptrdiff_t>(bestFrom+best)},false});
+    }
+    if(boundaries.size()>1)result.push_back({boundaries.back(),true});
+    return result;
+}
 std::vector<Point> connectorCentreline(const Network& n,const Connector& c) {
     const auto boundaries=connectorBoundaries(n,c);
     std::vector<Point> result;
