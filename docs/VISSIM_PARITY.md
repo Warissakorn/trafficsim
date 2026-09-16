@@ -378,3 +378,26 @@ number for every lane of a range.
 
 Remaining gaps are unchanged: group transforms, `Alt`-drag rotation, editable table cells and
 the M1.11.1 runtime lane sections, which this change exists to make tractable.
+
+## 2026-09-16 follow-up — Merge markings and the shape of a tight turn
+
+Two more owner findings, both about what a Connector looks like rather than what it stores.
+
+**A divider down the middle of one lane.** Where a Connector's ends carry different lane counts,
+the interior boundary was pinned at the narrow end to the *centre* of the single lane the paths
+converge into, and drawn dashed for the whole length — a lane line down the middle of where
+vehicles drive. Markings are now derived separately from the boundaries: an interior divider
+covers only the stretch where the two lanes are at least half their full spacing apart and stops
+at the merge. The ribbon itself was already right, tapering 7.0 m to 3.5 m across a two-into-one.
+
+**A U-turn drawn at half the radius it needs.** The default curve reached `chord/3` for every
+turn, which is only the correct value as the turn angle tends to zero. On the owner's U-turn that
+produced a minimum radius of 2.29 m on a 13 m chord — 0.18 of the chord, tighter than the 3 m
+lane it carries, so the ribbon's own inner edge crossed itself, and the even-odd fill punched the
+overlap out as the hole visible in the screenshot. The reach is now the circular-arc value for
+the actual turn angle: unchanged for gentle turns, 0.45 of the chord for a U-turn (5.90 m here).
+Surfaces fill by winding rule, so a self-overlap that remains reads as road.
+
+Vissim leaves an impossible turn to the author; we do the same but say so, with a non-blocking
+`TIGHT_CONNECTOR_RADIUS` row. Stored geometry is never rewritten, so existing drawings are
+untouched — only newly created curves and Reset curve use the new reach.

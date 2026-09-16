@@ -8,6 +8,35 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-16 — Fixed lane edges, road boundaries and Ctrl-drag copies (M1.12)
+
+The owner's 1–3 lane examples exposed recentering and lane-centre dashes. Links now
+have resize handles on both sides. `laneOffset` keeps the reference polyline and all
+surviving lane positions fixed when one edge grows/shrinks, including curved links.
+Inspector count changes and downstream pockets use the same edge anchoring. Opposite
+carriageways retain the requested median gap after asymmetric growth/unequal widths.
+Connectors have source, target and middle handles on both sides. Leading edits rebase
+the first path with frozen `laneBlend` weights; surviving lane pairs keep their curves.
+Schema 4 persists those values; schemas 1–3 retain their old zero-offset/arc-weight defaults.
+
+Shared model boundaries supply solid road edges and dashed internal dividers in the
+editor and diagnostic view. Picking, box selection and framing use road surfaces.
+Ctrl-click adds selection, and Ctrl-drag of an already selected object previews and
+commits one copy on release. Click jitter does not create copies or geometry edits.
+Links copy internal Connectors/heads; standalone Connectors and Signal heads may copy
+onto valid lanes at their original levels. Invalid drops roll back all selected objects.
+Signal heads select themselves on canvas/tables and support copy/delete. Table selection
+preserves multiple rows and Ctrl/Shift selection across object types. Demand is not copied.
+
+Regression coverage includes curved/unequal-width links on both driving sides, fixed
+opposite edges, Connector rebasing, migration, save/reopen, reference rejection and
+atomic copy/delete. UI suites cover both-side handles, real Ctrl click/drag, release-only
+copies, invalid drops, Escape, group dependencies, heads and one-step Undo. English/Thai
+help and NETWORK_EDITOR describe the changed gestures. The Linux desktop build and all
+23 CTest suites (seven UI suites) passed; the Thai editor screenshot was inspected.
+M1.11.1 lane-section compilation
+and the owner's Windows/timed M0/M1 acceptance gates remain open.
+
 ### 2026-09-15 — Ctrl-right release, body attachments and lane side handles
 
 The owner reported a disappearing Ctrl+right-drag preview, endpoint-only Connectors,
@@ -452,47 +481,3 @@ raised again.
 Also noted at the time: the MicroFlow brand write-up claimed "extends to both microscopic and
 macroscopic" as a strength, which contradicts `PROBLEM.md` §5 where macroscopic assignment is
 a non-goal. **§5 was left unchanged** — that is a scope decision, not a naming one.
-
-### 2026-09-10 — named Veytrix (D9)
-
-Working name `TrafficSim` replaced throughout the documentation. `veytrix` is free on npm
-and PyPI; `veytrix.com` is taken and `Vectrix` (electric scooters) is phonetically close —
-both recorded in D9 as accepted, known risks rather than discovered later.
-
-**Still to do by hand:** the GitHub repository is still called `trafficsim`. Renaming it needs
-repository-admin access, which this session's GitHub app does not have — the owner renames it
-in the repository settings, after which the git remote here needs updating.
-
-
-### 2026-09-10 — Q1 and Q3 answered (D7, D8)
-
-- **Q1 → international from the start** (D7). Consequences recorded: HCM as the default LOS
-  pack with jurisdictions as swappable data, metric internally with switchable display units,
-  and **left-hand/right-hand traffic as a first-class setting from M1** — added to the M1
-  scope in `ROADMAP.md` because retrofitting it touches every geometry routine.
-- **Q3 → the project owner performs the M2 gate alone** (D8). Recorded honestly as a
-  weakening of the gate, with a mandatory mitigation: the M2 pass/fail criteria must be
-  written into `ROADMAP.md` and committed **before** M2 implementation starts. `ROADMAP.md`
-  now carries an unfilled placeholder for those criteria; starting M2 without filling it
-  voids the gate.
-- **Q5 opened:** final product name. `Veytrix` is a placeholder. `Headway` was considered
-  and rejected — `headwaymaps/headway` is an existing open-source maps stack, too close a
-  neighbour in the same field.
-
-### 2026-09-10 — repository initialized, documentation spine written
-
-Created a fresh repo for a new project, separate from the prior SUMO-wrapper effort.
-
-**Written:** `PROBLEM.md` (who this is for, the engine-level walls that motivate D1, non-goals,
-and what would make the project wrong), `PRINCIPLES.md` (hard rules, deliberate non-goals, and
-measured discipline inherited from the prior effort), `ARCHITECTURE.md` (the five-layer map,
-marked planned throughout), `ROADMAP.md` (M0–M7 with done-conditions and two hard gates),
-`CLAUDE.md` (standing orders), this file.
-
-**Decisions:** D1–D6 above. D1 is the one everything else rests on, and it has an explicit
-falsification test at the M2 gate.
-
-**No code was written.** The Systems table in `ARCHITECTURE.md` describes intent, not reality;
-every row is marked `planned`.
-
-**Next:** toolchain setup — see the `Next` section above.

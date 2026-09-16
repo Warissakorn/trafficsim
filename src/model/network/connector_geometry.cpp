@@ -77,10 +77,13 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     const auto a = laneAttachment(network,from,true), b = laneAttachment(network,to,false);
     const double gap = std::hypot(b.x-a.x, b.y-a.y);
     if (!std::isfinite(gap) || gap < 1e-6) throw std::invalid_argument("EDIT_CONNECTOR_GAP");
-    const auto control = [&](Point origin, Point previous, Point next, double sign) {
+    const auto unit = [](Point previous, Point next) {
         const double dx = next.x-previous.x, dy = next.y-previous.y, length = std::hypot(dx, dy);
         if (!std::isfinite(length) || length <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
-        return Point{origin.x + sign*dx/length*gap/3, origin.y + sign*dy/length*gap/3};
+        return Point{dx/length, dy/length};
+    };
+    const auto control = [&](Point origin, Point direction, double reach, double sign) {
+        return Point{origin.x + sign*direction.x*reach, origin.y + sign*direction.y*reach};
     };
     const auto direction = [&](const std::vector<Point>& geometry,const LaneReference& ref,bool outgoing) {
         const double length=polylineLength(geometry);
@@ -92,8 +95,17 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     };
     const auto [s0,s1]=direction(source,from,true);
     const auto [t0,t1]=direction(target,to,false);
-    const auto c1 = control(a, s0, s1, 1);
-    const auto c2 = control(b, t0, t1, -1);
+    const auto entry=unit(s0,s1), exit=unit(t0,t1);
+    // Reach the control points the way a circular arc would: for a turn of theta the cubic that
+    // approximates the arc on this chord uses (2/3)*gap*tan(theta/4)/sin(theta/2). That tends to
+    // gap/3 as theta tends to 0, which is the constant this used to use for every turn, and
+    // grows to (2/3)*gap for a U-turn -- which is why a U-turn used to be drawn twice as tight
+    // as the arc it stands for, at a radius no lane width could hold.
+    const double turn=std::atan2(entry.x*exit.y-entry.y*exit.x,entry.x*exit.x+entry.y*exit.y);
+    const double theta=std::abs(turn);
+    const double reach=theta<1e-6?gap/3:2./3*gap*std::tan(theta/4)/std::sin(theta/2);
+    const auto c1 = control(a, entry, reach, 1);
+    const auto c2 = control(b, exit, reach, -1);
     std::vector<Point> points{a};
     for (int i = 1; i < 12; ++i) {
         const double t = i/12.0, s = 1-t;

@@ -70,6 +70,12 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connec
 // The same idea for a connector: the middle of its whole width, point for point with its
 // stored geometry, which is the first lane's path.
 std::vector<Point> connectorCentreline(const Network&, const Connector&);
+// What to draw on a Connector: its two outer edges, plus an interior divider for each pair of
+// adjacent lane paths, trimmed to the stretch where those two lanes are genuinely side by side.
+// Where a range merges, the divider stops instead of running down the middle of the single lane
+// the paths have converged into, which is not a place a marking belongs.
+struct ConnectorMarking { std::vector<Point> geometry; bool edge{}; };
+std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);
 // Move a connector onto its current attachments, carrying the interior points with the
@@ -82,6 +88,9 @@ double attachmentStation(const Network&, const LaneReference&, bool outgoing);
 // case the M0 whole-lane runtime can traverse.
 bool attachedAtLinkEnd(const Network&, const LaneReference&, bool outgoing);
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
+// Advisory only, and deliberately not part of connectorRuntimeIssues, which blocks Run: a turn
+// tighter than the Connector's own half-width is undrivable but still a legal drawing.
+std::vector<ValidationIssue> connectorShapeIssues(const Network&);
 // A sampled cubic between lane attachments, aligned with their local travel directions.
 // The returned polyline is the editable/persisted geometry; no second curve is stored.
 std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to);

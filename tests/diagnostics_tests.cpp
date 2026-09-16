@@ -143,3 +143,25 @@ TEST(diagnostics, every_emitted_code_has_a_translation) {
         }
     }
 }
+// A turn no vehicle could take is still a legal drawing: it is reported, never blocked.
+TEST(diagnostics, a_tight_connector_is_advised_without_blocking_run) {
+    auto d=merging();
+    const auto id=d.network.connectors.front().id;
+    CHECK(connectorShapeIssues(d.network).empty());
+    // The forcing: bend this connector into a hairpin far tighter than its 3.5 m lane.
+    auto& c=editableConnector(d,id);
+    const auto a=c.geometry.front(),b=c.geometry.back();
+    c.geometry={a,{a.x+1,a.y+1},{a.x,a.y+2},{a.x-1,a.y+1},{(a.x+b.x)/2,(a.y+b.y)/2},b};
+    c.laneBlend.clear();
+    validateDocument(d);
+    const auto rows=documentDiagnostics(d);
+    int advised=0;
+    for(const auto& row:rows)if(row.code=="TIGHT_CONNECTOR_RADIUS"){++advised;CHECK(row.selectId==id);}
+    CHECK(advised==1);
+    // Neither the draft nor the run is refused because of it.
+    auto definition=test::straight();definition.routes.clear();definition.inputs.clear();
+    test::throws([&]{compileScenario(d.network,definition);},"UNSUPPORTED_MERGE");
+    d.network.connectors.erase(d.network.connectors.begin()+1);
+    CHECK(connectorShapeIssues(d.network).size()==1);
+    CHECK(compileScenario(d.network,definition).segments.size()>0);
+}

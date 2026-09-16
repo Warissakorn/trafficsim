@@ -185,3 +185,73 @@ TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
     }
     CHECK(editableConnector(d,id).geometry==c.geometry);
 }
+// A merge is two lanes becoming one. The divider between them belongs over the stretch where
+// they are both there, never down the middle of the single lane they converge into.
+TEST(connectors, a_merge_divider_stops_where_the_lanes_converge) {
+    auto d=roads();
+    const auto id=addConnectorRange(d,{"in","in-1"},{"out","out-1"},2,1);
+    const auto& c=editableConnector(d,id);
+    // The forcing: this really is two lanes into one, and the geometry still has three boundaries.
+    CHECK(c.fromLaneCount==2);CHECK(c.toLaneCount==1);
+    const auto boundaries=connectorBoundaries(d.network,c);
+    CHECK(boundaries.size()==3);
+    CHECK(boundaries[1].size()==c.geometry.size());
+    const auto markings=connectorMarkings(d.network,c);
+    CHECK(markings.size()==3);
+    CHECK(markings.front().edge);CHECK(markings.back().edge);CHECK(!markings[1].edge);
+    // The divider is shorter than the full boundary and keeps clear of the merge point.
+    CHECK(markings[1].geometry.size()<boundaries[1].size());
+    const auto target=laneAttachment(d.network,c.to,false);
+    const double lane=editableLink(d,"out").lanes.front().width;
+    for(const auto& p:markings[1].geometry)CHECK(std::hypot(p.x-target.x,p.y-target.y)>lane/2);
+    // Two lanes into two keep their divider for the whole length; one into one has none.
+    auto wide=roads();const auto pair=addConnectorRange(wide,{"in","in-1"},{"out","out-1"},2,2);
+    const auto both=connectorMarkings(wide.network,editableConnector(wide,pair));
+    CHECK(both.size()==3);CHECK(both[1].geometry.size()==editableConnector(wide,pair).geometry.size());
+    auto plain=roads();const auto single=addConnector(plain,{"in","in-2"},{"other","other-1"});
+    CHECK(connectorMarkings(plain.network,editableConnector(plain,single)).size()==2);
+}
+// The default curve stands for a circular arc. It used to use the same control reach for every
+// turn, which is only right for a gentle one, and drew a U-turn at half the radius it needs.
+TEST(connectors, a_u_turn_gets_the_radius_its_own_lanes_need) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=roads(side);
+        const auto reverse=oppositeLink(d,"in",2);
+        const auto lane=editableLink(d,reverse).lanes.front();
+        const auto id=addConnector(d,{"in","in-1"},{reverse,lane.id});
+        const auto& g=editableConnector(d,id).geometry;
+        // The forcing: the two ends really do face opposite ways.
+        const auto entry=Point{g[1].x-g[0].x,g[1].y-g[0].y};
+        const auto exit=Point{g.back().x-g[g.size()-2].x,g.back().y-g[g.size()-2].y};
+        CHECK(entry.x*exit.x+entry.y*exit.y<0);
+        double radius=1e300;
+        for(std::size_t i=1;i+1<g.size();++i) {
+            const double ab=std::hypot(g[i].x-g[i-1].x,g[i].y-g[i-1].y);
+            const double bd=std::hypot(g[i+1].x-g[i].x,g[i+1].y-g[i].y);
+            const double ad=std::hypot(g[i+1].x-g[i-1].x,g[i+1].y-g[i-1].y);
+            const double area=std::abs((g[i].x-g[i-1].x)*(g[i+1].y-g[i-1].y)-(g[i].y-g[i-1].y)*(g[i+1].x-g[i-1].x))/2;
+            if(area>1e-12)radius=std::min(radius,ab*bd*ad/(4*area));
+        }
+        // A U-turn stands for a half circle, whose radius is half the chord. The old fixed
+        // reach gave 0.176 of the chord here -- 2.29 m against a 3 m lane, tight enough for the
+        // ribbon's own edge to cross itself. The arc-based reach gives 0.454.
+        const double chord=std::hypot(g.back().x-g.front().x,g.back().y-g.front().y);
+        CHECK(radius>.4*chord);
+        CHECK(radius>lane.width);
+        CHECK(connectorShapeIssues(d.network).empty());
+        // No turn at all is still the degenerate case the old constant was built for: aligned
+        // tangents put every control point on the chord, so the curve is the straight line.
+        // Same widths in the same order, so in-1 and out-1 are one straight line apart.
+        auto aligned=roads(side);aligned.network.links[1].geometry={{80,0},{160,0}};
+        aligned.network.links[1].lanes={{"out-1",3},{"out-2",4}};
+        const auto gentle=addConnector(aligned,{"in","in-1"},{"out","out-1"});
+        const auto& g2=editableConnector(aligned,gentle).geometry;
+        const auto first=g2.front(),last=g2.back();
+        const double span=std::hypot(last.x-first.x,last.y-first.y);
+        CHECK(span>1);
+        for(const auto& p:g2) {
+            const double off=std::abs((last.x-first.x)*(p.y-first.y)-(last.y-first.y)*(p.x-first.x))/span;
+            test::near(off,0,1e-9);
+        }
+    }
+}

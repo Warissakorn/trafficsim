@@ -6,6 +6,7 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QGraphicsItem>
+#include <QGraphicsPathItem>
 #include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
@@ -157,6 +158,15 @@ int main(int argc,char** argv) {
             int markings=0;
             for(auto* item:c->scene()->items())if(item->data(0).toString()=="road-marking" && item->data(1).toString()==QString::fromStdString(link.id))++markings;
             require(markings==static_cast<int>(link.lanes.size())+1,"Wrong number of road boundaries");
+        }
+        // The ribbon fills by winding, so a tight turn that overlaps itself stays solid road
+        // instead of having the overlap punched out as a hole.
+        {
+            bool winding=false;
+            for(auto* item:c->scene()->items())
+                if(auto* filled=qgraphicsitem_cast<QGraphicsPathItem*>(item))
+                    if(filled->brush().style()!=Qt::NoBrush && filled->path().fillRule()==Qt::WindingFill)winding=true;
+            require(winding,"Connector surface does not fill by winding");
         }
         // Both click-pick positions are also on link bodies, in connector mode.
         item<QComboBox>(w,"editorTool")->setCurrentIndex(5);

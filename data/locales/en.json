@@ -272,5 +272,6 @@
   "EDIT_CREATION_TARGET": "No object was created. Draw a link with a nonzero length, or release the connector on a visible target link.",
   "EDIT_SPLIT_ATTACHMENT": "The split would cut through a connector attachment. Move the split at least 0.1 m away from that position.",
   "UNSUPPORTED_CONNECTOR_POSITION": "This connector attaches within a link. Drawing, saving and editing are supported; the current simulation core only runs end-to-start connectors. Run is blocked until lane-section compilation is implemented.",
+  "TIGHT_CONNECTOR_RADIUS": "This connector turns tighter than its own width, so no vehicle could follow it. The drawing is kept and Run is not blocked; widen the turn or move the attachments apart.",
   "EDIT_COPY_TARGET": "Place copied Connector endpoints or signal heads on existing lanes at the same level. No objects were copied. Select both parent Links to copy the whole connection."
 }
