@@ -1,6 +1,7 @@
 #include "network.hpp"
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <stdexcept>
 namespace trafficsim {
 namespace {
@@ -61,14 +62,14 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     // on a U-turn they are opposite, and their average is nothing at all.
     const double a0=std::atan2(from.y,from.x);
     double sweep=std::atan2(to.y,to.x)-a0;
-    while(sweep>M_PI)sweep-=2*M_PI;
-    while(sweep<-M_PI)sweep+=2*M_PI;
-    if(std::abs(std::abs(sweep)-M_PI)<1e-9) {
+    while(sweep>std::numbers::pi)sweep-=2*std::numbers::pi;
+    while(sweep<-std::numbers::pi)sweep+=2*std::numbers::pi;
+    if(std::abs(std::abs(sweep)-std::numbers::pi)<1e-9) {
         // Half a turn either way lands on the same line, so take the way the road itself turns.
         const auto& g=paths.front().geometry;
         const double sx=g[1].x-g.front().x,sy=g[1].y-g.front().y;
         const double ex=g.back().x-g[g.size()-2].x,ey=g.back().y-g[g.size()-2].y;
-        sweep=std::copysign(M_PI,sx*ey-sy*ex==0?sweep:sx*ey-sy*ex);
+        sweep=std::copysign(std::numbers::pi,sx*ey-sy*ex==0?sweep:sx*ey-sy*ex);
     }
     // Hang the cross-section on the last lane that is a real lane at both ends, and step out from
     // there in both directions. A lane added at the leading edge then cannot move the far edge,

@@ -2,6 +2,7 @@
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/network_commands.hpp"
 #include <cmath>
+#include <numbers>
 #include <fstream>
 using namespace trafficsim;
 namespace {
@@ -292,7 +293,7 @@ TEST(connectors, a_reverse_curve_bends_no_harder_than_the_lane_it_carries) {
 // correctly either way, but the line drawn round it must not double back.
 TEST(connectors, a_drawn_edge_never_doubles_back_on_a_tight_bend) {
     std::vector<Point> arc{{0,-10}};
-    for(int i=0;i<=6;++i)arc.push_back({3*std::sin(M_PI*i/12),3-3*std::cos(M_PI*i/12)});
+    for(int i=0;i<=6;++i)arc.push_back({3*std::sin(std::numbers::pi*i/12),3-3*std::cos(std::numbers::pi*i/12)});
     arc.push_back({arc.back().x-8,arc.back().y+8}); // A quarter turn of radius 3 between two straights.
     const Link link{"tight",arc,{{"tight-1",3.5},{"tight-2",3.5}}};
     const auto inner=laneBoundaryGeometry(link,0,DrivingSide::left);
