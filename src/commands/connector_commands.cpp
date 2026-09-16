@@ -80,6 +80,20 @@ void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straigh
     if (straight) geometry = {geometry.front(), geometry.back()};
     c.geometry = std::move(geometry);c.laneBlend.clear();
 }
+void resampleConnectorPoints(ProjectDocument& d, const std::string& id, int count) {
+    if(count<0 || count>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
+    auto& c = editableConnector(d, id);
+    if(static_cast<int>(c.geometry.size())-2==count)return;
+    const auto road=connectorRoad(d.network,c);
+    const double length=polylineLength(road);
+    if(!std::isfinite(length) || length<=0)throw std::invalid_argument("INVALID_GEOMETRY");
+    std::vector<Point> geometry{c.geometry.front()};
+    for(int i=1;i<=count;++i)geometry.push_back(pointAlong(road,length*i/(count+1)));
+    geometry.push_back(c.geometry.back());
+    // The shape is only re-laid, never re-derived: a Connector the author has bent by hand keeps
+    // its bend when the count goes up and gives up only the detail the lower count cannot hold.
+    c.geometry=std::move(geometry);c.laneBlend.clear();
+}
 void deleteConnector(ProjectDocument& d, const std::string& id) {
     const auto c=editableConnector(d,id);std::set<std::string> paths;
     for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)paths.insert(connectorPathId(c,i));

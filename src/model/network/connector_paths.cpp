@@ -80,7 +80,10 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
             }
             shape.front()=start;shape.back()=end;
         }
-        result.push_back({connectorPathId(c,i),from[a],to[b],std::move(shape)});
+        // The author's points are shifted; the road is sampled from them. Everything downstream
+        // -- boundaries, markings, the compiled segment length -- reads the road, so there is
+        // exactly one place a control polygon becomes a Connector.
+        result.push_back({connectorPathId(c,i),from[a],to[b],connectorRoad(n,c,shape)});
     }
     return result;
 }

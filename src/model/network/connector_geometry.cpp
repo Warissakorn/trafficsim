@@ -57,36 +57,43 @@ void reanchorConnector(const Network& network,Connector& c) {
         throw std::invalid_argument("INVALID_GEOMETRY");
     c.geometry.front()=from;c.geometry.back()=to;
 }
-std::vector<Point> connectorCurve(const Network& network, const LaneReference& from, const LaneReference& to) {
-    const auto resolve = [&](const LaneReference& ref) {
-        for (const auto& link : network.links) if (link.id == ref.linkId)
-            return laneGeometry(link, ref.laneId, network.drivingSide);
-        throw std::invalid_argument("UNKNOWN_LANE");
-    };
-    const auto source = resolve(from), target = resolve(to);
-    if (source.size() < 2 || target.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
+namespace {
+// The travel direction of a lane at the station a Connector attaches to it.
+Point endDirection(const Network& network,const LaneReference& ref,bool outgoing) {
+    for(const auto& link:network.links)if(link.id==ref.linkId) {
+        const auto lane=laneGeometry(link,ref.laneId,network.drivingSide);
+        if(lane.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+        const double length=polylineLength(lane);
+        const double station=matchedStation(link.geometry,lane,attachmentStation(network,ref,outgoing));
+        const auto a=pointAlong(lane,std::max(0.,station-0.01)),b=pointAlong(lane,std::min(length,station+0.01));
+        const double dx=b.x-a.x,dy=b.y-a.y,span=std::hypot(dx,dy);
+        if(!std::isfinite(span) || span<=0)throw std::invalid_argument("INVALID_GEOMETRY");
+        return {dx/span,dy/span};
+    }
+    throw std::invalid_argument("UNKNOWN_LANE");
+}
+}
+std::pair<Point,Point> connectorTangents(const Network& network,const LaneReference& from,const LaneReference& to) {
+    return {endDirection(network,from,true),endDirection(network,to,false)};
+}
+std::vector<Point> connectorRoad(const Network& network,const Connector& c,const std::vector<Point>& points,
+                                 std::vector<std::size_t>* authorIndices) {
+    const auto [entry,exit]=connectorTangents(network,c.from,c.to);
+    return connectorSpline(points,entry,exit,authorIndices);
+}
+std::vector<Point> connectorRoad(const Network& network,const Connector& c,std::vector<std::size_t>* authorIndices) {
+    return connectorRoad(network,c,c.geometry,authorIndices);
+}
+std::vector<Point> connectorCurve(const Network& network, const LaneReference& from, const LaneReference& to,
+                                  int intermediatePoints) {
+    if(intermediatePoints<0 || intermediatePoints>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
     const auto a = laneAttachment(network,from,true), b = laneAttachment(network,to,false);
     const double gap = std::hypot(b.x-a.x, b.y-a.y);
     if (!std::isfinite(gap) || gap < 1e-6) throw std::invalid_argument("EDIT_CONNECTOR_GAP");
-    const auto unit = [](Point previous, Point next) {
-        const double dx = next.x-previous.x, dy = next.y-previous.y, length = std::hypot(dx, dy);
-        if (!std::isfinite(length) || length <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
-        return Point{dx/length, dy/length};
-    };
+    const auto [entry,exit]=connectorTangents(network,from,to);
     const auto control = [&](Point origin, Point direction, double reach, double sign) {
         return Point{origin.x + sign*direction.x*reach, origin.y + sign*direction.y*reach};
     };
-    const auto direction = [&](const std::vector<Point>& geometry,const LaneReference& ref,bool outgoing) {
-        const double length=polylineLength(geometry);
-        double station=length;
-        for(const auto& link:network.links)if(link.id==ref.linkId)
-            station=matchedStation(link.geometry,geometry,attachmentStation(network,ref,outgoing));
-        return std::pair{pointAlong(geometry,std::max(0.,station-0.01)),
-                         pointAlong(geometry,std::min(length,station+0.01))};
-    };
-    const auto [s0,s1]=direction(source,from,true);
-    const auto [t0,t1]=direction(target,to,false);
-    const auto entry=unit(s0,s1), exit=unit(t0,t1);
     // Reach each control point the way a circular arc would, reading each end on its own: for a
     // tangent that leaves the chord at alpha, the cubic approximating that arc uses
     // (2/3)*gap*tan(alpha/2)/sin(alpha). It tends to gap/3 as alpha tends to 0, the constant this
@@ -103,13 +110,17 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     };
     const auto c1 = control(a, entry, reach(entry), 1);
     const auto c2 = control(b, exit, reach(exit), -1);
+    // Only the author's points are stored. The road between them is connectorSpline's, and it
+    // is clamped to the same two tangents, so a default Connector is the arc it always was.
+    const int spans=intermediatePoints+1;
     std::vector<Point> points{a};
-    for (int i = 1; i < 12; ++i) {
-        const double t = i/12.0, s = 1-t;
+    for (int i = 1; i < spans; ++i) {
+        const double t = static_cast<double>(i)/spans, s = 1-t;
         points.push_back({s*s*s*a.x + 3*s*s*t*c1.x + 3*s*t*t*c2.x + t*t*t*b.x,
                           s*s*s*a.y + 3*s*s*t*c1.y + 3*s*t*t*c2.y + t*t*t*b.y});
     }
     points.push_back(b);
     return points;
 }
+
 }

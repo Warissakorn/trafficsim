@@ -9,6 +9,9 @@ namespace trafficsim {
 namespace {
 // Longest miter, as a multiple of the offset, before a hairpin is cut back.
 constexpr double kMiterLimit=4;
+// Samples per span of a Connector's control polygon. Enough that the mitered offset reads a
+// smooth road rather than a chain of corners, without storing a point the author never placed.
+constexpr int kSplineSamples=8;
 }
 std::string signalSegment(const NetworkSignalHead& head) {
     return head.connectorId.empty()?head.lane.laneId:head.connectorId;
@@ -153,5 +156,47 @@ std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,const std::
         points.push_back({p.x+miter.x*offsets[i],p.y+miter.y*offsets[i]});
     }
     return points;
+}
+std::vector<Point> connectorSpline(const std::vector<Point>& points,Point entryTangent,Point exitTangent,
+                                   std::vector<std::size_t>* authorIndices) {
+    if(points.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+    if(authorIndices)authorIndices->clear();
+    // A straightened Connector is two points and a straight road. Sampling it would only add
+    // collinear points, so it comes back exactly as the author left it.
+    if(points.size()==2) {
+        if(authorIndices)*authorIndices={0,1};
+        return points;
+    }
+    const std::size_t spans=points.size()-1;
+    // A Catmull-Rom tangent at an interior point, and the given lane direction at each end.
+    // Scaling the end tangents by the span they serve is what makes them comparable with the
+    // interior ones: a Hermite tangent is a derivative, not a direction.
+    std::vector<Point> tangents(points.size());
+    for(std::size_t i=0;i<points.size();++i) {
+        if(i==0 || i+1==points.size()) {
+            const auto a=i==0?points[0]:points[points.size()-2],b=i==0?points[1]:points.back();
+            const double span=std::hypot(b.x-a.x,b.y-a.y);
+            const auto direction=i==0?entryTangent:exitTangent;
+            const double length=std::hypot(direction.x,direction.y);
+            tangents[i]=length>1e-12?Point{direction.x/length*span,direction.y/length*span}
+                                    :Point{b.x-a.x,b.y-a.y};
+        } else tangents[i]={(points[i+1].x-points[i-1].x)/2,(points[i+1].y-points[i-1].y)/2};
+    }
+    std::vector<Point> result;
+    for(std::size_t i=0;i<spans;++i) {
+        if(authorIndices)authorIndices->push_back(result.size());
+        const auto p0=points[i],p1=points[i+1],m0=tangents[i],m1=tangents[i+1];
+        for(int k=0;k<kSplineSamples;++k) {
+            const double t=static_cast<double>(k)/kSplineSamples,t2=t*t,t3=t2*t;
+            const double h00=2*t3-3*t2+1,h10=t3-2*t2+t,h01=-2*t3+3*t2,h11=t3-t2;
+            result.push_back({h00*p0.x+h10*m0.x+h01*p1.x+h11*m1.x,
+                              h00*p0.y+h10*m0.y+h01*p1.y+h11*m1.y});
+        }
+    }
+    if(authorIndices)authorIndices->push_back(result.size());
+    result.push_back(points.back());
+    for(const auto& p:result)if(!std::isfinite(p.x) || !std::isfinite(p.y))
+        throw std::invalid_argument("INVALID_GEOMETRY");
+    return result;
 }
 }

@@ -31,6 +31,16 @@ QWidget* EditorWindow::buildConnectorInspector() {
     connectorFromCount_=new QSpinBox(page);connectorToCount_=new QSpinBox(page);
     connectorFromCount_->setRange(1,12);connectorToCount_->setRange(1,12);
     label(form,"editorFromLaneCount",connectorFromCount_);label(form,"editorToLaneCount",connectorToCount_);
+    // Vissim's Intermediate points: how many poly points shape the curve between the two
+    // attachments. Changing it re-lays the Connector's own road, so a shape the author has bent
+    // survives the change instead of snapping back to the default curve.
+    connectorPoints_=new QSpinBox(page);connectorPoints_->setObjectName("editorConnectorPoints");
+    connectorPoints_->setRange(0,40);label(form,"editorConnectorPoints",connectorPoints_);
+    connect(connectorPoints_,&QSpinBox::valueChanged,this,[this](int count){
+        if(!canvas_->selectedConnector() || static_cast<int>(canvas_->selectedConnector()->geometry.size())-2==count)return;
+        const auto id=canvas_->selected();
+        execute("editorConnectorPoints",[&](auto& d){resampleConnectorPoints(d,id,count);});
+    });
     connectorFromPosition_=new QDoubleSpinBox(page);connectorToPosition_=new QDoubleSpinBox(page);
     // Metres from the link's start, like Vissim's Pos. The maximum is per link, so it is set
     // by refreshConnectorRanges alongside the lane-count maxima.
@@ -133,19 +143,24 @@ void EditorWindow::refreshConnector() {
     }
     for (const auto* key : {"editorApplyConnector","editorResetCurve","editorStraightConnector","editorDeleteConnector"})
         actions_.at(key)->setEnabled(connector);
+    connectorPoints_->setEnabled(connector!=nullptr);
     actions_.at("editorCreateConnector")->setEnabled(connectorFrom_->count()>1);
     if(connector){
         refreshConnectorRanges();
         connectorFromPosition_->setValue(attachmentStation(history_.document().network,connector->from,true));
         connectorToPosition_->setValue(attachmentStation(history_.document().network,connector->to,false));
-        connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);}
+        connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);
+        const QSignalBlocker block(connectorPoints_);
+        connectorPoints_->setValue(static_cast<int>(connector->geometry.size())-2);}
     // These boxes double as the creation form. Leaving a selected connector's counts behind
     // would make the next Create connector inherit a width the new gesture never asked for.
     else {connectorFromCount_->setValue(1);connectorToCount_->setValue(1);}
     if (connector) {
         // Say how many lanes each end carries. A connector that drops or gains lanes is legal
         // to author, and seeing 3 -> 2 on the canvas is how the author notices it is a merge.
-        selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2)+"   "+
+        // The length of the road, as Vissim's dialog reports it -- never of the control polygon,
+        // which cuts every corner the curve goes round.
+        selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connectorRoad(history_.document().network,*connector)),0,'f',2)+"   "+
             text("editorConnectorLanes").arg(connector->fromLaneCount).arg(connector->toLaneCount));
     }
     connectorHint();

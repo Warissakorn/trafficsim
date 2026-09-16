@@ -259,6 +259,7 @@
   "editorToggleBackground": "ภาพพื้นหลัง (Ctrl+B)",
   "editorDuplicate": "ทำสำเนาวัตถุที่เลือก",
   "editorFromLaneCount": "จำนวนเลนต้นทาง (fromLaneCount)",
+  "editorConnectorPoints": "จุดกลาง (Intermediate points)",
   "editorToLaneCount": "จำนวนเลนปลายทาง (toLaneCount)",
   "editorLinkData": "ข้อมูลลิงก์",
   "editorGestureHelp": "Ctrl + ลากขวา: สร้าง Link หรือ Connector โหมดเลือก (S): ลากจุดสีส้มได้ทั้งสองด้านเพื่อเพิ่ม/ลดเลน โดยขอบฝั่งตรงข้ามอยู่ที่เดิม Ctrl + คลิก: เลือกเพิ่ม Ctrl + ลากวัตถุที่เลือก: ทำสำเนา Delete: ลบวัตถุ Ctrl + Delete: ลบจุด",

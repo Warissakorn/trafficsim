@@ -259,6 +259,7 @@
   "editorToggleBackground": "Background image (Ctrl+B)",
   "editorDuplicate": "Duplicate selection",
   "editorFromLaneCount": "Source lane count (fromLaneCount)",
+  "editorConnectorPoints": "Intermediate points",
   "editorToLaneCount": "Target lane count (toLaneCount)",
   "editorLinkData": "Link Data",
   "editorGestureHelp": "Ctrl + right-drag: create Link or Connector. Select (S): orange handles on either side add/remove lanes while the opposite edge stays fixed. Ctrl + click: add to selection. Ctrl + drag selected objects: duplicate. Delete: objects. Ctrl + Delete: vertex.",
