@@ -39,6 +39,11 @@ Point endCross(const Network& n,const LaneReference& ref,int count,bool outgoing
     }
     throw std::invalid_argument("UNKNOWN_LANE");
 }
+double wrap(double angle) {
+    while(angle>std::numbers::pi)angle-=2*std::numbers::pi;
+    while(angle<-std::numbers::pi)angle+=2*std::numbers::pi;
+    return angle;
+}
 double laneWidthOf(const Network& n,const LaneReference& ref) {
     for(const auto& l:n.links)if(l.id==ref.linkId)
         for(const auto& lane:l.lanes)if(lane.id==ref.laneId)return lane.width;
@@ -58,31 +63,36 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
         target[i]=i && paths[i].to.laneId==paths[i-1].to.laneId?0:laneWidthOf(n,paths[i].to);
     }
     const auto from=endCross(n,c.from,c.fromLaneCount,true),to=endCross(n,c.to,c.toLaneCount,false);
-    // Turn the cross-section from one mouth to the other rather than averaging the two vectors:
-    // on a U-turn they are opposite, and their average is nothing at all.
-    const double a0=std::atan2(from.y,from.x);
-    double sweep=std::atan2(to.y,to.x)-a0;
-    while(sweep>std::numbers::pi)sweep-=2*std::numbers::pi;
-    while(sweep<-std::numbers::pi)sweep+=2*std::numbers::pi;
-    if(std::abs(std::abs(sweep)-std::numbers::pi)<1e-9) {
-        // Half a turn either way lands on the same line, so take the way the road itself turns.
-        const auto& g=paths.front().geometry;
-        const double sx=g[1].x-g.front().x,sy=g[1].y-g.front().y;
-        const double ex=g.back().x-g[g.size()-2].x,ey=g.back().y-g[g.size()-2].y;
-        sweep=std::copysign(std::numbers::pi,sx*ey-sy*ex==0?sweep:sx*ey-sy*ex);
-    }
     // Hang the cross-section on the last lane that is a real lane at both ends, and step out from
     // there in both directions. A lane added at the leading edge then cannot move the far edge,
     // and a lane that tapers is placed against its neighbour rather than on its own driving line,
     // which converges onto the lane it merges into and is no longer where that lane's edge is.
     std::size_t anchorLane=0;
     for(std::size_t i=0;i<count;++i)if(source[i]>0 && target[i]>0)anchorLane=i;
+    // Square to the road, not to the line between the mouths. Interpolating the two mouths'
+    // cross-sections ignores where the Connector is actually pointing: on a reverse curve they are
+    // parallel, so the cross-section never turned while the path swung away from it, and the lane
+    // was drawn its own width times the cosine of that angle -- 1.06 m of a 3.50 m lane on a tight
+    // one. Take the anchor path's own normal instead, carried continuously along the curve, and
+    // correct it onto the mouths at the two ends.
+    const auto& spine=paths[anchorLane].geometry;
+    std::vector<double> normal(spine.size());
+    for(std::size_t j=0;j<spine.size();++j) {
+        const auto a=spine[j?j-1:0],b=spine[std::min(j+1,spine.size()-1)];
+        normal[j]=std::atan2(b.y-a.y,b.x-a.x)+std::numbers::pi/2;
+    }
+    // Only the continuity of these two corrections matters, not which way the normal happens to
+    // point: they are angles modulo a full turn, and lane order comes from the mouths. The second
+    // is therefore unwrapped against the first and never chosen on its own -- taken separately the
+    // two can pick opposite ways round the circle and fold the ribbon flat in the middle.
+    const double d0=wrap(std::atan2(from.y,from.x)-normal.front());
+    const double d1=d0+wrap(std::atan2(to.y,to.x)-normal.back()-d0);
     std::vector<std::vector<Point>> result(count+1);
-    for(std::size_t j=0;j<paths.front().geometry.size();++j) {
-        const double t=weights[j],angle=a0+sweep*t;
+    for(std::size_t j=0;j<spine.size();++j) {
+        const double t=weights[j],angle=normal[j]+d0+(d1-d0)*t;
         const Point across{std::cos(angle),std::sin(angle)};
         const auto width=[&](std::size_t i){return source[i]+(target[i]-source[i])*t;};
-        const auto anchor=paths[anchorLane].geometry[j];
+        const auto anchor=spine[j];
         std::vector<Point> edges(count+1);
         edges[anchorLane]={anchor.x-across.x*width(anchorLane)/2,anchor.y-across.y*width(anchorLane)/2};
         for(std::size_t i=anchorLane;i-->0;)

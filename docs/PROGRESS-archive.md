@@ -8,6 +8,55 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-16 — M1.13: attachment stations in metres
+
+`LaneReference::fraction` became `station`: metres along the link's reference polyline, as
+Vissim stores a position. A fraction of lane arclength slid every interior attachment whenever
+a Link was stretched, and with it the lane-section lengths M1.11.1 has to measure.
+
+`matchedStation(from,to,station)` is the one place the mapping lives. Polylines derived from a
+common reference share a vertex for vertex correspondence, because `offsetGeometry` emits one
+point per input point, so a station on one names a cross-section on the other. `laneAttachment`,
+`edgeAt`, the curve tangents, the canvas pick, the lane tabs and `dropLane` all go through it.
+One station therefore names one cross-section, and a three-lane range meets a curved Link on a
+straight mouth spaced exactly as its lane widths, instead of fanning with the per-lane
+arclength difference.
+
+The reference is `link.geometry`, not the bundle centreline: `replaceLaneBundle` absorbs lane
+edits into `laneOffset` and leaves the reference untouched, so adding or removing lanes cannot
+move an attachment. Only a geometry edit or a split can, and both are handled: shortening a
+Link past an attachment clamps it to the new end inside `reanchorConnector` — the one function
+every such edit already routes through — rather than rejecting the Link edit. Signal heads keep
+their older contract, where validation rejects the edit instead; the asymmetry is documented.
+
+`splitLink` lost its `stationOfClosestPoint` round trip entirely. The stored value is already a
+station on the link being cut, so the continuity guard compares directly, the upstream child
+keeps its stations because its polyline is a prefix, and downstream stations shift by the cut.
+
+Schema 5 stores `station`. Migration is version-dispatched, not presence-based: `parseNetwork`
+takes the schema version, reads `station` at 5 and `fraction` below it, rejects the wrong key
+for the version, and converts once the links exist. That trap was the whole risk — reading a
+schema 4 `"fraction": 0.4` as 0.4 metres would silently move every attachment in every old
+file. Pre-schema M0 scenarios go through the same path from `loadScenario`.
+
+Properties shows `from.station (m)` / `to.station (m)`, bounded by the link's length, with the
+unchanged-Apply guard now comparing at the widget's decimals. Locale text in both languages
+follows; parameter names stay untranslated.
+
+Coverage: stretching a Link leaves the station and the world point unchanged, and so does a
+lane-count edit (this fails on fractions, which is the point); shortening clamps and stays
+valid; a range meets a curved Link on one collinear cross-section spaced by its lane widths; a
+genuine schema 4 document — geometry untouched, position rewritten as the lane fraction an
+older build stored — migrates to the same world point, and a mismatched key for the version is
+rejected both ways. Removing the clamp and the version dispatch in turn makes those tests fail.
+All 23 CTest suites and the file-size and architecture guards passed; the four TS baselines and
+the pinned 29.249359418430977 were untouched and not regenerated. The Thai editor screenshot
+reads 47.925 m where it used to read 59.906 %. Linux only; Windows is CI's.
+
+M1.11.1 remains open, and is now buildable on a station that does not move underneath it.
+
+---
+
 ### 2026-09-16 — Mitered bends, one-lane Connectors and the attachment-unit decision (M1.12)
 
 Three more owner findings from an annotated screenshot.

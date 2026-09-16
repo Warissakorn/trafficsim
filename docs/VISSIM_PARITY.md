@@ -422,3 +422,16 @@ follows the ranges in lane order, so re-anchoring a range moves the taper to the
 two tangents, which is zero for an S even when each end leaves the chord steeply; a measured S
 bent to 0.18 of its chord. Reading each end against the chord instead gives 0.22 there and is
 identical, to the last bit, for straight runs and symmetric turns.
+
+## 2026-09-16 third follow-up — The cross-section follows the road
+
+Review of the merged change found a regression it had introduced. The cross-section the lane widths
+are measured across was interpolated between the two mouths, which says nothing about where the
+Connector points in between: on a reverse curve the mouths are parallel, so it never turned while
+the path swung 50-60 degrees away, and the lane was drawn its own width times the cosine of that
+angle. Measured square to the road, a 3.50 m lane came out 1.06 m at its narrowest on a tight S —
+worse than the 2.90 m the pre-change code drew, and a reverse curve is one of the shapes the owner
+reported. It now takes the path's own normal, corrected onto each mouth, and measures 3.34 m there;
+symmetric shapes (quarter turn, U-turn) are unchanged, and both mouths still meet their links
+exactly. The test that was supposed to guard this measured width *along* the cross-section, which is
+the lane width by construction at any angle; it now measures square to the road as well.

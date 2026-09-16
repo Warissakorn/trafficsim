@@ -7,6 +7,51 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — The cross-section follows the road, not the line between the mouths
+
+A review pass over the change merged an hour earlier found a regression in it, measured and fixed
+here. No stored coordinate is involved either way.
+
+**What was wrong.** `connectorBoundaries` took the direction across the road as a straight
+interpolation between the two mouths' cross-sections. That says nothing about where the Connector
+actually points: on a reverse curve the mouths are parallel, so the cross-section never turned
+while the path swung 50-60 degrees away from it, and each lane was drawn its own width times the
+cosine of that angle. Measured square to the road, a 3.50 m lane on a tight S (10 m of gap, 12 m of
+offset) came out **1.06 m** at its narrowest — against **2.895 m** from the code before the rewrite,
+so the rewrite made this shape worse, and a reverse curve is one of the two shapes the owner
+reported. Symmetric shapes were unaffected: a quarter turn measured 3.492 m, a U-turn 3.500 m,
+because there the interpolation happens to track the arc.
+
+**Why the tests passed.** The width assertions measured the distance **along** the cross-section,
+which is the lane width by construction at any angle the cross-section happens to sit at. They
+could not fail. They now assert the distance square to the road as well, and a new case walks a
+reverse curve, a gentle reverse, a quarter turn and a U-turn, each pinned above what the old
+construction drew for it.
+
+**The fix.** The widths now hang on the anchor path's own normal, corrected onto each mouth by two
+end offsets, the second unwrapped against the first. On the same S that gives **3.341 m**, on the
+whole measured grid it beats both the rewrite and the code before it, the quarter turn and U-turn
+do not move, and both mouths still land on their link's lane edges to 4e-16. Taking the second
+correction on its own instead — the obvious way to write it — picks the opposite way round the
+circle and folds the ribbon flat; that is a negative check now, not a comment.
+
+Two guards written with it turned out to be provably no-ops and were removed rather than left
+unexercised: flipping the normal to match lane order, and unwrapping it sample by sample. Both are
+angles modulo a full turn, so neither can change a cosine; verified by comparing geometry on a
+270-degree loop ramp, identical to the last bit. What remains is the smallest form whose every line
+fails a test when removed.
+
+Also corrected: `trimSelfIntersections` earns its place on **Link** edges (a quarter turn of radius
+3 m crosses once), not on Connector markings — no Connector boundary self-crosses any more,
+including a three-lane U-turn at minimum radius, because they are no longer offsets of a path. The
+call there stays for hand-dragged shapes; the previous entry's wording overstated it.
+
+**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
+`native.yml`. Both remaining pieces of the construction were reverted separately and the new test
+failed each time. No baseline fixture was regenerated; none could move.
+
+---
+
 ## 2026-09-16 — A Connector carries lanes, not a ribbon that shrinks
 
 Two more owner findings on the same screenshot, both about drawn geometry. Neither touches a
@@ -97,53 +142,6 @@ connector surface fills by winding. Reverting the trim and the arc reach in turn
 tests fail. All 23 CTest suites and both guards passed, the four TS baselines and the pinned
 29.249359418430977 untouched and not regenerated. Linux only; Windows is CI's.
 
-## 2026-09-16 — M1.13: attachment stations in metres
-
-`LaneReference::fraction` became `station`: metres along the link's reference polyline, as
-Vissim stores a position. A fraction of lane arclength slid every interior attachment whenever
-a Link was stretched, and with it the lane-section lengths M1.11.1 has to measure.
-
-`matchedStation(from,to,station)` is the one place the mapping lives. Polylines derived from a
-common reference share a vertex for vertex correspondence, because `offsetGeometry` emits one
-point per input point, so a station on one names a cross-section on the other. `laneAttachment`,
-`edgeAt`, the curve tangents, the canvas pick, the lane tabs and `dropLane` all go through it.
-One station therefore names one cross-section, and a three-lane range meets a curved Link on a
-straight mouth spaced exactly as its lane widths, instead of fanning with the per-lane
-arclength difference.
-
-The reference is `link.geometry`, not the bundle centreline: `replaceLaneBundle` absorbs lane
-edits into `laneOffset` and leaves the reference untouched, so adding or removing lanes cannot
-move an attachment. Only a geometry edit or a split can, and both are handled: shortening a
-Link past an attachment clamps it to the new end inside `reanchorConnector` — the one function
-every such edit already routes through — rather than rejecting the Link edit. Signal heads keep
-their older contract, where validation rejects the edit instead; the asymmetry is documented.
-
-`splitLink` lost its `stationOfClosestPoint` round trip entirely. The stored value is already a
-station on the link being cut, so the continuity guard compares directly, the upstream child
-keeps its stations because its polyline is a prefix, and downstream stations shift by the cut.
-
-Schema 5 stores `station`. Migration is version-dispatched, not presence-based: `parseNetwork`
-takes the schema version, reads `station` at 5 and `fraction` below it, rejects the wrong key
-for the version, and converts once the links exist. That trap was the whole risk — reading a
-schema 4 `"fraction": 0.4` as 0.4 metres would silently move every attachment in every old
-file. Pre-schema M0 scenarios go through the same path from `loadScenario`.
-
-Properties shows `from.station (m)` / `to.station (m)`, bounded by the link's length, with the
-unchanged-Apply guard now comparing at the widget's decimals. Locale text in both languages
-follows; parameter names stay untranslated.
-
-Coverage: stretching a Link leaves the station and the world point unchanged, and so does a
-lane-count edit (this fails on fractions, which is the point); shortening clamps and stays
-valid; a range meets a curved Link on one collinear cross-section spaced by its lane widths; a
-genuine schema 4 document — geometry untouched, position rewritten as the lane fraction an
-older build stored — migrates to the same world point, and a mismatched key for the version is
-rejected both ways. Removing the clamp and the version dispatch in turn makes those tests fail.
-All 23 CTest suites and the file-size and architecture guards passed; the four TS baselines and
-the pinned 29.249359418430977 were untouched and not regenerated. The Thai editor screenshot
-reads 47.925 m where it used to read 59.906 %. Linux only; Windows is CI's.
-
-M1.11.1 remains open, and is now buildable on a station that does not move underneath it.
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -157,7 +155,8 @@ drawn when you stretch its Link, that shortening a Link clamps rather than refus
 project saved by an older build opens with its Connectors in the same places. Check a U-turn Connector draws as one clean ribbon and that no dashed line
 runs down a single-lane stretch. Check a Connector between ends with different lane counts: the
 lane that continues should hold its width while the extra one closes as a taper, and the divider
-should arrive on the edge of the merged lane, never in the middle of it. **Next after the review: M1.11.1**, which can now split a lane
+should arrive on the edge of the merged lane, never in the middle of it. Check a reverse-curve
+Connector holds its width through the bend rather than pinching in the middle. **Next after the review: M1.11.1**, which can now split a lane
 at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.
