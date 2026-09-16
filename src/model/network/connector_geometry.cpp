@@ -4,14 +4,29 @@
 #include <stdexcept>
 
 namespace trafficsim {
+double attachmentStation(const Network& network,const LaneReference& ref,bool outgoing) {
+    for(const auto& link:network.links)if(link.id==ref.linkId) {
+        const double reference=polylineLength(link.geometry);
+        if(!ref.station)return outgoing?reference:0.;
+        if(!std::isfinite(*ref.station) || *ref.station<0 || *ref.station>reference)
+            throw std::invalid_argument("EDIT_CONNECTOR_POSITION");
+        return *ref.station;
+    }
+    throw std::invalid_argument("UNKNOWN_LANE");
+}
+bool attachedAtLinkEnd(const Network& network,const LaneReference& ref,bool outgoing) {
+    for(const auto& link:network.links)if(link.id==ref.linkId)
+        return !ref.station || *ref.station==(outgoing?polylineLength(link.geometry):0.);
+    return false;
+}
 Point laneAttachment(const Network& network, const LaneReference& ref, bool outgoing) {
-    const double fraction=ref.fraction.value_or(outgoing?1.:0.);
-    if(!std::isfinite(fraction) || fraction<0 || fraction>1)throw std::invalid_argument("EDIT_CONNECTOR_POSITION");
+    const double station=attachmentStation(network,ref,outgoing);
     for(const auto& link:network.links)if(link.id==ref.linkId) {
         const auto geometry=laneGeometry(link,ref.laneId,network.drivingSide);
-        if(fraction==0)return geometry.front();
-        if(fraction==1)return geometry.back();
-        return pointAlong(geometry,fraction*polylineLength(geometry));
+        // The ends are exact: station 0 and the reference length map to the lane's own ends.
+        if(station<=0)return geometry.front();
+        if(station>=polylineLength(link.geometry))return geometry.back();
+        return pointAlong(geometry,matchedStation(link.geometry,geometry,station));
     }
     throw std::invalid_argument("UNKNOWN_LANE");
 }
@@ -28,6 +43,14 @@ int lanesFromReference(const Network& network,const LaneReference& ref) {
 // blend relative to the current geometry cannot do this — it composes, so a round trip
 // through two edits silently deformed hand-tuned curves.
 void reanchorConnector(const Network& network,Connector& c) {
+    // A link can be shortened past an attachment. Clamp rather than reject the link edit: the
+    // Connector survives at the new end, which is where the author can see and move it.
+    const auto clamp=[&](LaneReference& ref) {
+        if(!ref.station)return;
+        for(const auto& link:network.links)if(link.id==ref.linkId)
+            ref.station=std::clamp(*ref.station,0.,polylineLength(link.geometry));
+    };
+    clamp(c.from);clamp(c.to);
     const auto from=laneAttachment(network,c.from,true), to=laneAttachment(network,c.to,false);
     if(c.geometry.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
     const auto old=c.geometry;
@@ -59,13 +82,16 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
         if (!std::isfinite(length) || length <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
         return Point{origin.x + sign*dx/length*gap/3, origin.y + sign*dy/length*gap/3};
     };
-    const auto direction = [](const std::vector<Point>& geometry,double fraction) {
-        const double length=polylineLength(geometry), station=fraction*length;
+    const auto direction = [&](const std::vector<Point>& geometry,const LaneReference& ref,bool outgoing) {
+        const double length=polylineLength(geometry);
+        double station=length;
+        for(const auto& link:network.links)if(link.id==ref.linkId)
+            station=matchedStation(link.geometry,geometry,attachmentStation(network,ref,outgoing));
         return std::pair{pointAlong(geometry,std::max(0.,station-0.01)),
                          pointAlong(geometry,std::min(length,station+0.01))};
     };
-    const auto [s0,s1]=direction(source,from.fraction.value_or(1.));
-    const auto [t0,t1]=direction(target,to.fraction.value_or(0.));
+    const auto [s0,s1]=direction(source,from,true);
+    const auto [t0,t1]=direction(target,to,false);
     const auto c1 = control(a, s0, s1, 1);
     const auto c2 = control(b, t0, t1, -1);
     std::vector<Point> points{a};

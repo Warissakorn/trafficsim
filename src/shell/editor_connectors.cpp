@@ -32,19 +32,27 @@ QWidget* EditorWindow::buildConnectorInspector() {
     connectorFromCount_->setRange(1,12);connectorToCount_->setRange(1,12);
     label(form,"editorFromLaneCount",connectorFromCount_);label(form,"editorToLaneCount",connectorToCount_);
     connectorFromPosition_=new QDoubleSpinBox(page);connectorToPosition_=new QDoubleSpinBox(page);
-    for(auto* position:{connectorFromPosition_,connectorToPosition_}){position->setRange(0,100);position->setDecimals(6);position->setSuffix(" %");}
-    connectorFromPosition_->setValue(100);
+    // Metres from the link's start, like Vissim's Pos. The maximum is per link, so it is set
+    // by refreshConnectorRanges alongside the lane-count maxima.
+    for(auto* position:{connectorFromPosition_,connectorToPosition_}){position->setRange(0,1e6);position->setDecimals(3);position->setSuffix(" m");}
     label(form,"editorFromPosition",connectorFromPosition_);label(form,"editorToPosition",connectorToPosition_);
     connect(connectorFrom_,&QComboBox::currentIndexChanged,this,[this]{refreshConnectorRanges();});
     connect(connectorTo_,&QComboBox::currentIndexChanged,this,[this]{refreshConnectorRanges();});
     const auto positioned=[this](bool outgoing) {
         auto ref=reference(outgoing?connectorFrom_:connectorTo_);
-        const double percent=(outgoing?connectorFromPosition_:connectorToPosition_)->value();
+        const auto& network=history_.document().network;
+        const double metres=(outgoing?connectorFromPosition_:connectorToPosition_)->value();
+        double reference=0;
+        for(const auto& l:network.links)if(l.id==ref.linkId)reference=polylineLength(l.geometry);
         if(const auto* c=canvas_->selectedConnector()) {
             const auto& old=outgoing?c->from:c->to;
-            if(std::round(old.fraction.value_or(outgoing?1.:0.)*1e8)/1e6==percent){ref.fraction=old.fraction;return ref;}
+            // An untouched Apply must not rewrite a stored value through the widget's decimals.
+            if(old.linkId==ref.linkId && old.laneId==ref.laneId &&
+               std::round(attachmentStation(network,old,outgoing)*1e3)/1e3==metres) {
+                ref.station=old.station;return ref;
+            }
         }
-        if(percent!=(outgoing?100.:0.))ref.fraction=percent/100.;
+        if(metres!=(outgoing?reference:0.))ref.station=metres;
         return ref;
     };
     connect(connectorObject_,&QComboBox::currentIndexChanged,this,[this]{
@@ -92,11 +100,17 @@ void EditorWindow::addConnection(const LaneReference& from,const LaneReference& 
     if (execute("editorCreateConnector",[&](auto& d){id=addConnectorRange(d,from,to,count(from,connectorFromCount_->value()),count(to,connectorToCount_->value()));})) canvas_->select(id);
 }
 void EditorWindow::refreshConnectorRanges() {
-    for(auto pair:{std::pair{connectorFrom_,connectorFromCount_},std::pair{connectorTo_,connectorToCount_}}) {
-        int available=1;
+    for(auto trio:{std::tuple{connectorFrom_,connectorFromCount_,connectorFromPosition_},
+                   std::tuple{connectorTo_,connectorToCount_,connectorToPosition_}}) {
+        const auto& [box,count,position]=trio;
+        int available=1;double reference=0;
         for(const auto& l:history_.document().network.links)for(std::size_t i=0;i<l.lanes.size();++i)
-            if(QString::fromStdString(l.lanes[i].id)==pair.first->currentData().toString())available=static_cast<int>(l.lanes.size()-i);
-        pair.second->setMaximum(available);
+            if(QString::fromStdString(l.lanes[i].id)==box->currentData().toString()) {
+                available=static_cast<int>(l.lanes.size()-i);reference=polylineLength(l.geometry);
+            }
+        count->setMaximum(available);
+        // A station cannot name a place the link does not reach.
+        position->setMaximum(reference>0?reference:1e6);
     }
 }
 void EditorWindow::refreshConnector() {
@@ -121,9 +135,9 @@ void EditorWindow::refreshConnector() {
         actions_.at(key)->setEnabled(connector);
     actions_.at("editorCreateConnector")->setEnabled(connectorFrom_->count()>1);
     if(connector){
-        connectorFromPosition_->setValue(connector->from.fraction.value_or(1.)*100);
-        connectorToPosition_->setValue(connector->to.fraction.value_or(0.)*100);
         refreshConnectorRanges();
+        connectorFromPosition_->setValue(attachmentStation(history_.document().network,connector->from,true));
+        connectorToPosition_->setValue(attachmentStation(history_.document().network,connector->to,false));
         connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);}
     // These boxes double as the creation form. Leaving a selected connector's counts behind
     // would make the next Create connector inherit a width the new gesture never asked for.

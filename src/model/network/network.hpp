@@ -12,8 +12,11 @@ struct Link {
 };
 struct LaneReference {
     std::string linkId, laneId;
-    // Fraction of lane arclength. Absent means the legacy source end / target start.
-    std::optional<double> fraction{};
+    // Distance in metres along the link's reference polyline, as Vissim stores a position.
+    // One station names one cross-section, so every lane of a range attaches square on a
+    // curve, and stretching a link no longer slides what is attached part-way along it.
+    // Absent means the source end / target start, whatever the link's length becomes.
+    std::optional<double> station{};
     bool operator==(const LaneReference&) const = default;
 };
 struct Connector {
@@ -55,6 +58,11 @@ std::vector<Point> offsetGeometry(const std::vector<Point>&, double offset);
 // Grips, labels and direction markers belong here, never on the reference polyline, which
 // sits at an arbitrary edge once lanes have been added to one side.
 std::vector<Point> linkCentreline(const Link&, DrivingSide);
+// Polylines derived from one reference share a vertex for vertex correspondence, because
+// offsetGeometry emits one point per input point. A station on one therefore names a
+// cross-section on the other: this is what keeps the mouth of a multi-lane Connector square
+// on a curve, where the outer lane is the longer one. Stations outside `from` are clamped.
+double matchedStation(const std::vector<Point>& from, const std::vector<Point>& to, double station);
 void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
 std::vector<double> connectorBlendWeights(const Connector&);
 void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
@@ -68,6 +76,11 @@ int lanesFromReference(const Network&, const LaneReference&);
 // similarity transform that maps the old endpoint chord onto the new one.
 void reanchorConnector(const Network&, Connector&);
 Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
+// The station a reference resolves to, filling in the end/start its absent value means.
+double attachmentStation(const Network&, const LaneReference&, bool outgoing);
+// True when this end sits exactly at the start or the end of its link, which is the only
+// case the M0 whole-lane runtime can traverse.
+bool attachedAtLinkEnd(const Network&, const LaneReference&, bool outgoing);
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // A sampled cubic between lane attachments, aligned with their local travel directions.
 // The returned polyline is the editable/persisted geometry; no second curve is stored.

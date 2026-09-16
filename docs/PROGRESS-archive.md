@@ -8,6 +8,52 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-15 — Ctrl-right release, body attachments and lane side handles
+
+The owner reported a disappearing Ctrl+right-drag preview, endpoint-only Connectors,
+and missing direct lane-count manipulation. The Select tool entered creation preview
+but its release branch only supported Draw and Connect; release also trusted the last
+mouse-move event. Select/Links now infer Link creation from empty space and Connector
+creation from a lane, and commit the actual release position regardless of released Ctrl.
+Esc, tool changes and dialog Cancel discard the gesture. Invalid targets report an error.
+
+`LaneReference::fraction` stores an optional normalized lane-arclength attachment.
+Missing values retain source-end/target-start semantics. Schema 3 persists positions and
+rejects older readers; schemas 1/2 and bare M0 networks remain readable. Curve tangents,
+reanchoring, per-lane paths, validation, duplication and split remapping use the same
+attachment semantics. Distinct station pairs on the same lanes may own distinct
+Connectors; duplicate pairs at the same stations remain rejected. A split through an
+attachment within its 0.2 m continuity span is rejected before mutation.
+
+Selected Connectors expose orange source/target side handles from one lane onwards.
+The middle handle sets both ranges to the same count. Selected Links have a side handle
+that adds/removes lanes while retaining existing widths. Counts and geometry preview
+without changing History; one release commits one command, Esc cancels. Range limits,
+referenced-lane/Connector guards, Undo/Redo and lane IDs retain their existing contracts.
+The first lane is chosen in the dialog/Properties; the number of derived Connector paths
+remains the maximum of its two ranges, not an independent internal lane topology.
+
+Related review fixes: body picking honors visible levels; curve-handle z-order follows
+its object; the inspector preserves precise fractions on unchanged Apply and bounds
+counts by the selected lanes. Help now describes body picking, side handles and
+Ctrl+Delete, and the tables footer correctly says Shift-click for multi-selection.
+
+**Runtime boundary:** M0 still traverses whole lanes. `connectorRuntimeIssues` names and
+selects interior attachments in Diagnostics, and compile/Run rejects them with
+`UNSUPPORTED_CONNECTOR_POSITION`. Authoring and saving remain allowed. M1.11.1 books
+lane-section compilation, route/control remapping and matching vehicle rendering;
+no engine capability guard or fidelity marker was weakened to make a drawing runnable.
+
+**Validation:** Linux Qt 6.4 desktop build and all 23 CTest suites passed (including seven
+UI suites). New cases cover release without a preceding mouse-move, releasing Ctrl first,
+Select-mode creation, two-click and drag body attachments, one-lane range growth,
+independent end counts, middle/Link handles, invalid-target feedback, cancellation,
+Undo/Redo, precise inspector Apply, schema round-trip, both driving sides, duplication,
+link/width edits, splitting and runtime rejection. The existing four reference replays,
+CLI result, architecture and file-size checks pass. A rendered Thai editor screenshot
+was inspected. Local evidence is Linux only; Windows and other build presets are CI gates.
+M0/M1 owner acceptance remains open.
+
 ### 2026-09-15 — Windows packaging build broken by a Linux-only test mechanism
 
 `Package binaries` run 6 failed on `main` at 53f58e5: Windows x64, `m1-workflow`, "autosave

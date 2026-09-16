@@ -19,12 +19,13 @@ std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoin
     auto result=nearestLane(p);if(!result)return {};
     for(const auto& l:document_->network.links)if(l.id==result->linkId) {
         const auto g=laneGeometry(l,result->laneId,document_->network.drivingSide);
-        const double length=polylineLength(g),station=stationOfClosestPoint(g,p);
-        const double tolerance=4/std::abs(transform().m11());
-        double fraction=station/length;
-        if(station<tolerance)fraction=0;
-        else if(length-station<tolerance)fraction=1;
-        if(fraction!=(outgoing?1.:0.))result->fraction=fraction;
+        const double length=polylineLength(g),picked=stationOfClosestPoint(g,p);
+        const double tolerance=4/std::abs(transform().m11()),reference=polylineLength(l.geometry);
+        // The pick is on the lane; the attachment is stored on the link that lane belongs to.
+        double station=matchedStation(g,l.geometry,picked);
+        if(picked<tolerance)station=0;
+        else if(length-picked<tolerance)station=reference;
+        if(station!=(outgoing?reference:0.))result->station=station;
     }
     return result;
 }

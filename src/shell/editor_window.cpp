@@ -107,7 +107,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     };
     canvas_->connectorSourcePicked=[this](const auto& lane){
         connectorFrom_->setCurrentIndex(connectorFrom_->findData(QString::fromStdString(lane.laneId)));
-        connectorFromPosition_->setValue(lane.fraction.value_or(1.)*100);
+        connectorFromPosition_->setValue(attachmentStation(history_.document().network,lane,true));
     };
     canvas_->connectorDraftChanged=[this]{connectorHint();};
     canvas_->splitAt=[this](const auto& id,double distance){

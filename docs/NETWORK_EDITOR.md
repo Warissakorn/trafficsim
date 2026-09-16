@@ -115,10 +115,13 @@ object even when it carries several lanes.
 Both ends can attach anywhere on the **body** of their Link; endpoints remain valid.
 The two-click workflow (C) also picks positions on lane bodies. Near a lane end, picking
 snaps to that endpoint. Hidden levels cannot be picked. Properties → Connectors exposes
-actual link/lane IDs and `from.fraction` / `to.fraction` as percentages of lane arclength.
+actual link/lane IDs and `from.station` / `to.station` in metres from the Link's start, as
+Vissim stores a position. One station names one cross-section, so every lane of a range meets
+the Link square even on a curve, and the number means the same thing whichever lane is picked.
 The dialog opens at **one lane per end** — a gesture that starts on a single lane authors a
 single-lane Connector, and a wider range is raised deliberately, within the lanes each end has.
-Changing lanes preserves the selected fractions. Releasing outside a target Link reports
+Changing lanes preserves the selected stations, and so does adding or removing lanes: a
+station is measured on the reference polyline, which `laneOffset` keeps fixed. Releasing outside a target Link reports
 why nothing was created. Esc and Cancel leave the document and history unchanged.
 
 A connector stores a base polyline and source/target lane counts. Its lane paths are
@@ -180,14 +183,20 @@ into 12 spans; Make straight retains only endpoints. There are no separate persi
 Bézier handles and arbitrary edits need not remain smooth, though a reshaped curve is
 held to the same geometry rules as a link: no non-finite coordinates, no repeated
 consecutive points and a positive total length. Coincident endpoints cannot
-generate a default curve; leave a positive gap. Duplicate lane-pair connections at the same source/target fractions are
+generate a default curve; leave a positive gap. Duplicate lane-pair connections at the same source/target stations are
 rejected, including pairs already covered by another connector range. Separate stations
 on the same lane pair may own separate Connectors.
 
-Positions persist with each lane reference. Moving a Link, changing its lane widths or
-driving side reanchors the Connector at the same arclength fraction. Splitting remaps both
-source and target attachments to the appropriate child Link. A cut through an attachment
-inside the 0.2 m continuity span is rejected; move the split at least 0.1 m away.
+Positions persist with each lane reference, in metres. Moving, stretching or reshaping a Link,
+changing its lane widths, count or driving side reanchors the Connector at the **same station**,
+so it stays where it was drawn instead of sliding with the Link's length. Shortening a Link past
+an attachment clamps that attachment to the new end rather than rejecting the Link edit — the
+Connector survives where the author can see and move it. (A Signal head is not clamped: its
+position is validated against its lane, so an edit that would strand one is still rejected.)
+Splitting remaps both source and target attachments to the appropriate child Link by arithmetic
+alone — the upstream child's polyline is a prefix, so its stations are unchanged, and downstream
+stations shift by the cut. A cut through an attachment inside the 0.2 m continuity span is
+rejected; move the split at least 0.1 m away.
 
 **Runtime limit:** body attachments are authorable, editable and saveable. Run and
 Diagnostics report `UNSUPPORTED_CONNECTOR_POSITION` for non-end-to-start attachments.
@@ -299,9 +308,13 @@ without modifying the saved image.
 Save/Open uses `*.traffic.json`. Schema 3 stores format, schemaVersion, revision, nextId,
 network, optional typed definition and background/transform. It never stores a second
 editable runtime network. Schema 1 migrates with one-lane connector counts, level 0 and
-default display type while preserving IDs. Schema 1/2 references without `fraction`
-retain source-end/target-start semantics. Schema 3 makes the new attachment contract
+default display type while preserving IDs. References without a position retain
+source-end/target-start semantics at every schema. Schema 3 makes the attachment contract
 explicit so earlier applications reject these files instead of discarding positions.
+**Schema 5 stores `station` in metres**; schemas 1–4 stored `fraction` of lane arclength and
+are converted on read, at the same world position. The version decides which key is read and
+what it means — a `fraction` in a schema 5 file, or a `station` in an older one, is rejected
+rather than silently reinterpreted as the other unit.
 Unknown future versions are rejected.
 
 | File kind | M0 scenario | Editor project |

@@ -13,6 +13,10 @@ ProjectDocument roads(DrivingSide side=DrivingSide::left) {
         {"b",{{100,20},{140,20},{160,60}},{{"b1",4},{"b2",3},{"b3",3.5}}}};
     return d;
 }
+double at(const ProjectDocument& d,const std::string& link,double fraction) {
+    for(const auto& l:d.network.links)if(l.id==link)return fraction*polylineLength(l.geometry);
+    throw std::invalid_argument("UNKNOWN_LINK");
+}
 void same(const std::vector<Point>& a,const std::vector<Point>& b) {
     CHECK(a.size()==b.size());
     for(std::size_t i=0;i<a.size();++i){test::near(a[i].x,b[i].x,1e-9);test::near(a[i].y,b[i].y,1e-9);}
@@ -20,7 +24,7 @@ void same(const std::vector<Point>& a,const std::vector<Point>& b) {
 }
 TEST(attachments, both_link_edges_preserve_existing_curved_lanes_and_references) {
     for(auto side:{DrivingSide::left,DrivingSide::right})for(bool leading:{false,true}) {
-        auto d=roads(side);addConnectorRange(d,{"a","a1",.4},{"b","b1",.6},3,3);
+        auto d=roads(side);addConnectorRange(d,{"a","a1",at(d,"a",.4)},{"b","b1",at(d,"b",.6)},3,3);
         const auto program=putProgram(d,{"",0,{{10,SignalColor::green}}});
         putSignalHead(d,{"",{"a","a2"},20,program,{}});
         History h;h.reset(d);const auto before=d.network.links.front();
@@ -56,7 +60,7 @@ TEST(attachments, inspector_lane_count_and_turn_pocket_keep_opposite_edge) {
 }
 TEST(attachments, connector_leading_edges_rebase_without_moving_surviving_paths) {
     for(auto side:{DrivingSide::left,DrivingSide::right}) {
-        auto d=roads(side);const auto id=addConnectorRange(d,{"a","a2",.4},{"b","b2",.6},1,1);
+        auto d=roads(side);const auto id=addConnectorRange(d,{"a","a2",at(d,"a",.4)},{"b","b2",at(d,"b",.6)},1,1);
         const auto original=d.network.connectors[0];
         const auto fixedEdge=connectorBoundaries(d.network,original).back();
         changeConnectorRange(d,id,2,2,true);
@@ -95,7 +99,7 @@ TEST(attachments, markings_are_edges_and_boundaries_for_one_two_and_three_lanes)
 }
 TEST(attachments, copy_connector_and_head_independently_and_reject_invalid_drops_atomically) {
     auto d=roads();d.network.links[0].geometry={{0,0},{100,0}};d.network.links[1].geometry={{0,25},{100,25}};
-    const auto id=addConnectorRange(d,{"a","a2",.3},{"b","b2",.4},2,2);
+    const auto id=addConnectorRange(d,{"a","a2",30},{"b","b2",40},2,2);
     const auto program=putProgram(d,{"",0,{{10,SignalColor::green}}});
     const auto head=putSignalHead(d,{"",{"a","a2"},10,program,{}});
     const auto connectorHead=putSignalHead(d,{"",{},5,program,id});
@@ -103,7 +107,7 @@ TEST(attachments, copy_connector_and_head_independently_and_reject_invalid_drops
     h.execute("copy",[&](auto& m){duplicateObjects(m,{id,head},{20,0});});
     const auto& copy=h.document();CHECK(copy.network.links.size()==2);CHECK(copy.network.connectors.size()==2);CHECK(copy.network.signalHeads.size()==4);
     CHECK(copy.network.connectors[0]==d.network.connectors[0]);
-    test::near(copy.network.connectors[1].from.fraction.value(),.5);
+    test::near(copy.network.connectors[1].from.station.value(),50);
     test::near(copy.network.signalHeads[2].position,30);CHECK(copy.network.signalHeads[2].programId==program);
     CHECK(copy.network.signalHeads[3].connectorId==copy.network.connectors[1].id);
     CHECK(copy.network.signalHeads[3].id!=connectorHead);

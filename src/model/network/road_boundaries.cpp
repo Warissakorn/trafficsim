@@ -10,7 +10,7 @@ Point edgeAt(const Network& n,const LaneReference& ref,int boundary,bool outgoin
     for(const auto& l:n.links)if(l.id==ref.linkId) {
         const auto lane=laneGeometry(l,ref.laneId,n.drivingSide);
         const auto edge=laneBoundaryGeometry(l,static_cast<std::size_t>(boundary),n.drivingSide);
-        double remaining=polylineLength(lane)*ref.fraction.value_or(outgoing?1.:0.);
+        double remaining=matchedStation(l.geometry,lane,attachmentStation(n,ref,outgoing));
         for(std::size_t i=1;i<lane.size();++i) {
             const double length=std::hypot(lane[i].x-lane[i-1].x,lane[i].y-lane[i-1].y);
             if(length>0 && remaining<=length) {

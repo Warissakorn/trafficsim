@@ -30,7 +30,7 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {
     std::vector<ValidationIssue> issues;
     for(std::size_t i=0;i<network.connectors.size();++i) {
         const auto& c=network.connectors[i];
-        if(c.from.fraction.value_or(1.)!=1. || c.to.fraction.value_or(0.)!=0.)
+        if(!attachedAtLinkEnd(network,c.from,true) || !attachedAtLinkEnd(network,c.to,false))
             issues.push_back({"UNSUPPORTED_CONNECTOR_POSITION","connectors["+std::to_string(i)+"]"});
     }
     return issues;

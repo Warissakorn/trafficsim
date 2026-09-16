@@ -107,7 +107,9 @@ derived surviving lane pairs retain their curves. Schema 1–3 default to zero o
 and legacy arclength weights. Geometry edits clear frozen weights when reshaping.
 Canvas Ctrl-click selection is separate from Ctrl-drag copy, committed on release.
 Link/group, independently attached Connector and Signal head copies all use History.
-Optional `LaneReference::fraction` stores a normalized lane-arclength position.
+Optional `LaneReference::station` stores metres along the link's reference polyline, so a
+stretched Link does not slide what is attached part-way along it; `matchedStation` maps that
+one station onto any lane or boundary derived from the same reference.
 `laneAttachment` is shared by curve construction, derived paths, validation and reanchoring.
 The editor's side-resize gestures submit one Link/range command on release; preview data
 never enters History. Interior attachments are blocked at Run by `connectorRuntimeIssues`

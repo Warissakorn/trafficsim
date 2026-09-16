@@ -360,3 +360,21 @@ teleport across the gap. What is wrong is the *unit*: a fraction of lane length 
 stretching a Link slides every interior attachment, and with it the lane-section lengths a
 future run would measure. Vissim stores a distance; so does our own `NetworkSignalHead`. M1.13
 books that change, with the migration and identity constraints it has to respect.
+
+## 2026-09-16 follow-up — M1.13 implemented: attachments are metres along the Link
+
+The unit decision recorded above is now the model. `LaneReference::station` holds metres along
+the Link's reference polyline, Vissim's `Pos`, rather than a fraction of the attached lane's
+arclength. Stretching a Link no longer slides the Connectors attached part-way along it, and a
+multi-lane range meets a curved Link on one square cross-section instead of fanning with the
+per-lane arclength difference.
+
+Two behaviours the owner should know, because Vissim does not spell them out either. Shortening
+a Link past an attachment clamps the Connector to the new end rather than refusing the edit — a
+Signal head in the same position still refuses, which is the older contract and deliberately
+left alone. And the number in Properties is measured on the Link's own line, so on a curve it
+differs slightly from the distance travelled in an outer lane; that is what makes it the same
+number for every lane of a range.
+
+Remaining gaps are unchanged: group transforms, `Alt`-drag rotation, editable table cells and
+the M1.11.1 runtime lane sections, which this change exists to make tractable.

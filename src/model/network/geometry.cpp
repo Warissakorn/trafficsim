@@ -77,6 +77,19 @@ std::vector<Point> linkCentreline(const Link& link,DrivingSide side) {
     if(side!=DrivingSide::left && side!=DrivingSide::right)throw std::invalid_argument("INVALID_DRIVING_SIDE");
     return offsetGeometry(link.geometry,link.laneOffset*(side==DrivingSide::left?1.:-1.));
 }
+double matchedStation(const std::vector<Point>& from,const std::vector<Point>& to,double station) {
+    if(from.size()!=to.size() || from.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+    if(!std::isfinite(station))throw std::invalid_argument("INVALID_GEOMETRY");
+    double remaining=std::max(0.,station),matched=0;
+    for(std::size_t i=1;i<from.size();++i) {
+        const double length=std::hypot(from[i].x-from[i-1].x,from[i].y-from[i-1].y);
+        const double step=std::hypot(to[i].x-to[i-1].x,to[i].y-to[i-1].y);
+        if(length>0 && remaining<=length)return matched+step*remaining/length;
+        if(length>0)remaining-=length;
+        matched+=step;
+    }
+    return matched; // Past the end of `from`, which clamps to the end of `to`.
+}
 std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offset) {
     // A corner needs a miter, not a plain normal. Offsetting a bend vertex by `offset` along
     // the average normal leaves it offset*cos(theta/2) from the original line, so both lane

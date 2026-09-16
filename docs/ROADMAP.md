@@ -232,30 +232,24 @@ partial-lane distances, obeys section-mounted signals, and retains deterministic
 
 ### M1.13 — Attachment stations in metres
 
-**Open.** A Connector end is attached by a *fraction* of lane arclength
-(`LaneReference::fraction`). Connectors correctly follow their Link — a detached end fails
-`DISCONNECTED_GEOMETRY` and the compiler builds lane → connector path → lane segments, so a
-floating Connector has no meaning to the engine — but a fraction also makes every interior
-attachment *slide* when the Link is stretched. Store a distance from the lane start instead,
-as `NetworkSignalHead::position` already does, so a Connector stays at the metre it was drawn
-at. This also gives M1.11.1 a section boundary it can use directly, instead of a section
-length that silently changes whenever the author lengthens a Link.
+**Implemented.** A Connector end is attached by `LaneReference::station`: metres along the
+link's reference polyline, as Vissim stores a position, replacing the fraction of lane
+arclength that slid every interior attachment whenever a Link was stretched. One station names
+one cross-section, so every lane of a range meets the Link square on a curve; `matchedStation`
+maps that station onto any lane or boundary derived from the same reference, and is the single
+place the mapping lives. `laneOffset` keeps the reference polyline fixed under lane edits, so
+adding or removing lanes cannot move an attachment either.
 
-Constraints found while deciding this, which the implementation must honour:
+Shortening a Link past an attachment clamps it to the new end in `reanchorConnector`, which
+every edit that can change a reference length already routes through; the Link edit is never
+rejected. Signal heads keep their existing contract, where validation rejects such an edit.
+`splitLink` carries stations across a cut by arithmetic alone. Schema 5 stores `station`;
+schemas 1–4 and pre-schema M0 scenarios are converted on read at the same world position, with
+the version — not the key that happens to be present — deciding the unit.
 
-- `parse.cpp` migrates by field presence with no version dispatch, so a schema 4 `"fraction"`
-  would be silently reinterpreted as metres. Schema 5 must convert on read.
-- Keep the absent-optional sentinel for exact end attachments. `connectorRuntimeIssues`
-  compares `!= 1.` / `!= 0.` exactly; a naive metre migration would flip existing Connectors
-  into "Run blocked".
-- The duplicate-connection key is `(laneId, fraction)` and `LaneReference::operator==` is
-  defaulted, so the unit change touches Connector identity and de-duplication.
-- `splitLink` gets simpler: no re-normalisation, only downstream ends shift by the cut
-  station. Its ±0.1 m continuity guard is already in metres.
-- Properties shows `" %"` over a fixed 0–100 range; it becomes `" m"` bounded by lane length.
-
-**Done when:** stretching a Link's far end leaves an interior Connector at the same metre,
-schema 4 files load with identical geometry, and Run-blocking for end attachments is unchanged.
+**Done:** stretching a Link's far end leaves an interior Connector at the same metre and the
+same world point; schema 4 files load unchanged; Run-blocking for end attachments is unchanged.
+M1.11.1 can now split a lane at a station that does not move underneath it.
 
 ---
 
