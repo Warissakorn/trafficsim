@@ -15,10 +15,11 @@ void deleteObjects(ProjectDocument& d, const std::vector<std::string>& ids) {
     // Reject the whole selection before touching anything, so the reported code names the object
     // the user actually chose rather than whatever a partial cascade left behind.
     for (const auto& id : ids)
-        if (!isLink(d, id) && !isConnector(d, id)) throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+        if (!isLink(d, id) && !isConnector(d, id) && std::none_of(d.network.signalHeads.begin(),d.network.signalHeads.end(),[&](const auto& h){return h.id==id;})) throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
     // Links first: deleting one already removes its own connectors, so a connector named in the
     // same selection can legitimately be gone by the time its turn comes.
     for (const auto& id : ids) if (isLink(d, id)) deleteLink(d, id);
     for (const auto& id : ids) if (isConnector(d, id)) deleteConnector(d, id);
+    std::erase_if(d.network.signalHeads,[&](const auto& h){return std::find(ids.begin(),ids.end(),h.id)!=ids.end();});
 }
 }

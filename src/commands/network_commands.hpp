@@ -6,6 +6,7 @@ Link& editableLink(ProjectDocument& document, const std::string& id);
 std::string addLink(ProjectDocument&, const std::vector<Point>& geometry, int lanes, double width);
 void changeGeometry(ProjectDocument&, const std::string& id, const std::vector<Point>& geometry);
 void changeLanes(ProjectDocument&, const std::string& id, const std::vector<double>& widths);
+void resizeLinkLanes(ProjectDocument&, const std::string&, int count, bool leading);
 void deleteLink(ProjectDocument&, const std::string& id);
 // Deletes links and connectors together in one transaction, with their lanes, attached
 // connectors, signal heads, and the routes/inputs those segments carry. An id already removed

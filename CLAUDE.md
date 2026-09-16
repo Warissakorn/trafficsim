@@ -15,7 +15,8 @@ see D11. Do not rename the project, the repository, or any package before then.
 
 **Current work:** M1 implementation covers M1.1–M1.10, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types.
-M1.11 adds body attachments and side resizing; M1.11.1 runtime lane sections remain open.
+M1.11 adds body attachments; M1.12 fixes both lane edges, markings and Ctrl selection/copy.
+M1.11.1 runtime lane sections remain open.
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 

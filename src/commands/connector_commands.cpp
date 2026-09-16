@@ -27,6 +27,7 @@ void reanchor(ProjectDocument& d, Connector& c) {
     if (c.geometry.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
     const auto old = c.geometry;
     const auto a = old.front(), b = old.back();
+    if(from==a && to==b)return;
     const double vx = b.x-a.x, vy = b.y-a.y, chord = vx*vx + vy*vy;
     const double wx = to.x-from.x, wy = to.y-from.y;
     if (!std::isfinite(chord) || chord <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
@@ -59,10 +60,10 @@ std::string addConnectorRange(ProjectDocument& d,const LaneReference& from,const
     c.level=editableLink(d,from.linkId).level;c.displayType=editableLink(d,from.linkId).displayType;
     (void)connectorPaths(d.network,c);return id;
 }
-void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount,int toCount) {
+void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount,int toCount,bool leading) {
     auto& c=editableConnector(d,id);if(c.fromLaneCount==fromCount && c.toLaneCount==toCount)return;
     if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
-    c.fromLaneCount=fromCount;c.toLaneCount=toCount;(void)connectorPaths(d.network,c);
+    resizeConnectorEdges(d.network,c,fromCount,toCount,leading);
 }
 void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const std::vector<Point>& geometry) {
     auto& c = editableConnector(d, id);
@@ -75,7 +76,7 @@ void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const st
             throw std::invalid_argument("INVALID_GEOMETRY");
     if (geometry.front() != c.geometry.front() || geometry.back() != c.geometry.back())
         throw std::invalid_argument("EDIT_CONNECTOR_ENDPOINTS");
-    c.geometry = geometry;
+    c.geometry = geometry;c.laneBlend.clear();
 }
 void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneReference from, LaneReference to) {
     auto& c = editableConnector(d, id);
@@ -89,7 +90,7 @@ void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straigh
     auto& c = editableConnector(d, id);
     auto geometry = connectorCurve(d.network, c.from, c.to);
     if (straight) geometry = {geometry.front(), geometry.back()};
-    c.geometry = std::move(geometry);
+    c.geometry = std::move(geometry);c.laneBlend.clear();
 }
 void deleteConnector(ProjectDocument& d, const std::string& id) {
     const auto c=editableConnector(d,id);std::set<std::string> paths;

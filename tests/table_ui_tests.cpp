@@ -185,7 +185,21 @@ int main(int argc,char** argv) {
         require(heads->rowCount()==2,"Signal head table did not load");
         const int head=rowFor(heads,"west-head");require(head>=0,"Signal head missing from table");
         heads->selectRow(head);QApplication::processEvents();
-        require(c->selected()=="west","Signal head row did not select its link");
+        require(c->selected()=="west-head","Signal head row did not select its object");
+        const auto beforeHeadCopy=w.history().document();
+        const auto originalHead=beforeHeadCopy.network.signalHeads.front();
+        const auto& link=*std::find_if(beforeHeadCopy.network.links.begin(),beforeHeadCopy.network.links.end(),[&](const auto& l){return l.id==originalHead.lane.linkId;});
+        const auto lane=laneGeometry(link,originalHead.lane.laneId,beforeHeadCopy.network.drivingSide);
+        const auto a=pointAlong(lane,originalHead.position),b=pointAlong(lane,std::max(0.,originalHead.position-5));
+        c->select(originalHead.id);c->frame(originalHead.id);
+        const auto start=c->mapFromScene(a.x,a.y),end=c->mapFromScene(b.x,b.y);
+        QTest::mousePress(c->viewport(),Qt::LeftButton,Qt::ControlModifier,start);
+        QTest::mouseRelease(c->viewport(),Qt::LeftButton,Qt::NoModifier,end);
+        QApplication::processEvents();
+        require(w.history().document().network.signalHeads.size()==3,"Ctrl-drag did not duplicate signal head");
+        require(w.history().document().network.signalHeads.front()==originalHead,"Copy moved original signal head");
+        action(w,"editorUndo");require(w.history().document()==beforeHeadCopy,"Head copy was not one undoable edit");
+
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);
         for (int i=0;i<4;++i) require(!tabs->tabText(i).isEmpty(),"Untranslated object tab");
         require(tabs->tabText(3)==QString::fromUtf8("ปัญหา"),"Thai Problems tab missing");

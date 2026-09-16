@@ -110,26 +110,17 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->deleteRequested=[this]{deleteSelected();};
     canvas_->createLinkGesture=[this](const auto& points){createLinkDialog(points);};
     canvas_->createRangeGesture=[this](auto from,auto to,const auto& points){createRangeDialog(from,to,points);};
-    canvas_->resizeRangeRequested=[this](int from,int to){
-        execute("editorApplyConnector",[&](auto& d){changeConnectorRange(d,canvas_->selected(),from,to);});
+    canvas_->resizeRangeRequested=[this](int from,int to,bool leading){
+        execute("editorApplyConnector",[&](auto& d){changeConnectorRange(d,canvas_->selected(),from,to,leading);});
     };
-    canvas_->resizeLinkRequested=[this](int count){
-        execute("editorApplyLanes",[&](auto& d){
-            const auto& link=editableLink(d,canvas_->selected());std::vector<double> widths;
-            for(const auto& lane:link.lanes)widths.push_back(lane.width);
-            widths.resize(static_cast<std::size_t>(count),widths.back());
-            changeLanes(d,link.id,widths);
-        });
+    canvas_->resizeLinkRequested=[this](int count,bool leading){
+        execute("editorApplyLanes",[&](auto& d){resizeLinkLanes(d,canvas_->selected(),count,leading);});
     };
     canvas_->creationRejected=[this]{showError(std::invalid_argument("EDIT_CREATION_TARGET"));};
-    canvas_->duplicateRequested=[this](Point p){
+    canvas_->duplicateRequested=[this](Point delta){
         const auto ids=canvas_->selection();if(ids.empty())return;
-        Point anchor{};bool found=false;
-        for(const auto& l:history_.document().network.links)if(l.id==canvas_->selected()){anchor=l.geometry.front();found=true;}
-        if(!found)for(const auto& l:history_.document().network.links)
-            if(canvas_->isSelected(l.id)){anchor=l.geometry.front();break;}
         std::vector<std::string> copied;
-        if(execute("editorDuplicate",[&](auto& d){copied=duplicateObjects(d,ids,{p.x-anchor.x,p.y-anchor.y});}))canvas_->setSelection(copied);
+        if(execute("editorDuplicate",[&](auto& d){copied=duplicateObjects(d,ids,delta);}))canvas_->setSelection(copied);
     };
     canvas_->createDemandGesture=[this](const auto& lane,auto mode){
         if(mode==EditorCanvas::Tool::route)editRoute({}, {lane.laneId});

@@ -7,6 +7,35 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — Fixed lane edges, road boundaries and Ctrl-drag copies (M1.12)
+
+The owner's 1–3 lane examples exposed recentering and lane-centre dashes. Links now
+have resize handles on both sides. `laneOffset` keeps the reference polyline and all
+surviving lane positions fixed when one edge grows/shrinks, including curved links.
+Inspector count changes and downstream pockets use the same edge anchoring. Opposite
+carriageways retain the requested median gap after asymmetric growth/unequal widths.
+Connectors have source, target and middle handles on both sides. Leading edits rebase
+the first path with frozen `laneBlend` weights; surviving lane pairs keep their curves.
+Schema 4 persists those values; schemas 1–3 retain their old zero-offset/arc-weight defaults.
+
+Shared model boundaries supply solid road edges and dashed internal dividers in the
+editor and diagnostic view. Picking, box selection and framing use road surfaces.
+Ctrl-click adds selection, and Ctrl-drag of an already selected object previews and
+commits one copy on release. Click jitter does not create copies or geometry edits.
+Links copy internal Connectors/heads; standalone Connectors and Signal heads may copy
+onto valid lanes at their original levels. Invalid drops roll back all selected objects.
+Signal heads select themselves on canvas/tables and support copy/delete. Table selection
+preserves multiple rows and Ctrl/Shift selection across object types. Demand is not copied.
+
+Regression coverage includes curved/unequal-width links on both driving sides, fixed
+opposite edges, Connector rebasing, migration, save/reopen, reference rejection and
+atomic copy/delete. UI suites cover both-side handles, real Ctrl click/drag, release-only
+copies, invalid drops, Escape, group dependencies, heads and one-step Undo. English/Thai
+help and NETWORK_EDITOR describe the changed gestures. The Linux desktop build and all
+23 CTest suites (seven UI suites) passed; the Thai editor screenshot was inspected.
+M1.11.1 lane-section compilation
+and the owner's Windows/timed M0/M1 acceptance gates remain open.
+
 ## 2026-09-15 — Ctrl-right release, body attachments and lane side handles
 
 The owner reported a disappearing Ctrl+right-drag preview, endpoint-only Connectors,
@@ -152,8 +181,8 @@ M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
 
 ## Next
 
-**Review M1.11 and run the owner acceptance exercise.** The reported gesture and
-body-attachment authoring failures are addressed. Test the workflow on the owner's
+**Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
+road boundaries and Ctrl-click/Ctrl-drag on Links, Connectors and Signal heads. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.
 

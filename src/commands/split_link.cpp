@@ -37,7 +37,10 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
         lane.id = allocateId(d, "lane");
         replacements[old] = {allocateId(d, "connector"), lane.id};
     }
-    if (pocket) downstream.lanes.push_back({allocateId(d, "lane"), original.lanes.back().width});
+    if (pocket) {
+        auto lanes=downstream.lanes;lanes.push_back({allocateId(d,"lane"),original.lanes.back().width});
+        replaceLaneBundle(downstream,std::move(lanes),false);
+    }
     editableLink(d, id).geometry = section(original.geometry, 0, distance - 0.1);
     d.network.links.push_back(downstream);
     for(auto& c:d.network.connectors)for(auto* ref:{&c.from,&c.to})if(ref->linkId==id) {

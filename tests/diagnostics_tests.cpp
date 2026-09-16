@@ -59,7 +59,7 @@ TEST(diagnostics, draft_issues_carry_object_ids) {
     const auto* duplicate = find(rows, "DUPLICATE_ID");
     CHECK(duplicate && !duplicate->objectId.empty());
     const auto* position = find(rows, "INVALID_POSITION");
-    CHECK(position && position->objectId == "head" && position->selectId == "exit");
+    CHECK(position && position->objectId == "head" && position->selectId == "head");
     for (const auto& row : rows) CHECK(row.severity == DiagnosticSeverity::draft);
 }
 TEST(diagnostics, empty_network_is_a_draft_not_an_error) {

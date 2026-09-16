@@ -1,6 +1,7 @@
 #include "network_commands.hpp"
 #include "connector_commands.hpp"
 #include "detail.hpp"
+#include "../core/validate.hpp"
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -32,11 +33,8 @@ void changeGeometry(ProjectDocument& d, const std::string& id, const std::vector
             throw std::invalid_argument("INVALID_GEOMETRY");
     editableLink(d, id).geometry = geometry; reanchorConnectors(d);
 }
-void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<double>& widths) {
-    if (widths.empty() || widths.size() > 12) throw std::invalid_argument("EDIT_LANES");
-    auto& l = editableLink(d, id);
-    std::set<std::string> removed;
-    for (std::size_t i = widths.size(); i < l.lanes.size(); ++i) removed.insert(l.lanes[i].id);
+namespace {
+void checkRemovedLanes(const ProjectDocument& d,const std::set<std::string>& removed) {
     // A connector whose range is already invalid cannot be reported as a lane reference; leave
     // that to validation, which names it properly, instead of throwing EDIT_LANE_RANGE here.
     for (const auto& c : d.network.connectors) {
@@ -50,11 +48,36 @@ void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<do
         if (removed.contains(h.lane.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
     if (d.definition) for (const auto& r : d.definition->routes) for (const auto& s : r.segmentIds)
         if (removed.contains(s)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
-    while (l.lanes.size() < widths.size()) l.lanes.push_back({allocateId(d, "lane"), widths[l.lanes.size()]});
-    l.lanes.resize(widths.size());
-    for (std::size_t i = 0; i < widths.size(); ++i) l.lanes[i].width = widths[i];
-    reanchorConnectors(d);
 }
+}
+void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<double>& widths) {
+    if(widths.empty() || widths.size()>12)
+        throw std::invalid_argument("EDIT_LANES");
+    auto& l=editableLink(d,id);std::set<std::string> removed;
+    for(std::size_t i=0;i<widths.size();++i)if(!std::isfinite(widths[i]) || widths[i]<=0) {
+        const auto index=static_cast<std::size_t>(&l-d.network.links.data());
+        throw ValidationError({{"INVALID_WIDTH","links["+std::to_string(index)+"].lanes["+std::to_string(i)+"].width"}});
+    }
+    for(std::size_t i=widths.size();i<l.lanes.size();++i)removed.insert(l.lanes[i].id);
+    checkRemovedLanes(d,removed);
+    auto lanes=l.lanes;
+    while(lanes.size()<widths.size())lanes.push_back({allocateId(d,"lane"),widths[lanes.size()]});
+    lanes.resize(widths.size());
+    for(std::size_t i=0;i<widths.size();++i)lanes[i].width=widths[i];
+    replaceLaneBundle(l,std::move(lanes),false);reanchorConnectors(d);
+}
+void resizeLinkLanes(ProjectDocument& d,const std::string& id,int count,bool leading) {
+    if(count<1 || count>12)throw std::invalid_argument("EDIT_LANES");
+    auto& link=editableLink(d,id);auto lanes=link.lanes;std::set<std::string> removed;
+    const double width=(leading?lanes.front():lanes.back()).width;
+    while(static_cast<int>(lanes.size())>count) {
+        const auto at=leading?lanes.begin():lanes.end()-1;removed.insert(at->id);lanes.erase(at);
+    }
+    checkRemovedLanes(d,removed);
+    while(static_cast<int>(lanes.size())<count)lanes.insert(leading?lanes.begin():lanes.end(),{allocateId(d,"lane"),width});
+    replaceLaneBundle(link,std::move(lanes),leading);reanchorConnectors(d);
+}
+
 void deleteLink(ProjectDocument& d, const std::string& id) {
     const auto l = editableLink(d, id);
     std::set<std::string> removed;
@@ -78,9 +101,10 @@ std::string oppositeLink(ProjectDocument& d, const std::string& id, double gap) 
     auto geometry = laneGeometry(helper, "offset", d.network.drivingSide);
     std::reverse(geometry.begin(), geometry.end());
     const auto created = addLink(d, geometry, static_cast<int>(original.lanes.size()), original.lanes.front().width);
-    std::vector<double> widths;
-    for (const auto& lane : original.lanes) widths.push_back(lane.width);
-    changeLanes(d, created, widths);
-    auto& other=editableLink(d,created);other.level=original.level;other.displayType=original.displayType;return created;
+    auto& other=editableLink(d,created);
+    // This new road is already positioned by its final total width; do not anchor an
+    // edge while assigning unequal widths, which would change the requested median gap.
+    for(std::size_t i=0;i<other.lanes.size();++i)other.lanes[i].width=original.lanes[i].width;
+    other.level=original.level;other.displayType=original.displayType;return created;
 }
 }

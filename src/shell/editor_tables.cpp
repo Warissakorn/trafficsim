@@ -1,5 +1,6 @@
 #include "editor_window.hpp"
 #include <QAction>
+#include <QApplication>
 #include <QDockWidget>
 #include <QHeaderView>
 #include <QLabel>
@@ -45,9 +46,15 @@ void EditorWindow::buildObjectTables() {
         connect(view,&QTableWidget::itemSelectionChanged,this,[this,view]{
             if (syncing_) return;
             std::vector<std::string> ids;
+            if(QApplication::keyboardModifiers()&(Qt::ControlModifier|Qt::ShiftModifier)) {
+                ids=canvas_->selection();
+                for(int row=0;row<view->rowCount();++row) {
+                    const auto id=selectableFor(history_.document().network,view->item(row,0)->data(Qt::UserRole).toString().toStdString());
+                    std::erase(ids,id);
+                }
+            }
             for (const auto* item : view->selectedItems()) {
                 if (item->column()) continue;
-                // A signal head is not a canvas object; its link is what can be shown.
                 const auto id=selectableFor(history_.document().network,item->data(Qt::UserRole).toString().toStdString());
                 if (!id.empty()) ids.push_back(id);
             }
@@ -108,7 +115,7 @@ void EditorWindow::refreshTables(bool modelChanged) {
         for (int row=0; row<view->rowCount(); ++row) {
             const auto* cell=view->item(row,0);
             if (cell && canvas_->isSelected(selectableFor(network,cell->data(Qt::UserRole).toString().toStdString())))
-                view->selectRow(row);
+                view->selectionModel()->select(view->model()->index(row,0),QItemSelectionModel::Select|QItemSelectionModel::Rows);
         }
     }
     syncing_=false;

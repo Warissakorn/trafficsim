@@ -31,7 +31,10 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     if (e->button()!=Qt::LeftButton) return;
     auto p=world(e->pos());lastPick_=world(e->pos(),false);
     if((e->modifiers()&Qt::ControlModifier) && tool_==Tool::select) {
-        if(duplicateRequested)duplicateRequested(p);return;
+        const auto picked=hit(lastPick_);
+        if(picked.first.empty()) {additive_=true;band_=QRectF(p.x,p.y,0,0);dragStart_=p;redraw();return;}
+        copyPick_=picked.first;copyArmed_=isSelected(copyPick_);copyStart_=e->pos();dragStart_=p;
+        copyDragging_=false;copyOffset_={};return;
     }
     if(tool_==Tool::route || tool_==Tool::input || tool_==Tool::head)return;
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
@@ -66,7 +69,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         // Connector endpoints are read-only. Body selection never translates attached endpoints.
         const bool locked=selectedConnector() && (vertex_<=0 || vertex_==static_cast<int>(geometry->size())-1);
         // Geometry editing stays strictly single-object; a group translate is not in this slice.
-        if (!locked && selection_.size()==1) { original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; }
+        if (!locked && selection_.size()==1) { original_=*geometry; preview_=original_; dragging_=true; dragStart_=p;dragPress_=e->pos(); }
     }
     redraw(); if(selectionChanged) selectionChanged();
 }
@@ -92,6 +95,10 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         }
         redraw();return;
     }
+    if(!copyPick_.empty()) {
+        copyDragging_=copyArmed_ && (e->pos()-copyStart_).manhattanLength()>=QApplication::startDragDistance();
+        const auto p=world(e->pos());copyOffset_={p.x-dragStart_.x,p.y-dragStart_.y};redraw();return;
+    }
     if(laneResize_) {updateLaneResize(e->pos());return;}
     if(panning_) {
         const auto delta=e->pos()-panStart_; panStart_=e->pos();
@@ -105,6 +112,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     }
     if(band_) { const auto p=world(e->pos(),false); band_=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized(); redraw(); return; }
     if(dragging_) {
+        if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance())return;
         const auto p=world(e->pos()); preview_=original_;
         if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]=p;
         else for(auto& point:preview_) { point.x+=p.x-dragStart_.x; point.y+=p.y-dragStart_.y; }
@@ -126,12 +134,20 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         else if(creationRejected)creationRejected();
         return;
     }
+    if(e->button()==Qt::LeftButton && !copyPick_.empty()) {
+        const auto picked=copyPick_;const bool duplicate=copyArmed_ && (e->pos()-copyStart_).manhattanLength()>=QApplication::startDragDistance();
+        const auto p=world(e->pos());const Point delta{p.x-dragStart_.x,p.y-dragStart_.y};
+        copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
+        if(duplicate) {if((delta.x!=0 || delta.y!=0) && duplicateRequested)duplicateRequested(delta);}
+        else {auto ids=selection_;if(!isSelected(picked))ids.push_back(picked);setSelection(std::move(ids));}
+        redraw();return;
+    }
     if(e->button()==Qt::LeftButton && laneResize_) {
         updateLaneResize(e->pos());
         const int kind=laneResize_->kind, from=previewFromCount_,to=previewToCount_,count=previewLinkCount_;
         laneResize_.reset();rangeCorner_=0;
-        if(kind==4){if(resizeLinkRequested)resizeLinkRequested(count);}
-        else if(resizeRangeRequested)resizeRangeRequested(from,to);
+        if(kind==4 || kind==8){if(resizeLinkRequested)resizeLinkRequested(count,kind==8);}
+        else if(resizeRangeRequested)resizeRangeRequested(from,to,kind>4);
         redraw();return;
     }
     if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=false; return; }
@@ -142,6 +158,10 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         setSelection(std::move(found)); return;
     }
     if(e->button()==Qt::LeftButton && dragging_) {
+        if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance()) {dragging_=false;preview_.clear();original_.clear();redraw();return;}
+        const auto p=world(e->pos());preview_=original_;
+        if(vertex_>=0)preview_[static_cast<std::size_t>(vertex_)]=p;
+        else for(auto& point:preview_){point.x+=p.x-dragStart_.x;point.y+=p.y-dragStart_.y;}
         dragging_=false;
         const auto geometry=preview_; preview_.clear();
         if(geometry!=original_ && editGeometry) editGeometry(selected(),geometry);

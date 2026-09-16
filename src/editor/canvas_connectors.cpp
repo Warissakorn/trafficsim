@@ -48,12 +48,22 @@ void EditorCanvas::drawConnectors() {
         if(!levelVisible(c.level))continue;
         const double z=c.level*100.;
         const bool chosen=isSelected(c.id);
-        const auto& geometry=c.id==primary&&!preview_.empty()?preview_:c.geometry;
         const QColor colour=c.id==primary?QColor("#b33f8d"):chosen?QColor("#c877b0"):QColor(QString::fromStdString(style(c.displayType).connectorColor));
         QPen pen(colour,chosen?3:2); pen.setCosmetic(true);
-        auto preview=c;preview.geometry=geometry;
-        if(c.id==primary && rangeCorner_){preview.fromLaneCount=previewFromCount_;preview.toLaneCount=previewToCount_;}
-        for(const auto& lanePath:connectorPaths(document_->network,preview))scene_.addPath(path(lanePath.geometry),pen)->setZValue(z+4);
+        auto preview=c;
+        if(c.id==primary && !preview_.empty()){preview.geometry=preview_;preview.laneBlend.clear();}
+        if(c.id==primary && rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4);
+        const auto& geometry=preview.geometry;
+        const auto boundaries=connectorBoundaries(document_->network,preview);
+        auto surface=path(boundaries.front());
+        for(auto it=boundaries.back().rbegin();it!=boundaries.back().rend();++it)surface.lineTo(it->x,it->y);
+        surface.closeSubpath();scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+4);
+        for(std::size_t i=0;i<boundaries.size();++i) {
+            QPen marking(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
+                         (i==0 || i+1==boundaries.size())?Qt::SolidLine:Qt::DashLine);marking.setCosmetic(true);
+            auto* item=scene_.addPath(path(boundaries[i]),marking);item->setZValue(z+4.5);
+            item->setData(0,QStringLiteral("road-marking"));item->setData(1,QString::fromStdString(c.id));
+        }
         const double length=polylineLength(geometry);
         if (length>0) {
             const auto mid=pointAlong(geometry,length/2), ahead=pointAlong(geometry,length/2+length/100);
@@ -61,7 +71,7 @@ void EditorCanvas::drawConnectors() {
             QPolygonF arrow;
             for (double offset : {0.0,2.5,-2.5})
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
-            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(pen.color()))->setZValue(z+5);
+            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+5);
         }
         if (c.id==primary) for (std::size_t i=0; i<geometry.size(); ++i) {
             const auto p=geometry[i];

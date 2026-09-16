@@ -53,7 +53,8 @@ is in metres, and Snap affects drawing/dragging. Measuring and calibration bypas
 | X / M / K | Split / Measure / Calibrate |
 | F | Fit network |
 | Shift+click | Add/remove an object in the selection |
-| Ctrl+left-click | Duplicate selected links at the clicked position |
+| Ctrl+left-click | Add an object to the selection |
+| Ctrl+left-drag on a selected object | Duplicate the selection at the drag offset |
 | Tab on the canvas | Cycle objects overlapping the last click position |
 | Delete / Ctrl+Delete | Delete objects / remove selected geometry point |
 | Ctrl+B / Ctrl+I / Ctrl+Shift+O | Toggle background / Properties / object tables |
@@ -126,15 +127,23 @@ run check. Connector ranges are limited by the existing lanes, at most 12 per en
 
 In Select (S), orange **side handles** exist even on a one-lane Connector:
 
-- Source handle: grow/shrink the contiguous source lane range.
-- Target handle: grow/shrink the contiguous target lane range independently.
-- Middle handle: set both ends to the same count, limited by available lanes.
-- A selected Link has its own side handle to add/remove lanes (up to 12). Existing
-  widths are retained and added lanes use the outer lane width. The Link stays centred.
+- Source handles on both sides: grow/shrink the contiguous source lane range.
+- Target handles on both sides: grow/shrink the contiguous target lane range independently.
+- Middle handles on both sides: set both ends to the same count, limited by available lanes.
+- Each selected Link has a handle on **both sides** to add/remove lanes (up to 12). Existing
+  widths and world positions are retained. Added lanes use the width of the dragged edge lane.
 
 Drag outward to add lanes and inward to remove them; the number and geometry preview
-update during the drag. One release is one undo entry. Esc cancels. First-lane selection
-is available in the creation dialog and Properties; side handles adjust the last lane.
+update during the drag. One release is one undo entry. Esc cancels. Each handle changes
+its own edge, leaving the opposite edge fixed. The first-side handles add/remove lanes
+before the current first lane; the other handles change the last lane. Surviving lane
+IDs and positions stay fixed, including on curved Links. Connector paths whose lane pair
+survives a range edit retain their curve; unequal ranges can intentionally change lane mappings.
+Properties count edits and downstream pocket creation expand the last-lane side.
+
+Road surfaces use the same geometry as lane positions: outer boundaries are solid and
+internal lane boundaries are dashed. There is no dashed line down a lane centre. The
+small centre arrows show travel direction; white dots are editable geometry handles.
 Connector path count is the larger of its source and target counts, not a third independent
 lane topology. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
@@ -165,19 +174,29 @@ inputs in the same undoable transaction. Heads on unaffected links remain.
 
 ## Selection, tables and display
 
-Click replaces the selection; Shift-click toggles an object. Dragging on empty space
-selects touched links/connectors in a rectangle. The last selected object is primary;
-property and geometry edits act on it alone. Group dragging and rotation are not included.
+Click replaces the selection; Ctrl-click adds an object, and Shift-click toggles it.
+Dragging on empty space selects touched Links, Connectors and Signal heads in a rectangle;
+Ctrl/Shift adds that rectangle to the existing selection. Picking, framing and the band
+follow the visible road surface, including roads expanded away from the reference line.
+The last selected object is primary; property and geometry edits act on it alone.
+Group translation without copying and rotation are not included.
 
-Ctrl+left-click duplicates selected links so the primary link's first point lands at
-the click. Internal connectors and heads are copied with new IDs, geometry offsets and
-level/style values. Heads share their existing programs. Routes/inputs are not copied,
-because copying a drawing must not silently double arrivals. Connector-only duplication
-is rejected. Delete selected objects cascades dependent connectors, heads, routes and
-inputs; one Undo restores all of them.
+Hold Ctrl and left-drag an already selected object to duplicate the whole selection.
+A translucent outline previews the drag offset; release commits once, including when
+Ctrl is released first. A click or small jitter adds selection without copying. Esc cancels.
+Internal Connectors and Signal heads copy with their Links, fresh IDs and level/style.
+Heads share their existing programs. A Connector can also be copied independently: both
+translated ends must drop onto existing lane ranges at their respective original levels.
+A Signal head can be selected and copied onto a lane or Connector at the same level.
+Invalid drops leave the entire document and selection unchanged. Routes/inputs are not
+copied, because copying a drawing must not silently double arrivals. Delete selected
+objects cascades dependent connectors, heads, routes and inputs; one Undo restores all.
 
 Links, Connectors and Signal heads tables mirror network objects and support selection
-and framing on the canvas. Selecting a head selects its carrying link or connector.
+and framing on the canvas. A head selects itself. Ctrl/Shift table selection also retains
+selected objects of other types. These three spatial object types share canvas selection,
+copy and deletion gestures; nonspatial demand/program objects use their dialogs.
+
 Routes, Vehicle inputs and Signal programs have Add/Edit/Delete actions and dialogs;
 double-click their rows to edit. Table cells are read-only views of the document.
 
@@ -267,7 +286,9 @@ Unknown future versions are rejected.
 | Opened by | Simulation window or editor | Editor |
 | Runs | M0 harness | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and schema-1/2/3 projects and saves schema 3.
+The editor opens bare M0 authoring files and schema-1/2/3/4 projects and saves schema 4.
+Schema 4 stores the lane bundle offset and Connector interpolation weights; older versions
+default to centred lanes and arclength interpolation. Old files retain their positions.
 The M0 simulation window recognizes an editor project before reading its fields and
 offers to open it in the editor, even if that project already contains demand.
 

@@ -102,6 +102,38 @@ int main(int argc,char** argv) {
         require(w.history().document().network.links[0].lanes.size()==4,"Link side cannot grow");attached(w.history().document());
         p=handle(c,4);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
         require(w.history().document().network.links[0].lanes.size()==3,"Link side cannot shrink");attached(w.history().document());
+        // Add at the opposite edge of each link, keeping every old lane in place.
+        const auto originalNetwork=w.history().document().network;
+        for(int index:{0,1}) {
+            c->select(links[index].id);p=handle(c,8);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
+            const auto& grown=w.history().document().network.links[index];
+            require(grown.lanes.size()==4,"Opposite Link edge cannot grow");
+            for(const auto& lane:originalNetwork.links[index].lanes) {
+                const auto beforeLane=laneGeometry(originalNetwork.links[index],lane.id,DrivingSide::left);
+                const auto afterLane=laneGeometry(grown,lane.id,DrivingSide::left);
+                require(beforeLane==afterLane,"Growing an edge moved an existing lane");
+            }
+        }
+        c->select(id);const auto fixed=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[0].geometry;
+        p=handle(c,5);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
+        require(w.history().document().network.connectors.front().fromLaneCount==3,"Leading source handle did not grow");
+        p=handle(c,6);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
+        require(w.history().document().network.connectors.front().toLaneCount==3,"Leading target handle did not grow");
+        const auto moved=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[1].geometry;
+        for(std::size_t i=0;i<fixed.size();++i)require(std::hypot(moved[i].x-fixed[i].x,moved[i].y-fixed[i].y)<1e-8,"Leading resize moved surviving connector lane");
+        attached(w.history().document());
+        // Both sides of the body are present; cancel is an exact no-op.
+        const auto resized=documentJson(w.history().document());
+        p=handle(c,7);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton,true);
+        require(documentJson(w.history().document())==resized,"Leading middle cancel committed");
+        for(int i=0;i<4;++i)action(w,"editorUndo");
+        require(w.history().document().network==originalNetwork,"Edge edits did not undo exactly");
+        // N lanes have exactly N+1 longitudinal markings, with no dashed lane centres.
+        for(const auto& link:w.history().document().network.links) {
+            int markings=0;
+            for(auto* item:c->scene()->items())if(item->data(0).toString()=="road-marking" && item->data(1).toString()==QString::fromStdString(link.id))++markings;
+            require(markings==static_cast<int>(link.lanes.size())+1,"Wrong number of road boundaries");
+        }
         // Both click-pick positions are also on link bodies, in connector mode.
         item<QComboBox>(w,"editorTool")->setCurrentIndex(5);
         QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,lanePoint(0,2,.25)));
@@ -114,6 +146,31 @@ int main(int argc,char** argv) {
         p=handle(c,1);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
         require(w.history().document().network.connectors.front().fromLaneCount==3,"Right-driving source cannot grow outward");
         action(w,"editorUndo");action(w,"editorUndo");attached(w.history().document());
+        // Standalone Connector and group copies use release offsets, never click-to-copy.
+        c->select(id);const auto beforeCopy=w.history().document();
+        const auto curve=beforeCopy.network.connectors.front().geometry;
+        const auto centre=pointAlong(curve,polylineLength(curve)/2);
+        QTest::mousePress(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,centre));
+        QTest::mouseRelease(c->viewport(),Qt::LeftButton,Qt::NoModifier,pixel(c,{centre.x+8,centre.y}));
+        QApplication::processEvents();
+        require(w.history().document().network.connectors.size()==3,"Connector-only Ctrl-drag did not copy");
+        require(w.history().document().network.connectors.front()==beforeCopy.network.connectors.front(),"Connector copy changed original");
+        action(w,"editorUndo");require(w.history().document()==beforeCopy,"Connector copy did not undo once");
+        c->select(id);
+        QTest::mousePress(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,centre));
+        QTest::mouseRelease(c->viewport(),Qt::LeftButton,Qt::NoModifier,pixel(c,{centre.x,centre.y+40}));
+        require(w.history().document()==beforeCopy && c->selected()==id,"Invalid Connector drop changed document or selection");
+        c->setSelection({links[0].id,links[1].id});
+        const auto copyFrom=lanePoint(0,1,.15);const Point copyTo{copyFrom.x,copyFrom.y+25};
+        QTest::mousePress(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,copyFrom));
+        QTest::mouseMove(c->viewport(),pixel(c,copyTo));
+        require(w.history().document()==beforeCopy,"Copy preview mutated document");
+        QTest::keyClick(c,Qt::Key_Escape);QTest::mouseRelease(c->viewport(),Qt::LeftButton,Qt::NoModifier,pixel(c,copyTo));
+        require(w.history().document()==beforeCopy,"Escape committed a copy");
+        QTest::mousePress(c->viewport(),Qt::LeftButton,Qt::ControlModifier,pixel(c,copyFrom));
+        QTest::mouseRelease(c->viewport(),Qt::LeftButton,Qt::NoModifier,pixel(c,copyTo));
+        require(w.history().document().network.links.size()==4 && w.history().document().network.connectors.size()==4,"Group copy lost internal Connectors");
+        action(w,"editorUndo");require(w.history().document()==beforeCopy,"Group copy was not one undoable edit");
         const auto file=dir.path()+"/body-connectors.traffic.json";const auto saved=documentJson(w.history().document());
         w.saveFile(file);w.openFile(file);require(documentJson(w.history().document())==saved,"Save/reopen lost attachments");
         c->select(id);item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");QTest::qWait(30);

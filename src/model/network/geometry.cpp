@@ -52,12 +52,28 @@ std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, Dri
         totalWidth += it->width;
         if (it < lane) before += it->width;
     }
-    const double offset = (totalWidth / 2 - before - lane->width / 2) * (side == DrivingSide::left ? 1 : -1);
+    const double offset = (link.laneOffset + totalWidth / 2 - before - lane->width / 2) * (side == DrivingSide::left ? 1 : -1);
+    return offsetGeometry(link.geometry,offset);
+}
+std::vector<Point> laneBoundaryGeometry(const Link& link,std::size_t boundary,DrivingSide side) {
+    if(boundary>link.lanes.size())throw std::invalid_argument("EDIT_LANES");
+    double total=0,before=0;
+    for(std::size_t i=0;i<link.lanes.size();++i){total+=link.lanes[i].width;if(i<boundary)before+=link.lanes[i].width;}
+    return offsetGeometry(link.geometry,(link.laneOffset+total/2-before)*(side==DrivingSide::left?1.:-1.));
+}
+void replaceLaneBundle(Link& link,std::vector<Lane> lanes,bool leading) {
+    double oldWidth=0,newWidth=0;
+    for(const auto& l:link.lanes)oldWidth+=l.width;
+    for(const auto& l:lanes)newWidth+=l.width;
+    link.laneOffset+=(newWidth-oldWidth)*(leading?.5:-.5);
+    link.lanes=std::move(lanes);
+}
+std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offset) {
     std::vector<Point> points;
-    for (std::size_t i = 0; i < link.geometry.size(); ++i) {
-        const auto& p = link.geometry[i];
-        const auto& previous = link.geometry[i == 0 ? 0 : i - 1];
-        const auto& next = link.geometry[std::min(link.geometry.size() - 1, i + 1)];
+    for (std::size_t i = 0; i < geometry.size(); ++i) {
+        const auto& p = geometry[i];
+        const auto& previous = geometry[i == 0 ? 0 : i - 1];
+        const auto& next = geometry[std::min(geometry.size() - 1, i + 1)];
         double dx = next.x - previous.x, dy = next.y - previous.y;
         if (dx == 0 && dy == 0) { dx = next.x - p.x; dy = next.y - p.y; }
         const double norm = std::hypot(dx, dy);

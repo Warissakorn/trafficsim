@@ -20,7 +20,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-3 authoring codec, schema-1/2 migration and revision run snapshots |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-4 authoring codec, schema-1/2/3 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
@@ -98,7 +98,15 @@ change. Dynamic vehicle/head scene items are ordered by their authored level.
 between Save and recovery. Each editor owns a UUID recovery file and a QLockFile;
 restoration validates before replacing the document and starts untitled and dirty.
 Schema 1 loads with default one-lane connector ranges, level 0 and default display
-type. Schema 1/2 endpoint references retain their default attachments; saves write schema 3.
+type. Schema 1/2 endpoint references retain their default attachments; saves write schema 4.
+`Link::laneOffset` positions the lane bundle independently of its reference polyline.
+`replaceLaneBundle` anchors the edge opposite the edit; model lane geometry and road
+boundaries share that offset, so resizing curved roads does not move surviving lanes.
+Leading Connector range edits freeze `laneBlend` weights and rebase the first path;
+derived surviving lane pairs retain their curves. Schema 1–3 default to zero offset
+and legacy arclength weights. Geometry edits clear frozen weights when reshaping.
+Canvas Ctrl-click selection is separate from Ctrl-drag copy, committed on release.
+Link/group, independently attached Connector and Signal head copies all use History.
 Optional `LaneReference::fraction` stores a normalized lane-arclength position.
 `laneAttachment` is shared by curve construction, derived paths, validation and reanchoring.
 The editor's side-resize gestures submit one Link/range command on release; preview data

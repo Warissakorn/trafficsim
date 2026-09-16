@@ -49,6 +49,7 @@ void EditorCanvas::setDocument(const ProjectDocument* d) {
         if (!document_) return true;
         for (const auto& link : document_->network.links) if (link.id == id) return false;
         for (const auto& c : document_->network.connectors) if (c.id == id) return false;
+        for (const auto& h : document_->network.signalHeads) if (h.id == id) return false;
         return true;
     });
     redraw();
@@ -57,6 +58,7 @@ void EditorCanvas::setTool(Tool tool) {
     cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
 }
 void EditorCanvas::cancel() {
+    copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
     creating_=false;gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
@@ -92,23 +94,30 @@ void EditorCanvas::redraw() {
         const auto& appearance=style(link.displayType);const double z=link.level*100.;
         const bool chosen=isSelected(link.id);
         if (link.id==primary && !preview_.empty()) link.geometry=preview_;
-        if(link.id==primary && laneResize_ && laneResize_->kind==4) {
-            while(static_cast<int>(link.lanes.size())<previewLinkCount_)
-                link.lanes.push_back({"preview-"+std::to_string(link.lanes.size()),link.lanes.back().width});
-            link.lanes.resize(static_cast<std::size_t>(previewLinkCount_));
+        if(link.id==primary && laneResize_ && (laneResize_->kind==4 || laneResize_->kind==8)) {
+            const bool leading=laneResize_->kind==8;auto lanes=link.lanes;
+            const double width=(leading?lanes.front():lanes.back()).width;
+            while(static_cast<int>(lanes.size())<previewLinkCount_)
+                lanes.insert(leading?lanes.begin():lanes.end(),{"preview-"+std::to_string(lanes.size()),width});
+            while(static_cast<int>(lanes.size())>previewLinkCount_)lanes.erase(leading?lanes.begin():lanes.end()-1);
+            replaceLaneBundle(link,std::move(lanes),leading);
         }
-        for (const auto& lane : link.lanes) {
-            const auto geometry=laneGeometry(link,lane.id,document_->network.drivingSide);
-            const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
-            auto* item=scene_.addPath(path(geometry),QPen(colour,lane.width,Qt::SolidLine,Qt::FlatCap,Qt::RoundJoin));
-            item->setZValue(z+1);
-            QPen centre(QColor(QString::fromStdString(appearance.laneColor)),1,Qt::DashLine); centre.setCosmetic(true);
-            scene_.addPath(path(geometry),centre)->setZValue(z+2);
+        const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
+        const auto left=laneBoundaryGeometry(link,0,document_->network.drivingSide);
+        const auto right=laneBoundaryGeometry(link,link.lanes.size(),document_->network.drivingSide);
+        auto surface=path(left);for(auto it=right.rbegin();it!=right.rend();++it)surface.lineTo(q(*it));surface.closeSubpath();
+        scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+1);
+        for(std::size_t boundary=0;boundary<=link.lanes.size();++boundary) {
+            const bool edge=boundary==0 || boundary==link.lanes.size();
+            QPen pen(QColor(QString::fromStdString(appearance.laneColor)),1,edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            auto* mark=scene_.addPath(path(laneBoundaryGeometry(link,boundary,document_->network.drivingSide)),pen);
+            mark->setZValue(z+2);mark->setData(0,QStringLiteral("road-marking"));mark->setData(1,QString::fromStdString(link.id));
         }
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
         if (polylineLength(link.geometry) <= 0) continue;
-        const auto mid=pointAlong(link.geometry,polylineLength(link.geometry)/2);
-        const auto ahead=pointAlong(link.geometry,polylineLength(link.geometry)/2+0.05);
+        const auto road=offsetGeometry(link.geometry,link.laneOffset*(document_->network.drivingSide==DrivingSide::left?1.:-1.));
+        const auto mid=pointAlong(road,polylineLength(road)/2);
+        const auto ahead=pointAlong(road,polylineLength(road)/2+0.05);
         const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());
         QPolygonF arrow;
         for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
@@ -123,6 +132,7 @@ void EditorCanvas::redraw() {
     }
     drawConnectors();
     drawLaneHandles();
+    drawCopyPreview();
     for(const auto& head:document_->network.signalHeads) {
         std::vector<Point> geometry;int level=0;
         if(head.connectorId.empty()) {
@@ -133,7 +143,7 @@ void EditorCanvas::redraw() {
             if(p.id==head.connectorId){geometry=p.geometry;level=c.level;}
         if(geometry.empty() || !levelVisible(level))continue;
         const auto p=pointAlong(geometry,head.position);const double r=3/std::abs(transform().m11());
-        scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,QPen(Qt::darkGray),QBrush(Qt::white))->setZValue(level*100.+10);
+        scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,QPen(Qt::darkGray),QBrush(isSelected(head.id)?QColor("#ffb454"):QColor(Qt::white)))->setZValue(level*100.+10);
     }
     if (band_) {
         QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);
