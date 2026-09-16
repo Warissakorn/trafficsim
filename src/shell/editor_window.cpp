@@ -99,6 +99,12 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         });
     };
     canvas_->createConnector=[this](const auto& from,const auto& to){addConnection(from,to);};
+    canvas_->moveConnectorEndpoint=[this](bool leading,LaneReference ref){
+        const auto* connector=canvas_->selectedConnector();if(!connector)return;
+        const auto id=connector->id;
+        const LaneReference from=leading?ref:connector->from, to=leading?connector->to:ref;
+        execute("editorMoveConnectorEnd",[&](auto& d){changeConnectorEndpoints(d,id,from,to);});
+    };
     canvas_->connectorSourcePicked=[this](const auto& lane){
         connectorFrom_->setCurrentIndex(connectorFrom_->findData(QString::fromStdString(lane.laneId)));
         connectorFromPosition_->setValue(lane.fraction.value_or(1.)*100);

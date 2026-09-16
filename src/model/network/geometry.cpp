@@ -68,6 +68,10 @@ void replaceLaneBundle(Link& link,std::vector<Lane> lanes,bool leading) {
     link.laneOffset+=(newWidth-oldWidth)*(leading?.5:-.5);
     link.lanes=std::move(lanes);
 }
+std::vector<Point> linkCentreline(const Link& link,DrivingSide side) {
+    if(side!=DrivingSide::left && side!=DrivingSide::right)throw std::invalid_argument("INVALID_DRIVING_SIDE");
+    return offsetGeometry(link.geometry,link.laneOffset*(side==DrivingSide::left?1.:-1.));
+}
 std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offset) {
     std::vector<Point> points;
     for (std::size_t i = 0; i < geometry.size(); ++i) {

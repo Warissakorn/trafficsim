@@ -125,16 +125,18 @@ paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference t
 Unequal counts express fan-outs or merges in the drawing; merging still fails the M0
 run check. Connector ranges are limited by the existing lanes, at most 12 per end.
 
-In Select (S), orange **side handles** exist even on a one-lane Connector:
+In Select (S), orange **lane tabs** exist even on a one-lane Connector. Each is drawn as a
+rounded tab on the edge of the carriageway, joined to it by a short stem, with the resulting
+lane count inside it — one shape saying what it edits and what the release will produce:
 
 - Source handles on both sides: grow/shrink the contiguous source lane range.
 - Target handles on both sides: grow/shrink the contiguous target lane range independently.
 - Middle handles on both sides: set both ends to the same count, limited by available lanes.
-- Each selected Link has a handle on **both sides** to add/remove lanes (up to 12). Existing
+- Each selected Link has a tab on **both sides** to add/remove lanes (up to 12). Existing
   widths and world positions are retained. Added lanes use the width of the dragged edge lane.
 
 Drag outward to add lanes and inward to remove them; the number and geometry preview
-update during the drag. One release is one undo entry. Esc cancels. Each handle changes
+update during the drag. One release is one undo entry. Esc cancels. Each tab changes
 its own edge, leaving the opposite edge fixed. The first-side handles add/remove lanes
 before the current first lane; the other handles change the last lane. Surviving lane
 IDs and positions stay fixed, including on curved Links. Connector paths whose lane pair
@@ -144,6 +146,20 @@ Properties count edits and downstream pocket creation expand the last-lane side.
 Road surfaces use the same geometry as lane positions: outer boundaries are solid and
 internal lane boundaries are dashed. There is no dashed line down a lane centre. The
 small centre arrows show travel direction; white dots are editable geometry handles.
+
+Geometry handles sit on the **centreline of the whole bundle**, as Vissim shows them, not on
+the stored reference polyline — which ends up at one edge as soon as lanes are added to a
+single side — and not on a Connector's first lane path. Dragging one moves the stored point
+by the same offset, so what the pointer holds is what moves.
+
+A Connector's two end handles are dark squares at the middle of its end cross-section, and
+they are draggable: drop one on any lane to re-attach that end, anywhere along the lane. The
+range is centred on the lane under the pointer and slides to stay inside the Link. If the new
+end has fewer lanes than the Connector carries, the range is narrowed to what is there rather
+than the move being rejected; a wider Link never widens the range on its own. Dropping outside
+a Link leaves the attachment alone, Esc cancels, and one release is one undo entry. A
+Connector used by a route or head still cannot be re-attached. Properties shows both lane
+counts beside the length, so a 3 → 2 lane drop is visible without opening the inspector.
 Connector path count is the larger of its source and target counts, not a third independent
 lane topology. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references

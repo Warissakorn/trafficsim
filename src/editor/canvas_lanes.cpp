@@ -20,9 +20,11 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         const auto b=pointAlong(geometry,std::min(length,length*fraction+.01));
         const double norm=std::hypot(b.x-a.x,b.y-a.y),sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
         const Point direction{sign*(b.y-a.y)/norm,-sign*(b.x-a.x)/norm};
-        // Keep resize handles visibly outside geometry handles at every zoom level.
-        const double offset=lane.width/2+10/std::abs(transform().m11());
-        return LaneHandle{{p.x+direction.x*offset,p.y+direction.y*offset},direction,lane.width,kind,count,leading?static_cast<int>(std::distance(link.lanes.begin(),first))+count:available};
+        // Keep resize handles visibly outside geometry handles at every zoom level, and
+        // remember where the road edge is so the grip can be drawn attached to it.
+        const double edge=lane.width/2,offset=edge+16/std::abs(transform().m11());
+        return LaneHandle{{p.x+direction.x*offset,p.y+direction.y*offset},{p.x+direction.x*edge,p.y+direction.y*edge},
+                          direction,lane.width,kind,count,leading?static_cast<int>(std::distance(link.lanes.begin(),first))+count:available};
     };
     if(const auto* link=selectedLink();link && levelVisible(link->level)) {
         auto h=handle(*link,{link->id,link->lanes.front().id,.5},static_cast<int>(link->lanes.size()),4);
@@ -46,9 +48,9 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const auto mid=pointAlong(outer,length/2),ahead=pointAlong(outer,std::min(length,length/2+.01));
             const double norm=std::hypot(ahead.x-mid.x,ahead.y-mid.y),sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
             const Point direction{sign*(ahead.y-mid.y)/norm,-sign*(ahead.x-mid.x)/norm};
-            const double width=(a.width+b.width)/2,offset=width/2+10/std::abs(transform().m11());
-            LaneHandle body{{mid.x+direction.x*offset,mid.y+direction.y*offset},direction,width,3+extra,
-                            std::max(a.count,b.count),std::min(a.maximum,b.maximum)};
+            const double width=(a.width+b.width)/2,edge=width/2,offset=edge+16/std::abs(transform().m11());
+            LaneHandle body{{mid.x+direction.x*offset,mid.y+direction.y*offset},{mid.x+direction.x*edge,mid.y+direction.y*edge},
+                            direction,width,3+extra,std::max(a.count,b.count),std::min(a.maximum,b.maximum)};
             result.insert(result.end(),{a,b,body});
         }
         return result;
@@ -86,23 +88,36 @@ void EditorCanvas::updateLaneResize(QPoint position) {
     redraw();
 }
 void EditorCanvas::drawLaneHandles() {
-    const double radius=4/std::abs(transform().m11());
+    // Vissim draws a lane grip as a tab on the edge of the carriageway carrying the lane
+    // count, not as a loose dot with a number beside it. One shape says what it edits and
+    // what the result will be, which is why the number lives inside the grip.
+    const double scale=std::abs(transform().m11()),half=9/scale,corner=3/scale;
     for(auto h:laneHandles()) {
         int count=h.count;
+        const bool held=laneResize_ && laneResize_->kind==h.kind;
         if(laneResize_) {
             const int kind=(h.kind-1)%4+1;
             count=kind==4?previewLinkCount_:kind==2?previewToCount_:kind==1?previewFromCount_:std::max(previewFromCount_,previewToCount_);
-            if(laneResize_->kind==h.kind) {
+            if(held) {
                 const double shift=(count-h.count)*h.width;
                 h.position.x+=h.direction.x*shift;h.position.y+=h.direction.y*shift;
+                h.anchor.x+=h.direction.x*shift;h.anchor.y+=h.direction.y*shift;
             }
         }
-        QPen pen(QColor("#9a5b00"));pen.setCosmetic(true);
-        auto* item=scene_.addRect(h.position.x-radius,h.position.y-radius,2*radius,2*radius,pen,QBrush("#ffb454"));
+        QPen stem(QColor("#9a5b00"),1);stem.setCosmetic(true);
+        scene_.addLine(h.anchor.x,h.anchor.y,h.position.x,h.position.y,stem)->setZValue(200009);
+        QPainterPath grip;
+        grip.addRoundedRect(QRectF(h.position.x-half,h.position.y-half,2*half,2*half),corner,corner);
+        QPen border(QColor("#ffffff"),2);border.setCosmetic(true);
+        auto* item=scene_.addPath(grip,border,QBrush(held?QColor("#e08a00"):QColor("#ffb454")));
         item->setZValue(200010);item->setData(0,QStringLiteral("lane-resize"));item->setData(1,h.kind);
         auto* label=scene_.addSimpleText(QString::number(count));
-        label->setFlag(QGraphicsItem::ItemIgnoresTransformations);label->setPos(h.position.x+radius,h.position.y);
-        label->setZValue(200010);
+        label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+        label->setBrush(QBrush(QColor("#3a2200")));label->setPos(h.position.x,h.position.y);
+        const auto box=label->boundingRect();
+        // The label ignores the view transform, so centre it in device pixels around the grip.
+        label->setTransform(QTransform::fromTranslate(-box.width()/2,-box.height()/2));
+        label->setZValue(200011);
     }
 }
 }

@@ -15,29 +15,9 @@ void uniqueConnection(const ProjectDocument& d, const LaneReference& from, const
     for (const auto& c : d.network.connectors)
         if (c.id != except && c.from == from && c.to == to) throw std::invalid_argument("DUPLICATE_CONNECTION");
 }
-// Carry the interior points with the similarity transform that maps the old endpoint chord
-// onto the new one. Writing each point as the complex number z = (p-a)/(b-a) makes z an
-// invariant of the curve's shape, so the transform depends only on where the endpoints are
-// now, never on how they got there: moving a link away and back restores the curve exactly.
-// A displacement blend relative to the current geometry cannot do this — it composes, so a
-// round trip through two edits silently deformed hand-tuned curves.
-void reanchor(ProjectDocument& d, Connector& c) {
-    const auto from = laneAttachment(d.network,c.from,true);
-    const auto to = laneAttachment(d.network,c.to,false);
-    if (c.geometry.size() < 2) throw std::invalid_argument("INVALID_GEOMETRY");
-    const auto old = c.geometry;
-    const auto a = old.front(), b = old.back();
-    if(from==a && to==b)return;
-    const double vx = b.x-a.x, vy = b.y-a.y, chord = vx*vx + vy*vy;
-    const double wx = to.x-from.x, wy = to.y-from.y;
-    if (!std::isfinite(chord) || chord <= 0) throw std::invalid_argument("INVALID_GEOMETRY");
-    for (std::size_t i = 1; i+1 < old.size(); ++i) {
-        const double px = old[i].x-a.x, py = old[i].y-a.y;
-        const double zr = (px*vx + py*vy)/chord, zi = (py*vx - px*vy)/chord;
-        c.geometry[i] = {from.x + zr*wx - zi*wy, from.y + zr*wy + zi*wx};
-    }
-    c.geometry.front() = from; c.geometry.back() = to;
-}
+// The similarity transform that carries the interior points lives in the model, beside the
+// attachments it reads; commands only decide when a connector is re-anchored.
+void reanchor(ProjectDocument& d, Connector& c) { reanchorConnector(d.network, c); }
 }
 void reanchorConnectors(ProjectDocument& d) { for (auto& c : d.network.connectors) reanchor(d, c); }
 std::string addConnector(ProjectDocument& d, const LaneReference& from, const LaneReference& to) {
@@ -83,8 +63,16 @@ void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneRef
     if (c.from == from && c.to == to) return;
     if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
     uniqueConnection(d, from, to, id);
-    c.from = from; c.to = to;
-    reanchor(d, c);
+    // The new end may have fewer lanes than the old one. Narrow the range to what is there
+    // instead of rejecting the move; a wider link never widens the range on its own, because
+    // how many lanes a connector carries is the author's decision, not the link's.
+    auto moved = c; moved.from = from; moved.to = to;
+    moved.fromLaneCount = std::max(1, std::min(c.fromLaneCount, lanesFromReference(d.network, from)));
+    moved.toLaneCount = std::max(1, std::min(c.toLaneCount, lanesFromReference(d.network, to)));
+    // Validate before mutating: an unknown lane must not leave a half-moved connector behind.
+    (void)connectorPaths(d.network, moved);
+    reanchorConnector(d.network, moved);
+    c = std::move(moved);
 }
 void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straight) {
     auto& c = editableConnector(d, id);

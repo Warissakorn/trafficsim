@@ -313,3 +313,23 @@ cannot honor body attachments and explicitly blocks Run (M1.11.1). First-lane se
 remains in Properties/the creation dialog. The middle handle changes both ranges together;
 there is no independent arbitrary Connector lane topology. Group transforms, editable
 tables and additional object types retain their earlier status. Owner acceptance remains open.
+
+## 2026-09-16 follow-up — Grips, end attachments and lane-count checks
+
+The owner's annotated screenshot marked four things: the lane tabs looked unfinished, the
+Link and Connector geometry points sat at a road edge instead of the middle, the Connector
+lane counts were not checked against what the other end actually has, and the Connector
+end points could not be moved.
+
+Lane tabs are now edge-mounted rounded tabs with a stem and the resulting count inside them,
+in place of a loose dot with a floating number. Geometry grips moved to the bundle centreline
+(`linkCentreline`, `connectorCentreline`); the stored polylines are unchanged, and a drag maps
+back through the same offset. Connector ends are draggable onto any lane or position along it:
+the range is centred on the lane under the pointer, and it is narrowed when the new end has
+fewer lanes than the Connector carries. Widening a Link still never widens a range on its own,
+because how many lanes a movement carries is the author's decision.
+
+Not changed, deliberately: unequal ranges remain legal drawings and still fail the M0 run
+check as `UNSUPPORTED_MERGE` — the counts are now shown beside the Connector length so the
+author sees a 3 → 2 drop without opening the inspector. Re-attaching a Connector used by a
+route or head is still rejected. Group transforms and the remaining booked gaps are unchanged.

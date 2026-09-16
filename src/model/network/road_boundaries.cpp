@@ -70,4 +70,12 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     }
     return result;
 }
+std::vector<Point> connectorCentreline(const Network& n,const Connector& c) {
+    const auto boundaries=connectorBoundaries(n,c);
+    std::vector<Point> result;
+    for(std::size_t i=0;i<c.geometry.size();++i)
+        result.push_back({(boundaries.front()[i].x+boundaries.back()[i].x)/2,
+                          (boundaries.front()[i].y+boundaries.back()[i].y)/2});
+    return result;
+}
 }

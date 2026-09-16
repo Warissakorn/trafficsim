@@ -8,6 +8,70 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-15 — Connector reshaping made path-independent, and the cost of one edit
+
+Review of M1.3/M1.4 found that `reanchor` displaced a connector's interior points relative to
+its *current* geometry, so the transform composed across edits instead of depending only on
+where the endpoints are. Moving a link away and back to exactly the same place left a
+hand-tuned curve permanently deformed by 3.76 m on a 30 m connector, and two sequential moves
+that together were a pure translation distorted it by 8.17 m. Undo was unaffected, because
+History restores whole-document snapshots rather than replaying the command.
+
+Interior points are now carried by the similarity transform mapping the old endpoint chord
+onto the new one, written as the complex invariant z = (p-a)/(b-a). Returning the endpoints
+restores the curve to 3.6e-15 m, sequential moves are rigid to 2.6e-14 m, and a simultaneous
+move stays rigid as before. `reanchor` runs only from `changeGeometry`, `changeLanes` and
+`changeDrivingSide`, never on load, so stored geometry is untouched until a project is edited.
+`reanchor_preserves_points_and_lane_references` pinned the old displacement formula; it now
+asserts chord-relative shape and an explicit away-and-back round trip, and fails against the
+previous implementation.
+
+`History::execute` serialised both documents to JSON on every edit to detect no-op commands.
+Measured at 400 links that was 63 ms of roughly 83 ms, more than the command and its
+validation together. The model types now carry value equality — `BackgroundImage` compares
+image bytes rather than the shared pointer — and the check is a struct comparison. The second
+full `validateDocument` is replaced by the revision-exhaustion test that was the only thing it
+added. One edit on a 200-link network fell from 62.0 ms to 3.8 ms.
+
+`changeConnectorGeometry` now rejects non-finite points, zero length and duplicate consecutive
+points, matching `changeGeometry`; previously only the surrounding transaction caught them.
+`changeLanes` no longer reports a pre-existing bad connector range as `EDIT_REFERENCED_LANE`.
+
+Verified on both presets: 21 desktop tests including the six UI suites, 15 headless,
+architecture and file-size guards. Two randomised invariant sweeps (300 trials each, both
+driving sides, with signal heads, routes, inputs, splits, retargeting, curve edits and
+deletions) report no dangling references and no detached connector endpoints before or after
+every edit. The `cli` test still pins 29.24935, so replay is unchanged. M0 plausibility and the
+M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
+### 2026-09-15 — Recovery lock failure and the run overlay's style lookup
+
+`buildRecovery` returned as soon as `QLockFile::tryLock` failed, which also skipped the two
+toolbar actions built below it. A session that could not take its recovery lock therefore lost
+`editorEmbedCatalogs`, an unrelated feature, and ran with autosave silently off after a single
+error message. The lock now only gates autosave: both actions are always built, the failure
+clears the stale recovery path, and the timer stays stopped rather than re-reporting the same
+failure every 15 seconds. Recovery browsing is deliberately still offered, because
+`recoverFile` acquires its own lock — adopting one now starts autosave through `startAutosave`,
+so a window that began unlocked becomes protected as soon as it recovers a draft.
+
+`drawRunItems` evaluated `runStyles_.at(location.segmentId)` as an argument to `marker`, so it
+ran before `marker`'s own missing-segment guard. `style()` already falls back to the default
+type, so the lookup is now total and an absent segment degrades exactly as one absent from the
+geometry map. The underlying asymmetry is also gone: `clearRunFrame` cleared only the geometry
+map while `setRunNetwork` clears all three, so the three maps now always hold the same keys.
+
+Qt 6.4.2 and nlohmann/json are available from the Ubuntu archive, so this session built the
+desktop preset and ran all 21 tests, including the six UI suites that earlier entries could
+only send to CI. That also covers the previous entry's compilation change. A new case in
+`m1_ui_tests` forces a lock failure by pointing `XDG_DATA_HOME` at a regular file, which
+defeats the lock for root as well, and asserts the window keeps both actions, leaves autosave
+stopped and stays editable. Against the previous code it fails with "lock failure removed
+catalog embedding". The run overlay change has no dedicated test: reaching it needs a
+segment-id desync that compilation and `setRunNetwork` currently make impossible.
+
+M0 plausibility and the M1 owner gate in `M1_ACCEPTANCE.md` remain open.
+
 ### 2026-09-15 — Scenario compilation cost and split re-projection coverage
 
 Review of the merged M1 branch found `buildScenario` resolving `connectorPaths` inside the

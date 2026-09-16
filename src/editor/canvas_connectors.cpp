@@ -1,6 +1,7 @@
 #include "canvas.hpp"
 #include <QGraphicsPathItem>
 #include <QPainter>
+#include <algorithm>
 #include <cmath>
 
 namespace trafficsim {
@@ -26,6 +27,23 @@ std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoin
         if(fraction!=(outgoing?1.:0.))result->fraction=fraction;
     }
     return result;
+}
+std::optional<LaneReference> EditorCanvas::connectorEndpointTarget(Point p,bool leading) const {
+    const auto* connector=selectedConnector();
+    if(!connector)return {};
+    auto ref=hitLanePosition(p,leading);
+    if(!ref)return {};
+    // The grip sits in the middle of the range, so the range is centred on the lane under the
+    // cursor, not started there; the range then slides inside the link rather than overflowing.
+    const int count=leading?connector->fromLaneCount:connector->toLaneCount;
+    for(const auto& link:document_->network.links)if(link.id==ref->linkId) {
+        const int lanes=static_cast<int>(link.lanes.size());
+        const auto at=std::find_if(link.lanes.begin(),link.lanes.end(),[&](const auto& l){return l.id==ref->laneId;});
+        if(at==link.lanes.end())return {};
+        const int index=static_cast<int>(std::distance(link.lanes.begin(),at));
+        ref->laneId=link.lanes[static_cast<std::size_t>(std::clamp(index-(count-1)/2,0,std::max(0,lanes-count)))].id;
+    }
+    return ref;
 }
 void EditorCanvas::pickConnector(Point p) {
     const auto lane=hitLanePosition(p,!connectorFrom_);
@@ -53,6 +71,17 @@ void EditorCanvas::drawConnectors() {
         auto preview=c;
         if(c.id==primary && !preview_.empty()){preview.geometry=preview_;preview.laneBlend.clear();}
         if(c.id==primary && rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4);
+        // Preview the re-attachment the same way the command will perform it, so what the
+        // pointer shows is what one release commits. An impossible drop shows the original.
+        if(c.id==primary && endpointDraft_ && endpointDrag_) try {
+            auto moved=preview;
+            (*endpointDrag_?moved.from:moved.to)=*endpointDraft_;
+            moved.fromLaneCount=std::max(1,std::min(moved.fromLaneCount,lanesFromReference(document_->network,moved.from)));
+            moved.toLaneCount=std::max(1,std::min(moved.toLaneCount,lanesFromReference(document_->network,moved.to)));
+            (void)connectorPaths(document_->network,moved);
+            reanchorConnector(document_->network,moved);
+            preview=std::move(moved);
+        } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;
         const auto boundaries=connectorBoundaries(document_->network,preview);
         auto surface=path(boundaries.front());
@@ -73,13 +102,22 @@ void EditorCanvas::drawConnectors() {
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
             scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+5);
         }
-        if (c.id==primary) for (std::size_t i=0; i<geometry.size(); ++i) {
-            const auto p=geometry[i];
-            if (i==0 || i+1==geometry.size()) {
-                scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush("#334155"))->setZValue(z+6);
-            } else {
-                const auto color=static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff");
-                scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,pen,QBrush(color))->setZValue(z+6);
+        // Grips ride the middle of the connector's whole width, not the first lane's path.
+        if (c.id==primary) {
+            const auto handles=connectorCentreline(document_->network,preview);
+            QPen outline(QColor("#334155"),1);outline.setCosmetic(true);
+            for (std::size_t i=0; i<handles.size(); ++i) {
+                const auto p=handles[i];
+                if (i==0 || i+1==handles.size()) {
+                    const bool held=endpointDrag_ && *endpointDrag_==(i==0);
+                    auto* item=scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,
+                                              QBrush(held?QColor("#ffb454"):QColor("#334155")));
+                    item->setZValue(z+6);item->setData(0,QStringLiteral("connector-end"));
+                    item->setData(1,QString::fromStdString(c.id));item->setData(2,i==0);
+                } else {
+                    const auto color=static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff");
+                    scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,outline,QBrush(color))->setZValue(z+6);
+                }
             }
         }
     }
