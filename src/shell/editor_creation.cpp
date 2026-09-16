@@ -34,7 +34,9 @@ void EditorWindow::createRangeDialog(LaneReference from,LaneReference to,const s
     auto* fromCount=new QSpinBox(&dialog);fromCount->setObjectName("editorRangeFromCount");
     auto* toCount=new QSpinBox(&dialog);toCount->setObjectName("editorRangeToCount");
     const auto ranges=[&]{fromCount->setRange(1,std::max(1,source->count()-source->currentIndex()));toCount->setRange(1,std::max(1,target->count()-target->currentIndex()));};
-    ranges();fromCount->setValue(std::min(fromCount->maximum(),toCount->maximum()));toCount->setValue(fromCount->value());
+    // One dragged lane is one lane. Pre-filling the maximum silently authored a wide
+    // connector from a single-lane gesture, which then drew lane dividers nobody asked for.
+    ranges();fromCount->setValue(1);toCount->setValue(1);
     connect(source,&QComboBox::currentIndexChanged,&dialog,ranges);connect(target,&QComboBox::currentIndexChanged,&dialog,ranges);
     form->addRow(text("editorConnectorFrom"),source);form->addRow(text("editorFromLaneCount"),fromCount);
     form->addRow(text("editorConnectorTo"),target);form->addRow(text("editorToLaneCount"),toCount);

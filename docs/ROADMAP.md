@@ -230,6 +230,29 @@ partial-lane distances, obeys section-mounted signals, and retains deterministic
 
 ---
 
+### M1.13 — Attachment stations in metres
+
+**Implemented.** A Connector end is attached by `LaneReference::station`: metres along the
+link's reference polyline, as Vissim stores a position, replacing the fraction of lane
+arclength that slid every interior attachment whenever a Link was stretched. One station names
+one cross-section, so every lane of a range meets the Link square on a curve; `matchedStation`
+maps that station onto any lane or boundary derived from the same reference, and is the single
+place the mapping lives. `laneOffset` keeps the reference polyline fixed under lane edits, so
+adding or removing lanes cannot move an attachment either.
+
+Shortening a Link past an attachment clamps it to the new end in `reanchorConnector`, which
+every edit that can change a reference length already routes through; the Link edit is never
+rejected. Signal heads keep their existing contract, where validation rejects such an edit.
+`splitLink` carries stations across a cut by arithmetic alone. Schema 5 stores `station`;
+schemas 1–4 and pre-schema M0 scenarios are converted on read at the same world position, with
+the version — not the key that happens to be present — deciding the unit.
+
+**Done:** stretching a Link's far end leaves an interior Connector at the same metre and the
+same world point; schema 4 files load unchanged; Run-blocking for end attachments is unchanged.
+M1.11.1 can now split a lane at a station that does not move underneath it.
+
+---
+
 ## M2 — Demand, run, first numbers · **GATE**
 
 Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay

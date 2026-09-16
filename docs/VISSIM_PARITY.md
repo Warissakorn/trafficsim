@@ -333,3 +333,48 @@ Not changed, deliberately: unequal ranges remain legal drawings and still fail t
 check as `UNSUPPORTED_MERGE` — the counts are now shown beside the Connector length so the
 author sees a 3 → 2 drop without opening the inspector. Re-attaching a Connector used by a
 route or head is still rejected. Group transforms and the remaining booked gaps are unchanged.
+
+## 2026-09-16 follow-up — Bent carriageways, one-lane connectors, and where an attachment lives
+
+Three more owner findings. Two were defects and are fixed; the third is a model decision,
+recorded here and booked as M1.13.
+
+**Bends.** Lane edges were offset along the corner's average normal by the full width, which
+leaves them `width/2 * cos(theta/2)` from the centreline — the carriageway pinched at every
+bend, 30% at the right angle in the owner's screenshot. Offsetting now uses the miter length,
+so Links, Connectors and the diagnostic view all keep their width through a corner. No pinned
+simulation baseline moved: every reference fixture is a straight network, and straight
+polylines are unchanged bit for bit.
+
+**One lane means one lane.** The creation dialog pre-filled both lane counts with every lane
+from the picked one to the end of the Link, so a drag from a single lane authored a two- or
+three-lane Connector complete with lane dividers. It now opens at one lane per end. The
+Properties counts also reset to one when no Connector is selected, so a previous selection
+cannot seed the next creation.
+
+**Where an attachment lives.** Vissim attaches a connector to a lane at a position and drags
+it with the link; so do we, and that is not negotiable — validation requires the end to sit on
+its attachment, and the compiler builds lane → connector path → lane, so a Connector left
+behind in world coordinates would be a network the engine cannot run and a vehicle would
+teleport across the gap. What is wrong is the *unit*: a fraction of lane length means
+stretching a Link slides every interior attachment, and with it the lane-section lengths a
+future run would measure. Vissim stores a distance; so does our own `NetworkSignalHead`. M1.13
+books that change, with the migration and identity constraints it has to respect.
+
+## 2026-09-16 follow-up — M1.13 implemented: attachments are metres along the Link
+
+The unit decision recorded above is now the model. `LaneReference::station` holds metres along
+the Link's reference polyline, Vissim's `Pos`, rather than a fraction of the attached lane's
+arclength. Stretching a Link no longer slides the Connectors attached part-way along it, and a
+multi-lane range meets a curved Link on one square cross-section instead of fanning with the
+per-lane arclength difference.
+
+Two behaviours the owner should know, because Vissim does not spell them out either. Shortening
+a Link past an attachment clamps the Connector to the new end rather than refusing the edit — a
+Signal head in the same position still refuses, which is the older contract and deliberately
+left alone. And the number in Properties is measured on the Link's own line, so on a curve it
+differs slightly from the distance travelled in an outer lane; that is what makes it the same
+number for every lane of a range.
+
+Remaining gaps are unchanged: group transforms, `Alt`-drag rotation, editable table cells and
+the M1.11.1 runtime lane sections, which this change exists to make tractable.

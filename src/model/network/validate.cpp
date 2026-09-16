@@ -23,12 +23,16 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         if (!valid) add("INVALID_GEOMETRY", path);
     };
     const auto resolve = [&](const LaneReference& ref, const std::string& path) -> const Link* {
-        if(ref.fraction && (!std::isfinite(*ref.fraction) || *ref.fraction<0 || *ref.fraction>1)) {
-            add("EDIT_CONNECTOR_POSITION",path+".fraction");return nullptr;
-        }
         for (const auto& link : network.links)
             if (link.id == ref.linkId && std::any_of(link.lanes.begin(), link.lanes.end(),
-                [&](const auto& lane) { return lane.id == ref.laneId; })) return &link;
+                [&](const auto& lane) { return lane.id == ref.laneId; })) {
+                // A station is bounded by the link it names, so this check follows the lookup.
+                if(ref.station && (!std::isfinite(*ref.station) || *ref.station<0 ||
+                                   *ref.station>polylineLength(link.geometry))) {
+                    add("EDIT_CONNECTOR_POSITION",path+".station");return nullptr;
+                }
+                return &link;
+            }
         add("UNKNOWN_LANE", path);
         return nullptr;
     };
@@ -60,7 +64,9 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             for(const auto& path:connectorPaths(network,c)) {
                 if(path.id!=c.id)id(path.id,p+".id");
                 geometry(path.geometry,p+".geometry");
-                if(!connections.emplace(path.from.laneId,path.from.fraction.value_or(1.),path.to.laneId,path.to.fraction.value_or(0.)).second)add("DUPLICATE_CONNECTION",p);
+                if(!connections.emplace(path.from.laneId,attachmentStation(network,path.from,true),
+                                        path.to.laneId,attachmentStation(network,path.to,false)).second)
+                    add("DUPLICATE_CONNECTION",p);
             }
         }catch(const std::exception&){add("EDIT_LANE_RANGE",p);}
         const auto check = [&](const Link* link, const LaneReference& ref, bool end) {

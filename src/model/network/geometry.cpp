@@ -1,10 +1,15 @@
 #include "network.hpp"
 #include <limits>
+#include <optional>
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 namespace trafficsim {
+namespace {
+// Longest miter, as a multiple of the offset, before a hairpin is cut back.
+constexpr double kMiterLimit=4;
+}
 std::string signalSegment(const NetworkSignalHead& head) {
     return head.connectorId.empty()?head.lane.laneId:head.connectorId;
 }
@@ -72,16 +77,52 @@ std::vector<Point> linkCentreline(const Link& link,DrivingSide side) {
     if(side!=DrivingSide::left && side!=DrivingSide::right)throw std::invalid_argument("INVALID_DRIVING_SIDE");
     return offsetGeometry(link.geometry,link.laneOffset*(side==DrivingSide::left?1.:-1.));
 }
+double matchedStation(const std::vector<Point>& from,const std::vector<Point>& to,double station) {
+    if(from.size()!=to.size() || from.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+    if(!std::isfinite(station))throw std::invalid_argument("INVALID_GEOMETRY");
+    double remaining=std::max(0.,station),matched=0;
+    for(std::size_t i=1;i<from.size();++i) {
+        const double length=std::hypot(from[i].x-from[i-1].x,from[i].y-from[i-1].y);
+        const double step=std::hypot(to[i].x-to[i-1].x,to[i].y-to[i-1].y);
+        if(length>0 && remaining<=length)return matched+step*remaining/length;
+        if(length>0)remaining-=length;
+        matched+=step;
+    }
+    return matched; // Past the end of `from`, which clamps to the end of `to`.
+}
 std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offset) {
+    // A corner needs a miter, not a plain normal. Offsetting a bend vertex by `offset` along
+    // the average normal leaves it offset*cos(theta/2) from the original line, so both lane
+    // edges pull in and the carriageway visibly pinches at every bend: 18% at 63 degrees,
+    // 30% at a right angle. The miter vector (n1+n2)/(1+d1.d2) has length 1/cos(theta/2),
+    // which is exactly the distance from the corner to the intersection of the two offset
+    // legs. A straight polyline reduces to the old single normal, bit for bit.
     std::vector<Point> points;
+    const auto unit=[](Point from,Point to)->std::optional<Point> {
+        const double dx=to.x-from.x,dy=to.y-from.y,norm=std::hypot(dx,dy);
+        if(norm<=0)return {};
+        return Point{dx/norm,dy/norm};
+    };
     for (std::size_t i = 0; i < geometry.size(); ++i) {
         const auto& p = geometry[i];
-        const auto& previous = geometry[i == 0 ? 0 : i - 1];
-        const auto& next = geometry[std::min(geometry.size() - 1, i + 1)];
-        double dx = next.x - previous.x, dy = next.y - previous.y;
-        if (dx == 0 && dy == 0) { dx = next.x - p.x; dy = next.y - p.y; }
-        const double norm = std::hypot(dx, dy);
-        points.push_back(norm == 0 ? p : Point{p.x - dy / norm * offset, p.y + dx / norm * offset});
+        // At an end there is only one segment, and its own normal is already exact.
+        auto incoming = i==0 ? std::optional<Point>{} : unit(geometry[i-1],p);
+        auto outgoing = i+1==geometry.size() ? std::optional<Point>{} : unit(p,geometry[i+1]);
+        if(!incoming)incoming=outgoing;
+        if(!outgoing)outgoing=incoming;
+        if(!incoming){points.push_back(p);continue;} // Repeated points keep their position.
+        const Point n1{-incoming->y,incoming->x},n2{-outgoing->y,outgoing->x};
+        const double denominator=1+incoming->x*outgoing->x+incoming->y*outgoing->y;
+        Point miter{n1.x+n2.x,n1.y+n2.y};
+        // A turn sharper than about 151 degrees would spike towards infinity. Clamp it to the
+        // same limit a renderer would, so a hairpin stays drawable and stays deterministic.
+        if(denominator>2/(kMiterLimit*kMiterLimit)) { miter.x/=denominator;miter.y/=denominator; }
+        else {
+            const double norm=std::hypot(miter.x,miter.y);
+            if(norm>0){miter.x=miter.x/norm*kMiterLimit;miter.y=miter.y/norm*kMiterLimit;}
+            else miter=n1; // An exact reversal has no bisector; use the incoming normal.
+        }
+        points.push_back({p.x+miter.x*offset,p.y+miter.y*offset});
     }
     return points;
 }

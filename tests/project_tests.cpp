@@ -13,11 +13,11 @@ TEST(project, strict_json_shapes) {
     std::ifstream file(test::root() / "data/scenarios/crossing.json");
     const auto source = Json::parse(file);
     auto n = source.at("network"); n["links"] = Json::object();
-    test::throws([&] { parseNetwork(n); }, "Expected array");
+    test::throws([&] { parseNetwork(n,0); }, "Expected array");
     n = source.at("network"); n["links"][0]["lanes"][0]["width"] = true;
-    test::throws([&] { parseNetwork(n); }, "Expected number");
+    test::throws([&] { parseNetwork(n,0); }, "Expected number");
     n = source.at("network"); n["drivingSide"] = "unknown";
-    test::throws([&] { parseNetwork(n); }, "INVALID_DRIVING_SIDE");
+    test::throws([&] { parseNetwork(n,0); }, "INVALID_DRIVING_SIDE");
     auto d = source.at("definition"); d["signalPrograms"][0]["phases"][0]["color"] = "blue";
     test::throws([&] { parseDefinition(d); }, "INVALID_SIGNAL_COLOR");
     d = source.at("definition"); d.erase("timeStep");
@@ -92,7 +92,7 @@ TEST(project, no_null_field_leaks_a_parser_exception) {
     const auto source = Json::parse(file);
     const auto nulled = [&](const std::function<void(Json&)>& breakIt) {
         auto copy = source; breakIt(copy);
-        try { parseNetwork(copy.at("network")); parseDefinition(copy.at("definition")); }
+        try { parseNetwork(copy.at("network"),0); parseDefinition(copy.at("definition")); }
         catch (const std::exception& error) {
             CHECK(std::string(error.what()).find("json.exception") == std::string::npos);
             return;

@@ -14,10 +14,12 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         const bool leading=kind>4;const int base=leading?kind-4:kind;
         const auto& lane=*(first+(leading?0:count-1));
         const auto geometry=laneGeometry(link,lane.id,side);
-        const double length=polylineLength(geometry),fraction=ref.fraction.value_or(base==1?1.:0.);
-        const auto p=pointAlong(geometry,length*fraction);
-        const auto a=pointAlong(geometry,std::max(0.,length*fraction-.01));
-        const auto b=pointAlong(geometry,std::min(length,length*fraction+.01));
+        const double length=polylineLength(geometry);
+        const double at=matchedStation(link.geometry,geometry,
+            ref.station.value_or(base==1?polylineLength(link.geometry):0.));
+        const auto p=pointAlong(geometry,at);
+        const auto a=pointAlong(geometry,std::max(0.,at-.01));
+        const auto b=pointAlong(geometry,std::min(length,at+.01));
         const double norm=std::hypot(b.x-a.x,b.y-a.y),sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
         const Point direction{sign*(b.y-a.y)/norm,-sign*(b.x-a.x)/norm};
         // Keep resize handles visibly outside geometry handles at every zoom level, and
@@ -27,8 +29,11 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
                           direction,lane.width,kind,count,leading?static_cast<int>(std::distance(link.lanes.begin(),first))+count:available};
     };
     if(const auto* link=selectedLink();link && levelVisible(link->level)) {
-        auto h=handle(*link,{link->id,link->lanes.front().id,.5},static_cast<int>(link->lanes.size()),4);
-        auto other=handle(*link,{link->id,link->lanes.front().id,.5},static_cast<int>(link->lanes.size()),8);
+        // Mid-link, clear of the endpoint grips. A link station says that once for both tabs,
+        // whichever lane `handle` measures the offset from.
+        const LaneReference middle{link->id,link->lanes.front().id,polylineLength(link->geometry)/2};
+        auto h=handle(*link,middle,static_cast<int>(link->lanes.size()),4);
+        auto other=handle(*link,middle,static_cast<int>(link->lanes.size()),8);
         h.maximum=other.maximum=12;return {h,other};
     }
     if(const auto* connector=selectedConnector();connector && levelVisible(connector->level)) {

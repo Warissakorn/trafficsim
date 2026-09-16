@@ -8,6 +8,84 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-15 — Ctrl-right release, body attachments and lane side handles
+
+The owner reported a disappearing Ctrl+right-drag preview, endpoint-only Connectors,
+and missing direct lane-count manipulation. The Select tool entered creation preview
+but its release branch only supported Draw and Connect; release also trusted the last
+mouse-move event. Select/Links now infer Link creation from empty space and Connector
+creation from a lane, and commit the actual release position regardless of released Ctrl.
+Esc, tool changes and dialog Cancel discard the gesture. Invalid targets report an error.
+
+`LaneReference::fraction` stores an optional normalized lane-arclength attachment.
+Missing values retain source-end/target-start semantics. Schema 3 persists positions and
+rejects older readers; schemas 1/2 and bare M0 networks remain readable. Curve tangents,
+reanchoring, per-lane paths, validation, duplication and split remapping use the same
+attachment semantics. Distinct station pairs on the same lanes may own distinct
+Connectors; duplicate pairs at the same stations remain rejected. A split through an
+attachment within its 0.2 m continuity span is rejected before mutation.
+
+Selected Connectors expose orange source/target side handles from one lane onwards.
+The middle handle sets both ranges to the same count. Selected Links have a side handle
+that adds/removes lanes while retaining existing widths. Counts and geometry preview
+without changing History; one release commits one command, Esc cancels. Range limits,
+referenced-lane/Connector guards, Undo/Redo and lane IDs retain their existing contracts.
+The first lane is chosen in the dialog/Properties; the number of derived Connector paths
+remains the maximum of its two ranges, not an independent internal lane topology.
+
+Related review fixes: body picking honors visible levels; curve-handle z-order follows
+its object; the inspector preserves precise fractions on unchanged Apply and bounds
+counts by the selected lanes. Help now describes body picking, side handles and
+Ctrl+Delete, and the tables footer correctly says Shift-click for multi-selection.
+
+**Runtime boundary:** M0 still traverses whole lanes. `connectorRuntimeIssues` names and
+selects interior attachments in Diagnostics, and compile/Run rejects them with
+`UNSUPPORTED_CONNECTOR_POSITION`. Authoring and saving remain allowed. M1.11.1 books
+lane-section compilation, route/control remapping and matching vehicle rendering;
+no engine capability guard or fidelity marker was weakened to make a drawing runnable.
+
+**Validation:** Linux Qt 6.4 desktop build and all 23 CTest suites passed (including seven
+UI suites). New cases cover release without a preceding mouse-move, releasing Ctrl first,
+Select-mode creation, two-click and drag body attachments, one-lane range growth,
+independent end counts, middle/Link handles, invalid-target feedback, cancellation,
+Undo/Redo, precise inspector Apply, schema round-trip, both driving sides, duplication,
+link/width edits, splitting and runtime rejection. The existing four reference replays,
+CLI result, architecture and file-size checks pass. A rendered Thai editor screenshot
+was inspected. Local evidence is Linux only; Windows and other build presets are CI gates.
+M0/M1 owner acceptance remains open.
+
+### 2026-09-15 — Windows packaging build broken by a Linux-only test mechanism
+
+`Package binaries` run 6 failed on `main` at 53f58e5: Windows x64, `m1-workflow`, "autosave
+ran without a recovery lock". `Native C++` passed on every commit of the branch, and run 5 on
+the previous `main` was green, so the break arrived with PR #15.
+
+**Cause.** The lock-failure case added to `m1_ui_tests` forced `QLockFile::tryLock` to fail by
+pointing `XDG_DATA_HOME` at a regular file. That variable is an XDG convention: Windows
+resolves `AppLocalDataLocation` from `%LOCALAPPDATA%` and ignores it. On Windows the recovery
+directory was therefore valid, the lock succeeded, autosave started, and the assertion that
+autosave stays stopped fired — reporting a product bug that does not exist. The setup no-oped;
+the product behaved correctly.
+
+**Two failures, not one.** The mechanism was platform-specific, and the assertions were
+ordered so that a no-op setup read as a product defect instead of a broken test. The test now
+occupies the recovery directory's own path with a regular file, which no OS lets a file be
+created inside, and checks `recoveryPath()` is empty *first*, failing with "could not force a
+recovery lock failure on this platform" if the setup ever stops working. Verified both ways on
+Linux: disabling the blocking file now reports the mechanism, not autosave.
+`QStandardPaths::setTestModeEnabled(true)` also keeps the whole binary out of the real profile,
+which it had been reading and deleting recovery copies from.
+
+**Why it reached main.** `native.yml` gates every push and pull request, but its Windows job
+configures `-DTRAFFICSIM_BUILD_DESKTOP=OFF`, so no UI suite ran there. The only Windows desktop
+build lived in `package.yml`, which is `workflow_dispatch` and gates nothing. A Windows-only UI
+regression could merge green by construction. `native.yml` now carries a `windows-desktop` job
+building the full desktop under MSVC and running all 21 tests.
+
+Recorded in CLAUDE.md so the next session does not repeat it: assert that a forced failure was
+forced before asserting its consequence, never force one with a platform-specific mechanism,
+and do not read a green Linux run as cross-platform evidence.
+
 ### 2026-09-15 — Connector reshaping made path-independent, and the cost of one edit
 
 Review of M1.3/M1.4 found that `reanchor` displaced a connector's interior points relative to
@@ -418,53 +496,3 @@ falsification test at the M2 gate.
 every row is marked `planned`.
 
 **Next:** toolchain setup — see the `Next` section above.
-
-### 2026-09-14 — M1.4 Connector editor implemented (D17)
-
-Added general lane-to-lane creation using two canvas endpoint clicks or Properties.
-Source/target markers, hover previews and cancellation are transient; committing creates
-one History entry. Connectors can be selected on the canvas or by ID (including short
-split connectors), reshaped by dragging/inserting/removing interior points, reset to a
-lane-aligned sampled curve, or made straight. Endpoints remain attached to their lanes.
-Properties now has Links, Connectors and Image tabs, with English/Thai controls.
-
-Connector commands share endpoint maintenance with Link/Lane/driving-side edits and
-route/input cleanup with link deletion. Retargeting preserves an unreferenced curve's
-interior points by weighted displacement; referenced retargeting is rejected. Duplicate,
-invalid and failed edits preserve revision, ID allocation, saved state and Redo. Confirmed
-connector deletion restores related routes/inputs together on Undo. The existing format
-persists exactly the edited polyline and IDs; no new schema, Qt dependency in the model,
-simulation physics, demand or right-of-way behaviour was introduced.
-
-**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.11.3, CMake 3.28.3 on Linux.
-The unchanged base first passed all 13 desktop CTest suites. The extended Debug and
-Release desktop builds pass 15/15, and the independent Qt-free build passes 12/12.
-There are 46 named native cases, including eight new Connector cases. UI workflows
-exercise real endpoint picking, curve drags, insert/delete, cancellation and locked
-endpoints, plus ID selection, Properties actions, reference-safe deletion/Undo, Unicode
-save/reopen and Thai errors. Four TS baselines, seeded replay and M0 controls still pass.
-Architecture/negative fixtures, the 500-line budget and whitespace checks pass. The Thai
-Connector tab and curve were visually inspected at 1000×760.
-
-M1.3.1 remains open, along with M1.5–M1.7 and the owner's M0/M1 acceptance gates.
-These are local Linux results; Windows/macOS GUI execution and hosted CI are not
-established by them. Curves are editable sampled polylines, not swept-path validation.
-
-
-### 2026-09-13 — native migration and editor branches integrated into `main`
-
-Merged `codex/cpp-desktop-migration` (D15) and `codex/network-editor-m1-1-3` (D16) into
-`main` as two explicit merge commits. The migration commit is an ancestor of the editor
-commit, so both branches shared one merge base at the last TypeScript commit `70383db`
-and neither merge produced a conflict. No source or documentation was edited to make the
-integration succeed; `main` now carries the C++20/CMake/Qt tree exactly as reviewed on
-the branches.
-
-Verified on the `headless` configuration only: full build clean, CTest **11/11 passing**,
-including the architecture boundary, its negative fixtures, file sizes and the CLI checks.
-**The Qt desktop harness and `editor_ui_tests` were not built or run** — no Qt in the
-integration environment — so no desktop verification is claimed, per `docs/BUILDING.md`.
-Building also required `nlohmann-json3-dev`, which a clean checkout must install first.
-
-Neither the M0 acceptance gate nor the M1 gate is closed by this merge; merged code is
-not a passed gate. `Next` is unchanged apart from its base note.

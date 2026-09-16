@@ -57,7 +57,7 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
         for(const auto& l:n.links)if(l.id==ref.linkId) {
             const auto it=std::find_if(l.lanes.begin(),l.lanes.end(),[&](const auto& lane){return lane.id==ref.laneId;});
             if(it==l.lanes.end() || std::distance(it,l.lanes.end())<count)break;
-            for(int i=0;i<count;++i)result.push_back({l.id,(it+i)->id,ref.fraction});
+            for(int i=0;i<count;++i)result.push_back({l.id,(it+i)->id,ref.station});
             return result;
         }
         throw std::invalid_argument("EDIT_LANE_RANGE");

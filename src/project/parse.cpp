@@ -51,10 +51,33 @@ std::vector<Point> points(const Json& value) {
     for (const auto& p : array(value, "geometry")) result.push_back({field<double>(p, "x"), field<double>(p, "y")});
     return result;
 }
-LaneReference reference(const Json& value) {
+LaneReference reference(const Json& value,int schemaVersion) {
     LaneReference result{field<std::string>(value,"linkId"),field<std::string>(value,"laneId")};
-    if(value.contains("fraction"))result.fraction=field<double>(value,"fraction");
+    const char* key=schemaVersion>=5?"station":"fraction";
+    const char* wrong=schemaVersion>=5?"fraction":"station";
+    if(value.contains(wrong))throw std::invalid_argument("EDIT_VERSION");
+    if(value.contains(key))result.station=field<double>(value,key);
     return result;
+}
+// Below schema 5 the stored number is a fraction of the lane's own arclength. Convert it to a
+// station on the link once every link is parsed, so the attachment keeps the world position it
+// was drawn at. Signal heads share LaneReference, so they are walked too.
+void migrateAttachments(Network& network) {
+    const auto convert=[&](LaneReference& ref,bool outgoing) {
+        if(!ref.station)return;
+        for(const auto& link:network.links)if(link.id==ref.linkId) {
+            const auto lane=laneGeometry(link,ref.laneId,network.drivingSide);
+            const double station=matchedStation(lane,link.geometry,*ref.station*polylineLength(lane));
+            const double reference=polylineLength(link.geometry);
+            // An attachment that was exactly at the end keeps meaning "the end" as the link changes.
+            if(station<=0 && !outgoing)ref.station.reset();
+            else if(station>=reference && outgoing)ref.station.reset();
+            else ref.station=std::clamp(station,0.,reference);
+            return;
+        }
+    };
+    for(auto& c:network.connectors){convert(c.from,true);convert(c.to,false);}
+    for(auto& h:network.signalHeads)convert(h.lane,false);
 }
 SignalColor color(const std::string& text) {
     if (text == "red") return SignalColor::red;
@@ -63,7 +86,7 @@ SignalColor color(const std::string& text) {
     throw std::invalid_argument("INVALID_SIGNAL_COLOR");
 }
 }
-Network parseNetwork(const Json& value) {
+Network parseNetwork(const Json& value, int schemaVersion) {
     Network network;
     network.id = field<std::string>(value, "id");
     const auto side = field<std::string>(value, "drivingSide");
@@ -79,7 +102,7 @@ Network parseNetwork(const Json& value) {
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors")) {
-        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from")), reference(member(c, "to")), points(c),
+        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from"),schemaVersion), reference(member(c, "to"),schemaVersion), points(c),
             integer(c,"fromLaneCount",1),integer(c,"toLaneCount",1),integer(c,"level",0),
             c.contains("displayType")?field<std::string>(c,"displayType"):"default"});
         if(c.contains("laneBlend"))for(const auto& t:array(c,"laneBlend")) {
@@ -88,9 +111,10 @@ Network parseNetwork(const Json& value) {
         }
     }
     for (const auto& h : array(value, "signalHeads"))
-        network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane")),
+        network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane"),schemaVersion),
                                       field<double>(h, "position"), field<std::string>(h, "programId"),
                                       present(h,"connectorId")?field<std::string>(h,"connectorId"):std::string{}});
+    if(schemaVersion<5)migrateAttachments(network);
     return network;
 }
 DriverBehaviour parseBehaviour(const Json& b) {

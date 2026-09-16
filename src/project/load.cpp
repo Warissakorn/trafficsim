@@ -62,7 +62,8 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
                 ? "SCENARIO_IS_PROJECT" : "SCENARIO_NO_DEFINITION";
         if (!code.empty()) throw std::invalid_argument(code);
         const auto& declared = section(value, "definition");
-        auto network = parseNetwork(section(value, "network"));
+        // An M0 scenario carries no schemaVersion, so it is read with the pre-5 meaning.
+        auto network = parseNetwork(section(value, "network"), 0);
         auto definition = resolveCatalogs(parseAuthoringDefinition(declared),dataDirectory);
         auto scenario = compileScenario(network, definition);
         return {std::move(network), std::move(scenario)};

@@ -18,7 +18,8 @@ LaneReference dropLane(const Network& n,Point p,int count,int level) {
         if(i+static_cast<std::size_t>(count)>l.lanes.size())continue;
         const auto g=laneGeometry(l,l.lanes[i].id,n.drivingSide);const auto station=stationOfClosestPoint(g,p);
         const auto at=pointAlong(g,station);const double distance=std::hypot(at.x-p.x,at.y-p.y);
-        if(distance<=l.lanes[i].width/2+.01 && distance<best) {best=distance;result=LaneReference{l.id,l.lanes[i].id,station/polylineLength(g)};}
+        if(distance<=l.lanes[i].width/2+.01 && distance<best)
+            {best=distance;result=LaneReference{l.id,l.lanes[i].id,matchedStation(g,l.geometry,station)};}
     }
     if(!result)throw std::invalid_argument("EDIT_COPY_TARGET");return *result;
 }
@@ -66,7 +67,8 @@ std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<s
         const auto original=c;c.id=allocateId(d,"connector");
         for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)paths[connectorPathId(original,i)]=connectorPathId(c,i);
         const auto remap=[&](LaneReference ref,int count,bool outgoing) {
-            if(links.contains(ref.linkId))return LaneReference{links.at(ref.linkId),lanes.at(ref.laneId),ref.fraction};
+            // A duplicated link has the same geometry, so its stations transfer unchanged.
+            if(links.contains(ref.linkId))return LaneReference{links.at(ref.linkId),lanes.at(ref.laneId),ref.station};
             const auto p=laneAttachment(source,ref,outgoing);
             return dropLane(d.network,{p.x+offset.x,p.y+offset.y},count,linkLevel(source,ref.linkId));
         };

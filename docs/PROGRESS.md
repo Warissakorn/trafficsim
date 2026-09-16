@@ -7,6 +7,97 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — M1.13: attachment stations in metres
+
+`LaneReference::fraction` became `station`: metres along the link's reference polyline, as
+Vissim stores a position. A fraction of lane arclength slid every interior attachment whenever
+a Link was stretched, and with it the lane-section lengths M1.11.1 has to measure.
+
+`matchedStation(from,to,station)` is the one place the mapping lives. Polylines derived from a
+common reference share a vertex for vertex correspondence, because `offsetGeometry` emits one
+point per input point, so a station on one names a cross-section on the other. `laneAttachment`,
+`edgeAt`, the curve tangents, the canvas pick, the lane tabs and `dropLane` all go through it.
+One station therefore names one cross-section, and a three-lane range meets a curved Link on a
+straight mouth spaced exactly as its lane widths, instead of fanning with the per-lane
+arclength difference.
+
+The reference is `link.geometry`, not the bundle centreline: `replaceLaneBundle` absorbs lane
+edits into `laneOffset` and leaves the reference untouched, so adding or removing lanes cannot
+move an attachment. Only a geometry edit or a split can, and both are handled: shortening a
+Link past an attachment clamps it to the new end inside `reanchorConnector` — the one function
+every such edit already routes through — rather than rejecting the Link edit. Signal heads keep
+their older contract, where validation rejects the edit instead; the asymmetry is documented.
+
+`splitLink` lost its `stationOfClosestPoint` round trip entirely. The stored value is already a
+station on the link being cut, so the continuity guard compares directly, the upstream child
+keeps its stations because its polyline is a prefix, and downstream stations shift by the cut.
+
+Schema 5 stores `station`. Migration is version-dispatched, not presence-based: `parseNetwork`
+takes the schema version, reads `station` at 5 and `fraction` below it, rejects the wrong key
+for the version, and converts once the links exist. That trap was the whole risk — reading a
+schema 4 `"fraction": 0.4` as 0.4 metres would silently move every attachment in every old
+file. Pre-schema M0 scenarios go through the same path from `loadScenario`.
+
+Properties shows `from.station (m)` / `to.station (m)`, bounded by the link's length, with the
+unchanged-Apply guard now comparing at the widget's decimals. Locale text in both languages
+follows; parameter names stay untranslated.
+
+Coverage: stretching a Link leaves the station and the world point unchanged, and so does a
+lane-count edit (this fails on fractions, which is the point); shortening clamps and stays
+valid; a range meets a curved Link on one collinear cross-section spaced by its lane widths; a
+genuine schema 4 document — geometry untouched, position rewritten as the lane fraction an
+older build stored — migrates to the same world point, and a mismatched key for the version is
+rejected both ways. Removing the clamp and the version dispatch in turn makes those tests fail.
+All 23 CTest suites and the file-size and architecture guards passed; the four TS baselines and
+the pinned 29.249359418430977 were untouched and not regenerated. The Thai editor screenshot
+reads 47.925 m where it used to read 59.906 %. Linux only; Windows is CI's.
+
+M1.11.1 remains open, and is now buildable on a station that does not move underneath it.
+
+## 2026-09-16 — Mitered bends, one-lane Connectors and the attachment-unit decision (M1.12)
+
+Three more owner findings from an annotated screenshot.
+
+**Bends pinched the carriageway.** `offsetGeometry` moved a corner vertex along the average
+normal by exactly `offset`, which lands `offset*cos(theta/2)` from the original line, so both
+lane edges pulled in and the road narrowed at every bend: 18% at 63 degrees, 30% at the right
+angle in the screenshot. It now uses the miter vector `(n1+n2)/(1+d1.d2)`, whose length is
+`1/cos(theta/2)` — exactly the distance to where the two offset legs meet. A turn sharper than
+about 151 degrees is clamped to four times the offset so a hairpin cannot spike. One function
+fixes Links, Connectors and the diagnostic view, because all of them derive from it.
+
+Straight polylines reduce to the old single normal bit for bit, so nothing pinned moved: every
+reference fixture and the pinned 29.249359418430977 run on straight-only networks. **No
+baseline fixture was regenerated.** A measured sweep confirms the miter at 5/30/60/90/120/150
+degrees and the clamp at 175. Known limitation, written into NETWORK_EDITOR and shared with
+Vissim: a bend tighter than the offset still self-intersects on the inside.
+
+**A Connector from one lane drew two.** The model and renderer were right — a 1/1 Connector
+has one path, two boundaries and no dashed centre. The creation dialog pre-filled both counts
+with every lane from the picked one to the end of the Link, so a single-lane gesture silently
+authored a wide Connector. It opens at one lane per end now. The Properties counts also reset
+to one when no Connector is selected, since those boxes double as the creation form and were
+carrying a previous selection's width into the next gesture.
+
+**Where an attachment lives (decision, no code change).** Connectors must keep following their
+Link: validation requires the end to sit on its attachment and the compiler builds
+lane -> connector path -> lane, so a Connector left behind in world coordinates is a network
+the engine cannot run. The wrong part is the unit — a fraction of lane arclength slides every
+interior attachment when a Link is stretched, and with it the lane-section lengths M1.11.1
+will measure. Storing a distance, as `NetworkSignalHead::position` already does, is booked as
+**M1.13** with the constraints that decide it: schema 5 must convert on read because
+`parse.cpp` migrates by field presence with no version dispatch; the absent-optional sentinel
+must survive or `connectorRuntimeIssues` flips existing Connectors into "Run blocked"; and the
+duplicate-connection key contains the fraction.
+
+Coverage: a 90-degree three-lane bend keeps 10.5 m across both legs on both driving sides,
+each lane keeps its own width, the centreline stays the average of the outer edges, a hairpin
+stays finite at the documented limit, and a straight link is untouched. A UI test drags a
+Connector from one lane, accepts the dialog untouched, and requires one lane per end and
+exactly two road markings. Both fixes were reverted in turn to confirm the new tests fail
+without them. The Linux desktop build and all 23 CTest suites passed; the Thai editor
+screenshot was inspected. M1.11.1, M1.13 and the owner's Windows/timed gates remain open.
+
 ## 2026-09-16 — Centred grips, end attachments and Vissim-style lane tabs (M1.12)
 
 The owner's annotated screenshot marked four editor faults. Lane tabs were a loose orange
@@ -71,92 +162,18 @@ help and NETWORK_EDITOR describe the changed gestures. The Linux desktop build a
 M1.11.1 lane-section compilation
 and the owner's Windows/timed M0/M1 acceptance gates remain open.
 
-## 2026-09-15 — Ctrl-right release, body attachments and lane side handles
-
-The owner reported a disappearing Ctrl+right-drag preview, endpoint-only Connectors,
-and missing direct lane-count manipulation. The Select tool entered creation preview
-but its release branch only supported Draw and Connect; release also trusted the last
-mouse-move event. Select/Links now infer Link creation from empty space and Connector
-creation from a lane, and commit the actual release position regardless of released Ctrl.
-Esc, tool changes and dialog Cancel discard the gesture. Invalid targets report an error.
-
-`LaneReference::fraction` stores an optional normalized lane-arclength attachment.
-Missing values retain source-end/target-start semantics. Schema 3 persists positions and
-rejects older readers; schemas 1/2 and bare M0 networks remain readable. Curve tangents,
-reanchoring, per-lane paths, validation, duplication and split remapping use the same
-attachment semantics. Distinct station pairs on the same lanes may own distinct
-Connectors; duplicate pairs at the same stations remain rejected. A split through an
-attachment within its 0.2 m continuity span is rejected before mutation.
-
-Selected Connectors expose orange source/target side handles from one lane onwards.
-The middle handle sets both ranges to the same count. Selected Links have a side handle
-that adds/removes lanes while retaining existing widths. Counts and geometry preview
-without changing History; one release commits one command, Esc cancels. Range limits,
-referenced-lane/Connector guards, Undo/Redo and lane IDs retain their existing contracts.
-The first lane is chosen in the dialog/Properties; the number of derived Connector paths
-remains the maximum of its two ranges, not an independent internal lane topology.
-
-Related review fixes: body picking honors visible levels; curve-handle z-order follows
-its object; the inspector preserves precise fractions on unchanged Apply and bounds
-counts by the selected lanes. Help now describes body picking, side handles and
-Ctrl+Delete, and the tables footer correctly says Shift-click for multi-selection.
-
-**Runtime boundary:** M0 still traverses whole lanes. `connectorRuntimeIssues` names and
-selects interior attachments in Diagnostics, and compile/Run rejects them with
-`UNSUPPORTED_CONNECTOR_POSITION`. Authoring and saving remain allowed. M1.11.1 books
-lane-section compilation, route/control remapping and matching vehicle rendering;
-no engine capability guard or fidelity marker was weakened to make a drawing runnable.
-
-**Validation:** Linux Qt 6.4 desktop build and all 23 CTest suites passed (including seven
-UI suites). New cases cover release without a preceding mouse-move, releasing Ctrl first,
-Select-mode creation, two-click and drag body attachments, one-lane range growth,
-independent end counts, middle/Link handles, invalid-target feedback, cancellation,
-Undo/Redo, precise inspector Apply, schema round-trip, both driving sides, duplication,
-link/width edits, splitting and runtime rejection. The existing four reference replays,
-CLI result, architecture and file-size checks pass. A rendered Thai editor screenshot
-was inspected. Local evidence is Linux only; Windows and other build presets are CI gates.
-M0/M1 owner acceptance remains open.
-
-## 2026-09-15 — Windows packaging build broken by a Linux-only test mechanism
-
-`Package binaries` run 6 failed on `main` at 53f58e5: Windows x64, `m1-workflow`, "autosave
-ran without a recovery lock". `Native C++` passed on every commit of the branch, and run 5 on
-the previous `main` was green, so the break arrived with PR #15.
-
-**Cause.** The lock-failure case added to `m1_ui_tests` forced `QLockFile::tryLock` to fail by
-pointing `XDG_DATA_HOME` at a regular file. That variable is an XDG convention: Windows
-resolves `AppLocalDataLocation` from `%LOCALAPPDATA%` and ignores it. On Windows the recovery
-directory was therefore valid, the lock succeeded, autosave started, and the assertion that
-autosave stays stopped fired — reporting a product bug that does not exist. The setup no-oped;
-the product behaved correctly.
-
-**Two failures, not one.** The mechanism was platform-specific, and the assertions were
-ordered so that a no-op setup read as a product defect instead of a broken test. The test now
-occupies the recovery directory's own path with a regular file, which no OS lets a file be
-created inside, and checks `recoveryPath()` is empty *first*, failing with "could not force a
-recovery lock failure on this platform" if the setup ever stops working. Verified both ways on
-Linux: disabling the blocking file now reports the mechanism, not autosave.
-`QStandardPaths::setTestModeEnabled(true)` also keeps the whole binary out of the real profile,
-which it had been reading and deleting recovery copies from.
-
-**Why it reached main.** `native.yml` gates every push and pull request, but its Windows job
-configures `-DTRAFFICSIM_BUILD_DESKTOP=OFF`, so no UI suite ran there. The only Windows desktop
-build lived in `package.yml`, which is `workflow_dispatch` and gates nothing. A Windows-only UI
-regression could merge green by construction. `native.yml` now carries a `windows-desktop` job
-building the full desktop under MSVC and running all 21 tests.
-
-Recorded in CLAUDE.md so the next session does not repeat it: assert that a forced failure was
-forced before asserting its consequence, never force one with a platform-specific mechanism,
-and do not read a green Linux run as cross-platform evidence.
-
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
 road boundaries and Ctrl-click/Ctrl-drag on Links, Connectors and Signal heads. Check the
 2026-09-16 grip work with them: lane tabs on the road edge, geometry grips on the bundle
 centreline, and dragging a Connector end onto another lane or another position along it,
-including onto a narrower Link, where the range narrows to the lanes that are there. Test the workflow on the owner's
+including onto a narrower Link, where the range narrows to the lanes that are there. Check a
+bent Link keeps its width through the corner, and that a drag from one lane creates a one-lane
+Connector. M1.13 is implemented: check that a Connector stays where it was
+drawn when you stretch its Link, that shortening a Link clamps rather than refuses, and that a
+project saved by an older build opens with its Connectors in the same places. **Next after the
+review: M1.11.1**, which can now split a lane at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.
 

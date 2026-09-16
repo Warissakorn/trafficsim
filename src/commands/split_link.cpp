@@ -23,11 +23,10 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
         throw std::invalid_argument("EDIT_SPLIT_RANGE");
     if (pocket && original.lanes.size() >= 12) throw std::invalid_argument("EDIT_LANES");
     // An attachment in the small continuity span cannot remain on either child link.
+    // The station is already measured along this link's own geometry, so the cut compares directly.
     for(const auto& c:d.network.connectors)for(const auto& ref:{c.from,c.to})
-        if(ref.linkId==id && ref.fraction) {
-            const double station=stationOfClosestPoint(original.geometry,laneAttachment(d.network,ref,true));
-            if(station>distance-.1 && station<distance+.1)throw std::invalid_argument("EDIT_SPLIT_ATTACHMENT");
-        }
+        if(ref.linkId==id && ref.station && *ref.station>distance-.1 && *ref.station<distance+.1)
+            throw std::invalid_argument("EDIT_SPLIT_ATTACHMENT");
     auto downstream = original;
     downstream.id = allocateId(d, "link");
     downstream.geometry = section(original.geometry, distance + 0.1, total);
@@ -43,17 +42,17 @@ std::string splitLink(ProjectDocument& d, const std::string& id, double distance
     }
     editableLink(d, id).geometry = section(original.geometry, 0, distance - 0.1);
     d.network.links.push_back(downstream);
+    // Stations carry across the cut by arithmetic alone: the upstream child's polyline is a
+    // prefix of the original, and the downstream child starts at the far side of the span.
     for(auto& c:d.network.connectors)for(auto* ref:{&c.from,&c.to})if(ref->linkId==id) {
-        if(!ref->fraction) {
+        if(!ref->station) {
             if(ref==&c.from)*ref={downstream.id,replacements.at(ref->laneId).second};
             continue;
         }
-        const auto oldGeometry=laneGeometry(original,ref->laneId,d.network.drivingSide);
-        const auto world=pointAlong(oldGeometry,*ref->fraction*polylineLength(oldGeometry));
-        const bool after=stationOfClosestPoint(original.geometry,world)>=distance+.1;
-        if(after){ref->linkId=downstream.id;ref->laneId=replacements.at(ref->laneId).second;}
-        const auto geometry=laneGeometry(editableLink(d,ref->linkId),ref->laneId,d.network.drivingSide);
-        ref->fraction=stationOfClosestPoint(geometry,world)/polylineLength(geometry);
+        if(*ref->station>=distance+.1) {
+            ref->linkId=downstream.id;ref->laneId=replacements.at(ref->laneId).second;
+            ref->station=*ref->station-(distance+.1);
+        }
     }
     // Reanchor external connectors, then create explicit one-to-one continuity connectors.
     changeGeometry(d, id, editableLink(d, id).geometry);

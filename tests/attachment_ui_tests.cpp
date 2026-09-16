@@ -78,8 +78,11 @@ int main(int argc,char** argv) {
         confirm("editorRangeDialog",true,1);releaseDrag(c,lanePoint(0,0,.6),lanePoint(1,0,.4),Qt::RightButton);
         require(w.history().document().network.connectors.size()==1,"Body-to-body Connector missing");
         const auto id=c->selected();auto connector=w.history().document().network.connectors.front();
-        require(connector.from.fraction.value_or(1.)>.5 && connector.from.fraction.value_or(1.)<.7,"Source snapped to endpoint");
-        require(connector.to.fraction.value_or(0.)>.3 && connector.to.fraction.value_or(0.)<.5,"Target snapped to endpoint");
+        // Stations are metres along the link, so the expected band scales with its length.
+        const auto station=[&](const LaneReference& ref,bool outgoing){return attachmentStation(w.history().document().network,ref,outgoing);};
+        const double sourceLength=polylineLength(links[0].geometry),targetLength=polylineLength(links[1].geometry);
+        require(station(connector.from,true)>.5*sourceLength && station(connector.from,true)<.7*sourceLength,"Source snapped to endpoint");
+        require(station(connector.to,false)>.3*targetLength && station(connector.to,false)<.5*targetLength,"Target snapped to endpoint");
         attached(w.history().document());
         // A connector end is a grip that rides its lane: dragging it re-attaches the connector
         // and the ribbon follows. Esc before the release leaves the attachment exactly as it was.
@@ -98,7 +101,7 @@ int main(int argc,char** argv) {
         releaseDrag(c,grip(true),lanePoint(0,2,.3),Qt::LeftButton);
         connector=w.history().document().network.connectors.front();
         require(connector.from.laneId==links[0].lanes[2].id,"Source end did not follow the pointer to another lane");
-        require(std::abs(connector.from.fraction.value_or(1.)-.3)<.05,"Source end did not move along its lane");
+        require(std::abs(station(connector.from,true)-.3*sourceLength)<.05*sourceLength,"Source end did not move along its lane");
         attached(w.history().document());
         action(w,"editorUndo");
         require(documentJson(w.history().document())==attachedBefore,"Moving an end was not one undoable edit");
