@@ -116,6 +116,8 @@ Both ends can attach anywhere on the **body** of their Link; endpoints remain va
 The two-click workflow (C) also picks positions on lane bodies. Near a lane end, picking
 snaps to that endpoint. Hidden levels cannot be picked. Properties → Connectors exposes
 actual link/lane IDs and `from.fraction` / `to.fraction` as percentages of lane arclength.
+The dialog opens at **one lane per end** — a gesture that starts on a single lane authors a
+single-lane Connector, and a wider range is raised deliberately, within the lanes each end has.
 Changing lanes preserves the selected fractions. Releasing outside a target Link reports
 why nothing was created. Esc and Cancel leave the document and history unchanged.
 
@@ -142,6 +144,14 @@ before the current first lane; the other handles change the last lane. Surviving
 IDs and positions stay fixed, including on curved Links. Connector paths whose lane pair
 survives a range edit retain their curve; unequal ranges can intentionally change lane mappings.
 Properties count edits and downstream pocket creation expand the last-lane side.
+
+Lane edges are mitered at a bend: a corner vertex is offset by `width/2 / cos(theta/2)`, the
+distance to where the two offset legs meet, so the carriageway keeps its full width through
+the corner instead of pinching to `width * cos(theta/2)` — 30% narrower at a right angle. A
+straight polyline is unaffected, bit for bit. A turn sharper than about 151 degrees is cut
+back to four times the offset so a hairpin cannot spike. Known limitation, shared with Vissim:
+on a bend tighter than the offset itself the inner edge still crosses itself; draw the turn
+with a wider radius or split it into a Connector.
 
 Road surfaces use the same geometry as lane positions: outer boundaries are solid and
 internal lane boundaries are dashed. There is no dashed line down a lane centre. The

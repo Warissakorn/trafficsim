@@ -230,6 +230,35 @@ partial-lane distances, obeys section-mounted signals, and retains deterministic
 
 ---
 
+### M1.13 — Attachment stations in metres
+
+**Open.** A Connector end is attached by a *fraction* of lane arclength
+(`LaneReference::fraction`). Connectors correctly follow their Link — a detached end fails
+`DISCONNECTED_GEOMETRY` and the compiler builds lane → connector path → lane segments, so a
+floating Connector has no meaning to the engine — but a fraction also makes every interior
+attachment *slide* when the Link is stretched. Store a distance from the lane start instead,
+as `NetworkSignalHead::position` already does, so a Connector stays at the metre it was drawn
+at. This also gives M1.11.1 a section boundary it can use directly, instead of a section
+length that silently changes whenever the author lengthens a Link.
+
+Constraints found while deciding this, which the implementation must honour:
+
+- `parse.cpp` migrates by field presence with no version dispatch, so a schema 4 `"fraction"`
+  would be silently reinterpreted as metres. Schema 5 must convert on read.
+- Keep the absent-optional sentinel for exact end attachments. `connectorRuntimeIssues`
+  compares `!= 1.` / `!= 0.` exactly; a naive metre migration would flip existing Connectors
+  into "Run blocked".
+- The duplicate-connection key is `(laneId, fraction)` and `LaneReference::operator==` is
+  defaulted, so the unit change touches Connector identity and de-duplication.
+- `splitLink` gets simpler: no re-normalisation, only downstream ends shift by the cut
+  station. Its ±0.1 m continuity guard is already in metres.
+- Properties shows `" %"` over a fixed 0–100 range; it becomes `" m"` bounded by lane length.
+
+**Done when:** stretching a Link's far end leaves an interior Connector at the same metre,
+schema 4 files load with identical geometry, and Run-blocking for end attachments is unchanged.
+
+---
+
 ## M2 — Demand, run, first numbers · **GATE**
 
 Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay

@@ -7,6 +7,50 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — Mitered bends, one-lane Connectors and the attachment-unit decision (M1.12)
+
+Three more owner findings from an annotated screenshot.
+
+**Bends pinched the carriageway.** `offsetGeometry` moved a corner vertex along the average
+normal by exactly `offset`, which lands `offset*cos(theta/2)` from the original line, so both
+lane edges pulled in and the road narrowed at every bend: 18% at 63 degrees, 30% at the right
+angle in the screenshot. It now uses the miter vector `(n1+n2)/(1+d1.d2)`, whose length is
+`1/cos(theta/2)` — exactly the distance to where the two offset legs meet. A turn sharper than
+about 151 degrees is clamped to four times the offset so a hairpin cannot spike. One function
+fixes Links, Connectors and the diagnostic view, because all of them derive from it.
+
+Straight polylines reduce to the old single normal bit for bit, so nothing pinned moved: every
+reference fixture and the pinned 29.249359418430977 run on straight-only networks. **No
+baseline fixture was regenerated.** A measured sweep confirms the miter at 5/30/60/90/120/150
+degrees and the clamp at 175. Known limitation, written into NETWORK_EDITOR and shared with
+Vissim: a bend tighter than the offset still self-intersects on the inside.
+
+**A Connector from one lane drew two.** The model and renderer were right — a 1/1 Connector
+has one path, two boundaries and no dashed centre. The creation dialog pre-filled both counts
+with every lane from the picked one to the end of the Link, so a single-lane gesture silently
+authored a wide Connector. It opens at one lane per end now. The Properties counts also reset
+to one when no Connector is selected, since those boxes double as the creation form and were
+carrying a previous selection's width into the next gesture.
+
+**Where an attachment lives (decision, no code change).** Connectors must keep following their
+Link: validation requires the end to sit on its attachment and the compiler builds
+lane -> connector path -> lane, so a Connector left behind in world coordinates is a network
+the engine cannot run. The wrong part is the unit — a fraction of lane arclength slides every
+interior attachment when a Link is stretched, and with it the lane-section lengths M1.11.1
+will measure. Storing a distance, as `NetworkSignalHead::position` already does, is booked as
+**M1.13** with the constraints that decide it: schema 5 must convert on read because
+`parse.cpp` migrates by field presence with no version dispatch; the absent-optional sentinel
+must survive or `connectorRuntimeIssues` flips existing Connectors into "Run blocked"; and the
+duplicate-connection key contains the fraction.
+
+Coverage: a 90-degree three-lane bend keeps 10.5 m across both legs on both driving sides,
+each lane keeps its own width, the centreline stays the average of the outer edges, a hairpin
+stays finite at the documented limit, and a straight link is untouched. A UI test drags a
+Connector from one lane, accepts the dialog untouched, and requires one lane per end and
+exactly two road markings. Both fixes were reverted in turn to confirm the new tests fail
+without them. The Linux desktop build and all 23 CTest suites passed; the Thai editor
+screenshot was inspected. M1.11.1, M1.13 and the owner's Windows/timed gates remain open.
+
 ## 2026-09-16 — Centred grips, end attachments and Vissim-style lane tabs (M1.12)
 
 The owner's annotated screenshot marked four editor faults. Lane tabs were a loose orange
@@ -117,46 +161,15 @@ CLI result, architecture and file-size checks pass. A rendered Thai editor scree
 was inspected. Local evidence is Linux only; Windows and other build presets are CI gates.
 M0/M1 owner acceptance remains open.
 
-## 2026-09-15 — Windows packaging build broken by a Linux-only test mechanism
-
-`Package binaries` run 6 failed on `main` at 53f58e5: Windows x64, `m1-workflow`, "autosave
-ran without a recovery lock". `Native C++` passed on every commit of the branch, and run 5 on
-the previous `main` was green, so the break arrived with PR #15.
-
-**Cause.** The lock-failure case added to `m1_ui_tests` forced `QLockFile::tryLock` to fail by
-pointing `XDG_DATA_HOME` at a regular file. That variable is an XDG convention: Windows
-resolves `AppLocalDataLocation` from `%LOCALAPPDATA%` and ignores it. On Windows the recovery
-directory was therefore valid, the lock succeeded, autosave started, and the assertion that
-autosave stays stopped fired — reporting a product bug that does not exist. The setup no-oped;
-the product behaved correctly.
-
-**Two failures, not one.** The mechanism was platform-specific, and the assertions were
-ordered so that a no-op setup read as a product defect instead of a broken test. The test now
-occupies the recovery directory's own path with a regular file, which no OS lets a file be
-created inside, and checks `recoveryPath()` is empty *first*, failing with "could not force a
-recovery lock failure on this platform" if the setup ever stops working. Verified both ways on
-Linux: disabling the blocking file now reports the mechanism, not autosave.
-`QStandardPaths::setTestModeEnabled(true)` also keeps the whole binary out of the real profile,
-which it had been reading and deleting recovery copies from.
-
-**Why it reached main.** `native.yml` gates every push and pull request, but its Windows job
-configures `-DTRAFFICSIM_BUILD_DESKTOP=OFF`, so no UI suite ran there. The only Windows desktop
-build lived in `package.yml`, which is `workflow_dispatch` and gates nothing. A Windows-only UI
-regression could merge green by construction. `native.yml` now carries a `windows-desktop` job
-building the full desktop under MSVC and running all 21 tests.
-
-Recorded in CLAUDE.md so the next session does not repeat it: assert that a forced failure was
-forced before asserting its consequence, never force one with a platform-specific mechanism,
-and do not read a green Linux run as cross-platform evidence.
-
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
 road boundaries and Ctrl-click/Ctrl-drag on Links, Connectors and Signal heads. Check the
 2026-09-16 grip work with them: lane tabs on the road edge, geometry grips on the bundle
 centreline, and dragging a Connector end onto another lane or another position along it,
-including onto a narrower Link, where the range narrows to the lanes that are there. Test the workflow on the owner's
+including onto a narrower Link, where the range narrows to the lanes that are there. Check a
+bent Link keeps its width through the corner, and that a drag from one lane creates a one-lane
+Connector. Then decide whether M1.13 (attachment distances in metres) runs next. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.
 

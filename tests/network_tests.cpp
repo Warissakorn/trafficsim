@@ -52,3 +52,40 @@ TEST(network, compile_detaches_authoring_data) {
     loaded.scenario.inputs[0].vehiclesPerHour = 1; loaded.network.links[0].geometry[0].x = 999;
     CHECK(compiled.inputs[0].vehiclesPerHour != 1); CHECK(compiled.segments[0].length == 150);
 }
+// A bend used to pinch the carriageway: each edge was offset by the full width along the
+// average normal instead of the miter, leaving it width/2*cos(theta/2) from the centreline.
+TEST(network, bends_keep_their_full_carriageway_width) {
+    const Link link{"bent",{{0,0},{40,0},{40,40}},{{"l1",3.5},{"l2",3.5},{"l3",3.5}}};
+    // The forcing: these two legs really do turn a right angle.
+    const Point first{1,0},second{0,1};
+    CHECK(first.x*second.x+first.y*second.y==0);
+    for(auto side:{DrivingSide::left,DrivingSide::right}) {
+        const auto centre=linkCentreline(link,side);
+        const auto left=laneBoundaryGeometry(link,0,side),right=laneBoundaryGeometry(link,3,side);
+        // Measured across each leg, the road is 10.5 m wide at the corner, not 7.4 m.
+        for(const auto* direction:{&first,&second}) {
+            const Point across{-direction->y,direction->x};
+            const double width=(left[1].x-right[1].x)*across.x+(left[1].y-right[1].y)*across.y;
+            test::near(std::abs(width),10.5,1e-9);
+        }
+        // Every lane keeps its own width across the corner, and the centreline stays central.
+        for(std::size_t boundary=0;boundary<3;++boundary) {
+            const auto inner=laneBoundaryGeometry(link,boundary,side),outer=laneBoundaryGeometry(link,boundary+1,side);
+            test::near(std::hypot(inner[1].x-outer[1].x,inner[1].y-outer[1].y),3.5*std::sqrt(2.),1e-9);
+        }
+        test::near(centre[1].x,(left[1].x+right[1].x)/2,1e-12);
+        test::near(centre[1].y,(left[1].y+right[1].y)/2,1e-12);
+    }
+    // A straight polyline is untouched by the miter, so no existing geometry moved.
+    const Link straight{"straight",{{0,0},{10,0}},{{"s1",4}}};
+    CHECK(laneGeometry(straight,"s1",DrivingSide::left)==std::vector<Point>({{0,0},{10,0}}));
+}
+TEST(network, a_hairpin_is_clamped_instead_of_spiking) {
+    // The forcing: this vertex doubles back on itself, where an unclamped miter diverges.
+    const std::vector<Point> hairpin{{0,0},{10,0},{0,0.001}};
+    const auto offsets=offsetGeometry(hairpin,3.5);
+    CHECK(offsets.size()==3);
+    for(const auto& p:offsets)CHECK(std::isfinite(p.x) && std::isfinite(p.y));
+    // Four times the offset is the documented miter limit.
+    test::near(std::hypot(offsets[1].x-hairpin[1].x,offsets[1].y-hairpin[1].y),4*3.5,1e-9);
+}

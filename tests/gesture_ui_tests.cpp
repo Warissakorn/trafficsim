@@ -27,15 +27,19 @@ void drag(EditorCanvas* c,Point a,Point b,Qt::MouseButton button,Qt::KeyboardMod
     if(modifiers&Qt::ControlModifier)QTest::keyRelease(c,Qt::Key_Control);
     QTest::qWait(10);QApplication::processEvents();
 }
-void confirm(const char* expected) {
+// `lanes` fills the Connector range boxes when a test is about the dialog honouring them.
+// Left at 0 the dialog is accepted exactly as it opens, which is how its defaults are tested.
+void confirm(const char* expected,int lanes=0) {
     // QTest's mouse events process timers before release opens the modal. Wait for
     // the actual dialog; never throw through a Qt event handler.
     auto* timer=new QTimer(qApp);
-    QObject::connect(timer,&QTimer::timeout,timer,[timer,expected]{
+    QObject::connect(timer,&QTimer::timeout,timer,[timer,expected,lanes]{
         auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());if(!dialog)return;
         timer->stop();timer->deleteLater();
         if(dialog->objectName()!=expected){std::cerr<<"Unexpected dialog: "<<dialog->objectName().toStdString()<<'\n';dialog->reject();return;}
         if(auto* count=dialog->findChild<QSpinBox*>("editorGestureLaneCount"))count->setValue(3);
+        if(lanes)for(const auto* name:{"editorRangeFromCount","editorRangeToCount"})
+            if(auto* count=dialog->findChild<QSpinBox*>(name))count->setValue(lanes);
         auto* buttons=dialog->findChild<QDialogButtonBox*>();
         if(buttons && buttons->button(QDialogButtonBox::Ok))buttons->button(QDialogButtonBox::Ok)->click();
         else {std::cerr<<"Missing confirmation button\n";dialog->reject();}
@@ -62,7 +66,7 @@ int main(int argc,char** argv) {
         QTest::mouseMove(c->viewport(),pixel(c,to));QTest::keyClick(c,Qt::Key_Escape);
         QTest::mouseRelease(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,to));
         require(documentJson(w.history().document())==before,"Cancelled creation changed document");
-        confirm("editorRangeDialog");drag(c,from,to,Qt::RightButton,Qt::ControlModifier);
+        confirm("editorRangeDialog",3);drag(c,from,to,Qt::RightButton,Qt::ControlModifier);
         require(w.history().document().network.connectors.size()==1,"Range was not one object");
         const auto connector=w.history().document().network.connectors.front();
         require(connector.fromLaneCount==3 && connector.toLaneCount==3,"Dialog lost lane ranges");
@@ -103,6 +107,26 @@ int main(int argc,char** argv) {
         const auto file=directory.path()+"/ranges.traffic.json";w.saveFile(file);w.openFile(file);
         require(documentJson(w.history().document())==decorated,"Range/level/display reopen lost data");
         require(w.history().document().network.links.back().displayType=="ramp","Display type was not applied");
+        // A drag from one lane is one lane: the range dialog used to pre-fill every lane from
+        // the picked one to the end of the link, so a single-lane gesture drew lane dividers.
+        c->setTransform(QTransform::fromScale(4,-4));c->centerOn(0,-60);
+        confirm("editorLinkDialog");drag(c,{-60,-60},{-10,-60},Qt::RightButton,Qt::ControlModifier);
+        confirm("editorLinkDialog");drag(c,{10,-60},{60,-60},Qt::RightButton,Qt::ControlModifier);
+        const auto fresh=w.history().document().network.links;
+        require(fresh.size()==5,"Default-count fixture links missing");
+        const auto& source=fresh[3];const auto& target=fresh[4];
+        require(source.lanes.size()==3 && target.lanes.size()==3,"Fixture links are not three lanes");
+        confirm("editorRangeDialog");
+        drag(c,laneGeometry(source,source.lanes[0].id,DrivingSide::left).back(),
+             laneGeometry(target,target.lanes[0].id,DrivingSide::left).front(),Qt::RightButton,Qt::ControlModifier);
+        const auto single=w.history().document().network.connectors.back();
+        require(w.history().document().network.connectors.size()==2,"Single-lane Connector was not created");
+        require(single.fromLaneCount==1 && single.toLaneCount==1,"Dragging one lane did not default to one lane");
+        int markings=0;
+        for(auto* item:c->scene()->items())
+            if(item->data(0).toString()=="road-marking" && item->data(1).toString()==QString::fromStdString(single.id))++markings;
+        require(markings==2,"A one-lane Connector is drawn with lane dividers");
+        w.saveFile(file); // Leave the document clean; closing a dirty window waits on a prompt.
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");
         require(item<QListWidget>(w,"editorObjectPalette")->item(2)->text().contains(QString::fromUtf8("เชื่อม")),"Thai palette missing");
         if(argc>2)require(w.grab().save(QString::fromUtf8(argv[2])),"Screenshot failed");
