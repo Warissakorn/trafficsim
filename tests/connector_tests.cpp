@@ -213,6 +213,21 @@ double perpendicular(const std::vector<Point>& edge,Point p) {
     }
     return best;
 }
+// Vissim cuts a Connector's ends square to the Connector itself, not to the link it meets, and
+// lets the joint overlap. The end of every boundary therefore sits square to the Connector's own
+// end direction: no component along it.
+double squareness(const std::vector<Point>& spine,const std::vector<std::vector<Point>>& boundaries,bool start) {
+    const std::size_t last=spine.size()-1;
+    const Point along=start?Point{spine[1].x-spine[0].x,spine[1].y-spine[0].y}
+                           :Point{spine[last].x-spine[last-1].x,spine[last].y-spine[last-1].y};
+    const Point end=start?spine.front():spine.back();
+    double worst=0;
+    for(const auto& boundary:boundaries) {
+        const auto p=start?boundary.front():boundary.back();
+        worst=std::max(worst,std::abs((p.x-end.x)*along.x+(p.y-end.y)*along.y));
+    }
+    return worst;
+}
 double narrowest(const std::vector<std::vector<Point>>& boundaries) {
     double best=1e300;
     for(const auto& p:boundaries.front())best=std::min(best,perpendicular(boundaries.back(),p));
@@ -259,12 +274,16 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
     // by construction, so on its own it cannot tell a cross-section that has been left behind by
     // the curve from one that follows it.
     for(const auto& p:boundaries.front())CHECK(perpendicular(boundaries[1],p)>2.9);
-    // Both mouths still meet their link's own lane edges exactly; the single target lane has two.
-    const auto meets=[&](Point a,Point b){test::near(a.x,b.x,1e-9);test::near(a.y,b.y,1e-9);};
-    for(std::size_t i=0;i<3;++i)meets(boundaries[i].front(),laneBoundaryGeometry(in,i,d.network.drivingSide).back());
-    meets(boundaries[0].back(),laneBoundaryGeometry(out,0,d.network.drivingSide).front());
-    meets(boundaries[1].back(),laneBoundaryGeometry(out,1,d.network.drivingSide).front());
-    meets(boundaries[2].back(),boundaries[1].back());
+    // Both ends are cut square to the Connector, and land on the links' own lane edges to within
+    // the joint: a few centimetres here, where the curve leaves each lane almost straight, and
+    // widest on the outermost edge, which is furthest from the axis the angle is measured about.
+    test::near(squareness(c.geometry,boundaries,true),0,1e-9);
+    test::near(squareness(c.geometry,boundaries,false),0,1e-9);
+    const auto within=[&](Point a,Point b,double reach){CHECK(std::hypot(a.x-b.x,a.y-b.y)<reach);};
+    for(std::size_t i=0;i<3;++i)within(boundaries[i].front(),laneBoundaryGeometry(in,i,d.network.drivingSide).back(),.1);
+    within(boundaries[0].back(),laneBoundaryGeometry(out,0,d.network.drivingSide).front(),.05);
+    within(boundaries[1].back(),laneBoundaryGeometry(out,1,d.network.drivingSide).front(),.05);
+    within(boundaries[2].back(),boundaries[1].back(),1e-9);
     // The divider is a lane edge for its whole length, so it arrives on the edge of the lane the
     // two merge into -- not part way down the middle of it, where the traffic is.
     const auto markings=connectorMarkings(d.network,c);
@@ -333,10 +352,13 @@ TEST(connectors, a_drawn_lane_keeps_its_width_square_to_the_road) {
         const auto& g=editableConnector(d,id).geometry;
         CHECK(minimumRadius(g)<40);
         CHECK(boundaries.size()==2);
-        // Both mouths still meet their link's lane edges exactly.
+        // Both ends are cut square to the Connector, and sit within a joint's reach of the link.
+        const auto& spine=editableConnector(d,id).geometry;
+        test::near(squareness(spine,boundaries,true),0,1e-9);
+        test::near(squareness(spine,boundaries,false),0,1e-9);
         for(std::size_t i=0;i<2;++i) {
             const auto edge=laneBoundaryGeometry(d.network.links[0],i,DrivingSide::left).back();
-            test::near(boundaries[i].front().x,edge.x,1e-9);test::near(boundaries[i].front().y,edge.y,1e-9);
+            CHECK(std::hypot(boundaries[i].front().x-edge.x,boundaries[i].front().y-edge.y)<.35);
         }
         const double least=narrowest(boundaries);
         CHECK(least>shape.least);      // beats what the mouth-to-mouth cross-section drew
@@ -374,15 +396,11 @@ TEST(connectors, a_moved_link_leaves_the_connector_its_width) {
         const auto boundaries=connectorBoundaries(d.network,moved);
         // The mouths still belong to their links, and the body is still a 3.5 m lane: the
         // interpolated cross-section drew 1.96 m at 60 degrees and 0.46 m at 90.
-        for(std::size_t i=0;i<2;++i) {
-            const auto edge=laneBoundaryGeometry(b,i,DrivingSide::left).front();
-            test::near(boundaries[i].back().x,edge.x,1e-9);test::near(boundaries[i].back().y,edge.y,1e-9);
-        }
-        // The body is a 3.5 m lane throughout: the interpolated cross-section drew 1.96 m at 60
-        // degrees and 0.46 m at 90. The last two samples are the joint itself, where a Connector
-        // arriving across the lane is cut on that lane's cross-section and is shorter through the
-        // corner -- the notch Vissim shows there too, not a lane that has lost its width.
-        for(std::size_t j=0;j+2<boundaries[0].size();++j)
+        test::near(squareness(moved.geometry,boundaries,false),0,1e-9);
+        // Every sample is a 3.5 m lane, the joint included: the interpolated cross-section drew
+        // 1.96 m at 60 degrees and 0.46 m at 90, and cutting the end on the link's cross-section
+        // still left a wedge there. The Connector keeps its own width and overlaps the Link.
+        for(std::size_t j=0;j<boundaries[0].size();++j)
             CHECK(perpendicular(boundaries[1],boundaries[0][j])>3.4);
     }
 }

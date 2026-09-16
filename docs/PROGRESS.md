@@ -7,6 +7,35 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — The ends are square to the Connector, as Vissim draws them
+
+The owner circled the joints in the render from the entry below and sent a Vissim screenshot beside
+them: a constant-width ribbon whose ends are cut square to itself and simply overlap the link.
+
+The joints were still being cut on the **links'** cross-sections. Where a Connector leaves or
+arrives across a lane rather than along it -- which is exactly the state a moved Link leaves behind
+-- that cut is nearly parallel to the road, so the last sample stretched into a slanted wedge. It is
+the same mistake as the one below, surviving at the two end samples after being removed from the
+body.
+
+Both ends now take the same mitered offset as every other sample, so a Connector is one constant
+width from end to end. Measured with a Link rotated 30/60/90 degrees under a drawn Connector: 3.500
+m at **every** sample, joint included, against 1.96 m and 0.46 m before. Reverse curves, U-turns,
+tapers and the merge/diverge wedges are unchanged or better. What replaces the wedge is an overlap
+at the joint: nothing at all on a straight connection, and 0.12-0.29 m where the sampled curve
+leaves its lane at an angle, because the square cut is square to the polyline the author actually
+has. Vissim overlaps there too.
+
+The tests now pin the rule rather than the old symptom: every boundary end has no component along
+the Connector's own end direction (exact, to 1e-9), and lands within a joint's reach of the link's
+lane edge. Reverting to the link-cut ends fails three of them.
+
+**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
+`native.yml`. Two reverts each failed tests: cutting the ends on the links, and dropping the miter.
+No stored geometry changes, so no baseline fixture could move and none was regenerated.
+
+---
+
 ## 2026-09-16 — One poly point moves, and the offset is constant along the road
 
 The owner traced a real interchange over an aerial image, moved a Link, and the Connectors came out

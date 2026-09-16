@@ -186,10 +186,10 @@ order, so a lane range anchored one lane over moves the taper to the other side.
 the whole length of the Connector; there is no separate taper length to set. Those widths are stacked
 along the same mitered offset a Link's own lane edges use (`offsetGeometry`), so every lane is its
 full width square to the road at every point, through a bend and past a poly point the author has
-dragged; only the two end samples are cut on the links' own cross-sections, so the mouths meet
-their lane edges exactly however the curve leaves them. A Connector arriving across a lane rather
-than along it shows a notch at that joint, as it does in Vissim, instead of a ribbon narrowed along
-its whole length. Properties exposes both counts as an alternative. Retargeting
+dragged; the two ends are cut square to the Connector itself, not to the links
+it meets, so the joint overlaps the way Vissim's does. Cutting them on the links' cross-sections
+instead drew a slanted wedge at the joint wherever the curve did not leave the lane straight, and
+the joint is where a Link has usually just been moved. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
