@@ -435,3 +435,25 @@ reported. It now takes the path's own normal, corrected onto each mouth, and mea
 symmetric shapes (quarter turn, U-turn) are unchanged, and both mouths still meet their links
 exactly. The test that was supposed to guard this measured width *along* the cross-section, which is
 the lane width by construction at any angle; it now measures square to the road as well.
+
+## 2026-09-16 fourth follow-up — One poly point, and a constant offset
+
+Two answers from the owner, both now the rule here.
+
+**"Vissim moves only the one poly point that is attached to the Link."** `reanchorConnector` used to
+carry the whole curve rigidly through a similarity transform of its endpoint chord, so a Link edit
+dragged points the author had placed by hand. It now moves the attached endpoint and nothing else.
+Path independence, which the transform was written for, comes for free: the point returns to where
+the lane puts it and no other point was ever touched.
+
+**"Should the offset from the lane centreline be the same all along?"** Yes, and that is the Vissim
+rule: the polygon is the axis offset by half the total width, measured square to the axis at every
+point. Links already did this — measured 3.500 m of a 3.500 m lane at every bend from 30 to 170
+degrees, because `offsetGeometry` miters each corner. Connectors now go through the same function,
+with a per-point offset so a tapering lane keeps its neighbours at full width. The two ends are cut square to the Connector as well,
+not to the links, which is what the owner's own Vissim screenshot shows: a constant-width ribbon
+whose end simply overlaps the link it meets. Measured after a Link was rotated 90 degrees under a
+drawn Connector, every sample including the joint is 3.500 m, against 0.46 m from the interpolated
+cross-section and a wedge at the joint from cutting the ends on the link. The joint gap that
+replaces it is 0 on a straight connection and 0.12-0.29 m where the sampled curve leaves the lane
+at an angle -- an overlap, not a missing lane.

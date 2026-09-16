@@ -183,10 +183,13 @@ between its two mouths: a lane that continues keeps the width its links give it 
 and a lane the far end has no room for is drawn as a taper closing onto its neighbour, the way
 Vissim draws a lane drop. Which lane continues follows the selected ranges, pairing them in lane
 order, so a lane range anchored one lane over moves the taper to the other side. The taper runs
-the whole length of the Connector; there is no separate taper length to set. The cross-section
-those widths are measured across is square to the Connector's own path, corrected onto each link's
-cross-section at the two mouths, so a lane holds its width through a bend instead of being drawn
-at the cosine of the angle between the road and the line joining its mouths. Properties exposes both counts as an alternative. Retargeting
+the whole length of the Connector; there is no separate taper length to set. Those widths are stacked
+along the same mitered offset a Link's own lane edges use (`offsetGeometry`), so every lane is its
+full width square to the road at every point, through a bend and past a poly point the author has
+dragged; the two ends are cut square to the Connector itself, not to the links
+it meets, so the joint overlaps the way Vissim's does. Cutting them on the links' cross-sections
+instead drew a slanted wedge at the joint wherever the curve did not leave the lane straight, and
+the joint is where a Link has usually just been moved. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
@@ -206,6 +209,11 @@ consecutive points and a positive total length. Coincident endpoints cannot
 generate a default curve; leave a positive gap. Duplicate lane-pair connections at the same source/target stations are
 rejected, including pairs already covered by another connector range. Separate stations
 on the same lane pair may own separate Connectors.
+
+Moving or reshaping a Link moves the one Connector poly point attached to it, as Vissim does, and
+leaves every other point where the author put it. A Link edit therefore cannot deform a hand-tuned
+curve, and taking a Link away and back restores the Connector exactly. Reset curve re-derives the
+whole shape when that is what is wanted.
 
 Positions persist with each lane reference, in metres. Moving, stretching or reshaping a Link,
 changing its lane widths, count or driving side reanchors the Connector at the **same station**,

@@ -7,6 +7,69 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — The ends are square to the Connector, as Vissim draws them
+
+The owner circled the joints in the render from the entry below and sent a Vissim screenshot beside
+them: a constant-width ribbon whose ends are cut square to itself and simply overlap the link.
+
+The joints were still being cut on the **links'** cross-sections. Where a Connector leaves or
+arrives across a lane rather than along it -- which is exactly the state a moved Link leaves behind
+-- that cut is nearly parallel to the road, so the last sample stretched into a slanted wedge. It is
+the same mistake as the one below, surviving at the two end samples after being removed from the
+body.
+
+Both ends now take the same mitered offset as every other sample, so a Connector is one constant
+width from end to end. Measured with a Link rotated 30/60/90 degrees under a drawn Connector: 3.500
+m at **every** sample, joint included, against 1.96 m and 0.46 m before. Reverse curves, U-turns,
+tapers and the merge/diverge wedges are unchanged or better. What replaces the wedge is an overlap
+at the joint: nothing at all on a straight connection, and 0.12-0.29 m where the sampled curve
+leaves its lane at an angle, because the square cut is square to the polyline the author actually
+has. Vissim overlaps there too.
+
+The tests now pin the rule rather than the old symptom: every boundary end has no component along
+the Connector's own end direction (exact, to 1e-9), and lands within a joint's reach of the link's
+lane edge. Reverting to the link-cut ends fails three of them.
+
+**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
+`native.yml`. Two reverts each failed tests: cutting the ends on the links, and dropping the miter.
+No stored geometry changes, so no baseline fixture could move and none was regenerated.
+
+---
+
+## 2026-09-16 — One poly point moves, and the offset is constant along the road
+
+The owner traced a real interchange over an aerial image, moved a Link, and the Connectors came out
+deformed. Two rules settled it, both theirs.
+
+**"Vissim moves only the one poly point that is attached to the Link."** `reanchorConnector` carried
+the whole curve through a similarity transform of its endpoint chord, so every Link edit dragged
+points the author had placed by hand. It now sets the attached endpoint and leaves the rest alone.
+The path independence the transform existed for is stronger this way, not weaker: the point returns
+to where the lane puts it, and nothing else was ever touched. The test that pinned the old rule now
+pins this one — interior points identical to 1e-12, endpoint on the lane to 1e-12.
+
+**"Should a Connector and a Link both keep the same offset from the lane centreline all along?"**
+Yes. A road's polygon is its axis offset by half its width, square to the axis at every point.
+Links already did this: measured 3.500 m of a 3.500 m lane at every bend from 30 to 170 degrees,
+because `offsetGeometry` miters each corner. Connectors did not — they stacked widths on a
+cross-section that was only correct at the two mouths. Measured on the owner's case, a Connector
+whose target Link had been rotated 90 degrees drew its 3.50 m lane at **0.46 m**.
+
+Connector boundaries now go through `offsetGeometry` itself, via a new overload that takes an offset
+per point so a tapering lane leaves its neighbours at full width; one implementation of "how a road
+edge is offset" serves Links and Connectors alike. After the same 90-degree rotation the body holds
+**3.500 m** at every sample, and only the last two — the joint, where the Connector arrives across
+the lane and is cut on that lane's cross-section — are shorter through the corner, which is the
+notch Vissim shows there too. Reverse curves came out 3.476-3.499 m against a 3.5 m nominal, better
+than either earlier version. The mouths still land on their links' lane edges exactly.
+
+**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
+`native.yml`. Three separate reverts each failed a test: interpolating the cross-section between the
+mouths, dropping the miter, and dragging the whole curve on reanchor. Stored geometry only changes
+where a Link edit moves an attachment, which is the edit itself; no baseline fixture was regenerated.
+
+---
+
 ## 2026-09-16 — The cross-section follows the road, not the line between the mouths
 
 A review pass over the change merged an hour earlier found a regression in it, measured and fixed
@@ -96,52 +159,6 @@ newly created curves changed.
 
 ---
 
-## 2026-09-16 — Merge markings and the shape of a tight turn
-
-Two owner findings from a U-turn screenshot, both about how a Connector is drawn.
-
-**A dashed divider ran down the middle of a single lane.** Where a Connector's ends carry
-different lane counts, `connectorBoundaries` pins the interior boundary at the narrow end to
-`endEdge(..., boundary=1/2, count=1)`, which interpolates between that one lane's two edges —
-its exact centre — and `drawConnectors` dashed every non-outer boundary end to end. The ribbon
-was already right: measured across a two-into-one it tapers 7.000 m to 3.500 m. Only the
-marking was wrong.
-
-Markings are now their own model function, `connectorMarkings`, used by the editor and the
-diagnostic view alike. An interior divider keeps the longest run where the two paths it
-separates are at least half their full spacing apart, and stops where they converge; on the
-same fixture it covers 7 of 13 points instead of all 13. Two lanes into two keep a full-length
-divider, one into one has none.
-
-**A U-turn was drawn at less than half the radius it needs.** `connectorCurve` reached
-`chord/3` for every turn. That value is exactly the theta -> 0 limit of the cubic that stands in
-for a circular arc, `(2/3)*chord*tan(theta/4)/sin(theta/2)`, so it was only ever right for a
-gentle turn. Measured on the owner's shape: minimum radius 2.286 m on a 13 m chord, 0.176 of the
-chord, tighter than the 3 m lane it carries — so the ribbon's inner edge crossed itself, and
-Qt's even-odd default punched the overlap out as a hole. That hole is the X in the screenshot.
-
-The reach is now the arc value for the actual turn angle: bit-identical for a straight-through
-connection, 5.904 m on the same U-turn (0.454 of the chord, a half circle is 0.5). Surfaces fill
-by winding rule, so any self-overlap that remains reads as road rather than a tear. Stored
-geometry is never rewritten — only new curves and Reset curve — so no existing project moves and
-no baseline can.
-
-A turn still tighter than the Connector's own width is reported as `TIGHT_CONNECTOR_RADIUS`,
-deliberately through a new `connectorShapeIssues` rather than `connectorRuntimeIssues`, because
-`compileScenario` throws on the latter and an undrivable drawing must not block Run. It is
-advisory in both languages and survives a document with no demand authored yet.
-
-Also closed the last lane-count leak: the Properties count boxes double as the creation form, so
-picking a source lane now resets them to one, like the drag dialog.
-
-Coverage: a merge's divider is shorter than its boundary and keeps clear of the merge point,
-while 2->2 keeps a full-length one and 1->1 has none; a U-turn's minimum radius exceeds 0.4 of
-its chord and its lane width, and a straight-through connection stays exactly on the chord; the
-advisory fires once on a hairpin, names its Connector, and `compileScenario` still succeeds; the
-connector surface fills by winding. Reverting the trim and the arc reach in turn makes those
-tests fail. All 23 CTest suites and both guards passed, the four TS baselines and the pinned
-29.249359418430977 untouched and not regenerated. Linux only; Windows is CI's.
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -156,7 +173,9 @@ project saved by an older build opens with its Connectors in the same places. Ch
 runs down a single-lane stretch. Check a Connector between ends with different lane counts: the
 lane that continues should hold its width while the extra one closes as a taper, and the divider
 should arrive on the edge of the merged lane, never in the middle of it. Check a reverse-curve
-Connector holds its width through the bend rather than pinching in the middle. **Next after the review: M1.11.1**, which can now split a lane
+Connector holds its width through the bend rather than pinching in the middle, and that moving a
+Link under a drawn Connector moves only the poly point attached to it while the ribbon keeps its
+width. **Next after the review: M1.11.1**, which can now split a lane
 at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.
