@@ -193,21 +193,27 @@ the joint is where a Link has usually just been moved. Properties exposes both c
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
-A Connector is stored the way Vissim stores one: the two attachments and a few **intermediate
-points** between them, and the road is a spline drawn through every one of those points — cubic
-Hermite, Catmull-Rom at the interior points, clamped to each lane's own direction at the two
-ends, sampled eight times per span. So the stored polyline is what the author placed and the
-drawn ribbon is derived from it; nothing baked is kept. Grips, hit testing, the reported length
-and point insertion all follow the road, not the control polygon, which cuts every corner the
-curve goes round. Properties → Connectors carries **Intermediate points**, Vissim's own field:
-changing it re-lays the road the Connector already has with that many points at equal spacing
-along it, so a shape the author has bent survives the change (0.88 m of drift on a 55.6 m road
-across a 3 → 7 → 3 round trip, against 6.61 m for Reset curve). A new Connector gets 3, and 0
-leaves a single span between the attachments.
+A Connector is stored and drawn the way Vissim's is: its two attachments and a few
+**intermediate points**, joined by **straight legs and mitered at each point**, exactly as a Link
+is. It is not smoothed — a Connector with two intermediate points is three straight legs with a
+corner at each one, which is what Vissim draws. The count is what decides how closely that polygon
+follows the turn, and it is Vissim's own `Intermediate points` field, in Properties → Connectors.
 
-Interior points are editable, and dragging one bends the road through it rather than putting a
-corner in it: the author's own polygon turns 98.1 degrees under a point dragged 11 m where the
-road turns 32.9. Reset curve to lane directions lays those points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
+Changing the count never re-derives the default curve; `Reset curve` is the button for that.
+Raising it splits the longest leg each time, so every point already there survives and the drawn
+line does not move at all. Lowering it spaces the points evenly along the shape that is there,
+giving up only the corners the lower count cannot hold. A new Connector gets 3; 0 leaves one
+straight leg between the attachments. `Reset curve` lays 3 along the arc, and laying more along
+it follows the turn more closely — 2.29 m of sag from the arc at one point, 0.60 m at three,
+under 0.10 m at fifteen.
+
+Because the legs are straight, the ends of a Connector meet its links at a visible **step**: the
+ends are square to the Connector itself, so a mouth sits near its lane edge rather than on it —
+4.7 cm to 17.2 cm on a gentle join, up to 0.88 m where three points make a coarse polygon of a
+hard reverse curve. Vissim shows the same step.
+
+Interior points are editable; dragging one moves that corner and nothing else. Reset curve to
+lane directions lays the points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
 between **that end's** lane direction and the chord — the cubic that stands in for a circular
 arc leaving at that angle. It is `chord/3` as α tends to zero, the constant every turn used to
 get, `(2/3)·chord` for a U-turn, which used to be drawn at less than half the radius it needs

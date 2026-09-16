@@ -77,9 +77,8 @@ int main(int argc,char** argv) {
         anchored(w.history().document());
         require(item<QTabWidget>(w,"editorPropertyTabs")->currentIndex()==1,"Connector properties not shown");
 
-        // A default Connector now carries kDefaultIntermediatePoints poly points, as Vissim's
-        // dialog counts them, so the middle grip is index 2 and not the seventh sample of a
-        // baked curve.
+        // A Connector carries kDefaultIntermediatePoints poly points, the way Vissim's dialog
+        // counts them, so the middle grip is index 2 and not the seventh sample of a baked curve.
         require(created.geometry.size()==static_cast<std::size_t>(kDefaultIntermediatePoints)+2,"Default intermediate points");
         tool->setCurrentIndex(0);c->select("");click(c,created.geometry[2]);
         require(c->selected()==id,"Connector path not selectable");
@@ -97,10 +96,7 @@ int main(int argc,char** argv) {
         require(documentJson(w.history().document())==reshaped,"Source endpoint moved or was removed");
         drag(c,shape.back(),{shape.back().x+5,shape.back().y+5});QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);
         require(documentJson(w.history().document())==reshaped,"Target endpoint moved or was removed");
-        // A point is inserted on the road, which is where the author clicked, so the click goes
-        // on the road half way between two stored points rather than on the chord between them.
-        const auto road=connectorRoad(w.history().document().network,w.history().document().network.connectors[0]);
-        const Point insert=pointAlong(road,polylineLength(road)*.75);
+        const Point insert{(shape[2].x+shape[3].x)/2,(shape[2].y+shape[3].y)/2};
         QTest::mouseDClick(c->viewport(),Qt::LeftButton,{},pixel(c,insert));
         require(w.history().document().network.connectors[0].geometry.size()==shape.size()+1,"Point insertion failed");
         click(c,w.history().document().network.connectors[0].geometry[3]);QTest::keyClick(c,Qt::Key_Delete,Qt::ControlModifier);

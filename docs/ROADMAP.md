@@ -253,17 +253,18 @@ M1.11.1 can now split a lane at a station that does not move underneath it.
 
 ### M1.14 — Intermediate points, as Vissim counts them
 
-**Implemented.** A Connector stores its two attachments and a few intermediate points, and the
-road is a spline drawn through them (`connectorSpline`), sampled once in `connectorPaths` so the
-boundaries, markings, compiled segment and canvas all read the same polyline. Properties carries
-Vissim's `Intermediate points` field, which re-lays the road the Connector already has rather
-than resetting it; a new Connector gets 3. The default curve's arc reach is held at its
-120-degree value, which stops a Connector drawn between two nearly touching links from running
-to 11 times its own chord. Existing save files were deliberately not migrated: the owner
-confirmed the project is still a test bed and no drawing is being carried forward.
+**Implemented.** A Connector stores its two attachments and a settable number of intermediate
+points, and is drawn straight between them and mitered at each one — the same rule a Link is
+drawn by, confirmed against a Vissim connector with the count set to 2. Properties carries
+Vissim's `Intermediate points`, which re-lays the shape the Connector already has and never
+re-derives the default curve: raising it splits the longest leg so no placed point is lost,
+lowering it spaces the points evenly. A new Connector gets 3. The arc reach that lays those
+points is held at its 120-degree value, which stops a Connector drawn between two nearly
+touching links from running to 11 times its own chord. Existing save files were deliberately not
+migrated: the owner confirmed the project is still a test bed.
 
-**Done:** a default Connector shows five grips; dragging one bends the road through it instead
-of kinking it; raising and lowering the count keeps the author's bend.
+**Done:** a default Connector shows five grips; the count changes without losing the author's
+shape; a count of 2 draws the three straight legs Vissim draws.
 
 ### M1.12.1 — A Connector's own name, lane widths and markings
 

@@ -210,26 +210,6 @@ void EditorCanvas::insertVertex(Point p) {
     select(picked.first);
     const auto* current=selectedGeometry(); if (!current) return;
     auto geometry=*current;
-    // A Connector's stations are stations along its road, not along the few points that shape it.
-    // The new point goes on the road, in the span the author's own points put it in, so a click
-    // adds a poly point where the author aimed and the curve through it barely moves.
-    if(const auto* c=selectedConnector()) {
-        std::vector<std::size_t> indices;
-        const auto road=connectorRoad(document_->network,*c,&indices);
-        if(road.size()!=indices.back()+1 || indices.size()!=geometry.size())return;
-        const auto inserted=pointAlong(road,picked.second);
-        std::vector<double> stations(road.size());
-        for(std::size_t i=1;i<road.size();++i)
-            stations[i]=stations[i-1]+std::hypot(road[i].x-road[i-1].x,road[i].y-road[i-1].y);
-        std::size_t span=1;
-        while(span+1<indices.size() && stations[indices[span]]<picked.second)++span;
-        // The same 1 cm guard the link branch uses: a click on top of a point adds nothing.
-        if(std::hypot(inserted.x-geometry[span-1].x,inserted.y-geometry[span-1].y)<0.01 ||
-           std::hypot(inserted.x-geometry[span].x,inserted.y-geometry[span].y)<0.01)return;
-        geometry.insert(geometry.begin()+static_cast<std::ptrdiff_t>(span),inserted);
-        if(editGeometry) editGeometry(selected(),geometry);
-        return;
-    }
     const auto inserted=pointAlong(geometry,picked.second);
     double distance=0;
     for(std::size_t i=1;i<geometry.size();++i) {

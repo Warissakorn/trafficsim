@@ -158,9 +158,7 @@ void EditorWindow::refreshConnector() {
     if (connector) {
         // Say how many lanes each end carries. A connector that drops or gains lanes is legal
         // to author, and seeing 3 -> 2 on the canvas is how the author notices it is a merge.
-        // The length of the road, as Vissim's dialog reports it -- never of the control polygon,
-        // which cuts every corner the curve goes round.
-        selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connectorRoad(history_.document().network,*connector)),0,'f',2)+"   "+
+        selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2)+"   "+
             text("editorConnectorLanes").arg(connector->fromLaneCount).arg(connector->toLaneCount));
     }
     connectorHint();

@@ -83,15 +83,32 @@ void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straigh
 void resampleConnectorPoints(ProjectDocument& d, const std::string& id, int count) {
     if(count<0 || count>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
     auto& c = editableConnector(d, id);
-    if(static_cast<int>(c.geometry.size())-2==count)return;
-    const auto road=connectorRoad(d.network,c);
-    const double length=polylineLength(road);
-    if(!std::isfinite(length) || length<=0)throw std::invalid_argument("INVALID_GEOMETRY");
-    std::vector<Point> geometry{c.geometry.front()};
-    for(int i=1;i<=count;++i)geometry.push_back(pointAlong(road,length*i/(count+1)));
-    geometry.push_back(c.geometry.back());
-    // The shape is only re-laid, never re-derived: a Connector the author has bent by hand keeps
-    // its bend when the count goes up and gives up only the detail the lower count cannot hold.
+    const int current=static_cast<int>(c.geometry.size())-2;
+    if(current==count)return;
+    auto geometry=c.geometry;
+    if(count>current) {
+        // Raising the count must not cost the author a corner. Split the longest leg each time
+        // and every existing point survives, so the Connector is drawn exactly where it was --
+        // re-laying at even spacing instead cut a hand-placed corner by up to 1.00 m, measured.
+        for(int added=current;added<count;++added) {
+            std::size_t longest=1;double best=-1;
+            for(std::size_t i=1;i<geometry.size();++i) {
+                const double length=std::hypot(geometry[i].x-geometry[i-1].x,geometry[i].y-geometry[i-1].y);
+                if(length>best){best=length;longest=i;}
+            }
+            geometry.insert(geometry.begin()+static_cast<std::ptrdiff_t>(longest),
+                            {(geometry[longest].x+geometry[longest-1].x)/2,
+                             (geometry[longest].y+geometry[longest-1].y)/2});
+        }
+    } else {
+        // Lowering it has to give something up; spacing the points evenly along the shape that
+        // is there gives up only the detail the lower count cannot hold, never the shape itself.
+        const double length=polylineLength(c.geometry);
+        if(!std::isfinite(length) || length<=0)throw std::invalid_argument("INVALID_GEOMETRY");
+        geometry={c.geometry.front()};
+        for(int i=1;i<=count;++i)geometry.push_back(pointAlong(c.geometry,length*i/(count+1)));
+        geometry.push_back(c.geometry.back());
+    }
     c.geometry=std::move(geometry);c.laneBlend.clear();
 }
 void deleteConnector(ProjectDocument& d, const std::string& id) {

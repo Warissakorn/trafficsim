@@ -61,17 +61,17 @@ TEST(attachments, inspector_lane_count_and_turn_pocket_keep_opposite_edge) {
 TEST(attachments, connector_leading_edges_rebase_without_moving_surviving_paths) {
     for(auto side:{DrivingSide::left,DrivingSide::right}) {
         auto d=roads(side);const auto id=addConnectorRange(d,{"a","a2",at(d,"a",.4)},{"b","b2",at(d,"b",.6)},1,1);
-        const auto original=d.network.connectors[0];const auto road=connectorRoad(d.network,original);
+        const auto original=d.network.connectors[0];
         const auto fixedEdge=connectorBoundaries(d.network,original).back();
         changeConnectorRange(d,id,2,2,true);
         CHECK(d.network.connectors[0].from.laneId=="a1");CHECK(d.network.connectors[0].to.laneId=="b1");
-        auto paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,road);
+        auto paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,original.geometry);
         same(fixedEdge,connectorBoundaries(d.network,d.network.connectors[0]).back());
         // Reopen must keep the frozen weights; otherwise the old curve drifts during derivation.
         d=parseDocument(Json::parse(documentJson(d).dump()));
-        paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,road);
-        changeConnectorRange(d,id,3,3,false);same(connectorPaths(d.network,d.network.connectors[0])[1].geometry,road);
-        changeConnectorRange(d,id,2,2,true);same(connectorPaths(d.network,d.network.connectors[0])[0].geometry,road);
+        paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,original.geometry);
+        changeConnectorRange(d,id,3,3,false);same(connectorPaths(d.network,d.network.connectors[0])[1].geometry,original.geometry);
+        changeConnectorRange(d,id,2,2,true);same(connectorPaths(d.network,d.network.connectors[0])[0].geometry,original.geometry);
         const auto boundaries=connectorBoundaries(d.network,d.network.connectors[0]);CHECK(boundaries.size()==3);
         CHECK(validateNetwork(d.network).empty());
         History h;h.reset(d);const auto before=h.document();

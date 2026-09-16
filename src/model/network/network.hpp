@@ -57,13 +57,6 @@ std::vector<Point> offsetGeometry(const std::vector<Point>&, double offset);
 // The same miter-joined offset with a distance that varies point by point, which is how a road
 // that gains or drops a lane along its length keeps every other lane at its own full width.
 std::vector<Point> offsetGeometry(const std::vector<Point>&, const std::vector<double>& offsets);
-// A Connector's road: a cubic Hermite through the author's poly points, Catmull-Rom at the
-// interior ones and clamped to the given lane directions at the two ends, so the curve passes
-// through every point the author placed and still leaves each lane tangentially. authorIndices,
-// when given, receives the sample each author point landed on, which is what keeps grips and
-// the centreline lined up with the stored points.
-std::vector<Point> connectorSpline(const std::vector<Point>& points, Point entryTangent,
-                                   Point exitTangent, std::vector<std::size_t>* authorIndices=nullptr);
 // The same polyline with any self-crossing loop cut out and closed at the crossing point.
 // Drawing only: the loop an offset makes on a tight bend is a notch in the line round a
 // surface that is filled correctly without it.
@@ -105,21 +98,17 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // Advisory only, and deliberately not part of connectorRuntimeIssues, which blocks Run: a turn
 // tighter than the Connector's own half-width is undrivable but still a legal drawing.
 std::vector<ValidationIssue> connectorShapeIssues(const Network&);
-// The default control polygon between two lane attachments: the two attachments and
-// kDefaultIntermediatePoints interior points along the arc-like cubic that joins them, aligned
-// with each lane's local travel direction. This is the editable/persisted geometry; the road
-// drawn through it is connectorSpline.
+// The default shape between two lane attachments: the two attachments and
+// kDefaultIntermediatePoints intermediate points along the arc-like cubic that joins them,
+// aligned with each lane's local travel direction. A Connector is drawn straight between its
+// points and mitered at each one, exactly as a Link is -- what the count buys is how closely the
+// polygon follows the turn, which is what Vissim's Intermediate points field does.
 inline constexpr int kDefaultIntermediatePoints=3;
 std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to,
                                   int intermediatePoints=kDefaultIntermediatePoints);
 // The travel directions a Connector's two ends leave and arrive on, which clamp its spline.
 std::pair<Point,Point> connectorTangents(const Network&, const LaneReference& from, const LaneReference& to);
-// A Connector's drawn and compiled road: its stored points sampled through connectorSpline.
-std::vector<Point> connectorRoad(const Network&, const Connector&, std::vector<std::size_t>* authorIndices=nullptr);
-// The same, for a control polygon that is not (yet) the Connector's own: previews and per-lane
-// shifts sample the points they built rather than the ones stored.
-std::vector<Point> connectorRoad(const Network&, const Connector&, const std::vector<Point>& points,
-                                 std::vector<std::size_t>* authorIndices=nullptr);
+
 std::vector<ValidationIssue> validateNetwork(const Network& network);
 void assertValidNetwork(const Network& network);
 // Unchecked assembly, for diagnostics that must not throw. Requires an already-valid network.

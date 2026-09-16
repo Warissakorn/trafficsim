@@ -8,53 +8,51 @@ long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-arch
 
 ---
 
-## 2026-09-16 — Intermediate points, the way Vissim counts them
+## 2026-09-16 — Intermediate points, and what a Vissim Connector's line actually is
 
-The owner sent Vissim's Connector dialog beside our render: Vissim keeps a Connector as a curve
-through a few intermediate points, and that field is how many. We kept a baked 13-point sample of
-a cubic, so every sample was a grip and dragging one put a kink in a curve that should stay smooth.
-There was no such field, and nothing to put in it.
+The owner sent Vissim's Connector dialog: it counts **intermediate points**, and we had no such
+field — we stored a 13-point sample of a cubic, so every sample was a grip and dragging one put a
+corner in a shape the author had no count over.
 
-**What a Connector stores.** Its two attachments and the intermediate points between them, and
-nothing else. The road is `connectorSpline`: cubic Hermite, Catmull-Rom at the interior points so
-it passes through every one of them, clamped to each lane's own direction at the two ends, eight
-samples a span. `connectorPaths` samples once, so boundaries, markings, the compiled segment and
-the canvas all read the same polyline — one place a control polygon becomes a Connector. Hit
-testing, the reported length and point insertion follow that road too, because with a handful of
-points the control polygon cuts every corner the curve goes round. A default Connector now shows
-five grips; dragging the middle one bends the road through it, at 32.9 degrees of turn against
-the 98.1 the author's own polygon takes there.
+**A first pass read the line as a spline. It is not.** The owner settled it by sending a Vissim
+connector with the count set to **2**: four dots, three straight legs, a mitered corner on each
+dot, a visible step at each mouth where the polygon overlaps the link, and no tangency to the
+links anywhere. A Connector is drawn by the same rule a Link is. The spline is reverted; what
+survives from that pass is the model it needed — a Connector stores its two attachments and its
+intermediate points, and nothing baked — and the field.
 
-**The field.** Properties → Connectors carries `Intermediate points`. Changing it lays the
-Connector's *current* road out again with that many points at equal spacing, so a shape the author
-has bent survives: 0.88 m of drift on a 55.6 m road across a 3 → 7 → 3 round trip, where Reset
-curve is 6.61 m away from it. A new Connector gets 3, the owner's number; 0 is legal and leaves a
-single span.
+**The field.** Properties → Connectors carries `Intermediate points`. It never re-derives the
+default curve; `Reset curve` is the one thing that does. Raising it splits the longest leg each
+time, so every point the author placed survives and the drawn line does not move at all —
+re-laying at even spacing instead cut a hand-placed corner by 1.00 m, measured, which is why it
+does not. Lowering it spaces the points evenly along the shape that is there, giving up only the
+corners the lower count cannot hold; a 3 → 7 → 3 round trip leaves every point on the author's own
+line, where a reset is 5.58 m away from it. A new Connector gets 3, the owner's number; 0 is legal
+and leaves one straight leg. Laying more points along the arc follows the turn more closely: 2.29 m
+of sag at one point, 0.60 m at three, under 0.10 m at fifteen.
 
-**The curve that left its junction.** The arc reach shaping a default Connector,
+**The curve that left its junction.** The arc reach laying those points,
 `(2/3)·chord·tan(α/2)/sin(α)`, is 0.67 of the chord at a right angle and **11.05** at 160 degrees.
 Drawn where two links nearly touch — the owner's second picture — it ran to 11.0 times its own
 chord, which is how a 3.5 m ribbon ends up a crumpled wedge. Held at the 120-degree value,
-`(4/3)·chord`, it measures 1.9, and the three ordinary fixtures came out byte-identical. It is
-still an undrivable turn for a 3.5 m lane and still reports `TIGHT_CONNECTOR_RADIUS`.
+`(4/3)·chord`, it measures 1.9, and the ordinary fixtures came out byte-identical. It is still an
+undrivable turn for a 3.5 m lane and still reports `TIGHT_CONNECTOR_RADIUS`.
+
+**What three points cost against thirteen.** A coarser polygon reads slightly wide along its
+cross-section at a corner, because that is what a miter does — 6.3 cm, the same thing a Link's own
+edges do at a bend, and square to the road it is still the lane width. The step at a mouth grows
+with it: 4.7 to 17.2 cm on a gentle join, 0.88 m on a tight reverse curve. Both are recorded in
+the tests with their measured numbers rather than tuned away.
 
 **Old save files were deliberately not migrated.** The owner confirmed the project is still a test
-bed and no drawing is being carried forward, so there is no compatibility shim to maintain. No
-baseline fixture stores connector geometry, so none could move and none was regenerated.
+bed and no drawing is being carried forward. No baseline fixture stores connector geometry, so
+none could move and none was regenerated.
 
-Four existing tests were rewritten rather than retuned: each measured the stored polyline where it
-meant the road, which was the same object before and is not now. One changed its claim honestly —
-after a Link is rotated 90 degrees the road arrives *along* the lane, because the spline is clamped
-there, and the ribbon narrows to 2.90 m only where the curve genuinely turns tighter than its own
-half width. That case is flagged, and the test now requires the flag rather than allowing the
-narrowing in silence; at 30 degrees it holds 3.500 m at every sample and nothing is flagged.
-
-**Verification:** 23/23 CTest, the model suite up from 97 to 102 cases, plus the architecture and file-size guards on Linux; Windows is
-`native.yml`. Three negative checks each failed named tests: sampling the control polygon instead
-of the spline (5), dropping the clamped end tangents (4), and letting the arc reach run away again
-(2, one of them the hairpin). A centripetal parameterization was tried for the interior tangents
-and **removed**: it moved the measured numbers by 0.3 degrees and 3 mm, which is not a reason to
-carry it.
+**Verification:** 23/23 CTest, the model suite up from 97 to 101 cases, plus the architecture and
+file-size guards on Linux; Windows is `native.yml`. Three negative checks each failed a named test:
+re-laying evenly when the count is raised, ignoring the count and always laying three, and letting
+the arc reach run away again. A centripetal parameterization was tried while the spline reading
+still stood and **removed**: it moved the measured numbers by 0.3 degrees and 3 mm.
 
 ---
 
@@ -138,12 +136,12 @@ should arrive on the edge of the merged lane, never in the middle of it. Check a
 Connector holds its width through the bend rather than pinching in the middle, and that moving a
 Link under a drawn Connector moves only the poly point attached to it while the ribbon keeps its
 width. Check the 2026-09-16 point work: a new Connector shows five grips rather than thirteen,
-dragging the middle one bends the road instead of kinking it, `Intermediate points` in Properties
-raises and lowers the count without losing the shape, a click on the ribbon inserts a point on
-the road where you aimed, and a Connector drawn between two links that nearly touch stays inside
-the junction and is reported as a tight radius rather than drawn as a crumpled wedge. Old
-`*.traffic.json` files predating that change were deliberately not migrated and will open with
-their Connectors re-read as control points. **Next after the review: M1.11.1**, which can now split a lane
+`Intermediate points` in Properties raises and lowers the count without losing the shape you
+drew, a count of 2 draws three straight legs with a corner on each point as Vissim does, and a
+Connector drawn between two links that nearly touch stays inside the junction and is reported as
+a tight radius rather than drawn as a crumpled wedge. Old `*.traffic.json` files predating that
+change were deliberately not migrated and will open with all of their stored points as poly
+points. **Next after the review: M1.11.1**, which can now split a lane
 at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.

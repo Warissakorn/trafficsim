@@ -76,14 +76,6 @@ Point endDirection(const Network& network,const LaneReference& ref,bool outgoing
 std::pair<Point,Point> connectorTangents(const Network& network,const LaneReference& from,const LaneReference& to) {
     return {endDirection(network,from,true),endDirection(network,to,false)};
 }
-std::vector<Point> connectorRoad(const Network& network,const Connector& c,const std::vector<Point>& points,
-                                 std::vector<std::size_t>* authorIndices) {
-    const auto [entry,exit]=connectorTangents(network,c.from,c.to);
-    return connectorSpline(points,entry,exit,authorIndices);
-}
-std::vector<Point> connectorRoad(const Network& network,const Connector& c,std::vector<std::size_t>* authorIndices) {
-    return connectorRoad(network,c,c.geometry,authorIndices);
-}
 std::vector<Point> connectorCurve(const Network& network, const LaneReference& from, const LaneReference& to,
                                   int intermediatePoints) {
     if(intermediatePoints<0 || intermediatePoints>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
@@ -115,8 +107,8 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     };
     const auto c1 = control(a, entry, reach(entry), 1);
     const auto c2 = control(b, exit, reach(exit), -1);
-    // Only the author's points are stored. The road between them is connectorSpline's, and it
-    // is clamped to the same two tangents, so a default Connector is the arc it always was.
+    // The points are laid on the arc; the Connector is drawn straight between them. More points
+    // follow the arc more closely, which is the whole meaning of the count.
     const int spans=intermediatePoints+1;
     std::vector<Point> points{a};
     for (int i = 1; i < spans; ++i) {

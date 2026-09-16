@@ -30,15 +30,9 @@ std::vector<std::pair<std::string,double>> EditorCanvas::hitObjects(Point p,bool
         if(contains(l.id))hits.push_back({l.id,stationOfClosestPoint(l.geometry,p),distance,l.level,1});
     }
     if(connectors)for(const auto& c:document_->network.connectors)if(levelVisible(c.level)) {
-        // Measured on the road, never on the control polygon: with a handful of poly points the
-        // two are far apart, and it is the road the author can see and clicked on. The station
-        // reported is a station along that road, which is what insertVertex and split expect.
-        double distance=1e300;std::vector<Point> road;
-        for(const auto& path:connectorPaths(document_->network,c)) {
-            distance=std::min(distance,proximity(path.geometry));
-            if(road.empty())road=path.geometry;
-        }
-        if(contains(c.id))hits.push_back({c.id,stationOfClosestPoint(road,p),distance,c.level,4});
+        double distance=proximity(c.geometry);
+        for(const auto& path:connectorPaths(document_->network,c))distance=std::min(distance,proximity(path.geometry));
+        if(contains(c.id))hits.push_back({c.id,stationOfClosestPoint(c.geometry,p),distance,c.level,4});
     }
     if(connectors)for(const auto& h:document_->network.signalHeads)if(const auto at=headPosition(h))
         if(levelVisible(at->second) && contains(h.id))hits.push_back({h.id,h.position,-1,at->second,10});

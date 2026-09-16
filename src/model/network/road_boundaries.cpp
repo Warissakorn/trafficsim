@@ -51,7 +51,7 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
 }
 }
 std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Connector& c) {
-    const auto paths=connectorPaths(n,c);
+    const auto paths=connectorPaths(n,c);const auto weights=connectorBlendWeights(c);
     // A Connector carries lanes, not a ribbon that shrinks. Each lane keeps the width its link
     // gives it from end to end; a lane the other end has no room for is the one that tapers,
     // closing onto its neighbour like a merge taper. Where two paths share a lane at one end,
@@ -77,17 +77,6 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     // worse still, at 1.06 m of a 3.50 m lane on a reverse curve. Vissim squares the ends to the
     // connector and lets the joint overlap the link, and so does this.
     const auto& spine=paths[anchorLane].geometry;
-    // How far along the taper each sample is. The stored blend weights belong to the author's
-    // poly points, which are far fewer than the road's samples, so the road's own arclength is
-    // what the cross-section is read against.
-    std::vector<double> weights(spine.size());
-    {
-        const double length=polylineLength(spine);double station=0;
-        for(std::size_t j=1;j<spine.size();++j) {
-            station+=std::hypot(spine[j].x-spine[j-1].x,spine[j].y-spine[j-1].y);
-            weights[j]=length>0?station/length:0;
-        }
-    }
     const double entry=std::atan2(from.y,from.x);
     // Which way a normal points is a convention; which way lane order runs is not. Take the
     // source mouth's word for it once, for the whole body, or the lanes come out mirrored.
@@ -131,11 +120,8 @@ std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector
 }
 std::vector<Point> connectorCentreline(const Network& n,const Connector& c) {
     const auto boundaries=connectorBoundaries(n,c);
-    // One grip per point the author stored, never one per sample of the road between them.
-    std::vector<std::size_t> indices;
-    (void)connectorRoad(n,c,&indices);
     std::vector<Point> result;
-    for(const auto i:indices)
+    for(std::size_t i=0;i<c.geometry.size();++i)
         result.push_back({(boundaries.front()[i].x+boundaries.back()[i].x)/2,
                           (boundaries.front()[i].y+boundaries.back()[i].y)/2});
     return result;
