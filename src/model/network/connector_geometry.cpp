@@ -103,10 +103,15 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     // says nothing, while each end still leaves its chord at a steep angle.
     const Point chord{(b.x-a.x)/gap,(b.y-a.y)/gap};
     const auto reach=[&](Point tangent) {
-        // Beyond this the tangent points back down the chord and the arc length runs away.
-        const double alpha=std::min(std::abs(std::atan2(tangent.x*chord.y-tangent.y*chord.x,
-                                                        tangent.x*chord.x+tangent.y*chord.y)),2.8);
-        return alpha<1e-6?gap/3:2./3*gap*std::tan(alpha/2)/std::sin(alpha);
+        const double alpha=std::abs(std::atan2(tangent.x*chord.y-tangent.y*chord.x,
+                                               tangent.x*chord.x+tangent.y*chord.y));
+        // The arc reach runs away as the tangent turns back down the chord: it is 0.67 of the
+        // chord at a right angle, 1.33 at 120 degrees and 11.05 at 160, which is a curve that
+        // leaves the junction altogether -- measured at 11.0 times its own chord on a Connector
+        // drawn between two links that nearly touch. Hold it at the 120-degree value: every
+        // ordinary turn, U-turn included, is unchanged to the last bit, and a hairpin stays
+        // inside a corridor the author can see.
+        return alpha<1e-6?gap/3:gap*std::min(2./3*std::tan(alpha/2)/std::sin(alpha),4./3);
     };
     const auto c1 = control(a, entry, reach(entry), 1);
     const auto c2 = control(b, exit, reach(exit), -1);

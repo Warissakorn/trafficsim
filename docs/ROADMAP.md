@@ -251,6 +251,39 @@ the version — not the key that happens to be present — deciding the unit.
 same world point; schema 4 files load unchanged; Run-blocking for end attachments is unchanged.
 M1.11.1 can now split a lane at a station that does not move underneath it.
 
+### M1.14 — Intermediate points, as Vissim counts them
+
+**Implemented.** A Connector stores its two attachments and a few intermediate points, and the
+road is a spline drawn through them (`connectorSpline`), sampled once in `connectorPaths` so the
+boundaries, markings, compiled segment and canvas all read the same polyline. Properties carries
+Vissim's `Intermediate points` field, which re-lays the road the Connector already has rather
+than resetting it; a new Connector gets 3. The default curve's arc reach is held at its
+120-degree value, which stops a Connector drawn between two nearly touching links from running
+to 11 times its own chord. Existing save files were deliberately not migrated: the owner
+confirmed the project is still a test bed and no drawing is being carried forward.
+
+**Done:** a default Connector shows five grips; dragging one bends the road through it instead
+of kinking it; raising and lowering the count keeps the author's bend.
+
+### M1.12.1 — A Connector's own name, lane widths and markings
+
+**Not started.** Three fields of Vissim's Connector dialog that our model cannot express, found
+by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up":
+
+- **`Name`** — `Connector` has no name member at all, so a Connector can only be referred to by
+  its generated id. Smallest of the three: a model field, serialization, one inspector row, and
+  the object combo showing it.
+- **`Lanes` tab per-lane `Width`** — connector lane widths are derived from the links each end
+  joins (`laneWidthOf`), so a Connector cannot carry a width of its own and a widening taper has
+  to be authored on the links instead.
+- **`Lanes` tab per-lane `MarkingType`** — likewise derived (`connectorMarkings`): edges solid,
+  interior dashed, with no per-lane choice.
+
+**Closes when:** all three are authorable, round-trip through the project file, and the widths
+feed `connectorBoundaries` in place of the derived ones without changing a Connector whose lanes
+were never given their own width. `BlockedVeh`, `NoLnCh` and `Has overtaking lane` are *not* in
+this milestone; they wait on the lane-changing model (Q2).
+
 ---
 
 ## M2 — Demand, run, first numbers · **GATE**

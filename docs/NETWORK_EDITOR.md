@@ -193,14 +193,30 @@ the joint is where a Link has usually just been moved. Properties exposes both c
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
-Interior points are editable. Reset curve to lane directions creates a cubic sampled
-into 12 spans. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
+A Connector is stored the way Vissim stores one: the two attachments and a few **intermediate
+points** between them, and the road is a spline drawn through every one of those points — cubic
+Hermite, Catmull-Rom at the interior points, clamped to each lane's own direction at the two
+ends, sampled eight times per span. So the stored polyline is what the author placed and the
+drawn ribbon is derived from it; nothing baked is kept. Grips, hit testing, the reported length
+and point insertion all follow the road, not the control polygon, which cuts every corner the
+curve goes round. Properties → Connectors carries **Intermediate points**, Vissim's own field:
+changing it re-lays the road the Connector already has with that many points at equal spacing
+along it, so a shape the author has bent survives the change (0.88 m of drift on a 55.6 m road
+across a 3 → 7 → 3 round trip, against 6.61 m for Reset curve). A new Connector gets 3, and 0
+leaves a single span between the attachments.
+
+Interior points are editable, and dragging one bends the road through it rather than putting a
+corner in it: the author's own polygon turns 98.1 degrees under a point dragged 11 m where the
+road turns 32.9. Reset curve to lane directions lays those points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
 between **that end's** lane direction and the chord — the cubic that stands in for a circular
 arc leaving at that angle. It is `chord/3` as α tends to zero, the constant every turn used to
 get, `(2/3)·chord` for a U-turn, which used to be drawn at less than half the radius it needs
 (0.18 of the chord instead of 0.45), and it is the only reading that catches a reverse curve,
 whose two ends are parallel while each still leaves its chord steeply (0.18 of the chord to
-0.22 on a measured S). A Connector that still turns tighter than its own width is reported in Objects and
+0.22 on a measured S). That reach is held at its 120-degree value, `(4/3)·chord`: past there it
+runs away — 11.05 times the chord at 160 degrees — and a Connector drawn where two links nearly
+touch left the junction altogether, measured at 11.0 times its own chord and now 1.9. Every
+ordinary turn, U-turn included, is unchanged to the last bit. A Connector that still turns tighter than its own width is reported in Objects and
 issues as `TIGHT_CONNECTOR_RADIUS`; the drawing is kept and Run is not blocked.
 Make straight retains only endpoints. There are no separate persisted
 Bézier handles and arbitrary edits need not remain smooth, though a reshaped curve is

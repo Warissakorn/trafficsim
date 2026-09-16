@@ -457,3 +457,38 @@ drawn Connector, every sample including the joint is 3.500 m, against 0.46 m fro
 cross-section and a wedge at the joint from cutting the ends on the link. The joint gap that
 replaces it is 0 on a straight connection and 0.12-0.29 m where the sampled curve leaves the lane
 at an angle -- an overlap, not a missing lane.
+
+## 2026-09-16 fifth follow-up — Intermediate points, and what the Connector dialog still lacks
+
+**A Connector is a curve through a few points, not a baked polyline.** Vissim stores the
+intermediate points its dialog counts and draws a spline through them; we stored a 13-point
+sample of a cubic, so every sample was a grip and dragging one put a kink in a curve that should
+stay smooth. The stored geometry is now the author's points alone and the road is derived, which
+is also what makes `Intermediate points` a field at all: changing the count re-lays the road the
+Connector already has instead of resetting it. The owner set the default at 3.
+
+**The default curve could leave its own junction.** The arc reach that shapes a new Connector is
+`(2/3)·chord·tan(α/2)/sin(α)`, which is 0.67 of the chord at a right angle and 11.05 at 160
+degrees. Drawn where two links nearly touch — the owner's picture — the curve ran to 11.0 times
+its own chord. It is held at the 120-degree value, `(4/3)·chord`; every ordinary turn, U-turn
+included, is unchanged to the last bit, and the hairpin now measures 1.9. It is still an
+undrivable turn for a 3.5 m lane and still says so, as `TIGHT_CONNECTOR_RADIUS`.
+
+**Reviewed against Vissim's Connector dialog, and still missing.** Booked here so the next
+session does not have to rediscover them; none is in this slice.
+
+| Vissim field | Ours | Verdict |
+|---|---|---|
+| `No.` | A generated id string, not an editable integer | Cosmetic, but ids are what a project file is read by. Not booked |
+| `Name` | **Absent from the model entirely** (`Connector` has no name member) | The cheapest real gap on this list, and the second field a Vissim user reaches for. **Booked: M1.12.1** |
+| `Intermediate points` | Present, as of this entry | Done |
+| `Link length` | Shown beside the lane counts, measured on the road | Done |
+| `Link behavior type` | Not modelled anywhere | Already out of scope (§ "not modelled") |
+| `Display type` | In the shared appearance row | Done |
+| `from link / to link`, `At:` | Lane combos plus a metres position each | Done |
+| `Lanes` tab — per-lane `Width` | Derived from the links the Connector joins (`laneWidthOf`) | Not previously recorded as a gap. A Connector cannot be given a width of its own, so a widening taper has to be authored on the links. **Booked: M1.12.1** |
+| `Lanes` tab — per-lane `MarkingType` | Derived (`connectorMarkings`): edges solid, interior dashed | Same entry. **Booked: M1.12.1** |
+| `Lanes` tab — `BlockedVeh`, `NoLnCh`, `Has overtaking lane` | Absent; lane-change behaviour is not modelled | Blocked on the lane-changing model (Q2), not on the dialog |
+| `Reverse parking` | Absent | Parking is not modelled at all (§4) |
+
+Group drag, `Alt`-drag rotate and copy/paste stay declined for the reason already on file.
