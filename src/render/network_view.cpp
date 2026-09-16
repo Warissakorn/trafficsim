@@ -56,7 +56,8 @@ void NetworkView::paintEvent(QPaintEvent*) {
     };
     for(const auto& link:network_.links) {
         std::vector<std::vector<Point>> boundaries;std::vector<ConnectorMarking> markings;
-        for(std::size_t i=0;i<=link.lanes.size();++i)boundaries.push_back(laneBoundaryGeometry(link,i,network_.drivingSide));
+        for(std::size_t i=0;i<=link.lanes.size();++i)
+            boundaries.push_back(trimSelfIntersections(laneBoundaryGeometry(link,i,network_.drivingSide)));
         for(std::size_t i=0;i<boundaries.size();++i)markings.push_back({boundaries[i],i==0 || i+1==boundaries.size()});
         road(boundaries,markings,QColor("#536c7c"));
     }

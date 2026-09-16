@@ -178,16 +178,23 @@ a Link leaves the attachment alone, Esc cancels, and one release is one undo ent
 Connector used by a route or head still cannot be re-attached. Properties shows both lane
 counts beside the length, so a 3 → 2 lane drop is visible without opening the inspector.
 Connector path count is the larger of its source and target counts, not a third independent
-lane topology. Properties exposes both counts as an alternative. Retargeting
+lane topology. Its cross-section is built from the widths of the lanes it carries, not blended
+between its two mouths: a lane that continues keeps the width its links give it from end to end,
+and a lane the far end has no room for is drawn as a taper closing onto its neighbour, the way
+Vissim draws a lane drop. Which lane continues follows the selected ranges, pairing them in lane
+order, so a lane range anchored one lane over moves the taper to the other side. The taper runs
+the whole length of the Connector; there is no separate taper length to set. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
 Interior points are editable. Reset curve to lane directions creates a cubic sampled
-into 12 spans, with its control points reaching `(2/3)·chord·tan(θ/4)/sin(θ/2)` for a turn of
-θ — the cubic that stands in for a circular arc on that chord. That is `chord/3` for a gentle
-turn, the constant every turn used to get, and `(2/3)·chord` for a U-turn, which used to be
-drawn at less than half the radius it needs (0.18 of the chord instead of 0.45) and pinched its
-own ribbon. A Connector that still turns tighter than its own width is reported in Objects and
+into 12 spans. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
+between **that end's** lane direction and the chord — the cubic that stands in for a circular
+arc leaving at that angle. It is `chord/3` as α tends to zero, the constant every turn used to
+get, `(2/3)·chord` for a U-turn, which used to be drawn at less than half the radius it needs
+(0.18 of the chord instead of 0.45), and it is the only reading that catches a reverse curve,
+whose two ends are parallel while each still leaves its chord steeply (0.18 of the chord to
+0.22 on a measured S). A Connector that still turns tighter than its own width is reported in Objects and
 issues as `TIGHT_CONNECTOR_RADIUS`; the drawing is kept and Run is not blocked.
 Make straight retains only endpoints. There are no separate persisted
 Bézier handles and arbitrary edits need not remain smooth, though a reshaped curve is

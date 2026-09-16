@@ -8,6 +8,89 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-16 — Mitered bends, one-lane Connectors and the attachment-unit decision (M1.12)
+
+Three more owner findings from an annotated screenshot.
+
+**Bends pinched the carriageway.** `offsetGeometry` moved a corner vertex along the average
+normal by exactly `offset`, which lands `offset*cos(theta/2)` from the original line, so both
+lane edges pulled in and the road narrowed at every bend: 18% at 63 degrees, 30% at the right
+angle in the screenshot. It now uses the miter vector `(n1+n2)/(1+d1.d2)`, whose length is
+`1/cos(theta/2)` — exactly the distance to where the two offset legs meet. A turn sharper than
+about 151 degrees is clamped to four times the offset so a hairpin cannot spike. One function
+fixes Links, Connectors and the diagnostic view, because all of them derive from it.
+
+Straight polylines reduce to the old single normal bit for bit, so nothing pinned moved: every
+reference fixture and the pinned 29.249359418430977 run on straight-only networks. **No
+baseline fixture was regenerated.** A measured sweep confirms the miter at 5/30/60/90/120/150
+degrees and the clamp at 175. Known limitation, written into NETWORK_EDITOR and shared with
+Vissim: a bend tighter than the offset still self-intersects on the inside.
+
+**A Connector from one lane drew two.** The model and renderer were right — a 1/1 Connector
+has one path, two boundaries and no dashed centre. The creation dialog pre-filled both counts
+with every lane from the picked one to the end of the Link, so a single-lane gesture silently
+authored a wide Connector. It opens at one lane per end now. The Properties counts also reset
+to one when no Connector is selected, since those boxes double as the creation form and were
+carrying a previous selection's width into the next gesture.
+
+**Where an attachment lives (decision, no code change).** Connectors must keep following their
+Link: validation requires the end to sit on its attachment and the compiler builds
+lane -> connector path -> lane, so a Connector left behind in world coordinates is a network
+the engine cannot run. The wrong part is the unit — a fraction of lane arclength slides every
+interior attachment when a Link is stretched, and with it the lane-section lengths M1.11.1
+will measure. Storing a distance, as `NetworkSignalHead::position` already does, is booked as
+**M1.13** with the constraints that decide it: schema 5 must convert on read because
+`parse.cpp` migrates by field presence with no version dispatch; the absent-optional sentinel
+must survive or `connectorRuntimeIssues` flips existing Connectors into "Run blocked"; and the
+duplicate-connection key contains the fraction.
+
+Coverage: a 90-degree three-lane bend keeps 10.5 m across both legs on both driving sides,
+each lane keeps its own width, the centreline stays the average of the outer edges, a hairpin
+stays finite at the documented limit, and a straight link is untouched. A UI test drags a
+Connector from one lane, accepts the dialog untouched, and requires one lane per end and
+exactly two road markings. Both fixes were reverted in turn to confirm the new tests fail
+without them. The Linux desktop build and all 23 CTest suites passed; the Thai editor
+screenshot was inspected. M1.11.1, M1.13 and the owner's Windows/timed gates remain open.
+
+---
+
+### 2026-09-16 — Centred grips, end attachments and Vissim-style lane tabs (M1.12)
+
+The owner's annotated screenshot marked four editor faults. Lane tabs were a loose orange
+dot with a number floating beside it; they are now rounded tabs mounted on the road edge by
+a short stem, carrying the resulting lane count inside the tab, and the held tab is darker.
+
+Link and Connector geometry grips sat on the stored polyline, which is at one road edge as
+soon as lanes are added to a single side, and on a Connector's first lane path. They now sit
+on the centreline of the whole bundle: `linkCentreline` and `connectorCentreline` are the one
+place that geometry is derived, and the direction arrow reuses the same function. Stored
+geometry is unchanged; hit-testing and dragging map back through the same per-point offset,
+so the point under the pointer is the point that moves.
+
+Connector ends are draggable. Dropping an end grip on a lane re-attaches that end anywhere
+along it; the range is centred on the lane under the pointer and slides to stay inside the
+Link. Dropping off the network, or Esc, leaves the attachment alone, and one release is one
+undo entry. `changeConnectorEndpoints` now narrows the range when the new end has fewer lanes
+than the Connector carries, and validates the whole move before mutating, so a bad lane leaves
+nothing half-moved. A wider Link never widens a range on its own. Properties shows both lane
+counts beside the Connector length, so a 3 -> 2 drop is visible on the canvas.
+
+`reanchorConnector` moved from commands into the model beside the attachments it reads, so
+the canvas can preview exactly the re-attachment the command will perform. Referenced
+Connectors still cannot be re-attached; unequal ranges remain legal drawings that fail the
+M0 run check as `UNSUPPORTED_MERGE`.
+
+Coverage: centreline equals the average of both road edges after one-sided growth; connector
+centrelines equal the average of the outer boundaries and differ from the stored path; range
+narrowing, no silent re-widening and rollback on an unknown lane; a UI test drags a Connector
+end onto another lane at another fraction and checks Esc, an off-network drop and one-step
+Undo. English/Thai help and NETWORK_EDITOR/VISSIM_PARITY describe the changed grips.
+The Linux desktop build and all 23 CTest suites passed; the Thai editor screenshot was
+inspected. M1.11.1 runtime lane sections and the owner's Windows/timed M0/M1 acceptance
+gates remain open.
+
+---
+
 ### 2026-09-16 — Fixed lane edges, road boundaries and Ctrl-drag copies (M1.12)
 
 The owner's 1–3 lane examples exposed recentering and lane-centre dashes. Links now
@@ -346,138 +429,3 @@ The existing four TS regression fixtures, deterministic core replay, CLI and M0
 controls still pass. Architecture/negative checks, the 500-line limit and whitespace
 checks pass. A Thai editor screenshot at 1000×760 was visually inspected. GUI behaviour
 on Windows/macOS and GitHub-hosted runner execution are not claimed verified here.
-
-
-### 2026-09-11 — native C++ migration implemented (D15)
-
-Replaced the active TypeScript/Vite application with C++20 libraries for core, network,
-scenario loading and evaluation, a native CLI, and a Qt 6 Widgets desktop harness.
-CMake presets cover desktop, headless and Release. All executable developer checks
-are now C++; JSON remains the catalog/locale/fixture format. The original application
-is preserved at GitHub commit `70383db6ab884c718baef97a8ab81292fdc9d1b0`.
-
-The port preserves fixed ticks, explicitly sequenced xorshift32 draws, canonical IDs,
-source queues, upstream tails, red/amber stops and all unsupported-topology guards.
-`SimState` is a value snapshot sharing a detached const scenario. Qt, JSON and I/O stay
-outside the core. CLI diagnostics include engine/compiler versions, unfinished counts
-and optional JSONL events. M0 fixture loading is read-only, not project persistence.
-
-The Qt harness supports Run/Pause/Step/Reset, seed validation/reset, playback speed,
-scenario loading and English/Thai switching. Bundled Noto Sans Thai (unmodified OFL 1.1
-font with license) fixes missing Thai glyphs on minimal systems. Desktop file-dialog
-paths use native wide paths on Windows. Manual screenshot inspection confirmed Thai
-text and a queued crossing scene at 640 pixels wide.
-
-**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.12.0, CMake 4.4.3 on Linux.
-The original 40 tests and production build passed before capture. Native tests include
-30 named C++ cases, four frozen TS baseline seeds, full same-build event replay, core
-and network safety/validation, strict JSON/seed handling and locale key agreement.
-Debug and Release desktop builds passed all 11 CTest suites, including interactive
-control actions and an entire desktop run matching CLI/baseline. Headless also built
-and passed independently without Qt. Address/undefined-behaviour sanitizer tests passed;
-LeakSanitizer was disabled because this container cannot inspect process tasks.
-The architecture negative fixtures, 500-line check and `git diff --check` passed.
-An installed CLI run from a different working directory found its adjacent data and
-reproduced seed 42: 31 completed, 0 active, 0 pending, 0 safety clamps and mean delay
-29.249359418430977 seconds. No performance or scientific fidelity claim is made.
-
-Added GitHub Actions definitions for Linux desktop/headless/Release and Windows MSVC
-headless builds. Windows desktop execution and macOS deployment have not been tested
-in this Linux workspace. See `docs/BUILDING.md`, `docs/MIGRATION.md`, updated architecture,
-simulation contracts and `tools/README.md` for setup and precise limitations.
-
-**Status:** M0.1 technical migration checks passed on Linux. Owner M0 plausibility
-acceptance remains open. No M1 editor, movement LOS, right-of-way model, calibration
-or M7 installer is claimed complete. Next remains owner review, then one undoable link.
-
-### 2026-09-11 — M0 simulation core and network model implemented
-
-The repository previously contained documentation only. Added a strict TypeScript/Vite/
-Vitest toolchain and lockfile, the directory skeleton, and an AST-based core dependency
-guard that is tested against intentionally invalid imports.
-
-**Network:** link/lane/connector authoring types; left/right driving-side lane geometry;
-mid-link signal heads; geometry/reference/range validation; and a detached scenario
-compiler. Junctions are not authored, and no second persisted network format was added.
-
-**Core:** fixed timestep; explicit xorshift32 seed state; immutable snapshots and pure
-steps; Poisson source arrivals with persistent external queues; reduced four-regime
-following; fixed-time red/amber/green signals; route transitions with residual distance;
-upstream vehicle-tail occupancy; and a streaming event interface. The final subinterval's
-arrivals remain pending instead of disappearing at the run horizon.
-
-**Integration:** a crossing scenario and vehicle/behaviour catalogs in data files; a
-passive canvas harness with run/pause/step/reset, playback speed, seed reset and English/
-Thai text; a headless CLI; and an explicitly unvalidated completed-trip delay diagnostic.
-The engine still has no UI, model, I/O or wall-clock imports.
-
-**Verification:** 40 automated tests cover replay (including a reference trajectory
-fingerprint), pure stepping, source queues, conservation, signal timing, free acceleration,
-red stops/green discharge, upstream tails, short connectors, invalid scenarios, authoring
-geometry and the import boundary. Production type checking/build and the source-size
-check pass. A Chromium 152 browser smoke test passed dev boot, single-step, run/pause,
-seed reset, Thai translation, an entire run matching the headless output, invalid-seed
-handling and a 375-pixel viewport with no horizontal overflow. No page errors occurred.
-In a separate clean detached checkout, `npm ci --offline` (using the package cache),
-all 40 tests, the production build, the headless example and file-size checks also passed.
-
-**Reference run:** seed 42, 180 simulated seconds, 31 completed trips, 0 active and 0
-pending at the horizon, 0 numerical safety clamps. Mean completed-trip delay is
-29.249359418430977 s (includes source wait and acceleration, not HCM control delay).
-This is a reproducibility fixture, not a capacity or fidelity benchmark.
-
-**Limits remain explicit:** no lane changing, merge arbitration, geometric crossing-conflict
-resolution, priority rules, full W74/W99, project persistence, movement LOS or batch
-aggregation. Merges, internal inputs and repeated-route segments fail validation.
-M0 remains open for the owner's plausibility acceptance. No later milestone was closed.
-
-See D12–D14 and `docs/SIMULATION.md` for the reasoning and precise interfaces.
-
----
-
-### 2026-09-11 — reverted to the working name TrafficSim, naming deferred (D11)
-
-Three renames in two days with no code written. The owner called it: go back to the working
-name and decide the real one once the program has shape.
-
-Headings across `CLAUDE.md`, `README.md`, `ARCHITECTURE.md`, `ROADMAP.md` and this file are
-back to `TrafficSim`, now explicitly marked as a working name so no future session reads it
-as settled. D9 and D10 keep their full reasoning and are marked superseded — this file is
-append-only, and the collision findings gathered over those rounds are the main thing worth
-keeping from them, so they are consolidated into the D11 row. The next naming round starts
-from evidence, not from zero.
-
-**Two pieces of queued work are cancelled, not postponed:** the GitHub repository rename (the
-repo is still `Warissakorn/trafficsim` and the remote already points there, so there is
-nothing to do) and the npm/PyPI/domain registrations for `velk`.
-
-**Two defects in this file were found and fixed while making this change**, both introduced by
-earlier sessions of this conversation:
-
-1. **The D10 log entry below was never actually written.** The edit that should have added it
-   matched no text, and the guard around that edit only checked that *something* in the file
-   had changed — which was true because other edits in the same batch succeeded. It has been
-   reconstructed below from the commit message and the D10 row. Guards on edits to this file
-   now assert an exact match count per edit.
-2. **Entries were in oldest-first order**, contradicting this file's own header. Reordered
-   newest-first. No entry text was altered.
-
-Nothing about scope, architecture or the roadmap changed. D1–D8 stand.
-
-### 2026-09-11 — renamed to Velk (D10)
-
-*Reconstructed on 2026-09-11 — see defect 1 in the entry above.*
-
-`Veytrix` replaced throughout the documentation. `velk` verified free on npm and PyPI with no
-brand or company found using it; `velk.dev` and `velk.app` free, `velk.com` and `velk.io`
-held — ordinary for a four-letter word and irrelevant to a repository or package name, so
-accepted as a known risk.
-
-`MicroFlow Simulator` was proposed first this session and dropped after its collision check:
-`microflow` taken on npm and PyPI, at least seven GitHub projects carrying the name along
-with two orgs and a GitHub Topic, and both obvious domains held. Recorded in D10 so it is not
-raised again.
-
-Also noted at the time: the MicroFlow brand write-up claimed "extends to both microscopic and
-macroscopic" as a strength, which contradicts `PROBLEM.md` §5 where macroscopic assignment is
-a non-goal. **§5 was left unchanged** — that is a scope decision, not a naming one.

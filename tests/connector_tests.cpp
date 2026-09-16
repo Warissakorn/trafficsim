@@ -185,31 +185,123 @@ TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
     }
     CHECK(editableConnector(d,id).geometry==c.geometry);
 }
-// A merge is two lanes becoming one. The divider between them belongs over the stretch where
-// they are both there, never down the middle of the single lane they converge into.
-TEST(connectors, a_merge_divider_stops_where_the_lanes_converge) {
+namespace {
+// Counts the places a polyline crosses itself, which is what an offset does round a bend
+// tighter than the offset, and what a drawn line must never do.
+int crossings(const std::vector<Point>& p) {
+    int found=0;
+    for(std::size_t i=0;i+1<p.size();++i)for(std::size_t j=i+2;j+1<p.size();++j) {
+        const double rx=p[i+1].x-p[i].x,ry=p[i+1].y-p[i].y,sx=p[j+1].x-p[j].x,sy=p[j+1].y-p[j].y;
+        const double denominator=rx*sy-ry*sx;
+        if(std::abs(denominator)<1e-12)continue;
+        const double t=((p[j].x-p[i].x)*sy-(p[j].y-p[i].y)*sx)/denominator;
+        const double u=((p[j].x-p[i].x)*ry-(p[j].y-p[i].y)*rx)/denominator;
+        if(t>=0 && t<=1 && u>=0 && u<=1)++found;
+    }
+    return found;
+}
+double apart(const std::vector<Point>& a,const std::vector<Point>& b,std::size_t i) {
+    return std::hypot(b[i].x-a[i].x,b[i].y-a[i].y);
+}
+double minimumRadius(const std::vector<Point>& g) {
+    double radius=1e300;
+    for(std::size_t i=1;i+1<g.size();++i) {
+        const double ab=std::hypot(g[i].x-g[i-1].x,g[i].y-g[i-1].y);
+        const double bd=std::hypot(g[i+1].x-g[i].x,g[i+1].y-g[i].y);
+        const double ad=std::hypot(g[i+1].x-g[i-1].x,g[i+1].y-g[i-1].y);
+        const double area=std::abs((g[i].x-g[i-1].x)*(g[i+1].y-g[i-1].y)-(g[i].y-g[i-1].y)*(g[i+1].x-g[i-1].x))/2;
+        if(area>1e-12)radius=std::min(radius,ab*bd*ad/(4*area));
+    }
+    return radius;
+}
+}
+// A Connector between ends with different lane counts carries lanes, not a ribbon that shrinks.
+// The lane that continues keeps the width its own links give it from end to end, and the lane the
+// far end has no room for is the one that closes, like a merge taper.
+TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_tapers_in) {
     auto d=roads();
-    const auto id=addConnectorRange(d,{"in","in-1"},{"out","out-1"},2,1);
+    const auto id=addConnectorRange(d,{"in","in-1"},{"other","other-1"},2,1);
     const auto& c=editableConnector(d,id);
-    // The forcing: this really is two lanes into one, and the geometry still has three boundaries.
+    // The forcing: two lanes into one, three boundaries, and source lanes of two different widths.
     CHECK(c.fromLaneCount==2);CHECK(c.toLaneCount==1);
     const auto boundaries=connectorBoundaries(d.network,c);
     CHECK(boundaries.size()==3);
-    CHECK(boundaries[1].size()==c.geometry.size());
+    const auto& in=editableLink(d,"in");const auto& out=editableLink(d,"other");
+    CHECK(in.lanes[0].width==3);CHECK(in.lanes[1].width==4);CHECK(out.lanes[0].width==3.5);
+    const auto weights=connectorBlendWeights(c);
+    double previous=1e300;
+    for(std::size_t j=0;j<weights.size();++j) {
+        // The continuing lane is 3 m where it leaves and 3.5 m where it arrives, and exactly the
+        // width in between -- never the 2.6 m pinch that came of shrinking every lane together.
+        test::near(apart(boundaries[0],boundaries[1],j),3+.5*weights[j],1e-9);
+        const double wedge=apart(boundaries[1],boundaries[2],j);
+        CHECK(wedge<previous);previous=wedge;
+    }
+    test::near(previous,0,1e-9);
+    // Both mouths still meet their link's own lane edges exactly; the single target lane has two.
+    const auto meets=[&](Point a,Point b){test::near(a.x,b.x,1e-9);test::near(a.y,b.y,1e-9);};
+    for(std::size_t i=0;i<3;++i)meets(boundaries[i].front(),laneBoundaryGeometry(in,i,d.network.drivingSide).back());
+    meets(boundaries[0].back(),laneBoundaryGeometry(out,0,d.network.drivingSide).front());
+    meets(boundaries[1].back(),laneBoundaryGeometry(out,1,d.network.drivingSide).front());
+    meets(boundaries[2].back(),boundaries[1].back());
+    // The divider is a lane edge for its whole length, so it arrives on the edge of the lane the
+    // two merge into -- not part way down the middle of it, where the traffic is.
     const auto markings=connectorMarkings(d.network,c);
     CHECK(markings.size()==3);
     CHECK(markings.front().edge);CHECK(markings.back().edge);CHECK(!markings[1].edge);
-    // The divider is shorter than the full boundary and keeps clear of the merge point.
-    CHECK(markings[1].geometry.size()<boundaries[1].size());
+    CHECK(markings[1].geometry.size()==boundaries[1].size());
     const auto target=laneAttachment(d.network,c.to,false);
-    const double lane=editableLink(d,"out").lanes.front().width;
-    for(const auto& p:markings[1].geometry)CHECK(std::hypot(p.x-target.x,p.y-target.y)>lane/2);
-    // Two lanes into two keep their divider for the whole length; one into one has none.
+    for(const auto& p:markings[1].geometry)CHECK(std::hypot(p.x-target.x,p.y-target.y)>out.lanes[0].width/2-1e-9);
+    // Two into two keeps both lanes and a full-length divider; one into one has no divider at all.
     auto wide=roads();const auto pair=addConnectorRange(wide,{"in","in-1"},{"out","out-1"},2,2);
-    const auto both=connectorMarkings(wide.network,editableConnector(wide,pair));
-    CHECK(both.size()==3);CHECK(both[1].geometry.size()==editableConnector(wide,pair).geometry.size());
+    const auto both=connectorBoundaries(wide.network,editableConnector(wide,pair));
+    const auto pairWeights=connectorBlendWeights(editableConnector(wide,pair));
+    for(std::size_t j=0;j<both[0].size();++j) {
+        test::near(apart(both[0],both[1],j),3+pairWeights[j],1e-9);   // in-1 3 m into out-1 4 m
+        test::near(apart(both[1],both[2],j),4-pairWeights[j],1e-9);   // in-2 4 m into out-2 3 m
+    }
+    CHECK(connectorMarkings(wide.network,editableConnector(wide,pair))[1].geometry.size()==both[1].size());
     auto plain=roads();const auto single=addConnector(plain,{"in","in-2"},{"other","other-1"});
     CHECK(connectorMarkings(plain.network,editableConnector(plain,single)).size()==2);
+    // A diverge is the mirror image: the lane that opens out starts at nothing and grows.
+    auto open=roads();const auto out2=addConnectorRange(open,{"other","other-1"},{"out","out-1"},1,2);
+    const auto opening=connectorBoundaries(open.network,editableConnector(open,out2));
+    test::near(apart(opening[1],opening[2],0),0,1e-9);
+    test::near(apart(opening[1],opening[2],opening[0].size()-1),3,1e-9);
+}
+// A reverse curve leaves both ends parallel, so the turn between the two tangents says nothing
+// about how hard the road bends. Reading each end against the chord is what catches it.
+TEST(connectors, a_reverse_curve_bends_no_harder_than_the_lane_it_carries) {
+    auto d=roads();
+    d.network.links.push_back({"back",{{10,-12},{90,-12}},{{"back-1",3.5}}});
+    const auto id=addConnector(d,{"in","in-1"},{"back","back-1"});
+    const auto& g=editableConnector(d,id).geometry;
+    // The forcing: the two ends really do point the same way, which is what used to hide the bend.
+    const Point entry{g[1].x-g[0].x,g[1].y-g[0].y},exit{g.back().x-g[g.size()-2].x,g.back().y-g[g.size()-2].y};
+    const double along=(entry.x*exit.x+entry.y*exit.y)/std::hypot(entry.x,entry.y)/std::hypot(exit.x,exit.y);
+    CHECK(along>.99);
+    // Reading the turn between the tangents alone made this the gentlest case there is, and drew
+    // it at 0.182 of its chord -- a kink. Read against the chord it opens to 0.218, and clears the
+    // 3 m lane it carries. A cubic cannot do better on a chord this short, so this is the measure.
+    const double chord=std::hypot(g.back().x-g.front().x,g.back().y-g.front().y);
+    CHECK(minimumRadius(g)>.2*chord);
+    CHECK(minimumRadius(g)>editableLink(d,"in").lanes.front().width);
+    CHECK(connectorShapeIssues(d.network).empty());
+}
+// An offset of a bend tighter than the offset loops back on itself. The surface is filled
+// correctly either way, but the line drawn round it must not double back.
+TEST(connectors, a_drawn_edge_never_doubles_back_on_a_tight_bend) {
+    std::vector<Point> arc{{0,-10}};
+    for(int i=0;i<=6;++i)arc.push_back({3*std::sin(M_PI*i/12),3-3*std::cos(M_PI*i/12)});
+    arc.push_back({arc.back().x-8,arc.back().y+8}); // A quarter turn of radius 3 between two straights.
+    const Link link{"tight",arc,{{"tight-1",3.5},{"tight-2",3.5}}};
+    const auto inner=laneBoundaryGeometry(link,0,DrivingSide::left);
+    CHECK(crossings(inner)==1); // The forcing: this edge really does cross itself today.
+    CHECK(crossings(trimSelfIntersections(inner))==0);
+    CHECK(trimSelfIntersections(inner).size()<inner.size());
+    // A boundary with no loop is returned unchanged, point for point.
+    const auto outer=laneBoundaryGeometry(link,2,DrivingSide::left);
+    CHECK(crossings(outer)==0);CHECK(trimSelfIntersections(outer)==outer);
 }
 // The default curve stands for a circular arc. It used to use the same control reach for every
 // turn, which is only right for a gentle one, and drew a U-turn at half the radius it needs.
