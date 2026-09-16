@@ -48,6 +48,30 @@ Point pointAlong(const std::vector<Point>& points, double distance) {
     }
     return points.back();
 }
+std::vector<Point> trimSelfIntersections(const std::vector<Point>& points) {
+    // An offset of a bend tighter than the offset loops back on itself. The swept area is still
+    // road, so the fill is right either way, but the line drawn round it must not double back:
+    // cut every loop out and join the two segments at the point where they cross.
+    std::vector<Point> result;
+    for(std::size_t i=0;i+1<points.size();++i) {
+        result.push_back(points[i]);
+        const auto a=points[i],b=points[i+1];
+        const double rx=b.x-a.x,ry=b.y-a.y;
+        for(std::size_t j=points.size()-1;j>i+2;--j) {
+            const auto c=points[j-1],d=points[j];
+            const double sx=d.x-c.x,sy=d.y-c.y,denominator=rx*sy-ry*sx;
+            if(std::abs(denominator)<1e-12)continue;
+            const double t=((c.x-a.x)*sy-(c.y-a.y)*sx)/denominator;
+            const double u=((c.x-a.x)*ry-(c.y-a.y)*rx)/denominator;
+            if(t<0 || t>1 || u<0 || u>1)continue;
+            result.push_back({a.x+t*rx,a.y+t*ry});
+            i=j-1; // Resume from the far side of the loop, which the crossing point replaces.
+            break;
+        }
+    }
+    if(!points.empty())result.push_back(points.back());
+    return result;
+}
 std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, DrivingSide side) {
     if (side != DrivingSide::left && side != DrivingSide::right) throw std::invalid_argument("INVALID_DRIVING_SIDE");
     const auto lane = std::find_if(link.lanes.begin(), link.lanes.end(), [&](const auto& l) { return l.id == laneId; });

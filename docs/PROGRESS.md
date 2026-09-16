@@ -7,6 +7,50 @@ and [`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md).
 
 ---
 
+## 2026-09-16 — A Connector carries lanes, not a ribbon that shrinks
+
+Two more owner findings on the same screenshot, both about drawn geometry. Neither touches a
+stored coordinate, so no existing project or pinned baseline can move.
+
+**Every lane narrowed where one should have tapered.** `connectorBoundaries` interpolated every
+boundary between the two end cross-sections, so a two-into-one shrank as a whole: measured point
+by point, the lane that continues was 3.500 m at the source, 2.622 m half way along and 1.750 m
+at the mouth. Vehicles drove a lane that pinched, and the interior boundary landed on the centre
+of the single target lane, which is why a divider ran down the middle of it.
+
+The cross-section is now assembled from the lane widths the Connector actually carries. A path
+whose source or target lane repeats its neighbour's is the surplus one, its width at that end is
+zero, and it closes as a wedge; every other lane holds the width its links give it, interpolated
+only between its own two ends. The widths hang on the last path that is a real lane at both ends
+and step out in both directions, so adding a lane at the leading edge still cannot move the far
+edge — the property `endEdge` used to provide by pinning. On the same two-into-one the continuing
+lane now measures exactly 3.000 m to 3.500 m along its whole length (the fixture's own lane
+widths), the wedge falls 4.000 m to 0, and both mouths still land on their link's lane edges.
+The divider is a lane edge for its full length, so it arrives on the edge of the merged lane.
+Rendered: the through lane runs straight through and the extra lane closes onto it, the way
+Vissim draws a lane drop; a one-into-two opens the mirror image.
+
+**A reverse curve was read as no turn at all.** The control reach came from the angle between the
+two tangents. For an S they are parallel, so the reach fell back to `chord/3` while each end was
+still leaving the chord at 50°: a measured S bent to 3.12 m on a 17.2 m chord, 0.18 of it. The
+reach is now the circular-arc value for **each end's** angle to the chord,
+`(2/3)·chord·tan(α/2)/sin(α)`, which is the same number to the last bit for a straight run and
+for a symmetric turn (the U-turn still measures 0.454 of its chord) and gives 3.75 m, 0.22, on
+that S. Reverting it fails both curve tests.
+
+**Offsets that loop.** A lane edge offset round a bend tighter than the offset crosses itself;
+measured on a quarter turn of radius 3 m between two straights, the inner edge crossed once and
+filled as a notch. `trimSelfIntersections` cuts the loop out at the crossing point and is applied
+to drawn lines only — link boundaries in the editor and the diagnostic view, and Connector
+markings — so `connectorBoundaries` keeps the vertex-for-vertex correspondence the model relies on.
+
+**Verification:** 23/23 CTest plus the architecture and file-size guards on Linux; Windows is
+`native.yml`. Each of the three changes was reverted on its own and the matching test failed.
+No baseline fixture was regenerated; none could move, because only derived drawing geometry and
+newly created curves changed.
+
+---
+
 ## 2026-09-16 — Merge markings and the shape of a tight turn
 
 Two owner findings from a U-turn screenshot, both about how a Connector is drawn.
@@ -100,85 +144,6 @@ reads 47.925 m where it used to read 59.906 %. Linux only; Windows is CI's.
 
 M1.11.1 remains open, and is now buildable on a station that does not move underneath it.
 
-## 2026-09-16 — Mitered bends, one-lane Connectors and the attachment-unit decision (M1.12)
-
-Three more owner findings from an annotated screenshot.
-
-**Bends pinched the carriageway.** `offsetGeometry` moved a corner vertex along the average
-normal by exactly `offset`, which lands `offset*cos(theta/2)` from the original line, so both
-lane edges pulled in and the road narrowed at every bend: 18% at 63 degrees, 30% at the right
-angle in the screenshot. It now uses the miter vector `(n1+n2)/(1+d1.d2)`, whose length is
-`1/cos(theta/2)` — exactly the distance to where the two offset legs meet. A turn sharper than
-about 151 degrees is clamped to four times the offset so a hairpin cannot spike. One function
-fixes Links, Connectors and the diagnostic view, because all of them derive from it.
-
-Straight polylines reduce to the old single normal bit for bit, so nothing pinned moved: every
-reference fixture and the pinned 29.249359418430977 run on straight-only networks. **No
-baseline fixture was regenerated.** A measured sweep confirms the miter at 5/30/60/90/120/150
-degrees and the clamp at 175. Known limitation, written into NETWORK_EDITOR and shared with
-Vissim: a bend tighter than the offset still self-intersects on the inside.
-
-**A Connector from one lane drew two.** The model and renderer were right — a 1/1 Connector
-has one path, two boundaries and no dashed centre. The creation dialog pre-filled both counts
-with every lane from the picked one to the end of the Link, so a single-lane gesture silently
-authored a wide Connector. It opens at one lane per end now. The Properties counts also reset
-to one when no Connector is selected, since those boxes double as the creation form and were
-carrying a previous selection's width into the next gesture.
-
-**Where an attachment lives (decision, no code change).** Connectors must keep following their
-Link: validation requires the end to sit on its attachment and the compiler builds
-lane -> connector path -> lane, so a Connector left behind in world coordinates is a network
-the engine cannot run. The wrong part is the unit — a fraction of lane arclength slides every
-interior attachment when a Link is stretched, and with it the lane-section lengths M1.11.1
-will measure. Storing a distance, as `NetworkSignalHead::position` already does, is booked as
-**M1.13** with the constraints that decide it: schema 5 must convert on read because
-`parse.cpp` migrates by field presence with no version dispatch; the absent-optional sentinel
-must survive or `connectorRuntimeIssues` flips existing Connectors into "Run blocked"; and the
-duplicate-connection key contains the fraction.
-
-Coverage: a 90-degree three-lane bend keeps 10.5 m across both legs on both driving sides,
-each lane keeps its own width, the centreline stays the average of the outer edges, a hairpin
-stays finite at the documented limit, and a straight link is untouched. A UI test drags a
-Connector from one lane, accepts the dialog untouched, and requires one lane per end and
-exactly two road markings. Both fixes were reverted in turn to confirm the new tests fail
-without them. The Linux desktop build and all 23 CTest suites passed; the Thai editor
-screenshot was inspected. M1.11.1, M1.13 and the owner's Windows/timed gates remain open.
-
-## 2026-09-16 — Centred grips, end attachments and Vissim-style lane tabs (M1.12)
-
-The owner's annotated screenshot marked four editor faults. Lane tabs were a loose orange
-dot with a number floating beside it; they are now rounded tabs mounted on the road edge by
-a short stem, carrying the resulting lane count inside the tab, and the held tab is darker.
-
-Link and Connector geometry grips sat on the stored polyline, which is at one road edge as
-soon as lanes are added to a single side, and on a Connector's first lane path. They now sit
-on the centreline of the whole bundle: `linkCentreline` and `connectorCentreline` are the one
-place that geometry is derived, and the direction arrow reuses the same function. Stored
-geometry is unchanged; hit-testing and dragging map back through the same per-point offset,
-so the point under the pointer is the point that moves.
-
-Connector ends are draggable. Dropping an end grip on a lane re-attaches that end anywhere
-along it; the range is centred on the lane under the pointer and slides to stay inside the
-Link. Dropping off the network, or Esc, leaves the attachment alone, and one release is one
-undo entry. `changeConnectorEndpoints` now narrows the range when the new end has fewer lanes
-than the Connector carries, and validates the whole move before mutating, so a bad lane leaves
-nothing half-moved. A wider Link never widens a range on its own. Properties shows both lane
-counts beside the Connector length, so a 3 -> 2 drop is visible on the canvas.
-
-`reanchorConnector` moved from commands into the model beside the attachments it reads, so
-the canvas can preview exactly the re-attachment the command will perform. Referenced
-Connectors still cannot be re-attached; unequal ranges remain legal drawings that fail the
-M0 run check as `UNSUPPORTED_MERGE`.
-
-Coverage: centreline equals the average of both road edges after one-sided growth; connector
-centrelines equal the average of the outer boundaries and differ from the stored path; range
-narrowing, no silent re-widening and rollback on an unknown lane; a UI test drags a Connector
-end onto another lane at another fraction and checks Esc, an off-network drop and one-step
-Undo. English/Thai help and NETWORK_EDITOR/VISSIM_PARITY describe the changed grips.
-The Linux desktop build and all 23 CTest suites passed; the Thai editor screenshot was
-inspected. M1.11.1 runtime lane sections and the owner's Windows/timed M0/M1 acceptance
-gates remain open.
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -190,7 +155,9 @@ bent Link keeps its width through the corner, and that a drag from one lane crea
 Connector. M1.13 is implemented: check that a Connector stays where it was
 drawn when you stretch its Link, that shortening a Link clamps rather than refuses, and that a
 project saved by an older build opens with its Connectors in the same places. Check a U-turn Connector draws as one clean ribbon and that no dashed line
-runs down a single-lane stretch. **Next after the review: M1.11.1**, which can now split a lane
+runs down a single-lane stretch. Check a Connector between ends with different lane counts: the
+lane that continues should hold its width while the extra one closes as a taper, and the divider
+should arrive on the edge of the merged lane, never in the middle of it. **Next after the review: M1.11.1**, which can now split a lane
 at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.

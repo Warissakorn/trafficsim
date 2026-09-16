@@ -96,16 +96,22 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     const auto [s0,s1]=direction(source,from,true);
     const auto [t0,t1]=direction(target,to,false);
     const auto entry=unit(s0,s1), exit=unit(t0,t1);
-    // Reach the control points the way a circular arc would: for a turn of theta the cubic that
-    // approximates the arc on this chord uses (2/3)*gap*tan(theta/4)/sin(theta/2). That tends to
-    // gap/3 as theta tends to 0, which is the constant this used to use for every turn, and
-    // grows to (2/3)*gap for a U-turn -- which is why a U-turn used to be drawn twice as tight
-    // as the arc it stands for, at a radius no lane width could hold.
-    const double turn=std::atan2(entry.x*exit.y-entry.y*exit.x,entry.x*exit.x+entry.y*exit.y);
-    const double theta=std::abs(turn);
-    const double reach=theta<1e-6?gap/3:2./3*gap*std::tan(theta/4)/std::sin(theta/2);
-    const auto c1 = control(a, entry, reach, 1);
-    const auto c2 = control(b, exit, reach, -1);
+    // Reach each control point the way a circular arc would, reading each end on its own: for a
+    // tangent that leaves the chord at alpha, the cubic approximating that arc uses
+    // (2/3)*gap*tan(alpha/2)/sin(alpha). It tends to gap/3 as alpha tends to 0, the constant this
+    // used for every turn, and for a symmetric turn alpha is half the turn at both ends, which is
+    // the arc formula this used before -- so ordinary turns are unchanged to the last bit. What it
+    // adds is the reverse curve, where the two tangents are parallel and the turn between them
+    // says nothing, while each end still leaves its chord at a steep angle.
+    const Point chord{(b.x-a.x)/gap,(b.y-a.y)/gap};
+    const auto reach=[&](Point tangent) {
+        // Beyond this the tangent points back down the chord and the arc length runs away.
+        const double alpha=std::min(std::abs(std::atan2(tangent.x*chord.y-tangent.y*chord.x,
+                                                        tangent.x*chord.x+tangent.y*chord.y)),2.8);
+        return alpha<1e-6?gap/3:2./3*gap*std::tan(alpha/2)/std::sin(alpha);
+    };
+    const auto c1 = control(a, entry, reach(entry), 1);
+    const auto c2 = control(b, exit, reach(exit), -1);
     std::vector<Point> points{a};
     for (int i = 1; i < 12; ++i) {
         const double t = i/12.0, s = 1-t;

@@ -121,14 +121,16 @@ void EditorCanvas::redraw() {
             replaceLaneBundle(link,std::move(lanes),leading);
         }
         const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
-        const auto left=laneBoundaryGeometry(link,0,document_->network.drivingSide);
-        const auto right=laneBoundaryGeometry(link,link.lanes.size(),document_->network.drivingSide);
+        // Drawn lines only: an edge offset round a bend tighter than the lane can loop back on
+        // itself, which fills as a hole and reads as a tear in the road.
+        const auto left=trimSelfIntersections(laneBoundaryGeometry(link,0,document_->network.drivingSide));
+        const auto right=trimSelfIntersections(laneBoundaryGeometry(link,link.lanes.size(),document_->network.drivingSide));
         auto surface=path(left);for(auto it=right.rbegin();it!=right.rend();++it)surface.lineTo(q(*it));surface.closeSubpath();
         scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+1);
         for(std::size_t boundary=0;boundary<=link.lanes.size();++boundary) {
             const bool edge=boundary==0 || boundary==link.lanes.size();
             QPen pen(QColor(QString::fromStdString(appearance.laneColor)),1,edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
-            auto* mark=scene_.addPath(path(laneBoundaryGeometry(link,boundary,document_->network.drivingSide)),pen);
+            auto* mark=scene_.addPath(path(trimSelfIntersections(laneBoundaryGeometry(link,boundary,document_->network.drivingSide))),pen);
             mark->setZValue(z+2);mark->setData(0,QStringLiteral("road-marking"));mark->setData(1,QString::fromStdString(link.id));
         }
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.

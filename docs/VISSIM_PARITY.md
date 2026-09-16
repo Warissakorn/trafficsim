@@ -401,3 +401,24 @@ Surfaces fill by winding rule, so a self-overlap that remains reads as road.
 Vissim leaves an impossible turn to the author; we do the same but say so, with a non-blocking
 `TIGHT_CONNECTOR_RADIUS` row. Stored geometry is never rewritten, so existing drawings are
 untouched — only newly created curves and Reset curve use the new reach.
+
+## 2026-09-16 second follow-up — A Connector carries lanes, not a ribbon
+
+**Every lane narrowed instead of one tapering.** On a two-into-one the whole ribbon shrank
+together: the lane that continues measured 2.62 m half way along and 1.75 m at the mouth, so
+vehicles drove a lane that pinched. Vissim keeps the through lane at its own width and drops the
+surplus one as a taper. Ours does now: the cross-section is assembled from the lane widths at
+each end rather than interpolated between the two mouths, so the continuing lane holds the width
+its links give it point for point, and the extra lane closes onto it as a wedge. The divider
+between them is a lane edge for its whole length, which is why it now arrives on the *edge* of
+the lane the two merge into instead of part way down its middle — the marking trim from the
+previous round is no longer what keeps it off the traffic.
+
+Vissim requires a connector's two ends to carry the same number of lanes and leaves the taper to
+a separate lane drop. We allow the unequal range and draw the taper ourselves; the lane pairing
+follows the ranges in lane order, so re-anchoring a range moves the taper to the other side.
+
+**A reverse curve was read as no turn at all.** The control reach came from the angle between the
+two tangents, which is zero for an S even when each end leaves the chord steeply; a measured S
+bent to 0.18 of its chord. Reading each end against the chord instead gives 0.22 there and is
+identical, to the last bit, for straight runs and symmetric turns.
