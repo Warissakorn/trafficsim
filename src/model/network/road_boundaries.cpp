@@ -69,37 +69,42 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     // which converges onto the lane it merges into and is no longer where that lane's edge is.
     std::size_t anchorLane=0;
     for(std::size_t i=0;i<count;++i)if(source[i]>0 && target[i]>0)anchorLane=i;
-    // Square to the road, not to the line between the mouths. Interpolating the two mouths'
-    // cross-sections ignores where the Connector is actually pointing: on a reverse curve they are
-    // parallel, so the cross-section never turned while the path swung away from it, and the lane
-    // was drawn its own width times the cosine of that angle -- 1.06 m of a 3.50 m lane on a tight
-    // one. Take the anchor path's own normal instead, carried continuously along the curve, and
-    // correct it onto the mouths at the two ends.
+    // A constant offset from the axis, square to it at every point, is what a road is: the width
+    // belongs to the Connector, not to the line between the links it joins. Interpolating the two
+    // mouths' cross-sections through the body made the width depend on how far the path had swung
+    // away from that line -- a lane drawn 1.06 m of its 3.50 m on a reverse curve, and 0.46 m once
+    // a Link had been moved so the curve no longer left it straight. The correction onto each
+    // link's own cross-section now sits on the two end samples and goes no further in.
     const auto& spine=paths[anchorLane].geometry;
-    std::vector<double> normal(spine.size());
-    for(std::size_t j=0;j<spine.size();++j) {
+    const double entry=std::atan2(from.y,from.x),exit=std::atan2(to.y,to.x);
+    // Which way a normal points is a convention; which way lane order runs is not. Take the
+    // source mouth's word for it once, for the whole body, or the lanes come out mirrored.
+    const auto raw=[&](std::size_t j) {
         const auto a=spine[j?j-1:0],b=spine[std::min(j+1,spine.size()-1)];
-        normal[j]=std::atan2(b.y-a.y,b.x-a.x)+std::numbers::pi/2;
-    }
-    // Only the continuity of these two corrections matters, not which way the normal happens to
-    // point: they are angles modulo a full turn, and lane order comes from the mouths. The second
-    // is therefore unwrapped against the first and never chosen on its own -- taken separately the
-    // two can pick opposite ways round the circle and fold the ribbon flat in the middle.
-    const double d0=wrap(std::atan2(from.y,from.x)-normal.front());
-    const double d1=d0+wrap(std::atan2(to.y,to.x)-normal.back()-d0);
-    std::vector<std::vector<Point>> result(count+1);
+        return std::atan2(b.y-a.y,b.x-a.x)+std::numbers::pi/2;
+    };
+    const double sign=std::abs(wrap(entry-raw(0)))>std::numbers::pi/2?-1.:1.;
+    // Each boundary is the axis offset by the lanes stacked up to it, mitered at every corner by
+    // the same function a Link's own edges use -- so a lane is its full width square to the road
+    // at every point, through a bend and past a poly point the author has dragged.
+    std::vector<std::vector<double>> offsets(count+1,std::vector<double>(spine.size()));
     for(std::size_t j=0;j<spine.size();++j) {
-        const double t=weights[j],angle=normal[j]+d0+(d1-d0)*t;
-        const Point across{std::cos(angle),std::sin(angle)};
+        const double t=weights[j];
         const auto width=[&](std::size_t i){return source[i]+(target[i]-source[i])*t;};
-        const auto anchor=spine[j];
-        std::vector<Point> edges(count+1);
-        edges[anchorLane]={anchor.x-across.x*width(anchorLane)/2,anchor.y-across.y*width(anchorLane)/2};
-        for(std::size_t i=anchorLane;i-->0;)
-            edges[i]={edges[i+1].x-across.x*width(i),edges[i+1].y-across.y*width(i)};
-        for(std::size_t i=anchorLane;i<count;++i)
-            edges[i+1]={edges[i].x+across.x*width(i),edges[i].y+across.y*width(i)};
-        for(std::size_t i=0;i<=count;++i)result[i].push_back(edges[i]);
+        offsets[anchorLane][j]=-width(anchorLane)/2;
+        for(std::size_t i=anchorLane;i-->0;)offsets[i][j]=offsets[i+1][j]-width(i);
+        for(std::size_t i=anchorLane;i<count;++i)offsets[i+1][j]=offsets[i][j]+width(i);
+        for(std::size_t i=0;i<=count;++i)offsets[i][j]*=sign;
+    }
+    std::vector<std::vector<Point>> result;
+    for(std::size_t i=0;i<=count;++i) {
+        auto shape=offsetGeometry(spine,offsets[i]);
+        // The two ends belong to the links, not to the Connector: cut them on the link's own
+        // cross-section so the mouths meet its lane edges exactly, however the curve leaves it.
+        const double first=offsets[i].front()*sign,last=offsets[i].back()*sign;
+        shape.front()={spine.front().x+std::cos(entry)*first,spine.front().y+std::sin(entry)*first};
+        shape.back()={spine.back().x+std::cos(exit)*last,spine.back().y+std::sin(exit)*last};
+        result.push_back(std::move(shape));
     }
     return result;
 }

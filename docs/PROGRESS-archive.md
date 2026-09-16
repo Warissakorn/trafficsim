@@ -8,6 +8,54 @@ The `Next` section, the backlog, the open questions and the decision table all s
 
 ---
 
+### 2026-09-16 — Merge markings and the shape of a tight turn
+
+Two owner findings from a U-turn screenshot, both about how a Connector is drawn.
+
+**A dashed divider ran down the middle of a single lane.** Where a Connector's ends carry
+different lane counts, `connectorBoundaries` pins the interior boundary at the narrow end to
+`endEdge(..., boundary=1/2, count=1)`, which interpolates between that one lane's two edges —
+its exact centre — and `drawConnectors` dashed every non-outer boundary end to end. The ribbon
+was already right: measured across a two-into-one it tapers 7.000 m to 3.500 m. Only the
+marking was wrong.
+
+Markings are now their own model function, `connectorMarkings`, used by the editor and the
+diagnostic view alike. An interior divider keeps the longest run where the two paths it
+separates are at least half their full spacing apart, and stops where they converge; on the
+same fixture it covers 7 of 13 points instead of all 13. Two lanes into two keep a full-length
+divider, one into one has none.
+
+**A U-turn was drawn at less than half the radius it needs.** `connectorCurve` reached
+`chord/3` for every turn. That value is exactly the theta -> 0 limit of the cubic that stands in
+for a circular arc, `(2/3)*chord*tan(theta/4)/sin(theta/2)`, so it was only ever right for a
+gentle turn. Measured on the owner's shape: minimum radius 2.286 m on a 13 m chord, 0.176 of the
+chord, tighter than the 3 m lane it carries — so the ribbon's inner edge crossed itself, and
+Qt's even-odd default punched the overlap out as a hole. That hole is the X in the screenshot.
+
+The reach is now the arc value for the actual turn angle: bit-identical for a straight-through
+connection, 5.904 m on the same U-turn (0.454 of the chord, a half circle is 0.5). Surfaces fill
+by winding rule, so any self-overlap that remains reads as road rather than a tear. Stored
+geometry is never rewritten — only new curves and Reset curve — so no existing project moves and
+no baseline can.
+
+A turn still tighter than the Connector's own width is reported as `TIGHT_CONNECTOR_RADIUS`,
+deliberately through a new `connectorShapeIssues` rather than `connectorRuntimeIssues`, because
+`compileScenario` throws on the latter and an undrivable drawing must not block Run. It is
+advisory in both languages and survives a document with no demand authored yet.
+
+Also closed the last lane-count leak: the Properties count boxes double as the creation form, so
+picking a source lane now resets them to one, like the drag dialog.
+
+Coverage: a merge's divider is shorter than its boundary and keeps clear of the merge point,
+while 2->2 keeps a full-length one and 1->1 has none; a U-turn's minimum radius exceeds 0.4 of
+its chord and its lane width, and a straight-through connection stays exactly on the chord; the
+advisory fires once on a hairpin, names its Connector, and `compileScenario` still succeeds; the
+connector surface fills by winding. Reverting the trim and the arc reach in turn makes those
+tests fail. All 23 CTest suites and both guards passed, the four TS baselines and the pinned
+29.249359418430977 untouched and not regenerated. Linux only; Windows is CI's.
+
+---
+
 ### 2026-09-16 — M1.13: attachment stations in metres
 
 `LaneReference::fraction` became `station`: metres along the link's reference polyline, as
@@ -396,85 +444,3 @@ new viewport, and a seeded arrival later than the fixed sampling time. These are
 and range compilation, reference safety, duplication and migration regressions are added.
 The remaining validation and acceptance work follows on the same branch; no milestone is closed by this checkpoint.
 ---
-
-### 2026-09-14 — Scenario/project file-kind confusion, and the Vissim parity review
-
-**Reported:** opening `network.traffic.json` in the simulation window failed with
-`Could not open this scenario. … [json.exception.type_error.304] cannot use at() with null`.
-
-**Cause, not a corrupt file.** `documentJson` always writes `definition`, and a network drawn
-from scratch has none, so every such project saves `"definition": null` — correct for a
-project. The simulation window's Open filter was `*.json`, which listed the editor's own
-default save name `network.traffic.json`; `loadScenario` then called
-`parseDefinition(value.at("definition"))` unguarded, landing on `.at("duration")` on a null.
-The raw nlohmann text reached the user because the handler appended `e.what()` verbatim.
-
-**Changed, in outcomes.** Picking an editor project in the simulation window now says what
-kind of file it is, in English or Thai, and offers **Open in Network Editor** — one click and
-the drawing opens in the window that can hold it. No load path can surface an nlohmann
-exception any more: `loadScenario` classifies the file before reading a field
-(`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
-`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`, carried on a typed `ScenarioLoadError`), and
-`parseDocument` guards the mirror-image holes a hand-edited project could hit
-(`EDIT_NO_NETWORK`, `EDIT_BACKGROUND_INVALID`, and null `format`/`nextId`/`revision`). File
-dialogs default to `*.traffic.json` for projects. Two new tests pin the reported shape itself:
-a saved empty project must be *recognised*, not parsed and rejected.
-
-**Second pass, same day.** A scrutiny round found the classifier had the same defect it was
-added to prevent: `value.value("format", std::string{})` throws `type_error.302` when the key is
-present but not a string — including null — so `{"network":{…},"format":null}` still leaked an
-nlohmann message. Fixed, and `TEST(project, file_kind_classification_survives_broken_metadata)`
-pins it (verified to fail against the previous classifier). A second finding: `what()` on a
-classification failure is the bare code, and two paths showed it untranslated — startup
-`--scenario` via `main.cpp`, and the editor-launch fallback. Both now route through one
-`MainWindow::explain` / `EditorWindow::openFileOrReport`, and a `--scenario` the simulation
-window cannot run is explained **in** the window, with the editor offered, instead of a fatal
-modal carrying an identifier.
-
-**Also:** `docs/VISSIM_PARITY.md` reviews the editor against Vissim — hand motions, keyboard,
-window layout, objects, and the run/output story — and ranks the gaps. The three the owner
-accepted are carved into `ROADMAP.md` as **M1.8** (Run inside the editor), **M1.9** (network
-objects sidebar, Vissim gestures and shortcuts) and **M1.10** (levels and display types).
-No milestone was closed and no editor feature work was done: 17/17 CTest green, 59/59 native.
----
-
-### 2026-09-12 — native editor M1.1–M1.3 implemented (D16)
-
-Added a version-1 ProjectDocument and a Qt-free command library. Every committed edit
-validates a candidate before publishing it; a failed edit preserves both history and
-the model. Undo/Redo keeps up to 100 document snapshots, persists the current revision
-and ID counter in project files, and tracks the last saved revision. Embedded PNG data
-is shared immutably between snapshots rather than copied for every gesture.
-
-The independent Qt editor is available from the M0 window or `--editor`. It provides
-metric grid/snap, pan/zoom/fit, single-link selection, point/link dragging, point insertion
-and removal, lane count and individual widths, left/right driving side, opposite
-carriageways, split links and an extra downstream pocket lane. Splits introduce a 0.2 m
-continuity span with explicit lane connectors and remap existing routes. A link deletion
-confirms its affected connectors/heads/routes/inputs and restores all of them on Undo.
-Referenced lane removal is rejected. Connector endpoints reanchor on geometry edits.
-
-Local background images are embedded, calibrated from two picked points and a known
-real distance, positioned/rotated/scaled and given opacity. All background changes are
-undoable. Basic Open/Save/Save As use a versioned JSON document and QSaveFile atomic
-replacement; failed load/save preserves the current work. New/Open/Close ask about
-unsaved changes. Native prompts and editor controls support English and Thai. The
-inspector can be hidden, resized or detached. No new simulation behaviour was added.
-
-Boundary enforcement now also rejects project-to-command/editor/Qt imports, with
-negative fixtures. `docs/NETWORK_EDITOR.md` records operation, format and exact limits.
-M1.3.1 explicitly tracks the unsupported signal-bearing-link split rather than moving
-signal stationing silently. General connectors, tables, recovery and run handoff remain
-M1.4–M1.7. Windows/macOS GUI execution and the owner's usability gate remain unverified.
-
-**Verification:** GCC 13.3 / Qt 6.4.2 on Linux. Fresh isolated Debug and Release
-builds passed all 13 CTest suites; a separate Qt-free build passed all 11 suites.
-The native test executable contains 38 named cases (8 new editor model cases), and
-Qt UI checks exercise actual mouse/keyboard drawing, dragging, insertion/removal,
-pan/zoom, cancellation, per-lane widths, pockets, opposite carriageways, driving side,
-confirmed deletion/Undo, image transforms/two-point calibration, Unicode paths,
-failed save/load preservation, unsaved-work cancellation and Thai translation.
-The existing four TS regression fixtures, deterministic core replay, CLI and M0
-controls still pass. Architecture/negative checks, the 500-line limit and whitespace
-checks pass. A Thai editor screenshot at 1000×760 was visually inspected. GUI behaviour
-on Windows/macOS and GitHub-hosted runner execution are not claimed verified here.

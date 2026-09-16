@@ -54,6 +54,9 @@ std::vector<Point> laneGeometry(const Link& link, const std::string& laneId, Dri
 // Boundary 0 is before the first lane; boundary N is after the last.
 std::vector<Point> laneBoundaryGeometry(const Link&, std::size_t boundary, DrivingSide);
 std::vector<Point> offsetGeometry(const std::vector<Point>&, double offset);
+// The same miter-joined offset with a distance that varies point by point, which is how a road
+// that gains or drops a lane along its length keeps every other lane at its own full width.
+std::vector<Point> offsetGeometry(const std::vector<Point>&, const std::vector<double>& offsets);
 // The same polyline with any self-crossing loop cut out and closed at the crossing point.
 // Drawing only: the loop an offset makes on a tight bend is a notch in the line round a
 // surface that is filled correctly without it.

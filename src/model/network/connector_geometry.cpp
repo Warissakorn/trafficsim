@@ -37,11 +37,11 @@ int lanesFromReference(const Network& network,const LaneReference& ref) {
     }
     return 0;
 }
-// Writing each interior point as the complex number z = (p-a)/(b-a) makes z an invariant of
-// the curve's shape, so the transform depends only on where the endpoints are now, never on
-// how they got there: moving a link away and back restores the curve exactly. A displacement
-// blend relative to the current geometry cannot do this — it composes, so a round trip
-// through two edits silently deformed hand-tuned curves.
+// Vissim moves the one poly point that is attached to the Link, and leaves the rest of the
+// Connector's poly points where the author put them. So does this. It is also what makes the
+// result independent of the path taken: a link moved away and back puts that point back, and
+// nothing else was ever touched. Carrying the whole curve rigidly, as this used to, dragged
+// hand-placed points around a Link edit they had nothing to do with.
 void reanchorConnector(const Network& network,Connector& c) {
     // A link can be shortened past an attachment. Clamp rather than reject the link edit: the
     // Connector survives at the new end, which is where the author can see and move it.
@@ -53,17 +53,8 @@ void reanchorConnector(const Network& network,Connector& c) {
     clamp(c.from);clamp(c.to);
     const auto from=laneAttachment(network,c.from,true), to=laneAttachment(network,c.to,false);
     if(c.geometry.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
-    const auto old=c.geometry;
-    const auto a=old.front(), b=old.back();
-    if(from==a && to==b)return;
-    const double vx=b.x-a.x, vy=b.y-a.y, chord=vx*vx+vy*vy;
-    const double wx=to.x-from.x, wy=to.y-from.y;
-    if(!std::isfinite(chord) || chord<=0)throw std::invalid_argument("INVALID_GEOMETRY");
-    for(std::size_t i=1;i+1<old.size();++i) {
-        const double px=old[i].x-a.x, py=old[i].y-a.y;
-        const double zr=(px*vx+py*vy)/chord, zi=(py*vx-px*vy)/chord;
-        c.geometry[i]={from.x+zr*wx-zi*wy, from.y+zr*wy+zi*wx};
-    }
+    if(!std::isfinite(from.x) || !std::isfinite(from.y) || !std::isfinite(to.x) || !std::isfinite(to.y))
+        throw std::invalid_argument("INVALID_GEOMETRY");
     c.geometry.front()=from;c.geometry.back()=to;
 }
 std::vector<Point> connectorCurve(const Network& network, const LaneReference& from, const LaneReference& to) {

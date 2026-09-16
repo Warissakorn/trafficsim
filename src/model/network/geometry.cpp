@@ -115,6 +115,10 @@ double matchedStation(const std::vector<Point>& from,const std::vector<Point>& t
     return matched; // Past the end of `from`, which clamps to the end of `to`.
 }
 std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offset) {
+    return offsetGeometry(geometry,std::vector<double>(geometry.size(),offset));
+}
+std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,const std::vector<double>& offsets) {
+    if(offsets.size()!=geometry.size())throw std::invalid_argument("INVALID_GEOMETRY");
     // A corner needs a miter, not a plain normal. Offsetting a bend vertex by `offset` along
     // the average normal leaves it offset*cos(theta/2) from the original line, so both lane
     // edges pull in and the carriageway visibly pinches at every bend: 18% at 63 degrees,
@@ -146,7 +150,7 @@ std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offs
             if(norm>0){miter.x=miter.x/norm*kMiterLimit;miter.y=miter.y/norm*kMiterLimit;}
             else miter=n1; // An exact reversal has no bisector; use the incoming normal.
         }
-        points.push_back({p.x+miter.x*offset,p.y+miter.y*offset});
+        points.push_back({p.x+miter.x*offsets[i],p.y+miter.y*offsets[i]});
     }
     return points;
 }
