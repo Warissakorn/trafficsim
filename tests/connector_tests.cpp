@@ -1,6 +1,7 @@
 #include "test.hpp"
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/network_commands.hpp"
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include <fstream>
@@ -204,6 +205,22 @@ int crossings(const std::vector<Point>& p) {
 double apart(const std::vector<Point>& a,const std::vector<Point>& b,std::size_t i) {
     return std::hypot(b[i].x-a[i].x,b[i].y-a[i].y);
 }
+// How wide the lane is square to the road, rather than along the cross-section, which is the lane
+// width by construction whatever angle that cross-section sits at and so cannot fail.
+double perpendicular(const std::vector<Point>& edge,Point p) {
+    double best=1e300;
+    for(std::size_t i=1;i<edge.size();++i) {
+        const double dx=edge[i].x-edge[i-1].x,dy=edge[i].y-edge[i-1].y,square=dx*dx+dy*dy;
+        const double t=square>0?std::clamp(((p.x-edge[i-1].x)*dx+(p.y-edge[i-1].y)*dy)/square,0.,1.):0.;
+        best=std::min(best,std::hypot(p.x-edge[i-1].x-t*dx,p.y-edge[i-1].y-t*dy));
+    }
+    return best;
+}
+double narrowest(const std::vector<std::vector<Point>>& boundaries) {
+    double best=1e300;
+    for(const auto& p:boundaries.front())best=std::min(best,perpendicular(boundaries.back(),p));
+    return best;
+}
 double minimumRadius(const std::vector<Point>& g) {
     double radius=1e300;
     for(std::size_t i=1;i+1<g.size();++i) {
@@ -239,6 +256,10 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
         CHECK(wedge<previous);previous=wedge;
     }
     test::near(previous,0,1e-9);
+    // Square to the road as well as along the cross-section: the along measure is the lane width
+    // by construction, so on its own it cannot tell a cross-section that has been left behind by
+    // the curve from one that follows it.
+    for(const auto& p:boundaries.front())CHECK(perpendicular(boundaries[1],p)>2.9);
     // Both mouths still meet their link's own lane edges exactly; the single target lane has two.
     const auto meets=[&](Point a,Point b){test::near(a.x,b.x,1e-9);test::near(a.y,b.y,1e-9);};
     for(std::size_t i=0;i<3;++i)meets(boundaries[i].front(),laneBoundaryGeometry(in,i,d.network.drivingSide).back());
@@ -288,6 +309,37 @@ TEST(connectors, a_reverse_curve_bends_no_harder_than_the_lane_it_carries) {
     CHECK(minimumRadius(g)>.2*chord);
     CHECK(minimumRadius(g)>editableLink(d,"in").lanes.front().width);
     CHECK(connectorShapeIssues(d.network).empty());
+}
+// The cross-section has to turn with the road. Interpolating between the two mouths does not: on a
+// reverse curve they are parallel, so it stood still while the path swung away and the lane was
+// drawn at its own width times the cosine of that angle.
+TEST(connectors, a_drawn_lane_keeps_its_width_square_to_the_road) {
+    struct Shape { const char* name; std::vector<Point> geometry; double least; };
+    // Each is the same 3.5 m lane; `least` is what it measured before the cross-section followed
+    // the road -- 1.06 m on the reverse curve, and 0.36 m on the turn if the two end corrections
+    // are wrapped independently instead of the second against the first.
+    for(const auto& shape:std::vector<Shape>{
+            {"reverse curve",{{10,-12},{70,-12}},1.1},
+            {"gentle reverse",{{20,-12},{80,-12}},2.5},
+            {"quarter turn",{{20,20},{20,80}},0.4},
+            {"u-turn",{{0,-10},{-60,-10}},3.4}}) {
+        ProjectDocument d;d.network.drivingSide=DrivingSide::left;
+        d.network.links={{"a",{{-60,0},{0,0}},{{"a1",3.5}}},{"b",shape.geometry,{{"b1",3.5}}}};
+        const auto id=addConnector(d,{"a","a1"},{"b","b1"});
+        const auto boundaries=connectorBoundaries(d.network,editableConnector(d,id));
+        // The forcing: the shape really does bend, so a cross-section that ignored it would show.
+        const auto& g=editableConnector(d,id).geometry;
+        CHECK(minimumRadius(g)<40);
+        CHECK(boundaries.size()==2);
+        // Both mouths still meet their link's lane edges exactly.
+        for(std::size_t i=0;i<2;++i) {
+            const auto edge=laneBoundaryGeometry(d.network.links[0],i,DrivingSide::left).back();
+            test::near(boundaries[i].front().x,edge.x,1e-9);test::near(boundaries[i].front().y,edge.y,1e-9);
+        }
+        const double least=narrowest(boundaries);
+        CHECK(least>shape.least);      // beats what the mouth-to-mouth cross-section drew
+        CHECK(least>.9*3.5);           // and is the lane the links actually give it
+    }
 }
 // An offset of a bend tighter than the offset loops back on itself. The surface is filled
 // correctly either way, but the line drawn round it must not double back.

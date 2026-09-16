@@ -183,7 +183,10 @@ between its two mouths: a lane that continues keeps the width its links give it 
 and a lane the far end has no room for is drawn as a taper closing onto its neighbour, the way
 Vissim draws a lane drop. Which lane continues follows the selected ranges, pairing them in lane
 order, so a lane range anchored one lane over moves the taper to the other side. The taper runs
-the whole length of the Connector; there is no separate taper length to set. Properties exposes both counts as an alternative. Retargeting
+the whole length of the Connector; there is no separate taper length to set. The cross-section
+those widths are measured across is square to the Connector's own path, corrected onto each link's
+cross-section at the two mouths, so a lane holds its width through a bend instead of being drawn
+at the cosine of the angle between the road and the line joining its mouths. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
