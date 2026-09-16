@@ -5,6 +5,14 @@
 #include <set>
 #include <cmath>
 namespace trafficsim {
+void renameObject(ProjectDocument& d,const std::string& id,const std::string& name) {
+    // A name long enough to be a document belongs in neither a dialog nor a table cell.
+    if(name.size()>200)throw std::invalid_argument("EDIT_NAME_LENGTH");
+    for(auto& l:d.network.links)if(l.id==id){l.name=name;return;}
+    for(auto& c:d.network.connectors)if(c.id==id){c.name=name;return;}
+    for(auto& h:d.network.signalHeads)if(h.id==id){h.name=name;return;}
+    throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+}
 void changeAppearance(ProjectDocument& d,const std::string& id,int level,const std::string& type) {
     if(level < -1000 || level > 1000 || type.empty())throw std::invalid_argument("EDIT_DISPLAY_VALUE");
     for(auto& l:d.network.links)if(l.id==id){l.level=level;l.displayType=type;return;}

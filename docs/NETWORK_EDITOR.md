@@ -259,6 +259,15 @@ inputs in the same undoable transaction. Heads on unaffected links remain.
 
 ## Selection, tables and display
 
+**Name.** Every Link, Connector and Signal head carries Vissim's `Name`. The field sits beside
+the read-only id at the top of the inspector, above the property tabs, because a name belongs
+to an object rather than to a kind of object: it names whatever is selected. It commits on
+Return or when focus leaves the field, and only when the text changed, so clicking out of an
+untouched field is not an undo entry. A name is free text of at most 200 characters and is
+never a key — two objects may carry the same one, an empty one is normal, and nothing is ever
+looked up by it. The three object lists show it in a Name column beside ID, and it copies with
+a duplicated object.
+
 Click replaces the selection; Ctrl-click adds an object, and Shift-click toggles it.
 Dragging on empty space selects touched Links, Connectors and Signal heads in a rectangle;
 Ctrl/Shift adds that rectangle to the existing selection. Picking, framing and the band

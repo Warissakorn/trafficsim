@@ -35,9 +35,9 @@ void EditorWindow::buildObjectTables() {
     dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetClosable);
     auto* body=new QWidget(dock); auto* layout=new QVBoxLayout(body);
     objects_=new QTabWidget(body); objects_->setObjectName("editorObjectTabs"); layout->addWidget(objects_);
-    linkTable_=table(objects_,"editorLinkTable",4);
-    connectorTable_=table(objects_,"editorConnectorTable",4);
-    signalTable_=table(objects_,"editorSignalTable",4);
+    linkTable_=table(objects_,"editorLinkTable",5);
+    connectorTable_=table(objects_,"editorConnectorTable",5);
+    signalTable_=table(objects_,"editorSignalTable",5);
     for (auto* view : {linkTable_,connectorTable_,signalTable_}) objects_->addTab(view,QString());
     buildDiagnostics();
     auto* help=new QLabel(body); help->setWordWrap(true); texts_["editorTablesHelp"]=help; layout->addWidget(help);
@@ -69,15 +69,16 @@ void EditorWindow::buildObjectTables() {
 void EditorWindow::retranslateTables() {
     const char* tabs[]={"editorLinkTable","editorConnectorTable","editorSignalTable","editorProblemTable"};
     for (int i=0;i<4;++i) objects_->setTabText(i,text(tabs[i]));
-    const char* linkColumns[]={"editorColumnId","editorColumnLanes","editorColumnLength","editorColumnHeads"};
-    const char* connectorColumns[]={"editorColumnId","editorColumnFrom","editorColumnTo","editorColumnLength"};
-    const char* signalColumns[]={"editorColumnId","editorColumnLane","editorColumnPosition","editorColumnProgram"};
+    // Name sits next to ID, as it does in every Vissim list.
+    const char* linkColumns[]={"editorColumnId","editorColumnName","editorColumnLanes","editorColumnLength","editorColumnHeads"};
+    const char* connectorColumns[]={"editorColumnId","editorColumnName","editorColumnFrom","editorColumnTo","editorColumnLength"};
+    const char* signalColumns[]={"editorColumnId","editorColumnName","editorColumnLane","editorColumnPosition","editorColumnProgram"};
     const char* problemColumns[]={"editorColumnSeverity","editorColumnCode","editorColumnObject","editorColumnWhere"};
     const std::pair<QTableWidget*,const char**> views[]={{linkTable_,linkColumns},{connectorTable_,connectorColumns},
         {signalTable_,signalColumns},{problemTable_,problemColumns}};
     for (const auto& [view,columns] : views) {
         QStringList labels;
-        for (int i=0;i<4;++i) labels<<text(columns[i]);
+        for (int i=0;i<view->columnCount();++i) labels<<text(columns[i]);
         view->setHorizontalHeaderLabels(labels);
     }
 }
@@ -92,19 +93,19 @@ void EditorWindow::refreshTables(bool modelChanged) {
             const auto& link=network.links[static_cast<std::size_t>(row)];
             int heads=0;
             for (const auto& head : network.signalHeads) if (head.lane.linkId==link.id) ++heads;
-            fill(linkTable_,row,{QString::fromStdString(link.id),QString::number(link.lanes.size()),
+            fill(linkTable_,row,{QString::fromStdString(link.id),QString::fromStdString(link.name),QString::number(link.lanes.size()),
                 metres(polylineLength(link.geometry)),QString::number(heads)},QString::fromStdString(link.id));
         }
         connectorTable_->setRowCount(static_cast<int>(network.connectors.size()));
         for (int row=0; row<connectorTable_->rowCount(); ++row) {
             const auto& c=network.connectors[static_cast<std::size_t>(row)];
-            fill(connectorTable_,row,{QString::fromStdString(c.id),laneOf(c.from),laneOf(c.to),
+            fill(connectorTable_,row,{QString::fromStdString(c.id),QString::fromStdString(c.name),laneOf(c.from),laneOf(c.to),
                 metres(polylineLength(c.geometry))},QString::fromStdString(c.id));
         }
         signalTable_->setRowCount(static_cast<int>(network.signalHeads.size()));
         for (int row=0; row<signalTable_->rowCount(); ++row) {
             const auto& head=network.signalHeads[static_cast<std::size_t>(row)];
-            fill(signalTable_,row,{QString::fromStdString(head.id),head.connectorId.empty()?laneOf(head.lane):QString::fromStdString(head.connectorId),metres(head.position),
+            fill(signalTable_,row,{QString::fromStdString(head.id),QString::fromStdString(head.name),head.connectorId.empty()?laneOf(head.lane):QString::fromStdString(head.connectorId),metres(head.position),
                 QString::fromStdString(head.programId)},QString::fromStdString(head.id));
         }
     }

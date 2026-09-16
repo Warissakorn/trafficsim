@@ -8,6 +8,41 @@ long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-arch
 
 ---
 
+## 2026-09-16 — A Name on every object, and the audit that found it
+
+The owner asked what else still differs from Vissim. §§1–6 of `VISSIM_PARITY.md` are a
+2026-09-14 snapshot and several of their "Today" cells have gone stale, so the audit was done
+against live code. It found five gaps; the full table is in that file's sixth follow-up. The
+owner picked the first.
+
+**Nothing could be named.** `Link`, `Connector` and `NetworkSignalHead` had no `name` member at
+all, and no dialog anywhere offered one — an interchange of forty links was forty opaque ids,
+where Vissim puts `Name` beside `No.` on every object dialog and in every list. All three now
+carry one: free text, at most 200 characters, and explicitly **not a key** — two objects may
+hold the same name and an empty one is the normal state, which is why nothing looks an object
+up by it. It is ordered last in each struct so that every existing brace-initialisation keeps
+meaning what it says.
+
+One field in the inspector's *common* section names whichever object is selected, rather than
+three fields on three tabs, because in Vissim Name is a property of an object, not of a kind of
+object. It commits on Return and on focus loss, but only when the text actually changed:
+`editingFinished` fires on every click out of the field, and committing there unconditionally
+put an empty entry on the undo stack each time. The three object lists gained a Name column
+next to ID; the column loop now reads `columnCount()` instead of the literal 4 it was written
+with, so the problem table's four columns still work beside the objects' five.
+
+Verified: a name reaches the model, the list and the project file, comes back on reopen, copies
+with a duplicated object and undoes as one entry. Five negative checks each broke a named
+assertion — dropping the field from the JSON, dropping the length limit, clearing the name on
+copy, never committing the field, and not reloading it on refresh.
+
+**Not taken, with reasons.** Integer `No.` (item 4) churns the file format and every reference
+for a mostly cosmetic win, and naming buys most of the same benefit. Missing object types (item
+5) each need engine behaviour first. Editable lists and group move (items 2 and 3) are real and
+unbooked; item 3's old blocker, connector reanchoring, no longer exists.
+
+---
+
 ## 2026-09-16 — Intermediate points, and what a Vissim Connector's line actually is
 
 The owner sent Vissim's Connector dialog: it counts **intermediate points**, and we had no such
@@ -141,7 +176,9 @@ drew, a count of 2 draws three straight legs with a corner on each point as Viss
 Connector drawn between two links that nearly touch stays inside the junction and is reported as
 a tight radius rather than drawn as a crumpled wedge. Old `*.traffic.json` files predating that
 change were deliberately not migrated and will open with all of their stored points as poly
-points. **Next after the review: M1.11.1**, which can now split a lane
+points. Check the Name work
+too: name a Link, a Connector and a signal head, see each in its list, reopen the file and find
+them still there. **Next after the review: M1.11.1**, which can now split a lane
 at an attachment station that no longer moves. Test the workflow on the owner's
 Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
 lane sections for interior attachments; Run correctly blocks those networks today.

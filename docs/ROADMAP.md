@@ -266,21 +266,30 @@ migrated: the owner confirmed the project is still a test bed.
 **Done:** a default Connector shows five grips; the count changes without losing the author's
 shape; a count of 2 draws the three straight legs Vissim draws.
 
-### M1.12.1 — A Connector's own name, lane widths and markings
+### M1.15 — A Name on every object
 
-**Not started.** Three fields of Vissim's Connector dialog that our model cannot express, found
-by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up":
+**Implemented.** `Link`, `Connector` and signal heads each carry Vissim's `Name`: free text, at
+most 200 characters, never a key — two objects may hold the same one and an empty one is the
+normal state. One field in the inspector's common section names whichever object is selected,
+the way Vissim puts Name beside No. on every dialog, and the three object lists show it in a
+Name column next to ID. It round-trips through the project file, copies with a duplicated
+object, and undoes as one entry.
 
-- **`Name`** — `Connector` has no name member at all, so a Connector can only be referred to by
-  its generated id. Smallest of the three: a model field, serialization, one inspector row, and
-  the object combo showing it.
+**Done:** an interchange is authored in the author's own words rather than in `link-17`.
+
+### M1.12.1 — A Connector's own lane widths and markings
+
+**Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found
+by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up". Its third, `Name`, shipped
+as M1.15:
+
 - **`Lanes` tab per-lane `Width`** — connector lane widths are derived from the links each end
   joins (`laneWidthOf`), so a Connector cannot carry a width of its own and a widening taper has
   to be authored on the links instead.
 - **`Lanes` tab per-lane `MarkingType`** — likewise derived (`connectorMarkings`): edges solid,
   interior dashed, with no per-lane choice.
 
-**Closes when:** all three are authorable, round-trip through the project file, and the widths
+**Closes when:** both are authorable, round-trip through the project file, and the widths
 feed `connectorBoundaries` in place of the derived ones without changing a Connector whose lanes
 were never given their own width. `BlockedVeh`, `NoLnCh` and `Has overtaking lane` are *not* in
 this milestone; they wait on the lane-changing model (Q2).

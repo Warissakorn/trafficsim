@@ -99,21 +99,25 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         link.level=integer(item,"level",0);
         if(item.contains("laneOffset"))link.laneOffset=field<double>(item,"laneOffset");
         if(item.contains("displayType"))link.displayType=field<std::string>(item,"displayType");
+        if(present(item,"name"))link.name=field<std::string>(item,"name");
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors")) {
         network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from"),schemaVersion), reference(member(c, "to"),schemaVersion), points(c),
             integer(c,"fromLaneCount",1),integer(c,"toLaneCount",1),integer(c,"level",0),
             c.contains("displayType")?field<std::string>(c,"displayType"):"default"});
+        if(present(c,"name"))network.connectors.back().name=field<std::string>(c,"name");
         if(c.contains("laneBlend"))for(const auto& t:array(c,"laneBlend")) {
             if(!t.is_number())throw std::invalid_argument("INVALID_GEOMETRY");
             network.connectors.back().laneBlend.push_back(t.get<double>());
         }
     }
-    for (const auto& h : array(value, "signalHeads"))
+    for (const auto& h : array(value, "signalHeads")) {
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane"),schemaVersion),
                                       field<double>(h, "position"), field<std::string>(h, "programId"),
                                       present(h,"connectorId")?field<std::string>(h,"connectorId"):std::string{}});
+        if(present(h,"name"))network.signalHeads.back().name=field<std::string>(h,"name");
+    }
     if(schemaVersion<5)migrateAttachments(network);
     return network;
 }

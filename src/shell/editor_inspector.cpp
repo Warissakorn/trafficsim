@@ -24,6 +24,17 @@ void EditorWindow::buildInspector() {
     auto* body=new QWidget(scroll);auto* layout=new QVBoxLayout(body);
     auto* common=new QFormLayout;common->setRowWrapPolicy(QFormLayout::WrapLongRows);layout->addLayout(common);
     id_=new QLineEdit(body);id_->setReadOnly(true);label(common,"editorId",id_);
+    // Vissim's Name sits beside No. on every object dialog, so it lives in the common section
+    // rather than the Link tab: one field names a Link, a Connector or a signal head alike.
+    name_=new QLineEdit(body);name_->setMaxLength(200);label(common,"editorName",name_);
+    connect(name_,&QLineEdit::editingFinished,this,[this]{
+        const auto typed=name_->text().toStdString();
+        // editingFinished also fires on plain focus loss. Committing an unchanged name there
+        // would put an empty entry on the undo stack for every click out of the field.
+        if(canvas_->selected().empty() || typed==selectedName())return;
+        const auto id=canvas_->selected();
+        execute("editorName",[&](auto& d){renameObject(d,id,typed);});
+    });
     selectionInfo_=new QLabel(body);selectionInfo_->setWordWrap(true);common->addRow(selectionInfo_);
     side_=new QComboBox(body);side_->addItems({"",""});label(common,"editorDrivingSide",side_);
     connect(side_,&QComboBox::currentIndexChanged,this,[this](int index){execute("editorDrivingSide",[&](auto& d){changeDrivingSide(d,index==0?DrivingSide::left:DrivingSide::right);});});

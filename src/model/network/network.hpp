@@ -8,6 +8,10 @@ struct Link {
     std::string id; std::vector<Point> geometry; std::vector<Lane> lanes;
     int level{}; std::string displayType{"default"};
     double laneOffset{}; // Bundle offset from reference geometry, in lane-order coordinates.
+    // Vissim's Name: the author's own label for this object, free text, never a key. Empty is
+    // normal and means the object is referred to by its id alone. Ordered last so that every
+    // existing brace-initialisation of a Link keeps meaning what it says.
+    std::string name;
     bool operator==(const Link&) const = default;
 };
 struct LaneReference {
@@ -24,6 +28,7 @@ struct Connector {
     int fromLaneCount{1}, toLaneCount{1}, level{};
     std::string displayType{"default"};
     std::vector<double> laneBlend{}; // Frozen interpolation weights when rebasing the first lane.
+    std::string name; // Vissim's Name. See Link::name.
     bool operator==(const Connector&) const = default;
 };
 // One authored connector owns a contiguous range at each end. Individual runtime
@@ -35,6 +40,7 @@ std::vector<ConnectorPath> connectorPaths(const Network&, const Connector&);
 struct NetworkSignalHead {
     std::string id; LaneReference lane; double position{};
     std::string programId, connectorId;
+    std::string name; // Vissim's Name. See Link::name.
     bool operator==(const NetworkSignalHead&) const = default;
 };
 enum class DrivingSide { left, right };

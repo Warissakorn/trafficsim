@@ -81,8 +81,9 @@ int main(int argc,char** argv) {
         require(drawn.size()==3,"Road drawing failed");
         require(links->rowCount()==3,"Link table did not follow the document");
         for (const auto& link : drawn) require(rowFor(links,QString::fromStdString(link.id))>=0,"Link missing from table");
-        require(links->item(0,1)->text()=="2","Lane count column wrong");
-        require(links->item(0,2)->text()=="50.00","Length column wrong");
+        require(links->item(0,1)->text().isEmpty(),"An unnamed link shows a name");
+        require(links->item(0,2)->text()=="2","Lane count column wrong");
+        require(links->item(0,3)->text()=="50.00","Length column wrong");
         action(w,"editorUndo");require(links->rowCount()==2,"Table did not follow Undo");
         action(w,"editorRedo");require(links->rowCount()==3,"Table did not follow Redo");
 
@@ -100,7 +101,7 @@ int main(int argc,char** argv) {
         click(c,midpoint(drawn[1].geometry),Qt::ShiftModifier);
         require(c->selection().size()==2,"Shift-click did not add to the selection");
         require(c->selected()==drawn[1].id,"Last object clicked is not primary");
-        require(links->selectedItems().size()==8,"Table did not mirror the canvas selection");
+        require(links->selectedItems().size()==2*links->columnCount(),"Table did not mirror the canvas selection");
         require(item<QLineEdit>(w,"editorId")->text()==QString::fromStdString(drawn[1].id),"Inspector lost the primary");
         click(c,midpoint(drawn[1].geometry),Qt::ShiftModifier);
         require(c->selection().size()==1,"Shift-click did not toggle off");
@@ -203,9 +204,10 @@ int main(int argc,char** argv) {
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);
         for (int i=0;i<4;++i) require(!tabs->tabText(i).isEmpty(),"Untranslated object tab");
         require(tabs->tabText(3)==QString::fromUtf8("ปัญหา"),"Thai Problems tab missing");
-        for (int column=0;column<4;++column)
+        for (int column=0;column<links->columnCount();++column)
             require(!links->horizontalHeaderItem(column)->text().isEmpty(),"Untranslated column header");
-        require(links->horizontalHeaderItem(1)->text()==QString::fromUtf8("จำนวนเลน"),"Thai column header missing");
+        require(links->horizontalHeaderItem(1)->text()==QString::fromUtf8("ชื่อ"),"Thai Name column header missing");
+        require(links->horizontalHeaderItem(2)->text()==QString::fromUtf8("จำนวนเลน"),"Thai column header missing");
         action(w,"editorRecheck");
         // M1 resolves the real catalogs before checking; a valid fixture has no findings.
         require(problems->rowCount()==1 && problems->item(0,1)->text().isEmpty(),"Valid catalog-backed scenario reported a problem");

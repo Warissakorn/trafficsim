@@ -1,4 +1,7 @@
 #include "test.hpp"
+#include "../src/commands/appearance_commands.hpp"
+#include "../src/commands/connector_commands.hpp"
+#include "../src/commands/demand_commands.hpp"
 #include "../src/commands/network_commands.hpp"
 #include <fstream>
 #include <limits>
@@ -145,4 +148,35 @@ TEST(editor, signal_bearing_split_preserves_control_and_routes) {
         CHECK(documentJson(parseDocument(Json::parse(documentJson(h.document()).dump())))==documentJson(h.document()));
         h.undo();CHECK(documentJson(h.document())==before);h.redo();CHECK(h.document().network.links.size()==5);
     }
+}
+TEST(editor, a_name_belongs_to_the_object_and_outlives_save_undo_and_copy) {
+    History h;h.reset();std::string link,other,connector,head;
+    h.execute("draw",[&](auto& d){
+        link=addLink(d,{{0,0},{100,0}},2,3.5);other=addLink(d,{{130,0},{230,0}},2,3.5);
+        connector=addConnector(d,{link,d.network.links[0].lanes[0].id},{other,d.network.links[1].lanes[0].id});
+        head=putSignalHead(d,{"",{link,d.network.links[0].lanes[0].id},50,putProgram(d,{"",0,{{10,SignalColor::green}}}),{}});
+    });
+    // The forcing: nothing carries a name until one is typed, so an empty name below is a
+    // rename that happened, not a default that was never touched.
+    const auto& n=h.document().network;
+    CHECK(n.links[0].name.empty());CHECK(n.connectors[0].name.empty());CHECK(n.signalHeads[0].name.empty());
+    const auto unnamed=h.document();
+    h.execute("name",[&](auto& d){
+        renameObject(d,link,"Sukhumvit inbound");renameObject(d,connector,"NB left turn");renameObject(d,head,"Head A1");
+    });
+    CHECK(n.links[0].name=="Sukhumvit inbound");CHECK(n.connectors[0].name=="NB left turn");CHECK(n.signalHeads[0].name=="Head A1");
+    // A name is not a key: the other link may carry the same one, and neither id moves.
+    h.execute("same",[&](auto& d){renameObject(d,other,"Sukhumvit inbound");});
+    CHECK(n.links[1].name==n.links[0].name);CHECK(n.links[1].id!=n.links[0].id);
+    CHECK(parseDocument(Json::parse(documentJson(h.document()).dump()))==h.document());
+    const auto named=h.document();
+    h.execute("copy",[&](auto& d){duplicateObjects(d,{link},{0,60});});
+    CHECK(h.document().network.links.back().name=="Sukhumvit inbound");
+    h.undo();CHECK(h.document()==named);
+    h.undo();h.undo();CHECK(h.document()==unnamed);h.redo();h.redo();CHECK(h.document()==named);
+    test::throws([&]{h.execute("unknown",[&](auto& d){renameObject(d,"link-nope","x");});},"EDIT_UNKNOWN_OBJECT");
+    test::throws([&]{h.execute("long",[&](auto& d){renameObject(d,link,std::string(201,'x'));});},"EDIT_NAME_LENGTH");
+    CHECK(h.document()==named);
+    h.execute("clear",[&](auto& d){renameObject(d,link,std::string(200,'x'));renameObject(d,connector,"");});
+    CHECK(n.links[0].name.size()==200);CHECK(n.connectors[0].name.empty());
 }

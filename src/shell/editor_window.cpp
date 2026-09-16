@@ -187,6 +187,13 @@ void EditorWindow::showError(const std::exception& e) {
     refreshDiagnostics();
     if (!rejected_.empty()) objects_->setCurrentIndex(3);
 }
+std::string EditorWindow::selectedName() const {
+    const auto& network=history_.document().network;const auto& id=canvas_->selected();
+    for(const auto& l:network.links)if(l.id==id)return l.name;
+    for(const auto& c:network.connectors)if(c.id==id)return c.name;
+    for(const auto& h:network.signalHeads)if(h.id==id)return h.name;
+    return {};
+}
 void EditorWindow::refresh(bool modelChanged) {
     if(modelChanged) canvas_->setDocument(&history_.document());
     setWindowTitle(text("editorTitle")+" — "+(file_.isEmpty()?text("editorUntitled"):file_)+(history_.dirty()?" *":""));
@@ -194,6 +201,8 @@ void EditorWindow::refresh(bool modelChanged) {
     const auto selected=canvas_->selected(); const Link* link=nullptr;
     for(const auto& l:history_.document().network.links) if(l.id==selected) link=&l;
     id_->setText(QString::fromStdString(selected));
+    name_->setEnabled(!selected.empty());
+    {const QSignalBlocker block(name_);name_->setText(QString::fromStdString(selectedName()));}
     widths_->setEnabled(link); actions_.at("editorApplyLanes")->setEnabled(link);
     for(const auto* key:{"editorDeleteLink","editorOpposite","editorPocket","editorSplitHere"}) actions_.at(key)->setEnabled(link);
     actions_.at("editorDeleteVertex")->setEnabled(link || canvas_->selectedConnector());

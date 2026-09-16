@@ -438,7 +438,7 @@ session does not have to rediscover them; none is in this slice.
 | Vissim field | Ours | Verdict |
 |---|---|---|
 | `No.` | A generated id string, not an editable integer | Cosmetic, but ids are what a project file is read by. Not booked |
-| `Name` | **Absent from the model entirely** (`Connector` has no name member) | The cheapest real gap on this list, and the second field a Vissim user reaches for. **Booked: M1.12.1** |
+| `Name` | Present, on a Connector and on every other object | Done — M1.15, below |
 | `Intermediate points` | Present, as of this entry | Done |
 | `Link length` | Shown beside the lane counts, measured on the road | Done |
 | `Link behavior type` | Not modelled anywhere | Already out of scope (§ "not modelled") |
@@ -450,3 +450,22 @@ session does not have to rediscover them; none is in this slice.
 | `Reverse parking` | Absent | Parking is not modelled at all (§4) |
 
 Group drag, `Alt`-drag rotate and copy/paste stay declined for the reason already on file.
+
+---
+
+## 2026-09-16 sixth follow-up — what else is not Vissim, audited against the code
+
+The owner asked what else still differs. §§1–6 above are a 2026-09-14 snapshot and several of
+their "Today" cells have since gone stale, so this pass was verified against live code rather
+than against the table. Five gaps, ranked by gain ÷ (risk × effort):
+
+| # | Gap | Evidence | Verdict |
+|---|---|---|---|
+| 1 | Nothing could be named | No `name` member on `Link`, `Connector` or `NetworkSignalHead`; no field in `editor_inspector.cpp` | **Done: M1.15** |
+| 2 | Object lists are read-only | `editor_tables.cpp` sets `NoEditTriggers`; four (now five) fixed columns per tab | Vissim's Lists are its power-user surface — typed cells, sorting, multi-select-and-set. Not booked |
+| 3 | No group move, no `Alt`-drag rotate | `canvas_input.cpp`: "Geometry editing stays strictly single-object" (`Ctrl`+drag duplicates, but a multi-selection cannot be moved) | The reanchoring that once blocked it now exists (`reanchorConnector` moves one poly point). Not booked |
+| 4 | `No.` is a string, not an integer | `allocateId(d,"link")` yields `link-1` | **Advised against for now:** it churns the file format and every reference for a mostly cosmetic win, and M1.15 buys most of the same benefit |
+| 5 | Missing object types | 9 tools in `canvas.hpp` against Vissim's Network Objects palette; nodes, priority rules, conflict areas, reduced-speed areas, stop signs, parking | **Deliberately not booked:** each needs engine behaviour first (ROADMAP rule 2). Nodes are the one that matters for the deliverable, and belong to M5 |
+
+The evidence here is code-level and visual, not timed: all five are things that are *absent*,
+not things that are slow.
