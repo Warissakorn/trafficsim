@@ -1,10 +1,132 @@
 # PROGRESS — TrafficSim
 
 Append-only. Newest entry at the top. **This is what a session with no memory reads to rejoin
-the work.** Never delete an entry; move old blocks to `PROGRESS-archive.md` whole if this gets
-long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-archive.md)
-[`PROGRESS-archive-2026-09-14.md`](PROGRESS-archive-2026-09-14.md) and
-[`PROGRESS-archive-2026-09-16.md`](PROGRESS-archive-2026-09-16.md).
+the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
+long. Older entries are preserved whole there:
+
+- [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
+- [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
+- [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-17 — NETWORK_EDITOR.md: a section whose title covered a third of the file
+
+`## Connector lane ranges` ran **159 lines, 37% of the manual**, and most of it was not about
+connector lane ranges. Under that one heading sat Link lane-tab dragging, lane-edge mitering,
+road surfaces and markings, geometry handles, end-handle re-attachment, the connector polyline
+and its intermediate points, the wedge mouth, the cubic reach, attachment stations, Link splits,
+the runtime limit, and deletion cascades. A reader looking for how markings are drawn had no
+reason to open a section named after lane ranges, and would not have found it from the contents.
+
+Split into five sections named for what each one holds:
+
+| Section | Lines |
+|---|---|
+| Connector lane ranges | 43 |
+| Lane edges, road surfaces and markings | 18 |
+| Geometry and end handles | 29 |
+| Connector shape: intermediate points and the mouth | 50 |
+| Attachment stations, Link edits and deletion | 27 |
+
+**Not a rewrite.** Only four heading lines and their blank lines were inserted; the prose was
+checked byte-for-byte against `git show HEAD:` with those eight lines stripped back out, and it
+is **identical**. The split points fall on existing paragraph breaks, so reading order is
+unchanged — what changed is that the contents now tells the truth about where things are.
+433 to 441 lines, the whole cost being the headings. No anchor link anywhere in the repo
+pointed into this file, so no link broke; the sweep confirms none dangling.
+
+**Still worth a later pass, deliberately not done here:** the paragraph now opening *Geometry
+and end handles* is 22 lines and mixes the re-attachment gesture with how a Connector's
+cross-section is built — two subjects in one block. Splitting it means rewriting sentences, not
+moving lines, which is a content change and belongs in its own session with the behaviour in
+front of it.
+
+**Verification:** prose identical to HEAD, no dangling links, size guard green, 23/23 CTest.
+No source file touched.
+
+---
+
+## 2026-09-17 — ROADMAP.md put back in sequence, and two stale status lines fixed
+
+`ROADMAP.md` opens by calling itself "**a sequence**, so that any session can see where it sits".
+It was not one. The M1 sub-milestones ran in the order they were *written*, so the carve-outs
+made under rule 2 had piled up wherever the session that carved them happened to stop:
+
+```
+before: ... M1.10 M1.11 M1.12 M1.11.1 M1.13 M1.14 M1.15 M1.16 M1.17 M1.12.1
+after:  ... M1.10 M1.11 M1.11.1 M1.12 M1.12.1 M1.13 M1.14 M1.15 M1.16 M1.17
+```
+
+Both misplaced entries are the two that are **still open**, which is the worst possible thing to
+bury: M1.11.1 sat behind a done M1.12, and M1.12.1 sat last in the file behind five done
+milestones, reading like the newest work rather than unstarted work. A carve-out is now filed at
+its number, and the M1 preamble says so, so the next one lands in the right place.
+
+**Two status lines were also simply wrong.** `ROADMAP.md` said "M1.1–M1.10 implementation is
+available" and `CLAUDE.md` said M1 "covers M1.1–M1.10 ... M1.11 adds body attachments; M1.12
+fixes both lane edges" — both written before M1.13–M1.17 shipped and never updated. A session
+starting from either would have believed five milestones of work did not exist. Both now name
+M1.1–M1.17 and, separately, the two open carve-outs. Note these are *not* a duplicated status
+table: each milestone's own state still lives only in its own section, and the preamble names
+which are open without restating why.
+
+**Verification:** all 21 M1 sections diffed body-for-body against `git show HEAD:` —
+`lost: set()`, `gained: set()`, `bodies differing: none`; everything outside the M1 block
+byte-identical; line count unchanged at 434 by the reorder, 440 after the corrected preamble;
+separator count unchanged at 14. 23/23 CTest, guards green. No source file touched.
+
+A first attempt scored two false differences here, because my checker split the file only on
+`### M1` and so let M2-M7 attach to whichever section came last. The file was fine; the check
+was wrong. Bound a section comparison at both ends, not just the start.
+
+---
+
+## 2026-09-17 — Documentation tidied: one archive folder, one naming rule
+
+Housekeeping only; no source file was touched. The docs tree had grown four archive files at
+the top level, named after the **day they were written** rather than the entries they hold, so
+`PROGRESS-archive.md` covered 09-14 to 09-16 while `PROGRESS-archive-2026-09-14.md` covered
+09-10 to 09-14 — overlapping ranges under names that implied the opposite. `PROGRESS.md` itself
+sat at exactly 500 lines, one line from failing hard rule 6, with a `## Log` tail of 2026-09-14
+entries that belonged in an archive.
+
+What changed:
+
+- Archives moved to `docs/archive/` and renamed for the range they **contain**:
+  `PROGRESS-2026-09-16.md` (7 entries), `PROGRESS-2026-09-14.md` (15),
+  `PROGRESS-2026-09-10--2026-09-15.md` (14), and `VISSIM_PARITY-2026-09-16.md`.
+- `PROGRESS.md`'s `## Log` tail moved into those archives whole. `PROGRESS.md` is now
+  **284 lines**, 216 of headroom, and its header lists the three archives as a table of
+  contents instead of a run-on sentence.
+- Relative links inside the moved files repointed one level up; a link sweep over every
+  `docs/**/*.md` and `CLAUDE.md` reports **no dangling targets**.
+
+**Verification:** all 36 archived entries were diffed body-for-body against `git show HEAD:`
+of the four source files — `lost: set()`, `gained: set()`, `bodies differing: []`. Nothing was
+edited or summarised, only relocated, which is what `PROGRESS.md`'s own rule requires.
+`trafficsim-check-file-sizes .` green; largest doc is now `docs/VISSIM_PARITY.md` at 491.
+
+**`VISSIM_PARITY.md` split, and the order was recoverable after all.** `git log -p --follow`
+on the file dates every 2026-09-16 follow-up by the commit that introduced it: `0a4f26e` 02:42,
+`c76b4f8` 03:48, `3c0766c` 04:23, `68ddf02` 07:44, `bb85a69` 08:40, `01a87f4` 09:53,
+`e81a591` 13:39, `a6b9ec8` 18:39, `a6d060a` 19:12. Two things fall out of that list:
+
+- The existing split was **already chronologically correct** — the archived block was exactly
+  the contiguous run 08:40-13:39, and the pointer sat precisely in the gap it left. My earlier
+  note that the order "is not recoverable from the headings alone" was right about the headings
+  and wrong about the conclusion; the history had it.
+- The `second`/`third`/`fourth` ordinals start at `second` only because the numbering was
+  picked up partway through a day that already had four unnumbered follow-ups. They are not a
+  competing ordering, which is what made them look like one.
+
+So the four 2026-09-16 follow-ups before 08:40 moved into the archive whole, keeping it one
+contiguous run 02:42-13:39. `VISSIM_PARITY.md` is **403 lines** (was 491, 9 from the guard);
+the archive is 147. The archive header now records the recovered order with its commits, so
+the next session does not have to re-derive it.
+
+**Verification:** all 19 sections diffed body-for-body against `git show HEAD:` of both files —
+`lost: set()`, `gained: set()`, `bodies differing: []`. Link sweep clean; size guard green
 
 ---
 
@@ -280,221 +402,3 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D19b | 2026-09-14 | **Load errors carry a code on a typed exception, not a formatted message** | The shell already translates `EDIT_*` codes by locale key (`EditorWindow::showError`); the simulation window instead concatenated `e.what()`, which is how nlohmann's text reached a user running `--language th`. `ScenarioLoadError` carries file, code and detail separately so the shell can translate, show the path, and offer an action, while an unknown parser detail still falls back to raw text rather than a blank dialog. One error channel, one lookup, two windows. | If load errors ever need structured per-object issues the way `ValidationError` does, promote the code to an issue list rather than growing the string. |
 | D19d | 2026-09-14 | **Error codes are resolved in exactly one place per window; no caller formats `what()` itself** | The first cut of D19b gave `ScenarioLoadError` a code but left three callers printing `what()`, which for a classification failure *is* the bare code — so `--scenario` on an editor project went from an unreadable nlohmann string to an unreadable identifier. Worse, not better: the user lost the one sentence the old message did contain. `MainWindow::explain` and `EditorWindow::openFileOrReport` are now the only places a code becomes text, and startup no longer dies on a file it could have explained. | If a third window appears, the two `text()` lookups become genuine duplication and should be hoisted to a shared locale helper rather than copied a third time. |
 | D19c | 2026-09-14 | **The parity review books three milestones and deliberately leaves seven gaps unbooked** | `VISSIM_PARITY.md` §6 ranks ten gaps; only in-editor Run, the sidebar/gesture set and levels/display types are carved into `ROADMAP.md`. The rest — editable object tables, group drag, and the absent Vissim object types (priority rules, stop signs, reduced speed areas, conflict areas) — need engine behaviour that does not exist yet. Booking authoring for an object the core cannot honour would invite a user to believe it is modelled, and would put a date on work whose prerequisites are unscheduled. Recording them without a milestone keeps the roadmap true (`ROADMAP.md` rule 2) while keeping the finding. | When M3 lands right-of-way, conflict areas and priority rules stop being unhonourable and should be booked immediately — the review section is the list to work from. |
-
----
-
-## Log
-
-### 2026-09-14 — packaging workflow fixed: an action major that does not exist
-
-The manually dispatched **Package binaries** run on `main` failed. The Windows x64 job died in
-*Prepare all required actions*, before checkout or any compilation:
-
-```
-Unable to resolve action `jurplel/install-qt-action@v5`, unable to find version `v5`
-```
-
-Cause: `26d7399` ("ci: bump actions to Node 24 majors") rewrote five action references from
-`@v4` to `@v5` across both workflows. Three were right — `actions/checkout@v5` and
-`actions/upload-artifact@v5` are real Node 24 majors. **One was wrong: `jurplel/install-qt-action`
-has no `v5`.** The bump was applied by pattern rather than by checking each action's own tags.
-Reverted that one reference to `@v4`, with a comment naming this commit so the next
-bump-everything pass does not redo it. The `actions/*` majors are left at `v5`.
-
-Two things this was **not**: it was not M1.5, and it was not the main CI. `Native C++` is green
-on all four jobs for `eb64079` — `linux (desktop)`, `linux (headless)`, `linux (release)` and
-`windows-core` on MSVC — each running `--target check`, so the full suite passed on Windows too.
-`native.yml` survived the same bump only because its Windows job uses vcpkg and never installs
-Qt. The evidence that `@v4` works is in this repository: the packaging run 16 minutes earlier,
-at `cf170d9`, built, tested, `windeployqt`-bundled and uploaded a Windows archive with it.
-
-Also corrected a misplaced include found while tracing this: `src/editor/canvas_select.cpp`
-uses `QLineF` for the rubber-band segment/rectangle test but did not include it, while
-`src/editor/canvas.cpp`, which does not use it, did. It compiled only through transitive
-inclusion from `<QGraphicsView>`. Moved to the file that uses it. No behaviour change.
-
-**Verification:** 17/17 desktop CTest and 13/13 headless after the include move, `check` target
-clean, `package.yml` parses. **The workflow fix itself is only proven by re-dispatching
-Package binaries on `main`** — action resolution happens on GitHub's runners and nothing local
-reproduces it.
-
-### 2026-09-14 — M1.5 inspection and diagnostics implemented (D18)
-
-Added a bottom Objects dock with Links, Connectors, Signal heads and Problems tables. Rows
-are assembled on read from the document, carry the object ID they name, and select and frame
-that object; the canvas selection is mirrored back into the tables. No selection state is
-stored twice.
-
-Canvas selection became an ordered list with the last-added object as primary. Ctrl- or
-Shift-click toggles, and a drag on empty space rubber-bands links and connectors in network
-order. `selected()` still returns the primary, so every existing single-object gesture —
-vertex drags, point insertion and removal, connector endpoint locks, lane and split edits —
-behaves exactly as before; the `editor-ui` and `connector-ui` suites pass unchanged.
-**Group geometry dragging is deliberately not implemented**; property edits act on the
-primary alone and say so. `deleteObjects` removes any number of links and connectors as one
-History entry that one Undo restores whole, skipping IDs a link's own cascade already took.
-
-Diagnostics are now structured and navigable. `validateNetwork` and `validateScenario` still
-emit index paths; a model-layer resolver derives link, lane, connector and head IDs from
-them on read, so `src/core/` was not touched at all. A rejected edit no longer throws its
-`ValidationError::issues` away — they fill the Problems tab with the objects they name, and
-selecting a row jumps to it. Runnability is separate and non-blocking: **Check runnability**
-compiles the document and lists what the M0 core cannot run, such as an authored merge,
-without blocking that edit or any later one. `compileScenario` was split so diagnostics can
-assemble a scenario without throwing; its validate→build→validate order is unchanged.
-
-A drawing with no demand is still checked for topology against a probe definition, with
-demand findings dropped as meaningless rather than shown. Vehicle-type and behaviour
-references are withheld with an explicit row when no catalog is loaded (D18d) instead of
-being reported as unknown. 51 locale strings were added in both English and Thai, including
-the 8 draft codes and 17 runtime codes that previously had no message at all.
-
-**Verification:** GCC 13.3, Qt 6.4.2, nlohmann/json 3.11.3, CMake 3.28.3 on Linux. The
-unchanged base first passed all 15 desktop CTest suites; the extended tree passes **17/17**
-desktop and **13/13** on the independent Qt-free headless build. There are 57 named native
-cases, including 8 new `diagnostics` cases and 3 new `editor` cases. The new `tables-ui`
-suite drives real mouse and keyboard gestures: table-row selection, Ctrl-click, rubber
-banding, cancelled and confirmed multi-delete with a single Undo, a rejected edit populating
-Problems, jump-to-object from both a draft and a runtime row, and Thai tabs, headers and
-messages. `TEST(diagnostics, every_emitted_code_has_a_translation)` derives its code list
-from the validators rather than a hand-kept list. The four TS baselines, the trajectory
-digest, seeded replay and the exact `29.24935` CLI pin still pass. Architecture and negative
-fixtures, the 500-line budget and whitespace checks pass. A Thai screenshot at 1280×900 was
-visually inspected.
-
-**Not claimed:** no simulation, physics, right-of-way or demand behaviour changed. A clean
-runnability check means the M0 core accepts the topology — it is not a fidelity claim, and
-the not-yet-validated marker stands. These are local Linux results; Windows and macOS GUI
-execution are not established by them. M1.3.1, M1.5.1, M1.6, M1.7 and the owner's M0 and M1
-acceptance gates all remain open.
-
-### 2026-09-14 — hot path 5: OccupiedSpan carries a segment index, not a segment name
-
-After the previous slices, string copying was the largest remaining cost in the profile
-(`_M_construct` 9.6%, string move-assign 5.5%, move-construct 4.2%). `OccupiedSpan::segmentId`
-was the main source: a span is rebuilt for every vehicle on every tick, and since the
-segment-bucketing slice nothing in `src/` read the field — `closestVehicle` uses
-`segmentIndex`. The only reader left in the whole repository was one test assertion.
-
-Dropping the string also removes a duplicated source of truth (hard rule 3): `segmentId` and
-`segmentIndex` were two representations of the same fact, kept in step by hand. Callers that
-want the name resolve it with `scenario.segments[segmentIndex].id`.
-
-**This is an internal API shape change to `OccupiedSpan`**, recorded here deliberately rather
-than slipped in: no observable output changes, `core/` has no consumers outside this
-repository, and the compiler finds every use. `render/` and `eval/` never touched the field.
-
-**Measured** (Release, GCC 13.3, median of 5): a uniform **-5.5%** across every network size;
-1.499 s -> **1.416 s** at 466 vehicles. **The gain was much smaller than the 15-20% predicted
-when this item was ranked.** The reason is short-string optimisation: ids like `road` and
-`a0-1` fit inline, so the copies were never heap allocations, only inline byte moves. The
-prediction was wrong in the plan and is corrected here so the mistake is not repeated.
-
-Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
-value pin, plus 12 multi-seed multi-size CLI runs byte-identical to the pre-session binary.
-
-**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
-
-### 2026-09-14 — hot path 4: pending-vehicle insertion stops rebuilding every span
-
-The pending-vehicle loop called `occupiedSpans` over the whole vehicle list **once per
-candidate**, which was 42% of all span construction (122,061 of 288,400 `appendSpans` calls in
-the profile). Spans and their buckets are now built once per tick and extended in place:
-`appendVehicleSpans` adds exactly the spans a full rebuild would have appended for the newly
-inserted vehicle, and the bucket fill is stable, so the grown structures are identical to what
-a rebuild produced. Equivalence again rests on order, not on arithmetic.
-
-**A first attempt built the structures unconditionally before the loop and was measurably
-worse on small networks** — +21% at one corridor, +16% at four — because most ticks have no
-arrival at all and previously did no span work whatsoever. Building lazily, only once a
-candidate has survived the source filter, removes that cost: small networks return to parity
-(+0.3% to +1.3%, inside run-to-run noise) and large ones keep the gain. The regression and its
-cause are recorded here because the obvious eager version looks correct and is not.
-
-**Measured** (Release, GCC 13.3, median of 5, identical commands):
-0.028/0.049/0.117/0.292/0.670/**1.499 s** for 1/2/4/8/16/32 corridors — **-29.6% against the
-previous slice at 466 vehicles**. Growth is now about **O(V^1.2)**.
-
-Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
-value pin, plus 12 multi-seed multi-size CLI runs byte-identical to the pre-session binary.
-
-**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
-
-### 2026-09-14 — PROGRESS.md split, oldest entries archived
-
-`PROGRESS.md` reached 513 lines and failed the 500-line budget (hard rule 6). Following this
-file's own instruction, the naming-era entries of 2026-09-10/11 were moved **whole** into a new
-`docs/PROGRESS-archive.md`; nothing was edited or summarised. `Next`, the backlog, the open
-questions and the decision table all stay here, so a session with no memory still reads one
-file to rejoin the work. The naming history those entries carry is already summarised in the
-D9-D11 rows, which were not moved.
-
-### 2026-09-14 — hot path 3/3: scenario lookups resolved once per tick
-
-After the first two slices, string handling was still about half of all instructions, almost
-all of it `detail::byId` doing a linear scan with an `std::string` compare per element. The
-fix is to call it far less often rather than to make it cleverer:
-
-- `resolveRefs` resolves each vehicle's route, type and behaviour **once per tick** into
-  indices, replacing roughly six lookups per vehicle across the step loop, `occupiedSpans`
-  and `locateVehicle`.
-- `ScenarioIndex::routeHeads` precomputes, per route, the signal heads actually on it with the
-  station of the first matching part — replacing an `std::find_if` over route parts with a
-  string compare, run per head per vehicle per tick.
-- `ScenarioIndex::programOfHead` plus a per-tick `headColors` vector evaluates each head's
-  colour once per tick instead of once per head per vehicle; colour depends only on the tick's
-  time, so every vehicle was recomputing the same answer.
-- `locateOnParts` lets the step loop reuse the parts it already holds instead of looking the
-  route up again.
-
-Equivalence rests on order again: `routeHeads` is built in `signalHeads` order and records only
-the first matching part, so each vehicle sees an identical sequence of heads and stations, and
-the `allowedDistance`/leader updates fold in the same order as before. `byId` itself is
-unchanged and still linear; it is simply no longer on the per-vehicle path.
-
-**Measured** (Release, GCC 13.3, median of 3, identical commands):
-0.028/0.048/0.117/0.298/0.740/**2.130 s** for 1/2/4/8/16/32 corridors — **-43% against the
-previous slice at 466 vehicles**. Growth is now about **O(V^1.3-1.5)**.
-
-**Cumulative for the three slices: 17.724 s -> 2.130 s at 466 vehicles, -88%**, and
-0.067 s -> 0.028 s on the single-corridor case. Total instruction count on the profiling
-scenario fell from 3.31 G to well under 1 G.
-
-Behaviour unchanged throughout: 12/12 headless CTest including the trajectory digest and the
-exact `29.24935` CLI pin, plus 12 multi-seed multi-size CLI runs byte-identical to the
-pre-session binary at every slice.
-
-**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
-
-### 2026-09-14 — hot path 2/3: leader search grouped by segment
-
-`closestVehicle` scanned every occupied span for every route part of every vehicle on every
-tick, rejecting non-matching ones with an `std::string` segment comparison. That nested scan
-was 39% of total instructions and carried the quadratic growth term.
-
-Spans are now grouped by segment in a flat CSR layout (`start` offsets plus an `items` index
-array), so a vehicle only ever looks at spans on the segments its own route actually uses.
-`RoutePart` and `OccupiedSpan` carry a resolved `segmentIndex`, recovered during index
-construction from the segment's address in the contiguous `segments` vector, so grouping needs
-no string hashing. CSR rather than a vector-per-segment keeps this to three allocations
-instead of one per segment, which matters because the pending-vehicle loop regroups per
-candidate.
-
-**Order is the correctness argument.** The bucket fill is stable, so each segment's spans keep
-their original relative order, and the outer loop still walks route parts in order. The set and
-sequence of spans that survive to the `gap < nearest->gap` test is therefore exactly what the
-full scan produced, and that strict comparison keeps first-encountered-wins tie-breaking
-unchanged. The dropped `span.segmentId != part.segmentId` test is now implicit in the bucket.
-
-**Measured** (Release, GCC 13.3, median of 3, identical commands):
-0.031/0.058/0.152/0.433/1.196/**3.731 s** for 1/2/4/8/16/32 corridors — **-67% against the
-previous slice at 466 vehicles, -78.9% against the session baseline of 17.724 s**. Growth fell
-from O(V^1.85) to about **O(V^1.6)**. The residual superlinear term is the per-candidate
-`occupiedSpans` rebuild and the per-vehicle signal-head scan, both untouched here.
-
-Behaviour unchanged: 12/12 headless CTest including the trajectory digest and the exact CLI
-value pin, plus the same 12 multi-seed multi-size CLI runs byte-identical to the pre-session
-binary.
-
-**Verification:** headless preset only; Qt absent, so no desktop verification is claimed.
-
