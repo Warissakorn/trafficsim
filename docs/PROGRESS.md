@@ -35,11 +35,26 @@ of the four source files — `lost: set()`, `gained: set()`, `bodies differing: 
 edited or summarised, only relocated, which is what `PROGRESS.md`'s own rule requires.
 `trafficsim-check-file-sizes .` green; largest doc is now `docs/VISSIM_PARITY.md` at 491.
 
-**Left alone deliberately:** `VISSIM_PARITY.md` is 9 lines from the guard and should be split
-next, but its 2026-09-16 follow-ups are numbered `second`/`third`/`fourth` in the archive and
-unnumbered in the live file, so the true order is not recoverable from the headings alone.
-Splitting it on a guess would scramble a record. Recover the order from `git log -p` on that
-file first, then move the four 2026-09-16 blocks (lines 317-407) below the existing pointer.
+**`VISSIM_PARITY.md` split, and the order was recoverable after all.** `git log -p --follow`
+on the file dates every 2026-09-16 follow-up by the commit that introduced it: `0a4f26e` 02:42,
+`c76b4f8` 03:48, `3c0766c` 04:23, `68ddf02` 07:44, `bb85a69` 08:40, `01a87f4` 09:53,
+`e81a591` 13:39, `a6b9ec8` 18:39, `a6d060a` 19:12. Two things fall out of that list:
+
+- The existing split was **already chronologically correct** — the archived block was exactly
+  the contiguous run 08:40-13:39, and the pointer sat precisely in the gap it left. My earlier
+  note that the order "is not recoverable from the headings alone" was right about the headings
+  and wrong about the conclusion; the history had it.
+- The `second`/`third`/`fourth` ordinals start at `second` only because the numbering was
+  picked up partway through a day that already had four unnumbered follow-ups. They are not a
+  competing ordering, which is what made them look like one.
+
+So the four 2026-09-16 follow-ups before 08:40 moved into the archive whole, keeping it one
+contiguous run 02:42-13:39. `VISSIM_PARITY.md` is **403 lines** (was 491, 9 from the guard);
+the archive is 147. The archive header now records the recovered order with its commits, so
+the next session does not have to re-derive it.
+
+**Verification:** all 19 sections diffed body-for-body against `git show HEAD:` of both files —
+`lost: set()`, `gained: set()`, `bodies differing: []`. Link sweep clean; size guard green
 
 ---
 
