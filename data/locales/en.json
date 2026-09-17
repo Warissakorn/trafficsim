@@ -276,8 +276,8 @@
   "EDIT_CONNECTOR_POSITION": "Connector position must be a finite distance in metres between the start and the end of its link.",
   "EDIT_CREATION_TARGET": "No object was created. Draw a link with a nonzero length, or release the connector on a visible target link.",
   "EDIT_SPLIT_ATTACHMENT": "The split would cut through a connector attachment. Move the split at least 0.1 m away from that position.",
+  "EDIT_NO_PRIORITY_DEFAULTS": "This network has a connector arriving inside a link body, which is a merge, and the gap time and headway that arbitrate it could not be read from the data directory. Drawing, saving and editing are supported; Run needs data/priority-rules/ to be present.",
   "UNSUPPORTED_CONNECTOR_POSITION": "This connector leaves a link body too close to the end of the lane, or to another connector on the same lane, to leave a section either side of it. Drawing, saving and editing are supported; move it at least 0.2 m clear to run it.",
-  "UNSUPPORTED_ATTACHED_TARGET": "This connector arrives within a link body, so it and the lane upstream of the arrival both feed the same place. Drawing, saving and editing are supported; the simulation core has no merge arbitration yet, so Run is blocked.",
   "TIGHT_CONNECTOR_RADIUS": "This connector turns tighter than its own width, so no vehicle could follow it. The drawing is kept and Run is not blocked; widen the turn or move the attachments apart.",
   "EDIT_COPY_TARGET": "Place copied Connector endpoints or signal heads on existing lanes at the same level. No objects were copied. Select both parent Links to copy the whole connection.",
   "EDIT_MOVE_TARGET": "Select at least one Link to move. Connectors and signal heads ride the Links they attach to, so they move with them."

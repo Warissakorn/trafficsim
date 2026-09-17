@@ -82,27 +82,153 @@ TEST(attachments, split_remaps_both_source_and_target_and_rejects_cut_through_at
     }
 }
 // Was `draft_and_run_diagnostics_do_not_silently_run_wrong_lane_lengths`, which asserted that an
-// interior attachment of EITHER kind is refused. M1.11.1 makes the source half runnable, so the
-// test now pins the half that is still refused, and pins the reason: a Connector arriving inside a
-// lane body is a merge, and the row must name the Connector rather than leaving the author with
-// the core's generic segments.<id> finding.
-TEST(attachments, an_interior_target_attachment_is_blocked_by_a_row_that_names_the_connector) {
+// interior attachment of either kind is refused, then briefly asserted the target half was still
+// refused. M3.1 supplied the arbitration, so both halves run and this pins the whole thing: a
+// Connector arriving inside a lane body compiles, and the merge it makes carries a derived
+// priority rule rather than being accepted silently.
+TEST(attachments, an_interior_target_attachment_runs_and_its_merge_is_arbitrated) {
     auto d=roads(DrivingSide::left);const auto id=addConnector(d,{"a","a1",at(d,"a",.5)},{"b","b1",at(d,"b",.5)});
-    const auto diagnostics=documentDiagnostics(d);
-    // The forcing: the target really is inside the body, so this is the interior case and not a
-    // connector that was quietly snapped to the link start.
+    // The forcing: the target really is inside the body. A connector quietly snapped to the link
+    // start would make everything below true without a merge existing at all.
     CHECK(!attachedAtLinkEnd(d.network,connector(d,id).to,false));
-    CHECK(std::any_of(diagnostics.begin(),diagnostics.end(),[&](const auto& row){return row.code=="UNSUPPORTED_ATTACHED_TARGET" && row.selectId==id;}));
-    // And the object-linked row arrives INSTEAD of the generic one, not beside it: a row the
-    // author cannot click is what this code exists to avoid.
-    CHECK(std::none_of(diagnostics.begin(),diagnostics.end(),[](const auto& row){return row.code=="UNSUPPORTED_MERGE";}));
+    CHECK(connectorRuntimeIssues(d.network).empty());
     const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
     validateDocument(d);
-    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_ATTACHED_TARGET");
+    const auto snapshot=compileDocument(d,test::root()/"data");
+    // b1 is cut, and the arriving path continues DOWNSTREAM of the cut -- the vehicle joins at
+    // the drawn metre and never travels the stretch above it.
+    const auto segment=[&](const std::string& sid)->const Segment& {
+        for(const auto& s:snapshot.scenario.segments)if(s.id==sid)return s;
+        throw std::invalid_argument("UNKNOWN_SEGMENT: "+sid);
+    };
+    CHECK(segment(id).next==std::vector<std::string>({"b1/sec-2"}));
+    // The merge is arbitrated, not waved through: the Connector gives way to the lane it joins.
+    CHECK(snapshot.scenario.priorityRules.size()==1);
+    const auto& rule=snapshot.scenario.priorityRules.front();
+    CHECK(rule.yieldSegmentId==id);CHECK(rule.conflictSegmentId=="b1");
+    test::near(rule.gapTime,3.0,1e-12);test::near(rule.headway,7.0,1e-12);
+    // And the merge would NOT have validated without it -- which is what makes the rule load
+    // bearing rather than decorative.
+    auto unarbitrated=snapshot.scenario;unarbitrated.priorityRules.clear();
+    test::throws([&]{assertValidScenario(unarbitrated);},"UNSUPPORTED_MERGE");
+    CHECK(validateScenario(snapshot.scenario).empty());
+    // A route arriving part way along b1 travels only the part below the arrival.
+    for(const auto& r:snapshot.scenario.routes)if(r.id==route)
+        CHECK(r.segmentIds==std::vector<std::string>({"a1",id,"b1/sec-2"}));
     const auto before=documentJson(d);History h;h.reset(d);
     test::throws([&]{h.execute("move station",[&](auto& m){changeConnectorEndpoints(m,id,{"a","a1",at(d,"a",.3)},{"b","b1",at(d,"b",.5)});});},"EDIT_REFERENCED_CONNECTOR");
     CHECK(documentJson(h.document())==before);
 }
+// The numbers that arbitrate a derived merge are data. Their absence must block Run -- a zero gap
+// time is a merge nobody gives way at -- but it must NOT block an edit, which is D18b's boundary.
+TEST(attachments, a_merge_without_its_data_catalog_blocks_run_but_not_editing) {
+    auto d=roads(DrivingSide::left);const auto id=addConnector(d,{"a","a1",at(d,"a",.5)},{"b","b1",at(d,"b",.5)});
+    const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
+    // The forcing: this network really does need a derived rule, and really does have one when
+    // the catalog is there.
+    CHECK(compileDocument(d,test::root()/"data").scenario.priorityRules.size()==1);
+    const auto rows=priorityDefaultsIssues(d.network,{});
+    CHECK(rows.size()==1);CHECK(rows.front().code=="EDIT_NO_PRIORITY_DEFAULTS");
+    CHECK(rows.front().path=="connectors[0]");
+    // Editing is untouched: a missing catalog is not a reason to refuse a drawing.
+    History h;h.reset(d);
+    h.execute("shape",[&](auto& m){changeGeometry(m,"a",{{0,1},{30,1},{80,11}});});
+    CHECK(h.canUndo());h.undo();
+    validateDocument(d);
+    // And a network with no merge needs no numbers at all.
+    auto plain=roads(DrivingSide::left);addConnector(plain,{"a","a1",at(plain,"a",.5)},{"b","b1",0});
+    CHECK(priorityDefaultsIssues(plain.network,{}).empty());
+    (void)id;
+}
+// M1.11.1's done-condition, the half M3.1 unblocked: a vehicle ENTERS at the drawn station.
+TEST(attachments, a_vehicle_enters_a_lane_at_the_drawn_station_and_gives_way) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=roads(side);
+        d.network.links[0].geometry={{0,0},{100,0}};d.network.links[1].geometry={{140,0},{240,0}};
+        const auto id=addConnector(d,{"a","a1",100},{"b","b1",40});
+        const auto table=runtimeSections(d.network);
+        // The forcing: the arrival cut really is at the drawn metre, so "enters there" has a
+        // place to mean. Without this the distance below could be right by coincidence.
+        const auto& joined=sectionStartingAt(table,"b1",40);
+        test::near(joined.start,40,1e-9);
+        CHECK(joined.id=="b1/sec-2");
+        test::near(joined.end-joined.start,60,1e-9);
+        // The upstream part of b1 is the major approach, and it keeps its own 40 m.
+        test::near(sectionForStation(table,"b1",0).end,40,1e-9);
+        const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
+        const auto snapshot=compileDocument(d,test::root()/"data");
+        // The arriving route's total is 100 m of a1, the connector, and 60 m of b1 -- not 140.
+        double total=0;
+        for(const auto& r:snapshot.scenario.routes)if(r.id==route)
+            for(const auto& sid:r.segmentIds)for(const auto& seg:snapshot.scenario.segments)
+                if(seg.id==sid)total+=seg.length;
+        const double connectorLength=[&]{
+            for(const auto& seg:snapshot.scenario.segments)if(seg.id==id)return seg.length;
+            throw std::invalid_argument("UNKNOWN_SEGMENT");}();
+        test::near(total,100+connectorLength+60,1e-9);
+        // It runs, it replays, and vehicles get through.
+        CHECK(runSimulation(snapshot.scenario,42).completed>0);
+        const auto stream=[&](std::uint32_t seed){
+            std::vector<SimEvent> out;
+            runSimulation(snapshot.scenario,seed,[&](const auto& e){out.push_back(e);},true);
+            return out;};
+        CHECK(stream(42)==stream(42));
+    }
+}
+// The structural half of the merge is not the point of it. This drives the compiled scenario and
+// watches an arriving vehicle actually hold at the end of the Connector while the lane it is
+// joining is occupied.
+TEST(attachments, an_arriving_vehicle_holds_at_the_connector_while_the_lane_is_occupied) {
+    auto d=roads(DrivingSide::left);
+    d.network.links[0].geometry={{0,0},{100,0}};d.network.links[1].geometry={{140,0},{240,0}};
+    const auto id=addConnector(d,{"a","a1",100},{"b","b1",40});
+    const auto arriving=putRoute(d,{"arriving",{"a1",id,"b1"}});
+    const auto major=putRoute(d,{"major",{"b1"}});
+    putInput(d,{"",arriving,"car",600,0,60});
+    const auto scenario=compileDocument(d,test::root()/"data").scenario;
+    const auto length=[&](const std::string& sid){
+        for(const auto& seg:scenario.segments)if(seg.id==sid)return seg.length;
+        throw std::invalid_argument("UNKNOWN_SEGMENT");};
+    // Route coordinates: the arriving vehicle's stop line is at 100 m of a1 plus the Connector.
+    const double stopLine=100+length(id);
+    const auto place=[&](std::uint64_t vid,const std::string& route,double distance,double speed){
+        Vehicle v;v.id=vid;v.distance=distance;v.speed=speed;
+        v.inputId="input";v.routeId=route;v.vehicleTypeId="car";v.desiredSpeed=15;v.driverFactor=.5;
+        return v;};
+    // A major vehicle 20 m short of the conflict point at 40 m, moving slowly enough that it
+    // stays inside the three-second gap time for several seconds.
+    auto state=test::withVehicles(scenario,{place(1,arriving,stopLine-3,0),
+                                            place(2,major,20,5)});
+    const auto distanceOf=[](const SimState& st,std::uint64_t vid){
+        for(const auto& v:st.vehicles)if(v.id==vid)return v.distance;
+        return -1.0;};
+    // The forcing: the major vehicle really is approaching the conflict point, and really is on
+    // the major approach rather than already past it.
+    CHECK(distanceOf(state,2)<40);
+    bool majorWasApproaching=false;
+    for(int i=0;i<40;++i) {
+        state=stepSimulation(state);
+        const double behind=distanceOf(state,2);
+        if(behind>0 && behind<40) {
+            majorWasApproaching=true;
+            // Held at the stop line, never over it, while the lane it joins is occupied.
+            CHECK(distanceOf(state,1)<=stopLine+1e-9);
+        }
+    }
+    CHECK(majorWasApproaching);
+    // And with the lane clear, the same vehicle from the same place crosses into it.
+    // And with the lane clear, the same vehicle from the same place crosses into it. Checked
+    // DURING the run, not after: it goes on to finish the route and leave the network, and a
+    // departed vehicle has no distance to compare.
+    auto clear=test::withVehicles(scenario,{place(1,arriving,stopLine-3,0)});
+    bool crossed=false;
+    for(int i=0;i<80 && !crossed;++i) {
+        clear=stepSimulation(clear);
+        if(distanceOf(clear,1)>stopLine)crossed=true;
+    }
+    CHECK(crossed);
+}
+
 // M1.11.1. A Connector leaving a lane body cuts that lane in two, because the engine's Segment is
 // a whole traversable length: a vehicle turning off at 25 m must travel 25 m of the lane, not 100.
 TEST(attachments, an_interior_source_attachment_compiles_to_two_sections_of_the_drawn_lengths) {

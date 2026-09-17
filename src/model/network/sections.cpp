@@ -50,6 +50,15 @@ RuntimeSections runtimeSections(const Network& network) {
             departures.push_back({station, p});
             cuts.push_back({station, p});
         }
+        // A path ARRIVING inside this lane's body cuts it too, so the vehicle it delivers joins
+        // at the drawn metre rather than at the start of the lane. It is not a departure: nothing
+        // leaves the lane here, and the merge it creates is arbitrated by a priority rule.
+        for (std::size_t p = 0; p < table.paths.size(); ++p) {
+            const auto& to = table.paths[p].to;
+            if (to.laneId != lane.id || attachedAtLinkEnd(network, to, false)) continue;
+            cuts.push_back({matchedStation(link.geometry, geometry,
+                                           attachmentStation(network, to, false)), p});
+        }
         // Stable, so two attachments at the same station keep the order their connectors were
         // authored in. No unordered container touches this: replay depends on it.
         std::stable_sort(cuts.begin(), cuts.end(),
@@ -87,7 +96,10 @@ RuntimeSections runtimeSections(const Network& network) {
             const auto geometry = laneGeometry(link, path.to.laneId, network.drivingSide);
             station = matchedStation(link.geometry, geometry, attachmentStation(network, path.to, false));
         }
-        table.pathNext.push_back(sectionForStation(table, path.to.laneId, station).id);
+        // The section that STARTS here, not the one that ends here. An arriving vehicle continues
+        // downstream of the cut; sectionForStation resolves upstream, which is right for a signal
+        // head standing on the cut and wrong for a vehicle joining at it.
+        table.pathNext.push_back(sectionStartingAt(table, path.to.laneId, station).id);
     }
     return table;
 }
@@ -103,6 +115,33 @@ const LaneSection& sectionForStation(const RuntimeSections& table, const std::st
     if (last) return *last;
     throw std::invalid_argument("UNKNOWN_LANE");
 }
+const LaneSection& sectionStartingAt(const RuntimeSections& table, const std::string& laneId,
+                                     double laneStation) {
+    const LaneSection* last = nullptr;
+    for (const auto& section : table.sections) {
+        if (section.laneId != laneId) continue;
+        if (section.start >= laneStation - 1e-9) return section;
+        last = &section;
+    }
+    if (last) return *last;
+    throw std::invalid_argument("UNKNOWN_LANE");
+}
+namespace {
+// The section of `laneId` that `fromId` leads to, or empty when it leads nowhere on that lane.
+std::string successorOnLane(const RuntimeSections& table, const std::string& fromId,
+                            const std::string& laneId) {
+    const auto onLane = [&](const std::string& id) {
+        return std::any_of(table.sections.begin(), table.sections.end(),
+                           [&](const auto& s) { return s.id == id && s.laneId == laneId; });
+    };
+    for (std::size_t p = 0; p < table.paths.size(); ++p)
+        if (table.paths[p].id == fromId && onLane(table.pathNext[p])) return table.pathNext[p];
+    for (const auto& section : table.sections)
+        if (section.id == fromId)
+            for (const auto& next : section.next) if (onLane(next)) return next;
+    return {};
+}
+}
 std::vector<std::string> expandRouteSegments(const RuntimeSections& table,
                                              const std::vector<std::string>& authored) {
     std::vector<std::string> result;
@@ -114,7 +153,17 @@ std::vector<std::string> expandRouteSegments(const RuntimeSections& table,
             result.push_back(authored[i]);
             continue;
         }
-        for (auto it = start; it != table.sections.end() && it->laneId == start->laneId; ++it) {
+        // A route ARRIVING part way along a lane joins at that section, not at the lane's start:
+        // the vehicle never travels the stretch upstream of where it came in. Ask the segment
+        // just emitted where it leads on this lane, and begin there.
+        auto from = start;
+        if (!result.empty()) {
+            const auto joined = successorOnLane(table, result.back(), start->laneId);
+            if (!joined.empty())
+                from = std::find_if(table.sections.begin(), table.sections.end(),
+                                    [&](const auto& s) { return s.id == joined; });
+        }
+        for (auto it = from; it != table.sections.end() && it->laneId == start->laneId; ++it) {
             result.push_back(it->id);
             if (i + 1 == authored.size()) continue; // The route ends on this lane: travel all of it.
             // Stop where the route leaves. Running off the end instead leaves the last section's
@@ -142,6 +191,32 @@ std::vector<Segment> authoringSegments(const RuntimeSections& table) {
         }
     }
     return result;
+}
+std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
+                                               const PriorityDefaults& defaults) {
+    std::vector<PriorityRule> rules;
+    for (std::size_t p = 0; p < table.paths.size(); ++p) {
+        // An arriving path whose successor section does not start at 0 arrived inside the body,
+        // so it and the section upstream of the arrival both feed that section: a merge.
+        const auto joined = std::find_if(table.sections.begin(), table.sections.end(),
+            [&](const auto& s) { return s.id == table.pathNext[p]; });
+        if (joined == table.sections.end() || joined->start <= 0) continue;
+        const auto upstream = std::find_if(table.sections.begin(), table.sections.end(),
+            [&](const auto& s) { return s.laneId == joined->laneId && s.end == joined->start; });
+        if (upstream == table.sections.end()) continue;
+        // Deliberately does NOT throw when the defaults are unset: buildScenario is documented as
+        // unchecked assembly for diagnostics that must not throw, and a missing data catalog must
+        // not block an EDIT (D18b). The zero gap time that would result -- a merge nobody gives
+        // way at -- is refused on the Run path instead, by priorityDefaultsIssues.
+        // The arriving Connector gives way to the traffic already on the lane. Its stop line is
+        // at its own downstream end; the conflict point is where the upstream section ends, which
+        // is the drawn station.
+        rules.push_back({"give-way/" + table.paths[p].id,
+                         table.paths[p].id, polylineLength(table.paths[p].geometry),
+                         upstream->id, upstream->end - upstream->start,
+                         defaults.gapTime, defaults.headway});
+    }
+    return rules;
 }
 SignalHead rebaseHead(const RuntimeSections& table, const NetworkSignalHead& head) {
     // A connector-mounted head names a path, which is never sectioned, so it passes through.

@@ -51,10 +51,10 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.17 are implemented, including the M1.3.1 and M1.5.1 carve-outs. **M1.11.1 is
-half implemented** — a Connector leaving a lane body runs; one arriving on a lane body is a merge
-and waits on M3.1. **M1.12.1 is not started** (a Connector's own lane widths and markings). The
-owner acceptance in M1.7 also remains open, and M1 is not closed until its timed gate passes.
+**Status:** M1.1–M1.17 are implemented, including the M1.3.1, M1.5.1 and **M1.11.1** carve-outs.
+**M1.12.1 is not started** (a Connector's own lane widths and markings). The owner acceptance in
+M1.7 also remains open, and M1 is not closed until its timed gate passes — no amount of merged
+code closes it.
 
 **Sub-milestones below are in numeric order, which is the order they belong in.** A carve-out
 made under rule 2 is filed at its number, not at the end — M1.11.1 sits inside M1.11 and M1.12.1
@@ -214,31 +214,34 @@ internal Connector lane topology or close the owner's usability gate.
 
 ### M1.11.1 — Compile interior attachments into runtime lane sections
 
-**Half implemented.** `runtimeSections` cuts each lane at the stations where Connectors attach to
-its body and `buildScenario` compiles the pieces, so a Connector **leaving** a lane body now runs:
-the vehicle travels the drawn partial distance, authored routes expand from whole lanes to the
-chain of sections they travel, signal heads rebase onto the section they stand on, and both render
-sites draw against the same table. Replay is unchanged and the four frozen baselines still pass,
-because a lane with nothing attached to its body compiles to exactly the `Segment` it always did —
-`sectionId(laneId, 0)` is `laneId`.
+**Implemented.** `runtimeSections` cuts each lane at every station where a Connector attaches to
+its body and `buildScenario` compiles the pieces, so an attachment part way along a lane runs in
+both directions. **Leaving** is a diverge: the vehicle travels the drawn partial distance, and an
+authored route stops at the section carrying the Connector it leaves by. **Arriving** is a merge,
+arbitrated by a priority rule derived from the drawing (M3.1): the vehicle joins at the drawn
+metre — the arriving path's successor is the section that *starts* at the cut, not the one that
+ends there — gives way to traffic already on the lane, and is never charged for the stretch
+upstream of where it came in.
 
-**Still open: a Connector ARRIVING on a lane body.** That is structurally a merge — the section
-downstream of the arrival has two predecessors, the upstream section and the Connector path — so
-`UNSUPPORTED_MERGE` fires, and arbitrating it is right-of-way, which D13 forbids inventing. It is
-blocked before compilation by an object-linked `UNSUPPORTED_ATTACHED_TARGET` naming the Connector;
-authoring, saving, editing and Undo of such a Connector are fully supported. **M3.1 supplies the
-arbitration**, after which the target station joins the cut list and this milestone closes. The
-section machinery is already built for it.
+Signal heads rebase onto the section they stand on, a head on a cut belonging to the upstream one
+as `splitLink` already had it. Both render sites key geometry by section id from the same table
+the scenario came from, and the route dialog still offers whole lanes via `authoringSegments`, so
+no derived id reaches the project file.
 
-One case a source attachment still cannot run: a cut within `kMinSectionLength` (0.2 m) of a lane
-end or of another cut on the same lane, because a zero-length segment is not something the core
-accepts. It keeps `UNSUPPORTED_CONNECTOR_POSITION`, whose string was reworded to that narrow
-meaning — the old text claimed the core runs only end-to-start connectors, which is no longer true.
+Replay is unchanged and the four frozen baselines still pass, because `sectionId(laneId, 0)` is
+`laneId`: a lane with nothing attached compiles to the `Segment` it always did. **One case still
+cannot run:** a cut within `kMinSectionLength` (0.2 m) of a lane end or another
+cut on the same lane, since the core accepts no zero-length segment. It reports
+`UNSUPPORTED_CONNECTOR_POSITION`, reworded — the old string claimed the core runs only
+end-to-start connectors, which is no longer true. A derived rule's gap time and headway come from
+`data/priority-rules/`; their absence blocks **Run** with an object-linked
+`EDIT_NO_PRIORITY_DEFAULTS` and does **not** block an edit, which is D18b's boundary.
 
-**Closes when:** a vehicle leaves **and** enters at the drawn stations, travels the correct
-partial-lane distances, obeys section-mounted signals, and retains deterministic replay. The
-merge, internal-input and repeated-segment guards stay; no persisted duplicate runtime network was
-introduced, because sectioning changes no authored id and is a pure function of the drawing.
+**Done:** a vehicle leaves and enters at the drawn stations, travels the correct partial-lane
+distances, obeys section-mounted signals, and replays deterministically on both driving sides.
+The merge, internal-input and repeated-segment guards stand — `UNSUPPORTED_MERGE` was narrowed by
+construction, not removed — and no persisted duplicate runtime network was introduced, because
+sectioning changes no authored id and is a pure function of the drawing.
 
 ### M1.12 — Fixed lane edges, road markings and selection/copy gestures
 
@@ -248,7 +251,7 @@ and shared edge/divider rendering in the editor and diagnostic view. Schema 4 st
 lane offsets and stable Connector interpolation weights. Ctrl-click adds selection;
 Ctrl-drag selected Links, Connectors or Signal heads creates a single undoable copy.
 Invalid attached-object drops roll back the entire edit. Tables select heads directly.
-Owner Windows interaction and timed acceptance remain open; this does not close M1.11.1.
+Owner Windows interaction and timed acceptance remain open.
 
 ---
 
@@ -287,8 +290,8 @@ schemas 1–4 and pre-schema M0 scenarios are converted on read at the same worl
 the version — not the key that happens to be present — deciding the unit.
 
 **Done:** stretching a Link's far end leaves an interior Connector at the same metre and the
-same world point; schema 4 files load unchanged; Run-blocking for end attachments is unchanged.
-M1.11.1 can now split a lane at a station that does not move underneath it.
+same world point; schema 4 files load unchanged. M1.11.1 splits a lane at a station that, because
+of this, does not move underneath it.
 
 ### M1.14 — Intermediate points, as Vissim counts them
 
@@ -419,9 +422,8 @@ has priority and the rest have somewhere to wait. A network that has not been th
 priority model reports it exactly as before — six tests break if the guard is deleted instead.
 A segment may not give way to itself.
 
-A standing queue upstream of the conflict point does **not** block: a stopped major vehicle
-further off than the headway is a gap, and treating it as a block would deadlock the minor
-approach rather than release it into a gap that genuinely exists.
+A standing queue upstream does **not** block: a stopped major vehicle further off than the
+headway is a gap, and blocking on it would deadlock the minor approach instead of releasing it.
 
 Gap time and headway for a **derived** rule live in `data/priority-rules/`, so changing them is a
 data edit (hard rule 5). They are read best-effort, because a document carrying its own catalogs
@@ -429,8 +431,8 @@ must stay portable to a machine with no data directory; a rule that has to be de
 them is refused at the point of use rather than given a zero gap time, which would be a merge
 nobody gives way at, invented in silence.
 
-**This is a deterministic threshold test, not a calibrated critical-gap model.** Hard rule 4's
-not-yet-validated marker stays, and M6 still owns fidelity.
+**A deterministic threshold test, not a calibrated critical-gap model:** hard rule 4's
+not-yet-validated marker stays and M6 still owns fidelity.
 
 **Explicitly NOT in M3.1, and all still M3's:** conflict areas as editable input, priority rules
 as an authorable object with their own UI, stop and yield control, crossing conflicts, and signal

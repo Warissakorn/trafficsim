@@ -11,6 +11,62 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-17 — M1.11.1 closed: a vehicle enters at the drawn station too
+
+With M3.1 in place, the target station joins `runtimeSections`' cut list and a Connector arriving
+inside a lane body runs. M1.11.1's done-condition — "leaves **and** enters" — is met, with no
+carve-out.
+
+**Two things were not the two-line change I expected.**
+
+*An arriving vehicle continues downstream of the cut, not upstream of it.* `sectionForStation`
+resolves a station to the section that **ends** there, which is right for a signal head standing
+on a cut and wrong for a vehicle joining at one — it would have put the arrival on the 40 m of
+lane the vehicle never drives. `sectionStartingAt` is its mirror, and the two now sit next to each
+other in the header saying which is for what.
+
+*Route expansion had to learn where a route joins a lane.* An authored route `{a1, conn, b1}`
+expanded from `b1`'s **first** section, so the chain read `… conn, b1` while `conn`'s successor was
+`b1/sec-2` — `DISCONNECTED_ROUTE`, on a network that is perfectly legal. The walk now asks the
+segment it just emitted where it leads on this lane and starts there. That is also what makes the
+travelled distance right: 100 m of `a1`, the Connector, and 60 m of `b1` — not 140 m of `b1`.
+
+**Where the missing-catalog check belongs, and where I first put it.** I had
+`derivedPriorityRules` throw `EDIT_NO_PRIORITY_DEFAULTS` when the gap time was absent. Two
+existing tests failed, and they were right to: `buildScenario`'s own header calls it "unchecked
+assembly, for diagnostics that must not throw", and blocking an **edit** because a data catalog
+was not resolved is exactly the boundary D18b exists to protect. The check moved to
+`priorityDefaultsIssues`, with two callers — `compileScenario` throws on it, `runtimeDiagnostics`
+reports it — so Run and the panel cannot disagree about it. Editing, saving and Undo of such a
+Connector are untouched.
+
+**The derived rule.** One per interior target: the arriving path gives way, its stop line at its
+own downstream end, the conflict point where the upstream section ends — which is the drawn
+station. Appended to any authored rules rather than replacing them, in path order, so it is
+reproducible. Nothing is persisted: it is a function of the drawing, like the sections themselves.
+
+**Measured, not assumed.** A probe on the failing case showed the arriving vehicle reaching 182 m
+against a 180.002 m stop line by tick 20 and 236 m by tick 70 — it was crossing all along. My test
+was reading `distanceOf` **after** the loop, by which point the vehicle had finished the route and
+left the network, so it was comparing against a departed vehicle. The check now runs during the
+loop. Worth recording because the assertion looked like a product failure and was a test bug.
+
+**The negative check ran through the data file.** Setting `gapTime` and `headway` to 0.001 in
+`data/priority-rules/default.json` breaks three named assertions, the held-at-the-stop-line one
+among them. So the hold really comes from those two numbers, and the data path is live end to
+end — not a value compiled in somewhere with the file for decoration.
+
+**Verification:** 23/23 CTest, 119/119 unit tests, architecture and size guards green,
+`trafficsim-cli 42` unchanged at `meanDelay 29.249359418430977` with the not-yet-validated marker.
+The four frozen baselines are untouched. Linux only.
+
+**`docs/ROADMAP.md` is now at exactly 500 lines, the hard rule 6 limit.** The next entry needs
+room made first: the M1 block holds 21 sub-milestones, most long implemented, and archiving the
+completed bodies the way `PROGRESS.md` and `VISSIM_PARITY.md` were archived is the move. That is
+its own piece of work, not something to do while squeezing prose to fit.
+
+---
+
 ## 2026-09-17 — M3.1: a merge is arbitrated by gap time and headway
 
 `validateScenario` refused any merge outright, and rightly: a place fed by two segments had no
@@ -223,56 +279,67 @@ was wrong. Bound a section comparison at both ends, not just the start.
 
 ## Next
 
-**Stage 3: interior target attachments — closes M1.11.1.** M3.1 supplied the arbitration, so:
+**First, make room in `docs/ROADMAP.md`.** It sits at exactly 500 lines, the hard rule 6 limit,
+and M1.12.1 and M1.12.2 both need entries. The M1 block holds 21 sub-milestones, most long
+implemented; archive the completed bodies into `docs/archive/` the way `PROGRESS.md` and
+`VISSIM_PARITY.md` were, keeping each heading with its status line and a pointer. Diff every moved
+section body against `git show HEAD:` and report `lost`/`gained`/`differing`, as those two moves
+did — a first attempt at the `VISSIM_PARITY` split scored two false differences because the
+checker bound sections at one end only.
 
-1. Add the target station to `runtimeSections`' cut list. The code path is already there: the cut
-   collection currently takes only `path.from` where `attachedAtLinkEnd(..., true)` is false; add
-   the `path.to` / `false` case. `matchedStation(link.geometry, laneGeometry, attachmentStation)`
-   converts it exactly as the source case does, and `kMinSectionLength` applies unchanged.
-2. Derive one `PriorityRule` per interior target in `buildScenario`: the arriving Connector path
-   gives way to the section upstream of the arrival. `yieldSegmentId` is the path, `yieldPosition`
-   its full length (the stop line is at its downstream end); `conflictSegmentId` is the upstream
-   section, `conflictPosition` its end. Gap time and headway come from
-   `definition.priorityDefaults`.
-3. **Refuse, do not default**, when `priorityDefaults` is zero and a rule must be derived — a zero
-   gap time is a merge nobody gives way at. New code `EDIT_NO_PRIORITY_DEFAULTS`, plus a string in
-   `data/locales/en.json` and `th.json`. This is why the defaults are read best-effort: see the
-   M3.1 entry.
-4. Remove `UNSUPPORTED_ATTACHED_TARGET` from `connectorRuntimeIssues`, from `aboutTopology` in
-   `src/project/diagnostics.cpp`, and from both locale files. Invert
-   `an_interior_target_attachment_is_blocked_by_a_row_that_names_the_connector` a second time.
-5. Tests: a vehicle appears on the downstream section at the drawn metre having travelled the
-   correct partial distance (forcing: assert the section boundary is at that metre first); an
-   arriving vehicle waits, and stretching the Link does not move where it waits; determinism on
-   both driving sides.
+**Then M1.12.1 — a Connector's own per-lane `Width` and `MarkingType`.** Both are derived today:
+`laneWidthOf` (a file-local helper in `src/model/network/road_boundaries.cpp`) reads
+`Link::lanes[].width` from the Link each end joins, and `connectorMarkings` hard-codes
+edge-solid/interior-dashed.
 
-**Then M1.12.1** — a Connector's own per-lane `Width` and `MarkingType`. Schema 6 by the
-additive-optional mechanism (absent ⇒ empty ⇒ today's derived behaviour). Mirror `changeLanes`
-for the command and the Link lane-width row for the UI. Note the **second** derived-width site at
-`compile.cpp` for `TIGHT_CONNECTOR_RADIUS`: both must read one helper or hard rule 3 breaks the
-moment a width is authored. **An old-file load test is mandatory** — M1.18 was reverted precisely
-for changing stored meaning without one.
+- `Connector` gains `laneWidths` and `laneMarkings`, **ordered last** after `name`, following the
+  discipline that comment already states. `ConnectorMarking::edge` (a `bool`) generalises to the
+  marking enum; both pen sites follow — `src/render/network_view.cpp` and
+  `src/editor/canvas_connectors.cpp`.
+- **Schema 6 by the additive-optional mechanism**, not a version-gated conversion: bump the
+  literal in `src/project/document.cpp`, widen its guard to `> 6`, write the arrays, read them as
+  optional in `src/project/parse.cpp`. Absent ⇒ empty ⇒ today's derived behaviour, which is what
+  "without changing a Connector whose lanes were never given their own width" requires. Three
+  tests assert the literal `5` (`connector_tests.cpp`, `attachment_tests.cpp` twice,
+  `range_tests.cpp`) and need updating.
+- **An old-file load test is mandatory.** M1.18 was reverted for changing what stored data means
+  with no migration and no load test of old data; its verification measured 120 of 120 drawn
+  vertices unchanged, which was true and beside the point. A schema-5 `.traffic.json` holding a
+  multi-lane Connector must open and draw identically.
+- Command mirrors `changeLanes` in `src/commands/network_commands.cpp`: same size guard, same
+  **pathed** `ValidationError`. UI mirrors the Link lane-width row in
+  `src/shell/editor_inspector.cpp`, batched into the existing `editorApplyConnector` execute.
+- **There is a second derived-width site:** `compile.cpp` computes a Connector width the same way
+  for `TIGHT_CONNECTOR_RADIUS`. Both must read one helper, or hard rule 3 breaks the moment a
+  width is authored.
 
-**Then the miter bulge, booked as M1.12.2.** A 2→2 Connector through a sharp bend reads 8.698 m of
-a 7.000 m width. The cause is identified: `offsetGeometry`'s miter vector has length
-`1/cos(θ/2)`, applied independently to each boundary with its own offset, so the spacing *along
-the cross-section* grows by the same factor at a sharp vertex. **Measure before changing.**
-`tests/network_tests.cpp` asserts `3.5*sqrt(2)` between adjacent boundaries at a right-angle
-corner and `tests/connector_tests.cpp` allows an `8e-2` interior tolerance calling it "the miter
-(6.3 cm measured)" — whether those are Vissim's behaviour or this defect written down as expected
-is the first thing to establish, with a screenshot from the owner if it is genuinely ambiguous.
-The gap that let it through: `connector_tests.cpp` bounds width only from **below**
+**Then the miter bulge, to be booked as M1.12.2.** A 2→2 Connector through a sharp bend reads
+8.698 m of a 7.000 m width, 24% over, at one sample. The cause is identified: `offsetGeometry`'s
+miter vector has length `1/cos(θ/2)`, correct for the intersection of two offset legs, but applied
+independently to each boundary with its own offset — so the spacing *along the cross-section*
+grows by that factor at a sharp vertex. `trimSelfIntersections` cannot help; it removes loops from
+a line and is not even applied to the boundaries used for the fill.
+
+**Measure before changing.** `tests/network_tests.cpp` asserts `3.5*sqrt(2)` between adjacent
+boundaries at a right-angle corner, and `tests/connector_tests.cpp` allows an `8e-2` interior
+tolerance calling it "the miter (6.3 cm measured)". Whether those are Vissim's behaviour or this
+defect written down as expected is **the first thing to establish** — ask the owner with a
+screenshot if it is genuinely ambiguous, since three rounds of guessing from screenshots each went
+wrong before. The gap that let it through: `connector_tests.cpp` bounds width only from **below**
 (`least > .9*3.5`). Add the upper bound.
 
 **The owner's gate is untouched and stays Open.** The timed four-leg/aerial-image/reopen exercise
-in `M1_ACCEPTANCE.md` cannot be performed by anyone but the owner, and no row of it has been
-filled in. **D11 also defers the project's name until the end of M1**, so finishing this
-engineering work trips Q5; `Velk` is the strongest recorded candidate and the decision is the
-owner's alone.
+in `M1_ACCEPTANCE.md` cannot be performed by anyone but the owner, and not one row of it has been
+filled in. Merged code does not close it (rule 1).
+
+**D11's trigger is now live.** Naming was deferred "until the end of M1", and Q5 is that decision.
+The engineering side of M1 is one carve-out and one defect from done. `Velk` is the strongest
+recorded candidate — clean on npm, PyPI and a brand search, with `velk.com`/`velk.io` held. **The
+owner names the project.**
 
 The M1.12 review checklist from the 2026-09-16 sessions still stands and is worth running against
-a desktop build **on Windows** before any usability claim — `native.yml` runs the Qt suites there
-and nothing in these sessions has been near it.
+a desktop build **on Windows** before any usability claim: `native.yml` runs the Qt suites there
+and nothing in these three sessions has been near it.
 
 ---
 

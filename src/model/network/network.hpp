@@ -105,6 +105,10 @@ double attachmentStation(const Network&, const LaneReference&, bool outgoing);
 // case the M0 whole-lane runtime can traverse.
 bool attachedAtLinkEnd(const Network&, const LaneReference&, bool outgoing);
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
+// Blocks Run when the drawing creates a merge but the numbers that arbitrate it were not read
+// from data/priority-rules/. Separate from connectorRuntimeIssues because it needs the resolved
+// definition, and shared with runtimeDiagnostics so the panel and Run agree.
+std::vector<ValidationIssue> priorityDefaultsIssues(const Network&, const PriorityDefaults&);
 // Advisory only, and deliberately not part of connectorRuntimeIssues, which blocks Run: a turn
 // tighter than the Connector's own half-width is undrivable but still a legal drawing.
 std::vector<ValidationIssue> connectorShapeIssues(const Network&);
@@ -155,6 +159,9 @@ RuntimeSections runtimeSections(const Network&);
 // The section a station on a lane falls in. A station exactly on a cut belongs to the section
 // UPSTREAM of it, which is the convention splitLink already uses for a head sitting on a cut.
 const LaneSection& sectionForStation(const RuntimeSections&, const std::string& laneId, double laneStation);
+// The section that STARTS at a station: where a vehicle ARRIVING there continues. The mirror of
+// sectionForStation, which resolves upstream because that is what a head standing on a cut wants.
+const LaneSection& sectionStartingAt(const RuntimeSections&, const std::string& laneId, double laneStation);
 // Authored routes name whole lanes; the runtime needs the chain of sections that carries them.
 // Where the route leaves the lane part way along, the chain stops at the section that carries
 // the Connector it leaves by, so the vehicle travels the drawn distance and no more.
@@ -163,6 +170,11 @@ std::vector<std::string> expandRouteSegments(const RuntimeSections&, const std::
 // and store in a route. Never used to run anything -- offering a derived section id as something
 // to persist would put a copy of derived data in the project file.
 std::vector<Segment> authoringSegments(const RuntimeSections&);
+// One priority rule per Connector arriving inside a lane body: the arriving path gives way to the
+// section upstream of the arrival, which is the merge that sectioning creates. Derived from the
+// drawing, never authored or persisted. Throws EDIT_NO_PRIORITY_DEFAULTS rather than deriving a
+// rule with a zero gap time, which would be a merge nobody gives way at.
+std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections&, const PriorityDefaults&);
 // A head's compiled form, with its segment and position rebased onto the section it sits on.
 SignalHead rebaseHead(const RuntimeSections&, const NetworkSignalHead&);
 // Zero-length segments are invalid in the core, and an attachment closer than this to a lane end

@@ -23,6 +23,10 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     // the one place every caller goes through, including the save-time demand validation.
     for (auto& route : scenario.routes) route.segmentIds = expandRouteSegments(table, route.segmentIds);
     for (const auto& head : network.signalHeads) scenario.signalHeads.push_back(rebaseHead(table, head));
+    // Appended, not assigned: an authored rule keeps its own two numbers, and a derived one is
+    // added for each merge the drawing creates. Order follows path order, so it is reproducible.
+    for (auto& rule : derivedPriorityRules(table, definition.priorityDefaults))
+        scenario.priorityRules.push_back(std::move(rule));
     return scenario; // All fields are owned values, independent of the editor model.
 }
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {
@@ -31,20 +35,30 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {
     for(std::size_t i=0;i<network.connectors.size();++i) {
         const auto& c=network.connectors[i];
         const auto path="connectors["+std::to_string(i)+"]";
-        // A Connector ARRIVING inside a lane body makes two paths feed the same place: the
-        // section upstream of the arrival and the Connector itself. That is a merge, and
-        // arbitrating it is right-of-way, which the engine does not have yet. Reported against
-        // the Connector here so the author gets a row that selects the object, rather than the
-        // core's generic segments.<id> row about a merge they did not know they had drawn.
-        if(!attachedAtLinkEnd(network,c.to,false))
-            issues.push_back({"UNSUPPORTED_ATTACHED_TARGET",path});
-        // A Connector LEAVING a lane body is a diverge, which the sectioned runtime traverses.
-        // The one case it still cannot is a cut with no room for a section either side of it,
-        // since a zero-length segment is not a thing the core accepts.
-        else if(std::find(table.unsectionable.begin(),table.unsectionable.end(),c.id)!=
-                table.unsectionable.end())
+        // Both directions are runnable now: a Connector leaving a lane body is a diverge, and one
+        // arriving on it is a merge that M3.1 arbitrates with a derived priority rule. The one
+        // case that still cannot run is a cut with no room for a section either side of it, since
+        // a zero-length segment is not a thing the core accepts.
+        if(std::find(table.unsectionable.begin(),table.unsectionable.end(),c.id)!=
+           table.unsectionable.end())
             issues.push_back({"UNSUPPORTED_CONNECTOR_POSITION",path});
     }
+    return issues;
+}
+std::vector<ValidationIssue> priorityDefaultsIssues(const Network& network,
+                                                    const PriorityDefaults& defaults) {
+    // A merge the drawing creates is arbitrated by a DERIVED rule, and a rule with a zero gap
+    // time and headway is a merge nobody gives way at. So a network that needs one cannot run
+    // without the numbers from data/priority-rules/. One helper, two callers: compileScenario
+    // throws on it and runtimeDiagnostics reports it, so Run and the panel cannot disagree.
+    if(defaults.gapTime>0 && defaults.headway>0)return {};
+    std::vector<ValidationIssue> issues;
+    const auto table=runtimeSections(network);
+    for(std::size_t i=0;i<network.connectors.size();++i)
+        if(!attachedAtLinkEnd(network,network.connectors[i].to,false) &&
+           std::find(table.unsectionable.begin(),table.unsectionable.end(),network.connectors[i].id)==
+           table.unsectionable.end())
+            issues.push_back({"EDIT_NO_PRIORITY_DEFAULTS","connectors["+std::to_string(i)+"]"});
     return issues;
 }
 std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
@@ -72,6 +86,8 @@ Scenario compileScenario(const Network& network, const ScenarioDefinition& defin
     // Order is load-bearing: the network pass reports UNKNOWN_LANE before laneGeometry can throw.
     assertValidNetwork(network);
     auto issues=connectorRuntimeIssues(network);
+    for(auto& issue:priorityDefaultsIssues(network,definition.priorityDefaults))
+        issues.push_back(std::move(issue));
     if(!issues.empty())throw ValidationError(std::move(issues));
     auto scenario = buildScenario(network, definition);
     assertValidScenario(scenario);
