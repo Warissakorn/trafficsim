@@ -13,10 +13,12 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current work:** M1 implementation covers M1.1–M1.10, including controlled splits,
-demand/control editing, recovery, in-editor Run, connector ranges and levels/display types.
-M1.11 adds body attachments; M1.12 fixes both lane edges, markings and Ctrl selection/copy.
-M1.11.1 runtime lane sections remain open.
+**Current work:** M1 implementation covers M1.1–M1.17, including controlled splits,
+demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
+body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,
+Vissim's Intermediate points, a Name on every object, group move, and the wedge mouth.
+**Two carve-outs remain open:** M1.11.1 (interior attachments compiled into runtime lane
+sections) and M1.12.1 (a Connector's own lane widths and markings).
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 

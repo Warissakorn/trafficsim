@@ -10,6 +10,41 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-17 — ROADMAP.md put back in sequence, and two stale status lines fixed
+
+`ROADMAP.md` opens by calling itself "**a sequence**, so that any session can see where it sits".
+It was not one. The M1 sub-milestones ran in the order they were *written*, so the carve-outs
+made under rule 2 had piled up wherever the session that carved them happened to stop:
+
+```
+before: ... M1.10 M1.11 M1.12 M1.11.1 M1.13 M1.14 M1.15 M1.16 M1.17 M1.12.1
+after:  ... M1.10 M1.11 M1.11.1 M1.12 M1.12.1 M1.13 M1.14 M1.15 M1.16 M1.17
+```
+
+Both misplaced entries are the two that are **still open**, which is the worst possible thing to
+bury: M1.11.1 sat behind a done M1.12, and M1.12.1 sat last in the file behind five done
+milestones, reading like the newest work rather than unstarted work. A carve-out is now filed at
+its number, and the M1 preamble says so, so the next one lands in the right place.
+
+**Two status lines were also simply wrong.** `ROADMAP.md` said "M1.1–M1.10 implementation is
+available" and `CLAUDE.md` said M1 "covers M1.1–M1.10 ... M1.11 adds body attachments; M1.12
+fixes both lane edges" — both written before M1.13–M1.17 shipped and never updated. A session
+starting from either would have believed five milestones of work did not exist. Both now name
+M1.1–M1.17 and, separately, the two open carve-outs. Note these are *not* a duplicated status
+table: each milestone's own state still lives only in its own section, and the preamble names
+which are open without restating why.
+
+**Verification:** all 21 M1 sections diffed body-for-body against `git show HEAD:` —
+`lost: set()`, `gained: set()`, `bodies differing: none`; everything outside the M1 block
+byte-identical; line count unchanged at 434 by the reorder, 440 after the corrected preamble;
+separator count unchanged at 14. 23/23 CTest, guards green. No source file touched.
+
+A first attempt scored two false differences here, because my checker split the file only on
+`### M1` and so let M2-M7 attach to whichever section came last. The file was fine; the check
+was wrong. Bound a section comparison at both ends, not just the start.
+
+---
+
 ## 2026-09-17 — Documentation tidied: one archive folder, one naming rule
 
 Housekeeping only; no source file was touched. The docs tree had grown four archive files at

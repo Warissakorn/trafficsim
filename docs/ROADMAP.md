@@ -51,8 +51,14 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.10 implementation is available. The owner acceptance in M1.7 remains open;
-M1 is not closed until its timed gate passes.
+**Status:** M1.1–M1.17 are implemented, including the M1.3.1 and M1.5.1 carve-outs. Two
+carve-outs are **not**: M1.11.1 (interior attachments compiled into runtime lane sections) and
+M1.12.1 (a Connector's own lane widths and markings). The owner acceptance in M1.7 also remains
+open, and M1 is not closed until its timed gate passes.
+
+**Sub-milestones below are in numeric order, which is the order they belong in.** A carve-out
+made under rule 2 is filed at its number, not at the end — M1.11.1 sits inside M1.11 and M1.12.1
+inside M1.12, because that is where a session looking for unfinished work will look for them.
 
 **Done when:** an engineer draws a four-leg intersection with turn pockets from scratch, over
 an aerial image, in under 10 minutes, without reading documentation — and reopening the file
@@ -206,16 +212,6 @@ The middle handle sets both ranges together; the Connector path count remains th
 First-lane changes use the dialog or Properties. This does not claim independent arbitrary
 internal Connector lane topology or close the owner's usability gate.
 
-### M1.12 — Fixed lane edges, road markings and selection/copy gestures
-
-Implemented following the owner's 1–3 lane examples: Link handles on both sides,
-source/target/middle Connector handles on both sides, fixed surviving lane positions,
-and shared edge/divider rendering in the editor and diagnostic view. Schema 4 stores
-lane offsets and stable Connector interpolation weights. Ctrl-click adds selection;
-Ctrl-drag selected Links, Connectors or Signal heads creates a single undoable copy.
-Invalid attached-object drops roll back the entire edit. Tables select heads directly.
-Owner Windows interaction and timed acceptance remain open; this does not close M1.11.1.
-
 ### M1.11.1 — Compile interior attachments into runtime lane sections
 
 **Open.** The engine currently traverses whole lanes. Before running a body-attached
@@ -228,7 +224,34 @@ Do not introduce persisted duplicate runtime networks or change the engine's fid
 **Done when:** a vehicle leaves and enters at the drawn stations, travels the correct
 partial-lane distances, obeys section-mounted signals, and retains deterministic replay.
 
+### M1.12 — Fixed lane edges, road markings and selection/copy gestures
+
+Implemented following the owner's 1–3 lane examples: Link handles on both sides,
+source/target/middle Connector handles on both sides, fixed surviving lane positions,
+and shared edge/divider rendering in the editor and diagnostic view. Schema 4 stores
+lane offsets and stable Connector interpolation weights. Ctrl-click adds selection;
+Ctrl-drag selected Links, Connectors or Signal heads creates a single undoable copy.
+Invalid attached-object drops roll back the entire edit. Tables select heads directly.
+Owner Windows interaction and timed acceptance remain open; this does not close M1.11.1.
+
 ---
+
+### M1.12.1 — A Connector's own lane widths and markings
+
+**Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found
+by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up". Its third, `Name`, shipped
+as M1.15:
+
+- **`Lanes` tab per-lane `Width`** — connector lane widths are derived from the links each end
+  joins (`laneWidthOf`), so a Connector cannot carry a width of its own and a widening taper has
+  to be authored on the links instead.
+- **`Lanes` tab per-lane `MarkingType`** — likewise derived (`connectorMarkings`): edges solid,
+  interior dashed, with no per-lane choice.
+
+**Closes when:** both are authorable, round-trip through the project file, and the widths
+feed `connectorBoundaries` in place of the derived ones without changing a Connector whose lanes
+were never given their own width. `BlockedVeh`, `NoLnCh` and `Has overtaking lane` are *not* in
+this milestone; they wait on the lane-changing model (Q2).
 
 ### M1.13 — Attachment stations in metres
 
@@ -310,23 +333,6 @@ bit-for-bit identical.
 
 **Done:** a Connector's mouth sits on its Link's lane edges at any arrival angle, and the body is
 still the full lane its Links give it.
-
-### M1.12.1 — A Connector's own lane widths and markings
-
-**Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found
-by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up". Its third, `Name`, shipped
-as M1.15:
-
-- **`Lanes` tab per-lane `Width`** — connector lane widths are derived from the links each end
-  joins (`laneWidthOf`), so a Connector cannot carry a width of its own and a widening taper has
-  to be authored on the links instead.
-- **`Lanes` tab per-lane `MarkingType`** — likewise derived (`connectorMarkings`): edges solid,
-  interior dashed, with no per-lane choice.
-
-**Closes when:** both are authorable, round-trip through the project file, and the widths
-feed `connectorBoundaries` in place of the derived ones without changing a Connector whose lanes
-were never given their own width. `BlockedVeh`, `NoLnCh` and `Has overtaking lane` are *not* in
-this milestone; they wait on the lane-changing model (Q2).
 
 ---
 
