@@ -384,6 +384,28 @@ not things that are slow.
 
 ---
 
+## 2026-09-17 second follow-up — and the wedge has a limit the re-miter was hiding
+
+The owner circled a mouth on our own render that narrowed to a **point** where it met the Link, and
+sent a Vissim connector of the same kind for comparison: parallel-sided, constant width, stopping at
+the attachment.
+
+The wedge above is not what drew it and is unchanged. The cause was the **re-miter** that stands in
+where the fixed-distance cut would fold: at a strongly oblique arrival it extends each boundary to a
+cross-section line lying near the ribbon's own axis, and the intersection lands many lane widths
+out — 5.59, 9.41, 14.31 and 18.11 m of mouth on a 7.00 m Connector. Past about 9 m the outer
+boundaries cross, and the ring trim that fills the surface closed the fold into the point.
+
+The mouth now takes the first of three shapes that does not fold: the fixed-distance cut, then a
+re-miter bounded by the mouth's own span, then the un-cut end square to the Connector. **The square
+end is back, but only as the last resort past roughly 50° off the cross-section**, where no corner
+placement on that line avoids a fold. Every Link-end attachment and every ordinary merge still takes
+the wedge, bit for bit — the entry above stands.
+
+This does not reopen the square-cut question it settled. It bounds where the wedge is a valid cut at
+all, which is a different statement, and the 0.12–0.29 m step the square end leaves is the step the
+owner's own Vissim screenshot of this joint shows.
+
 ## 2026-09-17 — The mouth is a wedge, and the square cut was a misreading
 
 The owner circled the joint on a Vissim screenshot: a Connector arriving on a Link **body** at an

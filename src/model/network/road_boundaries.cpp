@@ -153,39 +153,64 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     const auto pristine=result;
     const Point entryDir{std::cos(entry),std::sin(entry)},exitDir{std::cos(exit),std::sin(exit)};
     for(const bool front:{true,false}) {
-        std::vector<Point> naive(count+1),cut(count+1);
+        const Point crossAt=front?spine.front():spine.back();
+        const Point crossDir=front?entryDir:exitDir;
+        std::vector<Point> naive(count+1);
+        double nearest=0,furthest=0;
         for(std::size_t i=0;i<=count;++i) {
             const double d=(front?offsets[i].front():offsets[i].back())*sign;
-            naive[i]=front?Point{spine.front().x+entryDir.x*d,spine.front().y+entryDir.y*d}
-                          :Point{spine.back().x+exitDir.x*d,spine.back().y+exitDir.y*d};
+            nearest=std::min(nearest,d);furthest=std::max(furthest,d);
+            naive[i]={crossAt.x+crossDir.x*d,crossAt.y+crossDir.y*d};
         }
-        bool crosses=false;
-        for(std::size_t i=0;!crosses && i<count;++i) {
-            const auto& a=pristine[i];const auto& b=pristine[i+1];
-            if(a.size()<2||b.size()<2)continue;
-            // A tapering lane's cut point coincides exactly with its neighbour's by construction
-            // (a surplus lane closes to zero width there) -- that shared endpoint is the taper
-            // meeting cleanly, not a fold, and must not itself register as a crossing.
-            if(std::hypot(naive[i].x-naive[i+1].x,naive[i].y-naive[i+1].y)<1e-9)continue;
-            const Point a1=front?a[0]:a[a.size()-2],b1=front?b[0]:b[b.size()-2];
-            if(legCrossing(a1,naive[i],b1,naive[i+1]))crosses=true;
-        }
-        // A re-miter is only as safe as the angle between the leg and the cross-section it is
-        // extended to meet: near-parallel, the intersection can land many lane-widths away, a
-        // spike shooting past the link instead of a mouth lying on it. Bound it to a few widths
-        // of the whole cross-section, the same spirit as offsetGeometry's own miter clamp, and
-        // fall back to the exact fixed-distance cut -- which can only leave the mild fold the
-        // re-miter was trying to avoid, never an unbounded overshoot -- past that.
-        const Point crossAt=front?spine.front():spine.back();
-        const double limit=1.5*std::hypot(naive.back().x-naive.front().x,naive.back().y-naive.front().y);
-        for(std::size_t i=0;i<=count;++i) {
+        // Whether a candidate mouth FOLDS: two neighbouring boundaries whose last legs cross each
+        // other draw a bowtie, which the ring trim that fills the surface closes into a point.
+        const auto folds=[&](const std::vector<Point>& end) {
+            for(std::size_t i=0;i<count;++i) {
+                const auto& a=pristine[i];const auto& b=pristine[i+1];
+                if(a.size()<2||b.size()<2)continue;
+                // A tapering lane's cut point coincides exactly with its neighbour's by
+                // construction (a surplus lane closes to zero width there) -- that shared
+                // endpoint is the taper meeting cleanly, not a fold, and must not register.
+                if(std::hypot(end[i].x-end[i+1].x,end[i].y-end[i+1].y)<1e-9)continue;
+                const Point a1=front?a[0]:a[a.size()-2],b1=front?b[0]:b[b.size()-2];
+                if(legCrossing(a1,end[i],b1,end[i+1]))return true;
+            }
+            return false;
+        };
+        // Three shapes, in order of how much they are the Link's own cross-section, and the first
+        // that does not fold is the mouth.
+        //
+        // 1. The fixed-distance cut, which puts boundary i exactly on the Link's lane edge. This
+        //    is the mouth wherever the arrival is anything but strongly oblique, so every Link-end
+        //    attachment and every ordinary merge keeps the wedge Vissim draws, bit for bit.
+        // 2. The re-miter, which extends each boundary's own last leg to meet the cross-section
+        //    line, the way offsetGeometry miters an interior corner. It may only redistribute the
+        //    corners INSIDE the span the lane widths give the mouth, never widen it: the bound is
+        //    the mouth itself, not a distance to pick. The distance bound this replaces allowed
+        //    1.5 times the mouth's width of overshoot, and on a 7.00 m Connector arriving across a
+        //    Link's body it drew mouths of 5.59, 9.41, 14.31 and 18.11 m as the arrival went
+        //    oblique -- a spike lying across the Link, which is what the owner circled.
+        // 3. The un-cut end, square to the Connector, which offsetGeometry already produced. Past
+        //    about 50 degrees off the cross-section the ribbon cannot be cut on a line that near
+        //    its own axis without folding, whichever of the first two is used, and the fold costs
+        //    more than the cut buys: the ring trim ate up to 7.67 m of mouth. A square end stands
+        //    the 0.12-0.29 m clear of the road that the step in Vissim's own screenshot shows --
+        //    which is the shape Vissim draws at this joint, parallel-sided and stopping at the
+        //    attachment.
+        std::vector<Point> mitered(count+1);
+        bool usable=true;
+        for(std::size_t i=0;usable && i<=count;++i) {
             const auto& shape=pristine[i];
-            if(!crosses||shape.size()<2){cut[i]=naive[i];continue;}
+            if(shape.size()<2){usable=false;break;}
             const Point edgeFrom=front?shape[0]:shape[shape.size()-2],edgeTo=front?shape[1]:shape.back();
-            cut[i]=remiter(edgeFrom,edgeTo,crossAt,front?entryDir:exitDir,naive[i]);
-            if(limit>0 && std::hypot(cut[i].x-crossAt.x,cut[i].y-crossAt.y)>limit)cut[i]=naive[i];
+            mitered[i]=remiter(edgeFrom,edgeTo,crossAt,crossDir,naive[i]);
+            const double along=(mitered[i].x-crossAt.x)*crossDir.x+(mitered[i].y-crossAt.y)*crossDir.y;
+            if(along<nearest-1e-9 || along>furthest+1e-9)usable=false;
         }
-        for(std::size_t i=0;i<=count;++i)if(front)result[i].front()=cut[i];else result[i].back()=cut[i];
+        if(!folds(naive))
+            for(std::size_t i=0;i<=count;++i){if(front)result[i].front()=naive[i];else result[i].back()=naive[i];}
+        else if(usable && !folds(mitered))
+            for(std::size_t i=0;i<=count;++i){if(front)result[i].front()=mitered[i];else result[i].back()=mitered[i];}
     }
     return result;
 }
