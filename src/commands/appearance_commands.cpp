@@ -102,8 +102,7 @@ std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<s
         c.from=remap(c.from,c.fromLaneCount,true);c.to=remap(c.to,c.toLaneCount,false);
         for(auto& p:c.geometry){p.x+=offset.x;p.y+=offset.y;}
         // The cursor may be anywhere within the lane: attach precisely after the drop.
-        const auto a=connectorAttachment(d.network,c.from,c.fromLaneCount,true),
-                   b=connectorAttachment(d.network,c.to,c.toLaneCount,false);
+        const auto a=laneAttachment(d.network,c.from,true),b=laneAttachment(d.network,c.to,false);
         const auto oldA=c.geometry.front(),oldB=c.geometry.back();const auto weights=connectorBlendWeights(c);
         for(std::size_t i=0;i<c.geometry.size();++i) {
             c.geometry[i].x+=(a.x-oldA.x)*(1-weights[i])+(b.x-oldB.x)*weights[i];
