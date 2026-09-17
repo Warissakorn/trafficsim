@@ -51,13 +51,14 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
     throw std::invalid_argument("UNKNOWN_LANE");
 }
 // Where a boundary's own cut vertex sits is exact by construction -- fixed at the width the two
-// links give it, measured along the link's own cross-section. But the vertices before it are
-// not: they are wherever the mitered spine offset left them. At anything but a near-tangential
-// merge angle those can imply an edge that runs backwards across the neighbouring boundary
-// instead of towards it, sometimes spanning more than the one leg nearest the cut, which is the
-// fold a taper's cut vertex cannot see on its own. Two adjacent boundaries pinch to a shared
-// point instead of crossing past each other wherever any of their legs already do -- the two
-// edges of a lane narrowing to nothing meet, they do not overshoot and cross.
+// links give it, measured along the link's own cross-section. That fixed-distance snap is only
+// consistent with the polygon when the leg it lands at the end of is already headed roughly that
+// way; at anything but a near-tangential merge angle it can imply an edge that runs backwards
+// across the neighbouring boundary instead of towards it. Re-mitering that last leg against the
+// link's cross-section -- extending it and cutting where it actually meets that line, the way
+// offsetGeometry miters an interior corner against the next real segment -- keeps every boundary
+// its own full width all the way to the link instead of pinching two of them together to dodge
+// the fold, and does not move the cut at all when the fixed snap and the re-miter already agree.
 std::optional<Point> legCrossing(Point a1,Point a2,Point b1,Point b2) {
     const double rx=a2.x-a1.x,ry=a2.y-a1.y,sx=b2.x-b1.x,sy=b2.y-b1.y;
     const double denominator=rx*sy-ry*sx;
@@ -67,33 +68,12 @@ std::optional<Point> legCrossing(Point a1,Point a2,Point b1,Point b2) {
     if(t<0||t>1||u<0||u>1)return {};
     return Point{a1.x+t*rx,a1.y+t*ry};
 }
-// Repeatedly cuts back the pair from whichever end a crossing is found nearest, since a fold can
-// span several legs at a sharp angle and pinching once can reveal another crossing further in.
-// Bounded the way the miter clamp above is bounded: a real Connector has a handful of
-// intermediate points, so a fold has nowhere near this many legs to hide across.
-void pinchPair(std::vector<Point>& a,std::vector<Point>& b) {
-    for(int guard=0;guard<16;++guard) {
-        bool changed=false;
-        for(std::size_t i=a.size()-1;!changed && i-->0;)
-            for(std::size_t j=b.size()-1;!changed && j-->0;)
-                if(const auto at=legCrossing(a[i],a[i+1],b[j],b[j+1])) {
-                    a.resize(i+2);a.back()=*at;
-                    b.resize(j+2);b.back()=*at;
-                    changed=true;
-                }
-        for(std::size_t i=0;!changed && i+1<a.size();++i)
-            for(std::size_t j=0;!changed && j+1<b.size();++j)
-                if(const auto at=legCrossing(a[i],a[i+1],b[j],b[j+1])) {
-                    a.erase(a.begin(),a.begin()+static_cast<std::ptrdiff_t>(i));a.front()=*at;
-                    b.erase(b.begin(),b.begin()+static_cast<std::ptrdiff_t>(j));b.front()=*at;
-                    changed=true;
-                }
-        if(!changed)break;
-    }
-}
-void pinchCrossedEnds(std::vector<std::vector<Point>>& boundaries) {
-    for(std::size_t i=0;i+1<boundaries.size();++i)
-        if(boundaries[i].size()>=2 && boundaries[i+1].size()>=2)pinchPair(boundaries[i],boundaries[i+1]);
+Point remiter(Point edgeFrom,Point edgeTo,Point crossAt,Point crossDir,Point fallback) {
+    const double rx=edgeTo.x-edgeFrom.x,ry=edgeTo.y-edgeFrom.y;
+    const double denominator=rx*crossDir.y-ry*crossDir.x;
+    if(std::abs(denominator)<1e-9)return fallback;
+    const double t=((crossAt.x-edgeFrom.x)*crossDir.y-(crossAt.y-edgeFrom.y)*crossDir.x)/denominator;
+    return {edgeFrom.x+rx*t,edgeFrom.y+ry*t};
 }
 }
 ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
@@ -157,19 +137,47 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
         for(std::size_t i=0;i<=count;++i)offsets[i][j]*=sign;
     }
     std::vector<std::vector<Point>> result;
-    for(std::size_t i=0;i<=count;++i) {
-        auto shape=offsetGeometry(spine,offsets[i]);
-        // The two ends belong to the links, not to the Connector: cut them on the link's own
-        // cross-section, so a mouth is a wedge lying on its lane edges rather than a square end
-        // standing clear of them. This is what Vissim draws -- confirmed against a screenshot of
-        // a Connector arriving on a link body at an angle -- and squaring the ends to the
-        // Connector instead left a step of 0.12-0.29 m between the mouth and the road.
-        const double first=offsets[i].front()*sign,last=offsets[i].back()*sign;
-        shape.front()={spine.front().x+std::cos(entry)*first,spine.front().y+std::sin(entry)*first};
-        shape.back()={spine.back().x+std::cos(exit)*last,spine.back().y+std::sin(exit)*last};
-        result.push_back(std::move(shape));
+    for(std::size_t i=0;i<=count;++i)result.push_back(offsetGeometry(spine,offsets[i]));
+    // The two ends belong to the links, not to the Connector: cut them on the link's own
+    // cross-section, so a mouth is a wedge lying on its lane edges rather than a square end
+    // standing clear of them. This is what Vissim draws -- confirmed against a screenshot of
+    // a Connector arriving on a link body at an angle -- and squaring the ends to the Connector
+    // instead left a step of 0.12-0.29 m between the mouth and the road. That fixed-distance cut
+    // is exact and is kept whenever it leaves the cross-section's boundaries in their own order;
+    // where two of them would cross instead (a merge angle far from tangential), every boundary
+    // at that end re-miters its own last leg against the cross-section line instead, which keeps
+    // each one its own full width rather than pinching two of them together to a shared point.
+    // Both ends read their edge direction from this untouched copy, taken before either end is
+    // cut, so a two-point spine -- its front and back leg being the same one segment -- reads
+    // its own original direction at both ends rather than the other end's already-cut vertex.
+    const auto pristine=result;
+    const Point entryDir{std::cos(entry),std::sin(entry)},exitDir{std::cos(exit),std::sin(exit)};
+    for(const bool front:{true,false}) {
+        std::vector<Point> naive(count+1),cut(count+1);
+        for(std::size_t i=0;i<=count;++i) {
+            const double d=(front?offsets[i].front():offsets[i].back())*sign;
+            naive[i]=front?Point{spine.front().x+entryDir.x*d,spine.front().y+entryDir.y*d}
+                          :Point{spine.back().x+exitDir.x*d,spine.back().y+exitDir.y*d};
+        }
+        bool crosses=false;
+        for(std::size_t i=0;!crosses && i<count;++i) {
+            const auto& a=pristine[i];const auto& b=pristine[i+1];
+            if(a.size()<2||b.size()<2)continue;
+            // A tapering lane's cut point coincides exactly with its neighbour's by construction
+            // (a surplus lane closes to zero width there) -- that shared endpoint is the taper
+            // meeting cleanly, not a fold, and must not itself register as a crossing.
+            if(std::hypot(naive[i].x-naive[i+1].x,naive[i].y-naive[i+1].y)<1e-9)continue;
+            const Point a1=front?a[0]:a[a.size()-2],b1=front?b[0]:b[b.size()-2];
+            if(legCrossing(a1,naive[i],b1,naive[i+1]))crosses=true;
+        }
+        for(std::size_t i=0;i<=count;++i) {
+            const auto& shape=pristine[i];
+            if(!crosses||shape.size()<2){cut[i]=naive[i];continue;}
+            const Point edgeFrom=front?shape[0]:shape[shape.size()-2],edgeTo=front?shape[1]:shape.back();
+            cut[i]=remiter(edgeFrom,edgeTo,front?spine.front():spine.back(),front?entryDir:exitDir,naive[i]);
+        }
+        for(std::size_t i=0;i<=count;++i)if(front)result[i].front()=cut[i];else result[i].back()=cut[i];
     }
-    pinchCrossedEnds(result);
     return result;
 }
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {
