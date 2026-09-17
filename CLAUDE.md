@@ -20,8 +20,11 @@ Vissim's Intermediate points, a Name on every object, group move, and the wedge 
 M1.11.1 and M1.12.1 are both closed: lanes are cut into runtime sections at interior attachments,
 a Connector arriving on a lane body merges under **M3.1** (a priority rule with a gap time and
 headway — which does **not** close M3), and a Connector carries its own lane widths and divider
-markings in schema 6. **Every M1 carve-out is now closed.** One booked defect remains: **M1.12.2**,
-the miter widening a carriageway at a sharp bend (8.698 m of a 7.000 m width at worst).
+markings in schema 6. **Every M1 carve-out is now closed**, and so is **M1.12.2**: the reported miter "bulge" was
+measured along the cross-section, where a mitered corner's diagonal is `width/cos(φ/2)` by
+construction. Square to the road the carriageway is exact, so `offsetGeometry` was not changed —
+removing the miter would reinstate the pinch it exists to fix. **M1's engineering side is done;
+only the owner's timed gate remains.**
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 

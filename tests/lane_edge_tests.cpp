@@ -175,17 +175,27 @@ TEST(attachments, a_connector_carries_its_own_lane_widths) {
         const auto authored=connectorLaneWidths(h.document().network,connector(h.document(),id));
         test::near(authored.source[0],5.5,1e-9);test::near(authored.target[0],5.5,1e-9);
         test::near(authored.source[1],5.5,1e-9);
-        // It reaches the drawing. Bounded, not exact, on this curved fixture: the miter widens
-        // the spacing measured ALONG the cross-section at a bend, which is the defect booked as
-        // M1.12.2 (8.698 m of a 7.000 m width at its worst). It measured 5.529 m here against
-        // 5.5 m. The exact assertion is made below on a straight Connector, where no miter is
-        // involved, so this test pins the authored width without writing that defect down as
-        // correct -- M1.12.2 tightens this bound.
+        // It reaches the drawing, and EXACTLY -- measured square to the road rather than along
+        // the cross-section. Along it this reads 5.529 m, which is the mitered corner's diagonal
+        // (width/cos(phi/2)) and not a width error: see M1.12.2, where the reported 24% bulge was
+        // measured that way and turned out to be exactly this. Square to the road it is 5.5 m.
         const auto after=connectorBoundaries(h.document().network,connector(h.document(),id));
-        for(std::size_t j=0;j<after[0].size();++j) {
-            const double span=std::hypot(after[1][j].x-after[0][j].x,after[1][j].y-after[0][j].y);
-            CHECK(span>=5.5-1e-9);CHECK(span<5.7);
+        // Interior legs only. A leg touching either end runs to a vertex the wedge mouth moved
+        // (M1.17), so its direction is the Link's cross-section and not the Connector's own --
+        // measuring across it reads 5.8 mm wide for that reason alone.
+        std::size_t measured=0;
+        for(std::size_t i=2;i+2<after[1].size();++i) {
+            const double dx=after[1][i].x-after[1][i-1].x,dy=after[1][i].y-after[1][i-1].y;
+            const double length=std::hypot(dx,dy);
+            if(length<=0)continue;
+            const Point across{-dy/length,dx/length};
+            for(std::size_t j=i-1;j<=i;++j) {
+                test::near(std::abs((after[1][j].x-after[0][j].x)*across.x+
+                                    (after[1][j].y-after[0][j].y)*across.y),5.5,1e-9);
+                ++measured;
+            }
         }
+        CHECK(measured>0); // The loop above really ran, rather than skipping every leg.
         // One undo entry, and it restores the derived cross-section exactly.
         h.undo();
         const auto restored=connectorBoundaries(h.document().network,connector(h.document(),id));

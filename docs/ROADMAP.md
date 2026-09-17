@@ -52,7 +52,8 @@ The Vissim modelling surface, natively: links are first class, connectors are re
 junctions are not something the user places.
 
 **Status:** M1.1–M1.17 are implemented, including every carve-out — M1.3.1, M1.5.1, **M1.11.1**
-and **M1.12.1**. One booked defect remains, **M1.12.2** (the miter bulge). The owner acceptance in
+and **M1.12.1**. **M1.12.2 is closed too** — the reported miter bulge was measured along the cross-section and is
+not a defect; see its section. **Every M1 engineering item is now done.** The owner acceptance in
 M1.7 remains open, and M1 is not closed until its timed gate passes — no amount of merged code
 closes it.
 
@@ -216,34 +217,41 @@ one entry, and feed the drawing; a Connector never given either is unchanged to 
 loading a schema-5 file written before the field existed. `BlockedVeh`, `NoLnCh` and
 `Has overtaking lane` are **not** in this milestone; they wait on the lane-changing model (Q2).
 
-### M1.12.2 — The miter widens a carriageway at a sharp bend
+### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
 
-**Open. A defect, not a feature**, found while measuring M1.12.1 and booked rather than fixed
-unbooked, because it changes drawn geometry at every bend.
+**Closed without a code change, because there was nothing wrong.** The record said a 2→2 Connector
+through a sharp bend "bulges to 8.698 m of a 7.000 m width, 24% over". Measured three ways on a
+hard bend (90.47° of deflection):
 
-A 2→2 Connector through a sharp bend measures **8.698 m of a 7.000 m width — 24% over** — at one
-sample. It predates M1.18 and is present at `30a212a`, so it is not that commit's doing. M1.12.1
-met it again at small magnitude: an authored 5.5 m lane measured **5.529 m** on a gently curved
-Connector.
+| how the width is measured | reading |
+|---|---|
+| along the cross-section, at the mitered vertex | **9.9403 m** (+42%) |
+| perpendicular, point to the far polyline | 7.0425 m (+0.6%) |
+| **projected across the leg the vertex lies on** | **7.000000 m** (exact) |
 
-**Cause, identified but not yet acted on.** `offsetGeometry`'s miter vector `(n1+n2)/(1+d1·d2)` has
-length `1/cos(θ/2)`, which is exactly right for the intersection of two offset legs — but it is
-applied independently to each boundary with its own `offsets[i]`, so the distance *along the
-cross-section* between two boundaries grows by that same factor at a sharp vertex.
-`trimSelfIntersections` cannot help: it removes loops from a line and is not applied to the
-boundaries the fill is built from.
+The first number is `width / cos(φ/2)`, which is *what the intersection of two offset legs is* —
+the corner-to-corner diagonal of a correctly mitered joint, exactly what a road painted round a
+kink measures across its corner. The carriageway square to the road is untouched. The original
+8.698 m is the same identity at a slightly gentler bend (`7.000 / cos(36.4°)`).
 
-**Measure before changing.** Two existing tests may have written this defect down as expected
-behaviour, and which of them is Vissim's real behaviour is the first thing to establish:
-`network_tests.cpp` asserts `3.5*sqrt(2)` between adjacent boundaries at a right-angle corner, and
-`connector_tests.cpp` allows an `8e-2` interior tolerance calling it "the miter (6.3 cm measured)".
-Three earlier rounds of guessing from screenshots each went wrong, so ask the owner with a
-screenshot if it is genuinely ambiguous rather than guessing a fourth time.
+**`offsetGeometry` must not be "fixed".** `bends_keep_their_full_carriageway_width` pins the miter
+to 1e-9 and already asserts both halves of this deliberately — 10.5 m projected across each leg
+*and* `3.5*sqrt(2)` between adjacent boundaries at a right-angle corner, which is `3.5/cos(45°)`.
+The `8e-2` tolerance in `connector_tests.cpp` says it in as many words too ("along the cross-section
+a mitered corner reads wide … square to the road it is the lane width"). Removing the miter would
+reinstate the pinch it was added to fix: 18% at 63°, 30% at a right angle.
 
-**Closes when:** a Connector and a Link both hold their full width measured square to the road
-through a bend, with an **upper** bound asserted and not only the lower one
-(`connector_tests.cpp` bounds width only from below, `least > .9*3.5`, which is how 24% slipped
-through), and the curved-width bound M1.12.1 left in place is tightened to an equality.
+**What was actually missing, and is now there.** Width had only ever been bounded from **below**
+(`least > .9*3.5`), which is how a claim of 24% over stood for a session unchallenged.
+`a_bent_connector_holds_its_width_square_to_the_road_from_both_sides` asserts it **exactly**, to
+1e-9, on every interior leg of a hard bend — and M1.12.1's curved-width bound was tightened from
+`span < 5.7` to the same equality. Both catch a 0.1% width error. Legs touching either end are
+excluded: they run to a vertex the wedge mouth moved (M1.17), so their direction is the Link's
+cross-section rather than the Connector's own, which reads 5.8 mm wide for that reason alone.
+
+**The lesson, since it cost a session:** a distance between two boundaries is only a width if it is
+measured square to the road. `perpendicular()` in `connector_tests.cpp` already carried that
+warning in its comment; the 24% figure was taken with `apart()`, which does not.
 
 ### M1.13 — Attachment stations in metres
 
