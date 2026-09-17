@@ -293,6 +293,24 @@ travel whole. `Alt`-drag rotation is still not implemented and is not booked.
 
 **Done:** two Links and the Connector between them move as one shape, and one Undo puts them back.
 
+### M1.17 — The mouth is a wedge cut on the Link
+
+**Implemented.** A Connector's two ends are cut on the cross-section of the Link they attach to,
+so each mouth lands on that Link's lane edges exactly and the markings run continuously from the
+road into the Connector. `e6dd394` had squared the ends to the Connector instead, leaving the
+mouth 4.7-17.2 cm clear of the road on a gentle join and up to 0.88 m on a hard reverse curve,
+with the polygon overlapping the carriageway to cover it. A screenshot of a real Vissim Connector
+arriving on a Link body at an angle settled it: Vissim cuts the wedge.
+
+That commit had justified the square cut with numbers (1.06 m of a 3.50 m lane on a reverse curve,
+1.96 m at 60 degrees, 0.46 m at 90) which belong to a different defect — **interpolating** the
+cross-section through the body. That defect stays fixed: the cut is only the two end samples, and
+36 of 90 boundary vertices move across the fixtures, all of them ends, with every interior vertex
+bit-for-bit identical.
+
+**Done:** a Connector's mouth sits on its Link's lane edges at any arrival angle, and the body is
+still the full lane its Links give it.
+
 ### M1.12.1 — A Connector's own lane widths and markings
 
 **Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found

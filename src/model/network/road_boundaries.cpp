@@ -62,22 +62,21 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
         source[i]=i && paths[i].from.laneId==paths[i-1].from.laneId?0:laneWidthOf(n,paths[i].from);
         target[i]=i && paths[i].to.laneId==paths[i-1].to.laneId?0:laneWidthOf(n,paths[i].to);
     }
-    // Only the source mouth is consulted, and only for which way lane order runs across the road.
-    const auto from=endCross(n,c.from,c.fromLaneCount,true);
+    const auto from=endCross(n,c.from,c.fromLaneCount,true),to=endCross(n,c.to,c.toLaneCount,false);
     // Hang the cross-section on the last lane that is a real lane at both ends, and step out from
     // there in both directions. A lane added at the leading edge then cannot move the far edge,
     // and a lane that tapers is placed against its neighbour rather than on its own driving line,
     // which converges onto the lane it merges into and is no longer where that lane's edge is.
     std::size_t anchorLane=0;
     for(std::size_t i=0;i<count;++i)if(source[i]>0 && target[i]>0)anchorLane=i;
-    // A constant offset from the axis, square to it at every point and at both ends, is what a
-    // road is: the width belongs to the Connector, not to the links it happens to join. Cutting
-    // the ends on the links' cross-sections instead drew a slanted wedge at the joint wherever
-    // the curve did not leave the lane straight; interpolating that cut through the body was
-    // worse still, at 1.06 m of a 3.50 m lane on a reverse curve. Vissim squares the ends to the
-    // connector and lets the joint overlap the link, and so does this.
+    // A constant offset from the axis, square to it at every point, is what a road is: the width
+    // belongs to the Connector, not to the line between the links it joins. Interpolating the two
+    // mouths' cross-sections through the body made the width depend on how far the path had swung
+    // away from that line -- a lane drawn 1.06 m of its 3.50 m on a reverse curve, and 0.46 m once
+    // a Link had been moved so the curve no longer left it straight. The correction onto each
+    // link's own cross-section sits on the two end samples and goes no further in.
     const auto& spine=paths[anchorLane].geometry;
-    const double entry=std::atan2(from.y,from.x);
+    const double entry=std::atan2(from.y,from.x),exit=std::atan2(to.y,to.x);
     // Which way a normal points is a convention; which way lane order runs is not. Take the
     // source mouth's word for it once, for the whole body, or the lanes come out mirrored.
     const auto raw=[&](std::size_t j) {
@@ -98,7 +97,18 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
         for(std::size_t i=0;i<=count;++i)offsets[i][j]*=sign;
     }
     std::vector<std::vector<Point>> result;
-    for(std::size_t i=0;i<=count;++i)result.push_back(offsetGeometry(spine,offsets[i]));
+    for(std::size_t i=0;i<=count;++i) {
+        auto shape=offsetGeometry(spine,offsets[i]);
+        // The two ends belong to the links, not to the Connector: cut them on the link's own
+        // cross-section, so a mouth is a wedge lying on its lane edges rather than a square end
+        // standing clear of them. This is what Vissim draws -- confirmed against a screenshot of
+        // a Connector arriving on a link body at an angle -- and squaring the ends to the
+        // Connector instead left a step of 0.12-0.29 m between the mouth and the road.
+        const double first=offsets[i].front()*sign,last=offsets[i].back()*sign;
+        shape.front()={spine.front().x+std::cos(entry)*first,spine.front().y+std::sin(entry)*first};
+        shape.back()={spine.back().x+std::cos(exit)*last,spine.back().y+std::sin(exit)*last};
+        result.push_back(std::move(shape));
+    }
     return result;
 }
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {

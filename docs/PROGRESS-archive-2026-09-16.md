@@ -156,3 +156,53 @@ mouths, dropping the miter, and dragging the whole curve on reanchor. Stored geo
 where a Link edit moves an attachment, which is the edit itself; no baseline fixture was regenerated.
 
 ---
+
+---
+
+## 2026-09-16 — Intermediate points, and what a Vissim Connector's line actually is
+
+The owner sent Vissim's Connector dialog: it counts **intermediate points**, and we had no such
+field — we stored a 13-point sample of a cubic, so every sample was a grip and dragging one put a
+corner in a shape the author had no count over.
+
+**A first pass read the line as a spline. It is not.** The owner settled it by sending a Vissim
+connector with the count set to **2**: four dots, three straight legs, a mitered corner on each
+dot, a visible step at each mouth where the polygon overlaps the link, and no tangency to the
+links anywhere. A Connector is drawn by the same rule a Link is. The spline is reverted; what
+survives from that pass is the model it needed — a Connector stores its two attachments and its
+intermediate points, and nothing baked — and the field.
+
+**The field.** Properties → Connectors carries `Intermediate points`. It never re-derives the
+default curve; `Reset curve` is the one thing that does. Raising it splits the longest leg each
+time, so every point the author placed survives and the drawn line does not move at all —
+re-laying at even spacing instead cut a hand-placed corner by 1.00 m, measured, which is why it
+does not. Lowering it spaces the points evenly along the shape that is there, giving up only the
+corners the lower count cannot hold; a 3 → 7 → 3 round trip leaves every point on the author's own
+line, where a reset is 5.58 m away from it. A new Connector gets 3, the owner's number; 0 is legal
+and leaves one straight leg. Laying more points along the arc follows the turn more closely: 2.29 m
+of sag at one point, 0.60 m at three, under 0.10 m at fifteen.
+
+**The curve that left its junction.** The arc reach laying those points,
+`(2/3)·chord·tan(α/2)/sin(α)`, is 0.67 of the chord at a right angle and **11.05** at 160 degrees.
+Drawn where two links nearly touch — the owner's second picture — it ran to 11.0 times its own
+chord, which is how a 3.5 m ribbon ends up a crumpled wedge. Held at the 120-degree value,
+`(4/3)·chord`, it measures 1.9, and the ordinary fixtures came out byte-identical. It is still an
+undrivable turn for a 3.5 m lane and still reports `TIGHT_CONNECTOR_RADIUS`.
+
+**What three points cost against thirteen.** A coarser polygon reads slightly wide along its
+cross-section at a corner, because that is what a miter does — 6.3 cm, the same thing a Link's own
+edges do at a bend, and square to the road it is still the lane width. The step at a mouth grows
+with it: 4.7 to 17.2 cm on a gentle join, 0.88 m on a tight reverse curve. Both are recorded in
+the tests with their measured numbers rather than tuned away.
+
+**Old save files were deliberately not migrated.** The owner confirmed the project is still a test
+bed and no drawing is being carried forward. No baseline fixture stores connector geometry, so
+none could move and none was regenerated.
+
+**Verification:** 23/23 CTest, the model suite up from 97 to 101 cases, plus the architecture and
+file-size guards on Linux; Windows is `native.yml`. Three negative checks each failed a named test:
+re-laying evenly when the count is raised, ignoring the count and always laying three, and letting
+the arc reach run away again. A centripetal parameterization was tried while the spline reading
+still stood and **removed**: it moved the measured numbers by 0.3 degrees and 3 mm.
+
+---

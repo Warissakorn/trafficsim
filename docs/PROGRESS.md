@@ -8,6 +8,53 @@ long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-arch
 
 ---
 
+## 2026-09-17 — The mouth is a wedge cut on the Link
+
+The owner circled the joint on a Vissim screenshot — a Connector arriving on a Link **body** at
+an angle — and confirmed what to match: *ปากทางเป็นลิ่มตาม Link*. Vissim cuts a Connector's mouth
+on the cross-section of the Link it attaches to. Ours was square to the Connector.
+
+**The commit that made it square was justified with the wrong numbers.** `e6dd394` cited 1.06 m
+of a 3.50 m lane on a reverse curve, 1.96 m at 60 degrees and 0.46 m at 90. Those belong to a
+different defect — **interpolating** the cross-section through the body — fixed one commit
+earlier in `e81a591`, whose own message says of the end cut: *"only the joint ... is shorter
+through the corner, as it is in Vissim."* So the wedge had already been judged correct, and
+`e6dd394` discarded it along with the interpolation, trading it for an overlap of 0.12-0.29 m.
+
+The restoration is the pre-`e6dd394` projection, six lines: each boundary's end is placed at
+`spine.front() + from · offset`, where `from` is the Link's own cross-section direction, which
+`endCross` was still computing and throwing all of away but its sign.
+
+**A design I proposed first was wrong, and measurement said so.** I planned to *shear* each
+boundary's end along its own direction until it met the cross-section line. That lands on the
+line but not on the Link's lane edges: the mouth comes out `offset / sin θ` wide. Measured, it
+drew a 7.00 m mouth as 7.24 m at 30 degrees and 7.60 m at 120. The projection is both simpler and
+correct — measured 7.0000 m at every angle.
+
+**The guard that matters.** The cut must not creep into the body, or it rebuilds the very thing
+`e6dd394` removed. Dumped every boundary vertex across six fixtures, before and after: 90
+vertices, **36 changed, and all 36 are the two end samples — zero interior vertices moved**. The
+body test was tightened from `> 3.4 m` to `= 3.5 m at 1e-9` to hold that line, measured against
+the opposite edge's *body*, since a wedge segment is not a lane edge and measuring across one
+reads 1.3 cm short without the lane being short.
+
+**The cap I was advised to add is a no-op, so it is not there.** The concern was a wedge deeper
+than its own opening leg folding over and feeding `trimSelfIntersections`. Built it: a 14 m range
+whose first leg is 2.07 m against a 7.00 m half-width — a wedge three times deeper than its
+opening. Zero self-crossings, and the trim never touched the mouth. Recorded rather than coded.
+
+Mouth-to-lane-edge went from 4.7-17.2 cm, 0.12-0.29 m and 0.88 m to **0, to 1e-9**, and the three
+tests that asserted squareness now assert exact landing instead — tolerances replaced by
+equalities, not relaxed. Three negative checks each broke named tests: no cut at all, cutting
+every sample rather than the two ends, and dropping the sign so lane order mirrors at the mouth.
+
+One behaviour outside drawing: `canvas_spatial.cpp` builds the selection and hit-test outline from
+these boundaries, so clicking a Connector at its mouth now matches what is drawn.
+
+Booked as M1.17.
+
+---
+
 ## 2026-09-16 — Moving several objects at once
 
 The second gap the owner picked from the audit. Left-dragging a multi-selection did nothing:
@@ -75,54 +122,6 @@ unbooked; item 3's old blocker, connector reanchoring, no longer exists.
 
 ---
 
-## 2026-09-16 — Intermediate points, and what a Vissim Connector's line actually is
-
-The owner sent Vissim's Connector dialog: it counts **intermediate points**, and we had no such
-field — we stored a 13-point sample of a cubic, so every sample was a grip and dragging one put a
-corner in a shape the author had no count over.
-
-**A first pass read the line as a spline. It is not.** The owner settled it by sending a Vissim
-connector with the count set to **2**: four dots, three straight legs, a mitered corner on each
-dot, a visible step at each mouth where the polygon overlaps the link, and no tangency to the
-links anywhere. A Connector is drawn by the same rule a Link is. The spline is reverted; what
-survives from that pass is the model it needed — a Connector stores its two attachments and its
-intermediate points, and nothing baked — and the field.
-
-**The field.** Properties → Connectors carries `Intermediate points`. It never re-derives the
-default curve; `Reset curve` is the one thing that does. Raising it splits the longest leg each
-time, so every point the author placed survives and the drawn line does not move at all —
-re-laying at even spacing instead cut a hand-placed corner by 1.00 m, measured, which is why it
-does not. Lowering it spaces the points evenly along the shape that is there, giving up only the
-corners the lower count cannot hold; a 3 → 7 → 3 round trip leaves every point on the author's own
-line, where a reset is 5.58 m away from it. A new Connector gets 3, the owner's number; 0 is legal
-and leaves one straight leg. Laying more points along the arc follows the turn more closely: 2.29 m
-of sag at one point, 0.60 m at three, under 0.10 m at fifteen.
-
-**The curve that left its junction.** The arc reach laying those points,
-`(2/3)·chord·tan(α/2)/sin(α)`, is 0.67 of the chord at a right angle and **11.05** at 160 degrees.
-Drawn where two links nearly touch — the owner's second picture — it ran to 11.0 times its own
-chord, which is how a 3.5 m ribbon ends up a crumpled wedge. Held at the 120-degree value,
-`(4/3)·chord`, it measures 1.9, and the ordinary fixtures came out byte-identical. It is still an
-undrivable turn for a 3.5 m lane and still reports `TIGHT_CONNECTOR_RADIUS`.
-
-**What three points cost against thirteen.** A coarser polygon reads slightly wide along its
-cross-section at a corner, because that is what a miter does — 6.3 cm, the same thing a Link's own
-edges do at a bend, and square to the road it is still the lane width. The step at a mouth grows
-with it: 4.7 to 17.2 cm on a gentle join, 0.88 m on a tight reverse curve. Both are recorded in
-the tests with their measured numbers rather than tuned away.
-
-**Old save files were deliberately not migrated.** The owner confirmed the project is still a test
-bed and no drawing is being carried forward. No baseline fixture stores connector geometry, so
-none could move and none was regenerated.
-
-**Verification:** 23/23 CTest, the model suite up from 97 to 101 cases, plus the architecture and
-file-size guards on Linux; Windows is `native.yml`. Three negative checks each failed a named test:
-re-laying evenly when the count is raised, ignoring the count and always laying three, and letting
-the arc reach run away again. A centripetal parameterization was tried while the spline reading
-still stood and **removed**: it moved the measured numbers by 0.3 degrees and 3 mm.
-
----
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -145,7 +144,9 @@ drew, a count of 2 draws three straight legs with a corner on each point as Viss
 Connector drawn between two links that nearly touch stays inside the junction and is reported as
 a tight radius rather than drawn as a crumpled wedge. Old `*.traffic.json` files predating that
 change were deliberately not migrated and will open with all of their stored points as poly
-points. Check the group move: select two Links with a Connector between
+points. Check the mouth: a Connector's ends should sit
+on the Link's lane edges with the markings running straight through, at any arrival angle and
+after moving a Link under it. Check the group move: select two Links with a Connector between
 them, drag, and see the junction move as one shape that one Undo puts back; check that a
 selection of only Connectors or heads refuses with a reason. Check the Name work
 too: name a Link, a Connector and a signal head, see each in its list, reopen the file and find
