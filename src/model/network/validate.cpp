@@ -71,10 +71,16 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         }catch(const std::exception&){add("EDIT_LANE_RANGE",p);}
         const auto check = [&](const Link* link, const LaneReference& ref, bool end) {
             if (!link || link->geometry.size() < 2 || c.geometry.empty() || !validSide) return;
-            const auto expected = laneAttachment(network,ref,end);
+            try {
+            // A Connector's stored line is its own centre, so what must sit on the link is the
+            // middle of the range it attaches to -- not the first lane of that range.
+            const auto expected = connectorAttachment(network,ref,end?c.fromLaneCount:c.toLaneCount,end);
             const auto endpoint = end ? c.geometry.front() : c.geometry.back();
             if (std::hypot(endpoint.x - expected.x, endpoint.y - expected.y) > 0.01)
                 add("DISCONNECTED_GEOMETRY", p + (end ? ".from" : ".to"));
+            // A link whose widths are not numbers has no cross-section to attach to. That is
+            // reported as INVALID_WIDTH on the link; collecting issues must not throw here.
+            } catch(const std::exception&) {}
         };
         check(from, c.from, true); check(to, c.to, false);
     }

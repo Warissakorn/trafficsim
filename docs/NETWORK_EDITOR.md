@@ -191,6 +191,14 @@ exactly on that Link's lane edges. Properties exposes both counts as an alternat
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
+**A Connector's stored line is its own centre.** Both of its ends sit on the middle of the
+opening it attaches to — the midpoint of the lane range at that station — the way a Link's
+reference line runs down the middle of its bundle. Each lane path is then derived by offsetting
+from that centre. It used to be the path of whichever lane happened to be first, which put the
+stored line on an *edge* of the ribbon: 1.75 m off centre for a two-lane range, 5.25 m for four.
+Nothing drawn moved when this changed — the ribbon and the paths vehicles drive are the same to
+the last bit — only what the Connector records as the place it attaches.
+
 A Connector is stored and drawn the way Vissim's is: its two attachments and a few
 **intermediate points**, joined by **straight legs and mitered at each point**, exactly as a Link
 is. It is not smoothed — a Connector with two intermediate points is three straight legs with a

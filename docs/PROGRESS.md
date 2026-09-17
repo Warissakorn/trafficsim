@@ -8,6 +8,50 @@ long. Older entries are preserved whole in [`PROGRESS-archive.md`](PROGRESS-arch
 
 ---
 
+## 2026-09-17 — A Connector's line is its own centre
+
+The owner numbered how a Connector should meet a Link, 1 to 4, and after I failed to draw it
+twice said what I had been skipping: **"ที่สำคัญคือให้จุดกึ่งกลางตรงกันก่อน ค่อยลากเส้นขอบ"** — get the
+midpoints to coincide *first*, then draw the edges. Step 1 is a precondition, not a description.
+
+**It was not true.** The point the model recorded as a Connector's attachment was pinned to the
+first lane's centreline, while the middle of the opening it drew walked out to the middle of the
+range: 1.750 m apart at two lanes, 3.500 at three, 5.250 at four. Asked which point should move,
+the owner chose the stored one. So a Connector's stored line is now its own centreline, the way a
+Link's reference line is, and each lane path is derived by offsetting from it.
+
+**The invariant this had to keep, and did.** Changing what the stored point *means* must not move
+what is drawn or driven. Dumped every boundary vertex and every `connectorPaths` vertex over four
+lane counts, before and after: **120 vertices, 0 changed**. The ribbon and the paths vehicles
+drive are identical bit for bit; only the reference moved.
+
+**A bug the change surfaced.** `addConnectorRange` set the lane counts *after* building the
+default curve, so a wider range never moved its own endpoints — the stored line stayed on lane 0
+however wide the range got. No test caught it. The curve is now derived once the counts are
+known, and the restated grip test catches it: removing the fix breaks it by 2.000 m.
+
+**A bug I introduced and measurement caught.** My first attempt re-anchored the ends in
+`resizeConnectorEdges`, which moves endpoints and leaves the interior where it is. That bent a
+hand-drawn shape by 0.44 m on a one-into-two rebase. Both edges now carry the interior with the
+ends by the same frozen weights a leading rebase already used, which unified the two branches.
+
+`grips_ride_the_middle_of_the_whole_width` asserted the stored line was **more than a metre** off
+the centreline — the old rule stated as a test. It now asserts they are the same point to 1e-9,
+which is the new rule and strictly stronger. `validate.cpp` compares against the range centre and
+no longer throws out of issue collection when a link's widths are not numbers; that link is
+already reported as `INVALID_WIDTH`.
+
+Three negative checks each broke named tests: keeping the endpoint on lane 0, letting lane 0 keep
+the stored line as its own path, and deriving the curve before the counts are known.
+
+Booked as M1.18. Steps 2–4 of the owner's drawing — the wedge mouth — are a separate system and
+are **not** in this change. Two things are already measured about them and are in
+`VISSIM_PARITY.md`: at equal width the construction collapses to the straight mouth M1.17 already
+draws (16 cases, 1e-14), and it cannot live in `connectorBoundaries`, which is one point per
+spine sample, because the perpendicular foot has no sample of its own.
+
+---
+
 ## 2026-09-17 — The mouth is a wedge cut on the Link
 
 The owner circled the joint on a Vissim screenshot — a Connector arriving on a Link **body** at
@@ -87,41 +131,6 @@ implemented and still not booked.
 
 ---
 
-## 2026-09-16 — A Name on every object, and the audit that found it
-
-The owner asked what else still differs from Vissim. §§1–6 of `VISSIM_PARITY.md` are a
-2026-09-14 snapshot and several of their "Today" cells have gone stale, so the audit was done
-against live code. It found five gaps; the full table is in that file's sixth follow-up. The
-owner picked the first.
-
-**Nothing could be named.** `Link`, `Connector` and `NetworkSignalHead` had no `name` member at
-all, and no dialog anywhere offered one — an interchange of forty links was forty opaque ids,
-where Vissim puts `Name` beside `No.` on every object dialog and in every list. All three now
-carry one: free text, at most 200 characters, and explicitly **not a key** — two objects may
-hold the same name and an empty one is the normal state, which is why nothing looks an object
-up by it. It is ordered last in each struct so that every existing brace-initialisation keeps
-meaning what it says.
-
-One field in the inspector's *common* section names whichever object is selected, rather than
-three fields on three tabs, because in Vissim Name is a property of an object, not of a kind of
-object. It commits on Return and on focus loss, but only when the text actually changed:
-`editingFinished` fires on every click out of the field, and committing there unconditionally
-put an empty entry on the undo stack each time. The three object lists gained a Name column
-next to ID; the column loop now reads `columnCount()` instead of the literal 4 it was written
-with, so the problem table's four columns still work beside the objects' five.
-
-Verified: a name reaches the model, the list and the project file, comes back on reopen, copies
-with a duplicated object and undoes as one entry. Five negative checks each broke a named
-assertion — dropping the field from the JSON, dropping the length limit, clearing the name on
-copy, never committing the field, and not reloading it on refresh.
-
-**Not taken, with reasons.** Integer `No.` (item 4) churns the file format and every reference
-for a mostly cosmetic win, and naming buys most of the same benefit. Missing object types (item
-5) each need engine behaviour first. Editable lists and group move (items 2 and 3) are real and
-unbooked; item 3's old blocker, connector reanchoring, no longer exists.
-
----
-
 ## Next
 
 **Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
@@ -144,7 +153,8 @@ drew, a count of 2 draws three straight legs with a corner on each point as Viss
 Connector drawn between two links that nearly touch stays inside the junction and is reported as
 a tight radius rather than drawn as a crumpled wedge. Old `*.traffic.json` files predating that
 change were deliberately not migrated and will open with all of their stored points as poly
-points. Check the mouth: a Connector's ends should sit
+points. Check that a multi-lane Connector's
+end grip now sits in the middle of its mouth rather than on one edge of it. Check the mouth: a Connector's ends should sit
 on the Link's lane edges with the markings running straight through, at any arrival angle and
 after moving a Link under it. Check the group move: select two Links with a Connector between
 them, drag, and see the junction move as one shape that one Undo puts back; check that a

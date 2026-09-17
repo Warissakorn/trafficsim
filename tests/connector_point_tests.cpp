@@ -61,10 +61,10 @@ TEST(points, a_connector_is_drawn_straight_between_its_intermediate_points) {
 TEST(points, a_default_connector_with_more_points_follows_the_turn_more_closely) {
     auto d=roads();const auto id=addConnector(d,{"in","in-1"},{"out","out-1"});
     const auto& c=editableConnector(d,id);
-    const auto arc=connectorCurve(d.network,c.from,c.to,39);
+    const auto arc=connectorCurve(d.network,c.from,c.to,c.fromLaneCount,c.toLaneCount,39);
     double previous=1e300;
     for(const int count:{1,2,3,7,15}) {
-        const auto points=connectorCurve(d.network,c.from,c.to,count);
+        const auto points=connectorCurve(d.network,c.from,c.to,c.fromLaneCount,c.toLaneCount,count);
         // The forcing: the count really is the number of intermediate points, not of samples.
         CHECK(points.size()==static_cast<std::size_t>(count)+2);
         const double sag=chordSag(points,arc);
@@ -77,7 +77,7 @@ TEST(points, a_default_connector_with_more_points_follows_the_turn_more_closely)
     CHECK(c.geometry.size()==static_cast<std::size_t>(kDefaultIntermediatePoints)+2);
     resampleConnectorPoints(d,id,0);CHECK(editableConnector(d,id).geometry.size()==2);
     for(const int bad:{-1,41})test::throws([&]{resampleConnectorPoints(d,id,bad);},"EDIT_CONNECTOR_POINTS");
-    test::throws([&]{(void)connectorCurve(d.network,c.from,c.to,41);},"EDIT_CONNECTOR_POINTS");
+    test::throws([&]{(void)connectorCurve(d.network,c.from,c.to,c.fromLaneCount,c.toLaneCount,41);},"EDIT_CONNECTOR_POINTS");
 }
 // Vissim's field re-lays the shape the author has; it is not a Reset curve with extra steps.
 TEST(points, changing_the_count_re_lays_the_shape_the_author_bent) {
@@ -85,7 +85,8 @@ TEST(points, changing_the_count_re_lays_the_shape_the_author_bent) {
     auto bent=editableConnector(d,id).geometry;bent[2]={bent[2].x+5,bent[2].y-7};
     changeConnectorGeometry(d,id,bent);
     const auto original=editableConnector(d,id).geometry;
-    const auto reset=connectorCurve(d.network,editableConnector(d,id).from,editableConnector(d,id).to);
+    const auto reset=connectorCurve(d.network,editableConnector(d,id).from,editableConnector(d,id).to,
+                                    editableConnector(d,id).fromLaneCount,editableConnector(d,id).toLaneCount);
     // The forcing: the shape really is the author's, 5.9 m away from the one a reset would give.
     CHECK(apart(reset,original)>5);
     resampleConnectorPoints(d,id,7);
