@@ -88,3 +88,23 @@ TEST(demand, deterministic_replay_survives_lane_sectioning) {
     CHECK(reachEnd(sectioned)>0);CHECK(reachEnd(whole)>0);
     CHECK(reachEnd(sectioned)>=reachEnd(whole)); // The shorter route cannot deliver fewer.
 }
+// Hard rule 5: the two numbers a derived priority rule is given are content, not code. Changing
+// the gap time must be a data edit, not a recompile.
+TEST(demand, priority_defaults_come_from_the_data_catalog_and_do_not_break_portability) {
+    std::ifstream file(test::root()/"data/scenarios/crossing.json");Json j;file>>j;
+    const auto d=parseDocument(j);
+    const auto resolved=resolveCatalogs(*d.definition,test::root()/"data");
+    // The forcing: the values are the ones in data/priority-rules/default.json, not struct
+    // defaults -- PriorityDefaults is zero-initialised, so reading the file is the only way here.
+    test::near(resolved.priorityDefaults.gapTime,3.0,1e-12);
+    test::near(resolved.priorityDefaults.headway,7.0,1e-12);
+    CHECK(PriorityDefaults{}.gapTime==0);
+    // And a document with its own catalogs still resolves against a directory that has none: the
+    // numbers are needed only where a rule is derived, so their absence is not a load failure.
+    auto portable=*d.definition;
+    portable.externalVehicleTypes=false;portable.externalBehaviours=false;
+    portable.vehicleTypes=resolved.vehicleTypes;portable.behaviours=resolved.behaviours;
+    const auto bare=resolveCatalogs(portable,test::root()/"missing-catalog");
+    CHECK(bare.priorityDefaults==PriorityDefaults{});
+    CHECK(!bare.vehicleTypes.empty());
+}

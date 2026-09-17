@@ -1,0 +1,6 @@
+{
+  "id": "give-way-default",
+  "gapTime": 3.0,
+  "headway": 7.0,
+  "note": "Gap time in seconds and headway in metres for priority rules DERIVED from the drawing, where a Connector arrives inside a lane body and the engine needs a merge arbitrated. An authored rule carries its own two numbers and ignores these. Not calibrated against any published critical-gap study -- changing them changes the simulation, and hard rule 4's not-yet-validated marker applies."
+}

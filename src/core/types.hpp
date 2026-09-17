@@ -41,6 +41,26 @@ struct SignalProgram {
     bool operator==(const SignalProgram&) const = default;
 };
 struct SignalHead { std::string id, segmentId; double position{}; std::string programId; };
+// A minor approach giving way to a major one, at a point where two segments feed the same place.
+// Vissim's priority rule: a stop line on the minor approach, a conflict marker on the major one,
+// and the two numbers an engineer tunes -- a gap time in seconds and a headway in metres.
+//
+// This is a DETERMINISTIC THRESHOLD TEST, not a calibrated critical-gap distribution: a vehicle
+// waits while any major vehicle is within `headway` of the conflict point or would reach it
+// within `gapTime`, and goes otherwise. It makes a merge expressible and tunable. It does not
+// make it validated -- see hard rule 4.
+struct PriorityDefaults {
+    double gapTime{}, headway{};
+    bool operator==(const PriorityDefaults&) const = default;
+};
+struct PriorityRule {
+    std::string id;
+    std::string yieldSegmentId; double yieldPosition{};      // where the minor approach waits
+    std::string conflictSegmentId; double conflictPosition{}; // the point on the major approach
+    double gapTime{};   // seconds: a major vehicle arriving sooner than this is not yielded to
+    double headway{};   // metres: a major vehicle closer than this to the point blocks regardless
+    bool operator==(const PriorityRule&) const = default;
+};
 struct ScenarioDefinition {
     double duration{}, timeStep{};
     std::vector<Route> routes;
@@ -48,6 +68,14 @@ struct ScenarioDefinition {
     std::vector<DriverBehaviour> behaviours;
     std::vector<VehicleInput> inputs;
     std::vector<SignalProgram> signalPrograms;
+    // Ordered last so every existing brace-initialisation of a definition keeps meaning what it
+    // says. Empty is the normal state: a scenario with no merge needs no rule.
+    std::vector<PriorityRule> priorityRules;
+    // The two numbers a rule DERIVED from the drawing is given, read from data/priority-rules/ by
+    // the project layer. Content, not code (hard rule 5). Left at zero here on purpose: a zero
+    // gap time is an uncontrolled merge, so deriving a rule without loading these is refused
+    // rather than silently allowed.
+    PriorityDefaults priorityDefaults;
     // Value equality, so callers can tell "this edit changed nothing" without serialising.
     bool operator==(const ScenarioDefinition&) const = default;
 };
@@ -62,10 +90,18 @@ struct RoutePart { std::string segmentId; std::size_t segmentIndex{}; double sta
 // A signal head that lies on a route, with the start station of the FIRST route part
 // carrying that head's segment - the part the per-vehicle scan used to search for.
 struct RouteHead { std::size_t headIndex{}; double partStart{}; };
+// The same idea for a priority rule: a rule whose yield segment lies on this route, with the start
+// station of the first route part carrying it, so the stop line is a route coordinate.
+struct RouteRule { std::size_t ruleIndex{}; double partStart{}; };
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
     std::vector<std::vector<RouteHead>> routeHeads;  // parallel to Scenario::routes, in signalHeads order
+    std::vector<std::vector<RouteRule>> routeRules;  // parallel to Scenario::routes, in priorityRules order
+    // The segment index each rule watches, so the per-tick scan is a bucket lookup and never a
+    // search by id. SIZE_MAX when the rule names a segment that does not exist; validation
+    // rejects that scenario, but a hand-built index must not read out of bounds before it does.
+    std::vector<std::size_t> conflictSegmentOfRule;  // parallel to Scenario::priorityRules
 };
 // Scenario lookups for one vehicle, resolved once per tick instead of once per use.
 struct VehicleRefs { std::size_t route{}, type{}, behaviour{}; };

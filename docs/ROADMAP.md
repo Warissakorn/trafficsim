@@ -398,6 +398,48 @@ network is demonstrably not expressible in a SUMO wrapper.
 
 ---
 
+### M3.1 — Merge priority by gap time and headway
+
+**Implemented, and it does not close M3.** The engine had no answer at a merge at all, which is
+why `validateScenario` refused one outright: a place fed by two segments had no rule for who goes.
+`PriorityRule{yieldSegmentId, yieldPosition, conflictSegmentId, conflictPosition, gapTime,
+headway}` supplies one — Vissim's priority rule, with the two numbers an engineer tunes.
+
+Car-following across a merge already worked, because `OccupiedSpan::segmentIndex` is a global
+index into `Scenario::segments` and spans are bucketed globally, so two vehicles see each other
+the moment they share a segment. What a rule adds is seeing the major approach *before* entering
+it, which is not on the minor vehicle's own route and so is invisible to `closestVehicle`. A
+vehicle that must give way is held at its stop line by the **same clamp a red signal head uses**,
+not a second mechanism beside it. Rule-to-route incidence resolves once per scenario in
+`ScenarioIndex`, mirroring `routeHeads`.
+
+`UNSUPPORTED_MERGE` is loosened **by construction, never by removal**: a place fed by *n*
+segments is runnable only when at least *n*−1 of them give way to another of them, so exactly one
+has priority and the rest have somewhere to wait. A network that has not been through the
+priority model reports it exactly as before — six tests break if the guard is deleted instead.
+A segment may not give way to itself.
+
+A standing queue upstream of the conflict point does **not** block: a stopped major vehicle
+further off than the headway is a gap, and treating it as a block would deadlock the minor
+approach rather than release it into a gap that genuinely exists.
+
+Gap time and headway for a **derived** rule live in `data/priority-rules/`, so changing them is a
+data edit (hard rule 5). They are read best-effort, because a document carrying its own catalogs
+must stay portable to a machine with no data directory; a rule that has to be derived without
+them is refused at the point of use rather than given a zero gap time, which would be a merge
+nobody gives way at, invented in silence.
+
+**This is a deterministic threshold test, not a calibrated critical-gap model.** Hard rule 4's
+not-yet-validated marker stays, and M6 still owns fidelity.
+
+**Explicitly NOT in M3.1, and all still M3's:** conflict areas as editable input, priority rules
+as an authorable object with their own UI, stop and yield control, crossing conflicts, and signal
+heads placed anywhere on a link. M3's done-condition — an unsignalized T-junction whose
+minor-road delay responds correctly to changing the gap time — is **not** met by this milestone
+and M3 remains open.
+
+---
+
 ## M4 — Signal control
 
 Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-barrier.

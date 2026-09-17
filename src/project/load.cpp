@@ -39,6 +39,16 @@ ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const st
                 definition.behaviours.push_back(parseBehaviour(item));
         }
     } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    // Best-effort, and deliberately NOT inside the block above: a document carrying its own
+    // vehicle types and behaviours must stay portable to a machine with no data directory, which
+    // is a contract a test already pins. These numbers are only needed when a priority rule has
+    // to be DERIVED from the drawing, so a missing file is not an error here -- it is an error at
+    // the point of use, where the alternative would be a zero gap time, a merge nobody gives way
+    // at, invented in silence.
+    try {
+        const auto defaults = catalog(dataDirectory / "priority-rules");
+        if (!defaults.empty()) definition.priorityDefaults = parsePriorityDefaults(defaults.front());
+    } catch (const std::exception&) { /* Left at zero; refused where it is needed. */ }
     return definition;
 }
 ScenarioLoadError::ScenarioLoadError(std::filesystem::path path, std::string errorCode, const std::string& text)

@@ -177,3 +177,116 @@ TEST(core, invalid_control_and_parameter_ranges) {
     for (const auto* code : {"INVALID_RANGE", "UNKNOWN_ROUTE", "INVALID_NUMBER", "INVALID_INTERVAL", "UNKNOWN_SIGNAL_PROGRAM", "INVALID_POSITION"})
         CHECK(std::any_of(issues.begin(), issues.end(), [&](const auto& issue) { return issue.code == code; }));
 }
+namespace {
+// Two approaches feeding one place: the shape the engine refused outright before M3.1. The minor
+// approach waits at the end of its own segment; the conflict point is where the major approach
+// reaches the merge.
+Scenario mergeScenario(double gapTime, double headway, bool withRule = true) {
+    const auto source = test::demo().scenario;
+    Scenario s;
+    s.duration = 120; s.timeStep = 0.1;
+    s.segments = {{"major", 150, {"merged"}}, {"minor", 100, {"merged"}}, {"merged", 150, {}}};
+    s.routes = {{"majorRoute", {"major", "merged"}}, {"minorRoute", {"minor", "merged"}}};
+    s.vehicleTypes = source.vehicleTypes; s.behaviours = source.behaviours;
+    if (withRule) s.priorityRules = {{"give-way", "minor", 100, "major", 150, gapTime, headway}};
+    return s;
+}
+Vehicle on(std::uint64_t id, const char* route, double distance, double speed) {
+    Vehicle v;
+    v.id = id; v.distance = distance; v.speed = speed;
+    v.inputId = "input"; v.routeId = route; v.vehicleTypeId = "car";
+    v.desiredSpeed = 15; v.driverFactor = 0.5;
+    return v;
+}
+double distanceOf(const SimState& state, std::uint64_t id) {
+    for (const auto& v : state.vehicles) if (v.id == id) return v.distance;
+    return -1; // Left the network.
+}
+}
+// M3.1. Merge arbitration by gap time and headway -- the two numbers an engineer tunes. Without
+// this the engine had no answer at a merge at all, which is why it refused to run one.
+TEST(core, a_minor_approach_gives_way_and_then_goes) {
+    // A major vehicle 90 m short of the conflict point at 10 m/s -- nine seconds away, inside a
+    // thirty-second gap time, so it blocks for long enough to be worth measuring. A one-second
+    // block is NOT enough: from 95 m at rest, an unyielding vehicle would not have reached the
+    // stop line within it anyway, and the assertion would hold whether the clamp existed or not.
+    auto blocked = test::withVehicles(mergeScenario(30, 10), {on(1, "minorRoute", 95, 0),
+                                                              on(2, "majorRoute", 60, 10)});
+    // The forcing: the major vehicle really is approaching the conflict point during the wait. If
+    // it had already left, the minor vehicle standing still would prove nothing about yielding.
+    CHECK(distanceOf(blocked, 2) > 0);
+    bool majorWasApproaching = false;
+    for (int i = 0; i < 60; ++i) {
+        blocked = stepSimulation(blocked);
+        // Held at the stop line, never across it, for as long as the major vehicle is short of
+        // the conflict point.
+        if (distanceOf(blocked, 2) > 0 && distanceOf(blocked, 2) < 150) {
+            majorWasApproaching = true;
+            CHECK(distanceOf(blocked, 1) <= 100 + 1e-9);
+        }
+    }
+    // Six seconds of blocking really did happen, and six seconds is comfortably longer than the
+    // minor vehicle needs to cross 5 m from rest -- so the assertion above had something to catch.
+    CHECK(majorWasApproaching);
+    // With the major approach empty, the same vehicle from the same place crosses freely.
+    auto clear = test::withVehicles(mergeScenario(3, 10), {on(1, "minorRoute", 95, 0)});
+    for (int i = 0; i < 60; ++i) clear = stepSimulation(clear);
+    CHECK(distanceOf(clear, 1) > 100);
+    // The negative that matters: the rule is READ, not ignored. A zero gap time and headway with
+    // the identical blocking traffic must let the vehicle out, and a long one must hold it.
+    auto permissive = test::withVehicles(mergeScenario(0, 0), {on(1, "minorRoute", 95, 0),
+                                                               on(2, "majorRoute", 140, 10)});
+    auto strict = test::withVehicles(mergeScenario(30, 10), {on(1, "minorRoute", 95, 0),
+                                                             on(2, "majorRoute", 60, 10)});
+    for (int i = 0; i < 60; ++i) { permissive = stepSimulation(permissive); strict = stepSimulation(strict); }
+    CHECK(distanceOf(permissive, 1) > 100);
+    CHECK(distanceOf(strict, 1) <= 100 + 1e-9);
+}
+// A stopped major vehicle far from the conflict point must not hold the minor approach for ever:
+// a queue that is not moving is a gap, and treating it as a block is a deadlock.
+TEST(core, a_standing_queue_upstream_does_not_deadlock_the_minor_approach) {
+    auto state = test::withVehicles(mergeScenario(3, 10), {on(1, "minorRoute", 95, 0),
+                                                           on(2, "majorRoute", 60, 0)});
+    // The forcing: the major vehicle is genuinely stopped and genuinely still on the segment.
+    CHECK(distanceOf(state, 2) == 60);
+    for (int i = 0; i < 80; ++i) state = stepSimulation(state);
+    CHECK(distanceOf(state, 1) > 100);
+}
+// The guard is loosened by construction, never by removal.
+TEST(core, a_merge_without_a_priority_rule_is_still_rejected) {
+    test::throws([&] { assertValidScenario(mergeScenario(3, 10, false)); }, "UNSUPPORTED_MERGE");
+    // And a rule pointing somewhere else does not count as arbitration of this merge.
+    auto elsewhere = mergeScenario(3, 10, false);
+    elsewhere.priorityRules = {{"wrong", "minor", 100, "merged", 10, 3, 10}};
+    test::throws([&] { assertValidScenario(elsewhere); }, "UNSUPPORTED_MERGE");
+    // A segment cannot give way to itself.
+    auto itself = mergeScenario(3, 10, false);
+    itself.priorityRules = {{"self", "minor", 100, "minor", 10, 3, 10}};
+    test::throws([&] { assertValidScenario(itself); }, "INVALID_RANGE");
+    // The arbitrated merge is accepted -- the forcing for all three negatives above.
+    CHECK(validateScenario(mergeScenario(3, 10)).empty());
+}
+TEST(core, a_priority_rule_is_validated_against_the_segments_it_names) {
+    auto unknown = mergeScenario(3, 10);
+    unknown.priorityRules[0].conflictSegmentId = "nowhere";
+    test::throws([&] { assertValidScenario(unknown); }, "UNKNOWN_SEGMENT");
+    auto offSegment = mergeScenario(3, 10);
+    offSegment.priorityRules[0].yieldPosition = 500;
+    test::throws([&] { assertValidScenario(offSegment); }, "INVALID_POSITION");
+    auto negative = mergeScenario(3, 10);
+    negative.priorityRules[0].gapTime = -1;
+    test::throws([&] { assertValidScenario(negative); }, "INVALID_NUMBER");
+}
+// Hard rule 2 again, now with a merge in the network.
+TEST(core, the_same_seed_produces_the_same_merge) {
+    auto s = mergeScenario(3, 10);
+    s.inputs = {{"majorIn", "majorRoute", "car", 600, 0, 60}, {"minorIn", "minorRoute", "car", 600, 0, 60}};
+    const auto reference = events(s, 42);
+    CHECK(events(s, 42) == reference);
+    CHECK(events(s, 43) != reference);
+    // The forcing: vehicles actually got through the merge, so the stream is not an empty run.
+    CHECK(runSimulation(s, 42).completed > 0);
+    // And a tighter gap time is a different run, which is what makes the rule observable at all.
+    auto tighter = s; tighter.priorityRules[0].gapTime = 12;
+    CHECK(events(tighter, 42) != reference);
+}

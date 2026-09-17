@@ -121,6 +121,9 @@ Network parseNetwork(const Json& value, int schemaVersion) {
     if(schemaVersion<5)migrateAttachments(network);
     return network;
 }
+PriorityDefaults parsePriorityDefaults(const Json& value) {
+    return {field<double>(value, "gapTime"), field<double>(value, "headway")};
+}
 DriverBehaviour parseBehaviour(const Json& b) {
     return {field<std::string>(b, "id"), field<double>(b, "standstillDistance"),
         field<double>(b, "additiveSafetyDistance"), field<double>(b, "multiplicativeSafetyDistance"),

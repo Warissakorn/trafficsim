@@ -5,6 +5,7 @@
 #include "validate.hpp"
 #include <cmath>
 #include <limits>
+#include <cstdint>
 #include <set>
 
 namespace trafficsim {
@@ -158,6 +159,39 @@ SimState stepSimulation(const SimState& state, double dt) {
             const double gap = routeHead.partStart + head.position - vehicle.distance;
             if (gap < -1e-9) continue;
             if (headColors[routeHead.headIndex] == SignalColor::green) continue;
+            allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
+            if (!leader || gap < leader->gap) leader = Leader{gap, 0};
+        }
+        // Priority rules, after the signal heads and by the same mechanism: a vehicle that must
+        // give way is held at its stop line exactly as a red head holds one. Car-following past
+        // the merge already works without any of this, because spans are bucketed by GLOBAL
+        // segment index, so two vehicles see each other the moment they share a segment. What a
+        // rule adds is seeing the major approach BEFORE entering it, which is not on this
+        // vehicle's own route and so is invisible to closestVehicle.
+        for (const auto& routeRule : index.routeRules[refs[v].route]) {
+            const auto& rule = scenario.priorityRules[routeRule.ruleIndex];
+            const double gap = routeRule.partStart + rule.yieldPosition - vehicle.distance;
+            if (gap < -1e-9) continue; // Already across the stop line; the decision was taken.
+            const auto conflict = index.conflictSegmentOfRule[routeRule.ruleIndex];
+            if (conflict == SIZE_MAX) continue; // Rejected by validation; never read out of bounds.
+            bool giveWay = false;
+            for (auto i = buckets.start[conflict]; i < buckets.start[conflict + 1]; ++i) {
+                const auto& span = spans[buckets.items[i]];
+                if (span.vehicleId == vehicle.id) continue;
+                // Positions are along the conflict segment, so this is a distance on the major
+                // approach: positive means its front is still short of the conflict point.
+                const double reach = rule.conflictPosition - span.front;
+                if (reach < 0) {
+                    // Its front is past the point; it still blocks while its rear is not.
+                    if (span.rear <= rule.conflictPosition) giveWay = true;
+                } else if (reach <= rule.headway) giveWay = true;
+                // Arriving too soon. A stopped major vehicle further off than the headway does
+                // NOT block, which is what stops a standing queue from deadlocking the minor
+                // approach forever rather than releasing it into a gap that genuinely exists.
+                else if (span.speed > 0 && reach / span.speed < rule.gapTime) giveWay = true;
+                if (giveWay) break;
+            }
+            if (!giveWay) continue;
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
             if (!leader || gap < leader->gap) leader = Leader{gap, 0};
         }
