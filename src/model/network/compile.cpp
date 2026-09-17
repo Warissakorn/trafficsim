@@ -68,8 +68,10 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
         double width=0,radius=std::numeric_limits<double>::infinity();
         std::vector<ConnectorPath> paths;
         try { paths=connectorPaths(network,c); } catch(const std::exception&) { continue; }
-        for(const auto& link:network.links)for(const auto& lane:link.lanes)
-            if(lane.id==paths.front().from.laneId)width+=lane.width;
+        // The same widths connectorBoundaries draws from, so an authored width is measured
+        // against rather than silently ignored here (hard rule 3).
+        try { for(const double w:connectorLaneWidths(network,c).source)width+=w; }
+        catch(const std::exception&) { continue; }
         for(const auto& path:paths)for(std::size_t j=1;j+1<path.geometry.size();++j) {
             const auto a=path.geometry[j-1],b=path.geometry[j],d=path.geometry[j+1];
             // Radius of the circle through three consecutive points: the side lengths over

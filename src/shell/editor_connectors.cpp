@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include <QLineEdit>
 #include <QAction>
 #include <QAbstractButton>
 #include <QComboBox>
@@ -16,6 +17,27 @@ namespace {
 LaneReference reference(const QComboBox* box) {
     if (box->currentData().toString().isEmpty()) throw std::invalid_argument("EDIT_CONNECTOR_LANES");
     return {box->currentData(Qt::UserRole+1).toString().toStdString(),box->currentData().toString().toStdString()};
+}
+// Comma-separated metres, blank meaning "none authored". Mirrors how editorLaneWidths is read for
+// a Link, so the two fields behave the same way for an author who has used one of them.
+std::vector<double> numbers(const QString& text) {
+    std::vector<double> result;
+    for(const auto& part:text.split(',',Qt::SkipEmptyParts)) {
+        bool ok=false;const double value=part.trimmed().toDouble(&ok);
+        if(!ok)throw std::invalid_argument("EDIT_LANES");
+        result.push_back(value);
+    }
+    return result;
+}
+std::vector<MarkingType> markingTypes(const QString& text) {
+    std::vector<MarkingType> result;
+    for(const auto& part:text.split(',',Qt::SkipEmptyParts)) {
+        const auto name=part.trimmed().toLower();
+        if(name=="solid")result.push_back(MarkingType::solid);
+        else if(name=="dashed")result.push_back(MarkingType::dashed);
+        else throw std::invalid_argument("INVALID_MARKING");
+    }
+    return result;
 }
 }
 QWidget* EditorWindow::buildConnectorInspector() {
@@ -36,6 +58,14 @@ QWidget* EditorWindow::buildConnectorInspector() {
     // survives the change instead of snapping back to the default curve.
     connectorPoints_=new QSpinBox(page);connectorPoints_->setObjectName("editorConnectorPoints");
     connectorPoints_->setRange(0,40);label(form,"editorConnectorPoints",connectorPoints_);
+    // Vissim's Lanes tab. Comma-separated metres, one per lane, and comma-separated marking names
+    // for the interior dividers -- the same text shape the Link lane-width row uses, so an author
+    // who has met one has met both. Empty means "derive it from the links", which is what every
+    // Connector drawn before this field did.
+    connectorWidths_=new QLineEdit(page);connectorWidths_->setObjectName("editorConnectorWidths");
+    label(form,"editorConnectorWidths",connectorWidths_);
+    connectorMarkings_=new QLineEdit(page);connectorMarkings_->setObjectName("editorConnectorMarkings");
+    label(form,"editorConnectorMarkings",connectorMarkings_);
     connect(connectorPoints_,&QSpinBox::valueChanged,this,[this](int count){
         if(!canvas_->selectedConnector() || static_cast<int>(canvas_->selectedConnector()->geometry.size())-2==count)return;
         const auto id=canvas_->selected();
@@ -80,7 +110,15 @@ QWidget* EditorWindow::buildConnectorInspector() {
         try {
             const auto from=positioned(true), to=positioned(false);
             const auto id=canvas_->selected();
-            execute("editorApplyConnector",[&](auto& d){changeConnectorEndpoints(d,id,from,to);changeConnectorRange(d,id,connectorFromCount_->value(),connectorToCount_->value());});
+            const auto widths=numbers(connectorWidths_->text());
+            const auto markings=markingTypes(connectorMarkings_->text());
+            // One transaction, as before: endpoints, range and the Lanes tab commit or roll back
+            // together. Ordered after the range change, because that is what decides how many
+            // lanes there are for the widths to describe.
+            execute("editorApplyConnector",[&](auto& d){
+                changeConnectorEndpoints(d,id,from,to);
+                changeConnectorRange(d,id,connectorFromCount_->value(),connectorToCount_->value());
+                changeConnectorLanes(d,id,widths,markings);});
         } catch (const std::exception& e) {showError(e);}
     });
     button("editorResetCurve",[this]{execute("editorResetCurve",[&](auto& d){resetConnectorCurve(d,canvas_->selected());});});
@@ -144,17 +182,25 @@ void EditorWindow::refreshConnector() {
     for (const auto* key : {"editorApplyConnector","editorResetCurve","editorStraightConnector","editorDeleteConnector"})
         actions_.at(key)->setEnabled(connector);
     connectorPoints_->setEnabled(connector!=nullptr);
+    connectorWidths_->setEnabled(connector!=nullptr);connectorMarkings_->setEnabled(connector!=nullptr);
     actions_.at("editorCreateConnector")->setEnabled(connectorFrom_->count()>1);
     if(connector){
         refreshConnectorRanges();
         connectorFromPosition_->setValue(attachmentStation(history_.document().network,connector->from,true));
         connectorToPosition_->setValue(attachmentStation(history_.document().network,connector->to,false));
         connectorFromCount_->setValue(connector->fromLaneCount);connectorToCount_->setValue(connector->toLaneCount);
+        QStringList widths;
+        for(const double w:connector->laneWidths)widths<<QString::number(w,'g',10);
+        connectorWidths_->setText(widths.join(", "));
+        QStringList markings;
+        for(const auto m:connector->laneMarkings)markings<<(m==MarkingType::solid?"solid":"dashed");
+        connectorMarkings_->setText(markings.join(", "));
         const QSignalBlocker block(connectorPoints_);
         connectorPoints_->setValue(static_cast<int>(connector->geometry.size())-2);}
     // These boxes double as the creation form. Leaving a selected connector's counts behind
     // would make the next Create connector inherit a width the new gesture never asked for.
-    else {connectorFromCount_->setValue(1);connectorToCount_->setValue(1);}
+    else {connectorFromCount_->setValue(1);connectorToCount_->setValue(1);
+          connectorWidths_->clear();connectorMarkings_->clear();}
     if (connector) {
         // Say how many lanes each end carries. A connector that drops or gains lanes is legal
         // to author, and seeing 3 -> 2 on the canvas is how the author notices it is a merge.

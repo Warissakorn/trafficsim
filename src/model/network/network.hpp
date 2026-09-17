@@ -23,12 +23,26 @@ struct LaneReference {
     std::optional<double> station{};
     bool operator==(const LaneReference&) const = default;
 };
+// What is painted on one boundary line. Vissim's MarkingType, reduced to the two kinds this
+// editor draws; the renderer maps it to a pen style.
+enum class MarkingType { solid, dashed };
 struct Connector {
     std::string id; LaneReference from, to; std::vector<Point> geometry;
     int fromLaneCount{1}, toLaneCount{1}, level{};
     std::string displayType{"default"};
     std::vector<double> laneBlend{}; // Frozen interpolation weights when rebasing the first lane.
     std::string name; // Vissim's Name. See Link::name.
+    // Vissim's Lanes tab, schema 6. Both are ordered last, after `name`, for the reason stated on
+    // Link::name: every existing brace-initialisation keeps meaning what it says.
+    //
+    // `laneWidths` is one metre value per lane path, or EMPTY meaning "take the width from the
+    // Links each end joins", which is what every Connector drawn before schema 6 does and what a
+    // Connector whose lanes were never given a width must keep doing.
+    std::vector<double> laneWidths{};
+    // `laneMarkings` is one entry per INTERIOR divider, so `paths - 1` of them, or empty for the
+    // default. The two outer edges are always solid: they are the edge of the carriageway, not a
+    // lane divider, and nothing in this milestone makes them authorable.
+    std::vector<MarkingType> laneMarkings{};
     bool operator==(const Connector&) const = default;
 };
 // One authored connector owns a contiguous range at each end. Individual runtime
@@ -83,6 +97,13 @@ std::vector<Point> polylineSpan(const std::vector<Point>&, double from, double t
 void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
 std::vector<double> connectorBlendWeights(const Connector&);
 void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
+// The width of each lane path at the Connector's two ends: the authored width where the Connector
+// carries one, and the width of the Link lane that end joins otherwise. Zero at an end where the
+// path is a surplus lane, which is what makes it taper closed rather than run at full width.
+// The ONE place a Connector's width is decided -- connectorBoundaries draws from it and
+// connectorShapeIssues measures from it, so authoring a width cannot make the two disagree.
+struct ConnectorLaneWidths { std::vector<double> source, target; };
+ConnectorLaneWidths connectorLaneWidths(const Network&, const Connector&);
 std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connector&);
 // The same idea for a connector: the middle of its whole width, point for point with its
 // stored geometry, which is the first lane's path.
@@ -91,7 +112,7 @@ std::vector<Point> connectorCentreline(const Network&, const Connector&);
 // adjacent lane paths, trimmed to the stretch where those two lanes are genuinely side by side.
 // Where a range merges, the divider stops instead of running down the middle of the single lane
 // the paths have converged into, which is not a place a marking belongs.
-struct ConnectorMarking { std::vector<Point> geometry; bool edge{}; };
+struct ConnectorMarking { std::vector<Point> geometry; bool edge{}; MarkingType type{MarkingType::solid}; };
 std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);

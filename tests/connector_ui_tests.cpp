@@ -3,6 +3,7 @@
 #include <QAction>
 #include <QAbstractButton>
 #include <QComboBox>
+#include <cmath>
 #include <QFile>
 #include <QLabel>
 #include <QLineEdit>
@@ -109,6 +110,41 @@ int main(int argc,char** argv) {
         lane(target,links[2].lanes[0].id);action(w,"editorApplyConnector");
         require(w.history().document().network.connectors[0].to.linkId==links[2].id,"Retarget failed");anchored(w.history().document());
         action(w,"editorUndo");require(documentJson(w.history().document())==beforeRetarget,"Retarget undo failed");
+
+        // M1.12.1: Vissim's Lanes tab. The width field must reach the model, the project file and
+        // the drawn markings, and clearing it must restore the derived behaviour.
+        {
+            auto* widths=item<QLineEdit>(w,"editorConnectorWidths");
+            auto* markings=item<QLineEdit>(w,"editorConnectorMarkings");
+            const auto beforeLanes=documentJson(w.history().document());
+            require(w.history().document().network.connectors[0].laneWidths.empty(),
+                    "Lanes tab did not start derived");
+            widths->setText("4.75");action(w,"editorApplyConnector");
+            const auto& authored=w.history().document().network.connectors[0];
+            require(authored.laneWidths.size()==1 && std::abs(authored.laneWidths[0]-4.75)<1e-9,
+                    "Connector lane width did not reach the model");
+            // It survives a save and reopen, which is the point of a schema field.
+            const auto lanesFile=directory.path()+"/connector-lanes.traffic.json";
+            const auto saved=documentJson(w.history().document());
+            w.saveFile(lanesFile);w.openFile(lanesFile);
+            require(documentJson(w.history().document())==saved,"Lanes tab lost on save/reopen");
+            require(saved["schemaVersion"]==6,"Lanes tab did not write schema 6");
+            c->select(id);
+            require(item<QLineEdit>(w,"editorConnectorWidths")->text().contains("4.75"),
+                    "Lanes tab did not reload into the field");
+            // A marking name the author mistypes is refused, and refused without changing anything.
+            const auto beforeBad=documentJson(w.history().document());
+            markings->setText("stripey");action(w,"editorApplyConnector");
+            require(documentJson(w.history().document())==beforeBad,"Bad marking type changed the document");
+            markings->clear();widths->clear();action(w,"editorApplyConnector");
+            require(w.history().document().network.connectors[0].laneWidths.empty(),
+                    "Clearing the Lanes tab did not restore the derived width");
+            action(w,"editorUndo");
+            require(!w.history().document().network.connectors[0].laneWidths.empty(),
+                    "Clearing the Lanes tab was not one undoable edit");
+            while(w.history().canUndo() && documentJson(w.history().document())!=beforeLanes)
+                action(w,"editorUndo");
+        }
         lane(source,links[0].lanes[1].id);lane(target,links[1].lanes[0].id);action(w,"editorCreateConnector");
         require(w.history().document().network.connectors.size()==2,"Inspector creation failed");
         const auto beforeDuplicate=documentJson(w.history().document());action(w,"editorCreateConnector");

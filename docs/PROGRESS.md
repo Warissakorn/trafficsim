@@ -11,6 +11,67 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-17 — M1.12.1: a Connector carries its own lane widths and markings
+
+The last M1 carve-out. A Connector's lane widths were read from the Links each end joins, so a
+widening taper had to be authored on the Links instead, and every interior divider was dashed with
+no choice about it. Both are now fields on the Connector, schema 6.
+
+**The boundary that mattered more than the fields.** `laneWidthOf` was a file-local helper in
+`road_boundaries.cpp`, and `compile.cpp` computed a Connector's width **a second time, its own
+way**, for `TIGHT_CONNECTOR_RADIUS`. While both derived from the same Link lanes that was merely
+duplication; the moment a width is authored it becomes a disagreement — the drawing would use the
+authored width and the radius advisory would measure the old one. `connectorLaneWidths` is now the
+one place a width is decided and both read it (hard rule 3). That refactor landed first and on its
+own, and 23/23 stayed green across it, which is what says it was behaviour-neutral.
+
+**Empty means derived, and that is the whole compatibility story.** Absent keys give an empty
+vector, so schema 6 needs no conversion on read: nothing changed meaning, unlike M1.18. **The
+old-file load test is not optional here** — a schema-5 document with a multi-lane Connector is
+loaded, compared to the in-memory original, and its boundaries measured vertex for vertex to
+1e-12. M1.18 was reverted for exactly this class of mistake, and its verification measured 120 of
+120 drawn vertices unchanged, which was true and beside the point because it never opened a file
+written by the previous build.
+
+**A defect surfaced and I did not paper over it.** The first width test asserted the authored
+5.5 m to 1e-6 on the curved fixture and read **5.529 m**. That is the miter widening the spacing
+measured along the cross-section at a bend — the same defect as the 8.698 m of a 7.000 m width
+already on record, at 0.5% instead of 24%. Loosening the tolerance would have written it down as
+correct, which is precisely what I criticised two existing tests for doing. Instead the exact
+assertion moved to a **straight** Connector fixture, where no miter is involved and it holds to
+1e-9, and the curved case became a bound naming M1.12.2 for the session that tightens it. Booked
+as **M1.12.2** with the cause identified and a "measure before changing" instruction, because it
+changes drawn geometry at every bend.
+
+**A judgement call to be honest about.** Vissim's `Lanes` tab has a per-**lane** `MarkingType`.
+Ours is per **interior divider** (`paths − 1`), with the two outer edges always solid, because
+per-lane does not map unambiguously onto `paths + 1` boundary lines and I would have been choosing
+a mapping either way. **I did not check this against Vissim.** It is recorded in `ROADMAP.md` as a
+chosen representation rather than a measured parity claim (rule 4), and it is a small change if
+the owner's Vissim behaves differently.
+
+**Two smaller decisions with reasons.** A resize that changes the path count **drops** the authored
+arrays instead of padding them — an entry the author never typed is not a width they chose, and
+the derived value is the honest fallback, the same reasoning that clears `laneBlend` on a geometry
+change. And a partial list is rejected with `EDIT_LANES`: no field would say which lanes were
+authored and which derived. Marking names are stored as `"solid"`/`"dashed"` rather than the enum's
+integers, so a human reading the project file sees words and adding a kind cannot renumber what
+older files meant.
+
+**`docs/ROADMAP.md` needed room twice** and got it the way `PROGRESS.md` and `VISSIM_PARITY.md` did:
+M1.1–M1.6 and then M1.8–M1.10 bodies moved whole into `docs/archive/ROADMAP-M1-implemented.md`,
+each keeping its heading and a status line so the sequence stays whole. Both moves diffed against
+`git show HEAD:` — no heading lost, archived bodies byte-identical, no kept body changed, no
+dangling link. Note the status line referenced M1.12.2 before its section existed for a few
+minutes; booking it in the same commit is what keeps the file internally true.
+
+**Verification:** 23/23 CTest, 125/125 unit tests, architecture and size guards green. The exact
+width holds to 1e-9 on a straight Connector; a Connector never given a width is unchanged to
+1e-12, including one loaded from a schema-5 file. Linux only — `native.yml` also runs the Qt
+suites on Windows and nothing in these sessions has been near it.
+
+---
+
 ## 2026-09-17 — M1.11.1 closed: a vehicle enters at the drawn station too
 
 With M3.1 in place, the target station joins `runtimeSections`' cut list and a Connector arriving
@@ -279,67 +340,49 @@ was wrong. Bound a section comparison at both ends, not just the start.
 
 ## Next
 
-**First, make room in `docs/ROADMAP.md`.** It sits at exactly 500 lines, the hard rule 6 limit,
-and M1.12.1 and M1.12.2 both need entries. The M1 block holds 21 sub-milestones, most long
-implemented; archive the completed bodies into `docs/archive/` the way `PROGRESS.md` and
-`VISSIM_PARITY.md` were, keeping each heading with its status line and a pointer. Diff every moved
-section body against `git show HEAD:` and report `lost`/`gained`/`differing`, as those two moves
-did — a first attempt at the `VISSIM_PARITY` split scored two false differences because the
-checker bound sections at one end only.
+**M1.12.2 — the miter widens a carriageway at a sharp bend.** The last engineering item in M1, and
+the only one left that is mine. Booked in `ROADMAP.md` with the cause identified:
+`offsetGeometry`'s miter vector has length `1/cos(θ/2)`, correct for the intersection of two offset
+legs, but applied independently to each boundary with its own offset — so the spacing *along the
+cross-section* between two boundaries grows by that factor at a sharp vertex. A 2→2 Connector
+through a sharp bend reads **8.698 m of a 7.000 m width, 24% over**; M1.12.1 met the same thing at
+0.5% (an authored 5.5 m lane measuring 5.529 m on a gentle curve).
 
-**Then M1.12.1 — a Connector's own per-lane `Width` and `MarkingType`.** Both are derived today:
-`laneWidthOf` (a file-local helper in `src/model/network/road_boundaries.cpp`) reads
-`Link::lanes[].width` from the Link each end joins, and `connectorMarkings` hard-codes
-edge-solid/interior-dashed.
+**Measure before changing, and do not assume the existing tests are right.** Two of them may have
+written the defect down as expected behaviour:
 
-- `Connector` gains `laneWidths` and `laneMarkings`, **ordered last** after `name`, following the
-  discipline that comment already states. `ConnectorMarking::edge` (a `bool`) generalises to the
-  marking enum; both pen sites follow — `src/render/network_view.cpp` and
-  `src/editor/canvas_connectors.cpp`.
-- **Schema 6 by the additive-optional mechanism**, not a version-gated conversion: bump the
-  literal in `src/project/document.cpp`, widen its guard to `> 6`, write the arrays, read them as
-  optional in `src/project/parse.cpp`. Absent ⇒ empty ⇒ today's derived behaviour, which is what
-  "without changing a Connector whose lanes were never given their own width" requires. Three
-  tests assert the literal `5` (`connector_tests.cpp`, `attachment_tests.cpp` twice,
-  `range_tests.cpp`) and need updating.
-- **An old-file load test is mandatory.** M1.18 was reverted for changing what stored data means
-  with no migration and no load test of old data; its verification measured 120 of 120 drawn
-  vertices unchanged, which was true and beside the point. A schema-5 `.traffic.json` holding a
-  multi-lane Connector must open and draw identically.
-- Command mirrors `changeLanes` in `src/commands/network_commands.cpp`: same size guard, same
-  **pathed** `ValidationError`. UI mirrors the Link lane-width row in
-  `src/shell/editor_inspector.cpp`, batched into the existing `editorApplyConnector` execute.
-- **There is a second derived-width site:** `compile.cpp` computes a Connector width the same way
-  for `TIGHT_CONNECTOR_RADIUS`. Both must read one helper, or hard rule 3 breaks the moment a
-  width is authored.
+- `tests/network_tests.cpp` `bends_keep_their_full_carriageway_width` asserts `3.5*sqrt(2)` between
+  adjacent boundaries at a right-angle corner — which *is* `1/cos(θ/2)` at 90°.
+- `tests/connector_tests.cpp` allows an `8e-2` interior tolerance, commented "the miter (6.3 cm
+  measured)".
 
-**Then the miter bulge, to be booked as M1.12.2.** A 2→2 Connector through a sharp bend reads
-8.698 m of a 7.000 m width, 24% over, at one sample. The cause is identified: `offsetGeometry`'s
-miter vector has length `1/cos(θ/2)`, correct for the intersection of two offset legs, but applied
-independently to each boundary with its own offset — so the spacing *along the cross-section*
-grows by that factor at a sharp vertex. `trimSelfIntersections` cannot help; it removes loops from
-a line and is not even applied to the boundaries used for the fill.
+Establishing which is Vissim's real behaviour is the first task, not the fix. Three earlier rounds
+of guessing from screenshots each went wrong, so **ask the owner with a screenshot** rather than
+guessing a fourth time. Useful measuring helpers already exist at `tests/connector_tests.cpp`
+(`crossings`, `apart`, `perpendicular`, `mouthLine`, `narrowest`, `minimumRadius`) — `perpendicular`
+measures square to the road, which is the honest measure here.
 
-**Measure before changing.** `tests/network_tests.cpp` asserts `3.5*sqrt(2)` between adjacent
-boundaries at a right-angle corner, and `tests/connector_tests.cpp` allows an `8e-2` interior
-tolerance calling it "the miter (6.3 cm measured)". Whether those are Vissim's behaviour or this
-defect written down as expected is **the first thing to establish** — ask the owner with a
-screenshot if it is genuinely ambiguous, since three rounds of guessing from screenshots each went
-wrong before. The gap that let it through: `connector_tests.cpp` bounds width only from **below**
-(`least > .9*3.5`). Add the upper bound.
+The gap that let 24% through: width is bounded only from **below** (`least > .9*3.5`). Add the
+upper bound. Also tighten the curved-width bound M1.12.1 deliberately left loose in
+`an_authored_width_is_exact_where_the_connector_is_straight`'s sibling
+(`a_connector_carries_its_own_lane_widths`, currently `span < 5.7`) to an equality once the miter
+is right.
 
-**The owner's gate is untouched and stays Open.** The timed four-leg/aerial-image/reopen exercise
-in `M1_ACCEPTANCE.md` cannot be performed by anyone but the owner, and not one row of it has been
-filled in. Merged code does not close it (rule 1).
+**After that, M1's engineering side is done and only the owner's gate remains.** The timed
+four-leg/aerial-image/reopen exercise in `M1_ACCEPTANCE.md` cannot be performed by anyone but the
+owner; not one row of it has been filled in, and merged code does not close it (rule 1). The M1.12
+review checklist from the 2026-09-16 sessions is worth running against a desktop build **on
+Windows** first — `native.yml` runs the Qt suites there and nothing in these sessions has been near
+it.
 
-**D11's trigger is now live.** Naming was deferred "until the end of M1", and Q5 is that decision.
-The engineering side of M1 is one carve-out and one defect from done. `Velk` is the strongest
-recorded candidate — clean on npm, PyPI and a brand search, with `velk.com`/`velk.io` held. **The
-owner names the project.**
+**D11's trigger is live.** Naming was deferred "until the end of M1" and Q5 is that decision.
+`Velk` is the strongest recorded candidate — clean on npm, PyPI and a brand search, with
+`velk.com`/`velk.io` held. **The owner names the project; do not pick one.**
 
-The M1.12 review checklist from the 2026-09-16 sessions still stands and is worth running against
-a desktop build **on Windows** before any usability claim: `native.yml` runs the Qt suites there
-and nothing in these three sessions has been near it.
+**M3 is not closed.** M3.1 supplied merge arbitration only. Conflict areas as editable input,
+priority rules as an authorable object with their own UI, stop and yield control, crossing
+conflicts and signal heads anywhere on a link are all still M3's, and its done-condition about
+minor-road delay responding to gap time is not met.
 
 ---
 

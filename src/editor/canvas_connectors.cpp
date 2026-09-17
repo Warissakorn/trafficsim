@@ -93,8 +93,10 @@ void EditorCanvas::drawConnectors() {
         surface.setFillRule(Qt::WindingFill);
         scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+4);
         for(const auto& marking:connectorMarkings(document_->network,preview)) {
+            // See network_view: an outer edge is solid, an interior divider draws its own type.
             QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
-                     marking.edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+                     marking.edge||marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
+            pen.setCosmetic(true);
             auto* item=scene_.addPath(path(marking.geometry),pen);item->setZValue(z+4.5);
             item->setData(0,QStringLiteral("road-marking"));item->setData(1,QString::fromStdString(c.id));
         }

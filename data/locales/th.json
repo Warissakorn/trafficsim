@@ -262,6 +262,8 @@
   "editorToggleBackground": "ภาพพื้นหลัง (Ctrl+B)",
   "editorDuplicate": "ทำสำเนาวัตถุที่เลือก",
   "editorFromLaneCount": "จำนวนเลนต้นทาง (fromLaneCount)",
+  "editorConnectorWidths": "ความกว้างเลน (เมตร คั่นด้วยจุลภาค; เว้นว่าง = ใช้ค่าจาก Link)",
+  "editorConnectorMarkings": "เส้นแบ่งเลน (solid/dashed คั่นด้วยจุลภาค; เว้นว่าง = ค่าเริ่มต้น)",
   "editorConnectorPoints": "จุดกลาง (Intermediate points)",
   "editorToLaneCount": "จำนวนเลนปลายทาง (toLaneCount)",
   "editorLinkData": "ข้อมูลลิงก์",

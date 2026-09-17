@@ -53,6 +53,8 @@ private:
     QListWidget* palette_{};
     QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
     QSpinBox *connectorFromCount_{},*connectorToCount_{},*connectorPoints_{};
+    // Vissim's Lanes tab, as comma-separated text, the same shape the Link lane-width row uses.
+    QLineEdit *connectorWidths_{},*connectorMarkings_{};
     QDoubleSpinBox *connectorFromPosition_{},*connectorToPosition_{};
     void buildPalette();
     void translatePalette();

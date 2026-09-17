@@ -39,7 +39,7 @@ TEST(attachments, interior_positions_ranges_persistence_edits_and_history) {
         auto d=roads(side);const auto id=addConnectorRange(d,{"a","a1",at(d,"a",.4)},{"b","b1",at(d,"b",.6)},3,3);
         attached(d);const auto& c=d.network.connectors.front();
         CHECK(c.geometry.front()!=d.network.links.front().geometry.back());
-        const auto json=documentJson(d);CHECK(json["schemaVersion"]==5);
+        const auto json=documentJson(d);CHECK(json["schemaVersion"]==6);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
         History h;h.reset(d);h.execute("move",[](auto& m){changeGeometry(m,"a",{{0,10},{30,10},{80,20}});});
         attached(h.document());CHECK(h.document().network.connectors.front().from.station==at(d,"a",.4));
@@ -434,7 +434,7 @@ TEST(attachments, schema_four_fractions_migrate_to_stations_at_the_same_place) {
     const auto migrated=parseDocument(legacy);
     const auto after=laneAttachment(migrated.network,migrated.network.connectors.front().from,true);
     test::near(after.x,before.x,1e-6);test::near(after.y,before.y,1e-6);
-    CHECK(documentJson(migrated)["schemaVersion"]==5);
+    CHECK(documentJson(migrated)["schemaVersion"]==6);
     // The unit is decided by the version, never by which key happens to be present.
     auto mixed=documentJson(d);mixed["network"]["connectors"][0]["from"]["fraction"]=.4;
     test::throws([&]{parseDocument(mixed);},"EDIT_VERSION");

@@ -262,6 +262,8 @@
   "editorToggleBackground": "Background image (Ctrl+B)",
   "editorDuplicate": "Duplicate selection",
   "editorFromLaneCount": "Source lane count (fromLaneCount)",
+  "editorConnectorWidths": "Lane widths (m, comma-separated; blank = from links)",
+  "editorConnectorMarkings": "Divider markings (solid/dashed, comma-separated; blank = default)",
   "editorConnectorPoints": "Intermediate points",
   "editorToLaneCount": "Target lane count (toLaneCount)",
   "editorLinkData": "Link Data",
