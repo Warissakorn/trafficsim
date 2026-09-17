@@ -76,6 +76,10 @@ std::vector<Point> linkCentreline(const Link&, DrivingSide);
 // cross-section on the other: this is what keeps the mouth of a multi-lane Connector square
 // on a curve, where the outer lane is the longer one. Stations outside `from` are clamped.
 double matchedStation(const std::vector<Point>& from, const std::vector<Point>& to, double station);
+// The polyline between two stations, keeping every original vertex that lies between them.
+// polylineSpan(g, 0, polylineLength(g)) returns g itself, which is what lets a lane with no
+// interior attachment keep its geometry and its length bit for bit.
+std::vector<Point> polylineSpan(const std::vector<Point>&, double from, double to);
 void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
 std::vector<double> connectorBlendWeights(const Connector&);
 void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
@@ -114,6 +118,57 @@ std::vector<Point> connectorCurve(const Network&, const LaneReference& from, con
                                   int intermediatePoints=kDefaultIntermediatePoints);
 // The travel directions a Connector's two ends leave and arrive on, which clamp its spline.
 std::pair<Point,Point> connectorTangents(const Network&, const LaneReference& from, const LaneReference& to);
+
+// One runnable piece of one authored lane. A lane is cut wherever a Connector attaches to its
+// body, because the engine's Segment is a whole traversable length and a vehicle that leaves
+// part way along one travels only part of it. `start` and `end` are metres along the LANE
+// polyline, which is the same coordinate a signal head's position is already in.
+//
+// Derived, never persisted: sectioning changes no authored id, so it is a pure function of the
+// drawing. That is what separates it from splitLink, which must rewrite routes because the ids
+// an author stored really do change there.
+struct LaneSection {
+    std::string id; // laneId for the first section; sectionId(laneId, n) after that
+    std::string linkId, laneId;
+    double start{}, end{};
+    std::vector<Point> geometry;    // the lane polyline clipped to [start, end]
+    std::vector<std::string> next;  // the following section, then the paths leaving at its end
+};
+// Everything the runtime needs derived from the drawing, computed in one pass. Connector paths
+// are carried here because the table needs them anyway and buildScenario must not derive them a
+// second time -- see the cubic-cost note in compile.cpp.
+struct RuntimeSections {
+    std::vector<ConnectorPath> paths;
+    std::vector<std::string> pathNext;   // parallel to paths: the section each path arrives on
+    std::vector<LaneSection> sections;   // link order, then lane order, then station order
+    // Connector ids whose interior attachment leaves no runnable section, so Run must still
+    // refuse them. Recorded here rather than recomputed, so the gate and the table cannot
+    // disagree about which attachments were usable.
+    std::vector<std::string> unsectionable;
+};
+// A lane's first section keeps the lane's own id. That is load-bearing: a lane with no interior
+// attachment compiles to exactly the Segment it always did, which is what keeps the four frozen
+// baselines valid and keeps UNSUPPORTED_INTERNAL_INPUT meaningful, since a route still begins on
+// the lane id and that section still has no predecessor.
+std::string sectionId(const std::string& laneId, int index);
+RuntimeSections runtimeSections(const Network&);
+// The section a station on a lane falls in. A station exactly on a cut belongs to the section
+// UPSTREAM of it, which is the convention splitLink already uses for a head sitting on a cut.
+const LaneSection& sectionForStation(const RuntimeSections&, const std::string& laneId, double laneStation);
+// Authored routes name whole lanes; the runtime needs the chain of sections that carries them.
+// Where the route leaves the lane part way along, the chain stops at the section that carries
+// the Connector it leaves by, so the vehicle travels the drawn distance and no more.
+std::vector<std::string> expandRouteSegments(const RuntimeSections&, const std::vector<std::string>&);
+// One whole-lane segment per lane, collapsed back from the same table: what an author may name
+// and store in a route. Never used to run anything -- offering a derived section id as something
+// to persist would put a copy of derived data in the project file.
+std::vector<Segment> authoringSegments(const RuntimeSections&);
+// A head's compiled form, with its segment and position rebased onto the section it sits on.
+SignalHead rebaseHead(const RuntimeSections&, const NetworkSignalHead&);
+// Zero-length segments are invalid in the core, and an attachment closer than this to a lane end
+// or to another attachment leaves no section between them. 0.2 m is the span splitLink already
+// uses for the same question.
+inline constexpr double kMinSectionLength = 0.2;
 
 std::vector<ValidationIssue> validateNetwork(const Network& network);
 void assertValidNetwork(const Network& network);

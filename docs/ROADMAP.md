@@ -51,10 +51,10 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.17 are implemented, including the M1.3.1 and M1.5.1 carve-outs. Two
-carve-outs are **not**: M1.11.1 (interior attachments compiled into runtime lane sections) and
-M1.12.1 (a Connector's own lane widths and markings). The owner acceptance in M1.7 also remains
-open, and M1 is not closed until its timed gate passes.
+**Status:** M1.1–M1.17 are implemented, including the M1.3.1 and M1.5.1 carve-outs. **M1.11.1 is
+half implemented** — a Connector leaving a lane body runs; one arriving on a lane body is a merge
+and waits on M3.1. **M1.12.1 is not started** (a Connector's own lane widths and markings). The
+owner acceptance in M1.7 also remains open, and M1 is not closed until its timed gate passes.
 
 **Sub-milestones below are in numeric order, which is the order they belong in.** A carve-out
 made under rule 2 is filed at its number, not at the end — M1.11.1 sits inside M1.11 and M1.12.1
@@ -214,15 +214,31 @@ internal Connector lane topology or close the owner's usability gate.
 
 ### M1.11.1 — Compile interior attachments into runtime lane sections
 
-**Open.** The engine currently traverses whole lanes. Before running a body-attached
-Connector, derive lane sections at attachment stations, preserve stable authoring IDs,
-map routes and signal positions, and render vehicle progress against the same sections.
-Retain the existing merge, internal-input and repeated-segment guards. Until verified,
-Run rejects these networks with an object-linked `UNSUPPORTED_CONNECTOR_POSITION` diagnostic.
-Do not introduce persisted duplicate runtime networks or change the engine's fidelity claim.
+**Half implemented.** `runtimeSections` cuts each lane at the stations where Connectors attach to
+its body and `buildScenario` compiles the pieces, so a Connector **leaving** a lane body now runs:
+the vehicle travels the drawn partial distance, authored routes expand from whole lanes to the
+chain of sections they travel, signal heads rebase onto the section they stand on, and both render
+sites draw against the same table. Replay is unchanged and the four frozen baselines still pass,
+because a lane with nothing attached to its body compiles to exactly the `Segment` it always did —
+`sectionId(laneId, 0)` is `laneId`.
 
-**Done when:** a vehicle leaves and enters at the drawn stations, travels the correct
-partial-lane distances, obeys section-mounted signals, and retains deterministic replay.
+**Still open: a Connector ARRIVING on a lane body.** That is structurally a merge — the section
+downstream of the arrival has two predecessors, the upstream section and the Connector path — so
+`UNSUPPORTED_MERGE` fires, and arbitrating it is right-of-way, which D13 forbids inventing. It is
+blocked before compilation by an object-linked `UNSUPPORTED_ATTACHED_TARGET` naming the Connector;
+authoring, saving, editing and Undo of such a Connector are fully supported. **M3.1 supplies the
+arbitration**, after which the target station joins the cut list and this milestone closes. The
+section machinery is already built for it.
+
+One case a source attachment still cannot run: a cut within `kMinSectionLength` (0.2 m) of a lane
+end or of another cut on the same lane, because a zero-length segment is not something the core
+accepts. It keeps `UNSUPPORTED_CONNECTOR_POSITION`, whose string was reworded to that narrow
+meaning — the old text claimed the core runs only end-to-start connectors, which is no longer true.
+
+**Closes when:** a vehicle leaves **and** enters at the drawn stations, travels the correct
+partial-lane distances, obeys section-mounted signals, and retains deterministic replay. The
+merge, internal-input and repeated-segment guards stay; no persisted duplicate runtime network was
+introduced, because sectioning changes no authored id and is a pure function of the drawing.
 
 ### M1.12 — Fixed lane edges, road markings and selection/copy gestures
 

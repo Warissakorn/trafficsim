@@ -41,6 +41,12 @@ int main(int argc,char** argv) {
         require(w.history().document().network.links.size()==1,"draw");
         QTimer::singleShot(0,[&]{
             auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());require(dialog,"route dialog");
+            // The dialog stores what the author picks into the project file, so it must offer
+            // whole lanes and connectors and never a derived lane section.
+            auto* choices=item<QComboBox>(*dialog,"editorRouteNext");
+            require(choices->count()>0,"route dialog offered nothing");
+            for(int i=0;i<choices->count();++i)
+                require(!choices->itemData(i).toString().contains("/sec-"),"route dialog offered a lane section");
             item<QPushButton>(*dialog,"editorAppendSegment")->click();accept(*dialog);
         });
         action(w,"editorAddRoute");require(w.history().document().definition->routes.size()==1,"route command");

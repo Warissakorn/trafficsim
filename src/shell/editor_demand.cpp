@@ -88,7 +88,12 @@ void EditorWindow::refreshDemand() {
         const auto scenario=buildScenario(history_.document().network,def);
         for(const auto& r:def.routes) {
             double length=0;QStringList ids;
-            for(const auto& id:r.segmentIds) {ids<<QString::fromStdString(id);for(const auto& s:scenario.segments)if(s.id==id)length+=s.length;}
+            for(const auto& id:r.segmentIds)ids<<QString::fromStdString(id);
+            // The author sees the ids they stored; the length comes from the COMPILED route,
+            // which is the expanded chain of sections. Summing the authored ids instead would
+            // charge a route that turns off part way along a lane for the whole lane.
+            for(const auto& compiled:scenario.routes)if(compiled.id==r.id)
+                for(const auto& id:compiled.segmentIds)for(const auto& s:scenario.segments)if(s.id==id)length+=s.length;
             const int n=routeTable_->rowCount();routeTable_->insertRow(n);
             row(routeTable_,n,{QString::fromStdString(r.id),ids.join(" → "),QString::number(length,'f',2)},r.id);
         }
@@ -135,13 +140,21 @@ void EditorWindow::editRoute(const std::string& id,const std::vector<std::string
     auto* next=new QComboBox(&dialog);next->setObjectName("editorRouteNext");layout->addWidget(next);
     auto* add=new QPushButton(text("editorAppendSegment"),&dialog);add->setObjectName("editorAppendSegment");layout->addWidget(add);
     auto* back=new QPushButton(text("editorRemoveLast"),&dialog);back->setObjectName("editorRemoveLast");layout->addWidget(back);
-    const auto scenario=buildScenario(history_.document().network,AuthoringDefinition{});
+    // Whole lanes and connector paths, never a derived section id: a route is stored in the
+    // project file, and offering a section would put a copy of derived data in it.
+    const auto table=runtimeSections(history_.document().network);
+    auto segments=authoringSegments(table);
+    for(std::size_t p=0;p<table.paths.size();++p)
+        segments.push_back({table.paths[p].id,polylineLength(table.paths[p].geometry),{table.pathNext[p]}});
+    // A path's successor is a section; name the lane it belongs to, which is what an author picks.
+    for(auto& segment:segments)for(auto& next:segment.next)
+        for(const auto& section:table.sections)if(section.id==next)next=section.laneId;
     const auto refresh=[&] {
         list->clear();next->clear();
         for(const auto& s:value.segmentIds)list->addItem(QString::fromStdString(s));
-        for(const auto& s:scenario.segments) {
+        for(const auto& s:segments) {
             bool allowed=value.segmentIds.empty();
-            if(!allowed)for(const auto& last:scenario.segments)if(last.id==value.segmentIds.back())
+            if(!allowed)for(const auto& last:segments)if(last.id==value.segmentIds.back())
                 allowed=std::find(last.next.begin(),last.next.end(),s.id)!=last.next.end();
             if(allowed && std::find(value.segmentIds.begin(),value.segmentIds.end(),s.id)==value.segmentIds.end())
                 next->addItem(QString::fromStdString(s.id),QString::fromStdString(s.id));

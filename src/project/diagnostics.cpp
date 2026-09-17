@@ -9,7 +9,10 @@ bool aboutTopology(const Diagnostic& row) {
     // A shape advisory is a property of the drawing alone, so it survives a document that has
     // no demand authored yet, exactly like the attachment row beside it.
     return row.path.rfind("segments", 0) == 0 || row.code.rfind("EDIT_", 0) == 0 ||
-           row.code=="UNSUPPORTED_CONNECTOR_POSITION" || row.code=="TIGHT_CONNECTOR_RADIUS";
+           row.code=="UNSUPPORTED_CONNECTOR_POSITION" || row.code=="TIGHT_CONNECTOR_RADIUS" ||
+           // A Connector arriving inside a lane body is a property of the drawing alone, so the
+           // row survives a document with no demand authored yet, like the two beside it.
+           row.code=="UNSUPPORTED_ATTACHED_TARGET";
 }
 // Vehicle types and driver behaviours are catalog content (data/), not document content, so a
 // document alone cannot resolve them. Claiming they are unknown would blame the drawing for an

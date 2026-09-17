@@ -114,6 +114,24 @@ double matchedStation(const std::vector<Point>& from,const std::vector<Point>& t
     }
     return matched; // Past the end of `from`, which clamps to the end of `to`.
 }
+std::vector<Point> polylineSpan(const std::vector<Point>& points,double from,double to) {
+    const double total=polylineLength(points);
+    if(points.size()<2 || !std::isfinite(from) || !std::isfinite(to) || from<0 || to>total || to<=from)
+        throw std::invalid_argument("INVALID_GEOMETRY");
+    // The whole polyline is returned as itself, not rebuilt from two pointAlong calls, so a lane
+    // with nothing attached to its body is bit-for-bit the lane it was before sectioning existed.
+    if(from==0 && to==total)return points;
+    std::vector<Point> result{pointAlong(points,from)};
+    double station=0;
+    for(std::size_t i=1;i+1<points.size();++i) {
+        station+=std::hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y);
+        // Strict comparisons on both sides: a cut landing exactly on a vertex is already carried
+        // by the pointAlong ends, and admitting it here would repeat the point.
+        if(station>from && station<to)result.push_back(points[i]);
+    }
+    result.push_back(pointAlong(points,to));
+    return result;
+}
 std::vector<Point> offsetGeometry(const std::vector<Point>& geometry,double offset) {
     return offsetGeometry(geometry,std::vector<double>(geometry.size(),offset));
 }

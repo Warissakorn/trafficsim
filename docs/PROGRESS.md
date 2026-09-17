@@ -10,6 +10,85 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-17 — M1.11.1, first half: a lane is cut where a Connector leaves its body
+
+The engine's `Segment` is a whole traversable length, so a lane was all-or-nothing: a Connector
+attached part way along one was authorable but `Run` refused it, because a vehicle turning off at
+25 m of a 100 m lane would have been charged for all 100. `runtimeSections` now cuts each lane at
+its interior attachments, and `buildScenario` compiles the pieces.
+
+**The split that decides what this milestone can actually deliver.** Checked against
+`src/core/validate.cpp:55-68` rather than assumed:
+
+- A Connector **leaving** a lane body is a diverge — `s1.next = {s2, path}`, and `s2` and `path`
+  each have one predecessor. Runnable, and now runs.
+- A Connector **arriving** on a lane body is structurally a **merge**: the section downstream of
+  the arrival has two predecessors, the upstream section and the path. `UNSUPPORTED_MERGE` fires,
+  and inventing an arrival order to resolve it is exactly what D13 forbids.
+
+So M1.11.1's done-condition ("leaves **and** enters") is half met. The owner chose to implement
+the necessary part of M3 rather than carve the merge out, so the second half follows M3.1.
+
+**What keeps the four frozen baselines valid.** `sectionId(laneId, 0)` returns `laneId` itself,
+so a lane with nothing attached to its body compiles to exactly the `Segment` it always did —
+same id, same length, same `next` vector in the same order. `polylineSpan(g, 0, length(g))`
+returns `g` itself rather than rebuilding it from two `pointAlong` calls, and an uncut lane skips
+the call entirely. Proven by breaking it on purpose: making `sectionId` always append a suffix
+fails **54 tests**, all four TypeScript baselines among them. Restored, 110 pass.
+
+**Two things I would have got wrong without reading the callers.**
+
+- `validateAuthoredDemand` runs `validateScenario(buildScenario(...))` on **every save**. Had
+  route expansion lived in `compileScenario`, saving any document with a sectioned lane would
+  have broken, because the authored route still names the whole lane. Expansion is therefore
+  inside `buildScenario`, which is also the one place all six callers go through.
+- `validate.cpp:59` requires a segment length **> 0**. A cut at a lane end, or two cuts closer
+  than epsilon, would have failed with a code that says nothing about Connectors. Hence
+  `kMinSectionLength` at 0.2 m — the span `splitLink` already uses for the same question — and a
+  degenerate cut that still blocks with an object-linked row.
+
+**Route expansion adds no new error code.** It walks a lane's sections until one whose `next`
+carries the following authored id. Running off the end leaves that id unreachable, which is
+`DISCONNECTED_ROUTE` — reported by the core guard that already owns the question rather than by a
+second check beside it.
+
+**The diagnostic that was true and is now false.** `UNSUPPORTED_CONNECTOR_POSITION` told the user
+"the current simulation core only runs end-to-start connectors". Leaving that string in place
+while the code ran them would have been a message that misstates why Run is blocked, so it is
+reworded to the narrow case it now means, and interior targets get their own
+`UNSUPPORTED_ATTACHED_TARGET` in both locales. It also had to be added to `aboutTopology` in
+`src/project/diagnostics.cpp`, or the row vanishes from a drawing with no demand authored — which
+is how the inverted test caught it.
+
+**One source of truth, four consumers.** `runtimeSections` feeds `buildScenario`, the signal-head
+rebasing, `EditorCanvas::setRunNetwork` and `NetworkView::setNetwork`. The last two key their
+geometry maps by section id, so a vehicle located on a section has geometry to be drawn at;
+`network_view` resolves with a hard `.at()` and that only stays safe because both come from the
+same table. The deliberate non-throwing fallback in `canvas_run.cpp` was left exactly as it was.
+
+**The route dialog still offers whole lanes.** A route is stored in the project file, so offering
+a derived section id would put a copy of derived data in it. `authoringSegments` collapses the
+table back to one row per lane, with the union of its sections' successors minus its own sections
+— that union is what makes the interior diverge selectable at all. The demand table's length
+column reads the **compiled** route instead, so a turn off the middle of a link reports 25 m and
+not 100.
+
+**Tests.** Six new, each with its forcing assertion first: exact 25/75 section lengths and the
+`next` order; route expansion stopping at the diverge and walking past it; the minimum-length
+block with 5 m compiling and 30.1 m against 30 blocked; a head at 60 on a lane cut at 25
+compiling to `a1/sec-2` at 35 while one at 10 stays on `a1` at 10; determinism across the
+sectioned run with the shorter route proven to differ from the whole-lane one; and the authoring
+view never yielding a `/sec-` id. The old
+`draft_and_run_diagnostics_do_not_silently_run_wrong_lane_lengths` is inverted: its source half
+runs, its target half asserts the object-linked row arrives **instead of** the generic
+`UNSUPPORTED_MERGE`, not beside it.
+
+**Verification:** 23/23 CTest, 110/110 in `trafficsim-tests`, architecture and size guards green,
+`trafficsim-cli 42` unchanged. Linux only — `native.yml` also runs the Qt suites on Windows and
+this has not been near it.
+
+---
+
 ## 2026-09-17 — NETWORK_EDITOR.md: a section whose title covered a third of the file
 
 `## Connector lane ranges` ran **159 lines, 37% of the manual**, and most of it was not about
@@ -287,50 +366,50 @@ unbooked; item 3's old blocker, connector reanchoring, no longer exists.
 
 ## Next
 
-**Review M1.12 and run the owner acceptance exercise.** Check both-side lane growth,
-road boundaries and Ctrl-click/Ctrl-drag on Links, Connectors and Signal heads. Check the
-2026-09-16 grip work with them: lane tabs on the road edge, geometry grips on the bundle
-centreline, and dragging a Connector end onto another lane or another position along it,
-including onto a narrower Link, where the range narrows to the lanes that are there. Check a
-bent Link keeps its width through the corner, and that a drag from one lane creates a one-lane
-Connector. M1.13 is implemented: check that a Connector stays where it was
-drawn when you stretch its Link, that shortening a Link clamps rather than refuses, and that a
-project saved by an older build opens with its Connectors in the same places. Check a U-turn Connector draws as one clean ribbon and that no dashed line
-runs down a single-lane stretch. Check a Connector between ends with different lane counts: the
-lane that continues should hold its width while the extra one closes as a taper, and the divider
-should arrive on the edge of the merged lane, never in the middle of it. Check a reverse-curve
-Connector holds its width through the bend rather than pinching in the middle, and that moving a
-Link under a drawn Connector moves only the poly point attached to it while the ribbon keeps its
-width. Check the 2026-09-16 point work: a new Connector shows five grips rather than thirteen,
-`Intermediate points` in Properties raises and lowers the count without losing the shape you
-drew, a count of 2 draws three straight legs with a corner on each point as Vissim does, and a
-Connector drawn between two links that nearly touch stays inside the junction and is reported as
-a tight radius rather than drawn as a crumpled wedge. Old `*.traffic.json` files predating that
-change were deliberately not migrated and will open with all of their stored points as poly
-points. Check the mouth: a Connector's ends should sit
-on the Link's lane edges with the markings running straight through, at any arrival angle and
-after moving a Link under it. Check the group move: select two Links with a Connector between
-them, drag, and see the junction move as one shape that one Undo puts back; check that a
-selection of only Connectors or heads refuses with a reason. Check the Name work
-too: name a Link, a Connector and a signal head, see each in its list, reopen the file and find
-them still there. **Next after the review: M1.11.1**, which can now split a lane
-at an attachment station that no longer moves. Test the workflow on the owner's
-Windows desktop before claiming usability acceptance. M1.11.1 separately owns runtime
-lane sections for interior attachments; Run correctly blocks those networks today.
+**M3.1 — merge priority by gap time and headway**, then M1.11.1's second half. The owner
+authorized implementing the necessary part of M3 rather than carving the merge out (see the M1.11.1
+entry above for why a Connector arriving on a lane body is structurally a merge).
 
-1. Require Linux headless/desktop/release and Windows core checks to pass on the branch head.
-   Qt 6.4 and nlohmann/json are available from the Ubuntu archive; all 23 desktop tests
-   passed locally. Local dependencies were extracted into scratch because the package
-   cache was not writable; no dependency workaround was added to the repository.
-2. Run the blind four-leg/aerial-image/under-ten-minute/reopen task in M1_ACCEPTANCE.md
-   and fill in the observed result. M1.7 owns this remaining gate; M1 is not closed.
-3. Record the M0 queue/red/green plausibility observation separately. Keep the
-   not-yet-validated marker and the merge/internal-source/cyclic-route guards.
-4. Fix concrete usability failures before claiming acceptance. Do not begin M2
-   implementation until its pre-registered honesty-test criteria are committed.
+M3.1 in outline, already traced through the engine:
 
-Implementation: `src/model/demand/`, `src/model/network/`, `src/commands/`,
-`src/project/`, `src/editor/` and `src/shell/`. Current behavior is in NETWORK_EDITOR.md.
+- Car-following is route-local (`closestVehicle`, `simulation.cpp:38-53`), but
+  `OccupiedSpan::segmentIndex` is a **global** index into `scenario.segments` and spans are
+  bucketed globally — so two vehicles already see each other once they share a segment. What is
+  missing at a merge is yielding *before* entering it: the minor approach cannot see the major
+  approach's upstream section, because it is not on its own route.
+- Add `PriorityRule{id, yieldSegmentId, yieldPosition, conflictSegmentId, conflictPosition,
+  gapTime, headway}` to `ScenarioDefinition`. Clamp `allowedDistance` to the stop line by the
+  **existing** signal-clamp mechanism at `simulation.cpp:156-163` rather than a second one.
+  Resolve rule-to-route incidence once per scenario in `ScenarioIndex`, mirroring `routeHeads`
+  (`routes.cpp:43-52`), never per vehicle per tick. Gap time and headway live in `data/`.
+- `UNSUPPORTED_MERGE` relaxes **by construction only**: a segment with n > 1 predecessors is
+  accepted iff at least n−1 of them carry a priority rule naming one of the others. A network
+  that has not been through the model still reports it. Loosen it this way, never by removal.
+- This is a **deterministic threshold test, not a calibrated critical-gap model.** Rule 4's
+  not-yet-validated marker stays, and M3.1 does **not** close M3 — conflict areas, stop/yield
+  control, crossing conflicts and signal heads anywhere on a link are all still M3's.
+
+Then Stage 3: add the target station to `runtimeSections`' cut list, derive a default priority
+rule per interior target from `data/`, remove `UNSUPPORTED_ATTACHED_TARGET` and its two locale
+strings, and invert `an_interior_target_attachment_is_blocked_by_a_row_that_names_the_connector`.
+
+After that: **M1.12.1** (a Connector's own per-lane `Width` and `MarkingType`, schema 6 by the
+additive-optional mechanism — an old-file load test is mandatory, since M1.18 was reverted for
+changing stored meaning without one), then the **miter bulge** booked as M1.12.2: a 2→2 Connector
+through a sharp bend reads 8.698 m of a 7.000 m width. Measure before changing —
+`network_tests.cpp:55-82` and `connector_tests.cpp:297-310` may have written the defect down as
+expected behaviour, and that is the first thing to establish.
+
+**`docs/PROGRESS.md` is at 483 lines, 17 from hard rule 6.** Rotate the oldest entries into
+`docs/archive/` before adding the next one.
+
+**The owner's gate is untouched and stays Open.** The timed four-leg/aerial-image/reopen exercise
+in `M1_ACCEPTANCE.md` cannot be performed by anyone but the owner; no row of it has been filled
+in. Also: **D11 defers the project's name until the end of M1**, so finishing this engineering
+work trips Q5. `Velk` is the strongest recorded candidate. That decision is the owner's.
+
+The M1.12 review checklist from the previous session still stands and is worth running against a
+desktop build on Windows before any usability claim.
 
 ---
 

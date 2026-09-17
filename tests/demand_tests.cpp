@@ -1,7 +1,9 @@
 #include "test.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include "../src/commands/network_commands.hpp"
+#include "../src/commands/connector_commands.hpp"
 #include "../src/project/run.hpp"
+#include <algorithm>
 #include <fstream>
 using namespace trafficsim;
 TEST(demand, authors_runs_and_preserves_snapshot) {
@@ -47,4 +49,42 @@ TEST(demand, program_deletion_is_reference_safe_and_settings_validate_together) 
     test::throws([&]{h.execute("program",[](auto& d){deleteProgram(d,d.network.signalHeads.front().programId);});},"EDIT_REFERENCED_PROGRAM");
     test::throws([&]{h.execute("settings",[](auto& d){changeRunSettings(d,1,.1);});},"INVALID_INTERVAL");
     CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
+}
+// Hard rule 2: same scenario, same seed, same build, same trajectory. Sectioning a lane changes
+// how many segments a route is made of and therefore how RoutePart offsets are laid out, which is
+// exactly the kind of change that silently perturbs a run.
+TEST(demand, deterministic_replay_survives_lane_sectioning) {
+    const auto build=[](double station) {
+        History h;h.reset();std::string route;
+        h.execute("roads",[](auto& d){
+            addLink(d,{{0,0},{100,0}},1,3.5);addLink(d,{{120,40},{200,40}},1,3.5);});
+        h.execute("turn",[&](auto& d){
+            const auto& a=d.network.links[0];const auto& b=d.network.links[1];
+            const auto id=addConnector(d,{a.id,a.lanes.front().id,station},{b.id,b.lanes.front().id,0});
+            route=putRoute(d,{"",{a.lanes.front().id,id,b.lanes.front().id}});
+            putInput(d,{"",route,"car",900,0,60});});
+        return compileDocument(h.document(),test::root()/"data").scenario;
+    };
+    const auto sectioned=build(40), whole=build(100);
+    // The forcing: the two networks really are compiled differently. Without this, the streams
+    // below could match simply because sectioning never happened.
+    CHECK(sectioned.segments.size()==whole.segments.size()+1);
+    CHECK(std::any_of(sectioned.segments.begin(),sectioned.segments.end(),
+                      [](const auto& s){return s.id.find("/sec-")!=std::string::npos;}));
+    CHECK(std::none_of(whole.segments.begin(),whole.segments.end(),
+                       [](const auto& s){return s.id.find("/sec-")!=std::string::npos;}));
+    const auto stream=[](const Scenario& s,std::uint32_t seed) {
+        std::vector<SimEvent> result;
+        runSimulation(s,seed,[&](const auto& e){result.push_back(e);},true);
+        return result;
+    };
+    // Replay: the same seed on the same build reproduces the run exactly, sections and all.
+    CHECK(stream(sectioned,42)==stream(sectioned,42));
+    CHECK(stream(sectioned,7)==stream(sectioned,7));
+    // And a route that turns off at 40 m of a 100 m lane is genuinely a shorter drive than one
+    // that turns off at the end: if sectioning did not shorten the travel, these would agree.
+    CHECK(stream(sectioned,42)!=stream(whole,42));
+    const auto reachEnd=[&](const Scenario& s){return runSimulation(s,42).completed;};
+    CHECK(reachEnd(sectioned)>0);CHECK(reachEnd(whole)>0);
+    CHECK(reachEnd(sectioned)>=reachEnd(whole)); // The shorter route cannot deliver fewer.
 }

@@ -81,17 +81,151 @@ TEST(attachments, split_remaps_both_source_and_target_and_rejects_cut_through_at
         h.undo();CHECK(h.document()==d);
     }
 }
-TEST(attachments, draft_and_run_diagnostics_do_not_silently_run_wrong_lane_lengths) {
+// Was `draft_and_run_diagnostics_do_not_silently_run_wrong_lane_lengths`, which asserted that an
+// interior attachment of EITHER kind is refused. M1.11.1 makes the source half runnable, so the
+// test now pins the half that is still refused, and pins the reason: a Connector arriving inside a
+// lane body is a merge, and the row must name the Connector rather than leaving the author with
+// the core's generic segments.<id> finding.
+TEST(attachments, an_interior_target_attachment_is_blocked_by_a_row_that_names_the_connector) {
     auto d=roads(DrivingSide::left);const auto id=addConnector(d,{"a","a1",at(d,"a",.5)},{"b","b1",at(d,"b",.5)});
     const auto diagnostics=documentDiagnostics(d);
-    CHECK(std::any_of(diagnostics.begin(),diagnostics.end(),[&](const auto& row){return row.code=="UNSUPPORTED_CONNECTOR_POSITION" && row.selectId==id;}));
+    // The forcing: the target really is inside the body, so this is the interior case and not a
+    // connector that was quietly snapped to the link start.
+    CHECK(!attachedAtLinkEnd(d.network,connector(d,id).to,false));
+    CHECK(std::any_of(diagnostics.begin(),diagnostics.end(),[&](const auto& row){return row.code=="UNSUPPORTED_ATTACHED_TARGET" && row.selectId==id;}));
+    // And the object-linked row arrives INSTEAD of the generic one, not beside it: a row the
+    // author cannot click is what this code exists to avoid.
+    CHECK(std::none_of(diagnostics.begin(),diagnostics.end(),[](const auto& row){return row.code=="UNSUPPORTED_MERGE";}));
     const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
     validateDocument(d);
-    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_CONNECTOR_POSITION");
+    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_ATTACHED_TARGET");
     const auto before=documentJson(d);History h;h.reset(d);
     test::throws([&]{h.execute("move station",[&](auto& m){changeConnectorEndpoints(m,id,{"a","a1",at(d,"a",.3)},{"b","b1",at(d,"b",.5)});});},"EDIT_REFERENCED_CONNECTOR");
     CHECK(documentJson(h.document())==before);
 }
+// M1.11.1. A Connector leaving a lane body cuts that lane in two, because the engine's Segment is
+// a whole traversable length: a vehicle turning off at 25 m must travel 25 m of the lane, not 100.
+TEST(attachments, an_interior_source_attachment_compiles_to_two_sections_of_the_drawn_lengths) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=roads(side);d.network.links[0].geometry={{0,0},{100,0}};
+        const auto id=addConnector(d,{"a","a1",25},{"b","b1",0});
+        // The forcing: the gate really opened. Without this the length assertions below would
+        // pass just as happily on a network that Run still refuses to compile.
+        CHECK(connectorRuntimeIssues(d.network).empty());
+        CHECK(!attachedAtLinkEnd(d.network,connector(d,id).from,true));
+        const auto scenario=buildScenario(d.network,{});
+        const auto segment=[&](const std::string& sid)->const Segment& {
+            for(const auto& s:scenario.segments)if(s.id==sid)return s;
+            throw std::invalid_argument("UNKNOWN_SEGMENT: "+sid);
+        };
+        test::near(segment("a1").length,25,1e-9);
+        test::near(segment("a1/sec-2").length,75,1e-9);
+        test::near(segment("a1").length+segment("a1/sec-2").length,
+                   polylineLength(laneGeometry(d.network.links[0],"a1",side)),1e-9);
+        // The following section first, then what leaves at the cut -- the order the whole-lane
+        // compiler emitted, so an uncut lane is unchanged by this rewrite.
+        CHECK(segment("a1").next==std::vector<std::string>({"a1/sec-2",id}));
+        CHECK(segment("a1/sec-2").next.empty());
+        // The connector arrives at the start of b1, which is that lane's only section.
+        CHECK(segment(id).next==std::vector<std::string>({"b1"}));
+        // A lane with nothing attached to its body is still one segment of its whole length.
+        test::near(segment("a2").length,polylineLength(laneGeometry(d.network.links[0],"a2",side)),1e-9);
+        // The negative: the cut is read from the station, not from anywhere else. Moving it must
+        // move both lengths, or the two numbers above are coincidences.
+        auto moved=roads(side);moved.network.links[0].geometry={{0,0},{100,0}};
+        addConnector(moved,{"a","a1",50},{"b","b1",0});
+        const auto other=buildScenario(moved.network,{});
+        const auto length=[&](const Scenario& sc,const std::string& sid) {
+            for(const auto& s:sc.segments)if(s.id==sid)return s.length;
+            throw std::invalid_argument("UNKNOWN_SEGMENT");
+        };
+        test::near(length(other,"a1"),50,1e-9);test::near(length(other,"a1/sec-2"),50,1e-9);
+    }
+}
+// A route is authored on whole lanes, because that is what the author draws and stores. What runs
+// is the chain of sections it actually travels, and where it leaves part way along, the chain has
+// to stop there.
+TEST(attachments, a_route_authored_on_whole_lanes_expands_to_the_sections_it_travels) {
+    auto d=roads(DrivingSide::left);d.network.links[0].geometry={{0,0},{100,0}};
+    const auto turn=addConnector(d,{"a","a1",25},{"b","b1",0});
+    const auto ahead=addConnector(d,{"a","a1",100},{"b","b2",0});
+    // The forcing: a1 really is in more than one piece, so "expands" has something to expand.
+    const auto table=runtimeSections(d.network);
+    CHECK(std::count_if(table.sections.begin(),table.sections.end(),
+                        [](const auto& s){return s.laneId=="a1";})==2);
+    putRoute(d,{"turning",{"a1",turn,"b1"}});
+    putRoute(d,{"through",{"a1",ahead,"b2"}});
+    const auto scenario=buildScenario(d.network,demand(d));
+    const auto ids=[&](const std::string& rid) {
+        for(const auto& r:scenario.routes)if(r.id==rid)return r.segmentIds;
+        throw std::invalid_argument("UNKNOWN_ROUTE");
+    };
+    // Turning off at 25 m travels ONLY the first section. The through section being absent is the
+    // whole point: carrying it would drive the vehicle 75 m it never drove.
+    CHECK(ids("turning")==std::vector<std::string>({"a1",turn,"b1"}));
+    // Going straight on travels both sections, in order.
+    CHECK(ids("through")==std::vector<std::string>({"a1","a1/sec-2",ahead,"b2"}));
+    CHECK(validateScenario(scenario).empty());
+    // The negative: a route naming a connector that leaves a different lane is not quietly
+    // stitched together. The expansion runs off the end of the lane and the core says so.
+    auto other=d;putRoute(other,{"bogus",{"a2",turn,"b1"}});
+    test::throws([&]{assertValidScenario(buildScenario(other.network,demand(other)));},"DISCONNECTED_ROUTE");
+}
+// A zero-length segment is not something the core accepts, so a cut with no room either side of it
+// is the one interior source attachment that still cannot run.
+TEST(attachments, an_attachment_too_close_to_a_lane_end_still_blocks_run) {
+    auto d=roads(DrivingSide::left);d.network.links[0].geometry={{0,0},{100,0}};
+    const auto id=addConnector(d,{"a","a1",0.05},{"b","b1",0});
+    // The forcing: 0.05 m is genuinely an interior station, not one that attachedAtLinkEnd has
+    // already rounded to the link start. Without this the row below would prove nothing.
+    CHECK(!attachedAtLinkEnd(d.network,connector(d,id).from,true));
+    const auto rows=documentDiagnostics(d);
+    CHECK(std::any_of(rows.begin(),rows.end(),[&](const auto& r){return r.code=="UNSUPPORTED_CONNECTOR_POSITION" && r.selectId==id;}));
+    const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
+    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_CONNECTOR_POSITION");
+    // The negative: this is the minimum-length rule, not a blanket refusal of interior sources.
+    auto fine=roads(DrivingSide::left);fine.network.links[0].geometry={{0,0},{100,0}};
+    addConnector(fine,{"a","a1",5},{"b","b1",0});
+    CHECK(connectorRuntimeIssues(fine.network).empty());
+    // And two cuts too close to EACH OTHER block, while the same pair further apart does not.
+    auto near=roads(DrivingSide::left);near.network.links[0].geometry={{0,0},{100,0}};
+    addConnector(near,{"a","a1",30},{"b","b1",0});
+    const auto second=addConnector(near,{"a","a1",30.1},{"b","b2",0});
+    CHECK(std::any_of(near.network.connectors.begin(),near.network.connectors.end(),
+                      [](const auto& c){return true;}));
+    const auto blocked=connectorRuntimeIssues(near.network);
+    CHECK(std::any_of(blocked.begin(),blocked.end(),[](const auto& i){return i.code=="UNSUPPORTED_CONNECTOR_POSITION";}));
+    auto apart=roads(DrivingSide::left);apart.network.links[0].geometry={{0,0},{100,0}};
+    addConnector(apart,{"a","a1",30},{"b","b1",0});addConnector(apart,{"a","a1",31},{"b","b2",0});
+    CHECK(connectorRuntimeIssues(apart.network).empty());
+    (void)second;
+}
+// A head's position is metres along its lane. Once that lane is in pieces, the head belongs to the
+// piece it stands on, at its distance from THAT piece's start -- or it stops traffic in the wrong
+// place, which is the kind of error a simulation reports as a plausible number.
+TEST(attachments, a_signal_head_on_a_sectioned_lane_stops_traffic_where_it_was_drawn) {
+    auto d=roads(DrivingSide::left);d.network.links[0].geometry={{0,0},{100,0}};
+    addConnector(d,{"a","a1",25},{"b","b1",0});
+    const auto program=putProgram(d,{"",0,{{10,SignalColor::green}}});
+    const auto head=putSignalHead(d,{"",{"a","a1"},60,program,{}});
+    const auto compiled=buildScenario(d.network,demand(d));
+    const auto found=[&](const std::string& hid)->const SignalHead& {
+        for(const auto& h:compiled.signalHeads)if(h.id==hid)return h;
+        throw std::invalid_argument("UNKNOWN_HEAD");
+    };
+    // The forcing: the lane really was cut upstream of the head, so a rebase is required.
+    CHECK(found(head).segmentId=="a1/sec-2");
+    test::near(found(head).position,35,1e-9);
+    // The negative: a head UPSTREAM of the cut keeps its own position. An unconditional
+    // subtraction, or a rebase onto the wrong section, breaks exactly this line.
+    auto early=d;const auto low=putSignalHead(early,{"",{"a","a1"},10,program,{}});
+    const auto other=buildScenario(early.network,demand(early));
+    const auto at10=std::find_if(other.signalHeads.begin(),other.signalHeads.end(),
+                                 [&](const auto& h){return h.id==low;});
+    CHECK(at10!=other.signalHeads.end());
+    CHECK(at10->segmentId=="a1");test::near(at10->position,10,1e-9);
+}
+
 // The reason M1.13 exists: a fraction of lane arclength slid every interior attachment when a
 // link was stretched. A station is metres along the link, so the drawn place stays the drawn place.
 TEST(attachments, stretching_a_link_leaves_an_interior_attachment_where_it_was_drawn) {
@@ -180,4 +314,31 @@ TEST(attachments, schema_four_fractions_migrate_to_stations_at_the_same_place) {
     test::throws([&]{parseDocument(mixed);},"EDIT_VERSION");
     auto stale=legacy;stale["network"]["connectors"][0]["from"]["station"]=10;
     test::throws([&]{parseDocument(stale);},"EDIT_VERSION");
+}
+// A route is stored in the project file. Offering a derived section id as something to store would
+// put a copy of derived data in there, and the next edit that re-sections the lane would leave the
+// route naming something that no longer exists. So the author picks whole lanes -- but the interior
+// diverge still has to be reachable, or the turn cannot be authored at all.
+TEST(attachments, the_authoring_view_offers_lanes_and_interior_connectors_but_never_sections) {
+    auto d=roads(DrivingSide::left);d.network.links[0].geometry={{0,0},{100,0}};
+    const auto turn=addConnector(d,{"a","a1",25},{"b","b1",0});
+    const auto table=runtimeSections(d.network);
+    // The forcing: a1 really is sectioned, so there is a section id available to leak.
+    CHECK(std::count_if(table.sections.begin(),table.sections.end(),
+                        [](const auto& s){return s.laneId=="a1";})==2);
+    const auto offered=authoringSegments(table);
+    for(const auto& segment:offered) {
+        CHECK(segment.id.find("/sec-")==std::string::npos);
+        for(const auto& next:segment.next)CHECK(next.find("/sec-")==std::string::npos);
+    }
+    const auto lane=[&](const std::string& id)->const Segment& {
+        for(const auto& s:offered)if(s.id==id)return s;
+        throw std::invalid_argument("UNKNOWN_SEGMENT");
+    };
+    // One row per authored lane, carrying the whole lane's length -- what the author drew.
+    CHECK(offered.size()==d.network.links[0].lanes.size()+d.network.links[1].lanes.size());
+    test::near(lane("a1").length,100,1e-9);
+    // And the interior connector is selectable from the lane, which is the union that makes a
+    // turn off the middle of a link authorable. Without it the diverge would be invisible.
+    CHECK(std::find(lane("a1").next.begin(),lane("a1").next.end(),turn)!=lane("a1").next.end());
 }

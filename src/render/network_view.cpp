@@ -16,8 +16,10 @@ void NetworkView::setNetwork(const Network& network) {
     network_ = network; geometry_.clear();
     double minX = std::numeric_limits<double>::infinity(), minY = minX;
     double maxX = -minX, maxY = maxX;
-    for (const auto& link : network.links)
-        for (const auto& lane : link.lanes) geometry_[lane.id] = laneGeometry(link, lane.id, network.drivingSide);
+    // Keyed by SECTION id, from the same runtimeSections call the scenario was compiled from.
+    // paintEvent resolves a head and a vehicle with geometry_.at(), so this map has to cover
+    // every segment id the scenario can name -- and it does, because both come from this table.
+    for (const auto& section : runtimeSections(network).sections) geometry_[section.id] = section.geometry;
     for (const auto& connector : network.connectors)for(const auto& path:connectorPaths(network,connector))geometry_[path.id]=path.geometry;
     for (const auto& [id, points] : geometry_) for (const auto& p : points) {
         minX = std::min(minX, p.x); maxX = std::max(maxX, p.x);

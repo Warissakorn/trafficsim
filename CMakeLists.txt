@@ -40,7 +40,8 @@ target_link_libraries(trafficsim_core PRIVATE trafficsim_options)
 
 add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
-    src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp src/model/network/road_boundaries.cpp)
+    src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp src/model/network/road_boundaries.cpp
+    src/model/network/sections.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
