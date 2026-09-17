@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <optional>
 #include <stdexcept>
 namespace trafficsim {
 namespace {
@@ -48,6 +49,51 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
     for(const auto& l:n.links)if(l.id==ref.linkId)
         for(const auto& lane:l.lanes)if(lane.id==ref.laneId)return lane.width;
     throw std::invalid_argument("UNKNOWN_LANE");
+}
+// Where a boundary's own cut vertex sits is exact by construction -- fixed at the width the two
+// links give it, measured along the link's own cross-section. But the vertices before it are
+// not: they are wherever the mitered spine offset left them. At anything but a near-tangential
+// merge angle those can imply an edge that runs backwards across the neighbouring boundary
+// instead of towards it, sometimes spanning more than the one leg nearest the cut, which is the
+// fold a taper's cut vertex cannot see on its own. Two adjacent boundaries pinch to a shared
+// point instead of crossing past each other wherever any of their legs already do -- the two
+// edges of a lane narrowing to nothing meet, they do not overshoot and cross.
+std::optional<Point> legCrossing(Point a1,Point a2,Point b1,Point b2) {
+    const double rx=a2.x-a1.x,ry=a2.y-a1.y,sx=b2.x-b1.x,sy=b2.y-b1.y;
+    const double denominator=rx*sy-ry*sx;
+    if(std::abs(denominator)<1e-12)return {};
+    const double t=((b1.x-a1.x)*sy-(b1.y-a1.y)*sx)/denominator;
+    const double u=((b1.x-a1.x)*ry-(b1.y-a1.y)*rx)/denominator;
+    if(t<0||t>1||u<0||u>1)return {};
+    return Point{a1.x+t*rx,a1.y+t*ry};
+}
+// Repeatedly cuts back the pair from whichever end a crossing is found nearest, since a fold can
+// span several legs at a sharp angle and pinching once can reveal another crossing further in.
+// Bounded the way the miter clamp above is bounded: a real Connector has a handful of
+// intermediate points, so a fold has nowhere near this many legs to hide across.
+void pinchPair(std::vector<Point>& a,std::vector<Point>& b) {
+    for(int guard=0;guard<16;++guard) {
+        bool changed=false;
+        for(std::size_t i=a.size()-1;!changed && i-->0;)
+            for(std::size_t j=b.size()-1;!changed && j-->0;)
+                if(const auto at=legCrossing(a[i],a[i+1],b[j],b[j+1])) {
+                    a.resize(i+2);a.back()=*at;
+                    b.resize(j+2);b.back()=*at;
+                    changed=true;
+                }
+        for(std::size_t i=0;!changed && i+1<a.size();++i)
+            for(std::size_t j=0;!changed && j+1<b.size();++j)
+                if(const auto at=legCrossing(a[i],a[i+1],b[j],b[j+1])) {
+                    a.erase(a.begin(),a.begin()+static_cast<std::ptrdiff_t>(i));a.front()=*at;
+                    b.erase(b.begin(),b.begin()+static_cast<std::ptrdiff_t>(j));b.front()=*at;
+                    changed=true;
+                }
+        if(!changed)break;
+    }
+}
+void pinchCrossedEnds(std::vector<std::vector<Point>>& boundaries) {
+    for(std::size_t i=0;i+1<boundaries.size();++i)
+        if(boundaries[i].size()>=2 && boundaries[i+1].size()>=2)pinchPair(boundaries[i],boundaries[i+1]);
 }
 }
 ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
@@ -123,6 +169,7 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
         shape.back()={spine.back().x+std::cos(exit)*last,spine.back().y+std::sin(exit)*last};
         result.push_back(std::move(shape));
     }
+    pinchCrossedEnds(result);
     return result;
 }
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {
