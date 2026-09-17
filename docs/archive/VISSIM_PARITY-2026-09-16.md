@@ -1,6 +1,6 @@
 # VISSIM_PARITY archive — 2026-09-16
 
-Follow-ups moved whole from [VISSIM_PARITY.md](VISSIM_PARITY.md) to keep it below 500 lines.
+Follow-ups moved whole from [VISSIM_PARITY.md](../VISSIM_PARITY.md) to keep it below 500 lines.
 
 ## 2026-09-16 second follow-up — A Connector carries lanes, not a ribbon
 

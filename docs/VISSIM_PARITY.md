@@ -403,7 +403,7 @@ Vissim leaves an impossible turn to the author; we do the same but say so, with 
 untouched — only newly created curves and Reset curve use the new reach.
 
 > Earlier 2026-09-16 follow-ups are in
-> [`VISSIM_PARITY-archive-2026-09-16.md`](VISSIM_PARITY-archive-2026-09-16.md).
+> [`archive/VISSIM_PARITY-2026-09-16.md`](archive/VISSIM_PARITY-2026-09-16.md).
 
 ## 2026-09-16 fifth follow-up — Intermediate points, and what the Connector dialog still lacks
 
