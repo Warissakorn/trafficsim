@@ -170,11 +170,20 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
             const Point a1=front?a[0]:a[a.size()-2],b1=front?b[0]:b[b.size()-2];
             if(legCrossing(a1,naive[i],b1,naive[i+1]))crosses=true;
         }
+        // A re-miter is only as safe as the angle between the leg and the cross-section it is
+        // extended to meet: near-parallel, the intersection can land many lane-widths away, a
+        // spike shooting past the link instead of a mouth lying on it. Bound it to a few widths
+        // of the whole cross-section, the same spirit as offsetGeometry's own miter clamp, and
+        // fall back to the exact fixed-distance cut -- which can only leave the mild fold the
+        // re-miter was trying to avoid, never an unbounded overshoot -- past that.
+        const Point crossAt=front?spine.front():spine.back();
+        const double limit=1.5*std::hypot(naive.back().x-naive.front().x,naive.back().y-naive.front().y);
         for(std::size_t i=0;i<=count;++i) {
             const auto& shape=pristine[i];
             if(!crosses||shape.size()<2){cut[i]=naive[i];continue;}
             const Point edgeFrom=front?shape[0]:shape[shape.size()-2],edgeTo=front?shape[1]:shape.back();
-            cut[i]=remiter(edgeFrom,edgeTo,front?spine.front():spine.back(),front?entryDir:exitDir,naive[i]);
+            cut[i]=remiter(edgeFrom,edgeTo,crossAt,front?entryDir:exitDir,naive[i]);
+            if(limit>0 && std::hypot(cut[i].x-crossAt.x,cut[i].y-crossAt.y)>limit)cut[i]=naive[i];
         }
         for(std::size_t i=0;i<=count;++i)if(front)result[i].front()=cut[i];else result[i].back()=cut[i];
     }
