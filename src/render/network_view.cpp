@@ -70,8 +70,14 @@ void NetworkView::paintEvent(QPaintEvent*) {
         }
         road(boundaries,markings,QColor("#536c7c"));
     }
-    for(const auto& connector:network_.connectors)
-        road(connectorBoundaries(network_,connector),connectorMarkings(network_,connector),QColor("#386b78"));
+    for(const auto& connector:network_.connectors) {
+        // The fill polygon needs the same self-intersection cut the link boundaries get above:
+        // a Connector's mitered offset can loop back on itself at a tight merge angle, and an
+        // untrimmed loop draws as a spike into the carriageway instead of the swept road shape.
+        auto boundaries=connectorBoundaries(network_,connector);
+        for(auto& boundary:boundaries)boundary=trimSelfIntersections(boundary);
+        road(boundaries,connectorMarkings(network_,connector),QColor("#386b78"));
+    }
     for (const auto& head : frame_.scenario->signalHeads) {
         const auto found = std::find_if(frame_.scenario->signalPrograms.begin(), frame_.scenario->signalPrograms.end(),
             [&](const auto& p) { return p.id == head.programId; });
