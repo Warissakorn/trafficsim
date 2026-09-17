@@ -11,6 +11,60 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-17 — The sharp point at a Connector's mouth was the re-miter, not the wedge
+
+**The owner circled a Connector's mouth on our own render: it narrowed to a point where it met the
+Link.** Three readings were measured and two of them were wrong, which is the only reason the third
+was found.
+
+| reading | what the measurement said |
+|---|---|
+| the wedge cut runs a tongue across the Link | no — mouth exactly 3.500 m at every arrival 10°–170°, at a Link end and on a Link body alike |
+| the 2→1 lane taper closes to a point at the mouth | it does, but the owner confirmed the Connector is **2 lanes → 2 lanes** |
+| **the mouth re-miter overshoots** | **yes: 5.59, 9.41, 14.31 and 18.11 m of mouth on a 7.00 m Connector** |
+
+**What the re-miter does and why it ran away.** Where the fixed-distance cut would fold, every
+boundary extends its own last leg to meet the Link's cross-section line instead. At a strongly
+oblique arrival that line lies near the ribbon's own axis, so the intersection lands many lane
+widths out. The bound added in `1f2f014` allowed 1.5 times the mouth's own width of overshoot,
+which is nowhere near tight enough. Past about 9 m the two outer boundaries cross each other, and
+the surface is filled from a closed ring, so `trimSelfIntersections` closed that fold into a point.
+**The spike was the fill trim doing its job on a shape that should never have been handed to it.**
+
+**The bound is now the mouth itself, not a distance to pick.** The fixed-distance cut puts boundary
+i exactly on the Link's lane edge, so the mouth's span across the road is the lane widths and
+nothing else; a re-miter may only redistribute corners inside that span. Three shapes are tried in
+order of how much each is the Link's own cross-section — the fixed-distance cut, then the bounded
+re-miter, then the un-cut end square to the Connector — and **the first that does not fold is the
+mouth**, taken whole.
+
+**The square end had to come back as the last resort, and the measurement is why.** Bounding the
+re-miter alone left the fixed-distance cut folding on its own: the ring trim ate up to **7.67 m** of
+mouth. Past roughly 50° off the cross-section a ribbon cannot be cut on a line that near its own
+axis without folding, whichever corner placement is used. The 0.12–0.29 m step a square end leaves
+against the road is the step Vissim's own screenshot of this joint shows, and the owner's Vissim
+reference for it is parallel-sided and stops at the attachment.
+
+**Nothing an ordinary joint draws moved.** Every Link-end attachment and every near-tangential
+merge still takes the fixed-distance cut, bit for bit: all 126 existing unit tests passed unchanged
+at every step, including the ones pinning the mouth to the Link's lane edges at 1e-9.
+
+**Verification.** 16/16 CTest, 127/127 unit tests, architecture and size guards green. Over 12 Link
+headings × 24 arrival headings at a body attachment: every mouth lane exactly 3.500 m to 1e-9, no
+ring self-intersection anywhere, and 0.0000 m of mouth lost to the trim — against 18.11 m of mouth
+and 7.67 m lost before. The new test fails on the old code with `10.452885 vs 3.500000`.
+
+**Left alone deliberately:** a Connector whose two ends carry different lane counts still closes its
+surplus lane at the mouth. The owner was asked whether that taper should move into the middle of the
+body and answered to keep it as it is.
+
+**The lesson, again.** The first two readings were built from the render and from the record, and
+both were plausible. Only the third survived a measurement. `docs/VISSIM_PARITY.md` already carried
+*"ask for a picture of Vissim before reasoning about it"*; the other half of it is **ask for a
+number before believing the picture.**
+
+---
+
 ## 2026-09-17 — M1.12.2: the miter "bulge" was a measurement, not a defect
 
 **I was about to fix something that was not broken, and measuring first is the only reason I did
@@ -247,88 +301,14 @@ deliberate negative checks each broke named assertions. Linux only.
 
 ---
 
-## 2026-09-17 — M1.11.1, first half: a lane is cut where a Connector leaves its body
-
-The engine's `Segment` is a whole traversable length, so a lane was all-or-nothing: a Connector
-attached part way along one was authorable but `Run` refused it, because a vehicle turning off at
-25 m of a 100 m lane would have been charged for all 100. `runtimeSections` now cuts each lane at
-its interior attachments, and `buildScenario` compiles the pieces.
-
-**The split that decides what this milestone can actually deliver.** Checked against
-`src/core/validate.cpp:55-68` rather than assumed:
-
-- A Connector **leaving** a lane body is a diverge — `s1.next = {s2, path}`, and `s2` and `path`
-  each have one predecessor. Runnable, and now runs.
-- A Connector **arriving** on a lane body is structurally a **merge**: the section downstream of
-  the arrival has two predecessors, the upstream section and the path. `UNSUPPORTED_MERGE` fires,
-  and inventing an arrival order to resolve it is exactly what D13 forbids.
-
-So M1.11.1's done-condition ("leaves **and** enters") is half met. The owner chose to implement
-the necessary part of M3 rather than carve the merge out, so the second half follows M3.1.
-
-**What keeps the four frozen baselines valid.** `sectionId(laneId, 0)` returns `laneId` itself,
-so a lane with nothing attached to its body compiles to exactly the `Segment` it always did —
-same id, same length, same `next` vector in the same order. `polylineSpan(g, 0, length(g))`
-returns `g` itself rather than rebuilding it from two `pointAlong` calls, and an uncut lane skips
-the call entirely. Proven by breaking it on purpose: making `sectionId` always append a suffix
-fails **54 tests**, all four TypeScript baselines among them. Restored, 110 pass.
-
-**Two things I would have got wrong without reading the callers.**
-
-- `validateAuthoredDemand` runs `validateScenario(buildScenario(...))` on **every save**. Had
-  route expansion lived in `compileScenario`, saving any document with a sectioned lane would
-  have broken, because the authored route still names the whole lane. Expansion is therefore
-  inside `buildScenario`, which is also the one place all six callers go through.
-- `validate.cpp:59` requires a segment length **> 0**. A cut at a lane end, or two cuts closer
-  than epsilon, would have failed with a code that says nothing about Connectors. Hence
-  `kMinSectionLength` at 0.2 m — the span `splitLink` already uses for the same question — and a
-  degenerate cut that still blocks with an object-linked row.
-
-**Route expansion adds no new error code.** It walks a lane's sections until one whose `next`
-carries the following authored id. Running off the end leaves that id unreachable, which is
-`DISCONNECTED_ROUTE` — reported by the core guard that already owns the question rather than by a
-second check beside it.
-
-**The diagnostic that was true and is now false.** `UNSUPPORTED_CONNECTOR_POSITION` told the user
-"the current simulation core only runs end-to-start connectors". Leaving that string in place
-while the code ran them would have been a message that misstates why Run is blocked, so it is
-reworded to the narrow case it now means, and interior targets get their own
-`UNSUPPORTED_ATTACHED_TARGET` in both locales. It also had to be added to `aboutTopology` in
-`src/project/diagnostics.cpp`, or the row vanishes from a drawing with no demand authored — which
-is how the inverted test caught it.
-
-**One source of truth, four consumers.** `runtimeSections` feeds `buildScenario`, the signal-head
-rebasing, `EditorCanvas::setRunNetwork` and `NetworkView::setNetwork`. The last two key their
-geometry maps by section id, so a vehicle located on a section has geometry to be drawn at;
-`network_view` resolves with a hard `.at()` and that only stays safe because both come from the
-same table. The deliberate non-throwing fallback in `canvas_run.cpp` was left exactly as it was.
-
-**The route dialog still offers whole lanes.** A route is stored in the project file, so offering
-a derived section id would put a copy of derived data in it. `authoringSegments` collapses the
-table back to one row per lane, with the union of its sections' successors minus its own sections
-— that union is what makes the interior diverge selectable at all. The demand table's length
-column reads the **compiled** route instead, so a turn off the middle of a link reports 25 m and
-not 100.
-
-**Tests.** Six new, each with its forcing assertion first: exact 25/75 section lengths and the
-`next` order; route expansion stopping at the diverge and walking past it; the minimum-length
-block with 5 m compiling and 30.1 m against 30 blocked; a head at 60 on a lane cut at 25
-compiling to `a1/sec-2` at 35 while one at 10 stays on `a1` at 10; determinism across the
-sectioned run with the shorter route proven to differ from the whole-lane one; and the authoring
-view never yielding a `/sec-` id. The old
-`draft_and_run_diagnostics_do_not_silently_run_wrong_lane_lengths` is inverted: its source half
-runs, its target half asserts the object-linked row arrives **instead of** the generic
-`UNSUPPORTED_MERGE`, not beside it.
-
-**Verification:** 23/23 CTest, 110/110 in `trafficsim-tests`, architecture and size guards green,
-`trafficsim-cli 42` unchanged. Linux only — `native.yml` also runs the Qt suites on Windows and
-this has not been near it.
-
----
-
 ## Next
 
 **M1's engineering side is finished. What remains is the owner's, and only the owner's.**
+
+> **Carry into the acceptance exercise:** the mouth spike fixed above was found from a render, not
+> from a test, and the shape it settles is the one an author sees at every merge. When a Connector
+> is drawn onto a Link's body at a sharp angle, check the joint by eye: parallel-sided, no point, no
+> line running past the surface onto the Link.
 
 Every M1 sub-milestone and carve-out is implemented: M1.1–M1.17, plus M1.3.1, M1.5.1, M1.11.1 and
 M1.12.1, with M1.12.2 closed as a measurement error rather than a defect. `docs/ROADMAP.md` is the

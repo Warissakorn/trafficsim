@@ -387,3 +387,56 @@ TEST(connectors, a_bent_connector_holds_its_width_square_to_the_road_from_both_s
     // The same both ways round: neither edge is measured as the privileged one.
     CHECK(narrowest(b,true)>7.0-1e-2);
 }
+// A Connector arriving across a Link's BODY at a strongly oblique angle cannot have its mouth cut
+// on that Link's cross-section at all: the cut line then lies too near the ribbon's own axis, and
+// wherever the corners are put along it the two outer boundaries cross each other. The surface is
+// filled from a closed ring, so that fold closes into the sharp point the owner circled on our own
+// render. Such a mouth falls back to the square end offsetGeometry already drew -- parallel-sided,
+// stopping at the attachment, which is what Vissim's own screenshot of this joint shows.
+TEST(connectors, an_oblique_arrival_on_a_link_body_keeps_its_width_and_never_folds) {
+    // Every heading of the Link crossed with every heading of the arrival: the two are independent
+    // and it is their difference that conditions the cut, so neither may be fixed.
+    int oblique=0,wedges=0;
+    for(int linkDegrees=0;linkDegrees<360;linkDegrees+=30)
+    for(int arrivalDegrees=0;arrivalDegrees<360;arrivalDegrees+=15) {
+        const double heading=linkDegrees*std::numbers::pi/180,arrival=arrivalDegrees*std::numbers::pi/180;
+        Network n;n.drivingSide=DrivingSide::left;
+        const Link main{"main",{{-60*std::cos(heading),-60*std::sin(heading)},
+                                {60*std::cos(heading),60*std::sin(heading)}},{{"main-1",3.5},{"main-2",3.5}}};
+        const auto lane=laneGeometry(main,"main-1",n.drivingSide);
+        const auto meet=pointAlong(lane,polylineLength(lane)/2);
+        std::vector<Point> spine;
+        for(int i=4;i>=0;--i)spine.push_back({meet.x-i*9*std::cos(arrival),meet.y-i*9*std::sin(arrival)});
+        n.links={main,{"feed",{{spine.front().x-25*std::cos(arrival),spine.front().y-25*std::sin(arrival)},
+                               spine.front()},{{"feed-1",3.5},{"feed-2",3.5}}}};
+        const Connector c{"c",{"feed","feed-1",{}},{"main","main-1",60.},spine,2,2};
+        n.connectors={c};
+        const auto boundaries=connectorBoundaries(n,c);
+        // The forcing, in two halves. This really is a BODY attachment -- an end attachment is the
+        // ordinary joint and is cut on the Link's end face, which is a different case entirely --
+        // and the sweep really does reach arrivals oblique enough to ill-condition that cut.
+        CHECK(!attachedAtLinkEnd(n,c.to,false));
+        const Point across{-std::sin(heading),std::cos(heading)};
+        const double off=std::abs(std::cos(arrival)*across.x+std::sin(arrival)*across.y);
+        if(off<std::cos(50*std::numbers::pi/180))++oblique;
+        // Both mouth lanes are the Link's own 3.5 m lane, exactly, however oblique the arrival.
+        // The unbounded re-miter drew 5.59, 9.41, 14.31 and 18.11 m of mouth here.
+        for(std::size_t i=0;i+1<boundaries.size();++i)
+            test::near(apart(boundaries[i],boundaries[i+1],boundaries[i].size()-1),3.5,1e-9);
+        // ... and the filled surface is the whole ribbon: a ring that crosses itself is a fold,
+        // and the trim that closes it is what draws the point.
+        std::vector<Point> ring(boundaries.front());
+        ring.insert(ring.end(),boundaries.back().rbegin(),boundaries.back().rend());
+        CHECK(crossings(ring)==0);
+        CHECK(trimSelfIntersections(ring).size()==ring.size());
+        // The fallback is selective, not a blanket square cut: where the arrival is near enough to
+        // the cross-section for the cut to be well conditioned, the mouth is still the wedge lying
+        // on the Link's own lane edges, which is what Vissim draws at an ordinary merge.
+        if(off>std::cos(20*std::numbers::pi/180)) {
+            test::near(mouthLine(boundaries,false),0,1e-9);
+            ++wedges;
+        }
+    }
+    CHECK(oblique>0);  // The sweep really reached the arrivals this test is about ...
+    CHECK(wedges>0);   // ... without losing the ordinary ones the wedge still serves.
+}
