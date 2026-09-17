@@ -42,9 +42,15 @@ void NetworkView::paintEvent(QPaintEvent*) {
     painter.setTransform(transform);
     const auto road=[&](const std::vector<std::vector<Point>>& boundaries,
                         const std::vector<ConnectorMarking>& markings,const QColor& color) {
+        std::vector<Point> ring(boundaries.front());
+        ring.insert(ring.end(),boundaries.back().rbegin(),boundaries.back().rend());
+        // Trimming each boundary on its own only cuts a loop within one rail. The two rails
+        // themselves cross where a Connector's near and far edges are cut onto the link's
+        // cross-section at a sharp merge angle, which draws as a spike/notch into the
+        // carriageway unless the closed ring is trimmed as one curve, catching that crossing too.
+        ring=trimSelfIntersections(ring);
         QPolygonF surface;
-        for(const auto& p:boundaries.front())surface<<QPointF(p.x,p.y);
-        for(auto it=boundaries.back().rbegin();it!=boundaries.back().rend();++it)surface<<QPointF(it->x,it->y);
+        for(const auto& p:ring)surface<<QPointF(p.x,p.y);
         // Winding, so a ribbon that overlaps itself on a tight turn stays road instead of
         // punching the overlap out as a hole.
         painter.setPen(Qt::NoPen);painter.setBrush(color);
@@ -70,14 +76,8 @@ void NetworkView::paintEvent(QPaintEvent*) {
         }
         road(boundaries,markings,QColor("#536c7c"));
     }
-    for(const auto& connector:network_.connectors) {
-        // The fill polygon needs the same self-intersection cut the link boundaries get above:
-        // a Connector's mitered offset can loop back on itself at a tight merge angle, and an
-        // untrimmed loop draws as a spike into the carriageway instead of the swept road shape.
-        auto boundaries=connectorBoundaries(network_,connector);
-        for(auto& boundary:boundaries)boundary=trimSelfIntersections(boundary);
-        road(boundaries,connectorMarkings(network_,connector),QColor("#386b78"));
-    }
+    for(const auto& connector:network_.connectors)
+        road(connectorBoundaries(network_,connector),connectorMarkings(network_,connector),QColor("#386b78"));
     for (const auto& head : frame_.scenario->signalHeads) {
         const auto found = std::find_if(frame_.scenario->signalPrograms.begin(), frame_.scenario->signalPrograms.end(),
             [&](const auto& p) { return p.id == head.programId; });
