@@ -311,6 +311,23 @@ bit-for-bit identical.
 **Done:** a Connector's mouth sits on its Link's lane edges at any arrival angle, and the body is
 still the full lane its Links give it.
 
+### M1.18 — A Connector's line is its own centre
+
+**Implemented.** `Connector::geometry` now starts and ends on the **middle of the lane range** it
+attaches to, not on the first lane of that range. `connectorAttachment` computes it from the
+range's two outer lane edges, both taken at the same station, so it is square to the road on a
+curve; `connectorPaths` offsets every lane from it, lane 0 included, which used to be the stored
+line itself. The owner's rule for how a Connector meets a Link starts here: *give the midpoints
+a common position first, then draw the edges.*
+
+Found on the way: `addConnectorRange` set the lane counts **after** building the default curve,
+so a wider range never moved its own endpoints. The curve is now derived once the counts are
+known, and `resizeConnectorEdges` carries the interior points with the ends by the same frozen
+weights a leading rebase uses — moving the ends alone bent a hand-drawn shape by 0.44 m.
+
+**Done:** the stored point and the middle of the drawn opening coincide at 0.000 m for 1, 2, 3
+and 4 lanes, and 120 of 120 drawn and driven vertices are unchanged bit for bit.
+
 ### M1.12.1 — A Connector's own lane widths and markings
 
 **Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found

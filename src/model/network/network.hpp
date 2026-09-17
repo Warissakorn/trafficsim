@@ -95,6 +95,11 @@ int lanesFromReference(const Network&, const LaneReference&);
 // is attached to each Link moves, and the points the author placed stay where they are.
 void reanchorConnector(const Network&, Connector&);
 Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
+// The middle of the whole lane range a Connector attaches to, at its station -- the point its
+// own geometry starts and ends at. For a one-lane range this is laneAttachment; for a wider one
+// it sits (N-1)/2 lane widths away from it. A Connector's stored line is its own centre, the way
+// a Link's reference line is, and not the path of whichever lane happens to be first.
+Point connectorAttachment(const Network&, const LaneReference&, int laneCount, bool outgoing);
 // The station a reference resolves to, filling in the end/start its absent value means.
 double attachmentStation(const Network&, const LaneReference&, bool outgoing);
 // True when this end sits exactly at the start or the end of its link, which is the only
@@ -111,6 +116,7 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network&);
 // polygon follows the turn, which is what Vissim's Intermediate points field does.
 inline constexpr int kDefaultIntermediatePoints=3;
 std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to,
+                                  int fromLaneCount, int toLaneCount,
                                   int intermediatePoints=kDefaultIntermediatePoints);
 // The travel directions a Connector's two ends leave and arrive on, which clamp its spline.
 std::pair<Point,Point> connectorTangents(const Network&, const LaneReference& from, const LaneReference& to);

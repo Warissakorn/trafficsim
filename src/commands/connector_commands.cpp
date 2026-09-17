@@ -22,7 +22,7 @@ void reanchor(ProjectDocument& d, Connector& c) { reanchorConnector(d.network, c
 void reanchorConnectors(ProjectDocument& d) { for (auto& c : d.network.connectors) reanchor(d, c); }
 std::string addConnector(ProjectDocument& d, const LaneReference& from, const LaneReference& to) {
     uniqueConnection(d, from, to);
-    auto geometry = connectorCurve(d.network, from, to);
+    auto geometry = connectorCurve(d.network, from, to, 1, 1);
     const auto id = allocateId(d, "connector");
     d.network.connectors.push_back({id, from, to, std::move(geometry)});
     return id;
@@ -38,6 +38,9 @@ std::string addConnectorRange(ProjectDocument& d,const LaneReference& from,const
     const auto id=addConnector(d,from,to);
     auto& c=editableConnector(d,id);c.fromLaneCount=fromCount;c.toLaneCount=toCount;
     c.level=editableLink(d,from.linkId).level;c.displayType=editableLink(d,from.linkId).displayType;
+    // The default curve runs between the two range centres, and a centre is not known until the
+    // count is: a three-lane range starts a lane away from where a one-lane range starts.
+    c.geometry=connectorCurve(d.network,c.from,c.to,fromCount,toCount);c.laneBlend.clear();
     (void)connectorPaths(d.network,c);return id;
 }
 void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount,int toCount,bool leading) {
@@ -76,7 +79,7 @@ void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneRef
 }
 void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straight) {
     auto& c = editableConnector(d, id);
-    auto geometry = connectorCurve(d.network, c.from, c.to);
+    auto geometry = connectorCurve(d.network, c.from, c.to, c.fromLaneCount, c.toLaneCount);
     if (straight) geometry = {geometry.front(), geometry.back()};
     c.geometry = std::move(geometry);c.laneBlend.clear();
 }
