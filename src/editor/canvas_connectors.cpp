@@ -85,8 +85,14 @@ void EditorCanvas::drawConnectors() {
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;
         const auto boundaries=connectorBoundaries(document_->network,preview);
-        auto surface=path(boundaries.front());
-        for(auto it=boundaries.back().rbegin();it!=boundaries.back().rend();++it)surface.lineTo(it->x,it->y);
+        // Trimming each rail on its own only cuts a loop within that one rail. The two rails
+        // cross EACH OTHER where the near and far edges are cut onto the link's cross-section at
+        // a sharp merge angle, which draws as a spike/notch unless the closed ring is trimmed as
+        // one curve -- see network_view, which draws the same shape for the plain harness.
+        std::vector<Point> ring(boundaries.front());
+        ring.insert(ring.end(),boundaries.back().rbegin(),boundaries.back().rend());
+        ring=trimSelfIntersections(ring);
+        auto surface=path(ring);
         surface.closeSubpath();
         // A ribbon that overlaps itself on a tight turn is still road there. The even-odd
         // default punched the overlap out as a hole, which read as a tear in the surface.
