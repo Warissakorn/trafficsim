@@ -148,6 +148,8 @@ IDs and positions stay fixed, including on curved Links. Connector paths whose l
 survives a range edit retain their curve; unequal ranges can intentionally change lane mappings.
 Properties count edits and downstream pocket creation expand the last-lane side.
 
+## Lane edges, road surfaces and markings
+
 Lane edges are mitered at a bend: a corner vertex is offset by `width/2 / cos(theta/2)`, the
 distance to where the two offset legs meet, so the carriageway keeps its full width through
 the corner instead of pinching to `width * cos(theta/2)` — 30% narrower at a right angle. A
@@ -163,6 +165,8 @@ the two lanes it separates are genuinely side by side — at least half their fu
 and stops where they converge, rather than continuing down the middle of the single lane they
 merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. The
 small centre arrows show travel direction; white dots are editable geometry handles.
+
+## Geometry and end handles
 
 Geometry handles sit on the **centreline of the whole bundle**, as Vissim shows them, not on
 the stored reference polyline — which ends up at one edge as soon as lanes are added to a
@@ -190,6 +194,8 @@ dragged. The two ends are cut on the **Link's own cross-section**, so each mouth
 exactly on that Link's lane edges. Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
+
+## Connector shape: intermediate points and the mouth
 
 A Connector is stored and drawn the way Vissim's is: its two attachments and a few
 **intermediate points**, joined by **straight legs and mitered at each point**, exactly as a Link
@@ -238,6 +244,8 @@ consecutive points and a positive total length. Coincident endpoints cannot
 generate a default curve; leave a positive gap. Duplicate lane-pair connections at the same source/target stations are
 rejected, including pairs already covered by another connector range. Separate stations
 on the same lane pair may own separate Connectors.
+
+## Attachment stations, Link edits and deletion
 
 Moving or reshaping a Link moves the one Connector poly point attached to it, as Vissim does, and
 leaves every other point where the author put it. A Link edit therefore cannot deform a hand-tuned

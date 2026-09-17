@@ -10,6 +10,43 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-17 — NETWORK_EDITOR.md: a section whose title covered a third of the file
+
+`## Connector lane ranges` ran **159 lines, 37% of the manual**, and most of it was not about
+connector lane ranges. Under that one heading sat Link lane-tab dragging, lane-edge mitering,
+road surfaces and markings, geometry handles, end-handle re-attachment, the connector polyline
+and its intermediate points, the wedge mouth, the cubic reach, attachment stations, Link splits,
+the runtime limit, and deletion cascades. A reader looking for how markings are drawn had no
+reason to open a section named after lane ranges, and would not have found it from the contents.
+
+Split into five sections named for what each one holds:
+
+| Section | Lines |
+|---|---|
+| Connector lane ranges | 43 |
+| Lane edges, road surfaces and markings | 18 |
+| Geometry and end handles | 29 |
+| Connector shape: intermediate points and the mouth | 50 |
+| Attachment stations, Link edits and deletion | 27 |
+
+**Not a rewrite.** Only four heading lines and their blank lines were inserted; the prose was
+checked byte-for-byte against `git show HEAD:` with those eight lines stripped back out, and it
+is **identical**. The split points fall on existing paragraph breaks, so reading order is
+unchanged — what changed is that the contents now tells the truth about where things are.
+433 to 441 lines, the whole cost being the headings. No anchor link anywhere in the repo
+pointed into this file, so no link broke; the sweep confirms none dangling.
+
+**Still worth a later pass, deliberately not done here:** the paragraph now opening *Geometry
+and end handles* is 22 lines and mixes the re-attachment gesture with how a Connector's
+cross-section is built — two subjects in one block. Splitting it means rewriting sentences, not
+moving lines, which is a content change and belongs in its own session with the behaviour in
+front of it.
+
+**Verification:** prose identical to HEAD, no dangling links, size guard green, 23/23 CTest.
+No source file touched.
+
+---
+
 ## 2026-09-17 — ROADMAP.md put back in sequence, and two stale status lines fixed
 
 `ROADMAP.md` opens by calling itself "**a sequence**, so that any session can see where it sits".
