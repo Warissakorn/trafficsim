@@ -65,6 +65,12 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     }
     vertex_=vertexAt(e->pos());
     if (vertex_<0 && !isSelected(picked.first)) { selection_={picked.first}; vertex_=vertexAt(e->pos()); }
+    // A drag on a multi-selection moves all of it. Vertex editing is single-object -- vertexAt
+    // already returns -1 for a multi-selection -- so the two gestures cannot collide.
+    if (selection_.size()>1 && isSelected(picked.first)) {
+        groupDrag_=true; groupDragging_=false; groupOffset_={}; dragStart_=p; dragPress_=e->pos();
+        redraw(); if(selectionChanged) selectionChanged(); return;
+    }
     if (const auto* geometry=selectedGeometry()) {
         const auto handles=handleGeometry();
         const bool end=selectedConnector() && vertex_>=0 && (vertex_==0 || vertex_==static_cast<int>(geometry->size())-1);
@@ -73,7 +79,6 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         if (end) { endpointDrag_=vertex_==0; endpointDraft_.reset(); dragStart_=p; dragPress_=e->pos(); }
         // A connector body cannot be translated: both of its ends are attached elsewhere.
         else if (!selectedConnector() || vertex_>0) {
-            // Geometry editing stays strictly single-object; a group translate is not in this slice.
             if (selection_.size()==1) {
                 original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; dragPress_=e->pos();
                 handleOffset_= vertex_>=0 && static_cast<std::size_t>(vertex_)<handles.size()
@@ -129,6 +134,10 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         if (hovered!=connectorHover_) { connectorHover_=hovered; redraw(); }
         return;
     }
+    if(groupDrag_) {
+        groupDragging_=(e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance();
+        const auto p=world(e->pos());groupOffset_={p.x-dragStart_.x,p.y-dragStart_.y};redraw();return;
+    }
     if(band_) { const auto p=world(e->pos(),false); band_=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized(); redraw(); return; }
     if(dragging_) {
         if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance())return;
@@ -159,6 +168,15 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
         if(duplicate) {if((delta.x!=0 || delta.y!=0) && duplicateRequested)duplicateRequested(delta);}
         else {auto ids=selection_;if(!isSelected(picked))ids.push_back(picked);setSelection(std::move(ids));}
+        redraw();return;
+    }
+    if(e->button()==Qt::LeftButton && groupDrag_) {
+        // The release position is authoritative here too, and a click that never became a drag
+        // leaves the selection exactly as it was.
+        const bool moved=groupDragging_;const auto p=world(e->pos());
+        const Point delta{p.x-dragStart_.x,p.y-dragStart_.y};
+        groupDrag_=groupDragging_=false;groupOffset_={};
+        if(moved && (delta.x!=0 || delta.y!=0) && translateRequested)translateRequested(delta);
         redraw();return;
     }
     if(e->button()==Qt::LeftButton && endpointDrag_) {

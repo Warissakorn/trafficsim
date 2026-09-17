@@ -1,6 +1,10 @@
 #include "test.hpp"
+#include "../src/commands/appearance_commands.hpp"
+#include "../src/commands/connector_commands.hpp"
+#include "../src/commands/demand_commands.hpp"
 #include "../src/commands/network_commands.hpp"
 #include <fstream>
+#include <cmath>
 #include <limits>
 using namespace trafficsim;
 namespace {
@@ -145,4 +149,76 @@ TEST(editor, signal_bearing_split_preserves_control_and_routes) {
         CHECK(documentJson(parseDocument(Json::parse(documentJson(h.document()).dump())))==documentJson(h.document()));
         h.undo();CHECK(documentJson(h.document())==before);h.redo();CHECK(h.document().network.links.size()==5);
     }
+}
+TEST(editor, a_name_belongs_to_the_object_and_outlives_save_undo_and_copy) {
+    History h;h.reset();std::string link,other,connector,head;
+    h.execute("draw",[&](auto& d){
+        link=addLink(d,{{0,0},{100,0}},2,3.5);other=addLink(d,{{130,0},{230,0}},2,3.5);
+        connector=addConnector(d,{link,d.network.links[0].lanes[0].id},{other,d.network.links[1].lanes[0].id});
+        head=putSignalHead(d,{"",{link,d.network.links[0].lanes[0].id},50,putProgram(d,{"",0,{{10,SignalColor::green}}}),{}});
+    });
+    // The forcing: nothing carries a name until one is typed, so an empty name below is a
+    // rename that happened, not a default that was never touched.
+    const auto& n=h.document().network;
+    CHECK(n.links[0].name.empty());CHECK(n.connectors[0].name.empty());CHECK(n.signalHeads[0].name.empty());
+    const auto unnamed=h.document();
+    h.execute("name",[&](auto& d){
+        renameObject(d,link,"Sukhumvit inbound");renameObject(d,connector,"NB left turn");renameObject(d,head,"Head A1");
+    });
+    CHECK(n.links[0].name=="Sukhumvit inbound");CHECK(n.connectors[0].name=="NB left turn");CHECK(n.signalHeads[0].name=="Head A1");
+    // A name is not a key: the other link may carry the same one, and neither id moves.
+    h.execute("same",[&](auto& d){renameObject(d,other,"Sukhumvit inbound");});
+    CHECK(n.links[1].name==n.links[0].name);CHECK(n.links[1].id!=n.links[0].id);
+    CHECK(parseDocument(Json::parse(documentJson(h.document()).dump()))==h.document());
+    const auto named=h.document();
+    h.execute("copy",[&](auto& d){duplicateObjects(d,{link},{0,60});});
+    CHECK(h.document().network.links.back().name=="Sukhumvit inbound");
+    h.undo();CHECK(h.document()==named);
+    h.undo();h.undo();CHECK(h.document()==unnamed);h.redo();h.redo();CHECK(h.document()==named);
+    test::throws([&]{h.execute("unknown",[&](auto& d){renameObject(d,"link-nope","x");});},"EDIT_UNKNOWN_OBJECT");
+    test::throws([&]{h.execute("long",[&](auto& d){renameObject(d,link,std::string(201,'x'));});},"EDIT_NAME_LENGTH");
+    CHECK(h.document()==named);
+    h.execute("clear",[&](auto& d){renameObject(d,link,std::string(200,'x'));renameObject(d,connector,"");});
+    CHECK(n.links[0].name.size()==200);CHECK(n.connectors[0].name.empty());
+}
+TEST(editor, a_group_move_carries_a_whole_junction_rigidly) {
+    History h;h.reset();std::string a,b,connector,head;
+    h.execute("draw",[&](auto& d){
+        a=addLink(d,{{0,0},{100,0}},2,3.5);b=addLink(d,{{130,0},{230,0}},2,3.5);
+        connector=addConnector(d,{a,d.network.links[0].lanes[0].id},{b,d.network.links[1].lanes[0].id});
+        head=putSignalHead(d,{"",{a,d.network.links[0].lanes[0].id},50,putProgram(d,{"",0,{{10,SignalColor::green}}}),{}});
+    });
+    const auto& n=h.document().network;
+    // The forcing: the Connector has points of its own between its two attachments, so a move
+    // that only reanchored the ends would visibly leave them behind.
+    CHECK(n.connectors[0].geometry.size()>2);
+    const auto before=h.document();const Point delta{25,-40};
+    const auto shifted=[&](const std::vector<Point>& was,const std::vector<Point>& now) {
+        CHECK(was.size()==now.size());
+        for(std::size_t i=0;i<was.size();++i){test::near(now[i].x,was[i].x+delta.x,1e-9);test::near(now[i].y,was[i].y+delta.y,1e-9);}
+    };
+    h.execute("move",[&](auto& d){translateObjects(d,{a,b,head},delta);});
+    shifted(before.network.links[0].geometry,n.links[0].geometry);
+    shifted(before.network.links[1].geometry,n.links[1].geometry);
+    // Both ends moved, so the junction moved: every point the author placed keeps its place
+    // inside it, rather than the ends being dragged onto a shape that stayed behind.
+    shifted(before.network.connectors[0].geometry,n.connectors[0].geometry);
+    // A head rides a station, so it needs no moving and must not have been moved.
+    CHECK(n.signalHeads[0].position==before.network.signalHeads[0].position);
+    CHECK(validateNetwork(n).empty());
+    CHECK(parseDocument(Json::parse(documentJson(h.document()).dump()))==h.document());
+    h.undo();CHECK(h.document()==before);h.redo();
+    const auto together=h.document();
+    // One end moving is an ordinary Link edit: the attached poly point follows and the rest
+    // of the Connector stays where the author put it. That rule is unchanged by the group move.
+    h.execute("one end",[&](auto& d){translateObjects(d,{a},{0,10});});
+    CHECK(n.connectors[0].geometry.front().y==together.network.connectors[0].geometry.front().y+10);
+    CHECK(n.connectors[0].geometry[1]==together.network.connectors[0].geometry[1]);
+    CHECK(n.connectors[0].geometry.back()==together.network.connectors[0].geometry.back());
+    h.undo();CHECK(h.document()==together);
+    // Nothing but a Link carries geometry, so a selection with no Link in it cannot be moved.
+    test::throws([&]{h.execute("no link",[&](auto& d){translateObjects(d,{connector,head},delta);});},"EDIT_MOVE_TARGET");
+    CHECK(h.document()==together);
+    test::throws([&]{h.execute("nan",[&](auto& d){translateObjects(d,{a},{std::nan(""),0});});},"INVALID_GEOMETRY");
+    CHECK(h.document()==together);
 }

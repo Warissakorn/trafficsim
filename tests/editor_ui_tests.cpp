@@ -5,6 +5,7 @@
 #include <QDoubleSpinBox>
 #include <QSpinBox>
 #include <QLineEdit>
+#include <QTableWidget>
 #include <QLabel>
 #include <QBuffer>
 #include <QFile>
@@ -68,6 +69,20 @@ int main(int argc,char** argv){
         item<QSpinBox>(w,"editorLaneCount")->setValue(3);item<QLineEdit>(w,"editorLaneWidths")->setText("3, 3.5, 4");action(w,"editorApplyLanes");
         require(w.history().document().network.links[0].lanes.size()==3,"Lane count not applied");
         require(w.history().document().network.links[0].lanes[2].width==4,"Per-lane width lost");
+        // Vissim's Name: type it, press Return, and the object carries it -- in the model, in
+        // the object list, and after a reopen.
+        auto* name=item<QLineEdit>(w,"editorName");
+        require(name->isEnabled() && name->text().isEmpty(),"Name field should start enabled and empty");
+        const auto beforeName=w.history().revision();
+        QTest::keyClick(name,Qt::Key_Return);
+        require(w.history().revision()==beforeName,"Committing an unchanged name added a history entry");
+        name->setText(QString::fromUtf8("ถนนสุขุมวิท"));QTest::keyClick(name,Qt::Key_Return);QApplication::processEvents();
+        require(w.history().document().network.links[0].name==QString::fromUtf8("ถนนสุขุมวิท").toStdString(),"Name did not reach the model");
+        require(item<QTableWidget>(w,"editorLinkTable")->item(0,1)->text()==QString::fromUtf8("ถนนสุขุมวิท"),"Name column did not follow");
+        action(w,"editorUndo");
+        require(w.history().document().network.links[0].name.empty(),"Undo did not take the name back");
+        require(name->text().isEmpty(),"Name field did not follow Undo");
+        action(w,"editorRedo");
         item<QDoubleSpinBox>(w,"editorSplitDistance")->setValue(60);action(w,"editorPocket");
         require(w.history().document().network.links.size()==2,"Pocket split missing");
         require(w.history().document().network.links.back().lanes.size()==4,"Pocket extra lane missing");

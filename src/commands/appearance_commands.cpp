@@ -5,6 +5,14 @@
 #include <set>
 #include <cmath>
 namespace trafficsim {
+void renameObject(ProjectDocument& d,const std::string& id,const std::string& name) {
+    // A name long enough to be a document belongs in neither a dialog nor a table cell.
+    if(name.size()>200)throw std::invalid_argument("EDIT_NAME_LENGTH");
+    for(auto& l:d.network.links)if(l.id==id){l.name=name;return;}
+    for(auto& c:d.network.connectors)if(c.id==id){c.name=name;return;}
+    for(auto& h:d.network.signalHeads)if(h.id==id){h.name=name;return;}
+    throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+}
 void changeAppearance(ProjectDocument& d,const std::string& id,int level,const std::string& type) {
     if(level < -1000 || level > 1000 || type.empty())throw std::invalid_argument("EDIT_DISPLAY_VALUE");
     for(auto& l:d.network.links)if(l.id==id){l.level=level;l.displayType=type;return;}
@@ -45,6 +53,25 @@ void dropHead(const Network& n,NetworkSignalHead& head,Point target,int level) {
     }
     if(!found)throw std::invalid_argument("EDIT_COPY_TARGET");
 }
+}
+void translateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point offset) {
+    if(!std::isfinite(offset.x) || !std::isfinite(offset.y))throw std::invalid_argument("INVALID_GEOMETRY");
+    const std::set<std::string> chosen(ids.begin(),ids.end());std::set<std::string> moved;
+    for(auto& l:d.network.links)if(chosen.contains(l.id)) {
+        for(auto& p:l.geometry){p.x+=offset.x;p.y+=offset.y;}
+        moved.insert(l.id);
+    }
+    // Nothing but a Link carries geometry of its own, so a selection of none is a gesture with
+    // no meaning rather than a move of zero objects. Say so instead of silently doing nothing.
+    if(moved.empty())throw std::invalid_argument("EDIT_MOVE_TARGET");
+    for(auto& c:d.network.connectors) {
+        // Both ends moving means the whole junction moved: the points the author placed keep
+        // their place within it. One end moving is an ordinary Link edit, which reanchoring
+        // already handles by moving the one attached poly point.
+        if(moved.contains(c.from.linkId) && moved.contains(c.to.linkId))
+            for(auto& p:c.geometry){p.x+=offset.x;p.y+=offset.y;}
+        reanchorConnector(d.network,c);
+    }
 }
 std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point offset) {
     if(!std::isfinite(offset.x) || !std::isfinite(offset.y))throw std::invalid_argument("INVALID_GEOMETRY");

@@ -58,6 +58,8 @@ private:
     void translatePalette();
     void buildAppearance(QFormLayout*);
     void refreshAppearance();
+    // The Name of whatever is selected, empty when nothing is or the object carries none.
+    std::string selectedName() const;
     void createLinkDialog(const std::vector<Point>&);
     void createRangeDialog(LaneReference,LaneReference,const std::vector<Point>&);
     QString recoveryDirectory_, recoveryFile_;
@@ -115,7 +117,7 @@ private:
     QLabel* connectorHint_{};
     QSpinBox* count_{};
     QDoubleSpinBox *width_{}, *grid_{}, *split_{}, *gap_{}, *bgX_{}, *bgY_{}, *bgScale_{}, *bgAngle_{}, *bgOpacity_{};
-    QLineEdit *id_{}, *widths_{};
+    QLineEdit *id_{}, *name_{}, *widths_{};
     QLabel *error_{}, *coordinates_{}, *selectionInfo_{};
     QString text(const std::string& key) const;
     void buildInspector();

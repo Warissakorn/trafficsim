@@ -24,13 +24,13 @@ Json documentJson(const ProjectDocument& d) {
     for (const auto& l : d.network.links) {
         Json lanes = Json::array();
         for (const auto& lane : l.lanes) lanes.push_back({{"id", lane.id}, {"width", lane.width}});
-        network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}, {"level",l.level}, {"displayType",l.displayType}, {"laneOffset",l.laneOffset}});
+        network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}, {"level",l.level}, {"displayType",l.displayType}, {"laneOffset",l.laneOffset}, {"name",l.name}});
     }
     for (const auto& c : d.network.connectors)
         network["connectors"].push_back({{"id", c.id}, {"from", reference(c.from)}, {"to", reference(c.to)}, {"geometry", points(c.geometry)}, {"fromLaneCount",c.fromLaneCount}, {"toLaneCount",c.toLaneCount},
-            {"level",c.level}, {"displayType",c.displayType}, {"laneBlend",c.laneBlend}});
+            {"level",c.level}, {"displayType",c.displayType}, {"laneBlend",c.laneBlend}, {"name",c.name}});
     for (const auto& h : d.network.signalHeads)
-        network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}});
+        network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}, {"name",h.name}});
     const auto& b = d.background;
     return {{"format", "TrafficSim"}, {"schemaVersion", 5}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},

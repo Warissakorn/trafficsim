@@ -438,7 +438,7 @@ session does not have to rediscover them; none is in this slice.
 | Vissim field | Ours | Verdict |
 |---|---|---|
 | `No.` | A generated id string, not an editable integer | Cosmetic, but ids are what a project file is read by. Not booked |
-| `Name` | **Absent from the model entirely** (`Connector` has no name member) | The cheapest real gap on this list, and the second field a Vissim user reaches for. **Booked: M1.12.1** |
+| `Name` | Present, on a Connector and on every other object | Done — M1.15, below |
 | `Intermediate points` | Present, as of this entry | Done |
 | `Link length` | Shown beside the lane counts, measured on the road | Done |
 | `Link behavior type` | Not modelled anywhere | Already out of scope (§ "not modelled") |
@@ -450,3 +450,42 @@ session does not have to rediscover them; none is in this slice.
 | `Reverse parking` | Absent | Parking is not modelled at all (§4) |
 
 Group drag, `Alt`-drag rotate and copy/paste stay declined for the reason already on file.
+
+---
+
+## 2026-09-16 sixth follow-up — what else is not Vissim, audited against the code
+
+The owner asked what else still differs. §§1–6 above are a 2026-09-14 snapshot and several of
+their "Today" cells have since gone stale, so this pass was verified against live code rather
+than against the table. Five gaps, ranked by gain ÷ (risk × effort):
+
+| # | Gap | Evidence | Verdict |
+|---|---|---|---|
+| 1 | Nothing could be named | No `name` member on `Link`, `Connector` or `NetworkSignalHead`; no field in `editor_inspector.cpp` | **Done: M1.15** |
+| 2 | Object lists are read-only | `editor_tables.cpp` sets `NoEditTriggers`; four (now five) fixed columns per tab | Vissim's Lists are its power-user surface — typed cells, sorting, multi-select-and-set. Not booked |
+| 3 | No group move, no `Alt`-drag rotate | `canvas_input.cpp`: "Geometry editing stays strictly single-object" (`Ctrl`+drag duplicates, but a multi-selection cannot be moved) | Group move **done: M1.16** — the reanchoring that once blocked it now exists. `Alt`-drag rotate is not booked |
+| 4 | `No.` is a string, not an integer | `allocateId(d,"link")` yields `link-1` | **Advised against for now:** it churns the file format and every reference for a mostly cosmetic win, and M1.15 buys most of the same benefit |
+| 5 | Missing object types | 9 tools in `canvas.hpp` against Vissim's Network Objects palette; nodes, priority rules, conflict areas, reduced-speed areas, stop signs, parking | **Deliberately not booked:** each needs engine behaviour first (ROADMAP rule 2). Nodes are the one that matters for the deliverable, and belong to M5 |
+
+The evidence here is code-level and visual, not timed: all five are things that are *absent*,
+not things that are slow.
+
+---
+
+## 2026-09-17 — The mouth is a wedge, and the square cut was a misreading
+
+The owner circled the joint on a Vissim screenshot: a Connector arriving on a Link **body** at an
+angle, its mouth cut on the Link's cross-section. Ours was square to the Connector, from
+`e6dd394`. Restored to the cut, which is what `e81a591` — the commit immediately before it — had
+already judged Vissim-correct: *"only the joint, where the Connector arrives across the lane and
+is cut on that lane's cross-section, is shorter through the corner, as it is in Vissim."*
+
+`e6dd394` re-quoted the **interpolation's** numbers as if they were the end cut's, and traded a
+Vissim-correct wedge for a non-Vissim overlap of 0.12-0.29 m. Measured after the restoration:
+every mouth lands on its Link's lane edges to 1e-9, the mouth width along the cross-section is
+exactly the Link's lane width at 30/60/90/120 degrees, and every interior boundary vertex is
+unchanged bit for bit.
+
+This is the second time in two days that a screenshot of the real thing overturned a reading of
+Vissim taken from our own geometry — the first was the spline. The lesson is on the record:
+**when a shape is meant to match Vissim, ask for a picture of Vissim before reasoning about it.**

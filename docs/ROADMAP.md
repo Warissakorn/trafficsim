@@ -266,21 +266,64 @@ migrated: the owner confirmed the project is still a test bed.
 **Done:** a default Connector shows five grips; the count changes without losing the author's
 shape; a count of 2 draws the three straight legs Vissim draws.
 
-### M1.12.1 — A Connector's own name, lane widths and markings
+### M1.15 — A Name on every object
 
-**Not started.** Three fields of Vissim's Connector dialog that our model cannot express, found
-by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up":
+**Implemented.** `Link`, `Connector` and signal heads each carry Vissim's `Name`: free text, at
+most 200 characters, never a key — two objects may hold the same one and an empty one is the
+normal state. One field in the inspector's common section names whichever object is selected,
+the way Vissim puts Name beside No. on every dialog, and the three object lists show it in a
+Name column next to ID. It round-trips through the project file, copies with a duplicated
+object, and undoes as one entry.
 
-- **`Name`** — `Connector` has no name member at all, so a Connector can only be referred to by
-  its generated id. Smallest of the three: a model field, serialization, one inspector row, and
-  the object combo showing it.
+**Done:** an interchange is authored in the author's own words rather than in `link-17`.
+
+### M1.16 — Moving several objects at once
+
+**Implemented.** Left-dragging any member of a multi-selection moves the whole selection, which
+Vissim has always done and this editor refused to do. Links carry the geometry; a Connector
+rides the junction rigidly when both of its Links are moving and stays attached when they are
+not; signal heads ride a station and need no moving. A selection holding no Link reports
+`EDIT_MOVE_TARGET` rather than doing nothing quietly. One drag is one undo entry, and a drag
+under the system drag threshold stays a click — without that, a two-pixel tremor either side of
+a grid line moved a whole junction by a metre.
+
+The reason this was expensive is gone: reanchoring a Connector now moves the one poly point
+attached to the Link that moved (M1.14), so the group move had only to decide which Connectors
+travel whole. `Alt`-drag rotation is still not implemented and is not booked.
+
+**Done:** two Links and the Connector between them move as one shape, and one Undo puts them back.
+
+### M1.17 — The mouth is a wedge cut on the Link
+
+**Implemented.** A Connector's two ends are cut on the cross-section of the Link they attach to,
+so each mouth lands on that Link's lane edges exactly and the markings run continuously from the
+road into the Connector. `e6dd394` had squared the ends to the Connector instead, leaving the
+mouth 4.7-17.2 cm clear of the road on a gentle join and up to 0.88 m on a hard reverse curve,
+with the polygon overlapping the carriageway to cover it. A screenshot of a real Vissim Connector
+arriving on a Link body at an angle settled it: Vissim cuts the wedge.
+
+That commit had justified the square cut with numbers (1.06 m of a 3.50 m lane on a reverse curve,
+1.96 m at 60 degrees, 0.46 m at 90) which belong to a different defect — **interpolating** the
+cross-section through the body. That defect stays fixed: the cut is only the two end samples, and
+36 of 90 boundary vertices move across the fixtures, all of them ends, with every interior vertex
+bit-for-bit identical.
+
+**Done:** a Connector's mouth sits on its Link's lane edges at any arrival angle, and the body is
+still the full lane its Links give it.
+
+### M1.12.1 — A Connector's own lane widths and markings
+
+**Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found
+by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up". Its third, `Name`, shipped
+as M1.15:
+
 - **`Lanes` tab per-lane `Width`** — connector lane widths are derived from the links each end
   joins (`laneWidthOf`), so a Connector cannot carry a width of its own and a widening taper has
   to be authored on the links instead.
 - **`Lanes` tab per-lane `MarkingType`** — likewise derived (`connectorMarkings`): edges solid,
   interior dashed, with no per-lane choice.
 
-**Closes when:** all three are authorable, round-trip through the project file, and the widths
+**Closes when:** both are authorable, round-trip through the project file, and the widths
 feed `connectorBoundaries` in place of the derived ones without changing a Connector whose lanes
 were never given their own width. `BlockedVeh`, `NoLnCh` and `Has overtaking lane` are *not* in
 this milestone; they wait on the lane-changing model (Q2).
