@@ -30,25 +30,6 @@ Point laneAttachment(const Network& network, const LaneReference& ref, bool outg
     }
     throw std::invalid_argument("UNKNOWN_LANE");
 }
-Point connectorAttachment(const Network& network,const LaneReference& ref,int laneCount,bool outgoing) {
-    if(laneCount<1)throw std::invalid_argument("EDIT_LANE_RANGE");
-    for(const auto& link:network.links)if(link.id==ref.linkId) {
-        const auto lane=std::find_if(link.lanes.begin(),link.lanes.end(),[&](const auto& l){return l.id==ref.laneId;});
-        if(lane==link.lanes.end() || std::distance(lane,link.lanes.end())<laneCount)
-            throw std::invalid_argument("EDIT_LANE_RANGE");
-        const auto first=static_cast<std::size_t>(std::distance(link.lanes.begin(),lane));
-        // One station names one cross-section, so both edges of the range are taken at the same
-        // place on the link and the midpoint between them is square to the road.
-        const double station=attachmentStation(network,ref,outgoing);
-        const auto at=[&](std::size_t boundary) {
-            const auto edge=laneBoundaryGeometry(link,boundary,network.drivingSide);
-            return pointAlong(edge,matchedStation(link.geometry,edge,station));
-        };
-        const auto a=at(first),b=at(first+static_cast<std::size_t>(laneCount));
-        return {(a.x+b.x)/2,(a.y+b.y)/2};
-    }
-    throw std::invalid_argument("UNKNOWN_LANE");
-}
 int lanesFromReference(const Network& network,const LaneReference& ref) {
     for(const auto& link:network.links)if(link.id==ref.linkId) {
         const auto lane=std::find_if(link.lanes.begin(),link.lanes.end(),[&](const auto& l){return l.id==ref.laneId;});
@@ -70,8 +51,7 @@ void reanchorConnector(const Network& network,Connector& c) {
             ref.station=std::clamp(*ref.station,0.,polylineLength(link.geometry));
     };
     clamp(c.from);clamp(c.to);
-    const auto from=connectorAttachment(network,c.from,c.fromLaneCount,true),
-               to=connectorAttachment(network,c.to,c.toLaneCount,false);
+    const auto from=laneAttachment(network,c.from,true), to=laneAttachment(network,c.to,false);
     if(c.geometry.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
     if(!std::isfinite(from.x) || !std::isfinite(from.y) || !std::isfinite(to.x) || !std::isfinite(to.y))
         throw std::invalid_argument("INVALID_GEOMETRY");
@@ -97,10 +77,9 @@ std::pair<Point,Point> connectorTangents(const Network& network,const LaneRefere
     return {endDirection(network,from,true),endDirection(network,to,false)};
 }
 std::vector<Point> connectorCurve(const Network& network, const LaneReference& from, const LaneReference& to,
-                                  int fromLaneCount, int toLaneCount, int intermediatePoints) {
+                                  int intermediatePoints) {
     if(intermediatePoints<0 || intermediatePoints>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
-    const auto a = connectorAttachment(network,from,fromLaneCount,true),
-               b = connectorAttachment(network,to,toLaneCount,false);
+    const auto a = laneAttachment(network,from,true), b = laneAttachment(network,to,false);
     const double gap = std::hypot(b.x-a.x, b.y-a.y);
     if (!std::isfinite(gap) || gap < 1e-6) throw std::invalid_argument("EDIT_CONNECTOR_GAP");
     const auto [entry,exit]=connectorTangents(network,from,to);

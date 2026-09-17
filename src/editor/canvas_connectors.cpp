@@ -134,7 +134,7 @@ void EditorCanvas::drawConnectors() {
     if (connectorFrom_ && connectorHover_) {
         try {
             QPen pen(QColor("#b33f8d"),2,Qt::DashLine); pen.setCosmetic(true);
-            scene_.addPath(path(connectorCurve(document_->network,*connectorFrom_,*connectorHover_,1,1)),pen)->setZValue(200007);
+            scene_.addPath(path(connectorCurve(document_->network,*connectorFrom_,*connectorHover_)),pen)->setZValue(200007);
         } catch (const std::exception&) { /* Coincident endpoints have no default curve preview. */ }
     }
 }

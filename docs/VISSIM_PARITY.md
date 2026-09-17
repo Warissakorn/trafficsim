@@ -314,6 +314,26 @@ remains in Properties/the creation dialog. The middle handle changes both ranges
 there is no independent arbitrary Connector lane topology. Group transforms, editable
 tables and additional object types retain their earlier status. Owner acceptance remains open.
 
+## 2026-09-16 follow-up — Grips, end attachments and lane-count checks
+
+The owner's annotated screenshot marked four things: the lane tabs looked unfinished, the
+Link and Connector geometry points sat at a road edge instead of the middle, the Connector
+lane counts were not checked against what the other end actually has, and the Connector
+end points could not be moved.
+
+Lane tabs are now edge-mounted rounded tabs with a stem and the resulting count inside them,
+in place of a loose dot with a floating number. Geometry grips moved to the bundle centreline
+(`linkCentreline`, `connectorCentreline`); the stored polylines are unchanged, and a drag maps
+back through the same offset. Connector ends are draggable onto any lane or position along it:
+the range is centred on the lane under the pointer, and it is narrowed when the new end has
+fewer lanes than the Connector carries. Widening a Link still never widens a range on its own,
+because how many lanes a movement carries is the author's decision.
+
+Not changed, deliberately: unequal ranges remain legal drawings and still fail the M0 run
+check as `UNSUPPORTED_MERGE` — the counts are now shown beside the Connector length so the
+author sees a 3 → 2 drop without opening the inspector. Re-attaching a Connector used by a
+route or head is still rejected. Group transforms and the remaining booked gaps are unchanged.
+
 ## 2026-09-16 follow-up — Bent carriageways, one-lane connectors, and where an attachment lives
 
 Three more owner findings. Two were defects and are fixed; the third is a model decision,
@@ -469,28 +489,3 @@ unchanged bit for bit.
 This is the second time in two days that a screenshot of the real thing overturned a reading of
 Vissim taken from our own geometry — the first was the spline. The lesson is on the record:
 **when a shape is meant to match Vissim, ask for a picture of Vissim before reasoning about it.**
-
----
-
-## 2026-09-17 — How a Connector meets a Link, in the owner's own four steps
-
-The owner drew it and numbered it: (1) the midpoint of the opening sits at the attachment
-position; (2) the Connector's inner and outer edges run out to the Link's; (3) a line from the
-inner intersection back to the midpoint; (4) from the midpoint, perpendicular to the Link's far
-edge, then on to the outer intersection.
-
-**Step 1 shipped as M1.18.** It was false for every multi-lane Connector: the stored point was on
-the first lane, the opening's middle was (N−1)/2 lane widths away.
-
-**Steps 2–4 are not built, and two measurements govern them.** At **equal width** — Connector as
-wide as the Link — the four-step construction is the straight mouth M1.17 already draws, not an
-approximation of it: over 1/2/3/4 lanes and 15°/35°/55°/75° turns, P3 and P4 coincide to 1e-14
-and P1P2P3 are collinear to 1e-15. It says something only where the Connector is **narrower**
-than the Link, which is the owner's own example (`Link: 2` of 3). And it cannot live inside
-`connectorBoundaries`, which emits one point per spine sample: the perpendicular foot has no
-sample of its own, so it needs a `connectorMouth()` consumed by the surface path and the
-markings.
-
-Twice now a picture of real Vissim has overturned a reading taken from our own geometry, and a
-third time the owner's own numbering caught a precondition I had skipped. The rule earns
-repeating: **ask for the picture, and check the preconditions before the construction.**

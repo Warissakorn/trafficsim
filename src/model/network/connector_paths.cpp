@@ -38,20 +38,16 @@ void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCoun
             throw std::invalid_argument("EDIT_LANE_RANGE");
         };
         shift(resized.from,fromCount-c.fromLaneCount);shift(resized.to,toCount-c.toLaneCount);
+        resized.laneBlend=connectorBlendWeights(c);
+        const auto a=laneAttachment(n,resized.from,true),b=laneAttachment(n,resized.to,false);
+        for(std::size_t j=0;j<c.geometry.size();++j) {
+            const double t=resized.laneBlend[j];
+            resized.geometry[j].x+=(a.x-c.geometry.front().x)*(1-t)+(b.x-c.geometry.back().x)*t;
+            resized.geometry[j].y+=(a.y-c.geometry.front().y)*(1-t)+(b.y-c.geometry.back().y)*t;
+        }
+        resized.geometry.front()=a;resized.geometry.back()=b;
     }
     resized.fromLaneCount=fromCount;resized.toLaneCount=toCount;
-    // Either edge of a range can move its centre, and the stored line ends on that centre. Carry
-    // the interior points with the ends by the same frozen weights a leading rebase uses: moving
-    // the ends alone would bend a shape the author drew, by 0.44 m on a one-into-two rebase.
-    resized.laneBlend=connectorBlendWeights(c);
-    const auto a=connectorAttachment(n,resized.from,fromCount,true),
-               b=connectorAttachment(n,resized.to,toCount,false);
-    for(std::size_t j=0;j<resized.geometry.size();++j) {
-        const double t=resized.laneBlend[j];
-        resized.geometry[j].x+=(a.x-c.geometry.front().x)*(1-t)+(b.x-c.geometry.back().x)*t;
-        resized.geometry[j].y+=(a.y-c.geometry.front().y)*(1-t)+(b.y-c.geometry.back().y)*t;
-    }
-    resized.geometry.front()=a;resized.geometry.back()=b;
     (void)connectorPaths(n,resized);c=std::move(resized);
 }
 std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
@@ -74,9 +70,7 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
         const int a=count==1?0:i*(c.fromLaneCount-1)/(count-1);
         const int b=count==1?0:i*(c.toLaneCount-1)/(count-1);
         auto shape=c.geometry;
-        // The stored line is the middle of the whole range, so every lane is offset from it --
-        // lane 0 included, which used to be the stored line itself and so was left alone.
-        if(!shape.empty()) {
+        if(i && !shape.empty()) {
             const auto start=laneAttachment(n,from[a],true),end=laneAttachment(n,to[b],false);
             const auto oldStart=shape.front(),oldEnd=shape.back();
             for(std::size_t j=1;j+1<shape.size();++j) {
