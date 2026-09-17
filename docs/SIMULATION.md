@@ -2,8 +2,9 @@
 
 M0 implementation reference. **Not yet validated.** This engine is a reduced,
 Wiedemann-inspired prototype, not an implementation of W74/W99 and not calibrated to
-Vissim. Lane changing, merge arbitration, crossing-conflict resolution, priority control,
-LOS and production project persistence are not implemented. M0 remains open until the
+Vissim. Lane changing, crossing-conflict resolution, general priority control and LOS are not
+implemented. **Merge arbitration exists only as M3.1**: a deterministic gap-time/headway threshold,
+described below — not a calibrated critical-gap model. M0 remains open until the
 owner reviews the live traffic behaviour against its plausibility gate.
 
 ## Run
@@ -84,8 +85,23 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   There is no routing algorithm, lane changing or repeated segment within a route yet.
 - Sources must begin on segments with no predecessor. They are Poisson processes with
   a rate in vehicles/hour over `[startTime, endTime)`. Zero-rate inputs generate no cars.
-- A segment with multiple predecessors is rejected with `UNSUPPORTED_MERGE`. Choosing
-  priority for competing entries would otherwise silently introduce a right-of-way model.
+- A segment with multiple predecessors is rejected with `UNSUPPORTED_MERGE` **unless the merge is
+  arbitrated** (M3.1): it is accepted only when at least *n*−1 of its *n* predecessors carry a
+  `PriorityRule` naming another of them, so exactly one has priority and the rest have somewhere
+  to wait. The guard was narrowed by construction, never removed — a network that has not been
+  through the priority model still reports it, and a segment may not give way to itself.
+- A `PriorityRule` holds a stop line on the minor approach (`yieldSegmentId`, `yieldPosition`), a
+  conflict point on the major one (`conflictSegmentId`, `conflictPosition`), a **gap time in
+  seconds** and a **headway in metres**. A vehicle waits while any major vehicle is within the
+  headway of the conflict point or would reach it within the gap time, and is held at its stop
+  line by the same clamp a red signal head uses. A stopped major vehicle beyond the headway does
+  **not** block: a queue that is not moving is a gap, and treating it as a block would deadlock
+  the minor approach. **This is a threshold test, not gap acceptance as the literature defines
+  it** — no distribution, no driver variation, nothing calibrated. Rule 4 applies.
+- Rules for a Connector arriving inside a lane body are **derived from the drawing**, never
+  persisted, with their two numbers read from `data/priority-rules/`. Run refuses such a network
+  with `EDIT_NO_PRIORITY_DEFAULTS` if those cannot be read, rather than defaulting to a zero gap
+  time, which would be a merge nobody gives way at.
 - Geometric crossings do not create conflicts automatically. Separate movement paths
   can intersect spatially; their interaction is **not** modelled. The demo uses separate
   fixed-time greens and clearance intervals, not a conflict-area solver. Arbitrary

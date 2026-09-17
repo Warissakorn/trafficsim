@@ -117,7 +117,10 @@ the single source `buildScenario`, head rebasing and both vehicle render sites r
 nothing attached yields one section carrying the lane's own id, so uncut networks compile
 unchanged. `derivedPriorityRules` arbitrates the merge an arrival creates (M3.1).
 `connectorRuntimeIssues` now blocks only an attachment too close to a lane end or another
-attachment to leave a section. Unsupported future versions fail before mutation.
+attachment to leave a section. `connectorLaneWidths` is the single place a Connector's width is
+decided (M1.12.1), read by both `connectorBoundaries` for drawing and `connectorShapeIssues` for
+`TIGHT_CONNECTOR_RADIUS`, which previously derived it independently. Unsupported future versions
+fail before mutation.
 
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 

@@ -356,8 +356,8 @@ session does not have to rediscover them; none is in this slice.
 | `Link behavior type` | Not modelled anywhere | Already out of scope (§ "not modelled") |
 | `Display type` | In the shared appearance row | Done |
 | `from link / to link`, `At:` | Lane combos plus a metres position each | Done |
-| `Lanes` tab — per-lane `Width` | Derived from the links the Connector joins (`laneWidthOf`) | Not previously recorded as a gap. A Connector cannot be given a width of its own, so a widening taper has to be authored on the links. **Booked: M1.12.1** |
-| `Lanes` tab — per-lane `MarkingType` | Derived (`connectorMarkings`): edges solid, interior dashed | Same entry. **Booked: M1.12.1** |
+| `Lanes` tab — per-lane `Width` | **Closed (M1.12.1).** Authorable per lane path, schema 6; empty still means "derive from the links", and `connectorLaneWidths` is the one place a width is decided |
+| `Lanes` tab — per-lane `MarkingType` | **Closed (M1.12.1)**, with one difference worth knowing: ours is indexed per **interior divider**, not per lane, because per-lane does not map unambiguously onto `paths + 1` boundary lines. The two outer edges are always solid. **This mapping was not checked against Vissim** — a chosen representation, not a measured parity claim (rule 4) |
 | `Lanes` tab — `BlockedVeh`, `NoLnCh`, `Has overtaking lane` | Absent; lane-change behaviour is not modelled | Blocked on the lane-changing model (Q2), not on the dialog |
 | `Reverse parking` | Absent | Parking is not modelled at all (§4) |
 

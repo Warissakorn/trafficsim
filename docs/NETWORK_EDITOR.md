@@ -158,6 +158,13 @@ back to four times the offset so a hairpin cannot spike. Where a bend is tighter
 itself the inner edge still crosses itself, but the surface is filled by winding rule, so the
 overlap stays road instead of being punched out as a hole.
 
+**A mitered corner reads wide along the cross-section, and that is not a fault.** The distance
+between two boundaries *at* a corner vertex is `width / cos(theta/2)` — 9.94 m of a 7.00 m
+carriageway at 90 degrees — because that is what the diagonal of a mitered joint is. Projected
+across either leg the carriageway is exactly its full width. A width measured between boundary
+vertices is only a width when it is taken square to the road; this was once recorded as a 24%
+bulge and is not one (M1.12.2).
+
 Road surfaces use the same geometry as lane positions: outer boundaries are solid and
 internal lane boundaries are dashed. There is no dashed line down a lane centre. On a Connector
 whose ends carry different lane counts, an interior divider is drawn only over the stretch where
@@ -165,6 +172,13 @@ the two lanes it separates are genuinely side by side — at least half their fu
 and stops where they converge, rather than continuing down the middle of the single lane they
 merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. The
 small centre arrows show travel direction; white dots are editable geometry handles.
+
+**A Connector may carry its own lane widths and divider markings** (Vissim's `Lanes` tab). The
+Properties fields take comma-separated metres, one per lane, and comma-separated `solid`/`dashed`
+names, one per interior divider; leaving either blank derives it from the Links the Connector
+joins, which is what every Connector drawn before this field does. The two outer edges are always
+solid. A range resize that changes the lane count clears both, because an entry the author never
+typed is not a width they chose. A partial list is refused.
 
 ## Geometry and end handles
 
