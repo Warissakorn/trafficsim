@@ -52,7 +52,9 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
     const auto programs = index(s.signalPrograms, "signalPrograms", issues);
     index(s.inputs, "inputs", issues); index(s.signalHeads, "signalHeads", issues);
     if (segments.empty()) add("EMPTY_NETWORK", "segments");
-    std::map<std::string, unsigned> predecessors;
+    // The predecessor LIST, not just a count: whether a merge is arbitrated depends on which
+    // segments feed it, because a priority rule names one of them as the one to give way to.
+    std::map<std::string, std::vector<std::string>> predecessors;
     for (std::size_t i = 0; i < s.segments.size(); ++i) {
         const auto& item = s.segments[i];
         const auto p = "segments[" + std::to_string(i) + "]";
@@ -61,11 +63,44 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
             add("DUPLICATE_CONNECTION", p + ".next");
         for (const auto& next : item.next) {
             if (!segments.contains(next)) add("UNKNOWN_SEGMENT", p + ".next");
-            ++predecessors[next];
+            predecessors[next].push_back(item.id);
         }
     }
-    for (const auto& [id, count] : predecessors)
-        if (count > 1) add("UNSUPPORTED_MERGE", "segments." + id);
+    const auto rules = index(s.priorityRules, "priorityRules", issues);
+    for (std::size_t i = 0; i < s.priorityRules.size(); ++i) {
+        const auto& rule = s.priorityRules[i];
+        const auto p = "priorityRules[" + std::to_string(i) + "]";
+        number(rule.gapTime, p + ".gapTime", true); number(rule.headway, p + ".headway", true);
+        const auto yieldOn = segments.find(rule.yieldSegmentId), conflictOn = segments.find(rule.conflictSegmentId);
+        if (yieldOn == segments.end()) add("UNKNOWN_SEGMENT", p + ".yieldSegmentId");
+        else if (!std::isfinite(rule.yieldPosition) || rule.yieldPosition < 0 ||
+                 rule.yieldPosition > yieldOn->second->length) add("INVALID_POSITION", p + ".yieldPosition");
+        if (conflictOn == segments.end()) add("UNKNOWN_SEGMENT", p + ".conflictSegmentId");
+        else if (!std::isfinite(rule.conflictPosition) || rule.conflictPosition < 0 ||
+                 rule.conflictPosition > conflictOn->second->length) add("INVALID_POSITION", p + ".conflictPosition");
+        // A segment cannot give way to itself: that is a rule that can never be satisfied, and it
+        // would also let the merge check below count it as arbitration.
+        if (rule.yieldSegmentId == rule.conflictSegmentId) add("INVALID_RANGE", p + ".conflictSegmentId");
+    }
+    (void)rules;
+    // The one guard M3.1 loosens, and it is loosened BY CONSTRUCTION, never by removal: a place
+    // fed by n segments is runnable only when at least n-1 of them give way to another of them,
+    // so exactly one has priority and the rest have somewhere to wait. A network that has not
+    // been through the priority model reports UNSUPPORTED_MERGE exactly as it always did.
+    for (const auto& [id, feeding] : predecessors) {
+        if (feeding.size() <= 1) continue;
+        std::size_t yielding = 0;
+        for (const auto& minor : feeding) {
+            const bool gives = std::any_of(s.priorityRules.begin(), s.priorityRules.end(),
+                [&](const auto& rule) {
+                    return rule.yieldSegmentId == minor &&
+                           std::any_of(feeding.begin(), feeding.end(), [&](const auto& major) {
+                               return major != minor && rule.conflictSegmentId == major; });
+                });
+            if (gives) ++yielding;
+        }
+        if (yielding + 1 < feeding.size()) add("UNSUPPORTED_MERGE", "segments." + id);
+    }
     for (std::size_t i = 0; i < s.routes.size(); ++i) {
         const auto& ids = s.routes[i].segmentIds;
         const auto p = "routes[" + std::to_string(i) + "].segmentIds";

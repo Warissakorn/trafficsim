@@ -16,8 +16,10 @@ void NetworkView::setNetwork(const Network& network) {
     network_ = network; geometry_.clear();
     double minX = std::numeric_limits<double>::infinity(), minY = minX;
     double maxX = -minX, maxY = maxX;
-    for (const auto& link : network.links)
-        for (const auto& lane : link.lanes) geometry_[lane.id] = laneGeometry(link, lane.id, network.drivingSide);
+    // Keyed by SECTION id, from the same runtimeSections call the scenario was compiled from.
+    // paintEvent resolves a head and a vehicle with geometry_.at(), so this map has to cover
+    // every segment id the scenario can name -- and it does, because both come from this table.
+    for (const auto& section : runtimeSections(network).sections) geometry_[section.id] = section.geometry;
     for (const auto& connector : network.connectors)for(const auto& path:connectorPaths(network,connector))geometry_[path.id]=path.geometry;
     for (const auto& [id, points] : geometry_) for (const auto& p : points) {
         minX = std::min(minX, p.x); maxX = std::max(maxX, p.x);
@@ -48,7 +50,11 @@ void NetworkView::paintEvent(QPaintEvent*) {
         painter.setPen(Qt::NoPen);painter.setBrush(color);
         painter.drawPolygon(surface,Qt::WindingFill);painter.setBrush(Qt::NoBrush);
         for(const auto& marking:markings) {
-            QPen pen(QColor("#d9e5eb"),1,marking.edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            // An outer edge is always solid; an interior divider draws the MarkingType the
+            // Connector carries, which defaults to the dashed line it always was.
+            QPen pen(QColor("#d9e5eb"),1,
+                     marking.edge||marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
+            pen.setCosmetic(true);
             painter.setPen(pen);QPolygonF line;
             for(const auto& p:marking.geometry)line<<QPointF(p.x,p.y);
             painter.drawPolyline(line);
@@ -58,7 +64,10 @@ void NetworkView::paintEvent(QPaintEvent*) {
         std::vector<std::vector<Point>> boundaries;std::vector<ConnectorMarking> markings;
         for(std::size_t i=0;i<=link.lanes.size();++i)
             boundaries.push_back(trimSelfIntersections(laneBoundaryGeometry(link,i,network_.drivingSide)));
-        for(std::size_t i=0;i<boundaries.size();++i)markings.push_back({boundaries[i],i==0 || i+1==boundaries.size()});
+        for(std::size_t i=0;i<boundaries.size();++i) {
+            const bool edge=i==0 || i+1==boundaries.size();
+            markings.push_back({boundaries[i],edge,edge?MarkingType::solid:MarkingType::dashed});
+        }
         road(boundaries,markings,QColor("#536c7c"));
     }
     for(const auto& connector:network_.connectors)

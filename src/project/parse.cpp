@@ -111,6 +111,20 @@ Network parseNetwork(const Json& value, int schemaVersion) {
             if(!t.is_number())throw std::invalid_argument("INVALID_GEOMETRY");
             network.connectors.back().laneBlend.push_back(t.get<double>());
         }
+        // Schema 6, and additive: a file that does not carry these keys leaves both vectors empty,
+        // which means "derive the width and markings from the Links", exactly as every schema 1-5
+        // file did. Nothing is converted on read, because nothing changed meaning.
+        if(c.contains("laneWidths"))for(const auto& w:array(c,"laneWidths")) {
+            if(!w.is_number())throw std::invalid_argument("INVALID_WIDTH");
+            network.connectors.back().laneWidths.push_back(w.get<double>());
+        }
+        if(c.contains("laneMarkings"))for(const auto& m:array(c,"laneMarkings")) {
+            if(!m.is_string())throw std::invalid_argument("INVALID_MARKING");
+            const auto name=m.get<std::string>();
+            if(name!="solid" && name!="dashed")throw std::invalid_argument("INVALID_MARKING");
+            network.connectors.back().laneMarkings.push_back(
+                name=="solid"?MarkingType::solid:MarkingType::dashed);
+        }
     }
     for (const auto& h : array(value, "signalHeads")) {
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane"),schemaVersion),
@@ -120,6 +134,9 @@ Network parseNetwork(const Json& value, int schemaVersion) {
     }
     if(schemaVersion<5)migrateAttachments(network);
     return network;
+}
+PriorityDefaults parsePriorityDefaults(const Json& value) {
+    return {field<double>(value, "gapTime"), field<double>(value, "headway")};
 }
 DriverBehaviour parseBehaviour(const Json& b) {
     return {field<std::string>(b, "id"), field<double>(b, "standstillDistance"),

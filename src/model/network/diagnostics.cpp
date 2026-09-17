@@ -95,6 +95,8 @@ std::vector<Diagnostic> runtimeDiagnostics(const Network& network, const Scenari
     std::vector<Diagnostic> result;
     for(const auto& issue:connectorRuntimeIssues(network))
         result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
+    for(const auto& issue:priorityDefaultsIssues(network,definition.priorityDefaults))
+        result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
     // Shape advisories sit beside the runtime rows: visible and selectable, but they never
     // reach compileScenario, so neither Run nor saving is blocked by one.
     for(const auto& issue:connectorShapeIssues(network))

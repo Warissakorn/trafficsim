@@ -50,18 +50,32 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
     throw std::invalid_argument("UNKNOWN_LANE");
 }
 }
+ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
+    const auto paths=connectorPaths(n,c);
+    // A Connector carries lanes, not a ribbon that shrinks. Each lane keeps its width from end to
+    // end; a lane the other end has no room for is the one that tapers, closing onto its neighbour
+    // like a merge taper. Where two paths share a lane at one end, the second of them is the
+    // surplus one, so its width there is zero.
+    const std::size_t count=paths.size();
+    ConnectorLaneWidths widths{std::vector<double>(count),std::vector<double>(count)};
+    for(std::size_t i=0;i<count;++i) {
+        const bool surplusSource=i && paths[i].from.laneId==paths[i-1].from.laneId;
+        const bool surplusTarget=i && paths[i].to.laneId==paths[i-1].to.laneId;
+        // An authored width replaces the width the Links give, at both ends, so the lane runs at
+        // the metre value the author typed. It does NOT fill in a surplus end: that zero is a
+        // consequence of the lane counts, not a width the author chose, and overriding it would
+        // draw a taper as a full-width lane ending in mid-air.
+        const bool authored=i<c.laneWidths.size();
+        widths.source[i]=surplusSource?0:authored?c.laneWidths[i]:laneWidthOf(n,paths[i].from);
+        widths.target[i]=surplusTarget?0:authored?c.laneWidths[i]:laneWidthOf(n,paths[i].to);
+    }
+    return widths;
+}
 std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Connector& c) {
     const auto paths=connectorPaths(n,c);const auto weights=connectorBlendWeights(c);
-    // A Connector carries lanes, not a ribbon that shrinks. Each lane keeps the width its link
-    // gives it from end to end; a lane the other end has no room for is the one that tapers,
-    // closing onto its neighbour like a merge taper. Where two paths share a lane at one end,
-    // the second of them is the surplus one, so its width there is zero.
     const std::size_t count=paths.size();
-    std::vector<double> source(count),target(count);
-    for(std::size_t i=0;i<count;++i) {
-        source[i]=i && paths[i].from.laneId==paths[i-1].from.laneId?0:laneWidthOf(n,paths[i].from);
-        target[i]=i && paths[i].to.laneId==paths[i-1].to.laneId?0:laneWidthOf(n,paths[i].to);
-    }
+    const auto widths=connectorLaneWidths(n,c);
+    const auto& source=widths.source;const auto& target=widths.target;
     const auto from=endCross(n,c.from,c.fromLaneCount,true),to=endCross(n,c.to,c.toLaneCount,false);
     // Hang the cross-section on the last lane that is a real lane at both ends, and step out from
     // there in both directions. A lane added at the leading edge then cannot move the far edge,
@@ -114,7 +128,7 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {
     const auto boundaries=connectorBoundaries(n,c);
     std::vector<ConnectorMarking> result;
-    result.push_back({trimSelfIntersections(boundaries.front()),true});
+    result.push_back({trimSelfIntersections(boundaries.front()),true,MarkingType::solid});
     for(std::size_t i=1;i+1<boundaries.size();++i) {
         // Every interior boundary now sits on a real lane edge for its whole length, because the
         // cross-section is built from lane widths. The one case with nothing to divide is a lane
@@ -123,9 +137,13 @@ std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector
         for(std::size_t j=0;j<boundaries[i].size();++j)
             widest=std::max(widest,std::hypot(boundaries[i+1][j].x-boundaries[i][j].x,
                                               boundaries[i+1][j].y-boundaries[i][j].y));
-        if(widest>1e-9)result.push_back({trimSelfIntersections(boundaries[i]),false});
+        // An authored MarkingType names what is painted on this interior divider; the default is
+        // the dashed line a lane divider has always been drawn with. i-1 because laneMarkings is
+        // indexed by divider, and boundary i is the divider after lane i-1.
+        const auto type=i-1<c.laneMarkings.size()?c.laneMarkings[i-1]:MarkingType::dashed;
+        if(widest>1e-9)result.push_back({trimSelfIntersections(boundaries[i]),false,type});
     }
-    if(boundaries.size()>1)result.push_back({trimSelfIntersections(boundaries.back()),true});
+    if(boundaries.size()>1)result.push_back({trimSelfIntersections(boundaries.back()),true,MarkingType::solid});
     return result;
 }
 std::vector<Point> connectorCentreline(const Network& n,const Connector& c) {

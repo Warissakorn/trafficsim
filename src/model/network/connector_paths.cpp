@@ -48,6 +48,12 @@ void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCoun
         resized.geometry.front()=a;resized.geometry.back()=b;
     }
     resized.fromLaneCount=fromCount;resized.toLaneCount=toCount;
+    // Authored widths and markings are indexed by lane path, so a resize that changes how many
+    // paths there are leaves them describing lanes that no longer exist. Dropped rather than
+    // padded: a width the author never typed is not a width they chose, and the derived one is
+    // the honest fallback. Same reasoning as clearing laneBlend when the geometry changes.
+    if(connectorPaths(n,resized).size()!=connectorPaths(n,c).size())
+        { resized.laneWidths.clear();resized.laneMarkings.clear(); }
     (void)connectorPaths(n,resized);c=std::move(resized);
 }
 std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {

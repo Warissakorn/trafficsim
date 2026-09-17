@@ -1,6 +1,7 @@
 #include "connector_commands.hpp"
 #include "detail.hpp"
 #include "network_commands.hpp"
+#include "../core/validate.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -44,6 +45,24 @@ void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount
     auto& c=editableConnector(d,id);if(c.fromLaneCount==fromCount && c.toLaneCount==toCount)return;
     if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
     resizeConnectorEdges(d.network,c,fromCount,toCount,leading);
+}
+void changeConnectorLanes(ProjectDocument& d,const std::string& id,
+                          const std::vector<double>& widths,const std::vector<MarkingType>& markings) {
+    auto& c=editableConnector(d,id);
+    const auto paths=connectorPaths(d.network,c).size();
+    const auto index=static_cast<std::size_t>(&c-d.network.connectors.data());
+    // Empty is the documented "derive it from the Links" state, so clearing is always legal.
+    // Anything else must describe every lane, or the drawing would silently mix an authored
+    // width with a derived one and no field would say which lanes got which.
+    if(!widths.empty() && widths.size()!=paths)throw std::invalid_argument("EDIT_LANES");
+    // One per INTERIOR divider. paths-1 of them, and none at all on a single-lane Connector.
+    if(!markings.empty() && markings.size()+1!=paths)throw std::invalid_argument("EDIT_LANES");
+    for(std::size_t i=0;i<widths.size();++i)if(!std::isfinite(widths[i]) || widths[i]<=0)
+        throw ValidationError({{"INVALID_WIDTH",
+            "connectors["+std::to_string(index)+"].laneWidths["+std::to_string(i)+"]"}});
+    c.laneWidths=widths;c.laneMarkings=markings;
+    // Proves the cross-section still builds with these numbers before the edit is committed.
+    (void)connectorBoundaries(d.network,c);
 }
 void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const std::vector<Point>& geometry) {
     auto& c = editableConnector(d, id);

@@ -158,6 +158,13 @@ back to four times the offset so a hairpin cannot spike. Where a bend is tighter
 itself the inner edge still crosses itself, but the surface is filled by winding rule, so the
 overlap stays road instead of being punched out as a hole.
 
+**A mitered corner reads wide along the cross-section, and that is not a fault.** The distance
+between two boundaries *at* a corner vertex is `width / cos(theta/2)` — 9.94 m of a 7.00 m
+carriageway at 90 degrees — because that is what the diagonal of a mitered joint is. Projected
+across either leg the carriageway is exactly its full width. A width measured between boundary
+vertices is only a width when it is taken square to the road; this was once recorded as a 24%
+bulge and is not one (M1.12.2).
+
 Road surfaces use the same geometry as lane positions: outer boundaries are solid and
 internal lane boundaries are dashed. There is no dashed line down a lane centre. On a Connector
 whose ends carry different lane counts, an interior divider is drawn only over the stretch where
@@ -165,6 +172,13 @@ the two lanes it separates are genuinely side by side — at least half their fu
 and stops where they converge, rather than continuing down the middle of the single lane they
 merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. The
 small centre arrows show travel direction; white dots are editable geometry handles.
+
+**A Connector may carry its own lane widths and divider markings** (Vissim's `Lanes` tab). The
+Properties fields take comma-separated metres, one per lane, and comma-separated `solid`/`dashed`
+names, one per interior divider; leaving either blank derives it from the Links the Connector
+joins, which is what every Connector drawn before this field does. The two outer edges are always
+solid. A range resize that changes the lane count clears both, because an entry the author never
+typed is not a width they chose. A partial list is refused.
 
 ## Geometry and end handles
 
@@ -263,11 +277,16 @@ alone — the upstream child's polyline is a prefix, so its stations are unchang
 stations shift by the cut. A cut through an attachment inside the 0.2 m continuity span is
 rejected; move the split at least 0.1 m away.
 
-**Runtime limit:** body attachments are authorable, editable and saveable. Run and
-Diagnostics report `UNSUPPORTED_CONNECTOR_POSITION` for non-end-to-start attachments.
-The current engine uses whole-lane segments; it must not silently run the full source
-lane or restart at the target's beginning. Lane-section compilation is tracked in
-M1.11.1. Existing endpoint-only projects keep their runtime behavior and capability guards.
+**Runtime:** body attachments run (M1.11.1). The lane is cut into sections at every station a
+Connector attaches to, so a vehicle leaving part way along travels only that far, and one arriving
+part way along joins at the drawn metre rather than at the start of the lane. An arrival is a
+merge, and the arriving Connector gives way to the traffic already on the lane under a priority
+rule derived from the drawing, whose gap time and headway come from `data/priority-rules/`;
+Run reports `EDIT_NO_PRIORITY_DEFAULTS` if those cannot be read, and never invents a zero gap
+time. Run and Diagnostics still report `UNSUPPORTED_CONNECTOR_POSITION` for one case: an
+attachment within 0.2 m of a lane end or of another attachment on the same lane, which leaves no
+section between them. A lane with nothing attached to its body compiles exactly as it always did,
+so existing endpoint-only projects keep their runtime behavior and capability guards.
 
 Deleting a connector removes heads on its paths, affected routes and their vehicle
 inputs in the same undoable transaction. Heads on unaffected links remain.

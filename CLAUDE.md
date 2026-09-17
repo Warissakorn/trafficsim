@@ -17,8 +17,14 @@ see D11. Do not rename the project, the repository, or any package before then.
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
 body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,
 Vissim's Intermediate points, a Name on every object, group move, and the wedge mouth.
-**Two carve-outs remain open:** M1.11.1 (interior attachments compiled into runtime lane
-sections) and M1.12.1 (a Connector's own lane widths and markings).
+M1.11.1 and M1.12.1 are both closed: lanes are cut into runtime sections at interior attachments,
+a Connector arriving on a lane body merges under **M3.1** (a priority rule with a gap time and
+headway — which does **not** close M3), and a Connector carries its own lane widths and divider
+markings in schema 6. **Every M1 carve-out is now closed**, and so is **M1.12.2**: the reported miter "bulge" was
+measured along the cross-section, where a mitered corner's diagonal is `width/cos(φ/2)` by
+construction. Square to the road the carriageway is exact, so `offsetGeometry` was not changed —
+removing the miter would reinstate the pinch it exists to fix. **M1's engineering side is done;
+only the owner's timed gate remains.**
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 

@@ -3,6 +3,7 @@
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include "../src/commands/network_commands.hpp"
+#include <cmath>
 #include <limits>
 using namespace trafficsim;
 namespace {
@@ -12,6 +13,10 @@ ProjectDocument roads(DrivingSide side=DrivingSide::left) {
         {"a",{{0,0},{30,0},{80,10}},{{"a1",3},{"a2",4},{"a3",3.5}}},
         {"b",{{100,20},{140,20},{160,60}},{{"b1",4},{"b2",3},{"b3",3.5}}}};
     return d;
+}
+const Connector& connector(const ProjectDocument& d,const std::string& id) {
+    for(const auto& c:d.network.connectors)if(c.id==id)return c;
+    throw std::invalid_argument("EDIT_UNKNOWN_CONNECTOR");
 }
 double at(const ProjectDocument& d,const std::string& link,double fraction) {
     for(const auto& l:d.network.links)if(l.id==link)return fraction*polylineLength(l.geometry);
@@ -154,4 +159,169 @@ TEST(attachments, grips_stay_on_the_bundle_centreline_after_one_sided_growth) {
             test::near(centre[i].y,(left[i].y+right[i].y)/2,1e-9);
         }
     }
+}
+// M1.12.1. A Connector's lane widths were derived from the Links each end joins, so a widening
+// taper had to be authored on the links instead. Now the Connector can carry its own.
+TEST(attachments, a_connector_carries_its_own_lane_widths) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=roads(side);const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);
+        // The forcing: with nothing authored, the widths really do come from the Links, and the
+        // two ends really do differ -- so an authored width has something to override.
+        const auto derived=connectorLaneWidths(d.network,connector(d,id));
+        test::near(derived.source[0],3,1e-9);test::near(derived.target[0],4,1e-9);
+        const auto before=connectorBoundaries(d.network,connector(d,id));
+        History h;h.reset(d);
+        h.execute("widths",[&](auto& m){changeConnectorLanes(m,id,{5.5,5.5},{});});
+        const auto authored=connectorLaneWidths(h.document().network,connector(h.document(),id));
+        test::near(authored.source[0],5.5,1e-9);test::near(authored.target[0],5.5,1e-9);
+        test::near(authored.source[1],5.5,1e-9);
+        // It reaches the drawing, and EXACTLY -- measured square to the road rather than along
+        // the cross-section. Along it this reads 5.529 m, which is the mitered corner's diagonal
+        // (width/cos(phi/2)) and not a width error: see M1.12.2, where the reported 24% bulge was
+        // measured that way and turned out to be exactly this. Square to the road it is 5.5 m.
+        const auto after=connectorBoundaries(h.document().network,connector(h.document(),id));
+        // Interior legs only. A leg touching either end runs to a vertex the wedge mouth moved
+        // (M1.17), so its direction is the Link's cross-section and not the Connector's own --
+        // measuring across it reads 5.8 mm wide for that reason alone.
+        std::size_t measured=0;
+        for(std::size_t i=2;i+2<after[1].size();++i) {
+            const double dx=after[1][i].x-after[1][i-1].x,dy=after[1][i].y-after[1][i-1].y;
+            const double length=std::hypot(dx,dy);
+            if(length<=0)continue;
+            const Point across{-dy/length,dx/length};
+            for(std::size_t j=i-1;j<=i;++j) {
+                test::near(std::abs((after[1][j].x-after[0][j].x)*across.x+
+                                    (after[1][j].y-after[0][j].y)*across.y),5.5,1e-9);
+                ++measured;
+            }
+        }
+        CHECK(measured>0); // The loop above really ran, rather than skipping every leg.
+        // One undo entry, and it restores the derived cross-section exactly.
+        h.undo();
+        const auto restored=connectorBoundaries(h.document().network,connector(h.document(),id));
+        CHECK(restored.size()==before.size());
+        for(std::size_t i=0;i<restored.size();++i)for(std::size_t j=0;j<restored[i].size();++j) {
+            test::near(restored[i][j].x,before[i][j].x,1e-12);
+            test::near(restored[i][j].y,before[i][j].y,1e-12);
+        }
+    }
+}
+// The exact width, on a Connector with no bend in it, so the miter (M1.12.2) is not in the way.
+TEST(attachments, an_authored_width_is_exact_where_the_connector_is_straight) {
+    ProjectDocument d;
+    d.network.links={{"a",{{0,0},{100,0}},{{"a1",3},{"a2",3}}},
+                     {"b",{{140,0},{240,0}},{{"b1",4},{"b2",4}}}};
+    const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);
+    History h;h.reset(d);
+    h.execute("straight",[&](auto& m){resetConnectorCurve(m,id,true);});
+    // The forcing: the Connector really is straight, so every cross-section is square to it and
+    // the miter contributes nothing. Without this the equality below would be measuring luck.
+    const auto& geometry=connector(h.document(),id).geometry;
+    for(std::size_t j=1;j+1<geometry.size();++j) {
+        const double cross=(geometry[j].x-geometry[j-1].x)*(geometry[j+1].y-geometry[j].y)-
+                           (geometry[j].y-geometry[j-1].y)*(geometry[j+1].x-geometry[j].x);
+        test::near(cross,0,1e-9);
+    }
+    h.execute("widths",[&](auto& m){changeConnectorLanes(m,id,{5.5,6.25},{});});
+    const auto b=connectorBoundaries(h.document().network,connector(h.document(),id));
+    for(std::size_t j=0;j<b[0].size();++j) {
+        test::near(std::hypot(b[1][j].x-b[0][j].x,b[1][j].y-b[0][j].y),5.5,1e-9);
+        test::near(std::hypot(b[2][j].x-b[1][j].x,b[2][j].y-b[1][j].y),6.25,1e-9);
+    }
+}
+// The no-regression assertion this milestone turns on: a Connector that was never given a width
+// must draw exactly what it drew before the field existed.
+TEST(attachments, a_connector_without_authored_widths_is_unchanged) {
+    auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},3,3);
+    // The forcing: the field exists and is empty, which is the state every older file loads in.
+    CHECK(connector(d,id).laneWidths.empty());CHECK(connector(d,id).laneMarkings.empty());
+    const auto boundaries=connectorBoundaries(d.network,connector(d,id));
+    const auto markings=connectorMarkings(d.network,connector(d,id));
+    // Interior dividers dashed, outer edges solid -- the derived rule, untouched.
+    CHECK(markings.front().edge);CHECK(markings.front().type==MarkingType::solid);
+    CHECK(markings.back().edge);CHECK(markings.back().type==MarkingType::solid);
+    for(std::size_t i=1;i+1<markings.size();++i) {
+        CHECK(!markings[i].edge);CHECK(markings[i].type==MarkingType::dashed);
+    }
+    // And each lane still measures the width its own Link lane gives it.
+    const auto widths=connectorLaneWidths(d.network,connector(d,id));
+    test::near(widths.source[0],3,1e-9);test::near(widths.source[1],4,1e-9);
+    test::near(widths.source[2],3.5,1e-9);
+    CHECK(boundaries.size()==4);
+}
+TEST(attachments, a_connector_carries_its_own_marking_types) {
+    auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},3,3);
+    History h;h.reset(d);
+    h.execute("markings",[&](auto& m){
+        changeConnectorLanes(m,id,{},{MarkingType::solid,MarkingType::dashed});});
+    const auto markings=connectorMarkings(h.document().network,connector(h.document(),id));
+    // The forcing: there really are two interior dividers to distinguish, and they now differ --
+    // which they cannot under the derived rule, where every interior divider is dashed.
+    CHECK(markings.size()==4);
+    CHECK(markings[1].type==MarkingType::solid);CHECK(!markings[1].edge);
+    CHECK(markings[2].type==MarkingType::dashed);CHECK(!markings[2].edge);
+    // The outer edges stay solid edges: they are the edge of the carriageway, not a divider.
+    CHECK(markings.front().edge && markings.front().type==MarkingType::solid);
+    CHECK(markings.back().edge && markings.back().type==MarkingType::solid);
+    h.undo();
+    for(std::size_t i=1;i+1<markings.size();++i)
+        CHECK(connectorMarkings(h.document().network,connector(h.document(),id))[i].type==MarkingType::dashed);
+}
+TEST(attachments, connector_lane_widths_round_trip_and_older_files_still_open) {
+    auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);
+    History h;h.reset(d);
+    h.execute("lanes",[&](auto& m){changeConnectorLanes(m,id,{4.25,4.75},{MarkingType::solid});});
+    const auto json=documentJson(h.document());
+    CHECK(json["schemaVersion"]==6);
+    CHECK(json["network"]["connectors"][0]["laneWidths"][1]==4.75);
+    CHECK(json["network"]["connectors"][0]["laneMarkings"][0]=="solid");
+    // Round trip, exactly.
+    CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
+    CHECK(parseDocument(json)==h.document());
+    // THE TEST M1.18'S REVERT MAKES MANDATORY: a file written by the previous build -- schema 5,
+    // no laneWidths, no laneMarkings -- must still open, and must draw exactly what it drew.
+    // M1.18 changed what stored data meant with no migration and was reverted for it; its
+    // verification measured 120 of 120 drawn vertices unchanged, which was true and beside the
+    // point, because it never opened a file written by the previous build.
+    auto old=documentJson(d);old["schemaVersion"]=5;
+    for(auto& c:old["network"]["connectors"]){c.erase("laneWidths");c.erase("laneMarkings");}
+    const auto reopened=parseDocument(old);
+    // The forcing: the old file genuinely lacks the keys, so this exercises the absent path.
+    CHECK(!old["network"]["connectors"][0].contains("laneWidths"));
+    CHECK(reopened.network.connectors[0].laneWidths.empty());
+    CHECK(reopened==d);
+    const auto thenBoundaries=connectorBoundaries(d.network,connector(d,id));
+    const auto nowBoundaries=connectorBoundaries(reopened.network,connector(reopened,id));
+    for(std::size_t i=0;i<nowBoundaries.size();++i)for(std::size_t j=0;j<nowBoundaries[i].size();++j) {
+        test::near(nowBoundaries[i][j].x,thenBoundaries[i][j].x,1e-12);
+        test::near(nowBoundaries[i][j].y,thenBoundaries[i][j].y,1e-12);
+    }
+    // And a malformed value is rejected by name rather than surfacing as a parser error.
+    auto bad=json;bad["network"]["connectors"][0]["laneWidths"][0]="wide";
+    test::throws([&]{parseDocument(bad);},"INVALID_WIDTH");
+    bad=json;bad["network"]["connectors"][0]["laneMarkings"][0]="stripey";
+    test::throws([&]{parseDocument(bad);},"INVALID_MARKING");
+}
+TEST(attachments, connector_lane_widths_are_validated_and_dropped_when_the_range_resizes) {
+    auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);
+    History h;h.reset(d);
+    // A partial list is rejected: no field would say which lanes were authored.
+    test::throws([&]{h.execute("partial",[&](auto& m){changeConnectorLanes(m,id,{4},{});});},"EDIT_LANES");
+    test::throws([&]{h.execute("bad marking count",[&](auto& m){
+        changeConnectorLanes(m,id,{},{MarkingType::solid,MarkingType::solid});});},"EDIT_LANES");
+    test::throws([&]{h.execute("zero",[&](auto& m){changeConnectorLanes(m,id,{4,0},{});});},"INVALID_WIDTH");
+    test::throws([&]{h.execute("nan",[&](auto& m){
+        changeConnectorLanes(m,id,{4,std::numeric_limits<double>::quiet_NaN()},{});});},"INVALID_WIDTH");
+    CHECK(connector(h.document(),id).laneWidths.empty());
+    h.execute("widths",[&](auto& m){changeConnectorLanes(m,id,{4,4},{MarkingType::solid});});
+    // The forcing: the widths really are there before the resize.
+    CHECK(connector(h.document(),id).laneWidths.size()==2);
+    h.execute("resize",[&](auto& m){changeConnectorRange(m,id,3,3);});
+    // Dropped, not padded: an entry the author never typed is not a width they chose.
+    CHECK(connector(h.document(),id).laneWidths.empty());
+    CHECK(connector(h.document(),id).laneMarkings.empty());
+    h.undo();CHECK(connector(h.document(),id).laneWidths.size()==2);
+    // Clearing back to derived is always legal, whatever the lane count.
+    h.execute("clear",[&](auto& m){changeConnectorLanes(m,id,{},{});});
+    CHECK(connector(h.document(),id).laneWidths.empty());
 }

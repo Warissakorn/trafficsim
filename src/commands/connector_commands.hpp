@@ -4,6 +4,12 @@
 namespace trafficsim {
 std::string addConnectorRange(ProjectDocument&, const LaneReference&, const LaneReference&, int fromCount, int toCount);
 void changeConnectorRange(ProjectDocument&, const std::string&, int fromCount, int toCount, bool leading = false);
+// Vissim's Lanes tab: a width in metres for every lane path, and a MarkingType for every interior
+// divider. Both empty restores the derived behaviour, which is what a Connector whose lanes were
+// never given a width has always done. A partial list is rejected: no field would say which lanes
+// were authored and which were derived.
+void changeConnectorLanes(ProjectDocument&, const std::string& id, const std::vector<double>& widths,
+                          const std::vector<MarkingType>& markings);
 bool connectorReferenced(const ProjectDocument&, const Connector&);
 // Run mutations through History::execute for validation, rollback and Undo/Redo.
 Connector& editableConnector(ProjectDocument&, const std::string& id);

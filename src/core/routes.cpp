@@ -1,5 +1,6 @@
 #include "routes.hpp"
 #include "detail.hpp"
+#include <cstdint>
 
 namespace trafficsim {
 namespace {
@@ -49,6 +50,23 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
             const auto part = std::find_if(parts.begin(), parts.end(),
                 [&](const auto& item) { return item.segmentId == scenario.signalHeads[h].segmentId; });
             if (part != parts.end()) index.routeHeads[r].push_back({h, part->start});
+        }
+    // Rule incidence, resolved once per scenario for the same reason heads are: the per-vehicle
+    // loop must not search by id once per tick.
+    index.conflictSegmentOfRule.reserve(scenario.priorityRules.size());
+    for (const auto& rule : scenario.priorityRules) {
+        const auto found = std::find_if(scenario.segments.begin(), scenario.segments.end(),
+            [&](const auto& s) { return s.id == rule.conflictSegmentId; });
+        index.conflictSegmentOfRule.push_back(found == scenario.segments.end() ? SIZE_MAX :
+            static_cast<std::size_t>(found - scenario.segments.begin()));
+    }
+    index.routeRules.resize(scenario.routes.size());
+    for (std::size_t r = 0; r < scenario.routes.size(); ++r)
+        for (std::size_t k = 0; k < scenario.priorityRules.size(); ++k) {
+            const auto& parts = index.parts[r];
+            const auto part = std::find_if(parts.begin(), parts.end(),
+                [&](const auto& item) { return item.segmentId == scenario.priorityRules[k].yieldSegmentId; });
+            if (part != parts.end()) index.routeRules[r].push_back({k, part->start});
         }
     return index;
 }

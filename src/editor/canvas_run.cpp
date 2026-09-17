@@ -7,8 +7,12 @@
 namespace trafficsim {
 void EditorCanvas::setRunNetwork(const Network& network) {
     runGeometry_.clear();runLevels_.clear();runStyles_.clear();
-    for(const auto& l:network.links)for(const auto& lane:l.lanes) {
-        runGeometry_[lane.id]=laneGeometry(l,lane.id,network.drivingSide);runLevels_[lane.id]=l.level;runStyles_[lane.id]=l.displayType;
+    // Keyed by SECTION, from the same table buildScenario compiled the scenario from, so every
+    // segment a vehicle can be located on has geometry here. A lane with nothing attached to its
+    // body is one section carrying the lane's own id, which is what the map held before.
+    const auto table=runtimeSections(network);
+    for(const auto& section:table.sections)for(const auto& l:network.links)if(l.id==section.linkId) {
+        runGeometry_[section.id]=section.geometry;runLevels_[section.id]=l.level;runStyles_[section.id]=l.displayType;
     }
     for(const auto& c:network.connectors)for(const auto& p:connectorPaths(network,c)) {
         runGeometry_[p.id]=p.geometry;runLevels_[p.id]=c.level;runStyles_[p.id]=c.displayType;

@@ -112,8 +112,15 @@ stretched Link does not slide what is attached part-way along it; `matchedStatio
 one station onto any lane or boundary derived from the same reference.
 `laneAttachment` is shared by curve construction, derived paths, validation and reanchoring.
 The editor's side-resize gestures submit one Link/range command on release; preview data
-never enters History. Interior attachments are blocked at Run by `connectorRuntimeIssues`
-until M1.11.1 derives runtime lane sections. Unsupported future versions fail before mutation.
+never enters History. `runtimeSections` derives the runtime lane sections an interior attachment needs (M1.11.1) and is
+the single source `buildScenario`, head rebasing and both vehicle render sites read; a lane with
+nothing attached yields one section carrying the lane's own id, so uncut networks compile
+unchanged. `derivedPriorityRules` arbitrates the merge an arrival creates (M3.1).
+`connectorRuntimeIssues` now blocks only an attachment too close to a lane end or another
+attachment to leave a section. `connectorLaneWidths` is the single place a Connector's width is
+decided (M1.12.1), read by both `connectorBoundaries` for drawing and `connectorShapeIssues` for
+`TIGHT_CONNECTOR_RADIUS`, which previously derived it independently. Unsupported future versions
+fail before mutation.
 
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 

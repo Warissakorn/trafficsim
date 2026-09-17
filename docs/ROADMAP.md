@@ -51,10 +51,15 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.17 are implemented, including the M1.3.1 and M1.5.1 carve-outs. Two
-carve-outs are **not**: M1.11.1 (interior attachments compiled into runtime lane sections) and
-M1.12.1 (a Connector's own lane widths and markings). The owner acceptance in M1.7 also remains
-open, and M1 is not closed until its timed gate passes.
+**Status:** M1.1–M1.17 are implemented, including every carve-out — M1.3.1, M1.5.1, **M1.11.1**
+and **M1.12.1**. **M1.12.2 is closed too** — the reported miter bulge was measured along the cross-section and is
+not a defect; see its section. **Every M1 engineering item is now done.** The owner acceptance in
+M1.7 remains open, and M1 is not closed until its timed gate passes — no amount of merged code
+closes it.
+
+M1.1–M1.6 and M1.8–M1.10 are implemented and their full bodies are in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); each keeps its heading and a
+status line here so the sequence stays whole.
 
 **Sub-milestones below are in numeric order, which is the order they belong in.** A carve-out
 made under rule 2 is filed at its number, not at the end — M1.11.1 sits inside M1.11 and M1.12.1
@@ -72,61 +77,35 @@ every geometry routine.
 
 ### M1.1 — Document and commands
 
-Implemented: a Qt-free versioned ProjectDocument, persistent revision/ID counter,
-named atomic edits, 100-entry Undo/Redo, save-point tracking and failed-edit rollback.
+Implemented: a Qt-free versioned `ProjectDocument`, named atomic edits, 100-entry Undo/Redo, save-point tracking and failed-edit rollback.
 
 ### M1.2 — Canvas and background
 
-Implemented: pan/zoom/fit, metric grid/snap, link selection, embedded local background
-images, two-point image calibration, transform/opacity editing and distance measurement.
+Implemented: pan/zoom/fit, metric grid/snap, selection, embedded background images with two-point calibration and distance measurement.
 
 ### M1.3 — Link and lane tools
 
-Implemented: drawing, point/link dragging, insert/remove points, per-lane widths,
-reference-safe deletion, splitting with continuity connectors, opposite carriageways,
-and a downstream extra lane for a turn-pocket approach. Basic atomic save/open landed
-with these tools so drawings are not disposable. See NETWORK_EDITOR.md for the exact limits.
+Implemented: drawing, point/link dragging, per-lane widths, reference-safe deletion, splitting with continuity connectors, opposite carriageways, turn pockets.
 
 ### M1.3.1 — Split links carrying signal heads
 
-Implemented. Heads are located on the original lane geometry, classified by their
-projection onto the original centreline, and projected onto the owning upstream lane,
-downstream lane or split connector path. Heads inside the 0.2 m connector span become
-connector-mounted controls. Route order, head IDs and program IDs are preserved in
-one undoable transaction, including both driving sides and turn-pocket splits.
+Implemented: heads are classified by projection onto the original centreline and reprojected onto the owning lane or split connector, in one undoable transaction.
 
 ### M1.4 — Connector editor
 
-Implemented: lane-to-lane creation by endpoint picking or Properties, editable interior
-curve points, straight/curve reset, selection, reference-safe deletion and retargeting,
-and shared endpoint maintenance after Link/Lane/driving-side edits. All changes use
-History and persisted polyline geometry (schema 1/2 is migrated to schema 4). Curves are sampled polylines, not
-swept-path or turning-radius validation. See NETWORK_EDITOR.md.
+Implemented: lane-to-lane creation, editable interior curve points, straight/curve reset, reference-safe deletion and retargeting, shared-endpoint maintenance. Curves are sampled polylines, not swept-path validation.
 
 ### M1.5 — Inspection and diagnostics
 
-Implemented: Links, Connectors and Signal heads tables with two-way selection, canvas
-multi-selection by Shift-click and rubber band, delete-many as one undoable transaction, and
-structured diagnostics whose rows name an object and jump to it. Draft validity still blocks
-an edit; runnability against the M0 compiler is reported on demand and never blocks. Exact
-limits: property and geometry edits act on one object, there is no group drag, and
-vehicle-type/behaviour references are not judged without a catalog. See NETWORK_EDITOR.md.
+Implemented: Links/Connectors/Signal-heads tables with two-way selection, multi-selection, delete-many as one transaction, and structured diagnostics that name and jump to an object. Draft validity blocks an edit; runnability only informs (D18b).
 
 ### M1.5.1 — Demand object tables and editing
 
-Implemented. Optional typed authoring demand replaces the untyped JSON field.
-Routes, vehicle inputs, fixed-time programs and heads have validated atomic commands
-and native dialogs; routes, inputs and programs have their own tables. Route deletion
-cascades inputs; referenced program deletion and topology-changing retargets are rejected.
-Vehicle compositions, turning proportions and movement evaluation remain M2.
+Implemented: typed authoring demand replaces the untyped JSON field. Routes, inputs, programs and heads have validated atomic commands, dialogs and tables. Compositions and turning proportions remain M2.
 
 ### M1.6 — Complete persistence workflow
 
-Implemented. Atomic, bounded save/open and asset validation are shared with 15-second
-dirty-revision recovery copies. Per-window locks exclude active editors; restored
-documents open untitled and dirty. Vehicle/behaviour catalogs can be embedded explicitly.
-Schema 1 and bare M0 authoring files load without changing IDs; saves now write schema 4,
-with default ranges/levels/styles for older files. Unknown future versions are rejected.
+Implemented: atomic bounded save/open, asset validation, 15-second dirty-revision recovery copies, per-window locks, explicit catalog embedding. Schema 1 and bare M0 files load without changing IDs; unknown future versions are rejected.
 
 ### M1.7 — Run handoff and owner acceptance
 
@@ -142,64 +121,15 @@ open. No automated test or implementation status closes either gate.
 
 ### M1.8 — Run inside the network editor
 
-Implemented. Run/Pause (F5), Step (F6 or Space on the canvas), Reset, seed and playback
-speed control operate in the editor. Vehicles and fixed-time heads render over the
-drawn network; status identifies the document revision and seed. Every fixed step
-uses the unchanged core and the not-yet-validated marker stays visible.
-
-**Done when:** an engineer draws a network, authors demand and watches it run without
-leaving the editor. The automated drawing/demand/run/replay workflow covers the software
-path; the owner's hands-on exercise remains in M1.7.
-
-**Explicitly not in M1.8:** movement results, control delay, LOS or relaxation of D5.
+Implemented: Run/Pause (F5), Step (F6 or Space), Reset, seed and playback speed inside the editor; vehicles and fixed-time heads render over the drawn network and the status names the revision and seed. Every step uses the unchanged core and the not-yet-validated marker stays visible. **Explicitly not in M1.8:** movement results, control delay, LOS, or any relaxation of D5.
 
 ### M1.9 — Network Objects sidebar, Vissim gestures and shortcuts
 
-Implemented. A permanent Network Objects sidebar selects the creation type.
-Ctrl+right-drag opens link and connector data dialogs; one connector owns contiguous
-lane ranges. Ctrl+right-click opens demand/control creation or inserts a geometry point
-in Select mode. Connector corner drags resize unreferenced ranges. Left-click during
-creation adds intermediate polyline points.
-
-Ctrl-click extends selection; Ctrl+left-drag duplicates selected spatial objects and their
-internal connectors/heads with fresh IDs, preserving programs without doubling demand.
-Delete removes selected objects; Ctrl+Delete removes a vertex. Tool shortcuts and Tab
-overlap cycling are available. Ctrl+B toggles the background; Ctrl+Shift+O toggles tables.
-
-The model derives stable per-lane paths for compilation, reanchoring and reference
-cleanup. Unequal ranges may express merges in authoring; the core still rejects them.
-
-**Done when:** a daily Vissim user draws the four-leg intersection without searching for
-controls. Implementation and automated gesture checks do not replace this owner test.
-
-**Explicitly not in M1.9:** new network types from the parity review, editable table cells,
-group drag and rotation.
-
-Connector reanchoring is no longer part of what makes those two expensive. VISSIM_PARITY
-§1 and §6 item 10 cite it as a blocker, and that text stays as the 2026-09-14 assessment,
-but reanchoring is now a similarity transform of the connector's endpoint chord, so
-applying one transform as a sequence of single-object edits composes exactly. Measured on
-a hand-edited curve between two links, a shared translation applied as two separate link
-moves fell from 8.17 m of distortion to 2.6e-14 m, and a shared rotation from 5.53 m to
-7.1e-15 m. What these gestures still need is selection-wide transform plumbing, and for
-paste the ID allocation the parity review also names — not connector geometry.
+Implemented: a permanent Network Objects sidebar; Ctrl+right-drag opens link/connector dialogs; Ctrl+right-click creates demand/control or inserts a geometry point; Ctrl-click extends selection and Ctrl+left-drag duplicates with fresh IDs; Delete removes objects, Ctrl+Delete a vertex; tool shortcuts, Tab overlap cycling, Ctrl+B background, Ctrl+Shift+O tables. **Done when** a daily Vissim user draws the four-leg intersection without searching for controls — an owner test that automated gesture checks do not replace. **Explicitly not in M1.9:** new parity object types, editable table cells.
 
 ### M1.10 — Levels and display types
 
-Implemented. Links and connectors persist a level and named display type. Rendering,
-vehicle/head overlays, hit testing and visible-level filtering use level order; Tab
-can select an overlapping lower object. Levels and styles live in `data/levels/` and
-`data/display-types/`; adding a style needs no C++ change. Unknown style IDs retain
-their value and use the default appearance.
-
-**Done when:** a grade-separated junction draws and selects correctly at different
-zooms and a new display type is a data file. Automated gesture/persistence coverage is
-included; the owner should inspect a representative junction as part of acceptance.
-
-**Explicitly not in M1.10:** 3D or simulation effects from elevation. A drawn flyover
-does not add right-of-way, merging or crossing-conflict logic.
-
----
+Implemented: links and connectors persist a level and named display type; rendering, overlays, hit testing and visible-level filtering use level order, and Tab can select an overlapping lower object. Levels and styles live in `data/levels/` and `data/display-types/`, so adding a style needs no C++ change; unknown style IDs keep their value and use the default appearance. **Explicitly not in M1.10:** 3D, or any simulation effect from elevation — a drawn flyover adds no right-of-way, merging or crossing-conflict logic.
 
 ### M1.11 — Body attachments and direct lane resizing
 
@@ -214,15 +144,34 @@ internal Connector lane topology or close the owner's usability gate.
 
 ### M1.11.1 — Compile interior attachments into runtime lane sections
 
-**Open.** The engine currently traverses whole lanes. Before running a body-attached
-Connector, derive lane sections at attachment stations, preserve stable authoring IDs,
-map routes and signal positions, and render vehicle progress against the same sections.
-Retain the existing merge, internal-input and repeated-segment guards. Until verified,
-Run rejects these networks with an object-linked `UNSUPPORTED_CONNECTOR_POSITION` diagnostic.
-Do not introduce persisted duplicate runtime networks or change the engine's fidelity claim.
+**Implemented.** `runtimeSections` cuts each lane at every station where a Connector attaches to
+its body and `buildScenario` compiles the pieces, so an attachment part way along a lane runs in
+both directions. **Leaving** is a diverge: the vehicle travels the drawn partial distance, and an
+authored route stops at the section carrying the Connector it leaves by. **Arriving** is a merge,
+arbitrated by a priority rule derived from the drawing (M3.1): the vehicle joins at the drawn
+metre — the arriving path's successor is the section that *starts* at the cut, not the one that
+ends there — gives way to traffic already on the lane, and is never charged for the stretch
+upstream of where it came in.
 
-**Done when:** a vehicle leaves and enters at the drawn stations, travels the correct
-partial-lane distances, obeys section-mounted signals, and retains deterministic replay.
+Signal heads rebase onto the section they stand on, a head on a cut belonging to the upstream one
+as `splitLink` already had it. Both render sites key geometry by section id from the same table
+the scenario came from, and the route dialog still offers whole lanes via `authoringSegments`, so
+no derived id reaches the project file.
+
+Replay is unchanged and the four frozen baselines still pass, because `sectionId(laneId, 0)` is
+`laneId`: a lane with nothing attached compiles to the `Segment` it always did. **One case still
+cannot run:** a cut within `kMinSectionLength` (0.2 m) of a lane end or another
+cut on the same lane, since the core accepts no zero-length segment. It reports
+`UNSUPPORTED_CONNECTOR_POSITION`, reworded — the old string claimed the core runs only
+end-to-start connectors, which is no longer true. A derived rule's gap time and headway come from
+`data/priority-rules/`; their absence blocks **Run** with an object-linked
+`EDIT_NO_PRIORITY_DEFAULTS` and does **not** block an edit, which is D18b's boundary.
+
+**Done:** a vehicle leaves and enters at the drawn stations, travels the correct partial-lane
+distances, obeys section-mounted signals, and replays deterministically on both driving sides.
+The merge, internal-input and repeated-segment guards stand — `UNSUPPORTED_MERGE` was narrowed by
+construction, not removed — and no persisted duplicate runtime network was introduced, because
+sectioning changes no authored id and is a pure function of the drawing.
 
 ### M1.12 — Fixed lane edges, road markings and selection/copy gestures
 
@@ -232,26 +181,77 @@ and shared edge/divider rendering in the editor and diagnostic view. Schema 4 st
 lane offsets and stable Connector interpolation weights. Ctrl-click adds selection;
 Ctrl-drag selected Links, Connectors or Signal heads creates a single undoable copy.
 Invalid attached-object drops roll back the entire edit. Tables select heads directly.
-Owner Windows interaction and timed acceptance remain open; this does not close M1.11.1.
+Owner Windows interaction and timed acceptance remain open.
 
 ---
 
 ### M1.12.1 — A Connector's own lane widths and markings
 
-**Not started.** Two fields of Vissim's Connector dialog that our model cannot express, found
-by the review in `VISSIM_PARITY.md` § "2026-09-16 fifth follow-up". Its third, `Name`, shipped
-as M1.15:
+**Implemented.** Both fields of Vissim's Connector `Lanes` tab that the model could not express:
 
-- **`Lanes` tab per-lane `Width`** — connector lane widths are derived from the links each end
-  joins (`laneWidthOf`), so a Connector cannot carry a width of its own and a widening taper has
-  to be authored on the links instead.
-- **`Lanes` tab per-lane `MarkingType`** — likewise derived (`connectorMarkings`): edges solid,
-  interior dashed, with no per-lane choice.
+- **`laneWidths`** — one metre value per lane path. Previously every width was read from the Link
+  each end joins, so a widening taper had to be authored on the Links instead.
+- **`laneMarkings`** — the `MarkingType` painted on each **interior divider**, replacing a
+  hard-coded dashed line. The two outer edges stay solid: they are the edge of the carriageway,
+  not a lane divider. *Indexing note:* Vissim's field is per lane; ours is per divider
+  (`paths − 1`), because per-lane does not map unambiguously onto `paths + 1` boundary lines.
+  **This mapping was not checked against Vissim** — it is a chosen representation, not a measured
+  parity claim (rule 4).
 
-**Closes when:** both are authorable, round-trip through the project file, and the widths
-feed `connectorBoundaries` in place of the derived ones without changing a Connector whose lanes
-were never given their own width. `BlockedVeh`, `NoLnCh` and `Has overtaking lane` are *not* in
-this milestone; they wait on the lane-changing model (Q2).
+Both are **empty by default**, meaning "derive it from the Links", which is what every Connector
+drawn before schema 6 does and what one whose lanes were never given a width must keep doing.
+`connectorLaneWidths` is the single place a width is decided, so `connectorBoundaries` (drawing)
+and `connectorShapeIssues` (`TIGHT_CONNECTOR_RADIUS`) cannot disagree once one is authored —
+before this they computed it independently (rule 3). Schema 6 is additive-optional: absent keys
+give an empty vector and nothing is converted on read, because nothing changed meaning. Marking
+names are stored as `"solid"`/`"dashed"` so a human reading the file sees words, and adding a kind
+cannot renumber what older files meant.
+
+A resize that changes the path count **drops** the authored arrays rather than padding them: an
+entry the author never typed is not a width they chose, and the derived value is the honest
+fallback — the same reasoning that clears `laneBlend` when geometry changes. A partial list is
+rejected (`EDIT_LANES`), since no field would say which lanes were authored and which derived.
+
+**Done:** a width and a divider style are authorable, round-trip through the project file, undo as
+one entry, and feed the drawing; a Connector never given either is unchanged to 1e-12, verified by
+loading a schema-5 file written before the field existed. `BlockedVeh`, `NoLnCh` and
+`Has overtaking lane` are **not** in this milestone; they wait on the lane-changing model (Q2).
+
+### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
+
+**Closed without a code change, because there was nothing wrong.** The record said a 2→2 Connector
+through a sharp bend "bulges to 8.698 m of a 7.000 m width, 24% over". Measured three ways on a
+hard bend (90.47° of deflection):
+
+| how the width is measured | reading |
+|---|---|
+| along the cross-section, at the mitered vertex | **9.9403 m** (+42%) |
+| perpendicular, point to the far polyline | 7.0425 m (+0.6%) |
+| **projected across the leg the vertex lies on** | **7.000000 m** (exact) |
+
+The first number is `width / cos(φ/2)`, which is *what the intersection of two offset legs is* —
+the corner-to-corner diagonal of a correctly mitered joint, exactly what a road painted round a
+kink measures across its corner. The carriageway square to the road is untouched. The original
+8.698 m is the same identity at a slightly gentler bend (`7.000 / cos(36.4°)`).
+
+**`offsetGeometry` must not be "fixed".** `bends_keep_their_full_carriageway_width` pins the miter
+to 1e-9 and already asserts both halves of this deliberately — 10.5 m projected across each leg
+*and* `3.5*sqrt(2)` between adjacent boundaries at a right-angle corner, which is `3.5/cos(45°)`.
+The `8e-2` tolerance in `connector_tests.cpp` says it in as many words too ("along the cross-section
+a mitered corner reads wide … square to the road it is the lane width"). Removing the miter would
+reinstate the pinch it was added to fix: 18% at 63°, 30% at a right angle.
+
+**What was actually missing, and is now there.** Width had only ever been bounded from **below**
+(`least > .9*3.5`), which is how a claim of 24% over stood for a session unchallenged.
+`a_bent_connector_holds_its_width_square_to_the_road_from_both_sides` asserts it **exactly**, to
+1e-9, on every interior leg of a hard bend — and M1.12.1's curved-width bound was tightened from
+`span < 5.7` to the same equality. Both catch a 0.1% width error. Legs touching either end are
+excluded: they run to a vertex the wedge mouth moved (M1.17), so their direction is the Link's
+cross-section rather than the Connector's own, which reads 5.8 mm wide for that reason alone.
+
+**The lesson, since it cost a session:** a distance between two boundaries is only a width if it is
+measured square to the road. `perpendicular()` in `connector_tests.cpp` already carried that
+warning in its comment; the 24% figure was taken with `apart()`, which does not.
 
 ### M1.13 — Attachment stations in metres
 
@@ -271,8 +271,8 @@ schemas 1–4 and pre-schema M0 scenarios are converted on read at the same worl
 the version — not the key that happens to be present — deciding the unit.
 
 **Done:** stretching a Link's far end leaves an interior Connector at the same metre and the
-same world point; schema 4 files load unchanged; Run-blocking for end attachments is unchanged.
-M1.11.1 can now split a lane at a station that does not move underneath it.
+same world point; schema 4 files load unchanged. M1.11.1 splits a lane at a station that, because
+of this, does not move underneath it.
 
 ### M1.14 — Intermediate points, as Vissim counts them
 
@@ -379,6 +379,47 @@ line unfilled and starting M2 anyway voids the gate.
 **Done when:** an unsignalized T-junction with a minor-road left turn produces plausible,
 tunable minor-road delay that responds correctly to changing the gap time — and the same
 network is demonstrably not expressible in a SUMO wrapper.
+
+---
+
+### M3.1 — Merge priority by gap time and headway
+
+**Implemented, and it does not close M3.** The engine had no answer at a merge at all, which is
+why `validateScenario` refused one outright: a place fed by two segments had no rule for who goes.
+`PriorityRule{yieldSegmentId, yieldPosition, conflictSegmentId, conflictPosition, gapTime,
+headway}` supplies one — Vissim's priority rule, with the two numbers an engineer tunes.
+
+Car-following across a merge already worked, because `OccupiedSpan::segmentIndex` is a global
+index into `Scenario::segments` and spans are bucketed globally, so two vehicles see each other
+the moment they share a segment. What a rule adds is seeing the major approach *before* entering
+it, which is not on the minor vehicle's own route and so is invisible to `closestVehicle`. A
+vehicle that must give way is held at its stop line by the **same clamp a red signal head uses**,
+not a second mechanism beside it. Rule-to-route incidence resolves once per scenario in
+`ScenarioIndex`, mirroring `routeHeads`.
+
+`UNSUPPORTED_MERGE` is loosened **by construction, never by removal**: a place fed by *n*
+segments is runnable only when at least *n*−1 of them give way to another of them, so exactly one
+has priority and the rest have somewhere to wait. A network that has not been through the
+priority model reports it exactly as before — six tests break if the guard is deleted instead.
+A segment may not give way to itself.
+
+A standing queue upstream does **not** block: a stopped major vehicle further off than the
+headway is a gap, and blocking on it would deadlock the minor approach instead of releasing it.
+
+Gap time and headway for a **derived** rule live in `data/priority-rules/`, so changing them is a
+data edit (hard rule 5). They are read best-effort, because a document carrying its own catalogs
+must stay portable to a machine with no data directory; a rule that has to be derived without
+them is refused at the point of use rather than given a zero gap time, which would be a merge
+nobody gives way at, invented in silence.
+
+**A deterministic threshold test, not a calibrated critical-gap model:** hard rule 4's
+not-yet-validated marker stays and M6 still owns fidelity.
+
+**Explicitly NOT in M3.1, and all still M3's:** conflict areas as editable input, priority rules
+as an authorable object with their own UI, stop and yield control, crossing conflicts, and signal
+heads placed anywhere on a link. M3's done-condition — an unsignalized T-junction whose
+minor-road delay responds correctly to changing the gap time — is **not** met by this milestone
+and M3 remains open.
 
 ---
 
