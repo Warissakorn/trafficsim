@@ -90,7 +90,11 @@ SimState stepSimulation(const SimState& state, double dt) {
     const auto tick = state.tick + 1;
     const double time = static_cast<double>(tick) * dt;
     auto& events = next.events;
-    auto vehicles = state.vehicles;
+    // The state copy above already deep-copied the vehicle list, and next.vehicles is rebuilt from
+    // scratch below, so take that buffer as this tick's working copy rather than copying the list a
+    // second time. Nothing reads next.vehicles between here and the rebuild.
+    auto vehicles = std::move(next.vehicles);
+    next.vehicles.clear();
     std::vector<PendingVehicle> candidates;
     for (const auto& input : next.inputs)
         if (!input.queue.empty()) candidates.push_back(input.queue.front());
@@ -146,6 +150,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h)
         headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], state.time));
     next.vehicles.clear();
+    next.vehicles.reserve(vehicles.size()); // At most one survivor per vehicle; arrivals already in.
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto& vehicle = vehicles[v];
         const auto& type = scenario.vehicleTypes[refs[v].type];
