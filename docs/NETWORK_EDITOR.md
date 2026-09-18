@@ -204,8 +204,8 @@ order, so a lane range anchored one lane over moves the taper to the other side.
 the whole length of the Connector; there is no separate taper length to set. Those widths are stacked
 along the same mitered offset a Link's own lane edges use (`offsetGeometry`), so every lane is its
 full width square to the road at every point, through a bend and past a poly point the author has
-dragged. The two ends are cut on the **Link's own cross-section**, so each mouth is a wedge lying
-exactly on that Link's lane edges. Properties exposes both counts as an alternative. Retargeting
+dragged. The two ends are **square to the Connector's own axis** and simply meet the Link at the
+attachment; they are not cut on the Link's cross-section (see below). Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
@@ -225,19 +225,19 @@ straight leg between the attachments. `Reset curve` lays 3 along the arc, and la
 it follows the turn more closely — 2.29 m of sag from the arc at one point, 0.60 m at three,
 under 0.10 m at fifteen.
 
-**The mouth is a wedge, not a square end.** A Connector's two ends are cut on the cross-section of
-the Link they attach to, so every boundary lands on that Link's lane edge exactly and the lane
-markings run continuously from the road into the Connector. Squaring the ends to the Connector
-instead — which this did briefly — left the mouth standing clear of the road by 4.7 cm to 17.2 cm
-on a gentle join, 0.12–0.29 m where a Link had been rotated under the curve, and up to 0.88 m on
-a hard reverse curve, with the polygon overlapping the carriageway to cover the gap. Vissim cuts
-the wedge, confirmed against a screenshot of a Connector arriving on a Link body at an angle.
+**The mouth is a square end, not a wedge.** A Connector's two ends are left exactly where the
+mitered offset puts them — one straight line across the ribbon, square to the Connector's own
+axis, with no realignment towards the Link's direction. The end therefore stands a small step
+clear of the Link's lane edges where the arrival is oblique: 4.7 cm to 17.2 cm on a gentle join,
+0.12–0.29 m where a Link has been rotated under the curve, and up to 0.88 m on a hard reverse
+curve, with the polygon overlapping the carriageway across that step.
 
-The cut is **only** the two end samples. The body keeps the constant mitered offset, so a 3.5 m
-lane is 3.5 m at every interior point — interpolating the cross-section through the body instead
-drew it 1.06 m on a reverse curve and 0.46 m once a Link had been rotated 90° under it. The wedge
-does make the end sample shorter measured *square* to the Connector; measured along the
-cross-section, which is where a mouth has its width, it is exactly the Link's own lane width.
+This reverts M1.17, on the owner's instruction: the wedge cut on the Link's cross-section — and
+with it the bounded re-miter that replaced a folded cut — is gone. The earlier shape is in Git
+history. The body is unaffected either way: it keeps the constant mitered offset, so a 3.5 m lane
+is 3.5 m at every point — interpolating the cross-section through the body instead drew it 1.06 m
+on a reverse curve and 0.46 m once a Link had been rotated 90° under it, and that defect stays
+fixed.
 
 Interior points are editable; dragging one moves that corner and nothing else. Reset curve to
 lane directions lays the points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle

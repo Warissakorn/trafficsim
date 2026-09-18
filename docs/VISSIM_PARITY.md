@@ -384,6 +384,17 @@ not things that are slow.
 
 ---
 
+## 2026-09-18 — the wedge is withdrawn on the owner's instruction
+
+The owner asked for the original Connector geometry: the end meets the Link and nothing more — no
+turn towards the Link's direction, a plain square end. That is now what is drawn, so the two entries
+below record why the wedge was adopted and bounded, not what the editor does today. The
+parity gap they close is reopened deliberately: our mouth stands 4.7 cm to 0.88 m clear of the road
+where Vissim's lies on it, and that is the owner's call. Everything about the *body* in those
+entries still holds.
+
+---
+
 ## 2026-09-17 second follow-up — and the wedge has a limit the re-miter was hiding
 
 The owner circled a mouth on our own render that narrowed to a **point** where it met the Link, and

@@ -180,9 +180,8 @@ TEST(attachments, a_connector_carries_its_own_lane_widths) {
         // (width/cos(phi/2)) and not a width error: see M1.12.2, where the reported 24% bulge was
         // measured that way and turned out to be exactly this. Square to the road it is 5.5 m.
         const auto after=connectorBoundaries(h.document().network,connector(h.document(),id));
-        // Interior legs only. A leg touching either end runs to a vertex the wedge mouth moved
-        // (M1.17), so its direction is the Link's cross-section and not the Connector's own --
-        // measuring across it reads 5.8 mm wide for that reason alone.
+        // Interior legs only. Kept from when the wedge mouth (M1.17, since reverted) moved the
+        // end vertices; the ends are square cuts again, so this exclusion is only conservative.
         std::size_t measured=0;
         for(std::size_t i=2;i+2<after[1].size();++i) {
             const double dx=after[1][i].x-after[1][i-1].x,dy=after[1][i].y-after[1][i-1].y;

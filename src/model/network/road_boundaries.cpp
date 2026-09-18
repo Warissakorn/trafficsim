@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <optional>
 #include <stdexcept>
 namespace trafficsim {
 namespace {
@@ -50,31 +49,6 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
         for(const auto& lane:l.lanes)if(lane.id==ref.laneId)return lane.width;
     throw std::invalid_argument("UNKNOWN_LANE");
 }
-// Where a boundary's own cut vertex sits is exact by construction -- fixed at the width the two
-// links give it, measured along the link's own cross-section. That fixed-distance snap is only
-// consistent with the polygon when the leg it lands at the end of is already headed roughly that
-// way; at anything but a near-tangential merge angle it can imply an edge that runs backwards
-// across the neighbouring boundary instead of towards it. Re-mitering that last leg against the
-// link's cross-section -- extending it and cutting where it actually meets that line, the way
-// offsetGeometry miters an interior corner against the next real segment -- keeps every boundary
-// its own full width all the way to the link instead of pinching two of them together to dodge
-// the fold, and does not move the cut at all when the fixed snap and the re-miter already agree.
-std::optional<Point> legCrossing(Point a1,Point a2,Point b1,Point b2) {
-    const double rx=a2.x-a1.x,ry=a2.y-a1.y,sx=b2.x-b1.x,sy=b2.y-b1.y;
-    const double denominator=rx*sy-ry*sx;
-    if(std::abs(denominator)<1e-12)return {};
-    const double t=((b1.x-a1.x)*sy-(b1.y-a1.y)*sx)/denominator;
-    const double u=((b1.x-a1.x)*ry-(b1.y-a1.y)*rx)/denominator;
-    if(t<0||t>1||u<0||u>1)return {};
-    return Point{a1.x+t*rx,a1.y+t*ry};
-}
-Point remiter(Point edgeFrom,Point edgeTo,Point crossAt,Point crossDir,Point fallback) {
-    const double rx=edgeTo.x-edgeFrom.x,ry=edgeTo.y-edgeFrom.y;
-    const double denominator=rx*crossDir.y-ry*crossDir.x;
-    if(std::abs(denominator)<1e-9)return fallback;
-    const double t=((crossAt.x-edgeFrom.x)*crossDir.y-(crossAt.y-edgeFrom.y)*crossDir.x)/denominator;
-    return {edgeFrom.x+rx*t,edgeFrom.y+ry*t};
-}
 }
 ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
     const auto paths=connectorPaths(n,c);
@@ -102,7 +76,7 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     const std::size_t count=paths.size();
     const auto widths=connectorLaneWidths(n,c);
     const auto& source=widths.source;const auto& target=widths.target;
-    const auto from=endCross(n,c.from,c.fromLaneCount,true),to=endCross(n,c.to,c.toLaneCount,false);
+    const auto from=endCross(n,c.from,c.fromLaneCount,true);
     // Hang the cross-section on the last lane that is a real lane at both ends, and step out from
     // there in both directions. A lane added at the leading edge then cannot move the far edge,
     // and a lane that tapers is placed against its neighbour rather than on its own driving line,
@@ -116,7 +90,7 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     // a Link had been moved so the curve no longer left it straight. The correction onto each
     // link's own cross-section sits on the two end samples and goes no further in.
     const auto& spine=paths[anchorLane].geometry;
-    const double entry=std::atan2(from.y,from.x),exit=std::atan2(to.y,to.x);
+    const double entry=std::atan2(from.y,from.x);
     // Which way a normal points is a convention; which way lane order runs is not. Take the
     // source mouth's word for it once, for the whole body, or the lanes come out mirrored.
     const auto raw=[&](std::size_t j) {
@@ -138,80 +112,10 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     }
     std::vector<std::vector<Point>> result;
     for(std::size_t i=0;i<=count;++i)result.push_back(offsetGeometry(spine,offsets[i]));
-    // The two ends belong to the links, not to the Connector: cut them on the link's own
-    // cross-section, so a mouth is a wedge lying on its lane edges rather than a square end
-    // standing clear of them. This is what Vissim draws -- confirmed against a screenshot of
-    // a Connector arriving on a link body at an angle -- and squaring the ends to the Connector
-    // instead left a step of 0.12-0.29 m between the mouth and the road. That fixed-distance cut
-    // is exact and is kept whenever it leaves the cross-section's boundaries in their own order;
-    // where two of them would cross instead (a merge angle far from tangential), every boundary
-    // at that end re-miters its own last leg against the cross-section line instead, which keeps
-    // each one its own full width rather than pinching two of them together to a shared point.
-    // Both ends read their edge direction from this untouched copy, taken before either end is
-    // cut, so a two-point spine -- its front and back leg being the same one segment -- reads
-    // its own original direction at both ends rather than the other end's already-cut vertex.
-    const auto pristine=result;
-    const Point entryDir{std::cos(entry),std::sin(entry)},exitDir{std::cos(exit),std::sin(exit)};
-    for(const bool front:{true,false}) {
-        const Point crossAt=front?spine.front():spine.back();
-        const Point crossDir=front?entryDir:exitDir;
-        std::vector<Point> naive(count+1);
-        double nearest=0,furthest=0;
-        for(std::size_t i=0;i<=count;++i) {
-            const double d=(front?offsets[i].front():offsets[i].back())*sign;
-            nearest=std::min(nearest,d);furthest=std::max(furthest,d);
-            naive[i]={crossAt.x+crossDir.x*d,crossAt.y+crossDir.y*d};
-        }
-        // Whether a candidate mouth FOLDS: two neighbouring boundaries whose last legs cross each
-        // other draw a bowtie, which the ring trim that fills the surface closes into a point.
-        const auto folds=[&](const std::vector<Point>& end) {
-            for(std::size_t i=0;i<count;++i) {
-                const auto& a=pristine[i];const auto& b=pristine[i+1];
-                if(a.size()<2||b.size()<2)continue;
-                // A tapering lane's cut point coincides exactly with its neighbour's by
-                // construction (a surplus lane closes to zero width there) -- that shared
-                // endpoint is the taper meeting cleanly, not a fold, and must not register.
-                if(std::hypot(end[i].x-end[i+1].x,end[i].y-end[i+1].y)<1e-9)continue;
-                const Point a1=front?a[0]:a[a.size()-2],b1=front?b[0]:b[b.size()-2];
-                if(legCrossing(a1,end[i],b1,end[i+1]))return true;
-            }
-            return false;
-        };
-        // Three shapes, in order of how much they are the Link's own cross-section, and the first
-        // that does not fold is the mouth.
-        //
-        // 1. The fixed-distance cut, which puts boundary i exactly on the Link's lane edge. This
-        //    is the mouth wherever the arrival is anything but strongly oblique, so every Link-end
-        //    attachment and every ordinary merge keeps the wedge Vissim draws, bit for bit.
-        // 2. The re-miter, which extends each boundary's own last leg to meet the cross-section
-        //    line, the way offsetGeometry miters an interior corner. It may only redistribute the
-        //    corners INSIDE the span the lane widths give the mouth, never widen it: the bound is
-        //    the mouth itself, not a distance to pick. The distance bound this replaces allowed
-        //    1.5 times the mouth's width of overshoot, and on a 7.00 m Connector arriving across a
-        //    Link's body it drew mouths of 5.59, 9.41, 14.31 and 18.11 m as the arrival went
-        //    oblique -- a spike lying across the Link, which is what the owner circled.
-        // 3. The un-cut end, square to the Connector, which offsetGeometry already produced. Past
-        //    about 50 degrees off the cross-section the ribbon cannot be cut on a line that near
-        //    its own axis without folding, whichever of the first two is used, and the fold costs
-        //    more than the cut buys: the ring trim ate up to 7.67 m of mouth. A square end stands
-        //    the 0.12-0.29 m clear of the road that the step in Vissim's own screenshot shows --
-        //    which is the shape Vissim draws at this joint, parallel-sided and stopping at the
-        //    attachment.
-        std::vector<Point> mitered(count+1);
-        bool usable=true;
-        for(std::size_t i=0;usable && i<=count;++i) {
-            const auto& shape=pristine[i];
-            if(shape.size()<2){usable=false;break;}
-            const Point edgeFrom=front?shape[0]:shape[shape.size()-2],edgeTo=front?shape[1]:shape.back();
-            mitered[i]=remiter(edgeFrom,edgeTo,crossAt,crossDir,naive[i]);
-            const double along=(mitered[i].x-crossAt.x)*crossDir.x+(mitered[i].y-crossAt.y)*crossDir.y;
-            if(along<nearest-1e-9 || along>furthest+1e-9)usable=false;
-        }
-        if(!folds(naive))
-            for(std::size_t i=0;i<=count;++i){if(front)result[i].front()=naive[i];else result[i].back()=naive[i];}
-        else if(usable && !folds(mitered))
-            for(std::size_t i=0;i<=count;++i){if(front)result[i].front()=mitered[i];else result[i].back()=mitered[i];}
-    }
+    // M1.17 reverted on the owner's instruction: a Connector's ends are left exactly where
+    // offsetGeometry puts them -- square to the Connector's own axis -- instead of being cut on
+    // the Link's cross-section into a wedge. The mouth simply meets the Link at the attachment,
+    // with no realignment towards the Link's direction. The earlier wedge is in Git history.
     return result;
 }
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {

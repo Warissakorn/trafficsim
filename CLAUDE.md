@@ -16,7 +16,7 @@ see D11. Do not rename the project, the repository, or any package before then.
 **Current work:** M1 implementation covers M1.1–M1.17, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
 body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,
-Vissim's Intermediate points, a Name on every object, group move, and the wedge mouth.
+Vissim's Intermediate points, a Name on every object, group move, and a plain square Connector mouth (M1.17's wedge cut was reverted on 2026-09-18).
 M1.11.1 and M1.12.1 are both closed: lanes are cut into runtime sections at interior attachments,
 a Connector arriving on a lane body merges under **M3.1** (a priority rule with a gap time and
 headway — which does **not** close M3), and a Connector carries its own lane widths and divider
