@@ -113,13 +113,17 @@ during creation can add intermediate points. One completed gesture creates one c
 object even when it carries several lanes.
 
 Both ends can attach anywhere on the **body** of their Link; endpoints remain valid.
-The two-click workflow (C) also picks positions on lane bodies. Near a lane end, picking
-snaps to that endpoint, and within the same radius of a station another Connector already
-attaches at on that lane, picking takes **that exact station** — two movements leaving one
-corner are authored at one cross-section rather than centimetres apart, which is under
-`kMinSectionLength` and would be refused at Run. The radius is a screen distance, so zooming
-in past roughly 20 pixels per metre narrows it below that limit and fine placement wins, which
-is what an author zoomed that far in is asking for. Hidden levels cannot be picked. Properties → Connectors exposes
+The two-click workflow (C) also picks positions on lane bodies. Picking **snaps to a point**,
+which is Vissim's *Snap to Points*: the lane's two endpoints, then a station another Connector
+already attaches at on that lane, then the Link's own intermediate points — the first of those
+within the radius wins, and the station taken is that point's exactly. Two movements leaving one
+corner are therefore authored at one cross-section rather than centimetres apart, which is under
+`kMinSectionLength` and would be refused at Run, and a Connector meeting a Link at a bend lands on
+the bend. The radius is a screen distance, so zooming in past roughly 20 pixels per metre narrows
+it below that limit and fine placement wins, which is what an author zoomed that far in is asking
+for. The endpoint snap is not cosmetic: a Connector at a Link end is stored with **no** station at
+all and compiles to a departure, while one a few centimetres short is a body attachment whose stub
+section is under `kMinSectionLength` and cannot Run. Hidden levels cannot be picked. Properties → Connectors exposes
 actual link/lane IDs and `from.station` / `to.station` in metres from the Link's start, as
 Vissim stores a position. One station names one cross-section, so every lane of a range meets
 the Link square even on a curve, and the number means the same thing whichever lane is picked.

@@ -30,6 +30,20 @@ std::optional<double> nearbyAttachment(const Network& network, const std::string
         }
     return {};
 }
+// Vissim's Snap to Points covers a Link's intermediate points as well as its two ends, so a
+// Connector meeting a Link at a bend lands on the bend rather than beside it. A station is metres
+// along the Link's own reference polyline, which is the coordinate its vertices already live in.
+std::optional<double> nearbyVertex(const Link& link, double station, double tolerance) {
+    double travelled = 0;
+    // Accumulated in polylineLength's own order and with its own hypot, so the value returned is
+    // the one measuring that prefix produces -- the station has to be exact, not merely close.
+    for (std::size_t i = 1; i + 1 < link.geometry.size(); ++i) {
+        travelled += std::hypot(link.geometry[i].x - link.geometry[i - 1].x,
+                                link.geometry[i].y - link.geometry[i - 1].y);
+        if (std::abs(travelled - station) < tolerance) return travelled;
+    }
+    return {};
+}
 }
 std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoing) const {
     auto result=nearestLane(p);if(!result)return {};
@@ -43,6 +57,7 @@ std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoin
         else if(length-picked<tolerance)station=reference;
         else if(const auto nearby=nearbyAttachment(document_->network,result->linkId,result->laneId,
                                                    station,tolerance))station=*nearby;
+        else if(const auto vertex=nearbyVertex(l,station,tolerance))station=*vertex;
         if(station!=(outgoing?reference:0.))result->station=station;
     }
     return result;

@@ -244,6 +244,39 @@ int main(int argc,char** argv) {
         action(w,"editorUndo");action(w,"editorUndo");
         require(w.history().document()==beforeCopy,"Snap fixture did not undo cleanly");
 
+        // Vissim's Snap to Points covers a Link's intermediate points, not only its two ends, so a
+        // Connector meeting a Link at a bend lands ON the bend. Drawn with the draw tool, which is
+        // what authors a Link carrying interior geometry at all.
+        c->select("");
+        auto* drawTool=item<QComboBox>(w,"editorTool");drawTool->setCurrentIndex(1);
+        for(const Point& p:{Point{-90,-50},Point{-50,-38},Point{-10,-50}})
+            QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,p));
+        QTest::keyClick(c,Qt::Key_Return);QApplication::processEvents();
+        drawTool->setCurrentIndex(0);
+        confirm("editorLinkDialog",true,1);releaseDrag(c,{10,50},{90,50},Qt::RightButton);
+        const auto& withBend=w.history().document().network.links;
+        require(withBend.size()==beforeCopy.network.links.size()+2,"Bend fixture links missing");
+        const auto& bent=withBend[withBend.size()-2];
+        // The forcing: without an interior point there is nothing for this test to snap to.
+        require(bent.geometry.size()==3,"Bent Link carries no intermediate point");
+        const double bendStation=std::hypot(bent.geometry[1].x-bent.geometry[0].x,
+                                            bent.geometry[1].y-bent.geometry[0].y);
+        const auto bentLane=laneGeometry(bent,bent.lanes[0].id,DrivingSide::left);
+        const double bendOnLane=matchedStation(bent.geometry,bentLane,bendStation);
+        const auto bendPoint=pointAlong(bentLane,bendOnLane);
+        const auto besideBend=pointAlong(bentLane,bendOnLane+.25*snapRadius);
+        require(std::hypot(besideBend.x-bendPoint.x,besideBend.y-bendPoint.y)>1e-3,"Bend pick is not a distinct point");
+        require(std::hypot(besideBend.x-bendPoint.x,besideBend.y-bendPoint.y)<snapRadius,"Bend pick is outside the snap radius");
+        const auto& target=withBend.back();
+        const auto targetLane=laneGeometry(target,target.lanes[0].id,DrivingSide::left);
+        confirm("editorRangeDialog",true,1);
+        releaseDrag(c,besideBend,pointAlong(targetLane,.5*polylineLength(targetLane)),Qt::RightButton);
+        const auto& atBend=w.history().document().network.connectors.back();
+        require(station(atBend.from,true)==bendStation,"A pick beside a Link's intermediate point did not take it");
+        attached(w.history().document());
+        action(w,"editorUndo");action(w,"editorUndo");action(w,"editorUndo");
+        require(w.history().document()==beforeCopy,"Bend fixture did not undo cleanly");
+
         const auto file=dir.path()+"/body-connectors.traffic.json";const auto saved=documentJson(w.history().document());
         w.saveFile(file);w.openFile(file);require(documentJson(w.history().document())==saved,"Save/reopen lost attachments");
         c->select(id);item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");QTest::qWait(30);
