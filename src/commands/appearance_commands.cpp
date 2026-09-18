@@ -1,4 +1,5 @@
 #include "appearance_commands.hpp"
+#include "connector_commands.hpp"
 #include "network_commands.hpp"
 #include <algorithm>
 #include <map>
@@ -61,17 +62,20 @@ void translateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Poi
         for(auto& p:l.geometry){p.x+=offset.x;p.y+=offset.y;}
         moved.insert(l.id);
     }
-    // Nothing but a Link carries geometry of its own, so a selection of none is a gesture with
+    // A Link or a Connector carries geometry of its own; a selection of neither is a gesture with
     // no meaning rather than a move of zero objects. Say so instead of silently doing nothing.
-    if(moved.empty())throw std::invalid_argument("EDIT_MOVE_TARGET");
+    bool carries=!moved.empty();
+    for(const auto& c:d.network.connectors)carries=carries || chosen.contains(c.id);
+    if(!carries)throw std::invalid_argument("EDIT_MOVE_TARGET");
     for(auto& c:d.network.connectors) {
-        // Both ends moving means the whole junction moved: the points the author placed keep
-        // their place within it. One end moving is an ordinary Link edit, which reanchoring
-        // already handles by moving the one attached poly point.
-        if(moved.contains(c.from.linkId) && moved.contains(c.to.linkId))
+        // Both ends moving means the whole junction moved, and a Connector picked out on its own
+        // is being moved because the author said so -- which they may do right off its Links, at
+        // which point it is deleted below. One end moving is an ordinary Link edit: the Connector
+        // stays where it is and re-reads which station it now sits at.
+        if(chosen.contains(c.id) || (moved.contains(c.from.linkId) && moved.contains(c.to.linkId)))
             for(auto& p:c.geometry){p.x+=offset.x;p.y+=offset.y;}
-        reanchorConnector(d.network,c);
     }
+    reanchorConnectors(d);
 }
 std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point offset) {
     if(!std::isfinite(offset.x) || !std::isfinite(offset.y))throw std::invalid_argument("INVALID_GEOMETRY");

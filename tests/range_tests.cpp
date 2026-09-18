@@ -14,13 +14,15 @@ ProjectDocument roads(DrivingSide side=DrivingSide::left) {
         {"b",{{60,10},{120,10}},{{"b1",3.2},{"b2",3.7},{"b3",4}}}};
     return d;
 }
+// Every path begins and ends on the middle of the lane it names, AT THE STATION it names. Not
+// at the lane's end: since a Connector keeps its own position, a Link edit moves the station the
+// Connector sits at rather than dragging the Connector to the Link's end.
 void anchored(const ProjectDocument& d) {
     CHECK(validateNetwork(d.network).empty());
     for(const auto& c:d.network.connectors)for(const auto& path:connectorPaths(d.network,c)) {
-        for(const auto& l:d.network.links) {
-            if(l.id==path.from.linkId)CHECK(path.geometry.front()==laneGeometry(l,path.from.laneId,d.network.drivingSide).back());
-            if(l.id==path.to.linkId)CHECK(path.geometry.back()==laneGeometry(l,path.to.laneId,d.network.drivingSide).front());
-        }
+        const auto a=laneAttachment(d.network,path.from,true),b=laneAttachment(d.network,path.to,false);
+        test::near(path.geometry.front().x,a.x,1e-9);test::near(path.geometry.front().y,a.y,1e-9);
+        test::near(path.geometry.back().x,b.x,1e-9);test::near(path.geometry.back().y,b.y,1e-9);
     }
 }
 }

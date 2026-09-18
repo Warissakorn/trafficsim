@@ -113,7 +113,7 @@ void EditorCanvas::drawConnectors() {
             moved.fromLaneCount=std::max(1,std::min(moved.fromLaneCount,lanesFromReference(document_->network,moved.from)));
             moved.toLaneCount=std::max(1,std::min(moved.toLaneCount,lanesFromReference(document_->network,moved.to)));
             (void)connectorPaths(document_->network,moved);
-            reanchorConnector(document_->network,moved);
+            anchorConnectorEnds(document_->network,moved);
             preview=std::move(moved);
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;

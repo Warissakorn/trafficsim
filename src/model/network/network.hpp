@@ -125,9 +125,17 @@ struct ConnectorMarking { std::vector<Point> geometry; bool edge{}; MarkingType 
 std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);
-// Move a connector onto its current attachments the way Vissim does: the one poly point that
-// is attached to each Link moves, and the points the author placed stay where they are.
-void reanchorConnector(const Network&, Connector&);
+// Snap both ends onto the lanes they NAME. For an edit whose input IS the reference: creating a
+// Connector, or moving one of its ends onto another lane.
+void anchorConnectorEnds(const Network&, Connector&);
+// True when `p` lies on the carriageway of this lane -- within half its width of the lane's own
+// middle. The ONE test for whether a Connector end is still on its Link.
+bool laneContains(const Network&, const LaneReference&, Point);
+// A Connector keeps its own position. Each end that is still on the lane it names is snapped back
+// onto that lane's middle, with its station moved to wherever the author has put the end; an end
+// that has come off is left where it is. FALSE means an end is off its Link, and a Connector with
+// an end off its Link is deleted by the caller -- it has nothing left to connect.
+bool reanchorConnector(const Network&, Connector&);
 Point laneAttachment(const Network&, const LaneReference&, bool outgoing);
 // The station a reference resolves to, filling in the end/start its absent value means.
 double attachmentStation(const Network&, const LaneReference&, bool outgoing);

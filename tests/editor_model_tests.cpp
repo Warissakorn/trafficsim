@@ -33,10 +33,16 @@ TEST(editor, document_roundtrip_and_version_guards) {
     j=documentJson(d);j["background"]["metresPerPixel"]=-1;test::throws([&]{parseDocument(j);},"EDIT_BACKGROUND_INVALID");
     j=documentJson(d);j["nextId"]=-1;test::throws([&]{parseDocument(j);},"EDIT_ID_LIMIT");
 }
-TEST(editor, referenced_edits_reanchor_and_undo) {
+TEST(editor, referenced_edits_keep_the_connector_in_place_and_undo) {
     History h;h.reset(sample());const auto before=documentJson(h.document());
+    const auto placed=h.document().network.connectors;
     h.execute("move",[](auto& d){changeGeometry(d,"west",{{-160,10},{-10,10}});});
-    test::near(h.document().network.connectors[0].geometry.front().y,10);
+    // A Connector keeps its own position: the Link moved 10 m across lanes 3.5 m wide, and the
+    // Connectors that hung off it had their ends left in mid-air. They go, with the routes that
+    // named them, in the same transaction. They used to be dragged to y=10 with the Link, which
+    // moved a shape the author had placed by hand.
+    CHECK(!placed.empty());
+    CHECK(h.document().network.connectors.size()<placed.size());
     h.undo();CHECK(documentJson(h.document())==before);
     h.execute("delete",[](auto& d){deleteLink(d,"west");});
     CHECK(h.document().network.links.size()==3);CHECK(h.document().network.signalHeads.size()==1);
@@ -209,15 +215,21 @@ TEST(editor, a_group_move_carries_a_whole_junction_rigidly) {
     CHECK(parseDocument(Json::parse(documentJson(h.document()).dump()))==h.document());
     h.undo();CHECK(h.document()==before);h.redo();
     const auto together=h.document();
-    // One end moving is an ordinary Link edit: the attached poly point follows and the rest
-    // of the Connector stays where the author put it. That rule is unchanged by the group move.
+    // One end moving is not the junction moving: the Connector keeps its own position, so the
+    // Link slides out from under its end. Ten metres across a lane leaves nothing to connect to,
+    // and a Connector with an end off its Link goes -- in the same transaction, so one Undo
+    // brings back the Link edit and the Connector together.
     h.execute("one end",[&](auto& d){translateObjects(d,{a},{0,10});});
-    CHECK(n.connectors[0].geometry.front().y==together.network.connectors[0].geometry.front().y+10);
-    CHECK(n.connectors[0].geometry[1]==together.network.connectors[0].geometry[1]);
-    CHECK(n.connectors[0].geometry.back()==together.network.connectors[0].geometry.back());
+    CHECK(n.connectors.empty());
     h.undo();CHECK(h.document()==together);
-    // Nothing but a Link carries geometry, so a selection with no Link in it cannot be moved.
-    test::throws([&]{h.execute("no link",[&](auto& d){translateObjects(d,{connector,head},delta);});},"EDIT_MOVE_TARGET");
+    // A Connector picked out on its own is moved because the author said so -- and may be moved
+    // right off its Links, at which point it goes the same way.
+    h.execute("connector",[&](auto& d){translateObjects(d,{connector},{0,40});});
+    CHECK(n.connectors.empty());
+    h.undo();CHECK(h.document()==together);
+    // A head rides a station and carries no geometry, so a selection of nothing else is a gesture
+    // with no meaning rather than a move of zero objects.
+    test::throws([&]{h.execute("no geometry",[&](auto& d){translateObjects(d,{head},delta);});},"EDIT_MOVE_TARGET");
     CHECK(h.document()==together);
     test::throws([&]{h.execute("nan",[&](auto& d){translateObjects(d,{a},{std::nan(""),0});});},"INVALID_GEOMETRY");
     CHECK(h.document()==together);

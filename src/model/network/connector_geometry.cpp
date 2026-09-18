@@ -37,14 +37,13 @@ int lanesFromReference(const Network& network,const LaneReference& ref) {
     }
     return 0;
 }
-// Vissim moves the one poly point that is attached to the Link, and leaves the rest of the
-// Connector's poly points where the author put them. So does this. It is also what makes the
-// result independent of the path taken: a link moved away and back puts that point back, and
-// nothing else was ever touched. Carrying the whole curve rigidly, as this used to, dragged
-// hand-placed points around a Link edit they had nothing to do with.
-void reanchorConnector(const Network& network,Connector& c) {
-    // A link can be shortened past an attachment. Clamp rather than reject the link edit: the
-    // Connector survives at the new end, which is where the author can see and move it.
+// Snap both ends onto the lanes they NAME, wherever those lanes are. This is what an edit that
+// names the lanes wants -- creating a Connector, or moving an end onto another lane -- because
+// there the reference is the author's input and the geometry follows it.
+//
+// It is NOT what a Link edit wants: see reanchorConnector below, where the Connector's own
+// geometry is the author's input and the reference follows it.
+void anchorConnectorEnds(const Network& network,Connector& c) {
     const auto clamp=[&](LaneReference& ref) {
         if(!ref.station)return;
         for(const auto& link:network.links)if(link.id==ref.linkId)
@@ -56,6 +55,79 @@ void reanchorConnector(const Network& network,Connector& c) {
     if(!std::isfinite(from.x) || !std::isfinite(from.y) || !std::isfinite(to.x) || !std::isfinite(to.y))
         throw std::invalid_argument("INVALID_GEOMETRY");
     c.geometry.front()=from;c.geometry.back()=to;
+}
+bool laneContains(const Network& network,const LaneReference& ref,Point p) {
+    for(const auto& link:network.links)if(link.id==ref.linkId)
+        for(const auto& lane:link.lanes)if(lane.id==ref.laneId) {
+            const auto geometry=laneGeometry(link,ref.laneId,network.drivingSide);
+            if(geometry.size()<2)return false;
+            const auto on=pointAlong(geometry,stationOfClosestPoint(geometry,p));
+            // Half the lane's width, and nothing else: the carriageway is where the lane is, and
+            // a tolerance on top of it would be a width the lane does not have. A point a little
+            // past the end of the lane but on its line still counts, and snaps to the end -- an
+            // overshoot along the road is not the same thing as being off the road.
+            return std::hypot(p.x-on.x,p.y-on.y)<=lane.width/2+1e-9;
+        }
+    return false;
+}
+// THE CONNECTOR KEEPS ITS OWN POSITION. Its geometry is what the author drew, not something
+// recomputed from its Links on every edit: an end that is still on the lane it names is snapped
+// back onto that lane's middle and its station moved to wherever the author has put it, and an
+// end that has come off the lane is left exactly where it is and reported. A Connector with an
+// end off its Link has nothing to connect, so the caller deletes it -- `reanchorConnectors` in
+// `connector_commands.cpp`, in the same undoable transaction as the edit that moved it.
+//
+// This is what replaced dragging both ends after the Links on every edit. That made a Link edit
+// reach into a Connector the author had placed by hand and move it; it also meant a Connector
+// could not be moved off a Link at all, because the next edit put it back.
+bool reanchorConnector(const Network& network,Connector& c) {
+    if(c.geometry.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+    const auto hold=[&](LaneReference& ref,Point& end,int count,bool outgoing) {
+        if(!std::isfinite(end.x) || !std::isfinite(end.y))return false;
+        for(const auto& link:network.links)if(link.id==ref.linkId) {
+            // A Link can be shortened past an attachment. Clamp rather than reject the Link edit.
+            if(ref.station)ref.station=std::clamp(*ref.station,0.,polylineLength(link.geometry));
+            // Nothing moved under this end: leave the reference alone, to the last bit. Without
+            // this, every Link edit anywhere would re-derive every station through a polyline
+            // round trip and walk them by an ulp at a time -- and a station is an author's number,
+            // not something an unrelated edit may rewrite.
+            const auto standing=laneAttachment(network,ref,outgoing);
+            if(std::hypot(end.x-standing.x,end.y-standing.y)<=1e-12)return true;
+            // A LANE of this Link, not necessarily the one named. A lane bundle edit slides every
+            // lane sideways by a whole lane width, and the end the author placed has not moved:
+            // it is now on its neighbour, and that is the lane it attaches to. Only leaving the
+            // Link's carriageway altogether detaches it. The named lane is tried first, so an end
+            // that is still on its own lane never changes lane over rounding.
+            const auto lanes=link.lanes;
+            std::size_t found=lanes.size();
+            if(laneContains(network,ref,end))
+                for(std::size_t i=0;i<lanes.size();++i)if(lanes[i].id==ref.laneId)found=i;
+            for(std::size_t i=0;found==lanes.size() && i<lanes.size();++i)
+                if(laneContains(network,{link.id,lanes[i].id,ref.station},end))found=i;
+            if(found==lanes.size())return false;
+            // A range owns `count` lanes from here on, so it may not start past what is left.
+            const auto first=std::min(found,lanes.size()-static_cast<std::size_t>(std::min<int>(count,
+                static_cast<int>(lanes.size()))));
+            ref.laneId=lanes[first].id;
+            const auto lane=laneGeometry(link,ref.laneId,network.drivingSide);
+            const double along=stationOfClosestPoint(lane,end),length=polylineLength(lane);
+            const double reference=polylineLength(link.geometry);
+            // The end and the start of a Link keep meaning "the end" and "the start": that is what
+            // `attachedAtLinkEnd` reads and what the M0 whole-lane runtime can traverse, and an
+            // attachment that stayed put must not drift off it. Read on the LANE, with a micron of
+            // slack, because measuring a polyline's own length back off it is not exact and a
+            // micron is not a position an author can mean.
+            const bool atEnd=outgoing?length-along<=1e-6:along<=1e-6;
+            ref.station=atEnd?std::optional<double>{}
+                             :std::optional<double>{std::clamp(matchedStation(lane,link.geometry,along),0.,reference)};
+            end=laneAttachment(network,ref,outgoing);
+            return true;
+        }
+        return false;   // The Link itself is gone.
+    };
+    const bool source=hold(c.from,c.geometry.front(),c.fromLaneCount,true);
+    const bool target=hold(c.to,c.geometry.back(),c.toLaneCount,false);
+    return source && target;
 }
 namespace {
 // The travel direction of a lane at the station a Connector attaches to it.

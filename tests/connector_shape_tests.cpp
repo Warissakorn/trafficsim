@@ -8,8 +8,8 @@
 using namespace trafficsim;
 // Split out of connector_tests.cpp, which passed the 500-line guard (hard rule 6). That file keeps
 // connector TOPOLOGY -- creation, references, retargeting, deletion, history. This one keeps its
-// SHAPE: how wide the carriageway is, where its markings fall, how tight a bend it will draw, and
-// the wedge at its mouth. The measuring helpers below belong with the assertions that use them.
+// SHAPE: the carriageway's width, its markings, how tight a bend it draws, and its mouths. The
+// measuring helpers below belong with the assertions that use them.
 namespace {
 ProjectDocument roads(DrivingSide side = DrivingSide::left) {
     ProjectDocument d; d.network.drivingSide=side;
@@ -22,11 +22,12 @@ ProjectDocument roads(DrivingSide side = DrivingSide::left) {
 ProjectDocument crossing() {
     std::ifstream file(test::root()/"data/scenarios/crossing.json");Json j;file>>j;return parseDocument(j);
 }
-void anchored(ProjectDocument d) {
+void anchored(ProjectDocument d) {   // on the lane middle AT ITS STATION; see connector_tests.cpp
     CHECK(validateNetwork(d.network).empty());
     for (const auto& c : d.network.connectors) {
-        CHECK(c.geometry.front()==laneGeometry(editableLink(d,c.from.linkId),c.from.laneId,d.network.drivingSide).back());
-        CHECK(c.geometry.back()==laneGeometry(editableLink(d,c.to.linkId),c.to.laneId,d.network.drivingSide).front());
+        const auto a=laneAttachment(d.network,c.from,true),b=laneAttachment(d.network,c.to,false);
+        test::near(c.geometry.front().x,a.x,1e-9);test::near(c.geometry.front().y,a.y,1e-9);
+        test::near(c.geometry.back().x,b.x,1e-9);test::near(c.geometry.back().y,b.y,1e-9);
     }
 }
 }

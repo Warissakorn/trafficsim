@@ -21,9 +21,13 @@ ProjectDocument crossing() {
 }
 void anchored(ProjectDocument d) {
     CHECK(validateNetwork(d.network).empty());
+    // On the middle of the lane it names, AT THE STATION it names -- not at the lane's end. A
+    // Connector keeps its own position, so a Link edit moves the station it sits at rather than
+    // dragging it to the Link's end.
     for (const auto& c : d.network.connectors) {
-        CHECK(c.geometry.front()==laneGeometry(editableLink(d,c.from.linkId),c.from.laneId,d.network.drivingSide).back());
-        CHECK(c.geometry.back()==laneGeometry(editableLink(d,c.to.linkId),c.to.laneId,d.network.drivingSide).front());
+        const auto a=laneAttachment(d.network,c.from,true),b=laneAttachment(d.network,c.to,false);
+        test::near(c.geometry.front().x,a.x,1e-9);test::near(c.geometry.front().y,a.y,1e-9);
+        test::near(c.geometry.back().x,b.x,1e-9);test::near(c.geometry.back().y,b.y,1e-9);
     }
 }
 }
@@ -61,7 +65,7 @@ TEST(connectors, invalid_creation_preserves_ids_revision_savepoint_and_redo) {
     CHECK(documentJson(h.document())==before);
     h.redo();CHECK(h.document().network.connectors[0].geometry.size()==2);
 }
-TEST(connectors, interior_edits_lock_endpoints_and_rollback_invalid_shapes) {
+TEST(connectors, reshaping_rolls_back_invalid_shapes_and_a_move_off_the_link_deletes) {
     auto d=roads();const auto id=addConnector(d,{"in","in-1"},{"out","out-1"});
     History h;h.reset(d);const auto before=documentJson(d);const auto original=d.network.connectors[0].geometry;
     const std::vector<Point> shape{original.front(),{10,4},{18,18},original.back()};
@@ -70,45 +74,61 @@ TEST(connectors, interior_edits_lock_endpoints_and_rollback_invalid_shapes) {
     h.undo();CHECK(documentJson(h.document())==before);h.redo();
     const auto edited=documentJson(h.document());
     for (const auto& bad : std::vector<std::vector<Point>>{
-        {},{shape.front()},{{999,0},shape.back()},{shape.front(),{NAN,0},shape.back()},
-        {shape.front(),shape.front(),shape.back()},{shape.front(),{20,999}}}) {
+        {},{shape.front()},{shape.front(),{NAN,0},shape.back()},
+        {shape.front(),shape.front(),shape.back()}}) {
         test::throws([&]{h.execute("bad",[&](auto& m){changeConnectorGeometry(m,id,bad);});});
         CHECK(documentJson(h.document())==edited);
     }
+    // Moving an END is not an invalid shape any more, it is how a Connector is moved off its Link.
+    // A Connector keeps its own position, so the drawing is the author's to put where they like --
+    // and one with an end off its Link has nothing to connect, so it goes. Undo brings it back.
+    for (const auto& off : std::vector<std::vector<Point>>{
+        {{999,0},shape.back()},{shape.front(),{20,999}}}) {
+        h.execute("off",[&](auto& m){changeConnectorGeometry(m,id,off);});
+        CHECK(h.document().network.connectors.empty());
+        h.undo();CHECK(documentJson(h.document())==edited);
+    }
+    // An end moved WITHIN its lane is not a move off it: the Connector stays, and its station
+    // follows the end. The forcing is that this really did move the end, by a metre along it.
+    const std::vector<Point> along{{shape.front().x-1,shape.front().y},shape[1],shape[2],shape.back()};
+    h.execute("along",[&](auto& m){changeConnectorGeometry(m,id,along);});
+    CHECK(h.document().network.connectors.size()==1);
+    CHECK(h.document().network.connectors[0].geometry.front()!=shape.front());
+    CHECK(h.document().network.connectors[0].from.station.has_value());
+    h.undo();CHECK(documentJson(h.document())==edited);
 }
-TEST(connectors, reanchor_preserves_points_and_lane_references) {
+// A Connector keeps its own position. A Link edit does not reach into it and move it: the points
+// the author placed stay where they were put, and what changes is which station of the Link the
+// end now sits at -- or, when the Link has moved out from under it altogether, the Connector goes.
+TEST(connectors, a_link_edit_leaves_every_point_where_the_author_put_it) {
     auto d=roads();const auto id=addConnector(d,{"in","in-1"},{"out","out-2"});
     auto& c=editableConnector(d,id);c.geometry={c.geometry.front(),{10,9},{22,16},c.geometry.back()};
     const auto old=c;History h;h.reset(d);const auto before=documentJson(d);
-    h.execute("move",[](auto& m){changeGeometry(m,"in",{{-80,10},{0,10}});});
+    // A Link stretched past the end the Connector sits on: the Connector holds, every point
+    // included, and the end re-reads which station of the longer Link it is now standing at.
+    h.execute("stretch",[](auto& m){changeGeometry(m,"in",{{-81,0},{1,0}});});
     const auto moved=h.document().network.connectors[0];
-    // Vissim moves the one poly point attached to the Link that moved. Every other point the
-    // author placed stays exactly where it was, and the far end does not budge either.
-    CHECK(moved.geometry.front()!=old.geometry.front());
-    for(std::size_t i=1;i<old.geometry.size();++i) {
-        test::near(moved.geometry[i].x,old.geometry[i].x,1e-12);
-        test::near(moved.geometry[i].y,old.geometry[i].y,1e-12);
+    CHECK(moved.geometry.size()==old.geometry.size());
+    for(std::size_t i=0;i<old.geometry.size();++i) {
+        test::near(moved.geometry[i].x,old.geometry[i].x,1e-9);
+        test::near(moved.geometry[i].y,old.geometry[i].y,1e-9);
     }
-    // And it lands on the lane it is attached to, not merely somewhere near it.
-    const auto& link=*std::find_if(h.document().network.links.begin(),h.document().network.links.end(),
-                                   [](const auto& l){return l.id=="in";});
-    const auto lane=laneGeometry(link,"in-1",h.document().network.drivingSide);
-    test::near(moved.geometry.front().x,lane.back().x,1e-12);
-    test::near(moved.geometry.front().y,lane.back().y,1e-12);
-    CHECK(moved.from==old.from && moved.to==old.to);CHECK(moved.geometry.size()==old.geometry.size());anchored(h.document());
-    // Path independence follows for free: the point returns to where the lane puts it, and no
-    // other point was ever touched, however many edits took the Link away and back.
-    h.execute("away",[](auto& m){changeGeometry(m,"in",{{-90,44},{-7,-3}});});
-    h.execute("back",[](auto& m){changeGeometry(m,"in",{{-80,10},{0,10}});});
-    const auto returned=h.document().network.connectors[0];
-    CHECK(returned.geometry.size()==moved.geometry.size());
-    for(std::size_t i=0;i<returned.geometry.size();++i) {
-        test::near(returned.geometry[i].x,moved.geometry[i].x);test::near(returned.geometry[i].y,moved.geometry[i].y);
-    }
-    h.undo();h.undo();
+    // The forcing: the Link really did move, so holding still is a decision and not an absence of
+    // one -- and the attachment really did have to move along the Link to keep the end in place.
+    CHECK(h.document().network.links.front().geometry!=d.network.links.front().geometry);
+    CHECK(moved.from.station.has_value());
+    test::near(*moved.from.station,81,1e-9);
+    CHECK(moved.from.linkId==old.from.linkId && moved.from.laneId==old.from.laneId);
+    CHECK(moved.to==old.to);anchored(h.document());
+    h.undo();CHECK(documentJson(h.document())==before);
+    // And a Link moved out from under the end takes the Connector with it: 10 m across a 3 m lane
+    // leaves nothing to connect to, so the Connector is deleted in the same transaction.
+    h.execute("away",[](auto& m){changeGeometry(m,"in",{{-80,10},{0,10}});});
+    CHECK(h.document().network.connectors.empty());
+    h.undo();CHECK(documentJson(h.document())==before);
     h.execute("widths",[](auto& m){changeLanes(m,"out",{5,2});});anchored(h.document());
     h.execute("right",[](auto& m){changeDrivingSide(m,DrivingSide::right);});anchored(h.document());
-    h.undo();h.undo();h.undo();CHECK(documentJson(h.document())==before);
+    h.undo();h.undo();CHECK(documentJson(h.document())==before);
 }
 TEST(connectors, retarget_preserves_shape_and_rejects_duplicates_or_missing_lanes) {
     auto d=roads();const auto id=addConnector(d,{"in","in-1"},{"out","out-1"});
