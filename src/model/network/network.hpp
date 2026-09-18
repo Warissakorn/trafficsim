@@ -105,6 +105,15 @@ void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount
 struct ConnectorLaneWidths { std::vector<double> source, target; };
 ConnectorLaneWidths connectorLaneWidths(const Network&, const Connector&);
 std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connector&);
+// What the mouth correction did at each end, in metres, so it is a number rather than a look.
+// `shift` is how far each boundary slid ALONG its own offset curve to land on the Link's
+// cross-section, `zone` the length over which that slide decays back to nothing, and `residual`
+// the part of the slide a Connector too short to carry it did not get -- the distance its mouth
+// still stands off the Link. A residual above zero is the honest report that the arrival is too
+// oblique for the room available, not a defect.
+struct ConnectorMouthFit { std::vector<double> shift; double zone{},residual{}; };
+struct ConnectorMouthFits { ConnectorMouthFit source,target; };
+ConnectorMouthFits connectorMouthFit(const Network&, const Connector&);
 // The same idea for a connector: the middle of its whole width, point for point with its
 // stored geometry, which is the first lane's path.
 std::vector<Point> connectorCentreline(const Network&, const Connector&);

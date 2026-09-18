@@ -51,19 +51,20 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.17 are implemented, including every carve-out — M1.3.1, M1.5.1, **M1.11.1**
-and **M1.12.1**. **M1.12.2 is closed too** — the reported miter bulge was measured along the cross-section and is
-not a defect; see its section. **Every M1 engineering item is now done.** The owner acceptance in
-M1.7 remains open, and M1 is not closed until its timed gate passes — no amount of merged code
-closes it.
+**Status:** M1.1–M1.17 are implemented, including the carve-outs M1.3.1, M1.5.1, **M1.11.1** and
+**M1.12.1**; **M1.12.2 is closed** — the reported miter bulge was measured along the cross-section
+and is not a defect. **Two items are open again**, both from the owner's requirement that a
+Connector's lanes meet the Link lanes they are assigned to: **M1.18** (a flush mouth) and
+**M1.12.3** (the Link wins at the mouth for widths, not started). M1.7's owner acceptance remains
+open, and M1 is not closed until its timed gate passes — no amount of merged code closes it.
 
 M1.1–M1.6 and M1.8–M1.10 are implemented and their full bodies are in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); each keeps its heading and a
-status line here so the sequence stays whole.
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); each keeps its heading and
+a status line here so the sequence stays whole.
 
-**Sub-milestones below are in numeric order, which is the order they belong in.** A carve-out
-made under rule 2 is filed at its number, not at the end — M1.11.1 sits inside M1.11 and M1.12.1
-inside M1.12, because that is where a session looking for unfinished work will look for them.
+**Sub-milestones below are in numeric order, and a carve-out made under rule 2 is filed at its
+number rather than at the end** — M1.11.1 inside M1.11, M1.12.1 and M1.12.3 inside M1.12 — because
+that is where a session looking for unfinished work will look for them.
 
 **Done when:** an engineer draws a four-leg intersection with turn pockets from scratch, over
 an aerial image, in under 10 minutes, without reading documentation — and reopening the file
@@ -219,39 +220,27 @@ loading a schema-5 file written before the field existed. `BlockedVeh`, `NoLnCh`
 
 ### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
 
-**Closed without a code change, because there was nothing wrong.** The record said a 2→2 Connector
-through a sharp bend "bulges to 8.698 m of a 7.000 m width, 24% over". Measured three ways on a
-hard bend (90.47° of deflection):
+**Closed.** The reported 24% over-width was measured ALONG the cross-section, where a mitered
+corner's diagonal is `width / cos(φ/2)` by construction; projected across the leg the vertex lies
+on, the carriageway is 7.000000 m exactly. `offsetGeometry` was not changed — removing the miter
+would reinstate the pinch it exists to fix (18% at 63°, 30% at a right angle). The full
+measurements, and the lesson that a distance between two boundaries is only a width if it is
+measured square to the road, are in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
-| how the width is measured | reading |
-|---|---|
-| along the cross-section, at the mitered vertex | **9.9403 m** (+42%) |
-| perpendicular, point to the far polyline | 7.0425 m (+0.6%) |
-| **projected across the leg the vertex lies on** | **7.000000 m** (exact) |
+### M1.12.3 — The Link wins at the mouth (widths) — **not started**
 
-The first number is `width / cos(φ/2)`, which is *what the intersection of two offset legs is* —
-the corner-to-corner diagonal of a correctly mitered joint, exactly what a road painted round a
-kink measures across its corner. The carriageway square to the road is untouched. The original
-8.698 m is the same identity at a slightly gentler bend (`7.000 / cos(36.4°)`).
+Carved out of M1.12.1. An authored width replaces the Link's width at **both** ends
+(`road_boundaries.cpp:69-70`), so a Connector whose author typed a width no longer matches the
+lanes it attaches to. The owner's rule: the Link wins at the mouth, the authored width takes over
+through the body, the difference shows as a taper. Deliberately not done alongside M1.18 — that
+one moves where a mouth sits, this one how wide it is, and together a failing width test and a
+failing mouth test are indistinguishable.
 
-**`offsetGeometry` must not be "fixed".** `bends_keep_their_full_carriageway_width` pins the miter
-to 1e-9 and already asserts both halves of this deliberately — 10.5 m projected across each leg
-*and* `3.5*sqrt(2)` between adjacent boundaries at a right-angle corner, which is `3.5/cos(45°)`.
-The `8e-2` tolerance in `connector_tests.cpp` says it in as many words too ("along the cross-section
-a mitered corner reads wide … square to the road it is the lane width"). Removing the miter would
-reinstate the pinch it was added to fix: 18% at 63°, 30% at a right angle.
-
-**What was actually missing, and is now there.** Width had only ever been bounded from **below**
-(`least > .9*3.5`), which is how a claim of 24% over stood for a session unchallenged.
-`a_bent_connector_holds_its_width_square_to_the_road_from_both_sides` asserts it **exactly**, to
-1e-9, on every interior leg of a hard bend — and M1.12.1's curved-width bound was tightened from
-`span < 5.7` to the same equality. Both catch a 0.1% width error. Legs touching either end are
-excluded, which dates from the wedge mouth (M1.17, since reverted) moving those vertices; with
-square ends back the exclusion is merely conservative.
-
-**The lesson, since it cost a session:** a distance between two boundaries is only a width if it is
-measured square to the road. `perpendicular()` in `connector_tests.cpp` already carried that
-warning in its comment; the 24% figure was taken with `apart()`, which does not.
+**Done when:** with an authored width differing from both Links', each mouth measures the Link's
+lane width to 1e-9, the body measures the authored width to 1e-9 over its constant stretch, the
+taper is monotone with a stated length, surplus-end zeros are untouched, and
+`TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) is re-derived from a stated end of the profile.
 
 ### M1.13 — Attachment stations in metres
 
@@ -318,19 +307,35 @@ travel whole. `Alt`-drag rotation is still not implemented and is not booked.
 
 ### M1.17 — The mouth is a wedge cut on the Link — **reverted 2026-09-18**
 
-**Reverted on the owner's instruction.** A Connector's ends are square cuts across its own ribbon
-again: the end meets the Link at the attachment with no realignment towards the Link's direction,
-as the first Connector geometry drew it. The wedge cut on the Link's cross-section, and the
-bounded re-miter that stood in for it where the cut folded, are both removed; both remain in Git
-history. The step this leaves at an oblique arrival — 4.7-17.2 cm on a gentle join, up to 0.88 m
-on a hard reverse curve — is the accepted shape, not a defect.
+**Reverted on the owner's instruction**, then superseded by M1.18. The wedge cut the end vertices
+laterally onto the Link's cross-section and folded at oblique arrivals; it and its bounded re-miter
+are in Git history at `55294fa`, removed by `9d8cb04`. The square end it reverted to stood
+4.7-17.2 cm clear of the Link on a gentle join, up to 0.88 m on a hard reverse curve. What M1.17
+fixed alongside the cut is **kept, and still is**: the cross-section is not interpolated through
+the body, so a 3.5 m lane is 3.5 m at every interior point (interpolation drew 1.06 m on a reverse
+curve, 0.46 m at a 90-degree arrival).
 
-What M1.17 fixed alongside the cut is **kept**: the cross-section is not interpolated through the
-body, so a 3.5 m lane is still 3.5 m at every interior point (the interpolation drew 1.06 m on a
-reverse curve and 0.46 m at a 90-degree arrival).
+---
 
-**Done:** a Connector has a plain square mouth at any arrival angle, and the body is still the
-full lane its Links give it.
+### M1.18 — A flush mouth by longitudinal shear
+
+The owner's requirement after seeing the square mouth in the editor: every lane of a Connector must
+be backed by a lane of the Link, and must **meet** it.
+
+**Not M1.17 reinstated — its revert stands.** M1.17 moved the end vertices *laterally* onto the
+Link's cross-section, re-aiming each boundary's last leg and folding the ribbon. M1.18 moves them
+*longitudinally*: each slides along **its own offset curve** by `s = d·(c·u)/(c·n)`, decaying to
+zero over a transition zone. No vertex changes its lateral offset, so the boundaries keep their
+order and **cannot cross each other** — the fold is structurally absent, not tested for. The trade
+the owner chose: **flush but wider**, the mouth spreading along the cross-section by `|d|/|c·n|`, so
+its lane edges land outside the Link's at an oblique arrival. Too short a Connector gets what fits;
+`connectorMouthFit` reports the rest.
+
+**Done when:** at any arrival angle every boundary end lies on the Link's cross-section to 1e-9; the
+carriageway is its full width square to the road to 1e-9 where an exact measure exists; no ring in
+the oblique sweep self-crosses; a Connector too short for its arrival reports a bounded residual;
+`lane_edge_tests.cpp`'s collinear fixture is bit-for-bit unchanged; and `trafficsim-cli 42` still
+prints `meanDelay 29.249359418430977`.
 
 ---
 

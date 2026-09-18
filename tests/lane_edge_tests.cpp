@@ -26,6 +26,17 @@ void same(const std::vector<Point>& a,const std::vector<Point>& b) {
     CHECK(a.size()==b.size());
     for(std::size_t i=0;i<a.size();++i){test::near(a[i].x,b[i].x,1e-9);test::near(a[i].y,b[i].y,1e-9);}
 }
+// The carriageway between two boundaries at one sample, measured square to the road. Straight
+// hypot is the same thing everywhere except at the two mouths, which are cut on the Link's
+// cross-section (M1.18) and so read 1/cos(arrival) wide ALONG the cut -- by construction, not by
+// error. Projecting onto the ribbon's own normal is the measure that can actually fail.
+double across(const std::vector<Point>& a,const std::vector<Point>& b,std::size_t j) {
+    const std::size_t k=j+1<a.size()?j:j-1;
+    const Point along{a[k+1].x-a[k].x,a[k+1].y-a[k].y};
+    const double length=std::hypot(along.x,along.y);
+    if(length<1e-12)return std::hypot(b[j].x-a[j].x,b[j].y-a[j].y);
+    return std::abs((b[j].x-a[j].x)*(-along.y/length)+(b[j].y-a[j].y)*(along.x/length));
+}
 }
 TEST(attachments, both_link_edges_preserve_existing_curved_lanes_and_references) {
     for(auto side:{DrivingSide::left,DrivingSide::right})for(bool leading:{false,true}) {
@@ -223,9 +234,12 @@ TEST(attachments, an_authored_width_is_exact_where_the_connector_is_straight) {
     }
     h.execute("widths",[&](auto& m){changeConnectorLanes(m,id,{5.5,6.25},{});});
     const auto b=connectorBoundaries(h.document().network,connector(h.document(),id));
+    // The two Links sit 0.5 m apart across a 40 m gap, so this "straight" Connector still meets
+    // each of them at 0.716 degrees, and its mouths are cut on their cross-sections. Square to the
+    // road the authored widths are exact at every sample, mouths included.
     for(std::size_t j=0;j<b[0].size();++j) {
-        test::near(std::hypot(b[1][j].x-b[0][j].x,b[1][j].y-b[0][j].y),5.5,1e-9);
-        test::near(std::hypot(b[2][j].x-b[1][j].x,b[2][j].y-b[1][j].y),6.25,1e-9);
+        test::near(across(b[0],b[1],j),5.5,1e-9);
+        test::near(across(b[1],b[2],j),6.25,1e-9);
     }
 }
 // The no-regression assertion this milestone turns on: a Connector that was never given a width
