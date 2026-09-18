@@ -25,8 +25,13 @@ void resetConnectorCurve(ProjectDocument&, const std::string& id, bool straight 
 void resampleConnectorPoints(ProjectDocument&, const std::string& id, int count);
 // Deletes affected routes and their inputs in the same undoable transaction.
 void deleteConnector(ProjectDocument&, const std::string& id);
-// Shared by Link/Lane/driving-side edits. Moves the one poly point attached to each Link, the
-// way Vissim does, so reshaping depends only on where the endpoints are and never on the path
-// taken to get there.
+// For an edit that MOVES a Link. Each Connector keeps its own position: an end still on its Link
+// re-reads which station it now sits at, and a Connector with an end off its Link is deleted,
+// with the routes and heads that named it, in this same transaction.
 void reanchorConnectors(ProjectDocument&);
+// For an edit that RE-LAYS a Link's lanes without moving the road -- a lane added or removed, a
+// width changed, the driving side flipped. Nothing moved out from under anything, so every
+// Connector follows the lane it names to where that lane now is. Deleting a Connector because
+// the author added a lane to the Link beside it would be a surprise, not a rule.
+void anchorConnectors(ProjectDocument&);
 }

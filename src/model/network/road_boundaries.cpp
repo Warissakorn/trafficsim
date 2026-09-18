@@ -54,6 +54,20 @@ double cross(Point a,Point b){return a.x*b.y-a.y*b.x;}
 // runs away as the arrival turns to face along the Link's cross-section; four times the boundary's
 // own offset is where it stops being a mouth and starts being a spike.
 constexpr double kMouthShiftLimit=4.;
+// How far the mouth's cross-section may be compressed to land on the Link's. 0.5 is a 60-degree
+// arrival; below it no ribbon of finite width can carry the Link's lane spacing, because the
+// Link's lanes stack along the Connector's own direction there.
+// How many times the mouth offsets are re-solved against the boundary legs they actually produce.
+// Measured on a two-lane 75-degree turn, worst lane middle off its Link lane's: 1.23 m with no
+// pass, 0.49 m after one, 0.06 m after three -- and 6 cm is the worst case over the whole sweep,
+// where an ordinary arrival is already below a millimetre.
+constexpr int kMouthPasses=8;
+// The least of its own width a mouth may be compressed to in order to meet the Link's lanes.
+constexpr double kMouthSpanFloor=0.25;
+Point unitStep(Point a,Point b) {
+    const double length=std::hypot(a.x-b.x,a.y-b.y);
+    return length>0?Point{(a.x-b.x)/length,(a.y-b.y)/length}:Point{0,0};
+}
 // The slide must stay monotone along each boundary, which needs |s| < zone. The margin is the
 // slack that keeps the worst boundary strictly inside that, not on it.
 constexpr double kMouthZoneMargin=1.25;
@@ -97,7 +111,14 @@ MouthEnd mouthEnd(const std::vector<Point>& b,bool start) {
     return {p,length>0?Point{step.x/length,step.y/length}:Point{0,0}};
 }
 }
-ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
+namespace {
+// The widths with the authored ones honoured (`authored=true`) or ignored. The mouth needs the
+// second: what the Links themselves give, which is the only cross-section that can meet them.
+ConnectorLaneWidths laneWidthsOf(const Network& n,const Connector& c,bool authored);
+}
+ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) { return laneWidthsOf(n,c,true); }
+namespace {
+ConnectorLaneWidths laneWidthsOf(const Network& n,const Connector& c,bool useAuthored) {
     const auto paths=connectorPaths(n,c);
     // A Connector carries lanes, not a ribbon that shrinks. Each lane keeps its width from end to
     // end; a lane the other end has no room for is the one that tapers, closing onto its neighbour
@@ -112,13 +133,12 @@ ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
         // the metre value the author typed. It does NOT fill in a surplus end: that zero is a
         // consequence of the lane counts, not a width the author chose, and overriding it would
         // draw a taper as a full-width lane ending in mid-air.
-        const bool authored=i<c.laneWidths.size();
+        const bool authored=useAuthored && i<c.laneWidths.size();
         widths.source[i]=surplusSource?0:authored?c.laneWidths[i]:laneWidthOf(n,paths[i].from);
         widths.target[i]=surplusTarget?0:authored?c.laneWidths[i]:laneWidthOf(n,paths[i].to);
     }
     return widths;
 }
-namespace {
 // How far each boundary must slide ALONG ITS OWN offset curve for its end to land on the Link's
 // cross-section, and how much of that slide there is room to spend.
 //
@@ -228,15 +248,154 @@ SquareRibbon squareRibbon(const Network& n,const Connector& c) {
     // Each boundary is the axis offset by the lanes stacked up to it, mitered at every corner by
     // the same function a Link's own edges use -- so a lane is its full width square to the road
     // at every point, through a bend and past a poly point the author has dragged.
-    std::vector<std::vector<double>> offsets(count+1,std::vector<double>(spine.size()));
-    for(std::size_t j=0;j<spine.size();++j) {
-        const double t=weights[j];
-        const auto width=[&](std::size_t i){return source[i]+(target[i]-source[i])*t;};
-        offsets[anchorLane][j]=-width(anchorLane)/2;
-        for(std::size_t i=anchorLane;i-->0;)offsets[i][j]=offsets[i+1][j]-width(i);
-        for(std::size_t i=anchorLane;i<count;++i)offsets[i+1][j]=offsets[i][j]+width(i);
-        for(std::size_t i=0;i<=count;++i)offsets[i][j]*=sign;
+    const auto stack=[&](const ConnectorLaneWidths& w,double t) {
+        std::vector<double> o(count+1);
+        const auto width=[&](std::size_t i){return w.source[i]+(w.target[i]-w.source[i])*t;};
+        o[anchorLane]=-width(anchorLane)/2;
+        for(std::size_t i=anchorLane;i-->0;)o[i]=o[i+1]-width(i);
+        for(std::size_t i=anchorLane;i<count;++i)o[i+1]=o[i]+width(i);
+        for(std::size_t i=0;i<=count;++i)o[i]*=sign;
+        return o;
+    };
+    // THE MOUTH'S CROSS-SECTION IS THE LINK'S OWN, READ ONTO THE CONNECTOR'S.
+    //
+    // M1.18 slid each boundary along its own curve until it met the Link's cross-section, which
+    // made the mouth flush -- but every boundary kept its full offset square to the Connector, so
+    // once resolved onto that oblique cut the lanes came out spread by 1/cos(arrival), and the
+    // middle of each Connector lane landed BESIDE the middle of the Link lane it feeds. That is
+    // what the owner saw in the editor, and it is what this fixes.
+    //
+    // The offset a boundary must leave the mouth at, for the slide to land it exactly on the
+    // Link's own lane boundary, is that boundary's position PROJECTED onto the Connector's
+    // cross-section: the slide moves along the Connector's direction, which adds nothing in the
+    // normal direction, so the normal component is all that has to agree. One projection per
+    // boundary, no solve, and it is exact for lanes of unequal width as well -- the Link's lane
+    // spacing is read, not assumed. Lane middles coincide because every boundary does.
+    //
+    // The Link's widths are what the mouth is built from, never an authored one (M1.12.3): a
+    // cross-section built from a width the Link does not have cannot coincide with the Link's
+    // lanes, however it is slid. The authored width takes over through the body over the zone
+    // below, so a Connector given a width still runs at it everywhere its own road is its own --
+    // it simply starts and ends on the road it joins.
+    const auto linkWidths=laneWidthsOf(n,c,false);
+    const Point exit=endCross(n,c.to,c.toLaneCount,false);
+    // WHERE EACH BOUNDARY MUST LAND, measured ALONG the Link's own cross-section.
+    //
+    // The middle of the Connector's lane k goes on the middle of the Link lane it joins, and its
+    // edges on that lane's edges -- which is the whole of what the owner asked for. Along the cut
+    // the lane is the Link's own width, because the cut is where the two roads meet; square to the
+    // Connector it reads that times the cosine of the arrival, which is what a road crossing
+    // another at an angle measures and not a narrowing.
+    //
+    // A lane the Link has no room for has no width at this end, so its middle sits on its
+    // neighbour's and the divider between them closes there, which is what a taper is.
+    struct Mouth { std::vector<double> offsets; std::vector<Point> at; };
+    const auto mouthOffsets=[&](const LaneReference&,const std::vector<double>& link,
+                                const std::vector<double>& own,Point at,Point along,Point cross) {
+        const Point normal{-along.y,along.x};
+        Mouth mouth{std::vector<double>(count+1),std::vector<Point>(count+1)};
+        // Each lane's middle along the cross-section, from the first lane of the range's outer
+        // edge, then rebased on the lane the spine is drawn down so the two agree at the anchor.
+        std::vector<double> middle(count);
+        double walked=0;
+        for(std::size_t i=0;i<count;++i){middle[i]=walked+link[i]/2;walked+=link[i];}
+        const double base=middle[anchorLane];   // Read once: the loop below moves it.
+        for(std::size_t i=0;i<count;++i)middle[i]-=base;
+        // The boundary between two lanes is where their edges meet -- one line, and the same line
+        // either lane's word gives when the two widths agree, which is every Connector that has
+        // not been given a width of its own.
+        for(std::size_t i=0;i<=count;++i) {
+            const double position=i==0?middle[0]-own[0]/2
+                                 :i==count?middle[count-1]+own[count-1]/2
+                                 :(middle[i-1]+own[i-1]/2+middle[i]-own[i]/2)/2;
+            mouth.at[i]={at.x+cross.x*position,at.y+cross.y*position};
+            mouth.offsets[i]=(mouth.at[i].x-at.x)*normal.x+(mouth.at[i].y-at.y)*normal.y;
+        }
+        return mouth;
+    };
+    const Point uSource=unitStep(spine[1],spine[0]),uTarget=unitStep(spine[spine.size()-1],spine[spine.size()-2]);
+    // Both the middles and the widths at a mouth are the LINK'S, never an authored one. This is
+    // M1.12.3: a lane laid at a width the Link does not have cannot have its middle on the Link's
+    // lane AND its edges on the Link's edges -- the two only coincide when the widths do. The
+    // Link wins where the two roads meet, and the authored width takes over through the body.
+    const auto atSource=mouthOffsets(c.from,linkWidths.source,linkWidths.source,spine.front(),uSource,from);
+    const auto atTarget=mouthOffsets(c.to,linkWidths.target,linkWidths.target,spine.back(),uTarget,exit);
+    // The zone the mouth's cross-section opens out to the Connector's own over. Two carriageway
+    // widths is the length a lane taper is drawn over; capped so the two zones cannot meet.
+    const auto span=[&](const std::vector<double>& w) {
+        double total=0;for(double v:w)total+=v;return total;
+    };
+    const double spineLength=polylineLength(spine);
+    // The length the mouth's cross-section opens out to the Connector's own over. One carriageway
+    // width is the shortest run that does not read as a kink in the edge, and a quarter of the
+    // Connector each end leaves half of it running at its own width even on a short one.
+    const double zone=std::min(0.25*spineLength,std::max(span(linkWidths.source),span(linkWidths.target)));
+    const auto stations=stationsOf(spine);
+    const auto table=[&](const std::vector<double>& source,const std::vector<double>& target) {
+        std::vector<std::vector<double>> offsets(count+1,std::vector<double>(spine.size()));
+        for(std::size_t j=0;j<spine.size();++j) {
+            const double t=weights[j];
+            const auto body=stack(widths,t);
+            const double toSource=zone>0?std::clamp(1-stations[j]/zone,0.,1.):0;
+            const double toTarget=zone>0?std::clamp(1-(stations.back()-stations[j])/zone,0.,1.):0;
+            for(std::size_t i=0;i<=count;++i)
+                offsets[i][j]=body[i]+(source[i]-body[i])*toSource+(target[i]-body[i])*toTarget;
+        }
+        return offsets;
+    };
+    const auto draw=[&](const std::vector<std::vector<double>>& offsets) {
+        std::vector<std::vector<Point>> ribbon;
+        for(std::size_t i=0;i<=count;++i)ribbon.push_back(offsetGeometry(spine,offsets[i]));
+        return ribbon;
+    };
+    // The projection above assumed the slide runs along the spine's own end leg. It does not
+    // quite: a boundary whose offset is still opening out from the mouth leans off the spine by
+    // however fast it opens, and the slide follows THAT leg. So draw the ribbon once, read each
+    // boundary's real end direction, and re-solve the offset that puts its end on the Link's
+    // boundary when slid along it. One correction pass takes the worst lane middle from 1.23 m to
+    // millimetres. A fixed number of passes, never a convergence test: the same drawing must come
+    // out of the same network on every machine and every run (hard rule 2), and a loop that stops
+    // when it is "close enough" is exactly the kind of thing that stops at a different place.
+    const auto refine=[&](const std::vector<std::vector<Point>>& ribbon,const std::vector<double>& first,
+                          Point anchor,Point along,bool start,const std::vector<Point>& target) {
+        const Point normal{-along.y,along.x};
+        auto result=first;
+        for(std::size_t i=0;i<=count;++i) {
+            const auto leg=mouthEnd(ribbon[i],start).along;
+            const double turn=normal.x*leg.y-normal.y*leg.x;
+            if(std::abs(turn)<1e-9)continue;   // No end leg to slide along; keep the projection.
+            result[i]=((target[i].x-anchor.x)*leg.y-(target[i].y-anchor.y)*leg.x)/turn;
+        }
+        return result;
+    };
+    // As the arrival turns to face along the Link's cross-section, the Link's lane boundaries all
+    // project onto the SAME point of the Connector's, and a mouth built from that projection is a
+    // spike -- the failure kMiterLimit bounds at a corner and kMouthShiftLimit bounds for the
+    // slide. Below half the Connector's own width the compression stops: past about 60 degrees the
+    // mouth is as near the Link's lanes as a road of finite width gets, and stays a mouth.
+    const auto bodySource=stack(widths,0),bodyTarget=stack(widths,1);
+    const auto floored=[&](std::vector<double> o,const std::vector<double>& body) {
+        // An ill-conditioned solve runs away instead of merely being large: at an arrival facing
+        // along the Link's cross-section the offset that would reach it is unbounded, and one
+        // reading of 3.6e7 metres was measured before this cap. Four times the Connector's own
+        // half-width is where a mouth stops being a mouth, exactly as kMiterLimit bounds a corner.
+        const double reach=kMouthShiftLimit*std::max(std::abs(body[0]),std::abs(body[count]));
+        for(auto& v:o)v=std::isfinite(v)?std::clamp(v,-reach,reach):0;
+        if((o[count]-o[0])*(body[count]-body[0])<0)return body;
+        const double want=kMouthSpanFloor*std::abs(body[count]-body[0]),span=std::abs(o[count]-o[0]);
+        if(span>=want)return o;
+        if(span<=1e-12)return body;   // Collapsed altogether: the Connector's own cross-section.
+        const double middle=(o[count]+o[0])/2,scale=want/span;
+        for(auto& v:o)v=middle+(v-middle)*scale;
+        return o;
+    };
+    auto mouthSource=floored(atSource.offsets,bodySource),mouthTarget=floored(atTarget.offsets,bodyTarget);
+    for(int pass=0;pass<kMouthPasses;++pass) {
+        const auto drawn=draw(table(mouthSource,mouthTarget));
+        mouthSource=floored(refine(drawn,mouthSource,spine.front(),uSource,true,atSource.at),bodySource);
+        mouthTarget=floored(refine(drawn,mouthTarget,spine.back(),uTarget,false,atTarget.at),bodyTarget);
     }
+    const auto offsets=table(mouthSource,mouthTarget);
     std::vector<std::vector<Point>> result;
     for(std::size_t i=0;i<=count;++i)result.push_back(offsetGeometry(spine,offsets[i]));
     return {std::move(result),spine};

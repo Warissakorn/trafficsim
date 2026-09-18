@@ -16,11 +16,19 @@ void uniqueConnection(const ProjectDocument& d, const LaneReference& from, const
     for (const auto& c : d.network.connectors)
         if (c.id != except && c.from == from && c.to == to) throw std::invalid_argument("DUPLICATE_CONNECTION");
 }
-// The similarity transform that carries the interior points lives in the model, beside the
-// attachments it reads; commands only decide when a connector is re-anchored.
-void reanchor(ProjectDocument& d, Connector& c) { reanchorConnector(d.network, c); }
 }
-void reanchorConnectors(ProjectDocument& d) { for (auto& c : d.network.connectors) reanchor(d, c); }
+void anchorConnectors(ProjectDocument& d) {
+    for (auto& c : d.network.connectors) anchorConnectorEnds(d.network, c);
+}
+void reanchorConnectors(ProjectDocument& d) {
+    // A Connector keeps its own position, so a Link edit re-reads where each end has come to sit
+    // rather than dragging it along. An end that is no longer on the lane it names has nothing to
+    // connect: the Connector goes, with the routes and heads that named it, inside this same
+    // transaction -- so one Undo brings both the Link edit and the Connector back.
+    std::vector<std::string> lost;
+    for (auto& c : d.network.connectors) if (!reanchorConnector(d.network, c)) lost.push_back(c.id);
+    for (const auto& id : lost) deleteConnector(d, id);
+}
 std::string addConnector(ProjectDocument& d, const LaneReference& from, const LaneReference& to) {
     uniqueConnection(d, from, to);
     auto geometry = connectorCurve(d.network, from, to);
@@ -73,9 +81,12 @@ void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const st
     for (std::size_t i = 0; i < geometry.size(); ++i)
         if (!std::isfinite(geometry[i].x) || !std::isfinite(geometry[i].y) || (i && geometry[i] == geometry[i-1]))
             throw std::invalid_argument("INVALID_GEOMETRY");
-    if (geometry.front() != c.geometry.front() || geometry.back() != c.geometry.back())
-        throw std::invalid_argument("EDIT_CONNECTOR_ENDPOINTS");
+    // The ends may move too: a Connector keeps its own position, which is only true if the author
+    // can put that position anywhere -- including off the Link, where it is deleted below. What
+    // they may NOT do is name a different lane this way; that is changeConnectorEndpoints, which
+    // guards route topology. Here the reference follows the drawing, or the Connector goes.
     c.geometry = geometry;c.laneBlend.clear();
+    if (!reanchorConnector(d.network, c)) deleteConnector(d, id);
 }
 void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneReference from, LaneReference to) {
     auto& c = editableConnector(d, id);
@@ -90,7 +101,7 @@ void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneRef
     moved.toLaneCount = std::max(1, std::min(c.toLaneCount, lanesFromReference(d.network, to)));
     // Validate before mutating: an unknown lane must not leave a half-moved connector behind.
     (void)connectorPaths(d.network, moved);
-    reanchorConnector(d.network, moved);
+    anchorConnectorEnds(d.network, moved);
     c = std::move(moved);
 }
 void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straight) {

@@ -64,7 +64,7 @@ void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<do
     while(lanes.size()<widths.size())lanes.push_back({allocateId(d,"lane"),widths[lanes.size()]});
     lanes.resize(widths.size());
     for(std::size_t i=0;i<widths.size();++i)lanes[i].width=widths[i];
-    replaceLaneBundle(l,std::move(lanes),false);reanchorConnectors(d);
+    replaceLaneBundle(l,std::move(lanes),false);anchorConnectors(d);
 }
 void resizeLinkLanes(ProjectDocument& d,const std::string& id,int count,bool leading) {
     if(count<1 || count>12)throw std::invalid_argument("EDIT_LANES");
@@ -75,7 +75,7 @@ void resizeLinkLanes(ProjectDocument& d,const std::string& id,int count,bool lea
     }
     checkRemovedLanes(d,removed);
     while(static_cast<int>(lanes.size())<count)lanes.insert(leading?lanes.begin():lanes.end(),{allocateId(d,"lane"),width});
-    replaceLaneBundle(link,std::move(lanes),leading);reanchorConnectors(d);
+    replaceLaneBundle(link,std::move(lanes),leading);anchorConnectors(d);
 }
 
 void deleteLink(ProjectDocument& d, const std::string& id) {
@@ -89,7 +89,7 @@ void deleteLink(ProjectDocument& d, const std::string& id) {
     std::erase_if(d.network.links, [&](const auto& link) { return link.id == id; });
     detail::removeRoutesUsingSegments(d, removed);
 }
-void changeDrivingSide(ProjectDocument& d, DrivingSide side) { d.network.drivingSide = side; reanchorConnectors(d); }
+void changeDrivingSide(ProjectDocument& d, DrivingSide side) { d.network.drivingSide = side; anchorConnectors(d); }
 std::string oppositeLink(ProjectDocument& d, const std::string& id, double gap) {
     if (!std::isfinite(gap) || gap < 0) throw std::invalid_argument("EDIT_GAP");
     const auto original = editableLink(d, id);

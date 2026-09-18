@@ -77,8 +77,10 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         // A connector end is not a free point: it rides a lane. Dragging it re-attaches the
         // connector instead of editing the polyline, which the attachment owns.
         if (end) { endpointDrag_=vertex_==0; endpointDraft_.reset(); dragStart_=p; dragPress_=e->pos(); }
-        // A connector body cannot be translated: both of its ends are attached elsewhere.
-        else if (!selectedConnector() || vertex_>0) {
+        // A connector body CAN be translated: it keeps its own position, and dragging it off its
+        // Links is how an author gets rid of one. Its two end handles are the branch above, which
+        // re-attaches rather than translating.
+        else {
             if (selection_.size()==1) {
                 original_=*geometry; preview_=original_; dragging_=true; dragStart_=p; dragPress_=e->pos();
                 handleOffset_= vertex_>=0 && static_cast<std::size_t>(vertex_)<handles.size()

@@ -34,8 +34,9 @@ point and press Enter or double-click to finish. Escape cancels an unfinished ge
 
 Select **Select / move (S)** to pick a link body or connector path. Drag a link control
 point to reshape it, or drag its body between control points to translate it. Every
-completed drag is one undo entry. A connector's endpoints stay attached to their lanes;
-only its interior points can move.
+completed drag is one undo entry. A connector keeps its own position: its body can be dragged
+like a link's, its interior points reshape it, and its two end handles re-attach it to another
+lane. Drag one off its links and it is deleted — see below.
 
 Ctrl+right-click or double-click a line in Select mode inserts a geometry point.
 Select an interior point and press Ctrl+Delete, or use Remove selected point, to remove
@@ -270,17 +271,30 @@ on the same lane pair may own separate Connectors.
 
 ## Attachment stations, Link edits and deletion
 
-Moving or reshaping a Link moves the one Connector poly point attached to it, as Vissim does, and
-leaves every other point where the author put it. A Link edit therefore cannot deform a hand-tuned
-curve, and taking a Link away and back restores the Connector exactly. Reset curve re-derives the
-whole shape when that is what is wanted.
+**A Connector keeps its own position.** Its geometry is what the author drew; it is not recomputed
+from its Links on every edit. Moving or reshaping a Link therefore leaves the Connector standing
+where it is, and what changes is which station of the Link each end now sits on:
 
-Positions persist with each lane reference, in metres. Moving, stretching or reshaping a Link,
-changing its lane widths, count or driving side reanchors the Connector at the **same station**,
-so it stays where it was drawn instead of sliding with the Link's length. Shortening a Link past
-an attachment clamps that attachment to the new end rather than rejecting the Link edit — the
-Connector survives where the author can see and move it. (A Signal head is not clamped: its
-position is validated against its lane, so an edit that would strand one is still rejected.)
+- **The end is still on the Link's carriageway** — it snaps onto the middle of the lane under it,
+  and its stored station moves to match. The lane it names may change where a lane bundle edit has
+  slid the lanes sideways under a standing end; the Link never does.
+- **The end is off the Link** — by more than half a lane width, which is where the carriageway
+  stops — the Connector has nothing left to connect. It is **deleted**, with the routes and signal
+  heads that named it, inside the same transaction as the edit that moved it, so one Undo brings
+  the Link edit and the Connector back together.
+
+That is the rule for an edit that MOVES a road: reshaping a Link, translating a selection, dragging
+a Connector's body. An edit that RE-LAYS a Link's lanes without moving the road — a lane added or
+removed, a width changed, the driving side flipped — is not a move: every Connector follows the lane
+it names to where that lane now is, at the same station. Deleting a Connector because the author
+added a lane to the Link beside it would be a surprise, not a rule.
+
+Shortening a Link past an attachment now deletes the Connector that hung off it, rather than
+clamping the attachment to the new end. Clamping moved a Connector to somewhere the author had not
+put it; this leaves it where they did and says so by removing it. (A Signal head still rides its
+station and is not moved: its position is validated against its lane, so an edit that would strand
+one is rejected instead.) Reset curve re-derives the whole shape when that is what is wanted.
+
 Splitting remaps both source and target attachments to the appropriate child Link by arithmetic
 alone — the upstream child's polyline is a prefix, so its stations are unchanged, and downstream
 stations shift by the cut. A cut through an attachment inside the 0.2 m continuity span is

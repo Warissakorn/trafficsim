@@ -79,7 +79,7 @@ Network obliqueArrival(double heading,double arrival,int spans=4,double spacing=
 // mouth lies ON the Link's cross-section, exactly, at every arrival angle -- and the ribbon it cuts
 // is still the full lane the Links give it.
 TEST(mouths, a_mouth_lands_on_the_links_cross_section_at_every_arrival_angle) {
-    int oblique=0,aligned=0;
+    int oblique=0,aligned=0,matched=0,mirrored=0;
     // Every heading of the Link crossed with every heading of the arrival: the two are independent
     // and it is their difference that conditions the cut, so neither may be fixed.
     for(int linkDegrees=0;linkDegrees<360;linkDegrees+=30)
@@ -104,9 +104,32 @@ TEST(mouths, a_mouth_lands_on_the_links_cross_section_at_every_arrival_angle) {
             ++aligned;
             // Flush: every boundary end on the Link's own cross-section, to 1e-9.
             test::near(mouthFlush(boundaries,a,b,false),0,1e-9);
-            // ... and each lane of the mouth is still the Link's 3.5 m lane square to the road.
-            for(std::size_t i=0;i+1<boundaries.size();++i)
-                test::near(mouthWidth(boundaries[i],boundaries[i+1],false),3.5,1e-9);
+            // ... and, where the mouth's two OUTER edges land on the Link's two outer lane
+            // edges, the whole cross-section agrees with the Link's: every interior divider on
+            // the Link's divider, and so the middle of every Connector lane on the middle of the
+            // Link lane it feeds. That is the milestone's own assertion, and it is not the same
+            // statement as the one it is conditioned on -- the outer edges agreeing says nothing
+            // about how the lanes between them are divided, which is exactly what went wrong
+            // before: the mouth was flush and the right span, and its lanes were still spread
+            // 1/cos(arrival) apart with their middles beside the Link's.
+            //
+            // Where they do not land on it -- a Connector arriving from the far side, whose lane
+            // order runs opposite the Link's, or one so oblique that the compression floor holds
+            // it back -- no ribbon can carry the Link's lane order without turning over between
+            // its two ends, so the Connector keeps its own cross-section and only the flushness
+            // above holds. Both are counted, so neither can quietly stop being exercised.
+            const bool onLink=std::hypot(boundaries.front().back().x-a.x,boundaries.front().back().y-a.y)<1e-3 &&
+                              std::hypot(boundaries.back().back().x-b.x,boundaries.back().back().y-b.y)<1e-3;
+            if(onLink) {
+                ++matched;
+                for(std::size_t i=0;i+1<boundaries.size();++i) {
+                    test::near(apart(boundaries[i],boundaries[i+1],boundaries[i].size()-1),3.5,5e-3);
+                    const auto middle=laneAttachment(n,{"main",main.lanes[i].id,60.},false);
+                    const Point cut{(boundaries[i].back().x+boundaries[i+1].back().x)/2,
+                                    (boundaries[i].back().y+boundaries[i+1].back().y)/2};
+                    test::near(std::hypot(cut.x-middle.x,cut.y-middle.y),0,5e-3);
+                }
+            } else ++mirrored;
         }
         // Folding is what killed M1.17's wedge. A slide along each boundary cannot change which
         // side of its neighbour it is on, so this holds whether or not the mouth reached the Link.
@@ -117,6 +140,8 @@ TEST(mouths, a_mouth_lands_on_the_links_cross_section_at_every_arrival_angle) {
     }
     CHECK(oblique>0);   // the sweep really reached the steep arrivals this test is about ...
     CHECK(aligned>0);   // ... and really did align on the ordinary ones, rather than skipping all
+    CHECK(matched>0);   // ... and the lane-for-lane case above really was exercised ...
+    CHECK(mirrored>0);  // ... as was the far-side arrival it cannot hold for
 }
 // A Connector running along its Link is the one case where nothing needs correcting, and it must
 // come out bit for bit as the plain offset drew it. This is what keeps M1.18 from disturbing the

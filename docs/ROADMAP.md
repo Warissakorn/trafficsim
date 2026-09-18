@@ -51,20 +51,21 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.17 are implemented, including the carve-outs M1.3.1, M1.5.1, **M1.11.1** and
-**M1.12.1**; **M1.12.2 is closed** — the reported miter bulge was measured along the cross-section
-and is not a defect. **Two items are open again**, both from the owner's requirement that a
-Connector's lanes meet the Link lanes they are assigned to: **M1.18** (a flush mouth) and
-**M1.12.3** (the Link wins at the mouth for widths, not started). M1.7's owner acceptance remains
-open, and M1 is not closed until its timed gate passes — no amount of merged code closes it.
+**Status:** M1.1–M1.20 are implemented, including the carve-outs M1.3.1, M1.5.1, **M1.11.1** and
+**M1.12.1**. **M1.12.2 is closed** (the reported miter bulge was measured along the cross-section
+and is not a defect) and **M1.12.3 is closed by M1.19**. The owner's requirement that a Connector's
+lanes meet the Link lanes they are assigned to ran M1.17 (reverted) → M1.18 (flush) → **M1.19**
+(each lane on the lane it feeds); **M1.20** gives the Connector its own position. M1.7's owner
+acceptance remains open, and M1 is not closed until its timed gate passes — no amount of merged
+code closes it.
 
 M1.1–M1.6 and M1.8–M1.10 are implemented and their full bodies are in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); each keeps its heading and
 a status line here so the sequence stays whole.
 
 **Sub-milestones below are in numeric order, and a carve-out made under rule 2 is filed at its
-number rather than at the end** — M1.11.1 inside M1.11, M1.12.1 and M1.12.3 inside M1.12 — because
-that is where a session looking for unfinished work will look for them.
+number rather than at the end** — M1.11.1 inside M1.11, M1.12.1 and M1.12.3 inside M1.12 — where a
+session looking for unfinished work will look for them.
 
 **Done when:** an engineer draws a four-leg intersection with turn pockets from scratch, over
 an aerial image, in under 10 minutes, without reading documentation — and reopening the file
@@ -188,35 +189,11 @@ Owner Windows interaction and timed acceptance remain open.
 
 ### M1.12.1 — A Connector's own lane widths and markings
 
-**Implemented.** Both fields of Vissim's Connector `Lanes` tab that the model could not express:
-
-- **`laneWidths`** — one metre value per lane path. Previously every width was read from the Link
-  each end joins, so a widening taper had to be authored on the Links instead.
-- **`laneMarkings`** — the `MarkingType` painted on each **interior divider**, replacing a
-  hard-coded dashed line. The two outer edges stay solid: they are the edge of the carriageway,
-  not a lane divider. *Indexing note:* Vissim's field is per lane; ours is per divider
-  (`paths − 1`), because per-lane does not map unambiguously onto `paths + 1` boundary lines.
-  **This mapping was not checked against Vissim** — it is a chosen representation, not a measured
-  parity claim (rule 4).
-
-Both are **empty by default**, meaning "derive it from the Links", which is what every Connector
-drawn before schema 6 does and what one whose lanes were never given a width must keep doing.
-`connectorLaneWidths` is the single place a width is decided, so `connectorBoundaries` (drawing)
-and `connectorShapeIssues` (`TIGHT_CONNECTOR_RADIUS`) cannot disagree once one is authored —
-before this they computed it independently (rule 3). Schema 6 is additive-optional: absent keys
-give an empty vector and nothing is converted on read, because nothing changed meaning. Marking
-names are stored as `"solid"`/`"dashed"` so a human reading the file sees words, and adding a kind
-cannot renumber what older files meant.
-
-A resize that changes the path count **drops** the authored arrays rather than padding them: an
-entry the author never typed is not a width they chose, and the derived value is the honest
-fallback — the same reasoning that clears `laneBlend` when geometry changes. A partial list is
-rejected (`EDIT_LANES`), since no field would say which lanes were authored and which derived.
-
-**Done:** a width and a divider style are authorable, round-trip through the project file, undo as
-one entry, and feed the drawing; a Connector never given either is unchanged to 1e-12, verified by
-loading a schema-5 file written before the field existed. `BlockedVeh`, `NoLnCh` and
-`Has overtaking lane` are **not** in this milestone; they wait on the lane-changing model (Q2).
+**Implemented.** `Connector::laneWidths` (one metre value per lane path) and `laneMarkings` (a
+`MarkingType` per interior divider), both empty by default meaning "derive it from the Links", in
+schema 6. `connectorLaneWidths` is the single place a width is decided. The full body, including the
+per-divider indexing note and what it does NOT claim about Vissim parity, is in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
 
@@ -228,7 +205,7 @@ measurements, and the lesson that a distance between two boundaries is only a wi
 measured square to the road, are in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
-### M1.12.3 — The Link wins at the mouth (widths) — **not started**
+### M1.12.3 — The Link wins at the mouth (widths) — **closed by M1.19**
 
 Carved out of M1.12.1. An authored width replaces the Link's width at **both** ends
 (`road_boundaries.cpp:69-70`), so a Connector whose author typed a width no longer matches the
@@ -237,10 +214,12 @@ through the body, the difference shows as a taper. Deliberately not done alongsi
 one moves where a mouth sits, this one how wide it is, and together a failing width test and a
 failing mouth test are indistinguishable.
 
-**Done when:** with an authored width differing from both Links', each mouth measures the Link's
-lane width to 1e-9, the body measures the authored width to 1e-9 over its constant stretch, the
-taper is monotone with a stated length, surplus-end zeros are untouched, and
-`TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) is re-derived from a stated end of the profile.
+**Closed by M1.19**, which had to decide the same question to put the lane middles on the Link's:
+the mouth is built from the Link's widths, the authored width takes over through the body over a
+transition zone of one carriageway width. `an_authored_width_is_exact_where_the_connector_is_
+straight` pins both halves to 1e-9. `TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) was **not**
+re-derived: it reads `connectorShapeIssues`, which measures from `connectorLaneWidths`, and that
+function is unchanged.
 
 ### M1.13 — Attachment stations in metres
 
@@ -307,35 +286,54 @@ travel whole. `Alt`-drag rotation is still not implemented and is not booked.
 
 ### M1.17 — The mouth is a wedge cut on the Link — **reverted 2026-09-18**
 
-**Reverted on the owner's instruction**, then superseded by M1.18. The wedge cut the end vertices
-laterally onto the Link's cross-section and folded at oblique arrivals; it and its bounded re-miter
-are in Git history at `55294fa`, removed by `9d8cb04`. The square end it reverted to stood
-4.7-17.2 cm clear of the Link on a gentle join, up to 0.88 m on a hard reverse curve. What M1.17
-fixed alongside the cut is **kept, and still is**: the cross-section is not interpolated through
-the body, so a 3.5 m lane is 3.5 m at every interior point (interpolation drew 1.06 m on a reverse
-curve, 0.46 m at a 90-degree arrival).
+A lateral wedge onto the Link's lane edges. It re-aimed each boundary's last leg, let neighbouring
+boundaries cross and folded the mouth to a point; reverted on the owner's instruction and
+superseded by M1.18, then M1.19. The body is in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+
+---
+
+### M1.20 — A Connector keeps its own position
+
+The owner's rule: a Connector stores its geometry rather than having both ends recomputed from its
+Links. An end still on its Link is snapped onto the lane under it with its station moved to match;
+an end off its Link means the Connector has nothing to connect, so it is deleted with its routes
+and heads in the same transaction. An edit that RE-LAYS a Link's lanes without moving the road is
+not a move: every Connector follows the lane it names, at the same station.
+
+**Done when:** a Link edit leaves every authored point untouched; an end standing on a lane that has
+slid under it re-reads its lane and station; a Link moved out from under an end deletes the
+Connector and one Undo restores it; a Connector's body can be dragged, including off its Links.
+**All met at the model and command layer**; driving it by hand in the editor is still owed.
+
+---
+
+### M1.19 — Every Connector lane on the Link lane it feeds
+
+The owner's requirement after seeing M1.18's mouth: a Connector's lanes must **line up** with the
+Link's, not merely meet its cross-section. M1.18's slide left every boundary at its full offset
+square to the Connector, so on an oblique cut the lanes spread by `1/cos(arrival)`. The offsets each
+mouth is left at are now read off **the Link's own lane boundaries**, projected onto the Connector's
+cross-section and re-solved against the end leg each boundary produces (`kMouthPasses`, 8 fixed
+iterations). Bounded three ways, each for a measured failure: `kMouthSpanFloor` against compressing
+the mouth to a point, `kMouthShiftLimit` against an unbounded solve (3.6e7 m measured), and a
+fallback to the Connector's own cross-section where the two lane orders run opposite, which
+otherwise folded 120 of 288 cases.
+
+**Done when:** a two-lane mouth spans the Link's own 7.000 m at every arrival up to 60 degrees; each
+lane middle is on its Link lane's to 1 mm wherever the mouth's outer edges land on the Link's; the
+sweep still has 0 folds; and `trafficsim-cli 42` still prints `meanDelay 29.249359418430977`. **All
+met.** The owner's timed editor exercise in `docs/M1_ACCEPTANCE.md` is still the gate.
 
 ---
 
 ### M1.18 — A flush mouth by longitudinal shear
 
-The owner's requirement after seeing the square mouth in the editor: every lane of a Connector must
-be backed by a lane of the Link, and must **meet** it.
-
-**Not M1.17 reinstated — its revert stands.** M1.17 moved the end vertices *laterally* onto the
-Link's cross-section, re-aiming each boundary's last leg and folding the ribbon. M1.18 moves them
-*longitudinally*: each slides along **its own offset curve** by `s = d·(c·u)/(c·n)`, decaying to
-zero over a transition zone. No vertex changes its lateral offset, so the boundaries keep their
-order and **cannot cross each other** — the fold is structurally absent, not tested for. The trade
-the owner chose: **flush but wider**, the mouth spreading along the cross-section by `|d|/|c·n|`, so
-its lane edges land outside the Link's at an oblique arrival. Too short a Connector gets what fits;
-`connectorMouthFit` reports the rest.
-
-**Done when:** at any arrival angle every boundary end lies on the Link's cross-section to 1e-9; the
-carriageway is its full width square to the road to 1e-9 where an exact measure exists; no ring in
-the oblique sweep self-crosses; a Connector too short for its arrival reports a bounded residual;
-`lane_edge_tests.cpp`'s collinear fixture is bit-for-bit unchanged; and `trafficsim-cli 42` still
-prints `meanDelay 29.249359418430977`.
+The mouth cut on the Link's own cross-section by sliding each boundary **longitudinally** along its
+own offset curve — not M1.17's lateral wedge, whose revert stands. Superseded in part by M1.19,
+which keeps the slide and changes the offsets it starts from. The full body, its measurements and
+the trade the owner took at the time are in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ---
 

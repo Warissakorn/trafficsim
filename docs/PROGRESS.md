@@ -4,6 +4,8 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-18-earlier.md`](archive/PROGRESS-2026-09-18-earlier.md) — 2026-09-18, the snapping audit, the engine profile and the M1.17 revert
+- [`archive/PROGRESS-2026-09-18-flush-mouth.md`](archive/PROGRESS-2026-09-18-flush-mouth.md) — 2026-09-18, M1.18, the flush mouth
 - [`archive/PROGRESS-2026-09-17-mouth.md`](archive/PROGRESS-2026-09-17-mouth.md) — 2026-09-17, the wedge mouth and the miter "bulge"
 - [`archive/PROGRESS-2026-09-17.md`](archive/PROGRESS-2026-09-17.md) — 2026-09-17, later entries
 - [`archive/PROGRESS-2026-09-17-early.md`](archive/PROGRESS-2026-09-17-early.md) — 2026-09-17, earlier entries
@@ -13,254 +15,152 @@ long. Older entries are preserved whole there:
 
 ---
 
-## 2026-09-18 — The mouth meets the Link again, by sliding along the ribbon instead of cutting across it (M1.18)
+## 2026-09-18 — A Connector keeps its own position, and goes when it has nothing to connect (M1.20)
 
-**The owner's requirement, after seeing the square mouth in the editor:** every lane of a Connector
-must be backed by a lane of the Link, and must *meet* it. A square end does not — it stood 4.7 cm
-to 1.8 m clear at an oblique arrival, with the polygon overlapping the carriageway across that step.
+**The owner's requirement, in the same session as M1.19:** a Connector must store its position
+itself rather than having both ends recomputed from its Links on every edit; it must be possible to
+move it off a Link; and a Connector with no Link left to connect must disappear. Their answers to
+the three questions that follow from that: **snap whenever the end is still on a Link**, **either
+end coming off = delete**, and the mouth stays the flush, constant-width cut M1.19 just built.
 
-**This is not M1.17 reinstated; its revert stands.** M1.17 moved the end vertices **laterally**,
-onto the Link's lane edges. That re-aimed each boundary's last leg, let neighbouring boundaries
-cross, and folded the mouth to a point. M1.18 moves them **longitudinally** instead: each boundary
-slides along **its own offset curve** by `s = d·(c·u)/(c·n)`, decaying to zero over a transition
-zone. Because no vertex changes its lateral offset, the boundaries keep their order and **cannot
-cross each other** — the fold is structurally absent, not tested for and worked around. Measured
-over the 288-case sweep of Link heading × arrival angle: **0 folds, 0 ring self-crossings.**
+**What was there.** `reanchorConnector` wrote `geometry.front()` and `geometry.back()` from the
+lane references on every Link edit. A Connector could not be moved off a Link at all, because the
+next edit put it back, and a Link edit reached into a shape the author had tuned by hand and moved
+one end of it.
 
-**The trade the owner chose, in numbers.** The mouth is *flush but wider*: each lane keeps its full
-width square to the Connector, so the mouth spreads along the Link's cross-section by `|d|/|c·n|`
-and its lane edges land outside the Link's. Worst mouth span for a 7 m ribbon, by arrival angle off
-the Link's axis:
+**What replaced it — two functions with two different inputs, which is the whole of the change.**
 
-| arrival | worst mouth span | | arrival | worst mouth span |
-|---|---|---|---|---|
-| 0-15° | 7.60 m | | 45-60° | 16.64 m |
-| 15-30° | 8.79 m | | 60-90° | 28.86 m (the clamp) |
-| 30-45° | 11.19 m | | | |
+- `anchorConnectorEnds` is the old behaviour, kept for the edits whose input IS the reference:
+  creating a Connector, moving an end onto another lane, and the edits that **re-lay** a Link's
+  lanes without moving the road — a lane added or removed, a width changed, the driving side
+  flipped. Nothing moved out from under anything there, so every Connector follows the lane it
+  names. Deleting a Connector because the author added a lane to the Link beside it would be a
+  surprise, not a rule.
+- `reanchorConnector` is the new one, for the edits that **move** a road. Each end still on its
+  Link's carriageway is snapped onto the middle of the lane under it and its station moved to
+  match; an end that has come off is left exactly where it is, and the function returns false.
+  `reanchorConnectors` then deletes that Connector with the routes and heads that named it, in the
+  same transaction as the edit that moved it — so one Undo brings both back.
 
-`kMouthShiftLimit = 4` bounds it, exactly as `kMiterLimit = 4` bounds a corner that would spike to
-infinity — same form, same reason. **If 28.9 m looks wrong in the editor, that one constant is the
-dial**; the geometry below it is unchanged.
+**Three things it has to get exactly right, each found by a test going red.**
 
-**Falling short is reported, not hidden.** `connectorMouthFit` returns each end's shift, transition
-zone and **residual in metres** — how far the mouth still stands off its Link. The two ends share
-the spine rather than taking half each, so an ordinary end beside a steep one still aligns exactly.
-Residual is **0.00** on the reverse curve, gentle reverse, quarter turn, u-turn, and on a moved Link
-at 30° and 60°; it is **1.75 m** at 90°, where the Connector arrives straight across the lane and a
-cut on the cross-section lies along the ribbon itself. Worst over the whole sweep: 4.32 m.
+- **Nothing moved under an end means nothing changes, to the last bit.** Without that guard, every
+  Link edit anywhere re-derived every station through a polyline round trip and walked them an ulp
+  at a time. A station is an author's number; an unrelated edit may not rewrite it.
+- **A lane bundle edit slides the lanes, not the road.** An end standing still is then on its
+  neighbour, so the search is over the Link's lanes, named lane first — never over other Links,
+  which would be a topology change nobody asked for.
+- **The end and the start of a Link keep meaning "the end" and "the start"**, read on the lane with
+  a micron of slack, because measuring a polyline's own length back off it is not exact and
+  `attachedAtLinkEnd` — and the M0 whole-lane runtime behind it — turns on that distinction.
 
-**What did not change.** The body: a 3.5 m lane is still 3.5 m square to the road at every interior
-point. A parallel arrival has `c·u = 0`, so `s = 0` and the ribbon is left **bit for bit** as the
-plain offset drew it — which is most of every network, and why `lane_edge_tests.cpp`'s collinear
-fixture is untouched. A lane tapered to nothing still closes **exactly** on its neighbour: the two
-share an end point but not a curve, so sliding each by the same distance parted them by 5.4 mm until
-`shearMouth` re-closed them. `trafficsim-cli 42` is unchanged at `meanDelay 29.249359418430977` —
-`connectorBoundaries` is presentational and hit-test only, and that was verified, not assumed.
+**In the editor.** A Connector's body can be dragged like a Link's; its end handles still re-attach
+it to another lane. `changeConnectorGeometry` accepts an end that has moved, because "keeps its own
+position" is only true if the author can put that position anywhere — including off the Link, where
+the Connector is deleted. It still refuses to name a different lane that way: that is
+`changeConnectorEndpoints`, which guards route topology.
 
-**Tests moved rather than loosened, and the measure changed for a reason.** `mouthSquareness` is
-gone: asserting it zero *was* asserting a square cut, the very thing the owner asked to stop. The
-new `tests/connector_mouth_tests.cpp` (a new `mouths` ctest group) asserts `mouthFlush` — distance
-from each boundary end to the Link's own cross-section — at **1e-9**, plus width at 1e-9, the
-fold-free ring, the bit-for-bit parallel case, a Connector too short for its arrival, and the
-near-parallel clamp. Deleting the two `shearMouth` calls fails the suite with
-`Numeric mismatch: 0.254907 vs 0.000000`.
+**What this costs, stated plainly.** Moving a Link now deletes the Connectors whose ends it leaves
+behind — the `crossing.json` fixture loses both of its Connectors when `west` is moved 10 m across
+3.5 m lanes. That is the owner's rule, not a side effect, and it is one Undo away. Shortening a Link
+past an attachment deletes rather than clamps, for the same reason: clamping moved a Connector to
+somewhere the author had not put it.
 
-**Where a bound replaced an equality, that is honest rather than convenient.** A mouth slide leaves
-a lane's two edges at different stations, so on a curved or width-changing ribbon no index-for-index
-measure of width is exact — on the 2-into-2 90° turn, readings of 2.87 m, 2.95 m and 3.01 m for the
-same 3 m lane, depending on the measure. Those fixtures now bound the width and say so; the exact
-assertions live on fixtures where an exact measure exists.
+**Tests: six rewritten to the new contract, none loosened.** The `anchored` helpers in four files
+asserted a Connector's ends sat on their lanes' ENDS; they now assert the ends sit on the lane
+middle **at the station named**, which is the invariant that survives. `shortening_a_link_clamps_...`
+became `shortening_a_link_past_an_attachment_deletes_the_connector_that_hung_off_it`;
+`reanchor_preserves_points_and_lane_references` became
+`a_link_edit_leaves_every_point_where_the_author_put_it`, with both halves in it — a Link stretched
+under an end (the Connector holds, station 81 m) and a Link moved out from under one (deleted). The
+group-move test keeps the junction-moves-rigidly half unchanged and states the other half the new
+way, and the reshape test now separates an invalid shape (still refused, rolled back) from an end
+moved off the Link (accepted, deletes).
 
-**Verification:** 24/24 CTest on Qt 6.4.2 under `xvfb`, file sizes green (`connector_shape_tests.cpp`
-split at 483 lines, `ROADMAP.md` trimmed to 485 with M1.12.2's closed body archived).
-*Linux only — no desktop verification claimed; the editor has not been driven by hand.*
+**Verification:** 24/24 CTest on Qt 6.4.2 under `xvfb`, file sizes green. `trafficsim-cli 42`
+unchanged at `meanDelay 29.249359418430977`. *Linux only — the editor has not been driven by hand,
+so the drag gestures are asserted at the command layer, not through the canvas.*
 
 ### Next
 
-**M1.12.3 — the Link wins at the mouth for widths**, filed in `ROADMAP.md` with its done-condition.
-An authored `Connector::laneWidths` still replaces the Link's width at both ends
-(`road_boundaries.cpp:116-117`), so a Connector whose author typed a width does not match the lanes
-it attaches to. Give `ConnectorLaneWidths` a third `body` vector, hold `source`/`target` at the
-Link's width, and taper between them. **Not** done in this session on purpose: M1.18 moved where a
-mouth sits, M1.12.3 moves how wide it is, and together a failing width test and a failing mouth test
-are indistinguishable.
-
-Then, still the only thing that closes M1: the owner's timed exercise in `docs/M1_ACCEPTANCE.md`.
+**Drive the two changes by hand in the desktop editor.** Everything here and in M1.19 is measured at
+the model and command layer; nobody has yet dragged a Connector off a Link with a mouse, or looked
+at a mouth on screen. Do that first, then the owner's timed exercise in `docs/M1_ACCEPTANCE.md`.
+Watch in particular for: a Connector deleted by a Link drag the author did not expect to touch it
+(the Undo is there, but the surprise is the thing to judge), and whether half a lane width is the
+right distance for "off the Link" — it is one constant, in `laneContains`.
 
 ---
 
-## 2026-09-18 — Snapping audited against Vissim: one gap closed, one instruction refused with numbers
+## 2026-09-18 — The middle of every Connector lane now lands on the middle of the Link lane it feeds (M1.19)
 
-The owner listed Vissim's four snaps and asked for all of them, opening with **"Vissim does not snap
-to a Link end."** Audited against live code, the full table is in
-[`VISSIM_PARITY.md`](VISSIM_PARITY.md). The short version: **one of the four was a snap gap and is
-now closed; two are interactions we do not have; one is a file format we do not read.**
+**The owner's requirement, after seeing M1.18's mouth in the editor:** each lane of a Connector must
+line up with the lane of the Link it joins — not merely meet the Link's cross-section somewhere
+along it.
 
-**Snap to Points is now complete.** `hitLanePosition` tries, in order, the lane's two endpoints, a
-station another Connector already attaches at, then **the Link's own intermediate points** — the
-new part. So a Connector meeting a Link at a bend lands on the bend. The vertex station is
-accumulated with `polylineLength`'s own order and its own `hypot`, so the value stored is the one
-measuring that prefix produces: the test asserts it with `==`, not a tolerance.
+**What M1.18 left.** It slid each boundary along its own curve until the mouth lay ON the Link's
+cross-section, which made the mouth flush. But every boundary kept its full offset square to the
+Connector, so resolved onto that oblique cut the lanes came out spread by `1/cos(arrival)`: the
+mouth was the right line at the right angle and the wrong width, and each lane middle sat beside
+the Link lane middle it feeds. Measured on a two-lane body attachment: **0.42 m out at the worst
+arrival**, and a mouth spanning up to 28.9 m on a 7 m road at the clamp.
 
-**The opening instruction was refused, and only a measurement earns that.** In our model an
-attachment at a Link end is a distinct stored state — `station` absent — that `runtimeSections`
-compiles to a departure rather than a cut. On a 50 m Link, drawn short of the end by:
+**What replaces it.** The offsets the boundaries leave each mouth at are no longer the Connector's
+own stacked widths. They are read off **the Link's own lane boundaries at the attachment**,
+projected onto the Connector's cross-section — one projection per boundary, then re-solved against
+the end leg each boundary actually produces (`kMouthPasses`, a fixed 8 iterations; never a
+convergence test, hard rule 2). The slide then lands each boundary exactly on the Link's own lane
+boundary, so every lane middle coincides with the Link's, and the slide is `O(width)` rather than
+`O(width/cos)` — the spike the `kMouthShiftLimit` clamp existed to bound no longer arises.
 
-| short by | station | result |
-|---|---|---|
-| 0.00 m | *(absent)* | one section, the end attachment drawn |
-| 0.03 m | 49.9700 | **`unsectionable`, cannot Run** |
-| 0.15 m | 49.8500 | **`unsectionable`, cannot Run** |
-| 0.25 m | 49.7500 | runs, as a body attachment with a 0.25 m stub |
+**Measured, on a two-lane Connector into a two-lane Link, worst lane middle off its Link lane's:**
 
-"Place it carefully by hand" is precisely the 9 mm / 5.8 cm failure measured on the owner's own
-four-leg drawing the day before. Also: the owner's **own** *Snap to Points* item lists the End
-point, so the opening line contradicts item 2 of the same list. Keeping the endpoint snap is the
-Vissim-matching choice, not the deviation.
+| arrival | before | after | | mouth span (7 m road) | before | after |
+|---|---|---|---|---|---|---|
+| shallow | 0.42 m | 0.0001 m | | 0-60 degrees | up to 16.6 m | **7.000 m** |
+| 45 deg | 0.16 m | 0.005 m | | 60-90 degrees | up to 28.9 m | 7.1-9.2 m |
+| 75 deg | 0.05 m | 0.0006 m | | | | |
 
-**Two of the four are not snapping at all**, and calling them snapping would have hidden their
-size: heads, vehicle inputs and routes are **never placed by pointer** (`canvas_input.cpp:16-20`
-takes `nearestLane()` and opens a dialog), and stop signs and PT stops are not object types —
-§6 item 5, still blocked on engine behaviour. DWG/DXF snapping needs a vector import path where
-`BackgroundImage` holds a base64 PNG: a milestone, deliberately **not booked**, no done-condition
-written (hard rule 8 — do not start it without one).
+Over the 288-case heading x arrival sweep: **0 folds, 0 ring self-crossings** — unchanged, and
+structurally so, because nothing here moves a vertex laterally past its neighbour. In the 84 cases
+where the mouth's two outer edges land on the Link's outer edges, every interior divider and every
+lane middle agrees with the Link's to **1 mm**.
 
-**Verification:** 23/23 CTest on Qt 6.4.2 under `xvfb`, `trafficsim-cli 42` unchanged at
-`meanDelay 29.249359418430977`. Deleting the new branch fails the suite with `A pick beside a
-Link's intermediate point did not take it`. Linux only.
+**Three bounds, each there for a measured failure.** `kMouthSpanFloor` (0.25) stops the mouth being
+compressed to a point where the arrival faces along the Link's cross-section and every Link lane
+boundary projects onto the same place — the spike, in the other direction. `kMouthShiftLimit` now
+also caps the offsets themselves: the solve is unbounded in that direction and produced a reading
+of **3.6e7 metres** before the cap. And where the Connector's lane order runs opposite the Link's —
+a Connector arriving from the far side — the mouth keeps the Connector's own cross-section, because
+building it on the Link's would turn the ribbon over between its two ends: **120 of 288 sweep cases
+self-crossed** until that fallback was added.
 
-### Next
+**M1.12.3 is closed by this, in the only way it can be.** The mouth is built from the **Link's**
+widths, never an authored `laneWidths`: a lane laid at a width the Link does not have cannot have
+both its middle on the Link's lane middle and its edges on the Link's edges — the two coincide only
+when the widths do. The authored width takes over through the body, over a transition zone of one
+carriageway width (capped at a quarter of the Connector each end). A Connector drawn as a single
+straight segment has no interior vertex for its own cross-section to appear at, so its authored
+width does not show; raise Intermediate points.
 
-Unchanged and still the only thing that closes M1: the owner's timed exercise in
-[`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). The three snap-adjacent items above are scoped and
-**not** booked — if the owner wants pointer placement for heads and inputs, or CAD snapping, each
-needs a numbered milestone with a done-condition before any code.
+**Tests changed, not loosened.** The measure at a mouth is now the separation of the two edges
+**along the cut** — which is what the mouth is — and that is the exact one: the taper fixture reads
+3.000/4.000 m at its source and 3.500 m at its target to 1e-9, and the diverge's far mouth, bounded
+at 2.8-3.2 m before, is pinned at 3 m. `squareWidth` at a mouth was dropped: it reads the lane over
+the cosine of the arrival by construction, so asserting 3.5 m there was asserting a square cut.
+Where a bound replaced an equality it carries its number: 2.8 mm where the slide is longer than the
+boundary's own end leg, 3.1 cm inside a transition zone at a 90-degree arrival, 0.17 mm of solver
+residue at the middle of a short Connector. `an_authored_width_is_exact_where_the_connector_is_
+straight` was rebuilt on collinear Links so it has a body to measure, and now states both halves:
+the author's width through the body, the Link's at each mouth.
 
----
-
-## 2026-09-18 — A pick snaps to a station another Connector already attaches at
-
-**The owner's own four-leg drawing would not Run, and the drawing was not wrong — the numbers
-in it were.** `runDiagnostics` on it reported `UNSUPPORTED_CONNECTOR_POSITION` twice, and
-`compileDocument` threw on the same two. Measuring what actually collided:
-
-| lane | keeps its boundary | refused | apart |
-|---|---|---|---|
-| `lane-3` | `connector-30` (2-lane range) @ 49.376709 | `connector-32` @ 49.385893 | **0.009 m** |
-| `lane-22` | `connector-46` @ 2.963768 | `connector-38` (2-lane range) @ 3.021435 | **0.058 m** |
-
-Both pairs are two turning movements leaving or joining **one corner**, authored as separate
-Connectors because they have different destinations — which is correct modelling. They differ
-only by what a hand does with a mouse: 9 mm and 5.8 cm. `kMinSectionLength` is 0.2 m, so
-`sections.cpp` rejects the second cut of each pair and `connectorRuntimeIssues` names its owner.
-**The core is right and the guard is right**; nothing in `src/model` or `src/core` changed.
-
-**The fix is at the point the mismatch is introduced.** `hitLanePosition` already snapped a pick
-to a lane's two ends within `4/zoom` screen units; it now also takes the exact station of an
-attachment already on that lane within the same radius. One branch, one file-local helper, in a
-function both the two-click tool and the right-button range gesture already go through
-(`canvas_input.cpp:23` and `:154`), so both ends of both workflows are covered by the one change.
-
-**What it does not cover, stated rather than implied.** The radius is a screen distance, so past
-roughly 20 pixels per metre it falls below `kMinSectionLength` itself and stops standing between
-an author and a sub-0.2 m mistake. That is deliberate — an author zoomed that far in is asking
-for fine placement — but it means the snap **reduces** this class of error, it does not make it
-impossible. `UNSUPPORTED_CONNECTOR_POSITION` is still the backstop and still has to be.
-
-**The test asserts its forcing first.** In `attachment_ui_tests.cpp`: the second pick really is a
-distinct point, really is inside the radius, and the third really is outside it — all three
-asserted before the equality, because without them the equality could hold vacuously. It then
-asserts the near pick takes the first Connector's station **exactly** (`==` on the double, which
-is meaningful because `attachmentStation` returns `*ref.station` verbatim), and that the far pick
-**keeps its own** — a snap that always pulled to the nearest attachment would make two genuinely
-distinct attachments unauthorable, and that is the failure this guards. Checked by deleting the
-branch: the suite fails with `A pick inside the snap radius kept its own station`.
-
-**Verification:** 23/23 CTest, architecture and size guards green, on a real Qt build (Qt 6.4.2
-from the distribution) under `xvfb`. Linux only — `native.yml` also runs these suites on Windows
-and nothing here has been near it.
+**Verification:** 24/24 CTest on Qt 6.4.2 under `xvfb`, file sizes green.
+`trafficsim-cli 42` unchanged at `meanDelay 29.249359418430977` — `connectorBoundaries` is
+presentational and hit-test only. *Linux only — no desktop verification claimed.*
 
 ### Next
 
-The M1 position is unchanged: every sub-milestone is implemented and **only the owner's timed
-exercise in `docs/M1_ACCEPTANCE.md` closes it.** Carry the file above into that exercise — it is
-a real four-leg drawing that exercised a real authoring trap, and re-drawing those two corners on
-a build with this snap is the cheapest check that the snap earns its place.
-
-Two follow-ups were scoped and deliberately **not** done, so a later session does not re-derive
-them:
-
-1. **Name the conflict in the diagnostic.** Today `UNSUPPORTED_CONNECTOR_POSITION` says "move it
-   0.2 m clear" without saying clear of *what* or by *how much* — I had to measure the table above
-   with a throwaway tool. The enrichment belongs on `Diagnostic` (`diagnostics.hpp:8`), never on
-   `core`'s `ValidationIssue` (D18a), but the data it needs is **discarded upstream**:
-   `sections.cpp:66-71` keeps only the rejected Connector's own id, not the cut it lost to. So it
-   is `sections.cpp` + `compile.cpp` + `diagnostics.{hpp,cpp}` — its own session, not an add-on.
-2. **A station field in the inspector.** There is none (`editor_inspector.cpp`), so a station can
-   only be set by dragging. Worth having for exact after-the-fact repair, but it is a new field,
-   not a button.
----
-
-## 2026-09-18 — An engine profile at scale: three measured optimizations, no behaviour change
-
-**None of this is M1 work.** M1's engineering side is still done and the owner's timed gate in
-`docs/M1_ACCEPTANCE.md` is still the only open item. This session profiled the engine and took
-three wins that leave the trajectory byte-identical.
-
-**The shipped scenario is too small to profile.** `crossing.json` is 31 trips in 180 s (57 ms), so a
-12-intersection corridor at 900 s and a 40-intersection one at 120 s were generated by replicating
-its validated pattern. Profiling a toy input finds toy problems.
-
-**The profile said `std::string`, not simulation maths.** Of 1.55 G instructions, ~36% was string
-handling: `memcmp` 9.6%, copy-ctor 5.8%, move-assign 5.2%, `operator==` 4.7%, plus dispose/traits.
-Inclusive: `resolveRefs` 26.4%, per-tick copies 21.3%, the `Vehicle` sort 11.8%.
-
-| # | change | 12-route | 80-route |
-|---|---|---|---|
-| 1 | `resolveRefs` through sorted id tables in `ScenarioIndex` | −6.2% | −33.5% |
-| 2 | stop copying the vehicle list twice per tick | −5.6% | −6.1% |
-| 3 | precompile `nlohmann/json` (build, not runtime) | −16% CPU | — |
-
-Cumulative engine: **−11.5%** on the corridor, **−37.5%** on the 80-route network.
-
-**Two things were predicted wrong and are worth remembering.** Item 1 was estimated at 25% and
-delivered 6.2% on the corridor: the cost was never search asymptotics but the string comparison
-itself, and with 12 routes and one vehicle type a binary search replaces ~6 compares with ~4. It
-pays at 80 routes, which is the size that matters for a real study. And the first implementation
-used `unordered_map`; `tools/check_architecture.cpp` rejected it immediately, correctly — core/ may
-not use unordered containers at all, because their unspecified iteration order would leave
-reproducibility to the standard library. Sorted vectors with `lower_bound` were the answer, with
-ties ordered by position so a repeated id still resolves to its first occurrence.
-
-**`trafficsim_shell` did not get the precompiled header.** It is the largest target at 23 sources
-and would gain the most, but Qt is not installed here, so it was left alone rather than changed
-without being compiled once.
-
-**A clean checkout does not configure**: `nlohmann/json` is not found and CMake fails. `docs/BUILDING.md`
-does list the dependency, so this may be the intended manual step, but the failure does not name the
-package.
-
-### Next
-
-**Unchanged: the owner's timed four-leg / aerial-image / reopen exercise in `docs/M1_ACCEPTANCE.md`
-is the only thing standing between here and M1.**
-
-Two optimizations are diagnosed, measured and deliberately NOT done, in priority order:
-
-1. **The precompiled header on `trafficsim_shell`** — one line, mirroring the three targets in
-   `CMakeLists.txt`, but it needs a Qt-enabled machine to compile once before it is pushed.
-2. **Take the three `std::string` ids off `Vehicle`.** This is the real fix for a small network, and
-   it is what items 2 and 4 of the plan cannot reach: make a vehicle's identity its INDEX and derive
-   `routeId`/`vehicleTypeId`/`inputId` from the scenario at the few points that need the name (event
-   construction). That removes the per-tick compare, the per-tick copy and the 11.8% sort cost at
-   once. It changes a core public type and every test that hand-builds a `Vehicle`
-   (`tests/test.hpp:46`, `tests/core_tests.cpp:194`, `tests/attachment_tests.cpp:195`), so it is one
-   system for one session, not a tweak.
-
-The `std::sort` of vehicles by id (11.8%) was left alone on purpose: the element order it guarantees
-is what makes a run reproducible, and it is not worth touching before the strings are gone.
-
-*Verified on Linux, headless preset only (Qt not installed here); no desktop verification claimed.*
+**The Connector keeps its own position** — done, as M1.20; its entry is above.
 
 ---
 
@@ -305,24 +205,26 @@ wrong once seen in the editor, the wedge is in Git history at `55294fa` and its 
 
 ## Next
 
-**One engineering item is open — M1.12.3 — and then M1 is the owner's alone.**
+**No engineering item is open. M1 is the owner's alone, once the two changes below have been
+driven by hand.**
 
-**0. M1.12.3 — the Link wins at the mouth for widths.** Filed in `docs/ROADMAP.md` with its
-done-condition. An authored `Connector::laneWidths` still replaces the Link's width at *both* ends
-(`road_boundaries.cpp:116-117`), so a Connector whose author typed a width does not meet the lanes
-it attaches to even now that M1.18 puts its mouth on the Link. Give `ConnectorLaneWidths` a third
-`body` vector, hold `source`/`target` at the Link's width, taper between them, and re-derive
-`TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) from a stated end of the profile.
+**0. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
+layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on
+screen. Watch for a Connector deleted by a Link drag the author did not expect to touch it (the
+Undo is there; the surprise is the thing to judge), and for whether half a lane width is the right
+distance for "off the Link" — one constant, in `laneContains`.
 
 > **Carry into the acceptance exercise:** the mouth is the shape an author sees at every merge, and
 > both times it has been wrong it was found from a render, not from a test. When a Connector is
-> drawn onto a Link's body at a sharp angle, check the joint by eye: it should now sit flush on the
-> Link, spreading along its cross-section rather than stopping short of it — and never fold to a
-> point. At very steep arrivals the mouth is deliberately long (up to 28.9 m for a 7 m ribbon);
-> `kMouthShiftLimit` in `road_boundaries.cpp` is the one dial if that is too much.
+> drawn onto a Link's body at a sharp angle, check the joint by eye: every lane of the Connector
+> should meet the lane of the Link it feeds, middle on middle, and the mouth should span the Link's
+> own carriageway rather than spreading past it. At arrivals steeper than about 60 degrees it
+> cannot: `kMouthSpanFloor` in `road_boundaries.cpp` is the dial, and `connectorMouthFit` reports
+> what a mouth could not reach, in metres.
 
-Every other M1 sub-milestone and carve-out is implemented: M1.1–M1.18, plus M1.3.1, M1.5.1, M1.11.1
-and M1.12.1, with M1.12.2 closed as a measurement error rather than a defect. `docs/ROADMAP.md` is
+Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1 and
+M1.12.1, with M1.12.2 closed as a measurement error rather than a defect and M1.12.3 closed by
+M1.19. `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 

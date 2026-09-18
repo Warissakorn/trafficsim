@@ -42,8 +42,14 @@ TEST(attachments, interior_positions_ranges_persistence_edits_and_history) {
         const auto json=documentJson(d);CHECK(json["schemaVersion"]==6);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
         History h;h.reset(d);h.execute("move",[](auto& m){changeGeometry(m,"a",{{0,10},{30,10},{80,20}});});
-        attached(h.document());CHECK(h.document().network.connectors.front().from.station==at(d,"a",.4));
-        h.undo();CHECK(documentJson(h.document())==json);h.redo();attached(h.document());
+        // A Connector keeps its own position, so moving a Link does not drag it: the Link goes and
+        // the Connector stands where the author drew it. 10 m across a 3 m lane leaves its end off
+        // the road altogether, and a Connector with an end off its Link has nothing to connect --
+        // it is deleted in the same transaction, so one Undo brings both back. `connector_tests`
+        // carries the other half: a Link edit the end survives, where the station follows it.
+        CHECK(h.document().network.connectors.empty());
+        attached(h.document());
+        h.undo();CHECK(documentJson(h.document())==json);
         h.execute("lanes",[](auto& m){changeLanes(m,"b",{3,5,4,3});});attached(h.document());
         h.execute("side",[](auto& m){changeDrivingSide(m,DrivingSide::right);});attached(h.document());
         h.execute("copy",[](auto& m){duplicateObjects(m,{"a","b"},{0,100});});attached(h.document());
@@ -373,17 +379,21 @@ TEST(attachments, stretching_a_link_leaves_an_interior_attachment_where_it_was_d
         CHECK(connector(h.document(),id).from.station==30);attached(h.document());
     }
 }
-TEST(attachments, shortening_a_link_clamps_its_attachments_instead_of_rejecting_the_edit) {
+TEST(attachments, shortening_a_link_past_an_attachment_deletes_the_connector_that_hung_off_it) {
     auto d=roads(DrivingSide::left);d.network.links[0].geometry={{0,0},{100,0}};
     const auto id=addConnector(d,{"a","a1",80},{"b","b1",at(d,"b",.5)});
     History h;h.reset(d);
     h.execute("shorten",[](auto& m){changeGeometry(m,"a",{{0,0},{40,0}});});
-    // The forcing: the new link is shorter than the station that was stored.
+    // The forcing: the new link really is shorter than the station that was stored, so the end
+    // the author placed is 40 m past where the road now stops.
     CHECK(polylineLength(h.document().network.links.front().geometry)==40);
-    const auto& clamped=connector(h.document(),id);
-    CHECK(clamped.from.station==40);
-    const auto lane=laneGeometry(h.document().network.links.front(),"a1",DrivingSide::left);
-    CHECK(laneAttachment(h.document().network,clamped.from,true)==lane.back());
+    // A Connector keeps its own position, so the end does not slide back to the new end of the
+    // Link: it stands where it was, which is off the Link, and a Connector with an end off its
+    // Link has nothing to connect. It goes -- inside the same transaction, so one Undo brings
+    // back both the Link and the Connector. This replaced clamping the station, which moved a
+    // Connector the author had placed to somewhere they had not.
+    test::throws([&]{(void)connector(h.document(),id);},"EDIT_UNKNOWN_CONNECTOR");
+    CHECK(h.document().network.connectors.empty());
     CHECK(validateNetwork(h.document().network).empty());attached(h.document());
     h.undo();CHECK(h.document()==d);
 }

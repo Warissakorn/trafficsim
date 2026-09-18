@@ -158,3 +158,37 @@ same equality. Both catch a 0.1% width error.
 
 **The lesson, since it cost a session:** a distance between two boundaries is only a width if
 measured square to the road. The 24% figure was taken with `apart()`, which is not.
+
+---
+
+### M1.12.1 — A Connector's own lane widths and markings
+
+**Implemented.** Both fields of Vissim's Connector `Lanes` tab that the model could not express:
+
+- **`laneWidths`** — one metre value per lane path. Previously every width was read from the Link
+  each end joins, so a widening taper had to be authored on the Links instead.
+- **`laneMarkings`** — the `MarkingType` painted on each **interior divider**, replacing a
+  hard-coded dashed line. The two outer edges stay solid: they are the edge of the carriageway,
+  not a lane divider. *Indexing note:* Vissim's field is per lane; ours is per divider
+  (`paths − 1`), because per-lane does not map unambiguously onto `paths + 1` boundary lines.
+  **This mapping was not checked against Vissim** — it is a chosen representation, not a measured
+  parity claim (rule 4).
+
+Both are **empty by default**, meaning "derive it from the Links", which is what every Connector
+drawn before schema 6 does and what one whose lanes were never given a width must keep doing.
+`connectorLaneWidths` is the single place a width is decided, so `connectorBoundaries` (drawing)
+and `connectorShapeIssues` (`TIGHT_CONNECTOR_RADIUS`) cannot disagree once one is authored —
+before this they computed it independently (rule 3). Schema 6 is additive-optional: absent keys
+give an empty vector and nothing is converted on read, because nothing changed meaning. Marking
+names are stored as `"solid"`/`"dashed"` so a human reading the file sees words, and adding a kind
+cannot renumber what older files meant.
+
+A resize that changes the path count **drops** the authored arrays rather than padding them: an
+entry the author never typed is not a width they chose, and the derived value is the honest
+fallback — the same reasoning that clears `laneBlend` when geometry changes. A partial list is
+rejected (`EDIT_LANES`), since no field would say which lanes were authored and which derived.
+
+**Done:** a width and a divider style are authorable, round-trip through the project file, undo as
+one entry, and feed the drawing; a Connector never given either is unchanged to 1e-12, verified by
+loading a schema-5 file written before the field existed. `BlockedVeh`, `NoLnCh` and
+`Has overtaking lane` are **not** in this milestone; they wait on the lane-changing model (Q2).
