@@ -50,10 +50,18 @@ add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
+# nlohmann/json is a large header-only template library: on its own it costs about 1.2 s to parse
+# and instantiate, and src/project/document.hpp puts it in 57 of the repository's 78 translation
+# units. Precompiling it on the targets that have several sources each turns that into one cost per
+# target instead of one per file. Single-source targets are left alone deliberately -- there a PCH
+# costs about as much as the file it would accelerate.
+target_precompile_headers(trafficsim_project PRIVATE <nlohmann/json.hpp>)
+
 add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp
     src/commands/split_link.cpp src/commands/connector_commands.cpp src/commands/delete_objects.cpp
     src/commands/demand_commands.cpp src/commands/appearance_commands.cpp)
 target_link_libraries(trafficsim_commands PUBLIC trafficsim_project PRIVATE trafficsim_options)
+target_precompile_headers(trafficsim_commands PRIVATE <nlohmann/json.hpp>)
 
 function(trafficsim_runtime_data target)
     add_dependencies(${target} trafficsim-data)
@@ -85,6 +93,7 @@ if(BUILD_TESTING)
         tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+    target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
     foreach(group core network reference project editor connectors diagnostics demand ranges attachments)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
