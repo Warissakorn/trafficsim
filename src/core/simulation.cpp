@@ -90,7 +90,11 @@ SimState stepSimulation(const SimState& state, double dt) {
     const auto tick = state.tick + 1;
     const double time = static_cast<double>(tick) * dt;
     auto& events = next.events;
-    auto vehicles = state.vehicles;
+    // The state copy above already deep-copied the vehicle list, and next.vehicles is rebuilt from
+    // scratch below, so take that buffer as this tick's working copy rather than copying the list a
+    // second time. Nothing reads next.vehicles between here and the rebuild.
+    auto vehicles = std::move(next.vehicles);
+    next.vehicles.clear();
     std::vector<PendingVehicle> candidates;
     for (const auto& input : next.inputs)
         if (!input.queue.empty()) candidates.push_back(input.queue.front());
@@ -112,7 +116,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         const auto& type = detail::byId(scenario.vehicleTypes, pending.vehicleTypeId);
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         if (!spansBuilt) {
-            candidateRefs = resolveRefs(scenario, vehicles);
+            candidateRefs = resolveRefs(scenario, vehicles, index);
             candidateSpans = occupiedSpans(scenario, vehicles, index, candidateRefs);
             candidateBuckets = bucketSpans(candidateSpans, scenario.segments.size());
             spansBuilt = true;
@@ -137,7 +141,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     }
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
     // Resolved once per tick rather than roughly six times per vehicle.
-    const auto refs = resolveRefs(scenario, vehicles);
+    const auto refs = resolveRefs(scenario, vehicles, index);
     const auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.
     const auto buckets = bucketSpans(spans, scenario.segments.size());
     // Signal colour depends only on the tick's time, so it is the same for every vehicle.
@@ -146,6 +150,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h)
         headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], state.time));
     next.vehicles.clear();
+    next.vehicles.reserve(vehicles.size()); // At most one survivor per vehicle; arrivals already in.
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto& vehicle = vehicles[v];
         const auto& type = scenario.vehicleTypes[refs[v].type];

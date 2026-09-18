@@ -60,6 +60,24 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
         index.conflictSegmentOfRule.push_back(found == scenario.segments.end() ? SIZE_MAX :
             static_cast<std::size_t>(found - scenario.segments.begin()));
     }
+    // Sorting by (id, position) puts a repeated id's FIRST occurrence at the front of its equal
+    // range, so the lower_bound below returns what byId's find_if returned.
+    const auto buildTable = [](const auto& items) {
+        std::vector<IdSlot> table;
+        table.reserve(items.size());
+        for (std::size_t i = 0; i < items.size(); ++i) table.push_back({items[i].id, i});
+        std::sort(table.begin(), table.end(), [](const IdSlot& a, const IdSlot& b) {
+            return a.id == b.id ? a.index < b.index : a.id < b.id;
+        });
+        return table;
+    };
+    index.routeOfId = buildTable(scenario.routes);
+    index.typeOfId = buildTable(scenario.vehicleTypes);
+    index.behaviourOfType.reserve(scenario.vehicleTypes.size());
+    for (const auto& type : scenario.vehicleTypes) {
+        const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
+        index.behaviourOfType.push_back(static_cast<std::size_t>(&behaviour - scenario.behaviours.data()));
+    }
     index.routeRules.resize(scenario.routes.size());
     for (std::size_t r = 0; r < scenario.routes.size(); ++r)
         for (std::size_t k = 0; k < scenario.priorityRules.size(); ++k) {
@@ -78,16 +96,24 @@ const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenari
 VehicleLocation locateOnParts(const std::vector<RoutePart>& parts, const Vehicle& vehicle) {
     return locate(parts, vehicle);
 }
-std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector<Vehicle>& vehicles) {
+namespace {
+// Same miss as byId, so an unknown id still fails the same way and with the same message.
+std::size_t lookup(const std::vector<IdSlot>& table, const std::string& id) {
+    const auto found = std::lower_bound(table.begin(), table.end(), id,
+        [](const IdSlot& slot, const std::string& key) { return slot.id < key; });
+    if (found == table.end() || found->id != id) throw std::logic_error("Unknown runtime ID: " + id);
+    return found->index;
+}
+}
+std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
+                                     const ScenarioIndex& index) {
+    (void)scenario; // Every id this needs is already resolved in the index.
     std::vector<VehicleRefs> refs;
     refs.reserve(vehicles.size());
     for (const auto& vehicle : vehicles) {
-        const auto& route = detail::byId(scenario.routes, vehicle.routeId);
-        const auto& type = detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId);
-        const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
-        refs.push_back({static_cast<std::size_t>(&route - scenario.routes.data()),
-                        static_cast<std::size_t>(&type - scenario.vehicleTypes.data()),
-                        static_cast<std::size_t>(&behaviour - scenario.behaviours.data())});
+        const auto route = lookup(index.routeOfId, vehicle.routeId);
+        const auto type = lookup(index.typeOfId, vehicle.vehicleTypeId);
+        refs.push_back({route, type, index.behaviourOfType[type]});
     }
     return refs;
 }
