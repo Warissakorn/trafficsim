@@ -112,7 +112,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         const auto& type = detail::byId(scenario.vehicleTypes, pending.vehicleTypeId);
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         if (!spansBuilt) {
-            candidateRefs = resolveRefs(scenario, vehicles);
+            candidateRefs = resolveRefs(scenario, vehicles, index);
             candidateSpans = occupiedSpans(scenario, vehicles, index, candidateRefs);
             candidateBuckets = bucketSpans(candidateSpans, scenario.segments.size());
             spansBuilt = true;
@@ -137,7 +137,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     }
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
     // Resolved once per tick rather than roughly six times per vehicle.
-    const auto refs = resolveRefs(scenario, vehicles);
+    const auto refs = resolveRefs(scenario, vehicles, index);
     const auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.
     const auto buckets = bucketSpans(spans, scenario.segments.size());
     // Signal colour depends only on the tick's time, so it is the same for every vehicle.

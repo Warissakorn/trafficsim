@@ -93,6 +93,8 @@ struct RouteHead { std::size_t headIndex{}; double partStart{}; };
 // The same idea for a priority rule: a rule whose yield segment lies on this route, with the start
 // station of the first route part carrying it, so the stop line is a route coordinate.
 struct RouteRule { std::size_t ruleIndex{}; double partStart{}; };
+// One id -> position entry in a sorted lookup table.
+struct IdSlot { std::string id; std::size_t index{}; };
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
@@ -102,6 +104,19 @@ struct ScenarioIndex {
     // search by id. SIZE_MAX when the rule names a segment that does not exist; validation
     // rejects that scenario, but a hand-built index must not read out of bounds before it does.
     std::vector<std::size_t> conflictSegmentOfRule;  // parallel to Scenario::priorityRules
+    // Id lookups a vehicle needs every tick, resolved once per scenario. Before this, every tick
+    // re-derived the same three indices for every vehicle by linear search over string ids, which
+    // the profile showed as a quarter of the whole run.
+    //
+    // Sorted by id, searched by lower_bound -- NOT a hash map: core/ may not use unordered
+    // containers at all (hard rule 2, enforced by tools/check_architecture.cpp), because their
+    // iteration order is unspecified and that would put reproducibility at the mercy of the
+    // standard library. Ties are ordered by the element's own position, so a lookup on a repeated
+    // id selects its FIRST occurrence -- exactly the element byId's linear scan returned.
+    std::vector<IdSlot> routeOfId, typeOfId;
+    // The behaviour a vehicle uses depends only on its TYPE, so it needs no per-vehicle lookup
+    // at all once the type is known.
+    std::vector<std::size_t> behaviourOfType;        // parallel to Scenario::vehicleTypes
 };
 // Scenario lookups for one vehicle, resolved once per tick instead of once per use.
 struct VehicleRefs { std::size_t route{}, type{}, behaviour{}; };
