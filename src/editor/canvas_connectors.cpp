@@ -14,6 +14,22 @@ QPainterPath path(const std::vector<Point>& points) {
     }
     return result;
 }
+// The station some OTHER connector already attaches at on this lane, within `tolerance` of
+// `station` -- the same pixel tolerance the lane-end snap uses. Two connectors an author means
+// to meet at one corner routinely land a few centimetres apart by mouse precision alone, which
+// is well under kMinSectionLength and only surfaces as UNSUPPORTED_CONNECTOR_POSITION at Run.
+// Snapping here catches it at the point the mismatch is introduced, not after the fact.
+std::optional<double> nearbyAttachment(const Network& network, const std::string& linkId,
+                                       const std::string& laneId, double station, double tolerance) {
+    for (const auto& other : network.connectors)
+        for (bool dir : {true, false}) {
+            const auto& ref = dir ? other.from : other.to;
+            if (ref.linkId != linkId || ref.laneId != laneId) continue;
+            const double existing = attachmentStation(network, ref, dir);
+            if (std::abs(existing - station) < tolerance) return existing;
+        }
+    return {};
+}
 }
 std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoing) const {
     auto result=nearestLane(p);if(!result)return {};
@@ -25,6 +41,8 @@ std::optional<LaneReference> EditorCanvas::hitLanePosition(Point p, bool outgoin
         double station=matchedStation(g,l.geometry,picked);
         if(picked<tolerance)station=0;
         else if(length-picked<tolerance)station=reference;
+        else if(const auto nearby=nearbyAttachment(document_->network,result->linkId,result->laneId,
+                                                   station,tolerance))station=*nearby;
         if(station!=(outgoing?reference:0.))result->station=station;
     }
     return result;

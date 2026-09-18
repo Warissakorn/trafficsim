@@ -11,6 +11,70 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-18 — A pick snaps to a station another Connector already attaches at
+
+**The owner's own four-leg drawing would not Run, and the drawing was not wrong — the numbers
+in it were.** `runDiagnostics` on it reported `UNSUPPORTED_CONNECTOR_POSITION` twice, and
+`compileDocument` threw on the same two. Measuring what actually collided:
+
+| lane | keeps its boundary | refused | apart |
+|---|---|---|---|
+| `lane-3` | `connector-30` (2-lane range) @ 49.376709 | `connector-32` @ 49.385893 | **0.009 m** |
+| `lane-22` | `connector-46` @ 2.963768 | `connector-38` (2-lane range) @ 3.021435 | **0.058 m** |
+
+Both pairs are two turning movements leaving or joining **one corner**, authored as separate
+Connectors because they have different destinations — which is correct modelling. They differ
+only by what a hand does with a mouse: 9 mm and 5.8 cm. `kMinSectionLength` is 0.2 m, so
+`sections.cpp` rejects the second cut of each pair and `connectorRuntimeIssues` names its owner.
+**The core is right and the guard is right**; nothing in `src/model` or `src/core` changed.
+
+**The fix is at the point the mismatch is introduced.** `hitLanePosition` already snapped a pick
+to a lane's two ends within `4/zoom` screen units; it now also takes the exact station of an
+attachment already on that lane within the same radius. One branch, one file-local helper, in a
+function both the two-click tool and the right-button range gesture already go through
+(`canvas_input.cpp:23` and `:154`), so both ends of both workflows are covered by the one change.
+
+**What it does not cover, stated rather than implied.** The radius is a screen distance, so past
+roughly 20 pixels per metre it falls below `kMinSectionLength` itself and stops standing between
+an author and a sub-0.2 m mistake. That is deliberate — an author zoomed that far in is asking
+for fine placement — but it means the snap **reduces** this class of error, it does not make it
+impossible. `UNSUPPORTED_CONNECTOR_POSITION` is still the backstop and still has to be.
+
+**The test asserts its forcing first.** In `attachment_ui_tests.cpp`: the second pick really is a
+distinct point, really is inside the radius, and the third really is outside it — all three
+asserted before the equality, because without them the equality could hold vacuously. It then
+asserts the near pick takes the first Connector's station **exactly** (`==` on the double, which
+is meaningful because `attachmentStation` returns `*ref.station` verbatim), and that the far pick
+**keeps its own** — a snap that always pulled to the nearest attachment would make two genuinely
+distinct attachments unauthorable, and that is the failure this guards. Checked by deleting the
+branch: the suite fails with `A pick inside the snap radius kept its own station`.
+
+**Verification:** 23/23 CTest, architecture and size guards green, on a real Qt build (Qt 6.4.2
+from the distribution) under `xvfb`. Linux only — `native.yml` also runs these suites on Windows
+and nothing here has been near it.
+
+### Next
+
+The M1 position is unchanged: every sub-milestone is implemented and **only the owner's timed
+exercise in `docs/M1_ACCEPTANCE.md` closes it.** Carry the file above into that exercise — it is
+a real four-leg drawing that exercised a real authoring trap, and re-drawing those two corners on
+a build with this snap is the cheapest check that the snap earns its place.
+
+Two follow-ups were scoped and deliberately **not** done, so a later session does not re-derive
+them:
+
+1. **Name the conflict in the diagnostic.** Today `UNSUPPORTED_CONNECTOR_POSITION` says "move it
+   0.2 m clear" without saying clear of *what* or by *how much* — I had to measure the table above
+   with a throwaway tool. The enrichment belongs on `Diagnostic` (`diagnostics.hpp:8`), never on
+   `core`'s `ValidationIssue` (D18a), but the data it needs is **discarded upstream**:
+   `sections.cpp:66-71` keeps only the rejected Connector's own id, not the cut it lost to. So it
+   is `sections.cpp` + `compile.cpp` + `diagnostics.{hpp,cpp}` — its own session, not an add-on.
+2. **A station field in the inspector.** There is none (`editor_inspector.cpp`), so a station can
+   only be set by dragging. Worth having for exact after-the-fact repair, but it is a new field,
+   not a button.
+
+---
+
 ## 2026-09-18 — The Connector mouth is a plain square end again (M1.17 reverted)
 
 **The owner asked for the first Connector geometry back:** the end of a Connector simply meets the
@@ -221,121 +285,6 @@ minutes; booking it in the same commit is what keeps the file internally true.
 width holds to 1e-9 on a straight Connector; a Connector never given a width is unchanged to
 1e-12, including one loaded from a schema-5 file. Linux only — `native.yml` also runs the Qt
 suites on Windows and nothing in these sessions has been near it.
-
----
-
-## 2026-09-17 — M1.11.1 closed: a vehicle enters at the drawn station too
-
-With M3.1 in place, the target station joins `runtimeSections`' cut list and a Connector arriving
-inside a lane body runs. M1.11.1's done-condition — "leaves **and** enters" — is met, with no
-carve-out.
-
-**Two things were not the two-line change I expected.**
-
-*An arriving vehicle continues downstream of the cut, not upstream of it.* `sectionForStation`
-resolves a station to the section that **ends** there, which is right for a signal head standing
-on a cut and wrong for a vehicle joining at one — it would have put the arrival on the 40 m of
-lane the vehicle never drives. `sectionStartingAt` is its mirror, and the two now sit next to each
-other in the header saying which is for what.
-
-*Route expansion had to learn where a route joins a lane.* An authored route `{a1, conn, b1}`
-expanded from `b1`'s **first** section, so the chain read `… conn, b1` while `conn`'s successor was
-`b1/sec-2` — `DISCONNECTED_ROUTE`, on a network that is perfectly legal. The walk now asks the
-segment it just emitted where it leads on this lane and starts there. That is also what makes the
-travelled distance right: 100 m of `a1`, the Connector, and 60 m of `b1` — not 140 m of `b1`.
-
-**Where the missing-catalog check belongs, and where I first put it.** I had
-`derivedPriorityRules` throw `EDIT_NO_PRIORITY_DEFAULTS` when the gap time was absent. Two
-existing tests failed, and they were right to: `buildScenario`'s own header calls it "unchecked
-assembly, for diagnostics that must not throw", and blocking an **edit** because a data catalog
-was not resolved is exactly the boundary D18b exists to protect. The check moved to
-`priorityDefaultsIssues`, with two callers — `compileScenario` throws on it, `runtimeDiagnostics`
-reports it — so Run and the panel cannot disagree about it. Editing, saving and Undo of such a
-Connector are untouched.
-
-**The derived rule.** One per interior target: the arriving path gives way, its stop line at its
-own downstream end, the conflict point where the upstream section ends — which is the drawn
-station. Appended to any authored rules rather than replacing them, in path order, so it is
-reproducible. Nothing is persisted: it is a function of the drawing, like the sections themselves.
-
-**Measured, not assumed.** A probe on the failing case showed the arriving vehicle reaching 182 m
-against a 180.002 m stop line by tick 20 and 236 m by tick 70 — it was crossing all along. My test
-was reading `distanceOf` **after** the loop, by which point the vehicle had finished the route and
-left the network, so it was comparing against a departed vehicle. The check now runs during the
-loop. Worth recording because the assertion looked like a product failure and was a test bug.
-
-**The negative check ran through the data file.** Setting `gapTime` and `headway` to 0.001 in
-`data/priority-rules/default.json` breaks three named assertions, the held-at-the-stop-line one
-among them. So the hold really comes from those two numbers, and the data path is live end to
-end — not a value compiled in somewhere with the file for decoration.
-
-**Verification:** 23/23 CTest, 119/119 unit tests, architecture and size guards green,
-`trafficsim-cli 42` unchanged at `meanDelay 29.249359418430977` with the not-yet-validated marker.
-The four frozen baselines are untouched. Linux only.
-
-**`docs/ROADMAP.md` is now at exactly 500 lines, the hard rule 6 limit.** The next entry needs
-room made first: the M1 block holds 21 sub-milestones, most long implemented, and archiving the
-completed bodies the way `PROGRESS.md` and `VISSIM_PARITY.md` were archived is the move. That is
-its own piece of work, not something to do while squeezing prose to fit.
-
----
-
-## 2026-09-17 — M3.1: a merge is arbitrated by gap time and headway
-
-`validateScenario` refused any merge outright, and rightly: a place fed by two segments had no
-rule for who goes, and D13 forbids inventing one. The owner authorized implementing the necessary
-part of M3 rather than carving M1.11.1's second half out, so `PriorityRule` now supplies the rule
-— Vissim's, with the two numbers an engineer tunes.
-
-**Most of a merge already worked, which is why this is small.** `OccupiedSpan::segmentIndex` is a
-**global** index into `Scenario::segments` and spans are bucketed globally, so two vehicles on
-different routes see each other the moment they share a segment — car-following across the merge
-needed nothing. The single missing thing is seeing the major approach **before** entering it,
-which is not on the minor vehicle's own route and so is invisible to `closestVehicle`. That is one
-scan of one bucket, and the hold at the stop line is the **same clamp a red head uses**
-(`simulation.cpp`), not a second braking path beside it.
-
-**The guard is loosened by construction, never by removal.** A place fed by *n* segments is
-runnable only when at least *n*−1 of them give way to another of them — so exactly one has
-priority and the rest have somewhere to wait. Everything else still reports `UNSUPPORTED_MERGE`,
-including a rule that points at the wrong segment and one that names its own segment. Checked by
-deleting the guard instead of narrowing it: **six tests fail**, across `core`, `connectors`,
-`diagnostics` and `ranges`. That is what tells me the relaxation is the shape I intended and not
-a hole.
-
-**A stopped queue is a gap, not a block.** The first version I reasoned through would have had the
-minor approach yield to any major vehicle within the gap time — including one standing still 90 m
-back, whose time-to-conflict is finite only because the arithmetic does not care that it is not
-moving. That deadlocks the minor approach behind a queue that is never going to clear. A major
-vehicle further off than the headway and not moving does not block, and there is a test for it.
-
-**One test was vacuous and the negative check is what caught it.** The first "held at the stop
-line" assertion used a major vehicle one second from the conflict point and ran 20 ticks. With the
-clamp deleted it still passed — from 95 m at rest, two seconds is not enough to reach a stop line
-5 m away, so the assertion was true whether the feature existed or not. Rewritten with a
-thirty-second gap time and a major vehicle nine seconds out, over six seconds: now it fails first
-when the clamp is removed, and it asserts the blocking actually happened rather than assuming it.
-
-**Gap time and headway are data.** `data/priority-rules/default.json`, read by `resolveCatalogs`.
-They are read **best-effort**, not unconditionally, and that was a correction: reading them as a
-required catalog broke `catalog_overrides_and_missing_catalog_are_explicit`, which pins a real
-contract — a document carrying its own vehicle types and behaviours is portable to a machine with
-no data directory. So a missing file is not a load error; it is an error at the point of use,
-where the alternative would be a zero gap time, which is a merge nobody gives way at, invented in
-silence. `PriorityDefaults` is left zero-initialised on purpose for the same reason.
-
-**What this is not.** A deterministic threshold test: wait while any major vehicle is inside the
-headway or would arrive inside the gap time, go otherwise. Not a calibrated critical-gap
-distribution, and hard rule 4's not-yet-validated marker stays. **M3 is not closed** — conflict
-areas as editable input, priority rules as an authorable object, stop and yield control, crossing
-conflicts and signal heads anywhere on a link are all still M3's, and its done-condition about
-minor-road delay responding to gap time is not met by this. Booked as M3.1 at its number.
-
-`src/core/` gained a type and a clamp and no dependency; the four frozen baselines are untouched
-because an empty rule list changes nothing.
-
-**Verification:** 23/23 CTest, 116/116 unit tests, architecture and size guards green. Two
-deliberate negative checks each broke named assertions. Linux only.
 
 ---
 

@@ -205,6 +205,45 @@ int main(int argc,char** argv) {
         QTest::mouseRelease(c->viewport(),Qt::LeftButton,Qt::NoModifier,pixel(c,copyTo));
         require(w.history().document().network.links.size()==4 && w.history().document().network.connectors.size()==4,"Group copy lost internal Connectors");
         action(w,"editorUndo");require(w.history().document()==beforeCopy,"Group copy was not one undoable edit");
+
+        // Two Connectors an author means to leave one corner land centimetres apart from mouse
+        // precision alone. That is far under kMinSectionLength, so the drawing saves and the
+        // second one is refused only at Run, as UNSUPPORTED_CONNECTOR_POSITION. A pick within
+        // the snap radius of an attachment already on the lane takes that exact station instead.
+        c->select("");
+        confirm("editorLinkDialog",true,2);releaseDrag(c,{-90,-50},{-10,-50},Qt::RightButton);
+        confirm("editorLinkDialog",true,2);releaseDrag(c,{10,50},{90,50},Qt::RightButton);
+        const auto& drawn=w.history().document().network.links;
+        require(drawn.size()==beforeCopy.network.links.size()+2,"Snap fixture links missing");
+        const auto& leaves=drawn[drawn.size()-2];const auto& joins=drawn.back();
+        const auto leavesLane=laneGeometry(leaves,leaves.lanes[0].id,DrivingSide::left);
+        const auto joinsAt=[&](double fraction){
+            const auto g=laneGeometry(joins,joins.lanes[0].id,DrivingSide::left);
+            return pointAlong(g,fraction*polylineLength(g));
+        };
+        const double snapRadius=4/std::abs(c->transform().m11()),leavesLength=polylineLength(leavesLane);
+        const auto at=[&](double offset){return pointAlong(leavesLane,.5*leavesLength+offset);};
+        // The forcing: the second pick really is a separate point, inside the snap radius, and
+        // the third really is outside it. Without these the equality below could hold vacuously.
+        require(std::hypot(at(.4*snapRadius).x-at(0).x,at(.4*snapRadius).y-at(0).y)>1e-3,"Second pick is not a distinct point");
+        require(std::hypot(at(.4*snapRadius).x-at(0).x,at(.4*snapRadius).y-at(0).y)<snapRadius,"Second pick is outside the snap radius");
+        require(std::hypot(at(3*snapRadius).x-at(0).x,at(3*snapRadius).y-at(0).y)>snapRadius,"Third pick is inside the snap radius");
+        const auto madeBefore=w.history().document().network.connectors.size();
+        confirm("editorRangeDialog",true,1);releaseDrag(c,at(0),joinsAt(.3),Qt::RightButton);
+        confirm("editorRangeDialog",true,1);releaseDrag(c,at(.4*snapRadius),joinsAt(.6),Qt::RightButton);
+        confirm("editorRangeDialog",true,1);releaseDrag(c,at(3*snapRadius),joinsAt(.8),Qt::RightButton);
+        const auto& snapped=w.history().document().network.connectors;
+        require(snapped.size()==madeBefore+3,"Snap fixture Connectors missing");
+        const auto& corner=snapped[snapped.size()-3];const auto& beside=snapped[snapped.size()-2];
+        const auto& apart=snapped.back();
+        require(corner.from.laneId==beside.from.laneId && corner.from.laneId==apart.from.laneId,"Snap fixture left different lanes");
+        require(station(beside.from,true)==station(corner.from,true),"A pick inside the snap radius kept its own station");
+        require(station(apart.from,true)!=station(corner.from,true),"A pick outside the snap radius was pulled onto an existing attachment");
+        attached(w.history().document());
+        action(w,"editorUndo");action(w,"editorUndo");action(w,"editorUndo");
+        action(w,"editorUndo");action(w,"editorUndo");
+        require(w.history().document()==beforeCopy,"Snap fixture did not undo cleanly");
+
         const auto file=dir.path()+"/body-connectors.traffic.json";const auto saved=documentJson(w.history().document());
         w.saveFile(file);w.openFile(file);require(documentJson(w.history().document())==saved,"Save/reopen lost attachments");
         c->select(id);item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");QTest::qWait(30);
