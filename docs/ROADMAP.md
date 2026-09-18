@@ -246,8 +246,8 @@ reinstate the pinch it was added to fix: 18% at 63°, 30% at a right angle.
 `a_bent_connector_holds_its_width_square_to_the_road_from_both_sides` asserts it **exactly**, to
 1e-9, on every interior leg of a hard bend — and M1.12.1's curved-width bound was tightened from
 `span < 5.7` to the same equality. Both catch a 0.1% width error. Legs touching either end are
-excluded: they run to a vertex the wedge mouth moved (M1.17), so their direction is the Link's
-cross-section rather than the Connector's own, which reads 5.8 mm wide for that reason alone.
+excluded, which dates from the wedge mouth (M1.17, since reverted) moving those vertices; with
+square ends back the exclusion is merely conservative.
 
 **The lesson, since it cost a session:** a distance between two boundaries is only a width if it is
 measured square to the road. `perpendicular()` in `connector_tests.cpp` already carried that
@@ -316,23 +316,21 @@ travel whole. `Alt`-drag rotation is still not implemented and is not booked.
 
 **Done:** two Links and the Connector between them move as one shape, and one Undo puts them back.
 
-### M1.17 — The mouth is a wedge cut on the Link
+### M1.17 — The mouth is a wedge cut on the Link — **reverted 2026-09-18**
 
-**Implemented.** A Connector's two ends are cut on the cross-section of the Link they attach to,
-so each mouth lands on that Link's lane edges exactly and the markings run continuously from the
-road into the Connector. `e6dd394` had squared the ends to the Connector instead, leaving the
-mouth 4.7-17.2 cm clear of the road on a gentle join and up to 0.88 m on a hard reverse curve,
-with the polygon overlapping the carriageway to cover it. A screenshot of a real Vissim Connector
-arriving on a Link body at an angle settled it: Vissim cuts the wedge.
+**Reverted on the owner's instruction.** A Connector's ends are square cuts across its own ribbon
+again: the end meets the Link at the attachment with no realignment towards the Link's direction,
+as the first Connector geometry drew it. The wedge cut on the Link's cross-section, and the
+bounded re-miter that stood in for it where the cut folded, are both removed; both remain in Git
+history. The step this leaves at an oblique arrival — 4.7-17.2 cm on a gentle join, up to 0.88 m
+on a hard reverse curve — is the accepted shape, not a defect.
 
-That commit had justified the square cut with numbers (1.06 m of a 3.50 m lane on a reverse curve,
-1.96 m at 60 degrees, 0.46 m at 90) which belong to a different defect — **interpolating** the
-cross-section through the body. That defect stays fixed: the cut is only the two end samples, and
-36 of 90 boundary vertices move across the fixtures, all of them ends, with every interior vertex
-bit-for-bit identical.
+What M1.17 fixed alongside the cut is **kept**: the cross-section is not interpolated through the
+body, so a 3.5 m lane is still 3.5 m at every interior point (the interpolation drew 1.06 m on a
+reverse curve and 0.46 m at a 90-degree arrival).
 
-**Done:** a Connector's mouth sits on its Link's lane edges at any arrival angle, and the body is
-still the full lane its Links give it.
+**Done:** a Connector has a plain square mouth at any arrival angle, and the body is still the
+full lane its Links give it.
 
 ---
 
