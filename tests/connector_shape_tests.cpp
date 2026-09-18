@@ -71,25 +71,44 @@ double mouthLine(const std::vector<std::vector<Point>>& boundaries,bool start) {
         worst=std::max(worst,std::abs((b.x-a.x)*(at(i).y-a.y)-(b.y-a.y)*(at(i).x-a.x))/std::max(span,1e-12));
     return worst;
 }
-// The cosine between the mouth line and the boundaries' own end legs: zero when the end is a
-// plain square cut across the ribbon, which is what a Connector draws now.
-double mouthSquareness(const std::vector<std::vector<Point>>& boundaries,bool start) {
-    const auto at=[&](std::size_t i){return start?boundaries[i].front():boundaries[i].back();};
-    const auto a=at(0),b=at(boundaries.size()-1);
-    const double m=std::hypot(b.x-a.x,b.y-a.y);
-    if(m<1e-12)return 0;
-    double worst=0;
-    for(const auto& edge:boundaries) {
-        const Point p=start?edge.front():edge.back(),q=start?edge[1]:edge[edge.size()-2];
-        const double l=std::hypot(q.x-p.x,q.y-p.y);
-        if(l<1e-12)continue;
-        worst=std::max(worst,std::abs(((b.x-a.x)*(q.x-p.x)+(b.y-a.y)*(q.y-p.y))/(m*l)));
-    }
-    return worst;
-}
-// How far a boundary end stands from the Link lane edge it attaches to. A square end stands a
-// little clear of the road at an oblique arrival; that step is the shape, not an error.
+// `mouthSquareness` lived here until M1.18: it measured the cosine between the mouth line and the
+// boundaries' own end legs, and asserting it zero was asserting a square cut across the ribbon.
+// The mouth is cut on the Link's cross-section now, so that measure is deliberately non-zero and
+// has been replaced by `mouthFlush` in `connector_mouth_tests.cpp`, which measures the thing that
+// matters instead: how far the ends are from the Link's own cross-section line.
+// How far a boundary end stands from the Link lane edge it attaches to. Since M1.18 the mouth is
+// cut on the Link's cross-section, so a boundary end lands ALONG that cut at width/cos(arrival)
+// rather than on the Link's own lane edge: this distance is the spread, not an error.
 double stepTo(Point end,Point edge){return std::hypot(end.x-edge.x,end.y-edge.y);}
+// An edge continued straight off both of its ends, so a point near a mouth still has a leg of the
+// far edge to measure against. Needed because the mouth slide leaves the two edges ending at
+// different stations: measured against the edge as stored, a point past its end would report the
+// distance to that endpoint instead of to the road, which reads as a lane several metres wide.
+std::vector<Point> extended(const std::vector<Point>& edge) {
+    const auto lead=[](Point p,Point q){return Point{p.x+(p.x-q.x)*50,p.y+(p.y-q.y)*50};};
+    std::vector<Point> result{lead(edge.front(),edge[1])};
+    result.insert(result.end(),edge.begin(),edge.end());
+    result.push_back(lead(edge.back(),edge[edge.size()-2]));
+    return result;
+}
+// The carriageway between two boundaries at one sample, square to the road, with the far edge
+// extended so a mouth sample has something to measure against. Correct wherever the two edges are
+// parallel; where the far one leans -- a lane tapering closed -- use `mouthWidth` below instead.
+double squareWidth(const std::vector<Point>& a,const std::vector<Point>& b,std::size_t j) {
+    return perpendicular(extended(b),a[j]);
+}
+// The same width at a mouth where the FAR edge leans -- a lane tapering closed converges on its
+// neighbour, so a perpendicular dropped onto it reads short by construction (2.945 m of a 3 m
+// lane here) and always did. Resolving the two ends' separation onto the ribbon's own normal
+// instead removes the mouth's spread without asking the far edge to be parallel.
+double mouthWidth(const std::vector<Point>& a,const std::vector<Point>& b,bool start) {
+    const Point p=start?a.front():a.back(),q=start?a[1]:a[a.size()-2];
+    const Point along{start?q.x-p.x:p.x-q.x,start?q.y-p.y:p.y-q.y};
+    const double length=std::hypot(along.x,along.y);
+    if(length<1e-12)return 0;
+    const Point end=start?b.front():b.back();
+    return std::abs((end.x-p.x)*(-along.y/length)+(end.y-p.y)*(along.x/length));
+}
 // Measured square to the road. The two end samples are excluded when `body`: a mouth cut on the
 // link is a wedge on purpose, so its corner is nearer the far edge than a full width, and
 // measuring it square would forbid the very thing Vissim draws.
@@ -131,7 +150,13 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
         // width in between to within a millimetre of the miter on a tapering neighbour -- never
         // the 2.6 m pinch that came of shrinking every lane together.
         const bool end=j==0 || j+1==weights.size();
-        test::near(apart(boundaries[0],boundaries[1],j),3+.5*weights[j],end?1e-9:1e-3);
+        // Through the body the cross-section measure is the width, as it always was. At the two
+        // mouths it is not: since M1.18 the mouth is cut on the Link's cross-section rather than
+        // square across the ribbon, so it reads the lane width over the cosine of the arrival.
+        // Resolved back onto the ribbon's normal it is the lane again, to within the 1e-3 these
+        // width-changing lanes lean by; `connector_mouth_tests.cpp` carries the exact case.
+        test::near(end?mouthWidth(boundaries[0],boundaries[1],j==0)
+                      :apart(boundaries[0],boundaries[1],j),3+.5*weights[j],1e-3);
         const double wedge=apart(boundaries[1],boundaries[2],j);
         CHECK(wedge<previous);previous=wedge;
     }
@@ -140,18 +165,11 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
     // by construction, so on its own it cannot tell a cross-section that has been left behind by
     // the curve from one that follows it.
     for(const auto& p:boundaries.front())CHECK(perpendicular(boundaries[1],p)>2.9);
-    // Each mouth is one straight line across the road, square to the Connector's own axis: the
-    // end is left where the offset puts it and simply meets the Link at the attachment, with no
-    // cut on the Link's cross-section and no wedge. It therefore stands a small step clear of the
-    // Link's lane edges at an oblique arrival -- 4.7 cm here, 17.2 cm on the outermost edge.
+    // Each mouth is one straight line across the road. Since M1.18 that line is the Link's own
+    // cross-section rather than a square cut across the ribbon, so it is deliberately NOT square
+    // to the Connector's axis any more; `connector_mouth_tests.cpp` asserts it lies on the Link.
     test::near(mouthLine(boundaries,true),0,1e-9);
     test::near(mouthLine(boundaries,false),0,1e-9);
-    // Squareness is measured against the widest boundary only: a tapering lane's own edge closes
-    // on its neighbour, so its leg is not parallel to the ribbon and never was.
-    // 1e-2 because these lanes change width end to end (3 m to 3.5 m, and a taper beside them),
-    // so an edge leans very slightly against the ribbon even where nothing is cut.
-    test::near(mouthSquareness({boundaries[0],boundaries[1]},true),0,1e-2);
-    test::near(mouthSquareness({boundaries[0],boundaries[1]},false),0,1e-2);
     const auto meets=[&](Point a,Point b){CHECK(stepTo(a,b)<.25);};
     for(std::size_t i=0;i<3;++i)meets(boundaries[i].front(),laneBoundaryGeometry(in,i,d.network.drivingSide).back());
     meets(boundaries[0].back(),laneBoundaryGeometry(out,0,d.network.drivingSide).front());
@@ -176,9 +194,24 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
         // is the miter (6.3 cm measured): along the cross-section a mitered corner reads wide,
         // exactly as a Link's own edges do at a bend. Square to the road it is the lane width,
         // which is what the perpendicular check above measures.
-        const double tolerance=j==0 || j+1==both[0].size()?1e-9:8e-2;
-        test::near(apart(both[0],both[1],j),3+pairWeights[j],tolerance);   // in-1 3 m into out-1 4 m
-        test::near(apart(both[1],both[2],j),4-pairWeights[j],tolerance);   // in-2 4 m into out-2 3 m
+        // The body is untouched by M1.18 and is asserted exactly as it always was: close to the
+        // straight interpolation, each lane's two edges converging at their own rate, within the
+        // 8 cm the miter costs at a corner (6.3 cm measured). The two mouths are the samples the
+        // mouth slide moves, and there the distance is measured ALONG the Link's cross-section, so
+        // it reads the lane width over the cosine of the arrival: 3.118 m for this 3 m lane and
+        // 4.118 m for the 4 m one, a 3-4% spread on this near-square pair of joints. Bounded here
+        // rather than pinned, because on a 90-degree turn between two five-point edges no
+        // index-for-index measure is exact once the two ends sit at different stations;
+        // `connector_mouth_tests.cpp` pins width and flushness to 1e-9 on fixtures where it is.
+        if(j==0 || j+1==both[0].size()) {
+            CHECK(apart(both[0],both[1],j)>=3+pairWeights[j]-1e-9);
+            CHECK(apart(both[0],both[1],j)<=(3+pairWeights[j])*1.05);
+            CHECK(apart(both[1],both[2],j)>=4-pairWeights[j]-1e-9);
+            CHECK(apart(both[1],both[2],j)<=(4-pairWeights[j])*1.05);
+        } else {
+            test::near(apart(both[0],both[1],j),3+pairWeights[j],8e-2);   // in-1 3 m into out-1 4 m
+            test::near(apart(both[1],both[2],j),4-pairWeights[j],8e-2);   // in-2 4 m into out-2 3 m
+        }
     }
     CHECK(connectorMarkings(wide.network,editableConnector(wide,pair))[1].geometry.size()==both[1].size());
     auto plain=roads();const auto single=addConnector(plain,{"in","in-2"},{"other","other-1"});
@@ -186,8 +219,17 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
     // A diverge is the mirror image: the lane that opens out starts at nothing and grows.
     auto open=roads();const auto out2=addConnectorRange(open,{"other","other-1"},{"out","out-1"},1,2);
     const auto opening=connectorBoundaries(open.network,editableConnector(open,out2));
+    // The closed end stays exactly closed -- a lane tapered to nothing leaves ON its neighbour,
+    // and the mouth slide is made to keep it there rather than prise it back open by millimetres.
     test::near(apart(opening[1],opening[2],0),0,1e-9);
-    test::near(apart(opening[1],opening[2],opening[0].size()-1),3,1e-9);
+    // ... and opens to the Link's own 3 m lane at the far end. Bounded rather than pinned: this
+    // mouth arrives at 49 degrees on a curve, and the slide moves the three edges 2.5, -2.5 and
+    // -6.1 m along their own paths, so the two ends of this lane sit at very different stations
+    // and no index-for-index measure of it is exact. Both readings are recorded --  perpendicular
+    // to the far edge 2.945 m, resolved onto the normal 2.868 m -- and `connector_mouth_tests.cpp`
+    // pins the width to 1e-9 on straight fixtures where an exact measure does exist.
+    CHECK(mouthWidth(opening[1],opening[2],false)>2.8);
+    CHECK(mouthWidth(opening[1],opening[2],false)<3.2);
 }
 // A reverse curve leaves both ends parallel, so the turn between the two tangents says nothing
 // about how hard the road bends. Reading each end against the chord is what catches it.
@@ -229,15 +271,19 @@ TEST(connectors, a_drawn_lane_keeps_its_width_square_to_the_road) {
         const auto& g=editableConnector(d,id).geometry;
         CHECK(minimumRadius(g)<40);
         CHECK(boundaries.size()==2);
-        // Both ends are square cuts across the Connector's own ribbon, standing at the Link they
-        // attach to rather than being cut onto its cross-section. On these shapes that leaves a
-        // step of up to 0.88 m at the mouth, which is the shape asked for, not an error.
+        // Each mouth is still ONE straight line across the road -- but since M1.18 that line is the
+        // Link's cross-section, not a square cut across the ribbon, so it is no longer square to
+        // the Connector's own axis. `connector_mouth_tests.cpp` asserts it lies on the Link to
+        // 1e-9; here the point is that the ribbon it cuts is still the full lane.
         test::near(mouthLine(boundaries,true),0,1e-9);
         test::near(mouthLine(boundaries,false),0,1e-9);
-        test::near(mouthSquareness(boundaries,true),0,1e-9);
-        test::near(mouthSquareness(boundaries,false),0,1e-9);
+        test::near(squareWidth(boundaries[0],boundaries[1],0),3.5,1e-9);
+        test::near(squareWidth(boundaries[0],boundaries[1],boundaries[0].size()-1),3.5,1e-9);
+        // The mouth now slides onto the Link instead of standing clear of it, so what is left is
+        // the spread along the cut: 3.5 cm on the quarter turn, 25.6 cm on the reverse curve,
+        // where a square end stood up to 0.88 m off.
         for(std::size_t i=0;i<2;++i)
-            CHECK(stepTo(boundaries[i].front(),laneBoundaryGeometry(d.network.links[0],i,DrivingSide::left).back())<1.);
+            CHECK(stepTo(boundaries[i].front(),laneBoundaryGeometry(d.network.links[0],i,DrivingSide::left).back())<.3);
         const double least=narrowest(boundaries,true);
         CHECK(least>shape.least);      // beats what the mouth-to-mouth cross-section drew
         CHECK(least>.9*3.5);           // and is the lane the links actually give it
@@ -272,22 +318,35 @@ TEST(connectors, a_moved_link_leaves_the_connector_its_width) {
                                                  arrival.x*along.x+arrival.y*along.y));
         CHECK(between>degrees*std::numbers::pi/180*.8);
         const auto boundaries=connectorBoundaries(d.network,moved);
-        // The mouth is a square end at every arrival angle: one straight line across the ribbon,
-        // square to it, standing 0.12-0.29 m clear of the Link's lane edges where the arrival is
-        // oblique. It is not cut onto the Link's cross-section.
+        const auto fit=connectorMouthFit(d.network,moved);
+        // The mouth is one straight line at every arrival angle, now cut on the Link's own
+        // cross-section rather than square across the ribbon (M1.18).
         test::near(mouthLine(boundaries,false),0,1e-9);
-        test::near(mouthSquareness(boundaries,false),0,1e-9);
+        // At 30 and 60 degrees the mouth reaches its Link exactly, and the ribbon it cuts is still
+        // the 3.5 m lane square to the road. At 90 the Connector arrives straight across the lane,
+        // where a cut on the cross-section lies along the ribbon itself and no finite slide meets
+        // it: the fit reports what is left standing off, in metres, rather than pretending.
+        if(degrees<90) {
+            test::near(fit.target.residual,0,1e-9);
+            test::near(squareWidth(boundaries[0],boundaries[1],boundaries[0].size()-1),3.5,1e-9);
+        } else {
+            CHECK(fit.target.residual>1.);   // the forcing: this really is the unreachable case ...
+            CHECK(fit.target.residual<2.);   // ... and it is bounded, not running away
+        }
         for(std::size_t i=0;i<2;++i)
-            // Up to half the ribbon's width once the arrival is square across the lane, which is
-            // exactly what a square end standing at the attachment looks like there.
-            CHECK(stepTo(boundaries[i].back(),laneBoundaryGeometry(b,i,DrivingSide::left).front())<2.5);
-        // The body is still a 3.5 m lane: the interpolated cross-section drew 1.96 m at 60
-        // degrees and 0.46 m at 90. Only the two mouths are cut on the Link, as Vissim cuts them,
-        // so the body is measured against the body -- a wedge segment is not a lane edge, and
-        // measuring across one reads 1.3 cm short of the lane without the lane being short.
-        const std::vector<Point> far(boundaries[1].begin()+1,boundaries[1].end()-1);
-        for(std::size_t j=1;j+1<boundaries[0].size();++j)
-            test::near(perpendicular(far,boundaries[0][j]),3.5,1e-9);
+            // The remaining distance to the Link's own lane edge is the SPREAD along the cut,
+            // which grows as the arrival steepens: 0.27 m at 30 degrees, 1.75 m at 60, and 8.93 m
+            // at 90, where the Connector arrives straight across the lane and a cut on the
+            // cross-section is nearly parallel to the ribbon. That spread is the trade the owner
+            // took for a flush mouth; `connectorMouthFit` reports what it could not reach.
+            CHECK(stepTo(boundaries[i].back(),laneBoundaryGeometry(b,i,DrivingSide::left).front())<9.);
+        // The whole ribbon is still a 3.5 m lane: the interpolated cross-section drew 1.96 m at
+        // 60 degrees and 0.46 m at 90. Measured square to the road at EVERY sample, mouths
+        // included -- the old form compared the two edges index for index against a truncated
+        // copy of the far one, which only worked while both were sampled at the same stations.
+        // The mouth slide moves them along their own curves, so the projection is the measure now.
+        for(std::size_t j=0;j<boundaries[0].size();++j)
+            test::near(squareWidth(boundaries[0],boundaries[1],j),3.5,1e-9);
     }
 }
 // An offset of a bend tighter than the offset loops back on itself. The surface is filled
@@ -416,54 +475,6 @@ TEST(connectors, a_bent_connector_holds_its_width_square_to_the_road_from_both_s
     // The same both ways round: neither edge is measured as the privileged one.
     CHECK(narrowest(b,true)>7.0-1e-2);
 }
-// A Connector arriving across a Link's BODY at a strongly oblique angle cannot have its mouth cut
-// on that Link's cross-section at all: the cut line then lies too near the ribbon's own axis, and
-// wherever the corners are put along it the two outer boundaries cross each other. The surface is
-// filled from a closed ring, so that fold closes into the sharp point the owner circled on our own
-// render. Such a mouth falls back to the square end offsetGeometry already drew -- parallel-sided,
-// stopping at the attachment, which is what Vissim's own screenshot of this joint shows.
-TEST(connectors, an_oblique_arrival_on_a_link_body_keeps_its_width_and_never_folds) {
-    // Every heading of the Link crossed with every heading of the arrival: the two are independent
-    // and it is their difference that conditions the cut, so neither may be fixed.
-    int oblique=0,wedges=0;
-    for(int linkDegrees=0;linkDegrees<360;linkDegrees+=30)
-    for(int arrivalDegrees=0;arrivalDegrees<360;arrivalDegrees+=15) {
-        const double heading=linkDegrees*std::numbers::pi/180,arrival=arrivalDegrees*std::numbers::pi/180;
-        Network n;n.drivingSide=DrivingSide::left;
-        const Link main{"main",{{-60*std::cos(heading),-60*std::sin(heading)},
-                                {60*std::cos(heading),60*std::sin(heading)}},{{"main-1",3.5},{"main-2",3.5}}};
-        const auto lane=laneGeometry(main,"main-1",n.drivingSide);
-        const auto meet=pointAlong(lane,polylineLength(lane)/2);
-        std::vector<Point> spine;
-        for(int i=4;i>=0;--i)spine.push_back({meet.x-i*9*std::cos(arrival),meet.y-i*9*std::sin(arrival)});
-        n.links={main,{"feed",{{spine.front().x-25*std::cos(arrival),spine.front().y-25*std::sin(arrival)},
-                               spine.front()},{{"feed-1",3.5},{"feed-2",3.5}}}};
-        const Connector c{"c",{"feed","feed-1",{}},{"main","main-1",60.},spine,2,2};
-        n.connectors={c};
-        const auto boundaries=connectorBoundaries(n,c);
-        // The forcing, in two halves. This really is a BODY attachment -- an end attachment is the
-        // ordinary joint and is cut on the Link's end face, which is a different case entirely --
-        // and the sweep really does reach arrivals oblique enough to ill-condition that cut.
-        CHECK(!attachedAtLinkEnd(n,c.to,false));
-        const Point across{-std::sin(heading),std::cos(heading)};
-        const double off=std::abs(std::cos(arrival)*across.x+std::sin(arrival)*across.y);
-        if(off<std::cos(50*std::numbers::pi/180))++oblique;
-        // Both mouth lanes are the Link's own 3.5 m lane, exactly, however oblique the arrival.
-        // The unbounded re-miter drew 5.59, 9.41, 14.31 and 18.11 m of mouth here.
-        for(std::size_t i=0;i+1<boundaries.size();++i)
-            test::near(apart(boundaries[i],boundaries[i+1],boundaries[i].size()-1),3.5,1e-9);
-        // ... and the filled surface is the whole ribbon: a ring that crosses itself is a fold,
-        // and the trim that closes it is what draws the point.
-        std::vector<Point> ring(boundaries.front());
-        ring.insert(ring.end(),boundaries.back().rbegin(),boundaries.back().rend());
-        CHECK(crossings(ring)==0);
-        CHECK(trimSelfIntersections(ring).size()==ring.size());
-        // Every arrival angle now ends the same way: a square cut across the ribbon, one straight
-        // line, never a wedge that spikes across the Link.
-        test::near(mouthLine(boundaries,false),0,1e-9);
-        test::near(mouthSquareness(boundaries,false),0,1e-9);
-        if(off>std::cos(20*std::numbers::pi/180))++wedges;
-    }
-    CHECK(oblique>0);  // The sweep really reached the arrivals this test is about ...
-    CHECK(wedges>0);   // ... without losing the ordinary ones the wedge still serves.
-}
+// The oblique-arrival sweep that lived here moved to `connector_mouth_tests.cpp` with M1.18: what
+// it was really about -- where a mouth lands and whether the ribbon folds getting there -- is that
+// file's subject now, and it was also what pushed this one past the 500-line guard.

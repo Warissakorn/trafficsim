@@ -13,18 +13,22 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current work:** M1 implementation covers M1.1–M1.17, including controlled splits,
+**Current work:** M1 implementation covers M1.1–M1.18, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
 body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,
-Vissim's Intermediate points, a Name on every object, group move, and a plain square Connector mouth (M1.17's wedge cut was reverted on 2026-09-18).
+Vissim's Intermediate points, a Name on every object, group move, and a Connector mouth cut flush on
+the Link's cross-section (**M1.18**, a longitudinal slide along each boundary — *not* M1.17's
+lateral wedge, which folded and stays reverted).
 M1.11.1 and M1.12.1 are both closed: lanes are cut into runtime sections at interior attachments,
 a Connector arriving on a lane body merges under **M3.1** (a priority rule with a gap time and
 headway — which does **not** close M3), and a Connector carries its own lane widths and divider
-markings in schema 6. **Every M1 carve-out is now closed**, and so is **M1.12.2**: the reported miter "bulge" was
+markings in schema 6. **M1.12.2** is closed: the reported miter "bulge" was
 measured along the cross-section, where a mitered corner's diagonal is `width/cos(φ/2)` by
 construction. Square to the road the carriageway is exact, so `offsetGeometry` was not changed —
-removing the miter would reinstate the pinch it exists to fix. **M1's engineering side is done;
-only the owner's timed gate remains.**
+removing the miter would reinstate the pinch it exists to fix. **One engineering item is open:
+M1.12.3** — an authored `Connector::laneWidths` still overrides the Link's width at the mouth, so
+the Link must win there and the authored width taper in through the body. Do not start it in the
+same session as other mouth work.
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 

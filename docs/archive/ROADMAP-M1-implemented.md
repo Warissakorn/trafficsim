@@ -126,3 +126,35 @@ does not add right-of-way, merging or crossing-conflict logic.
 ---
 
 ---
+
+---
+
+### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
+
+**Closed without a code change, because there was nothing wrong.** The record said a 2→2 Connector
+through a sharp bend "bulges to 8.698 m of a 7.000 m width, 24% over". Measured three ways on a
+hard bend (90.47° of deflection):
+
+| how the width is measured | reading |
+|---|---|
+| along the cross-section, at the mitered vertex | **9.9403 m** (+42%) |
+| perpendicular, point to the far polyline | 7.0425 m (+0.6%) |
+| **projected across the leg the vertex lies on** | **7.000000 m** (exact) |
+
+The first is `width / cos(φ/2)`: the corner-to-corner diagonal of a correctly mitered joint, what a
+road painted round a kink measures across its corner. Square to the road the carriageway is
+untouched; the original 8.698 m is the same identity at a gentler bend (`7.000 / cos(36.4°)`).
+
+**`offsetGeometry` must not be "fixed".** `bends_keep_their_full_carriageway_width` pins the miter
+to 1e-9 and asserts both halves deliberately — 10.5 m projected across each leg *and*
+`3.5*sqrt(2)` between adjacent boundaries at a right-angle corner, which is `3.5/cos(45°)`.
+Removing the miter would reinstate the pinch it was added to fix: 18% at 63°, 30% at a right angle.
+
+**What was missing, and is now there.** Width had only ever been bounded from **below**
+(`least > .9*3.5`), which is how a claim of 24% over stood for a session unchallenged.
+`a_bent_connector_holds_its_width_square_to_the_road_from_both_sides` asserts it **exactly**, to
+1e-9, on every interior leg of a hard bend, and M1.12.1's curved-width bound was tightened to the
+same equality. Both catch a 0.1% width error.
+
+**The lesson, since it cost a session:** a distance between two boundaries is only a width if
+measured square to the road. The 24% figure was taken with `apart()`, which is not.

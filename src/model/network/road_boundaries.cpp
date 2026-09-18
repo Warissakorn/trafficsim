@@ -49,6 +49,53 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
         for(const auto& lane:l.lanes)if(lane.id==ref.laneId)return lane.width;
     throw std::invalid_argument("UNKNOWN_LANE");
 }
+double cross(Point a,Point b){return a.x*b.y-a.y*b.x;}
+// As kMiterLimit bounds a corner that would spike to infinity, this bounds a mouth. The slide
+// runs away as the arrival turns to face along the Link's cross-section; four times the boundary's
+// own offset is where it stops being a mouth and starts being a spike.
+constexpr double kMouthShiftLimit=4.;
+// The slide must stay monotone along each boundary, which needs |s| < zone. The margin is the
+// slack that keeps the worst boundary strictly inside that, not on it.
+constexpr double kMouthZoneMargin=1.25;
+std::vector<double> stationsOf(const std::vector<Point>& p) {
+    std::vector<double> result(p.size(),0.);
+    for(std::size_t i=1;i<p.size();++i)result[i]=result[i-1]+std::hypot(p[i].x-p[i-1].x,p[i].y-p[i-1].y);
+    return result;
+}
+// pointAlong with the ends extrapolated rather than clamped. At an oblique mouth about half the
+// boundaries have to reach BEHIND the mouth to meet the Link, and the extension is straight, so
+// the point it lands on is exactly on the Link's cross-section rather than near it.
+Point alongExtended(const std::vector<Point>& p,const std::vector<double>& at,double station) {
+    const auto lerp=[&](std::size_t a,std::size_t b,double t) {
+        return Point{p[a].x+(p[b].x-p[a].x)*t,p[a].y+(p[b].y-p[a].y)*t};
+    };
+    const std::size_t last=p.size()-1;
+    if(station<=0) {
+        std::size_t b=1;while(b<last && at[b]<=0)++b;
+        return at[b]>0?lerp(0,b,station/at[b]):p.front();
+    }
+    if(station>=at[last]) {
+        std::size_t a=last;while(a>0 && at[last]-at[a-1]<=0)--a;
+        if(a==0 && at[last]<=0)return p.back();
+        const std::size_t previous=a>0?a-1:0;
+        const double length=at[last]-at[previous];
+        return length>0?lerp(previous,last,(station-at[previous])/length):p.back();
+    }
+    std::size_t i=1;while(i<last && at[i]<station)++i;
+    const double length=at[i]-at[i-1];
+    return length>0?lerp(i-1,i,(station-at[i-1])/length):p[i];
+}
+// The end of one boundary, the direction its station grows in there, and the Link's cross-section
+// through the attachment. Everything the slide needs, read once per boundary per end.
+struct MouthEnd { Point at,along; };
+MouthEnd mouthEnd(const std::vector<Point>& b,bool start) {
+    const Point p=start?b.front():b.back(),q=start?b[1]:b[b.size()-2];
+    // The boundary's OWN end leg, never the spine's: where a lane tapers, its edge leans off the
+    // ribbon by construction, and solving against the ribbon would leave that one boundary short.
+    const Point step=start?Point{q.x-p.x,q.y-p.y}:Point{p.x-q.x,p.y-q.y};
+    const double length=std::hypot(step.x,step.y);
+    return {p,length>0?Point{step.x/length,step.y/length}:Point{0,0}};
+}
 }
 ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
     const auto paths=connectorPaths(n,c);
@@ -71,7 +118,87 @@ ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
     }
     return widths;
 }
-std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Connector& c) {
+namespace {
+// How far each boundary must slide ALONG ITS OWN offset curve for its end to land on the Link's
+// cross-section, and how much of that slide there is room to spend.
+//
+// This is not M1.17's wedge. That moved the end vertices ACROSS the ribbon, onto the Link's lane
+// edges, which re-aimed each boundary's last leg and let neighbouring boundaries cross -- the fold
+// that closed the mouth to a point. A slide along the curve never changes a vertex's lateral
+// offset, so the boundaries keep their order and cannot cross each other at all. What it costs is
+// that the mouth spreads along the cross-section by |d|/|c.n| instead of |d|: the mouth is flush
+// with the Link but wider than the lanes it feeds, and its lane edges land outside the Link's.
+// That trade was the owner's, made with the numbers in front of them (M1.18).
+ConnectorMouthFit fitMouth(const std::vector<std::vector<Point>>& boundaries,Point anchor,Point line,bool start) {
+    ConnectorMouthFit fit;
+    fit.shift.resize(boundaries.size());
+    double worst=0;
+    for(std::size_t i=0;i<boundaries.size();++i) {
+        const auto end=mouthEnd(boundaries[i],start);
+        // s solves ((at + s*along) - anchor) x line == 0. The denominator vanishes as the boundary
+        // turns to face along the cross-section itself, where no finite slide reaches the line;
+        // the limit below is what stops a mouth becoming a spike there.
+        const double turn=cross(end.along,line);
+        const double room=kMouthShiftLimit*std::hypot(end.at.x-anchor.x,end.at.y-anchor.y);
+        const double reach=cross(Point{anchor.x-end.at.x,anchor.y-end.at.y},line);
+        double s=std::abs(turn)>1e-9?reach/turn:(reach>=0?room:-room);
+        // A degenerate end leg has no direction to slide along, so it does not move. This is a
+        // lane tapered to nothing, whose end sits on its neighbour's and is carried by it.
+        if(!std::isfinite(s) || (end.along.x==0 && end.along.y==0))s=0;
+        fit.shift[i]=std::clamp(s,-room,room);
+        worst=std::max(worst,std::abs(fit.shift[i]));
+    }
+    fit.zone=kMouthZoneMargin*worst;   // |s| < zone is what keeps the slide monotone.
+    return fit;
+}
+// Spend what the Connector can actually afford. Every shift at one end scales by the same factor,
+// so a mouth short of its Link is still one straight line -- it has simply not arrived yet, and
+// `residual` says by how much rather than leaving it to be noticed.
+void spendMouth(ConnectorMouthFit& fit,const std::vector<std::vector<Point>>& boundaries,Point anchor,
+                Point line,bool start,double affordable) {
+    const double scale=fit.zone>0?std::min(1.,affordable/fit.zone):1;
+    fit.zone*=scale;
+    for(std::size_t i=0;i<boundaries.size();++i) {
+        fit.shift[i]*=scale;
+        const auto end=mouthEnd(boundaries[i],start);
+        // What still stands off the Link, square to its cross-section, in metres. Exact even where
+        // the solve above was unbounded, because this never divides by the vanishing term.
+        fit.residual=std::max(fit.residual,
+            std::abs(cross(Point{anchor.x-end.at.x,anchor.y-end.at.y},line)-fit.shift[i]*cross(end.along,line)));
+    }
+}
+void shearMouth(std::vector<std::vector<Point>>& boundaries,const ConnectorMouthFit& fit,bool start) {
+    if(fit.zone<=0)return;
+    // A lane tapered to nothing ends ON its neighbour and must leave on it too. The two share an
+    // end point but not a curve, so sliding each along its own by the same distance still parts
+    // them by millimetres and prises the closed lane back open. Noted here, re-closed below.
+    std::vector<bool> closed(boundaries.size(),false);
+    for(std::size_t i=1;i<boundaries.size();++i) {
+        const auto a=mouthEnd(boundaries[i-1],start).at,b=mouthEnd(boundaries[i],start).at;
+        closed[i]=std::hypot(b.x-a.x,b.y-a.y)<1e-9;
+    }
+    for(std::size_t i=0;i<boundaries.size();++i) {
+        if(fit.shift[i]==0)continue;   // A parallel arrival is left bit for bit as it was.
+        const auto at=stationsOf(boundaries[i]);
+        const double length=at.back();
+        std::vector<Point> moved(boundaries[i].size());
+        for(std::size_t j=0;j<moved.size();++j) {
+            const double from=start?at[j]:length-at[j];
+            const double decay=std::clamp(1-from/fit.zone,0.,1.);
+            moved[j]=alongExtended(boundaries[i],at,at[j]+fit.shift[i]*decay);
+        }
+        boundaries[i]=std::move(moved);
+    }
+    for(std::size_t i=1;i<boundaries.size();++i)if(closed[i]) {
+        auto& edge=boundaries[i];
+        (start?edge.front():edge.back())=start?boundaries[i-1].front():boundaries[i-1].back();
+    }
+}
+// The ribbon before either mouth is corrected: parallel-sided, square to its own axis, which is
+// what the body is and stays. Both public entry points below start here, so a reported number and
+// a drawn edge can never come from two different ribbons.
+struct SquareRibbon { std::vector<std::vector<Point>> boundaries; std::vector<Point> spine; };
+SquareRibbon squareRibbon(const Network& n,const Connector& c) {
     const auto paths=connectorPaths(n,c);const auto weights=connectorBlendWeights(c);
     const std::size_t count=paths.size();
     const auto widths=connectorLaneWidths(n,c);
@@ -112,11 +239,37 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     }
     std::vector<std::vector<Point>> result;
     for(std::size_t i=0;i<=count;++i)result.push_back(offsetGeometry(spine,offsets[i]));
-    // M1.17 reverted on the owner's instruction: a Connector's ends are left exactly where
-    // offsetGeometry puts them -- square to the Connector's own axis -- instead of being cut on
-    // the Link's cross-section into a wedge. The mouth simply meets the Link at the attachment,
-    // with no realignment towards the Link's direction. The earlier wedge is in Git history.
-    return result;
+    return {std::move(result),spine};
+}
+// Fit both mouths onto their Links and slide the ribbon into them. The two ends share the spine
+// rather than taking half each, so an ordinary end beside a steep one still aligns exactly; when
+// together they want more than there is, both shrink by the same factor. Either way the two zones
+// sum to at most the whole length, so they meet at worst at a point and never overlap.
+ConnectorMouthFits fitAndShear(const Network& n,const Connector& c,SquareRibbon& ribbon) {
+    const Point entry=endCross(n,c.from,c.fromLaneCount,true),exit=endCross(n,c.to,c.toLaneCount,false);
+    ConnectorMouthFits fits{fitMouth(ribbon.boundaries,ribbon.spine.front(),entry,true),
+                            fitMouth(ribbon.boundaries,ribbon.spine.back(),exit,false)};
+    const double length=polylineLength(ribbon.spine),wanted=fits.source.zone+fits.target.zone;
+    const double scale=wanted>length?length/wanted:1;
+    spendMouth(fits.source,ribbon.boundaries,ribbon.spine.front(),entry,true,fits.source.zone*scale);
+    spendMouth(fits.target,ribbon.boundaries,ribbon.spine.back(),exit,false,fits.target.zone*scale);
+    // Both fits are read off the square ribbon before either is applied, so the two ends cannot
+    // influence each other's numbers -- then applied, in a fixed order, for reproducibility.
+    shearMouth(ribbon.boundaries,fits.source,true);
+    shearMouth(ribbon.boundaries,fits.target,false);
+    return fits;
+}
+}
+std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Connector& c) {
+    auto ribbon=squareRibbon(n,c);
+    (void)fitAndShear(n,c,ribbon);
+    return std::move(ribbon.boundaries);
+}
+ConnectorMouthFits connectorMouthFit(const Network& n,const Connector& c) {
+    // Measured off the same ribbon connectorBoundaries draws, by the same call, so a reported
+    // number cannot describe a mouth other than the one on screen (hard rule 3).
+    auto ribbon=squareRibbon(n,c);
+    return fitAndShear(n,c,ribbon);
 }
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {
     const auto boundaries=connectorBoundaries(n,c);
