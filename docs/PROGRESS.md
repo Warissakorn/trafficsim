@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-18-flush-mouth.md`](archive/PROGRESS-2026-09-18-flush-mouth.md) — 2026-09-18, M1.18, the flush mouth
 - [`archive/PROGRESS-2026-09-17-mouth.md`](archive/PROGRESS-2026-09-17-mouth.md) — 2026-09-17, the wedge mouth and the miter "bulge"
 - [`archive/PROGRESS-2026-09-17.md`](archive/PROGRESS-2026-09-17.md) — 2026-09-17, later entries
 - [`archive/PROGRESS-2026-09-17-early.md`](archive/PROGRESS-2026-09-17-early.md) — 2026-09-17, earlier entries
@@ -13,79 +14,78 @@ long. Older entries are preserved whole there:
 
 ---
 
-## 2026-09-18 — The mouth meets the Link again, by sliding along the ribbon instead of cutting across it (M1.18)
+## 2026-09-18 — The middle of every Connector lane now lands on the middle of the Link lane it feeds (M1.19)
 
-**The owner's requirement, after seeing the square mouth in the editor:** every lane of a Connector
-must be backed by a lane of the Link, and must *meet* it. A square end does not — it stood 4.7 cm
-to 1.8 m clear at an oblique arrival, with the polygon overlapping the carriageway across that step.
+**The owner's requirement, after seeing M1.18's mouth in the editor:** each lane of a Connector must
+line up with the lane of the Link it joins — not merely meet the Link's cross-section somewhere
+along it.
 
-**This is not M1.17 reinstated; its revert stands.** M1.17 moved the end vertices **laterally**,
-onto the Link's lane edges. That re-aimed each boundary's last leg, let neighbouring boundaries
-cross, and folded the mouth to a point. M1.18 moves them **longitudinally** instead: each boundary
-slides along **its own offset curve** by `s = d·(c·u)/(c·n)`, decaying to zero over a transition
-zone. Because no vertex changes its lateral offset, the boundaries keep their order and **cannot
-cross each other** — the fold is structurally absent, not tested for and worked around. Measured
-over the 288-case sweep of Link heading × arrival angle: **0 folds, 0 ring self-crossings.**
+**What M1.18 left.** It slid each boundary along its own curve until the mouth lay ON the Link's
+cross-section, which made the mouth flush. But every boundary kept its full offset square to the
+Connector, so resolved onto that oblique cut the lanes came out spread by `1/cos(arrival)`: the
+mouth was the right line at the right angle and the wrong width, and each lane middle sat beside
+the Link lane middle it feeds. Measured on a two-lane body attachment: **0.42 m out at the worst
+arrival**, and a mouth spanning up to 28.9 m on a 7 m road at the clamp.
 
-**The trade the owner chose, in numbers.** The mouth is *flush but wider*: each lane keeps its full
-width square to the Connector, so the mouth spreads along the Link's cross-section by `|d|/|c·n|`
-and its lane edges land outside the Link's. Worst mouth span for a 7 m ribbon, by arrival angle off
-the Link's axis:
+**What replaces it.** The offsets the boundaries leave each mouth at are no longer the Connector's
+own stacked widths. They are read off **the Link's own lane boundaries at the attachment**,
+projected onto the Connector's cross-section — one projection per boundary, then re-solved against
+the end leg each boundary actually produces (`kMouthPasses`, a fixed 8 iterations; never a
+convergence test, hard rule 2). The slide then lands each boundary exactly on the Link's own lane
+boundary, so every lane middle coincides with the Link's, and the slide is `O(width)` rather than
+`O(width/cos)` — the spike the `kMouthShiftLimit` clamp existed to bound no longer arises.
 
-| arrival | worst mouth span | | arrival | worst mouth span |
-|---|---|---|---|---|
-| 0-15° | 7.60 m | | 45-60° | 16.64 m |
-| 15-30° | 8.79 m | | 60-90° | 28.86 m (the clamp) |
-| 30-45° | 11.19 m | | | |
+**Measured, on a two-lane Connector into a two-lane Link, worst lane middle off its Link lane's:**
 
-`kMouthShiftLimit = 4` bounds it, exactly as `kMiterLimit = 4` bounds a corner that would spike to
-infinity — same form, same reason. **If 28.9 m looks wrong in the editor, that one constant is the
-dial**; the geometry below it is unchanged.
+| arrival | before | after | | mouth span (7 m road) | before | after |
+|---|---|---|---|---|---|---|
+| shallow | 0.42 m | 0.0001 m | | 0-60 degrees | up to 16.6 m | **7.000 m** |
+| 45 deg | 0.16 m | 0.005 m | | 60-90 degrees | up to 28.9 m | 7.1-9.2 m |
+| 75 deg | 0.05 m | 0.0006 m | | | | |
 
-**Falling short is reported, not hidden.** `connectorMouthFit` returns each end's shift, transition
-zone and **residual in metres** — how far the mouth still stands off its Link. The two ends share
-the spine rather than taking half each, so an ordinary end beside a steep one still aligns exactly.
-Residual is **0.00** on the reverse curve, gentle reverse, quarter turn, u-turn, and on a moved Link
-at 30° and 60°; it is **1.75 m** at 90°, where the Connector arrives straight across the lane and a
-cut on the cross-section lies along the ribbon itself. Worst over the whole sweep: 4.32 m.
+Over the 288-case heading x arrival sweep: **0 folds, 0 ring self-crossings** — unchanged, and
+structurally so, because nothing here moves a vertex laterally past its neighbour. In the 84 cases
+where the mouth's two outer edges land on the Link's outer edges, every interior divider and every
+lane middle agrees with the Link's to **1 mm**.
 
-**What did not change.** The body: a 3.5 m lane is still 3.5 m square to the road at every interior
-point. A parallel arrival has `c·u = 0`, so `s = 0` and the ribbon is left **bit for bit** as the
-plain offset drew it — which is most of every network, and why `lane_edge_tests.cpp`'s collinear
-fixture is untouched. A lane tapered to nothing still closes **exactly** on its neighbour: the two
-share an end point but not a curve, so sliding each by the same distance parted them by 5.4 mm until
-`shearMouth` re-closed them. `trafficsim-cli 42` is unchanged at `meanDelay 29.249359418430977` —
-`connectorBoundaries` is presentational and hit-test only, and that was verified, not assumed.
+**Three bounds, each there for a measured failure.** `kMouthSpanFloor` (0.25) stops the mouth being
+compressed to a point where the arrival faces along the Link's cross-section and every Link lane
+boundary projects onto the same place — the spike, in the other direction. `kMouthShiftLimit` now
+also caps the offsets themselves: the solve is unbounded in that direction and produced a reading
+of **3.6e7 metres** before the cap. And where the Connector's lane order runs opposite the Link's —
+a Connector arriving from the far side — the mouth keeps the Connector's own cross-section, because
+building it on the Link's would turn the ribbon over between its two ends: **120 of 288 sweep cases
+self-crossed** until that fallback was added.
 
-**Tests moved rather than loosened, and the measure changed for a reason.** `mouthSquareness` is
-gone: asserting it zero *was* asserting a square cut, the very thing the owner asked to stop. The
-new `tests/connector_mouth_tests.cpp` (a new `mouths` ctest group) asserts `mouthFlush` — distance
-from each boundary end to the Link's own cross-section — at **1e-9**, plus width at 1e-9, the
-fold-free ring, the bit-for-bit parallel case, a Connector too short for its arrival, and the
-near-parallel clamp. Deleting the two `shearMouth` calls fails the suite with
-`Numeric mismatch: 0.254907 vs 0.000000`.
+**M1.12.3 is closed by this, in the only way it can be.** The mouth is built from the **Link's**
+widths, never an authored `laneWidths`: a lane laid at a width the Link does not have cannot have
+both its middle on the Link's lane middle and its edges on the Link's edges — the two coincide only
+when the widths do. The authored width takes over through the body, over a transition zone of one
+carriageway width (capped at a quarter of the Connector each end). A Connector drawn as a single
+straight segment has no interior vertex for its own cross-section to appear at, so its authored
+width does not show; raise Intermediate points.
 
-**Where a bound replaced an equality, that is honest rather than convenient.** A mouth slide leaves
-a lane's two edges at different stations, so on a curved or width-changing ribbon no index-for-index
-measure of width is exact — on the 2-into-2 90° turn, readings of 2.87 m, 2.95 m and 3.01 m for the
-same 3 m lane, depending on the measure. Those fixtures now bound the width and say so; the exact
-assertions live on fixtures where an exact measure exists.
+**Tests changed, not loosened.** The measure at a mouth is now the separation of the two edges
+**along the cut** — which is what the mouth is — and that is the exact one: the taper fixture reads
+3.000/4.000 m at its source and 3.500 m at its target to 1e-9, and the diverge's far mouth, bounded
+at 2.8-3.2 m before, is pinned at 3 m. `squareWidth` at a mouth was dropped: it reads the lane over
+the cosine of the arrival by construction, so asserting 3.5 m there was asserting a square cut.
+Where a bound replaced an equality it carries its number: 2.8 mm where the slide is longer than the
+boundary's own end leg, 3.1 cm inside a transition zone at a 90-degree arrival, 0.17 mm of solver
+residue at the middle of a short Connector. `an_authored_width_is_exact_where_the_connector_is_
+straight` was rebuilt on collinear Links so it has a body to measure, and now states both halves:
+the author's width through the body, the Link's at each mouth.
 
-**Verification:** 24/24 CTest on Qt 6.4.2 under `xvfb`, file sizes green (`connector_shape_tests.cpp`
-split at 483 lines, `ROADMAP.md` trimmed to 485 with M1.12.2's closed body archived).
-*Linux only — no desktop verification claimed; the editor has not been driven by hand.*
+**Verification:** 24/24 CTest on Qt 6.4.2 under `xvfb`, file sizes green.
+`trafficsim-cli 42` unchanged at `meanDelay 29.249359418430977` — `connectorBoundaries` is
+presentational and hit-test only. *Linux only — no desktop verification claimed.*
 
 ### Next
 
-**M1.12.3 — the Link wins at the mouth for widths**, filed in `ROADMAP.md` with its done-condition.
-An authored `Connector::laneWidths` still replaces the Link's width at both ends
-(`road_boundaries.cpp:116-117`), so a Connector whose author typed a width does not match the lanes
-it attaches to. Give `ConnectorLaneWidths` a third `body` vector, hold `source`/`target` at the
-Link's width, and taper between them. **Not** done in this session on purpose: M1.18 moved where a
-mouth sits, M1.12.3 moves how wide it is, and together a failing width test and a failing mouth test
-are indistinguishable.
-
-Then, still the only thing that closes M1: the owner's timed exercise in `docs/M1_ACCEPTANCE.md`.
+**The Connector keeps its own position** — the second half of what the owner asked for in the same
+session: a Connector stores its geometry rather than having both ends recomputed from its Links on
+every edit, can be dragged off a Link, and is deleted when either end comes off one. See the entry
+below once it lands.
 
 ---
 

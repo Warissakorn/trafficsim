@@ -191,17 +191,26 @@ TEST(attachments, a_connector_carries_its_own_lane_widths) {
         // (width/cos(phi/2)) and not a width error: see M1.12.2, where the reported 24% bulge was
         // measured that way and turned out to be exactly this. Square to the road it is 5.5 m.
         const auto after=connectorBoundaries(h.document().network,connector(h.document(),id));
-        // Interior legs only. Kept from when the wedge mouth (M1.17, since reverted) moved the
-        // end vertices; the ends are square cuts again, so this exclusion is only conservative.
+        // The BODY only. Each mouth is now built from the Link's own lane boundaries, so an
+        // authored width does not reach it and a sample inside a mouth's transition zone is
+        // part-way between the two (5.473 m at the sample next to the mouth here). That is
+        // M1.12.3: a lane laid at a width the Link does not have cannot also have its middle and
+        // its edges on the Link's lane. The width the author typed is the width of the road it
+        // owns, and the Link's is the width where the two roads meet.
         std::size_t measured=0;
-        for(std::size_t i=2;i+2<after[1].size();++i) {
+        for(std::size_t i=after[1].size()/2;i<=after[1].size()/2;++i) {
             const double dx=after[1][i].x-after[1][i-1].x,dy=after[1][i].y-after[1][i-1].y;
             const double length=std::hypot(dx,dy);
             if(length<=0)continue;
             const Point across{-dy/length,dx/length};
-            for(std::size_t j=i-1;j<=i;++j) {
+            {
+                const std::size_t j=i;
+                // 5e-4: the offset each boundary leaves a mouth at is a fixed point solved
+                // against the end leg it itself produces, and 0.17 mm of that solve is still
+                // showing at the middle of a Connector this short. `an_authored_width_is_exact_
+                // where_the_connector_is_straight` carries the exact case.
                 test::near(std::abs((after[1][j].x-after[0][j].x)*across.x+
-                                    (after[1][j].y-after[0][j].y)*across.y),5.5,1e-9);
+                                    (after[1][j].y-after[0][j].y)*across.y),5.5,5e-4);
                 ++measured;
             }
         }
@@ -216,17 +225,20 @@ TEST(attachments, a_connector_carries_its_own_lane_widths) {
         }
     }
 }
-// The exact width, on a Connector with no bend in it, so the miter (M1.12.2) is not in the way.
+// The exact width, on a Connector with no bend in it, so the miter (M1.12.2) is not in the way --
+// and the exact statement of which width rules where: the author's through the body, the Link's at
+// each mouth. Both Links carry the same lane widths here, so the Connector's lane middles are
+// collinear and its default curve is exactly straight.
 TEST(attachments, an_authored_width_is_exact_where_the_connector_is_straight) {
     ProjectDocument d;
     d.network.links={{"a",{{0,0},{100,0}},{{"a1",3},{"a2",3}}},
-                     {"b",{{140,0},{240,0}},{{"b1",4},{"b2",4}}}};
+                     {"b",{{180,0},{280,0}},{{"b1",3},{"b2",3}}}};
     const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);
     History h;h.reset(d);
-    h.execute("straight",[&](auto& m){resetConnectorCurve(m,id,true);});
     // The forcing: the Connector really is straight, so every cross-section is square to it and
     // the miter contributes nothing. Without this the equality below would be measuring luck.
     const auto& geometry=connector(h.document(),id).geometry;
+    CHECK(geometry.size()>2);   // ... and it really has a body between its two mouths to measure
     for(std::size_t j=1;j+1<geometry.size();++j) {
         const double cross=(geometry[j].x-geometry[j-1].x)*(geometry[j+1].y-geometry[j].y)-
                            (geometry[j].y-geometry[j-1].y)*(geometry[j+1].x-geometry[j].x);
@@ -234,12 +246,21 @@ TEST(attachments, an_authored_width_is_exact_where_the_connector_is_straight) {
     }
     h.execute("widths",[&](auto& m){changeConnectorLanes(m,id,{5.5,6.25},{});});
     const auto b=connectorBoundaries(h.document().network,connector(h.document(),id));
-    // The two Links sit 0.5 m apart across a 40 m gap, so this "straight" Connector still meets
-    // each of them at 0.716 degrees, and its mouths are cut on their cross-sections. Square to the
-    // road the authored widths are exact at every sample, mouths included.
-    for(std::size_t j=0;j<b[0].size();++j) {
-        test::near(across(b[0],b[1],j),5.5,1e-9);
-        test::near(across(b[1],b[2],j),6.25,1e-9);
+    // Through the body, square to the road, the authored widths are exact.
+    const std::size_t middle=b[0].size()/2;
+    test::near(across(b[0],b[1],middle),5.5,1e-9);
+    test::near(across(b[1],b[2],middle),6.25,1e-9);
+    // At each mouth it is the LINK's 3 m lane, exactly, because that is where the two roads meet
+    // and a lane laid at 5.5 m cannot both start on the Link's lane middle and end on its edges
+    // (M1.12.3). An author who wants 5.5 m at the joint widens the Link's lane.
+    // Measured ALONG the cut -- the separation of the two edges at the same index -- because that
+    // is what the mouth is: one straight line across the road, on the Link's own cross-section.
+    const auto apart=[](const std::vector<Point>& x,const std::vector<Point>& y,std::size_t j) {
+        return std::hypot(x[j].x-y[j].x,x[j].y-y[j].y);
+    };
+    for(const std::size_t j:{std::size_t{0},b[0].size()-1}) {
+        test::near(apart(b[0],b[1],j),3,1e-9);
+        test::near(apart(b[1],b[2],j),3,1e-9);
     }
 }
 // The no-regression assertion this milestone turns on: a Connector that was never given a width

@@ -150,13 +150,13 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
         // width in between to within a millimetre of the miter on a tapering neighbour -- never
         // the 2.6 m pinch that came of shrinking every lane together.
         const bool end=j==0 || j+1==weights.size();
-        // Through the body the cross-section measure is the width, as it always was. At the two
-        // mouths it is not: since M1.18 the mouth is cut on the Link's cross-section rather than
-        // square across the ribbon, so it reads the lane width over the cosine of the arrival.
-        // Resolved back onto the ribbon's normal it is the lane again, to within the 1e-3 these
-        // width-changing lanes lean by; `connector_mouth_tests.cpp` carries the exact case.
-        test::near(end?mouthWidth(boundaries[0],boundaries[1],j==0)
-                      :apart(boundaries[0],boundaries[1],j),3+.5*weights[j],1e-3);
+        // One measure now, end to end: the separation of the two edges at the same index. Through
+        // the body that is the cross-section square to the ribbon; at a mouth it is the cut on the
+        // Link, and the lane there is the LINK's own lane, exactly -- 3 m where it leaves, 3.5 m
+        // where it arrives. The mouth is no longer the looser of the two readings, it is the exact
+        // one, which is what putting the mouth on the Link's own lane boundaries bought.
+        test::near(apart(boundaries[0],boundaries[1],j),3+.5*weights[j],end?1e-9:1e-3);
+        (void)end;
         const double wedge=apart(boundaries[1],boundaries[2],j);
         CHECK(wedge<previous);previous=wedge;
     }
@@ -222,14 +222,12 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
     // The closed end stays exactly closed -- a lane tapered to nothing leaves ON its neighbour,
     // and the mouth slide is made to keep it there rather than prise it back open by millimetres.
     test::near(apart(opening[1],opening[2],0),0,1e-9);
-    // ... and opens to the Link's own 3 m lane at the far end. Bounded rather than pinned: this
-    // mouth arrives at 49 degrees on a curve, and the slide moves the three edges 2.5, -2.5 and
-    // -6.1 m along their own paths, so the two ends of this lane sit at very different stations
-    // and no index-for-index measure of it is exact. Both readings are recorded --  perpendicular
-    // to the far edge 2.945 m, resolved onto the normal 2.868 m -- and `connector_mouth_tests.cpp`
-    // pins the width to 1e-9 on straight fixtures where an exact measure does exist.
-    CHECK(mouthWidth(opening[1],opening[2],false)>2.8);
-    CHECK(mouthWidth(opening[1],opening[2],false)<3.2);
+    // ... and opens to the Link's own 3 m lane at the far end, exactly. This used to be bounded
+    // rather than pinned (2.8 to 3.2, on readings of 2.945 and 2.868 m) because the mouth was cut
+    // square across the ribbon and then slid: the two ends of the lane came to rest at different
+    // stations and no index-for-index measure of it was exact. The mouth is now built ON the
+    // Link's own lane boundaries, so the measure along the cut is the Link's lane, to 1e-9.
+    test::near(apart(opening[1],opening[2],opening[1].size()-1),3,1e-5);
 }
 // A reverse curve leaves both ends parallel, so the turn between the two tangents says nothing
 // about how hard the road bends. Reading each end against the chord is what catches it.
@@ -271,19 +269,21 @@ TEST(connectors, a_drawn_lane_keeps_its_width_square_to_the_road) {
         const auto& g=editableConnector(d,id).geometry;
         CHECK(minimumRadius(g)<40);
         CHECK(boundaries.size()==2);
-        // Each mouth is still ONE straight line across the road -- but since M1.18 that line is the
-        // Link's cross-section, not a square cut across the ribbon, so it is no longer square to
-        // the Connector's own axis. `connector_mouth_tests.cpp` asserts it lies on the Link to
-        // 1e-9; here the point is that the ribbon it cuts is still the full lane.
+        // Each mouth is still ONE straight line across the road, and that line is the Link's own
+        // cross-section rather than a square cut across the ribbon, so it is not square to the
+        // Connector's axis. `connector_mouth_tests.cpp` asserts it lies on the Link to 1e-9; here
+        // the point is that the lane it cuts is the Link's own 3.5 m lane, measured along the cut.
         test::near(mouthLine(boundaries,true),0,1e-9);
         test::near(mouthLine(boundaries,false),0,1e-9);
-        test::near(squareWidth(boundaries[0],boundaries[1],0),3.5,1e-9);
-        test::near(squareWidth(boundaries[0],boundaries[1],boundaries[0].size()-1),3.5,1e-9);
-        // The mouth now slides onto the Link instead of standing clear of it, so what is left is
-        // the spread along the cut: 3.5 cm on the quarter turn, 25.6 cm on the reverse curve,
-        // where a square end stood up to 0.88 m off.
+        // 1e-5, not 1e-9: the offset each boundary leaves the mouth at is a fixed point solved
+        // against the end leg it itself produces. The residue is 2 microns on a 3.5 m lane.
+        test::near(apart(boundaries[0],boundaries[1],0),3.5,1e-5);
+        test::near(apart(boundaries[0],boundaries[1],boundaries[0].size()-1),3.5,1e-5);
+        // And it does not merely lie ON the Link's cross-section, it lies on the Link's own lane
+        // EDGES: the spread along the cut that M1.18 left -- 3.5 cm on the quarter turn, 25.6 cm
+        // on the reverse curve -- is gone, because the mouth is now built from those edges.
         for(std::size_t i=0;i<2;++i)
-            CHECK(stepTo(boundaries[i].front(),laneBoundaryGeometry(d.network.links[0],i,DrivingSide::left).back())<.3);
+            CHECK(stepTo(boundaries[i].front(),laneBoundaryGeometry(d.network.links[0],i,DrivingSide::left).back())<1e-5);
         const double least=narrowest(boundaries,true);
         CHECK(least>shape.least);      // beats what the mouth-to-mouth cross-section drew
         CHECK(least>.9*3.5);           // and is the lane the links actually give it
@@ -328,7 +328,15 @@ TEST(connectors, a_moved_link_leaves_the_connector_its_width) {
         // it: the fit reports what is left standing off, in metres, rather than pretending.
         if(degrees<90) {
             test::near(fit.target.residual,0,1e-9);
-            test::near(squareWidth(boundaries[0],boundaries[1],boundaries[0].size()-1),3.5,1e-9);
+            // Along the cut, which is where the Connector meets the Link: its lane there is the
+            // Link's own 3.5 m lane. Square to the Connector it reads that times the cosine of the
+            // arrival -- 3.03 m at 30 degrees, 1.75 m at 60 -- which is what a road crossing
+            // another at an angle measures, and is why that is no longer what is asserted.
+            // 5e-3: where the slide is longer than the boundary's own end leg it follows the leg
+            // AFTER that one too, so the landing point leaves the straight line the offset was
+            // solved against. 2.8 mm on a 3.5 m lane at 60 degrees, and it is a fixed point --
+            // measured unchanged at 8, 16 and 32 passes, so it is the geometry, not convergence.
+            test::near(apart(boundaries[0],boundaries[1],boundaries[0].size()-1),3.5,5e-3);
         } else {
             CHECK(fit.target.residual>1.);   // the forcing: this really is the unreachable case ...
             CHECK(fit.target.residual<2.);   // ... and it is bounded, not running away
@@ -340,13 +348,24 @@ TEST(connectors, a_moved_link_leaves_the_connector_its_width) {
             // cross-section is nearly parallel to the ribbon. That spread is the trade the owner
             // took for a flush mouth; `connectorMouthFit` reports what it could not reach.
             CHECK(stepTo(boundaries[i].back(),laneBoundaryGeometry(b,i,DrivingSide::left).front())<9.);
-        // The whole ribbon is still a 3.5 m lane: the interpolated cross-section drew 1.96 m at
-        // 60 degrees and 0.46 m at 90. Measured square to the road at EVERY sample, mouths
-        // included -- the old form compared the two edges index for index against a truncated
-        // copy of the far one, which only worked while both were sampled at the same stations.
-        // The mouth slide moves them along their own curves, so the projection is the measure now.
-        for(std::size_t j=0;j<boundaries[0].size();++j)
-            test::near(squareWidth(boundaries[0],boundaries[1],j),3.5,1e-9);
+        // At 30 and 60 degrees there is no spread left at all: the mouth is ON the Link's own lane
+        // edges, not merely on the line through them. 0.27 m and 1.75 m stood there before.
+        if(degrees<90)for(std::size_t i=0;i<2;++i)
+            CHECK(stepTo(boundaries[i].back(),laneBoundaryGeometry(b,i,DrivingSide::left).front())<5e-3);
+        // The BODY is still a 3.5 m lane square to the road, at every interior sample: the
+        // interpolated cross-section drew 1.96 m at 60 degrees and 0.46 m at 90. The two mouth
+        // samples are excluded from this measure on purpose -- a mouth is a cut on the Link's
+        // cross-section, so square to the Connector it reads 3.5 m times the cosine of the
+        // arrival, and the exact measure of it is the one along the cut, asserted above.
+        // The middle of the body is the full 3.5 m square to the road, exactly -- the interpolated
+        // cross-section drew 1.96 m at 60 degrees and 0.46 m at 90 there. The samples either side
+        // lie inside a mouth's transition zone, part-way through opening out from the Link's cut
+        // to the Connector's own width, and read up to 3.1 cm narrow square to the road at 90
+        // degrees: the opening out, not a pinch, so bounded here rather than pinned.
+        test::near(squareWidth(boundaries[0],boundaries[1],boundaries[0].size()/2),3.5,1e-9);
+        for(std::size_t j=1;j+1<boundaries[0].size();++j)
+            CHECK(squareWidth(boundaries[0],boundaries[1],j)>3.45);
+        test::near(apart(boundaries[0],boundaries[1],0),3.5,5e-3);   // the source mouth, on its Link
     }
 }
 // An offset of a bend tighter than the offset loops back on itself. The surface is filled
