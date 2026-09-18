@@ -384,6 +384,39 @@ not things that are slow.
 
 ---
 
+## 2026-09-18 — snapping, audited against the owner's list of Vissim's four snaps
+
+The owner listed what Vissim snaps to and asked for all of it. Audited against live code, only one
+of the four is a snap we are missing; two are **interactions we do not have at all**, and one is a
+file format we do not read. Recording the distinction because "adjust the snap" and "add pointer
+placement for objects that are typed into a dialog today" are not the same size of work.
+
+| Vissim | ours, in code | verdict |
+|---|---|---|
+| **Snap to Links/Connectors** — dragging heads, stop signs, PT stops, vehicle inputs onto a lane | heads, inputs and routes are **not placed by pointer at all**: `canvas_input.cpp:16-20` takes `nearestLane()` for the lane and opens a dialog for the position. Stop signs and PT stops are not object types | Not a snap gap. Pointer placement is the gap, and the missing object types are §6 item 5, still blocked on engine behaviour |
+| **Snap to Points** — endpoints and intermediate points when connecting | endpoints yes; a station another Connector already attaches at, yes (added the same day); **intermediate points, now added** | **Done.** This was the one real snap gap |
+| **Snap to CAD (DWG/DXF)** | `BackgroundImage` holds a base64 **PNG** and nothing vector | Needs an import path, a DXF/DWG reader, vector storage, rendering and vertex hit-testing. A milestone, not a session. **Not booked** — no done-condition written |
+| **Snap to Vehicle Routes** — decision points with a snap radius | routes are lists of segment ids authored in a dialog; nothing is placed on the canvas | Not a snap gap. Canvas routing decisions belong with demand authoring (M1.5.1/M2). **Not booked** |
+
+**The owner's opening statement — that Vissim does not snap to a Link end — is not the one we
+implemented, and the measurement is why.** The owner's own *Snap to Points* item lists the End
+point, and in our model an attachment at a Link end is a distinct stored state (`station` absent)
+that compiles to a departure rather than a cut. Measured on a 50 m Link, a Connector drawn short of
+the end by:
+
+| short by | station stored | result |
+|---|---|---|
+| 0.00 m (snapped) | *(absent)* | one section — the end attachment the author drew |
+| 0.03 m | 49.9700 | **`unsectionable`, cannot Run** |
+| 0.15 m | 49.8500 | **`unsectionable`, cannot Run** |
+| 0.25 m | 49.7500 | runs, but as a body attachment with a 0.25 m stub section |
+
+So "place it carefully by hand instead" reproduces exactly the 9 mm / 5.8 cm failure measured on
+the owner's own four-leg drawing. The endpoint snap stays, and the reason is recorded here rather
+than left as a silent disagreement with the instruction.
+
+---
+
 ## 2026-09-18 — the wedge is withdrawn on the owner's instruction
 
 The owner asked for the original Connector geometry: the end meets the Link and nothing more — no

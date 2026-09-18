@@ -4,10 +4,60 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
-- [`archive/PROGRESS-2026-09-17.md`](archive/PROGRESS-2026-09-17.md) — 2026-09-17
+- [`archive/PROGRESS-2026-09-17.md`](archive/PROGRESS-2026-09-17.md) — 2026-09-17, later entries
+- [`archive/PROGRESS-2026-09-17-early.md`](archive/PROGRESS-2026-09-17-early.md) — 2026-09-17, earlier entries
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-18 — Snapping audited against Vissim: one gap closed, one instruction refused with numbers
+
+The owner listed Vissim's four snaps and asked for all of them, opening with **"Vissim does not snap
+to a Link end."** Audited against live code, the full table is in
+[`VISSIM_PARITY.md`](VISSIM_PARITY.md). The short version: **one of the four was a snap gap and is
+now closed; two are interactions we do not have; one is a file format we do not read.**
+
+**Snap to Points is now complete.** `hitLanePosition` tries, in order, the lane's two endpoints, a
+station another Connector already attaches at, then **the Link's own intermediate points** — the
+new part. So a Connector meeting a Link at a bend lands on the bend. The vertex station is
+accumulated with `polylineLength`'s own order and its own `hypot`, so the value stored is the one
+measuring that prefix produces: the test asserts it with `==`, not a tolerance.
+
+**The opening instruction was refused, and only a measurement earns that.** In our model an
+attachment at a Link end is a distinct stored state — `station` absent — that `runtimeSections`
+compiles to a departure rather than a cut. On a 50 m Link, drawn short of the end by:
+
+| short by | station | result |
+|---|---|---|
+| 0.00 m | *(absent)* | one section, the end attachment drawn |
+| 0.03 m | 49.9700 | **`unsectionable`, cannot Run** |
+| 0.15 m | 49.8500 | **`unsectionable`, cannot Run** |
+| 0.25 m | 49.7500 | runs, as a body attachment with a 0.25 m stub |
+
+"Place it carefully by hand" is precisely the 9 mm / 5.8 cm failure measured on the owner's own
+four-leg drawing the day before. Also: the owner's **own** *Snap to Points* item lists the End
+point, so the opening line contradicts item 2 of the same list. Keeping the endpoint snap is the
+Vissim-matching choice, not the deviation.
+
+**Two of the four are not snapping at all**, and calling them snapping would have hidden their
+size: heads, vehicle inputs and routes are **never placed by pointer** (`canvas_input.cpp:16-20`
+takes `nearestLane()` and opens a dialog), and stop signs and PT stops are not object types —
+§6 item 5, still blocked on engine behaviour. DWG/DXF snapping needs a vector import path where
+`BackgroundImage` holds a base64 PNG: a milestone, deliberately **not booked**, no done-condition
+written (hard rule 8 — do not start it without one).
+
+**Verification:** 23/23 CTest on Qt 6.4.2 under `xvfb`, `trafficsim-cli 42` unchanged at
+`meanDelay 29.249359418430977`. Deleting the new branch fails the suite with `A pick beside a
+Link's intermediate point did not take it`. Linux only.
+
+### Next
+
+Unchanged and still the only thing that closes M1: the owner's timed exercise in
+[`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). The three snap-adjacent items above are scoped and
+**not** booked — if the owner wants pointer placement for heads and inputs, or CAD snapping, each
+needs a numbered milestone with a done-condition before any code.
 
 ---
 
@@ -286,67 +336,6 @@ figure was taken with `apart()`, which does not.
 
 **Verification:** 23/23 CTest, 126/126 unit tests, architecture and size guards green. No source
 file in `src/` changed at all — this milestone closed on a measurement and a test.
-
----
-
-## 2026-09-17 — M1.12.1: a Connector carries its own lane widths and markings
-
-The last M1 carve-out. A Connector's lane widths were read from the Links each end joins, so a
-widening taper had to be authored on the Links instead, and every interior divider was dashed with
-no choice about it. Both are now fields on the Connector, schema 6.
-
-**The boundary that mattered more than the fields.** `laneWidthOf` was a file-local helper in
-`road_boundaries.cpp`, and `compile.cpp` computed a Connector's width **a second time, its own
-way**, for `TIGHT_CONNECTOR_RADIUS`. While both derived from the same Link lanes that was merely
-duplication; the moment a width is authored it becomes a disagreement — the drawing would use the
-authored width and the radius advisory would measure the old one. `connectorLaneWidths` is now the
-one place a width is decided and both read it (hard rule 3). That refactor landed first and on its
-own, and 23/23 stayed green across it, which is what says it was behaviour-neutral.
-
-**Empty means derived, and that is the whole compatibility story.** Absent keys give an empty
-vector, so schema 6 needs no conversion on read: nothing changed meaning, unlike M1.18. **The
-old-file load test is not optional here** — a schema-5 document with a multi-lane Connector is
-loaded, compared to the in-memory original, and its boundaries measured vertex for vertex to
-1e-12. M1.18 was reverted for exactly this class of mistake, and its verification measured 120 of
-120 drawn vertices unchanged, which was true and beside the point because it never opened a file
-written by the previous build.
-
-**A defect surfaced and I did not paper over it.** The first width test asserted the authored
-5.5 m to 1e-6 on the curved fixture and read **5.529 m**. That is the miter widening the spacing
-measured along the cross-section at a bend — the same defect as the 8.698 m of a 7.000 m width
-already on record, at 0.5% instead of 24%. Loosening the tolerance would have written it down as
-correct, which is precisely what I criticised two existing tests for doing. Instead the exact
-assertion moved to a **straight** Connector fixture, where no miter is involved and it holds to
-1e-9, and the curved case became a bound naming M1.12.2 for the session that tightens it. Booked
-as **M1.12.2** with the cause identified and a "measure before changing" instruction, because it
-changes drawn geometry at every bend.
-
-**A judgement call to be honest about.** Vissim's `Lanes` tab has a per-**lane** `MarkingType`.
-Ours is per **interior divider** (`paths − 1`), with the two outer edges always solid, because
-per-lane does not map unambiguously onto `paths + 1` boundary lines and I would have been choosing
-a mapping either way. **I did not check this against Vissim.** It is recorded in `ROADMAP.md` as a
-chosen representation rather than a measured parity claim (rule 4), and it is a small change if
-the owner's Vissim behaves differently.
-
-**Two smaller decisions with reasons.** A resize that changes the path count **drops** the authored
-arrays instead of padding them — an entry the author never typed is not a width they chose, and
-the derived value is the honest fallback, the same reasoning that clears `laneBlend` on a geometry
-change. And a partial list is rejected with `EDIT_LANES`: no field would say which lanes were
-authored and which derived. Marking names are stored as `"solid"`/`"dashed"` rather than the enum's
-integers, so a human reading the project file sees words and adding a kind cannot renumber what
-older files meant.
-
-**`docs/ROADMAP.md` needed room twice** and got it the way `PROGRESS.md` and `VISSIM_PARITY.md` did:
-M1.1–M1.6 and then M1.8–M1.10 bodies moved whole into `docs/archive/ROADMAP-M1-implemented.md`,
-each keeping its heading and a status line so the sequence stays whole. Both moves diffed against
-`git show HEAD:` — no heading lost, archived bodies byte-identical, no kept body changed, no
-dangling link. Note the status line referenced M1.12.2 before its section existed for a few
-minutes; booking it in the same commit is what keeps the file internally true.
-
-**Verification:** 23/23 CTest, 125/125 unit tests, architecture and size guards green. The exact
-width holds to 1e-9 on a straight Connector; a Connector never given a width is unchanged to
-1e-12, including one loaded from a schema-5 file. Linux only — `native.yml` also runs the Qt
-suites on Windows and nothing in these sessions has been near it.
 
 ---
 
