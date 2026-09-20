@@ -3,6 +3,10 @@
 
 namespace trafficsim {
 struct Point { double x{}, y{}; bool operator==(const Point&) const = default; };
+enum class MarkingType { solid, dashed, none, doubleLine };
+bool validMarking(MarkingType);
+const char* markingName(MarkingType);
+MarkingType markingFromName(const std::string&);
 struct Lane { std::string id; double width{}; bool operator==(const Lane&) const = default; };
 struct Link {
     std::string id; std::vector<Point> geometry; std::vector<Lane> lanes;
@@ -12,6 +16,9 @@ struct Link {
     // normal and means the object is referred to by its id alone. Ordered last so that every
     // existing brace-initialisation of a Link keeps meaning what it says.
     std::string name;
+    // One value per boundary in lane order (N+1), or empty for solid edges/dashed dividers.
+    // Shared boundaries are authored once, not independently on the two adjacent lanes.
+    std::vector<MarkingType> boundaryMarkings{};
     bool operator==(const Link&) const = default;
 };
 struct LaneReference {
@@ -23,9 +30,6 @@ struct LaneReference {
     std::optional<double> station{};
     bool operator==(const LaneReference&) const = default;
 };
-// What is painted on one boundary line. Vissim's MarkingType, reduced to the two kinds this
-// editor draws; the renderer maps it to a pen style.
-enum class MarkingType { solid, dashed };
 struct Connector {
     std::string id; LaneReference from, to; std::vector<Point> geometry;
     int fromLaneCount{1}, toLaneCount{1}, level{};
@@ -122,6 +126,10 @@ std::vector<Point> connectorCentreline(const Network&, const Connector&);
 // Where a range merges, the divider stops instead of running down the middle of the single lane
 // the paths have converged into, which is not a place a marking belongs.
 struct ConnectorMarking { std::vector<Point> geometry; bool edge{}; MarkingType type{MarkingType::solid}; };
+std::vector<ConnectorMarking> linkMarkings(const Link&, DrivingSide);
+// Rendering only: none produces no stroke; double produces two solid strokes 0.15 m apart.
+// Both renderers use the same expansion. Surface geometry and runtime paths never change.
+std::vector<ConnectorMarking> markingStrokes(const std::vector<ConnectorMarking>&);
 std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);

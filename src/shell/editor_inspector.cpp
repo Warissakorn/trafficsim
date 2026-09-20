@@ -60,6 +60,26 @@ void EditorWindow::buildInspector() {
         if(widths.size()!=static_cast<std::size_t>(count_->value())){showError(std::runtime_error("EDIT_LANES"));return;}
         execute("editorApplyLanes",[&](auto& d){changeLanes(d,canvas_->selected(),widths);});
     });
+    linkMarkings_=new QLineEdit(body);label(form,"editorLinkMarkings",linkMarkings_);
+    button("editorApplyLinkMarkings",[this]{
+        try {
+            std::vector<MarkingType> markings;
+            if(!linkMarkings_->text().trimmed().isEmpty())
+                for(const auto& part:linkMarkings_->text().split(',',Qt::KeepEmptyParts))
+                    markings.push_back(markingFromName(part.trimmed().toLower().toStdString()));
+            execute("editorApplyLinkMarkings",[&](auto& d){changeLinkMarkings(d,canvas_->selected(),markings);});
+        } catch(const std::exception& e){showError(e);}
+    });
+    linkPointStation_=number(0,1000000,10,3);linkPointStation_->setSuffix(" m");
+    label(form,"editorLinkPointStation",linkPointStation_);
+    button("editorInsertLinkPoint",[this]{execute("editorInsertLinkPoint",[&](auto& d){
+        insertLinkPoint(d,canvas_->selected(),linkPointStation_->value());});});
+    button("editorAddLinkPoint",[this]{execute("editorAddLinkPoint",[&](auto& d){
+        addLinkIntermediatePoint(d,canvas_->selected());});});
+    button("editorStraightLink",[this]{execute("editorStraightLink",[&](auto& d){
+        straightenLink(d,canvas_->selected());});});
+    button("editorReverseLink",[this]{execute("editorReverseLink",[&](auto& d){
+        reverseLink(d,canvas_->selected());});});
     split_=number(0.21,100000,30);label(form,"editorSplitDistance",split_);
     button("editorSplitHere",[this]{
         std::string id;if(execute("editorSplitHere",[&](auto& d){id=splitLink(d,canvas_->selected(),split_->value());}))canvas_->select(id);

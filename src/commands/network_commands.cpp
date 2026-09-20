@@ -105,6 +105,7 @@ std::string oppositeLink(ProjectDocument& d, const std::string& id, double gap) 
     // This new road is already positioned by its final total width; do not anchor an
     // edge while assigning unequal widths, which would change the requested median gap.
     for(std::size_t i=0;i<other.lanes.size();++i)other.lanes[i].width=original.lanes[i].width;
-    other.level=original.level;other.displayType=original.displayType;return created;
+    other.level=original.level;other.displayType=original.displayType;
+    other.boundaryMarkings=original.boundaryMarkings;return created;
 }
 }

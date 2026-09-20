@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include "../core/validate.hpp"
 #include <stdexcept>
 
 namespace trafficsim {
@@ -10,6 +11,17 @@ const Json& section(const Json& value, const char* name) {
     return value.at(name);
 }
 namespace {
+// Schema 7 is implemented incrementally. Never accept a target-spec field and then silently
+// discard it on save (or imply its simulation behavior exists). Legacy readers stay additive.
+void knownFields(const Json& value,std::initializer_list<const char*> keys,
+                 const std::string& path,int version) {
+    if(version<7 || !value.is_object())return;
+    for(const auto& [key,unused]:value.items()) {
+        (void)unused;
+        if(std::none_of(keys.begin(),keys.end(),[&](const char* k){return key==k;}))
+            throw ValidationError({{"EDIT_UNSUPPORTED_FIELD",path+"."+key}});
+    }
+}
 // Every accessor goes through this: reaching .at() on a null or a non-object is how an
 // nlohmann type_error escapes to the user instead of a sentence naming the missing field.
 const Json& member(const Json& value, const char* name) {
@@ -46,9 +58,12 @@ int integer(const Json& value,const char* key,int fallback) {
     if(!v.is_number_integer() || v < -1000 || v > 1000)throw std::invalid_argument("EDIT_DISPLAY_VALUE");
     return v.get<int>();
 }
-std::vector<Point> points(const Json& value) {
+std::vector<Point> points(const Json& value,int version) {
     std::vector<Point> result;
-    for (const auto& p : array(value, "geometry")) result.push_back({field<double>(p, "x"), field<double>(p, "y")});
+    for (const auto& p : array(value, "geometry")) {
+        knownFields(p,{"x","y"},"geometry["+std::to_string(result.size())+"]",version);
+        result.push_back({field<double>(p, "x"), field<double>(p, "y")});
+    }
     return result;
 }
 LaneReference reference(const Json& value,int schemaVersion) {
@@ -56,6 +71,7 @@ LaneReference reference(const Json& value,int schemaVersion) {
     const char* key=schemaVersion>=5?"station":"fraction";
     const char* wrong=schemaVersion>=5?"fraction":"station";
     if(value.contains(wrong))throw std::invalid_argument("EDIT_VERSION");
+    knownFields(value,{"linkId","laneId","station"},"reference",schemaVersion);
     if(value.contains(key))result.station=field<double>(value,key);
     return result;
 }
@@ -87,23 +103,34 @@ SignalColor color(const std::string& text) {
 }
 }
 Network parseNetwork(const Json& value, int schemaVersion) {
+    knownFields(value,{"id","drivingSide","links","connectors","signalHeads"},"network",schemaVersion);
     Network network;
     network.id = field<std::string>(value, "id");
     const auto side = field<std::string>(value, "drivingSide");
     if (side != "left" && side != "right") throw std::invalid_argument("INVALID_DRIVING_SIDE");
     network.drivingSide = side == "left" ? DrivingSide::left : DrivingSide::right;
     for (const auto& item : array(value, "links")) {
-        Link link{field<std::string>(item, "id"), points(item), {}};
-        for (const auto& lane : array(item, "lanes"))
+        const auto path="links["+std::to_string(network.links.size())+"]";
+        knownFields(item,{"id","geometry","lanes","level","displayType","laneOffset","name","boundaryMarkings"},path,schemaVersion);
+        Link link{field<std::string>(item, "id"), points(item,schemaVersion), {}};
+        for (const auto& lane : array(item, "lanes")) {
+            knownFields(lane,{"id","width"},path+".lanes["+std::to_string(link.lanes.size())+"]",schemaVersion);
             link.lanes.push_back({field<std::string>(lane, "id"), field<double>(lane, "width")});
+        }
         link.level=integer(item,"level",0);
         if(item.contains("laneOffset"))link.laneOffset=field<double>(item,"laneOffset");
         if(item.contains("displayType"))link.displayType=field<std::string>(item,"displayType");
         if(present(item,"name"))link.name=field<std::string>(item,"name");
+        if(item.contains("boundaryMarkings"))for(const auto& m:array(item,"boundaryMarkings")) {
+            if(!m.is_string())throw std::invalid_argument("INVALID_MARKING");
+            link.boundaryMarkings.push_back(markingFromName(m.get<std::string>()));
+        }
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors")) {
-        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from"),schemaVersion), reference(member(c, "to"),schemaVersion), points(c),
+        knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
+            "laneBlend","name","laneWidths","laneMarkings"},"connectors["+std::to_string(network.connectors.size())+"]",schemaVersion);
+        network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from"),schemaVersion), reference(member(c, "to"),schemaVersion), points(c,schemaVersion),
             integer(c,"fromLaneCount",1),integer(c,"toLaneCount",1),integer(c,"level",0),
             c.contains("displayType")?field<std::string>(c,"displayType"):"default"});
         if(present(c,"name"))network.connectors.back().name=field<std::string>(c,"name");
@@ -120,13 +147,12 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         }
         if(c.contains("laneMarkings"))for(const auto& m:array(c,"laneMarkings")) {
             if(!m.is_string())throw std::invalid_argument("INVALID_MARKING");
-            const auto name=m.get<std::string>();
-            if(name!="solid" && name!="dashed")throw std::invalid_argument("INVALID_MARKING");
-            network.connectors.back().laneMarkings.push_back(
-                name=="solid"?MarkingType::solid:MarkingType::dashed);
+            network.connectors.back().laneMarkings.push_back(markingFromName(m.get<std::string>()));
         }
     }
     for (const auto& h : array(value, "signalHeads")) {
+        knownFields(h,{"id","lane","position","programId","connectorId","name"},
+            "signalHeads["+std::to_string(network.signalHeads.size())+"]",schemaVersion);
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane"),schemaVersion),
                                       field<double>(h, "position"), field<std::string>(h, "programId"),
                                       present(h,"connectorId")?field<std::string>(h,"connectorId"):std::string{}});

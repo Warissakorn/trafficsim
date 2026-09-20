@@ -128,10 +128,9 @@ void EditorCanvas::redraw() {
         const auto right=trimSelfIntersections(laneBoundaryGeometry(link,link.lanes.size(),document_->network.drivingSide));
         auto surface=path(left);for(auto it=right.rbegin();it!=right.rend();++it)surface.lineTo(q(*it));surface.closeSubpath();
         scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+1);
-        for(std::size_t boundary=0;boundary<=link.lanes.size();++boundary) {
-            const bool edge=boundary==0 || boundary==link.lanes.size();
-            QPen pen(QColor(QString::fromStdString(appearance.laneColor)),1,edge?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
-            auto* mark=scene_.addPath(path(trimSelfIntersections(laneBoundaryGeometry(link,boundary,document_->network.drivingSide))),pen);
+        for(const auto& marking:markingStrokes(linkMarkings(link,document_->network.drivingSide))) {
+            QPen pen(QColor(QString::fromStdString(appearance.laneColor)),1,marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            auto* mark=scene_.addPath(path(marking.geometry),pen);
             mark->setZValue(z+2);mark->setData(0,QStringLiteral("road-marking"));mark->setData(1,QString::fromStdString(link.id));
         }
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.

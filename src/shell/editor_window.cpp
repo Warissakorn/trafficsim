@@ -208,6 +208,12 @@ void EditorWindow::refresh(bool modelChanged) {
     name_->setEnabled(!selected.empty());
     {const QSignalBlocker block(name_);name_->setText(QString::fromStdString(selectedName()));}
     widths_->setEnabled(link); actions_.at("editorApplyLanes")->setEnabled(link);
+    linkMarkings_->setEnabled(link);linkPointStation_->setEnabled(link);
+    for(const auto* key:{"editorApplyLinkMarkings","editorInsertLinkPoint","editorAddLinkPoint",
+                         "editorStraightLink","editorReverseLink"})actions_.at(key)->setEnabled(link);
+    QStringList markings;
+    if(link)for(const auto m:link->boundaryMarkings)markings<<markingName(m);
+    linkMarkings_->setText(markings.join(", "));
     for(const auto* key:{"editorDeleteLink","editorOpposite","editorPocket","editorSplitHere"}) actions_.at(key)->setEnabled(link);
     actions_.at("editorDeleteVertex")->setEnabled(link || canvas_->selectedConnector());
     if(link) {

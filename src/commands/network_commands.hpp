@@ -5,6 +5,14 @@ namespace trafficsim {
 Link& editableLink(ProjectDocument& document, const std::string& id);
 std::string addLink(ProjectDocument&, const std::vector<Point>& geometry, int lanes, double width);
 void changeGeometry(ProjectDocument&, const std::string& id, const std::vector<Point>& geometry);
+// Geometry edits are submitted through History. Existing reshape/reanchor/cleanup rules apply.
+void straightenLink(ProjectDocument&, const std::string& id);
+void insertLinkPoint(ProjectDocument&, const std::string& id, double station);
+void addLinkIntermediatePoint(ProjectDocument&, const std::string& id);
+// Reverse an unreferenced Link, keeping each named lane on its original physical footprint.
+// Rejects attached Connectors/heads/routes; it must never silently reverse a routed movement.
+void reverseLink(ProjectDocument&, const std::string& id);
+void changeLinkMarkings(ProjectDocument&, const std::string& id, const std::vector<MarkingType>&);
 void changeLanes(ProjectDocument&, const std::string& id, const std::vector<double>& widths);
 void resizeLinkLanes(ProjectDocument&, const std::string&, int count, bool leading);
 void deleteLink(ProjectDocument&, const std::string& id);

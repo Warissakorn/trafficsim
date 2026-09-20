@@ -50,7 +50,8 @@ void EditorWindow::refreshDiagnostics() {
         const auto& item=rows[static_cast<std::size_t>(row)];
         const auto translated=text(item.code);
         const QStringList values{
-            text(item.severity==DiagnosticSeverity::draft?"editorDraftSeverity":"editorRuntimeSeverity"),
+            text(item.severity==DiagnosticSeverity::draft?"editorDraftSeverity":
+                 item.severity==DiagnosticSeverity::advisory?"editorAdvisorySeverity":"editorRuntimeSeverity"),
             translated.isEmpty()?QString::fromStdString(item.code):translated,
             QString::fromStdString(item.objectId),
             QString::fromStdString(item.path)};

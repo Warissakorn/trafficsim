@@ -119,7 +119,8 @@ private:
     QLabel* connectorHint_{};
     QSpinBox* count_{};
     QDoubleSpinBox *width_{}, *grid_{}, *split_{}, *gap_{}, *bgX_{}, *bgY_{}, *bgScale_{}, *bgAngle_{}, *bgOpacity_{};
-    QLineEdit *id_{}, *name_{}, *widths_{};
+    QLineEdit *id_{}, *name_{}, *widths_{}, *linkMarkings_{};
+    QDoubleSpinBox* linkPointStation_{};
     QLabel *error_{}, *coordinates_{}, *selectionInfo_{};
     QString text(const std::string& key) const;
     void buildInspector();

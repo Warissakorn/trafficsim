@@ -4,7 +4,7 @@
 namespace trafficsim {
 // Draft issues reject an edit; runtime issues describe what the M0 compiler cannot run yet.
 // The distinction is the point: a drawing can be perfectly valid and still not be runnable.
-enum class DiagnosticSeverity { draft, runtime };
+enum class DiagnosticSeverity { draft, runtime, advisory };
 struct Diagnostic {
     std::string code;      // ValidationIssue::code, translated through data/locales
     std::string path;      // ValidationIssue::path, kept verbatim as the precise locator
