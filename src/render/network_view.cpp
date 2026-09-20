@@ -55,11 +55,11 @@ void NetworkView::paintEvent(QPaintEvent*) {
         // punching the overlap out as a hole.
         painter.setPen(Qt::NoPen);painter.setBrush(color);
         painter.drawPolygon(surface,Qt::WindingFill);painter.setBrush(Qt::NoBrush);
-        for(const auto& marking:markings) {
-            // An outer edge is always solid; an interior divider draws the MarkingType the
-            // Connector carries, which defaults to the dashed line it always was.
+        for(const auto& marking:markingStrokes(markings)) {
+            // Connector edges are authored as solid by connectorMarkings; Link edges may
+            // carry their own type. The shared stroke expansion handles none/double.
             QPen pen(QColor("#d9e5eb"),1,
-                     marking.edge||marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
+                     marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
             pen.setCosmetic(true);
             painter.setPen(pen);QPolygonF line;
             for(const auto& p:marking.geometry)line<<QPointF(p.x,p.y);
@@ -67,14 +67,10 @@ void NetworkView::paintEvent(QPaintEvent*) {
         }
     };
     for(const auto& link:network_.links) {
-        std::vector<std::vector<Point>> boundaries;std::vector<ConnectorMarking> markings;
+        std::vector<std::vector<Point>> boundaries;
         for(std::size_t i=0;i<=link.lanes.size();++i)
             boundaries.push_back(trimSelfIntersections(laneBoundaryGeometry(link,i,network_.drivingSide)));
-        for(std::size_t i=0;i<boundaries.size();++i) {
-            const bool edge=i==0 || i+1==boundaries.size();
-            markings.push_back({boundaries[i],edge,edge?MarkingType::solid:MarkingType::dashed});
-        }
-        road(boundaries,markings,QColor("#536c7c"));
+        road(boundaries,linkMarkings(link,network_.drivingSide),QColor("#536c7c"));
     }
     for(const auto& connector:network_.connectors)
         road(connectorBoundaries(network_,connector),connectorMarkings(network_,connector),QColor("#386b78"));

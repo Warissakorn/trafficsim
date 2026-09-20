@@ -449,11 +449,16 @@ Unknown future versions are rejected.
 | Opened by | Simulation window or editor | Editor |
 | Runs | M0 harness | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and schema-1/2/3/4 projects and saves schema 4.
+The editor opens bare M0 authoring files and schema-1–6 projects and saves schema 7.
 Schema 4 stores the lane bundle offset and Connector interpolation weights; older versions
 default to centred lanes and arclength interpolation. Old files retain their positions.
 The M0 simulation window recognizes an editor project before reading its fields and
 offers to open it in the editor, even if that project already contains demand.
+
+Schema 7 adds shared Link boundary markings and `none`/`double` marking kinds. Unsupported
+schema-7 network object fields are rejected before replacing the current document. See
+[Authoring extensions](AUTHORING_EXTENSIONS.md) for the exact supported subset and the new
+Link station-insert, midpoint, straighten and unreferenced-reverse inspector actions.
 
 Save uses atomic QSaveFile replacement without direct-write fallback. A failed save
 keeps the previous destination and dirty state; a failed load keeps the current model.

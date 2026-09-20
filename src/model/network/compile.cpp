@@ -66,6 +66,8 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
     for(std::size_t i=0;i<network.connectors.size();++i) {
         const auto& c=network.connectors[i];
         double width=0,radius=std::numeric_limits<double>::infinity();
+        if(polylineLength(c.geometry)<5)
+            issues.push_back({"WARN_SHORT_CONNECTOR","connectors["+std::to_string(i)+"]"});
         std::vector<ConnectorPath> paths;
         try { paths=connectorPaths(network,c); } catch(const std::exception&) { continue; }
         // The same widths connectorBoundaries draws from, so an authored width is measured

@@ -20,7 +20,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-4 authoring codec, schema-1/2/3 migration and revision run snapshots |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-7 authoring codec, schema-1–6 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
@@ -98,7 +98,7 @@ change. Dynamic vehicle/head scene items are ordered by their authored level.
 between Save and recovery. Each editor owns a UUID recovery file and a QLockFile;
 restoration validates before replacing the document and starts untitled and dirty.
 Schema 1 loads with default one-lane connector ranges, level 0 and default display
-type. Schema 1/2 endpoint references retain their default attachments; saves write schema 4.
+type. Schema 1/2 endpoint references retain their default attachments; saves write schema 7.
 `Link::laneOffset` positions the lane bundle independently of its reference polyline.
 `replaceLaneBundle` anchors the edge opposite the edit; model lane geometry and road
 boundaries share that offset, so resizing curved roads does not move surviving lanes.
@@ -121,6 +121,14 @@ attachment to leave a section. `connectorLaneWidths` is the single place a Conne
 decided (M1.12.1), read by both `connectorBoundaries` for drawing and `connectorShapeIssues` for
 `TIGHT_CONNECTOR_RADIUS`, which previously derived it independently. Unsupported future versions
 fail before mutation.
+
+M1.21 stores shared Link boundary markings once per boundary in lane order. `markings.cpp`
+derives the same solid/dashed/none/double strokes for both renderers; paint never modifies
+lane/Connector surface geometry or runtime behavior. Schema 7 rejects unsupported network
+object fields instead of dropping them on save. `link_geometry_commands.cpp` adds station
+insertion, midpoint, straighten and unreferenced reverse through the existing History boundary.
+Model validation checks imported Connector cross-section lists, not just command inputs.
+Geometry advisories have their own severity and never enter the Run/save blocking checks.
 
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 

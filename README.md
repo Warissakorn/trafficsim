@@ -13,6 +13,12 @@ editing, project recovery, and simulation on the same canvas (M1 implementation)
 The owner's timed M1 acceptance exercise remains open.
 A bundled Noto Sans Thai font provides offline Thai text rendering.
 
+The supplied Link, Connector and Network Editor target specs are retained in
+[`docs/specs/`](docs/specs/README.md), with a [code audit](docs/SPEC_AUDIT.md).
+[M1.21](docs/AUTHORING_EXTENSIONS.md) adds Link geometry actions, shared boundary markings,
+stricter imported cross-section validation and schema-7 persistence. The remaining target
+features are numbered in the roadmap; these documents are not claims of Vissim parity.
+
 **Not yet validated:** the longitudinal model is a reduced Wiedemann-inspired prototype,
 not W74/W99 or a calibrated Vissim equivalent. Diagnostics are completed-trip delay,
 including source waiting and acceleration; they are **not HCM control delay or LOS**.

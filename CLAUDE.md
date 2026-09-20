@@ -13,7 +13,14 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Current work:** M1 implementation covers M1.1–M1.18, including controlled splits,
+**Latest work:** M1.21 implements the first authoring slice of the owner's three supplied
+specifications. Read `docs/SPEC_AUDIT.md`, `docs/AUTHORING_EXTENSIONS.md` and the numbered
+follow-ups in ROADMAP. Schema 7 is a supported subset, not the entire proposed specification;
+unsupported network-object fields fail on load rather than disappearing on save. The owner
+requested audit → implementation → inclusion of the original specs; source copies are in
+`docs/specs/`. All remaining runtime, editor and scientific-validation gates remain open.
+
+**Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
 body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,
 Vissim's Intermediate points, a Name on every object, group move, and a Connector mouth cut flush on
@@ -25,10 +32,8 @@ headway — which does **not** close M3), and a Connector carries its own lane w
 markings in schema 6. **M1.12.2** is closed: the reported miter "bulge" was
 measured along the cross-section, where a mitered corner's diagonal is `width/cos(φ/2)` by
 construction. Square to the road the carriageway is exact, so `offsetGeometry` was not changed —
-removing the miter would reinstate the pinch it exists to fix. **One engineering item is open:
-M1.12.3** — an authored `Connector::laneWidths` still overrides the Link's width at the mouth, so
-the Link must win there and the authored width taper in through the body. Do not start it in the
-same session as other mouth work.
+removing the miter would reinstate the pinch it exists to fix. **M1.12.3 is closed by M1.19:**
+the Link wins at the mouth and authored Connector widths take over through the body.
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 

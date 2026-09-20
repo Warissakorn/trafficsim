@@ -22,7 +22,8 @@ LaneReference reference(const QComboBox* box) {
 // a Link, so the two fields behave the same way for an author who has used one of them.
 std::vector<double> numbers(const QString& text) {
     std::vector<double> result;
-    for(const auto& part:text.split(',',Qt::SkipEmptyParts)) {
+    if(text.trimmed().isEmpty())return result;
+    for(const auto& part:text.split(',',Qt::KeepEmptyParts)) {
         bool ok=false;const double value=part.trimmed().toDouble(&ok);
         if(!ok)throw std::invalid_argument("EDIT_LANES");
         result.push_back(value);
@@ -31,11 +32,10 @@ std::vector<double> numbers(const QString& text) {
 }
 std::vector<MarkingType> markingTypes(const QString& text) {
     std::vector<MarkingType> result;
-    for(const auto& part:text.split(',',Qt::SkipEmptyParts)) {
+    if(text.trimmed().isEmpty())return result;
+    for(const auto& part:text.split(',',Qt::KeepEmptyParts)) {
         const auto name=part.trimmed().toLower();
-        if(name=="solid")result.push_back(MarkingType::solid);
-        else if(name=="dashed")result.push_back(MarkingType::dashed);
-        else throw std::invalid_argument("INVALID_MARKING");
+        result.push_back(markingFromName(name.toStdString()));
     }
     return result;
 }
@@ -193,7 +193,7 @@ void EditorWindow::refreshConnector() {
         for(const double w:connector->laneWidths)widths<<QString::number(w,'g',10);
         connectorWidths_->setText(widths.join(", "));
         QStringList markings;
-        for(const auto m:connector->laneMarkings)markings<<(m==MarkingType::solid?"solid":"dashed");
+        for(const auto m:connector->laneMarkings)markings<<markingName(m);
         connectorMarkings_->setText(markings.join(", "));
         const QSignalBlocker block(connectorPoints_);
         connectorPoints_->setValue(static_cast<int>(connector->geometry.size())-2);}

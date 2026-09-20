@@ -47,6 +47,11 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         if(link.level < -1000 || link.level > 1000 || link.displayType.empty())add("EDIT_DISPLAY_VALUE",p+".displayType");
         if(!std::isfinite(link.laneOffset))add("INVALID_GEOMETRY",p+".laneOffset");
         if (link.lanes.empty()) add("NO_LANES", p + ".lanes");
+        if(link.lanes.size()>12)add("EDIT_LANES",p+".lanes");
+        if(!link.boundaryMarkings.empty() && link.boundaryMarkings.size()!=link.lanes.size()+1)
+            add("EDIT_LANES",p+".boundaryMarkings");
+        for(std::size_t j=0;j<link.boundaryMarkings.size();++j)
+            if(!validMarking(link.boundaryMarkings[j]))add("INVALID_MARKING",p+".boundaryMarkings["+std::to_string(j)+"]");
         for (std::size_t j = 0; j < link.lanes.size(); ++j) {
             const auto q = p + ".lanes[" + std::to_string(j) + "]";
             id(link.lanes[j].id, q + ".id");
@@ -58,6 +63,14 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         const auto& c = network.connectors[i];
         const auto p = "connectors[" + std::to_string(i) + "]";
         id(c.id, p + ".id"); geometry(c.geometry, p + ".geometry");
+        const auto count=static_cast<std::size_t>(std::max(0,std::max(c.fromLaneCount,c.toLaneCount)));
+        if(!c.laneWidths.empty() && c.laneWidths.size()!=count)add("EDIT_LANES",p+".laneWidths");
+        if(!c.laneMarkings.empty() && c.laneMarkings.size()+1!=count)add("EDIT_LANES",p+".laneMarkings");
+        for(std::size_t j=0;j<c.laneWidths.size();++j)
+            if(!std::isfinite(c.laneWidths[j]) || c.laneWidths[j]<=0)
+                add("INVALID_WIDTH",p+".laneWidths["+std::to_string(j)+"]");
+        for(std::size_t j=0;j<c.laneMarkings.size();++j)
+            if(!validMarking(c.laneMarkings[j]))add("INVALID_MARKING",p+".laneMarkings["+std::to_string(j)+"]");
         if(c.level < -1000 || c.level > 1000 || c.displayType.empty())add("EDIT_DISPLAY_VALUE",p+".displayType");
         const auto* from = resolve(c.from, p + ".from"); const auto* to = resolve(c.to, p + ".to");
         if(from && to && validSide) try {

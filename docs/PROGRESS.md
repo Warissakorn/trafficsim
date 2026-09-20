@@ -15,6 +15,64 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-20 — Supplied-spec audit and authoring foundation (M1.21)
+
+**Request:** audit the three supplied Link/Connector/Network Editor specifications against the
+repository, implement missing features, then add the documents. `SPEC_AUDIT.md` maps every
+section to baseline code and records conflicts. This session implements one authoring system,
+following CLAUDE's one-system rule; it does **not** claim the full target specifications are done.
+Open numbered follow-ups M1.22/M1.23, M2.1, M3.2, M4.1 and M5.1 are in ROADMAP.
+
+**A concrete correctness gap found by the audit:** Connector commands checked width/divider
+counts, but imported files and direct model edits bypassed those checks. `validateNetwork` now
+checks list lengths, finite positive widths, valid marking enums and the editor's 12-lane limit.
+Retargeting to fewer paths clears stale lane properties, as range resizing already did.
+
+**Delivered, end to end:**
+
+- Link insert-at-station, longest-segment midpoint, straighten and unreferenced reverse actions.
+  Reverse preserves each named lane's physical footprint on both driving sides. Referenced
+  reversal rejects atomically; existing-vertex insertion leaves revision/redo/dirty unchanged.
+- Shared `Link::boundaryMarkings` (N+1 in lane order), and solid/dashed/none/double paint for
+  Links and Connector dividers. Shared stroke derivation drives both renderers; double lines
+  are 0.15 m apart and never alter the surface, mouth geometry or runtime paths.
+- Width/marking preservation across Link resize, split/pocket, duplicate and opposite creation.
+  New bilingual inspector fields/actions use the existing History boundary.
+- Schema 7 saves these fields; schemas 1–6 retain their migrations/defaults. Unknown schema-7
+  network-object fields fail before replacing the current document, rather than losing proposed
+  behavior/detector/elevation properties on save. This is deliberately a supported subset.
+- Real advisory severity and a short-Connector warning (<5 m), neither blocking Save nor Run.
+- Original Thai specs preserved byte-for-byte in section-sized files under `docs/specs/`.
+  Their manifest records source names and SHA-256 digests. Maintained docs stay in English;
+  the original claims are source material, not assertions about implemented fidelity.
+
+**Decisions:** a shared boundary is authored once, instead of duplicated per-lane left/right
+fields; physical left/right depends on lane-order/driving-side conventions. Keep Link widths at
+Connector mouths (M1.19) and all M1.20 attachment cleanup behavior. Do not retrofit the supplied
+0.5–20 m width limit onto older files that legitimately used positive widths outside it.
+Per-Link speed ownership, signal-versus-conflict priority and blocked-vehicle removal remain
+explicit design conflicts in the audit, not unimplemented controls pretending to affect a run.
+
+**Verification:** GNU 13.3.0, Qt 6.5.3, Linux. Baseline headless 17/17 after providing a writable
+temporary directory; updated headless 18/18 and desktop/offscreen 26/26 CTest pass. Ten new
+model/command tests plus `authoring-ui` cover inspector actions, canvas pen styles, language,
+Undo/Redo, reopen, invalid imported data and retained documents on rejected open. Architecture,
+negative architecture fixtures and file-size checks pass. Seed 42 remains 31 completed,
+0 active/pending, 0 safety clamps, mean completed-trip delay **29.249359418430977 s**.
+The original-spec concatenations match all three supplied byte streams. No manual desktop,
+Windows or traffic-engineering acceptance is claimed by these local tests.
+
+### Next
+
+Continue **M1.22** with the remaining Link geometry contract (spline/arc/reset/extend/merge and
+reference-safe reversal), first defining how attachment stations and routes survive each edit.
+Use SPEC_AUDIT's section table to retain the unfinished scope; do not merely add inert schema
+fields for engine features. The owner still needs to drive M1.19/M1.20 and the new actions by
+hand, then perform `M1_ACCEPTANCE.md`. M0/M1 usability and M6 validation remain open.
+M2.1 must not start until M2's pre-registered owner-test criteria are written.
+
+---
+
 ## 2026-09-18 — A Connector keeps its own position, and goes when it has nothing to connect (M1.20)
 
 **The owner's requirement, in the same session as M1.19:** a Connector must store its position

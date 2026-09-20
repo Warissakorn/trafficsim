@@ -221,119 +221,39 @@ straight` pins both halves to 1e-9. `TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) 
 re-derived: it reads `connectorShapeIssues`, which measures from `connectorLaneWidths`, and that
 function is unchanged.
 
-### M1.13 — Attachment stations in metres
+### M1.13–M1.20 — Completed geometry and authoring iterations
 
-**Implemented.** A Connector end is attached by `LaneReference::station`: metres along the
-link's reference polyline, as Vissim stores a position, replacing the fraction of lane
-arclength that slid every interior attachment whenever a Link was stretched. One station names
-one cross-section, so every lane of a range meets the Link square on a curve; `matchedStation`
-maps that station onto any lane or boundary derived from the same reference, and is the single
-place the mapping lives. `laneOffset` keeps the reference polyline fixed under lane edits, so
-adding or removing lanes cannot move an attachment either.
+Implemented: metre attachment stations (M1.13), intermediate points (M1.14), names (M1.15),
+group moves (M1.16), flush mouths (M1.18), lane-aligned mouths (M1.19), and independent
+Connector placement with off-Link cleanup (M1.20). M1.17's lateral wedge remains reverted.
+The complete original entries are retained in
+[archive/ROADMAP-M1-implemented.md](archive/ROADMAP-M1-implemented.md).
 
-Shortening a Link past an attachment clamps it to the new end in `reanchorConnector`, which
-every edit that can change a reference length already routes through; the Link edit is never
-rejected. Signal heads keep their existing contract, where validation rejects such an edit.
-`splitLink` carries stations across a cut by arithmetic alone. Schema 5 stores `station`;
-schemas 1–4 and pre-schema M0 scenarios are converted on read at the same world position, with
-the version — not the key that happens to be present — deciding the unit.
+### M1.21 — Authoring extensions from the supplied specifications
 
-**Done:** stretching a Link's far end leaves an interior Connector at the same metre and the
-same world point; schema 4 files load unchanged. M1.11.1 splits a lane at a station that, because
-of this, does not move underneath it.
+**Implemented; automated verification recorded in PROGRESS.** Shared Link boundary markings,
+none/double marking strokes in both renderers, schema-7 persistence, Link insert/midpoint/
+straighten/unreferenced-reverse actions, import cross-section validation and warning severity.
+Unknown schema-7 network-object fields are rejected, so unsupported behavior is never silently
+lost. [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md) defines the actual supported subset.
+Owner M1 acceptance remains open. This does not close the supplied target specifications.
 
-### M1.14 — Intermediate points, as Vissim counts them
+### M1.22 — Remaining authoring and interaction requirements
 
-**Implemented.** A Connector stores its two attachments and a settable number of intermediate
-points, and is drawn straight between them and mitered at each one — the same rule a Link is
-drawn by, confirmed against a Vissim connector with the count set to 2. Properties carries
-Vissim's `Intermediate points`, which re-lays the shape the Connector already has and never
-re-derives the default curve: raising it splits the longest leg so no placed point is lost,
-lowering it spaces the points evenly. A new Connector gets 3. The arc reach that lays those
-points is held at its 120-degree value, which stops a Connector drawn between two nearly
-touching links from running to 11 times its own chord. Existing save files were deliberately not
-migrated: the owner confirmed the project is still a test bed.
+**Open.** Link spline/arc construction and curve parameters, extend/merge and safe referenced
+reversal; tapered cross-sections, shoulders/median/sidewalk display; per-Link driving-side
+semantics; snap priorities, alignment/angle constraints, group rotation/nudging; layer locks,
+history panel, multi-property inspector, context menus, shortcuts and accessibility.
+**Gate:** command/reference roundtrips plus both-side gesture tests and keyboard-only owner
+exercise. Settle the conflicts in SPEC_AUDIT before changing geometry or gestures.
 
-**Done:** a default Connector shows five grips; the count changes without losing the author's
-shape; a count of 2 draws the three straight legs Vissim draws.
+### M1.23 — Interchange, document workflow and measured rendering
 
-### M1.15 — A Name on every object
-
-**Implemented.** `Link`, `Connector` and signal heads each carry Vissim's `Name`: free text, at
-most 200 characters, never a key — two objects may hold the same one and an empty one is the
-normal state. One field in the inspector's common section names whichever object is selected,
-the way Vissim puts Name beside No. on every dialog, and the three object lists show it in a
-Name column next to ID. It round-trips through the project file, copies with a duplicated
-object, and undoes as one entry.
-
-**Done:** an interchange is authored in the author's own words rather than in `link-17`.
-
-### M1.16 — Moving several objects at once
-
-**Implemented.** Left-dragging any member of a multi-selection moves the whole selection, which
-Vissim has always done and this editor refused to do. Links carry the geometry; a Connector
-rides the junction rigidly when both of its Links are moving and stays attached when they are
-not; signal heads ride a station and need no moving. A selection holding no Link reports
-`EDIT_MOVE_TARGET` rather than doing nothing quietly. One drag is one undo entry, and a drag
-under the system drag threshold stays a click — without that, a two-pixel tremor either side of
-a grid line moved a whole junction by a metre.
-
-The reason this was expensive is gone: reanchoring a Connector now moves the one poly point
-attached to the Link that moved (M1.14), so the group move had only to decide which Connectors
-travel whole. `Alt`-drag rotation is still not implemented and is not booked.
-
-**Done:** two Links and the Connector between them move as one shape, and one Undo puts them back.
-
-### M1.17 — The mouth is a wedge cut on the Link — **reverted 2026-09-18**
-
-A lateral wedge onto the Link's lane edges. It re-aimed each boundary's last leg, let neighbouring
-boundaries cross and folded the mouth to a point; reverted on the owner's instruction and
-superseded by M1.18, then M1.19. The body is in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
----
-
-### M1.20 — A Connector keeps its own position
-
-The owner's rule: a Connector stores its geometry rather than having both ends recomputed from its
-Links. An end still on its Link is snapped onto the lane under it with its station moved to match;
-an end off its Link means the Connector has nothing to connect, so it is deleted with its routes
-and heads in the same transaction. An edit that RE-LAYS a Link's lanes without moving the road is
-not a move: every Connector follows the lane it names, at the same station.
-
-**Done when:** a Link edit leaves every authored point untouched; an end standing on a lane that has
-slid under it re-reads its lane and station; a Link moved out from under an end deletes the
-Connector and one Undo restores it; a Connector's body can be dragged, including off its Links.
-**All met at the model and command layer**; driving it by hand in the editor is still owed.
-
----
-
-### M1.19 — Every Connector lane on the Link lane it feeds
-
-The owner's requirement after seeing M1.18's mouth: a Connector's lanes must **line up** with the
-Link's, not merely meet its cross-section. M1.18's slide left every boundary at its full offset
-square to the Connector, so on an oblique cut the lanes spread by `1/cos(arrival)`. The offsets each
-mouth is left at are now read off **the Link's own lane boundaries**, projected onto the Connector's
-cross-section and re-solved against the end leg each boundary produces (`kMouthPasses`, 8 fixed
-iterations). Bounded three ways, each for a measured failure: `kMouthSpanFloor` against compressing
-the mouth to a point, `kMouthShiftLimit` against an unbounded solve (3.6e7 m measured), and a
-fallback to the Connector's own cross-section where the two lane orders run opposite, which
-otherwise folded 120 of 288 cases.
-
-**Done when:** a two-lane mouth spans the Link's own 7.000 m at every arrival up to 60 degrees; each
-lane middle is on its Link lane's to 1 mm wherever the mouth's outer edges land on the Link's; the
-sweep still has 0 folds; and `trafficsim-cli 42` still prints `meanDelay 29.249359418430977`. **All
-met.** The owner's timed editor exercise in `docs/M1_ACCEPTANCE.md` is still the gate.
-
----
-
-### M1.18 — A flush mouth by longitudinal shear
-
-The mouth cut on the Link's own cross-section by sliding each boundary **longitudinally** along its
-own offset curve — not M1.17's lateral wedge, whose revert stands. Superseded in part by M1.19,
-which keeps the slide and changes the offsets it starts from. The full body, its measurements and
-the trade the owner took at the time are in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+**Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile/SUMO import and CRS mapping;
+recent files/tabs, spatial indexing/culling/LOD and optional renderer acceleration.
+Competitor-format imports and 3D require an explicit scope revision before implementation.
+**Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
+reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
 
 ---
 
@@ -364,6 +284,17 @@ line unfilled and starting M2 anyway voids the gate.
   because effort has been spent.
 - This gate exists because the whole justification for owning an engine (`PROBLEM.md` §2)
   is an argument, not yet an observation.
+
+---
+
+### M2.1 — Link/lane/Connector behavior and demand extensions
+
+**Open.** Resolve vehicle-owned desired speed versus Link limits/factors, then distributions,
+inheritance, road classes, lane types/restrictions, compositions and static/partial/dynamic
+routing decisions. Persistence must not imply runtime support; add explicit capability guards.
+**Gate:** validated distributions and references, deterministic sampling, old seed fixtures
+unchanged with defaults, observable runtime effects for every exposed behavior parameter.
+M2's pre-registered owner gate still precedes this work.
 
 ---
 
@@ -424,12 +355,32 @@ and M3 remains open.
 
 ---
 
+### M3.2 — Lane changing and crossing-conflict control
+
+**Open.** Explicit priority rules/conflict areas, lane-change distances/emergency stopping,
+cooperation, visibility and calibrated gap acceptance. Specify signal/right-of-way interaction
+without disabling collision constraints; account explicitly for any removed blocked vehicle.
+**Gate:** controlled merges, diverges and crossing conflicts, congestion/no-overlap regression,
+deterministic replay and the M3 owner exercise; scientific claims remain gated by M6.
+
+---
+
 ## M4 — Signal control
 
 Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-barrier.
 
 **Done when:** an eight-phase two-ring, two-barrier plan is built from a real timing sheet in
 under 8 minutes with zero validation errors, and runs.
+
+---
+
+### M4.1 — Detectors and controller integration
+
+**Open.** Detectors/DCP authoring and events, signal groups/controllers, actuated/adaptive logic,
+phase validation and external-control interfaces. External integrations need explicit protocols
+and deterministic recorded inputs; no wall-clock dependency in core.
+**Gate:** passage/occupancy/aggregation fixtures, controller state-transition tests, dangling-
+reference cleanup and the M4 real timing-sheet exercise.
 
 ---
 
@@ -444,6 +395,16 @@ The reason the whole project exists (`PROBLEM.md` §4).
 
 **Done when:** one intersection, ten seeds, one command → a movement-level LOS table with
 confidence intervals, ready to paste into a report.
+
+---
+
+### M5.1 — Additional network objects and evaluated outputs
+
+**Open.** Evaluation nodes/stop lines, movement measurements/overlays and reports. Parking,
+transit stops, crosswalks and multimodal behavior from the supplied documents require their own
+runtime and calibration contracts, not merely stored object types.
+**Gate:** event-accounting and known analytical scenarios, reference cleanup and multi-run
+output checks. Keep completed-trip delay distinct from HCM control delay/LOS.
 
 ---
 

@@ -65,6 +65,7 @@ void changeConnectorLanes(ProjectDocument& d,const std::string& id,
     if(!widths.empty() && widths.size()!=paths)throw std::invalid_argument("EDIT_LANES");
     // One per INTERIOR divider. paths-1 of them, and none at all on a single-lane Connector.
     if(!markings.empty() && markings.size()+1!=paths)throw std::invalid_argument("EDIT_LANES");
+    for(const auto m:markings)if(!validMarking(m))throw std::invalid_argument("INVALID_MARKING");
     for(std::size_t i=0;i<widths.size();++i)if(!std::isfinite(widths[i]) || widths[i]<=0)
         throw ValidationError({{"INVALID_WIDTH",
             "connectors["+std::to_string(index)+"].laneWidths["+std::to_string(i)+"]"}});
@@ -99,6 +100,9 @@ void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneRef
     auto moved = c; moved.from = from; moved.to = to;
     moved.fromLaneCount = std::max(1, std::min(c.fromLaneCount, lanesFromReference(d.network, from)));
     moved.toLaneCount = std::max(1, std::min(c.toLaneCount, lanesFromReference(d.network, to)));
+    if(std::max(moved.fromLaneCount,moved.toLaneCount)!=std::max(c.fromLaneCount,c.toLaneCount)) {
+        moved.laneWidths.clear();moved.laneMarkings.clear();
+    }
     // Validate before mutating: an unknown lane must not leave a half-moved connector behind.
     (void)connectorPaths(d.network, moved);
     anchorConnectorEnds(d.network, moved);

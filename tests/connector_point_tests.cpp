@@ -128,5 +128,6 @@ TEST(points, a_hairpin_between_touching_links_stays_inside_its_own_junction) {
     // It is still an undrivable turn for a 3.5 m lane, and it says so rather than quietly
     // drawing a sliver: this is the one advisory that stands between the author and a fold.
     const auto issues=connectorShapeIssues(d.network);
-    CHECK(issues.size()==1);CHECK(issues.front().code=="TIGHT_CONNECTOR_RADIUS");
+    CHECK(issues.size()==2);CHECK(issues[0].code=="WARN_SHORT_CONNECTOR");
+    CHECK(issues[1].code=="TIGHT_CONNECTOR_RADIUS");
 }

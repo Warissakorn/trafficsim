@@ -91,6 +91,19 @@ std::vector<Point> laneBoundaryGeometry(const Link& link,std::size_t boundary,Dr
     return offsetGeometry(link.geometry,(link.laneOffset+total/2-before)*(side==DrivingSide::left?1.:-1.));
 }
 void replaceLaneBundle(Link& link,std::vector<Lane> lanes,bool leading) {
+    if(!link.boundaryMarkings.empty()) {
+        if(link.boundaryMarkings.size()!=link.lanes.size()+1)throw std::invalid_argument("EDIT_LANES");
+        std::vector<MarkingType> markings(lanes.size()+1,MarkingType::dashed);
+        markings.front()=markings.back()=MarkingType::solid;
+        const auto shift=leading?static_cast<std::ptrdiff_t>(lanes.size())-
+            static_cast<std::ptrdiff_t>(link.lanes.size()):0;
+        for(std::size_t i=0;i<link.boundaryMarkings.size();++i) {
+            const auto next=static_cast<std::ptrdiff_t>(i)+shift;
+            if(next>=0 && next<static_cast<std::ptrdiff_t>(markings.size()))
+                markings[static_cast<std::size_t>(next)]=link.boundaryMarkings[i];
+        }
+        link.boundaryMarkings=std::move(markings);
+    }
     double oldWidth=0,newWidth=0;
     for(const auto& l:link.lanes)oldWidth+=l.width;
     for(const auto& l:lanes)newWidth+=l.width;
