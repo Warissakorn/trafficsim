@@ -90,13 +90,16 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
-    foreach(group core network reference project editor connectors mouths diagnostics demand ranges attachments authoring)
+    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
+    # Also run the registry without a filter: a newly registered group must never silently
+    # disappear from CI just because this named list was not updated (previously "points").
+    add_test(NAME all-model-tests COMMAND trafficsim-tests)
     add_test(NAME architecture COMMAND trafficsim-check-architecture "${PROJECT_SOURCE_DIR}")
     add_test(NAME architecture-negative COMMAND trafficsim-check-architecture --self-test)
     add_test(NAME file-sizes COMMAND trafficsim-check-file-sizes "${PROJECT_SOURCE_DIR}")

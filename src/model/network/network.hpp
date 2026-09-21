@@ -94,6 +94,9 @@ std::vector<Point> linkCentreline(const Link&, DrivingSide);
 // cross-section on the other: this is what keeps the mouth of a multi-lane Connector square
 // on a curve, where the outer lane is the longer one. Stations outside `from` are clamped.
 double matchedStation(const std::vector<Point>& from, const std::vector<Point>& to, double station);
+// Directed segment at a station. At a vertex, arriving=true selects the preceding segment;
+// departing selects the following one. Does not average opposite directions into zero.
+Point directionAlong(const std::vector<Point>&, double station, bool arriving);
 // The polyline between two stations, keeping every original vertex that lies between them.
 // polylineSpan(g, 0, polylineLength(g)) returns g itself, which is what lets a lane with no
 // interior attachment keep its geometry and its length bit for bit.
@@ -115,7 +118,7 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connec
 // the part of the slide a Connector too short to carry it did not get -- the distance its mouth
 // still stands off the Link. A residual above zero is the honest report that the arrival is too
 // oblique for the room available, not a defect.
-struct ConnectorMouthFit { std::vector<double> shift; double zone{},residual{}; };
+struct ConnectorMouthFit { std::vector<double> shift; double zone{},residual{}; bool squareFallback{}; };
 struct ConnectorMouthFits { ConnectorMouthFit source,target; };
 ConnectorMouthFits connectorMouthFit(const Network&, const Connector&);
 // The same idea for a connector: the middle of its whole width, point for point with its
@@ -136,6 +139,10 @@ int lanesFromReference(const Network&, const LaneReference&);
 // Snap both ends onto the lanes they NAME. For an edit whose input IS the reference: creating a
 // Connector, or moving one of its ends onto another lane.
 void anchorConnectorEnds(const Network&, Connector&);
+// Explicit endpoint edits rebuild the turn at its current intermediate-point count. Link
+// movement still uses reanchorConnector and preserves world-space authored geometry.
+// Validates on a copy, including duplicate connections and narrowed cross-section lists.
+void retargetConnector(const Network&, Connector&, LaneReference from, LaneReference to);
 // True when `p` lies on the carriageway of this lane -- within half its width of the lane's own
 // middle. The ONE test for whether a Connector end is still on its Link.
 bool laneContains(const Network&, const LaneReference&, Point);

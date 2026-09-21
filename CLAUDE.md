@@ -13,7 +13,13 @@ traffic impact studies require. Deliberately **not** a front end over another en
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
 
-**Latest work:** M1.21 implements the first authoring slice of the owner's three supplied
+**Latest correctness work:** the 2026-09-21 Network lifecycle audit fixes wrong-side endpoint
+retargets, pathological steep mouths, physical range picking and coalesced-release gestures.
+Read `docs/NETWORK_LIFECYCLE_AUDIT.md` for tested states and limits. Retarget rebuilds the
+directed curve; Link movement still preserves the M1.20 world-position contract. Steep or
+backwards authored mouths stay full-width and carry an alignment advisory, not a fidelity claim.
+
+**Authoring foundation:** M1.21 implements the first authoring slice of the owner's three supplied
 specifications. Read `docs/SPEC_AUDIT.md`, `docs/AUTHORING_EXTENSIONS.md` and the numbered
 follow-ups in ROADMAP. Schema 7 is a supported subset, not the entire proposed specification;
 unsupported network-object fields fail on load rather than disappearing on save. The owner

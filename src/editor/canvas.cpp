@@ -122,6 +122,13 @@ void EditorCanvas::redraw() {
             replaceLaneBundle(link,std::move(lanes),leading);
         }
         const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
+        const auto road=linkCentreline(link,document_->network.drivingSide);
+        if(!std::isfinite(polylineLength(road)) || polylineLength(road)<=0) {
+            // Invalid transient geometry must remain a cancellable gesture, not an exception
+            // from pointAlong while painting. The release command will reject it atomically.
+            QPen invalid(QColor("#ef4444"),2,Qt::DashLine);invalid.setCosmetic(true);
+            scene_.addPath(path(link.geometry),invalid)->setZValue(z+5);continue;
+        }
         // Drawn lines only: an edge offset round a bend tighter than the lane can loop back on
         // itself, which fills as a hole and reads as a tear in the road.
         const auto left=trimSelfIntersections(laneBoundaryGeometry(link,0,document_->network.drivingSide));
@@ -135,7 +142,6 @@ void EditorCanvas::redraw() {
         }
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
         if (polylineLength(link.geometry) <= 0) continue;
-        const auto road=linkCentreline(link,document_->network.drivingSide);
         const auto mid=pointAlong(road,polylineLength(road)/2);
         const auto ahead=pointAlong(road,polylineLength(road)/2+0.05);
         const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());

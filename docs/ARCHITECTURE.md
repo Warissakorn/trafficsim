@@ -78,7 +78,10 @@ project/model/core. Embedded background bytes are immutable and shared across hi
 `connectorCurve` in the model returns a sampled cubic aligned to the endpoint lane
 directions. Only its polyline is persisted; its interior points are the editable curve
 handles. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
-deletion. Link/Lane/driving-side edits use the same `reanchorConnectors` path.
+deletion. Explicit endpoint edits share model `retargetConnector` with the canvas preview:
+they rebuild the directed turn at the current intermediate-point count and narrow ranges to
+available lanes. Link geometry movement uses `reanchorConnectors`; lane-bundle/driving-side
+edits use named-lane anchoring. These are deliberately different operations.
 Retargeting/range changes to a connector used by a route or head are rejected; deletion removes affected routes
 and their inputs through shared command-side reference cleanup. No runtime merge or
 right-of-way support is implied by authoring these connections.
@@ -129,6 +132,14 @@ object fields instead of dropping them on save. `link_geometry_commands.cpp` add
 insertion, midpoint, straighten and unreferenced reverse through the existing History boundary.
 Model validation checks imported Connector cross-section lists, not just command inputs.
 Geometry advisories have their own severity and never enter the Run/save blocking checks.
+
+The Network lifecycle regression audit adds `directionAlong` for unambiguous incoming/outgoing
+directions at vertices, validation of collapsed derived lanes, and a full-width square-mouth
+fallback for near-perpendicular or reversed authored arrivals. `connectorMouthFit` reports the
+fallback as well as residual metres; `WARN_CONNECTOR_ALIGNMENT` exposes it without rewriting
+authored geometry or changing runtime topology. See `NETWORK_LIFECYCLE_AUDIT.md` for evidence
+and limits. CTest runs the unfiltered model registry as well as named groups, so new groups
+cannot silently be omitted from CI.
 
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 

@@ -15,6 +15,53 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-21 — Network lifecycle correctness audit (M1.21.1)
+
+**Request:** investigate and fix Network authoring failures, especially moving a Connector end
+to the other side and perpendicular mouths becoming needles. This takes priority over the
+previous M1.22 feature follow-up. `NETWORK_LIFECYCLE_AUDIT.md` records the state matrix,
+confirmed defects and limits. The screenshots do not include the source project; fixtures
+reproduce the mechanisms without claiming exact source coordinates.
+
+**Changed:** shared explicit retarget rebuilds the directed curve at the existing point count,
+clears stale blend/cross-section data where appropriate, and is used by the preview and command.
+The two initial regressions failed against main: a backwards last leg after retarget, and a
+stretched steep mouth. Near-perpendicular/backwards mouth fitting now uses full-width square
+ends, never the ill-conditioned slide, and exposes a bilingual alignment advisory. Ordinary
+mouth fitting and M1.20 Link-movement semantics remain distinct and preserved.
+
+Range grips pick actual cross-section centres, including even counts/unequal widths. Group
+drag and rectangle selection use release coordinates. Body tabs follow actual boundaries;
+outward growth of a capacity-limited taper no longer contracts it. Direction sampling chooses
+the incoming/outgoing segment at a vertex, rather than averaging a cusp to zero. Validation
+rejects collapsed derived lanes/centrelines before the canvas/runtime can sample them;
+collapsed drag previews remain drawable and reject atomically on release. Double-click
+insertion cancels all transient drag state.
+
+**Test coverage:** new lifecycle model/UI suites, 144 generated heading cases, 66 anchored
+sharp-arrival fixtures, a 36-case range transition matrix, preview/commit equality, cancellation,
+release-only input, offset collapse, serialization and exact Undo/Redo. The historical 288-case
+mouth sweep now asserts a genuinely anchored fixture. The four `points` tests existed but
+were not registered in CTest; they now run explicitly, and an unfiltered registry test prevents
+that omission recurring. Core reference fixtures were not regenerated.
+
+**Verification:** local Linux/Qt 6.5.3 desktop CTest passes **30/30**; the unfiltered model
+registry includes 147 cases. See the associated PR for final Linux/Windows CI results. A local incremental
+build left one generated test executable without its executable bit; a clean target rebuild
+restored the normal build artifact. This was not a product assertion failure and no test was
+disabled. Visual QA uses the real canvas/catalog with generated and 89/90/91-degree authored
+joins on both driving sides. No automated result closes the owner's M0/M1 acceptance gates.
+
+### Next
+
+Review the lifecycle fixes against the owner's original `.traffic.json` if supplied, especially
+previously authored near-perpendicular shapes: they are retained and diagnosed, not silently
+regenerated on load. Explicit retarget/Reset curve produces a fresh directed turn. Then resume
+the separately booked M1.22 authoring features; do not describe that feature scope as completed
+by this bug-fix audit. Keep the finite coverage and the remaining manual acceptance explicit.
+
+---
+
 ## 2026-09-20 — Supplied-spec audit and authoring foundation (M1.21)
 
 **Request:** audit the three supplied Link/Connector/Network Editor specifications against the

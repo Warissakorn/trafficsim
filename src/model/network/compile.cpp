@@ -70,6 +70,12 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
             issues.push_back({"WARN_SHORT_CONNECTOR","connectors["+std::to_string(i)+"]"});
         std::vector<ConnectorPath> paths;
         try { paths=connectorPaths(network,c); } catch(const std::exception&) { continue; }
+        try {
+            const auto fit=connectorMouthFit(network,c);
+            if(fit.source.squareFallback || fit.target.squareFallback ||
+               fit.source.residual>.01 || fit.target.residual>.01)
+                issues.push_back({"WARN_CONNECTOR_ALIGNMENT","connectors["+std::to_string(i)+"]"});
+        } catch(const std::exception&) { continue; }
         // The same widths connectorBoundaries draws from, so an authored width is measured
         // against rather than silently ignored here (hard rule 3).
         try { for(const double w:connectorLaneWidths(network,c).source)width+=w; }

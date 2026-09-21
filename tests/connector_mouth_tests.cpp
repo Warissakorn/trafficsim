@@ -62,15 +62,18 @@ double mouthWidth(const std::vector<Point>& a,const std::vector<Point>& b,bool s
 // A two-lane Link crossed by a two-lane Connector arriving on its BODY at `arrival` radians, the
 // case the owner reported. The Connector's spine is straight, so an exact width measure exists.
 Network obliqueArrival(double heading,double arrival,int spans=4,double spacing=9) {
-    Network n;n.drivingSide=DrivingSide::left;
+    Network n;n.id="mouth-sweep";n.drivingSide=DrivingSide::left;
     const Link main{"main",{{-60*std::cos(heading),-60*std::sin(heading)},
                             {60*std::cos(heading),60*std::sin(heading)}},{{"main-1",3.5},{"main-2",3.5}}};
     const auto lane=laneGeometry(main,"main-1",n.drivingSide);
     const auto meet=pointAlong(lane,polylineLength(lane)/2);
     std::vector<Point> spine;
     for(int i=spans;i>=0;--i)spine.push_back({meet.x-i*spacing*std::cos(arrival),meet.y-i*spacing*std::sin(arrival)});
-    n.links={main,{"feed",{{spine.front().x-25*std::cos(arrival),spine.front().y-25*std::sin(arrival)},
-                           spine.front()},{{"feed-1",3.5},{"feed-2",3.5}}}};
+    // The first lane is offset 1.75 m from the two-lane reference. Build the feed around
+    // the attachment, not on it; the old fixture had a disconnected source geometry.
+    const Point end{spine.front().x+1.75*std::sin(arrival),spine.front().y-1.75*std::cos(arrival)};
+    n.links={main,{"feed",{{end.x-25*std::cos(arrival),end.y-25*std::sin(arrival)},
+                           end},{{"feed-1",3.5},{"feed-2",3.5}}}};
     n.connectors={Connector{"c",{"feed","feed-1",{}},{"main","main-1",60.},spine,2,2}};
     return n;
 }
@@ -87,6 +90,9 @@ TEST(mouths, a_mouth_lands_on_the_links_cross_section_at_every_arrival_angle) {
         const double heading=linkDegrees*std::numbers::pi/180;
         const double arrival=arrivalDegrees*std::numbers::pi/180;
         const auto n=obliqueArrival(heading,arrival);
+        const auto issues=validateNetwork(n);
+        if(!issues.empty())throw std::runtime_error("Invalid angle fixture "+std::to_string(linkDegrees)+"/"+
+            std::to_string(arrivalDegrees)+": "+issues.front().code+" "+issues.front().path);
         const auto& c=n.connectors.front();
         const auto boundaries=connectorBoundaries(n,c);
         const auto fit=connectorMouthFit(n,c);

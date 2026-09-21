@@ -93,20 +93,7 @@ void changeConnectorEndpoints(ProjectDocument& d, const std::string& id, LaneRef
     auto& c = editableConnector(d, id);
     if (c.from == from && c.to == to) return;
     if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
-    uniqueConnection(d, from, to, id);
-    // The new end may have fewer lanes than the old one. Narrow the range to what is there
-    // instead of rejecting the move; a wider link never widens the range on its own, because
-    // how many lanes a connector carries is the author's decision, not the link's.
-    auto moved = c; moved.from = from; moved.to = to;
-    moved.fromLaneCount = std::max(1, std::min(c.fromLaneCount, lanesFromReference(d.network, from)));
-    moved.toLaneCount = std::max(1, std::min(c.toLaneCount, lanesFromReference(d.network, to)));
-    if(std::max(moved.fromLaneCount,moved.toLaneCount)!=std::max(c.fromLaneCount,c.toLaneCount)) {
-        moved.laneWidths.clear();moved.laneMarkings.clear();
-    }
-    // Validate before mutating: an unknown lane must not leave a half-moved connector behind.
-    (void)connectorPaths(d.network, moved);
-    anchorConnectorEnds(d.network, moved);
-    c = std::move(moved);
+    retargetConnector(d.network,c,std::move(from),std::move(to));
 }
 void resetConnectorCurve(ProjectDocument& d, const std::string& id, bool straight) {
     auto& c = editableConnector(d, id);
