@@ -13,7 +13,10 @@ public:
     enum class Tool { select, draw, split, measure, calibrate, connect, route, input, head };
     explicit EditorCanvas(QWidget* parent = nullptr);
     void setDisplayCatalog(DisplayCatalog catalog) { display_=std::move(catalog); redraw(); }
-    void setVisibleLevel(std::optional<int> level) { visibleLevel_=level; cancel(); }
+    void setVisibleLevel(std::optional<int> level);
+    // Explicit selection from a table/inspector reveals hidden objects. Changing the
+    // level filter instead drops hidden selections before they can be edited.
+    std::function<void(std::optional<int>)> visibleLevelChanged;
     void setBackgroundVisible(bool visible) { backgroundVisible_=visible; redraw(); }
     void cycleOverlap();
     std::vector<std::pair<std::string,double>> hitObjects(Point,bool connectors = true) const;
@@ -70,6 +73,7 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent*) override;
     void wheelEvent(QWheelEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
+    void focusOutEvent(QFocusEvent*) override;
     void drawBackground(QPainter*, const QRectF&) override;
     bool focusNextPrevChild(bool) override;
 private:
@@ -93,6 +97,8 @@ private:
     int rangeCorner_{}, previewFromCount_{1}, previewToCount_{1};
     Point lastPick_{};
     bool levelVisible(int level) const { return !visibleLevel_ || *visibleLevel_==level; }
+    std::optional<int> objectLevel(const std::string&) const;
+    bool mouseGestureActive() const;
     const DisplayType& style(const std::string&) const;
     std::optional<LaneReference> nearestLane(Point) const;
     void insertVertex(Point);

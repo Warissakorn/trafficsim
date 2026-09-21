@@ -17,6 +17,45 @@ long. Older entries are preserved whole there:
 
 ---
 
+## 2026-09-21 — Network Editor history and keyboard workflow (M1.22.1)
+
+**Request:** improve and fix the Network Editor. This session completes the history/nudging
+slice of M1.22 and fixes two confirmed selection/gesture defects within the editor system.
+
+**Changed:** bilingual History dock (Ctrl+Shift+H), named Undo/Redo, current/saved markers,
+explicit Enter/double-click restoration, retained redo states and monotonically increasing
+revision IDs after branching. The dock reads metadata from the existing History snapshots;
+it introduces neither a second document store nor a new project schema. Restoring a state
+clears a compiled run and refreshes all editor surfaces.
+
+Arrow keys nudge Link/Connector selections by the snap grid, or 1 m with Snap off; Shift
+multiplies the step by ten. The same group-translation command preserves M1.20 attachment
+semantics and makes every step undoable. Head-only selections still ride their parent road.
+Filtering levels drops hidden selections; explicit table/inspector selection reveals hidden
+objects and synchronizes the filter. Unknown IDs are ignored. Active drags/copies/creation
+cancel on focus loss, so late releases cannot commit; multi-click drafts survive ordinary
+focus changes between clicks. Help/command names are translated in both catalogs.
+
+**Verification:** Linux, GCC 13.3 / Qt 6.4.2. Original baseline suites pass (30/30); separate
+regressions reproduce hidden selection and focus-lost drag commits against c69cad5 before
+checking their fixed behavior. Desktop `check` passes **32/32** suites, including the new
+history and workflow suites, all model cases, replay baselines, architecture and file sizes.
+Coverage includes both driving sides, group/Connector nudges, save-point restoration,
+branching, rejected/no-op edits, 100-entry eviction, run invalidation, field-focus isolation,
+level/inspector synchronization, cancellation and Thai translation. The Thai History dock
+was rendered and visually inspected. This is Linux evidence; Windows CI and owner acceptance
+are separate. See [EDITOR_WORKFLOW.md](EDITOR_WORKFLOW.md) for exact controls.
+
+### Next
+
+M1.22 remains open for rotation, geometry/snapping tools, layer locks, bulk inspection,
+context menus and the keyboard-only owner exercise; M1's timed gate remains open. The
+previous session's shared-station runtime-section fix remains separate work, with its
+existing regression and M3.2 conflict-policy follow-up. No runtime/curve-parameter or visual-
+override work was folded into this editor change.
+
+---
+
 ## 2026-09-21 — A toolchain, and the audit's §3.3 answered with a measurement
 
 **Request:** the owner asked whether the toolchain was hard to install, whether VS Code could be

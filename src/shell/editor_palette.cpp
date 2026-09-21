@@ -35,6 +35,12 @@ void EditorWindow::buildPalette() {
         if(visibleLevel_->currentData().isValid())canvas_->setVisibleLevel(visibleLevel_->currentData().toInt());
         else canvas_->setVisibleLevel({});
     });
+    canvas_->visibleLevelChanged=[this](std::optional<int> level){
+        const QSignalBlocker block(visibleLevel_);
+        if (level && visibleLevel_->findData(*level)<0)
+            visibleLevel_->addItem(QString::number(*level),*level);
+        visibleLevel_->setCurrentIndex(level?visibleLevel_->findData(*level):0);
+    };
     auto* background=action("editorToggleBackground",QKeySequence("Ctrl+B"),[this]{
         canvas_->setBackgroundVisible(actions_.at("editorToggleBackground")->isChecked());
     });
@@ -47,6 +53,8 @@ void EditorWindow::buildPalette() {
     resizeDocks({dock},{190},Qt::Horizontal);
 }
 void EditorWindow::translatePalette() {
+    canvas_->setToolTip(text("editorKeyboardHelp"));
+    canvas_->setAccessibleDescription(text("editorKeyboardHelp"));
     const char* keys[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable"};
     const char* shortcuts[]={"S","L","X","M","K","C","R","V","H"};
     for(int row=0;row<palette_->count();++row){
@@ -58,6 +66,8 @@ void EditorWindow::translatePalette() {
     visibleLevel_->addItem(text("editorAllLevels"));
     const auto lang=language_->currentData().toString().toStdString();
     for(const auto& level:displayCatalog_.levels)visibleLevel_->addItem(QString::number(level.order)+" · "+QString::fromStdString(level.name.at(lang)),level.order);
+    if(selected.isValid() && visibleLevel_->findData(selected)<0)
+        visibleLevel_->addItem(QString::number(selected.toInt()),selected);
     visibleLevel_->setCurrentIndex(selected.isValid()?visibleLevel_->findData(selected):0);
 }
 void EditorWindow::buildAppearance(QFormLayout* form) {

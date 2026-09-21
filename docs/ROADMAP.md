@@ -254,6 +254,16 @@ history panel, multi-property inspector, context menus, shortcuts and accessibil
 **Gate:** command/reference roundtrips plus both-side gesture tests and keyboard-only owner
 exercise. Settle the conflicts in SPEC_AUDIT before changing geometry or gestures.
 
+#### M1.22.1 — History navigation and safe keyboard editing
+
+Implemented: a bilingual History dock with named Undo/Redo, current/saved-state markers,
+navigation through the retained 100 edits and branch-safe revision IDs; arrow-key nudging
+through the existing group-move command, with grid/Shift increments. Level filtering removes
+hidden selections, explicit table/inspector selections reveal their objects, and loss of canvas
+focus cancels active mouse gestures. These changes do not close M1.22: rotation, remaining
+geometry/snapping tools, layer locks, bulk inspection, context menus and the keyboard-only
+owner exercise remain open. M1's timed intersection/reopen gate also remains open.
+
 ### M1.23 — Interchange, document workflow and measured rendering
 
 **Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile/SUMO import and CRS mapping;

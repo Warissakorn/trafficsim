@@ -68,6 +68,13 @@ renderer or the M1 editor.
 `ProjectDocument` owns the authoring network, optional typed AuthoringDefinition, background,
 revision and ID counter. `History` commits a candidate only after validation and keeps
 bounded before/after snapshots. Failed edits never mutate the published document.
+`History::states` exposes only revision/name/save-point metadata; the shell's History dock
+does not duplicate document snapshots. `restore` navigates the existing Undo/Redo stacks,
+rejecting expired revisions before mutation and preserving the monotonic next-revision counter.
+Keyboard nudges submit the same group-translation command as a mouse drag. Filtering a level
+prunes hidden selections; deliberate object selection reveals its level through a canvas
+callback that keeps the shell's filter synchronized. Active mouse gestures are cancelled on
+focus loss, while multi-click drawing/connection drafts remain available between clicks.
 Project never imports commands; a boundary check and negative fixtures enforce this.
 
 `EditorCanvas` renders a const document and sends gesture callbacks. Drag previews are

@@ -283,7 +283,7 @@
   "WARN_CONNECTOR_ALIGNMENT": "The Connector reaches a Link too steeply or against its direction. A full-width square mouth is shown where lane alignment is impossible. Reset the curve or move the intermediate points/attachments to approach in the direction of travel.",
   "TIGHT_CONNECTOR_RADIUS": "This connector turns tighter than its own width, so no vehicle could follow it. The drawing is kept and Run is not blocked; widen the turn or move the attachments apart.",
   "EDIT_COPY_TARGET": "Place copied Connector endpoints or signal heads on existing lanes at the same level. No objects were copied. Select both parent Links to copy the whole connection.",
-  "EDIT_MOVE_TARGET": "Select at least one Link to move. Connectors and signal heads ride the Links they attach to, so they move with them.",
+  "EDIT_MOVE_TARGET": "Select at least one Link or Connector to move. Signal heads move with their parent road.",
   "editorLinkMarkings": "Boundary markings in lane order (N+1; solid/dashed/none/double; blank = defaults)",
   "editorApplyLinkMarkings": "Apply boundary markings",
   "editorLinkPointStation": "Point station from Link start (m)",
@@ -296,5 +296,14 @@
   "EDIT_REFERENCED_LINK": "Cannot reverse a Link used by a Connector, signal head or route. Remove those references first.",
   "EDIT_UNSUPPORTED_FIELD": "This project contains a field this version does not support. See the problem path; opening was cancelled to avoid losing data.",
   "INVALID_MARKING": "Use solid, dashed, none or double for each marking.",
-  "WARN_SHORT_CONNECTOR": "Connector is shorter than 5 m. Check the geometry; this advisory does not block Run or Save."
+  "WARN_SHORT_CONNECTOR": "Connector is shorter than 5 m. Check the geometry; this advisory does not block Run or Save.",
+  "editorHistory": "History",
+  "editorHistoryHelp": "Double-click a state or press Enter to restore it. Up to 100 edits are kept for this session.",
+  "editorHistoryStart": "Oldest retained state",
+  "editorHistorySaved": "Saved",
+  "editorHistoryCurrent": "Current",
+  "editorHistoryChange": "Edit",
+  "editorMove": "Move selection",
+  "EDIT_HISTORY_REVISION": "This history state is no longer available. Choose a state from the current list.",
+  "editorKeyboardHelp": "Select (S): arrow keys move selected Links/Connectors by the grid interval (1 m with Snap off); Shift moves ten intervals. Ctrl+Shift+H opens History."
 }

@@ -51,6 +51,10 @@ private:
     std::filesystem::path data_;
     DisplayCatalog displayCatalog_;
     QListWidget* palette_{};
+    QListWidget* historyList_{};
+    void buildHistory();
+    void refreshHistory();
+    void restoreHistory(std::uint64_t revision);
     QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
     QSpinBox *connectorFromCount_{},*connectorToCount_{},*connectorPoints_{};
     // Vissim's Lanes tab, as comma-separated text, the same shape the Link lane-width row uses.

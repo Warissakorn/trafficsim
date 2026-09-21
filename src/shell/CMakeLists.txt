@@ -1,5 +1,5 @@
 add_library(trafficsim_shell STATIC main_window.cpp ../render/network_view.cpp
-    editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp
+    editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp
     editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_control.cpp editor_run.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
     ../editor/canvas_spatial.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)
@@ -11,6 +11,11 @@ install(TARGETS trafficsim-desktop RUNTIME DESTINATION bin)
 add_dependencies(check trafficsim-desktop)
 if(BUILD_TESTING)
     find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
+    add_executable(trafficsim-workflow-ui-tests ../../tests/editor_workflow_ui_tests.cpp)
+    target_link_libraries(trafficsim-workflow-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    add_test(NAME editor-workflow-ui COMMAND trafficsim-workflow-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(editor-workflow-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-workflow-ui-tests)
     add_executable(trafficsim-lifecycle-ui-tests ../../tests/network_lifecycle_ui_tests.cpp)
     target_link_libraries(trafficsim-lifecycle-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     target_compile_definitions(trafficsim-lifecycle-ui-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")

@@ -53,6 +53,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     files->addSeparator();
     files->addAction(action("editorUndo",QKeySequence::Undo,[this]{clearRun();history_.undo();refresh();}));
     files->addAction(action("editorRedo",QKeySequence::Redo,[this]{clearRun();history_.redo();refresh();}));
+    buildHistory(); files->addAction(actions_.at("editorHistory"));
     files->addWidget(language_);
     addToolBarBreak(); auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
@@ -202,6 +203,7 @@ void EditorWindow::refresh(bool modelChanged) {
     if(modelChanged) canvas_->setDocument(&history_.document());
     setWindowTitle(text("editorTitle")+" — "+(file_.isEmpty()?text("editorUntitled"):file_)+(history_.dirty()?" *":""));
     actions_.at("editorUndo")->setEnabled(history_.canUndo());actions_.at("editorRedo")->setEnabled(history_.canRedo());
+    refreshHistory();
     const auto selected=canvas_->selected(); const Link* link=nullptr;
     for(const auto& l:history_.document().network.links) if(l.id==selected) link=&l;
     id_->setText(QString::fromStdString(selected));

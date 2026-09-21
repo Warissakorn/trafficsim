@@ -332,13 +332,13 @@ follow the visible road surface, including roads expanded away from the referenc
 The last selected object is primary; property and geometry edits act on it alone.
 
 **Moving several objects.** Left-drag any member of a multi-selection and the whole selection
-moves, with the same translucent outline the copy drag shows. Only Links carry geometry, so
-they are what actually moves: a Connector whose two Links are both moving keeps its shape
-within the junction, one whose Links are not both moving stays attached where it is, and a
-signal head rides a station and needs no moving at all. A selection with no Link in it cannot
-be moved and says so. The move is one undo entry, and a drag shorter than the system drag
-threshold is a click — it neither moves anything nor changes the selection. Rotation is still
-not included.
+moves, with the same translucent outline the copy drag shows. Links and explicitly selected
+Connectors move; a Connector also moves automatically when both its Links move. Other
+Connectors keep their world positions and are reanchored or removed with their dependent
+references when no longer on their Links (see the attachment section). Signal heads ride their
+parent road. A selection containing only heads cannot move independently. Each move is one
+undo entry; a drag below the system threshold is a click. Arrow keys nudge the selection;
+see [History and keyboard editing](EDITOR_WORKFLOW.md) for increments and cancellation.
 
 Hold Ctrl and left-drag an already selected object to duplicate the whole selection.
 A translucent outline previews the drag offset; release commits once, including when
@@ -362,6 +362,8 @@ double-click their rows to edit. Table cells are read-only views of the document
 Properties → Level and Display type apply to the primary link/connector. Level orders
 drawing and picking; vehicles and heads use their carrying object's level. The sidebar
 filters to all levels or one catalog level. Tab can reach a lower overlapping object.
+Changing that filter removes hidden selections. Selecting a hidden object explicitly from
+a table or inspector switches to all levels so the edit target is visible.
 
 Definitions live in `data/levels/*.json` and `data/display-types/*.json`, loaded in filename
 order. Add a JSON entry with English/Thai names to add a level or style; no C++ edit is
@@ -465,6 +467,8 @@ keeps the previous destination and dirty state; a failed load keeps the current 
 An empty or unrunnable drawing can be saved. New/Open/Close prompt Save/Discard/Cancel.
 Undo history is in memory, bounded to 100 operations; saved-revision tracking determines
 the title's asterisk and history resets on load.
+The **History** toolbar button or **Ctrl+Shift+H** opens named states with current/saved markers.
+Double-click or Enter restores a state; browsing does not edit. See [the workflow guide](EDITOR_WORKFLOW.md).
 
 Every 15 seconds, a dirty revision is atomically written to a separate recovery copy in
 the platform's application-data recovery directory. Per-window UUIDs and process locks
