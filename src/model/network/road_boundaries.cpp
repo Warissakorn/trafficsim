@@ -217,7 +217,10 @@ void shearMouth(std::vector<std::vector<Point>>& boundaries,const ConnectorMouth
 // The ribbon before either mouth is corrected: parallel-sided, square to its own axis, which is
 // what the body is and stays. Both public entry points below start here, so a reported number and
 // a drawn edge can never come from two different ribbons.
-struct SquareRibbon { std::vector<std::vector<Point>> boundaries; std::vector<Point> spine; };
+struct SquareRibbon {
+    std::vector<std::vector<Point>> boundaries; std::vector<Point> spine;
+    bool squareSource{},squareTarget{};
+};
 SquareRibbon squareRibbon(const Network& n,const Connector& c) {
     const auto paths=connectorPaths(n,c);const auto weights=connectorBlendWeights(c);
     const std::size_t count=paths.size();
@@ -314,6 +317,12 @@ SquareRibbon squareRibbon(const Network& n,const Connector& c) {
         return mouth;
     };
     const Point uSource=unitStep(spine[1],spine[0]),uTarget=unitStep(spine[spine.size()-1],spine[spine.size()-2]);
+    const auto [entryDirection,exitDirection]=connectorTangents(n,c.from,c.to);
+    // Near perpendicular the projected mouth loses its width; reversed arrivals also reverse
+    // lane order. No bounded slide can fix either. Keep a full-width square end and report its
+    // measured residual instead of squeezing the ribbon or stretching it into a needle.
+    const bool squareSource=uSource.x*entryDirection.x+uSource.y*entryDirection.y<0.25;
+    const bool squareTarget=uTarget.x*exitDirection.x+uTarget.y*exitDirection.y<0.25;
     // Both the middles and the widths at a mouth are the LINK'S, never an authored one. This is
     // M1.12.3: a lane laid at a width the Link does not have cannot have its middle on the Link's
     // lane AND its edges on the Link's edges -- the two only coincide when the widths do. The
@@ -391,14 +400,18 @@ SquareRibbon squareRibbon(const Network& n,const Connector& c) {
     };
     auto mouthSource=floored(atSource.offsets,bodySource),mouthTarget=floored(atTarget.offsets,bodyTarget);
     for(int pass=0;pass<kMouthPasses;++pass) {
+        if(squareSource)mouthSource=bodySource;
+        if(squareTarget)mouthTarget=bodyTarget;
         const auto drawn=draw(table(mouthSource,mouthTarget));
         mouthSource=floored(refine(drawn,mouthSource,spine.front(),uSource,true,atSource.at),bodySource);
         mouthTarget=floored(refine(drawn,mouthTarget,spine.back(),uTarget,false,atTarget.at),bodyTarget);
     }
+    if(squareSource)mouthSource=bodySource;
+    if(squareTarget)mouthTarget=bodyTarget;
     const auto offsets=table(mouthSource,mouthTarget);
     std::vector<std::vector<Point>> result;
     for(std::size_t i=0;i<=count;++i)result.push_back(offsetGeometry(spine,offsets[i]));
-    return {std::move(result),spine};
+    return {std::move(result),spine,squareSource,squareTarget};
 }
 // Fit both mouths onto their Links and slide the ribbon into them. The two ends share the spine
 // rather than taking half each, so an ordinary end beside a steep one still aligns exactly; when
@@ -408,6 +421,9 @@ ConnectorMouthFits fitAndShear(const Network& n,const Connector& c,SquareRibbon&
     const Point entry=endCross(n,c.from,c.fromLaneCount,true),exit=endCross(n,c.to,c.toLaneCount,false);
     ConnectorMouthFits fits{fitMouth(ribbon.boundaries,ribbon.spine.front(),entry,true),
                             fitMouth(ribbon.boundaries,ribbon.spine.back(),exit,false)};
+    fits.source.squareFallback=ribbon.squareSource;fits.target.squareFallback=ribbon.squareTarget;
+    if(ribbon.squareSource){std::fill(fits.source.shift.begin(),fits.source.shift.end(),0.);fits.source.zone=0;}
+    if(ribbon.squareTarget){std::fill(fits.target.shift.begin(),fits.target.shift.end(),0.);fits.target.zone=0;}
     const double length=polylineLength(ribbon.spine),wanted=fits.source.zone+fits.target.zone;
     const double scale=wanted>length?length/wanted:1;
     spendMouth(fits.source,ribbon.boundaries,ribbon.spine.front(),entry,true,fits.source.zone*scale);

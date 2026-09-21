@@ -48,6 +48,20 @@ Point pointAlong(const std::vector<Point>& points, double distance) {
     }
     return points.back();
 }
+Point directionAlong(const std::vector<Point>& points,double station,bool arriving) {
+    if(!std::isfinite(station))throw std::invalid_argument("INVALID_GEOMETRY");
+    double remaining=std::max(0.,station);std::optional<Point> last;
+    for(std::size_t i=1;i<points.size();++i) {
+        const double dx=points[i].x-points[i-1].x,dy=points[i].y-points[i-1].y,length=std::hypot(dx,dy);
+        if(!std::isfinite(length))throw std::invalid_argument("INVALID_GEOMETRY");
+        if(length<=0)continue;
+        last=Point{dx/length,dy/length};
+        if(remaining<length || (arriving && remaining<=length))return *last;
+        remaining-=length;
+    }
+    if(last)return *last;
+    throw std::invalid_argument("INVALID_GEOMETRY");
+}
 std::vector<Point> trimSelfIntersections(const std::vector<Point>& points) {
     // An offset of a bend tighter than the offset loops back on itself. The swept area is still
     // road, so the fill is right either way, but the line drawn round it must not double back:

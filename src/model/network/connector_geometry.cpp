@@ -37,6 +37,37 @@ int lanesFromReference(const Network& network,const LaneReference& ref) {
     }
     return 0;
 }
+void retargetConnector(const Network& network,Connector& c,LaneReference from,LaneReference to) {
+    if(c.from==from && c.to==to)return;
+    for(const auto& other:network.connectors)
+        if(other.id!=c.id && other.from==from && other.to==to)
+            throw std::invalid_argument("DUPLICATE_CONNECTION");
+    auto moved=c;moved.from=std::move(from);moved.to=std::move(to);
+    moved.fromLaneCount=std::min(c.fromLaneCount,lanesFromReference(network,moved.from));
+    moved.toLaneCount=std::min(c.toLaneCount,lanesFromReference(network,moved.to));
+    if(moved.fromLaneCount<1 || moved.toLaneCount<1)throw std::invalid_argument("UNKNOWN_LANE");
+    if(std::max(moved.fromLaneCount,moved.toLaneCount)!=std::max(c.fromLaneCount,c.toLaneCount)) {
+        moved.laneWidths.clear();moved.laneMarkings.clear();
+    }
+    // Keeping the old interior points makes the last leg run backwards when the attachment
+    // crosses them. Retarget is a topology gesture: rebuild its directed turn, with Undo
+    // retaining the complete old shape. Manual interior-point edits remain manual.
+    if(c.geometry.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+    moved.geometry=connectorCurve(network,moved.from,moved.to,
+        static_cast<int>(std::min<std::size_t>(c.geometry.size()-2,40)));
+    // Imported polylines may have more points than the inspector's 0–40 editing range.
+    // Retargeting them must not become a new rejection or silently drop their point count.
+    if(c.geometry.size()>42) {
+        const auto curve=moved.geometry;const double length=polylineLength(curve);
+        moved.geometry={curve.front()};
+        for(std::size_t i=1;i+1<c.geometry.size();++i)
+            moved.geometry.push_back(pointAlong(curve,length*static_cast<double>(i)/(c.geometry.size()-1)));
+        moved.geometry.push_back(curve.back());
+    }
+    moved.laneBlend.clear();
+    (void)connectorPaths(network,moved);
+    c=std::move(moved);
+}
 // Snap both ends onto the lanes they NAME, wherever those lanes are. This is what an edit that
 // names the lanes wants -- creating a Connector, or moving an end onto another lane -- because
 // there the reference is the author's input and the geometry follows it.
@@ -135,12 +166,8 @@ Point endDirection(const Network& network,const LaneReference& ref,bool outgoing
     for(const auto& link:network.links)if(link.id==ref.linkId) {
         const auto lane=laneGeometry(link,ref.laneId,network.drivingSide);
         if(lane.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
-        const double length=polylineLength(lane);
         const double station=matchedStation(link.geometry,lane,attachmentStation(network,ref,outgoing));
-        const auto a=pointAlong(lane,std::max(0.,station-0.01)),b=pointAlong(lane,std::min(length,station+0.01));
-        const double dx=b.x-a.x,dy=b.y-a.y,span=std::hypot(dx,dy);
-        if(!std::isfinite(span) || span<=0)throw std::invalid_argument("INVALID_GEOMETRY");
-        return {dx/span,dy/span};
+        return directionAlong(lane,station,outgoing);
     }
     throw std::invalid_argument("UNKNOWN_LANE");
 }

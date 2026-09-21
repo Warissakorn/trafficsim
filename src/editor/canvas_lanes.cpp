@@ -14,14 +14,12 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         const bool leading=kind>4;const int base=leading?kind-4:kind;
         const auto& lane=*(first+(leading?0:count-1));
         const auto geometry=laneGeometry(link,lane.id,side);
-        const double length=polylineLength(geometry);
         const double at=matchedStation(link.geometry,geometry,
             ref.station.value_or(base==1?polylineLength(link.geometry):0.));
         const auto p=pointAlong(geometry,at);
-        const auto a=pointAlong(geometry,std::max(0.,at-.01));
-        const auto b=pointAlong(geometry,std::min(length,at+.01));
-        const double norm=std::hypot(b.x-a.x,b.y-a.y),sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
-        const Point direction{sign*(b.y-a.y)/norm,-sign*(b.x-a.x)/norm};
+        const auto tangent=directionAlong(geometry,at,base==1);
+        const double sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
+        const Point direction{sign*tangent.y,-sign*tangent.x};
         // Keep resize handles visibly outside geometry handles at every zoom level, and
         // remember where the road edge is so the grip can be drawn attached to it.
         const double edge=lane.width/2,offset=edge+16/std::abs(transform().m11());
@@ -45,16 +43,22 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         if(!from || !to)return {};
         std::vector<LaneHandle> result;
         const auto paths=connectorPaths(document_->network,*connector);
+        const auto boundaries=connectorBoundaries(document_->network,*connector);
+        const auto widths=connectorLaneWidths(document_->network,*connector);
         for(bool leading:{false,true}) {
             const int extra=leading?4:0;
             auto a=handle(*from,connector->from,connector->fromLaneCount,1+extra);
             auto b=handle(*to,connector->to,connector->toLaneCount,2+extra);
             const auto& outer=(leading?paths.front():paths.back()).geometry;const double length=polylineLength(outer);
-            const auto mid=pointAlong(outer,length/2),ahead=pointAlong(outer,std::min(length,length/2+.01));
-            const double norm=std::hypot(ahead.x-mid.x,ahead.y-mid.y),sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
-            const Point direction{sign*(ahead.y-mid.y)/norm,-sign*(ahead.x-mid.x)/norm};
-            const double width=(a.width+b.width)/2,edge=width/2,offset=edge+16/std::abs(transform().m11());
-            LaneHandle body{{mid.x+direction.x*offset,mid.y+direction.y*offset},{mid.x+direction.x*edge,mid.y+direction.y*edge},
+            const auto tangent=directionAlong(outer,length/2,false);
+            const double sign=(side==DrivingSide::left?1.:-1.)*(leading?-1.:1.);
+            const Point direction{sign*tangent.y,-sign*tangent.x};
+            const auto index=leading?0:paths.size()-1;
+            const auto& boundary=leading?boundaries.front():boundaries.back();
+            const auto anchor=polylineLength(boundary)>0
+                ?pointAlong(boundary,matchedStation(outer,boundary,length/2)):boundary.front();
+            const double width=(widths.source[index]+widths.target[index])/2,offset=16/std::abs(transform().m11());
+            LaneHandle body{{anchor.x+direction.x*offset,anchor.y+direction.y*offset},anchor,
                             direction,width,3+extra,std::max(a.count,b.count),std::min(a.maximum,b.maximum)};
             result.insert(result.end(),{a,b,body});
         }
@@ -82,10 +86,10 @@ void EditorCanvas::updateLaneResize(QPoint position) {
     const auto& h=*laneResize_;const auto p=world(position,false);
     const double lateral=(p.x-dragStart_.x)*h.direction.x+(p.y-dragStart_.y)*h.direction.y;
     const int kind=(h.kind-1)%4+1;
-    if(kind==3 && std::round(lateral/h.width)==0) {
+    if(kind==3 && (std::round(lateral/h.width)==0 || (h.count>h.maximum && lateral>0))) {
         const auto* c=selectedConnector();previewFromCount_=c->fromLaneCount;previewToCount_=c->toLaneCount;redraw();return;
     }
-    const int count=std::clamp(h.count+static_cast<int>(std::round(lateral/h.width)),1,h.maximum);
+    const int count=static_cast<int>(std::clamp(h.count+std::round(lateral/h.width),1.,static_cast<double>(h.maximum)));
     if(kind==4)previewLinkCount_=count;
     else if(kind==1)previewFromCount_=count;
     else if(kind==2)previewToCount_=count;

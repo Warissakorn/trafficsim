@@ -238,6 +238,13 @@ Unknown schema-7 network-object fields are rejected, so unsupported behavior is 
 lost. [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md) defines the actual supported subset.
 Owner M1 acceptance remains open. This does not close the supplied target specifications.
 
+### M1.21.1 — Network lifecycle correctness audit
+
+Wrong-side endpoint retarget, steep-mouth fallback/advisory, physical range picking,
+release-only group/rectangle gestures, capacity-limited resize and degenerate lane/tangent
+handling are implemented. `NETWORK_LIFECYCLE_AUDIT.md` records finite model/UI coverage,
+the restored CTest point group and preserved M1.20 semantics. Owner acceptance stays open.
+
 ### M1.22 — Remaining authoring and interaction requirements
 
 **Open.** Link spline/arc construction and curve parameters, extend/merge and safe referenced

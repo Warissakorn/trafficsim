@@ -175,7 +175,8 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
     if(e->button()==Qt::LeftButton && groupDrag_) {
         // The release position is authoritative here too, and a click that never became a drag
         // leaves the selection exactly as it was.
-        const bool moved=groupDragging_;const auto p=world(e->pos());
+        const bool moved=(e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance();
+        const auto p=world(e->pos());
         const Point delta{p.x-dragStart_.x,p.y-dragStart_.y};
         groupDrag_=groupDragging_=false;groupOffset_={};
         if(moved && (delta.x!=0 || delta.y!=0) && translateRequested)translateRequested(delta);
@@ -201,7 +202,9 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
     }
     if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=false; return; }
     if(e->button()==Qt::LeftButton && band_) {
-        const auto box=*band_; const bool additive=additive_; band_.reset(); additive_=false;
+        const auto p=world(e->pos(),false);
+        const auto box=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized();
+        const bool additive=additive_; band_.reset(); additive_=false;
         auto found=inRectangle({box.left(),box.top()},{box.right(),box.bottom()});
         if (additive) { auto merged=selection_; for(auto& id:found) merged.push_back(std::move(id)); found=std::move(merged); }
         setSelection(std::move(found)); return;
@@ -221,7 +224,7 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton) return;
     if(tool_==Tool::draw) { finishDrawing(); return; }
     if(tool_!=Tool::select) return;
-    dragging_=false; preview_.clear(); original_.clear();
+    cancel();
     insertVertex(world(e->pos(),false));
 }
 void EditorCanvas::insertVertex(Point p) {

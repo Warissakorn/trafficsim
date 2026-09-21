@@ -46,6 +46,11 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         id(link.id, p + ".id"); geometry(link.geometry, p + ".geometry");
         if(link.level < -1000 || link.level > 1000 || link.displayType.empty())add("EDIT_DISPLAY_VALUE",p+".displayType");
         if(!std::isfinite(link.laneOffset))add("INVALID_GEOMETRY",p+".laneOffset");
+        if(validSide) {
+            const auto centre=linkCentreline(link,network.drivingSide);
+            if(!std::isfinite(polylineLength(centre)) || polylineLength(centre)<=0)
+                add("INVALID_GEOMETRY",p+".laneOffset");
+        }
         if (link.lanes.empty()) add("NO_LANES", p + ".lanes");
         if(link.lanes.size()>12)add("EDIT_LANES",p+".lanes");
         if(!link.boundaryMarkings.empty() && link.boundaryMarkings.size()!=link.lanes.size()+1)
@@ -56,6 +61,16 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             const auto q = p + ".lanes[" + std::to_string(j) + "]";
             id(link.lanes[j].id, q + ".id");
             if (!std::isfinite(link.lanes[j].width) || link.lanes[j].width <= 0) add("INVALID_WIDTH", q + ".width");
+            // A valid reference polyline can offset into a zero-length lane at a tight bend.
+            // Reject that document before canvas picking, attachment or runtime sampling calls
+            // pointAlong. Duplicate vertices on an otherwise usable offset remain permissible.
+            if(validSide) {
+                const auto derived=laneGeometry(link,link.lanes[j].id,network.drivingSide);
+                const auto length=polylineLength(derived);
+                if(derived.size()<2 || !std::isfinite(length) || length<=0 ||
+                   std::any_of(derived.begin(),derived.end(),[](Point p){return !std::isfinite(p.x) || !std::isfinite(p.y);}))
+                    add("INVALID_GEOMETRY",q+".geometry");
+            }
         }
     }
     std::set<std::tuple<std::string,double,std::string,double>> connections;
@@ -84,10 +99,12 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         }catch(const std::exception&){add("EDIT_LANE_RANGE",p);}
         const auto check = [&](const Link* link, const LaneReference& ref, bool end) {
             if (!link || link->geometry.size() < 2 || c.geometry.empty() || !validSide) return;
-            const auto expected = laneAttachment(network,ref,end);
-            const auto endpoint = end ? c.geometry.front() : c.geometry.back();
-            if (std::hypot(endpoint.x - expected.x, endpoint.y - expected.y) > 0.01)
-                add("DISCONNECTED_GEOMETRY", p + (end ? ".from" : ".to"));
+            try {
+                const auto expected = laneAttachment(network,ref,end);
+                const auto endpoint = end ? c.geometry.front() : c.geometry.back();
+                if (std::hypot(endpoint.x - expected.x, endpoint.y - expected.y) > 0.01)
+                    add("DISCONNECTED_GEOMETRY", p + (end ? ".from" : ".to"));
+            } catch(const std::exception&) { add("INVALID_GEOMETRY",p+(end?".from":".to")); }
         };
         check(from, c.from, true); check(to, c.to, false);
     }

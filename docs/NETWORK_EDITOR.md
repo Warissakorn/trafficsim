@@ -214,8 +214,8 @@ order, so a lane range anchored one lane over moves the taper to the other side.
 the whole length of the Connector; there is no separate taper length to set. Those widths are stacked
 along the same mitered offset a Link's own lane edges use (`offsetGeometry`), so every lane is its
 full width square to the road at every point, through a bend and past a poly point the author has
-dragged. The two ends are **square to the Connector's own axis** and simply meet the Link at the
-attachment; they are not cut on the Link's cross-section (see below). Properties exposes both counts as an alternative. Retargeting
+dragged. Ordinary mouths fit the Link cross-section; steep or reversed arrivals use a
+full-width square fallback with an advisory (see below). Properties exposes both counts as an alternative. Retargeting
 or resizing a connector used by a route or head is rejected; revise those references
 first. Reshaping its curve remains allowed if the whole document validates.
 
@@ -235,19 +235,19 @@ straight leg between the attachments. `Reset curve` lays 3 along the arc, and la
 it follows the turn more closely — 2.29 m of sag from the arc at one point, 0.60 m at three,
 under 0.10 m at fifteen.
 
-**The mouth is a square end, not a wedge.** A Connector's two ends are left exactly where the
-mitered offset puts them — one straight line across the ribbon, square to the Connector's own
-axis, with no realignment towards the Link's direction. The end therefore stands a small step
-clear of the Link's lane edges where the arrival is oblique: 4.7 cm to 17.2 cm on a gentle join,
-0.12–0.29 m where a Link has been rotated under the curve, and up to 0.88 m on a hard reverse
-curve, with the polygon overlapping the carriageway across that step.
+**The mouth must not become a needle.** Ordinary forward arrivals use the bounded M1.19
+projection/slide onto the Link's cross-section. Near-perpendicular arrivals (forward tangent
+dot product below 0.25), including backwards approaches, cannot be aligned this way without
+collapsing or reversing lane order. Those ends retain their full-width square cross-section
+and do not slide. `WARN_CONNECTOR_ALIGNMENT` flags the fallback or a residual gap over 1 cm.
+The warning is advisory: the drawing can be saved, but exact lane-edge alignment is not
+claimed. Use `Reset curve` or adjust intermediate points/attachments to approach with traffic.
 
-This reverts M1.17, on the owner's instruction: the wedge cut on the Link's cross-section — and
-with it the bounded re-miter that replaced a folded cut — is gone. The earlier shape is in Git
-history. The body is unaffected either way: it keeps the constant mitered offset, so a 3.5 m lane
-is 3.5 m at every point — interpolating the cross-section through the body instead drew it 1.06 m
-on a reverse curve and 0.46 m once a Link had been rotated 90° under it, and that defect stays
-fixed.
+Dragging an endpoint grip or changing its reference in Properties rebuilds the turn at its
+existing point count. Keeping stale interior points when an endpoint crossed them caused the
+old wrong-way elbow. This explicit retarget is one undoable edit; Undo restores the entire old
+shape. Moving a Link still follows the separate world-position/deletion contract described
+above. Merely opening a file does not regenerate any authored curve.
 
 Interior points are editable; dragging one moves that corner and nothing else. Reset curve to
 lane directions lays the points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle

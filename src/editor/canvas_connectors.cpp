@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "../commands/connector_commands.hpp"
 #include <QGraphicsPathItem>
 #include <QPainter>
 #include <algorithm>
@@ -67,15 +68,22 @@ std::optional<LaneReference> EditorCanvas::connectorEndpointTarget(Point p,bool 
     if(!connector)return {};
     auto ref=hitLanePosition(p,leading);
     if(!ref)return {};
-    // The grip sits in the middle of the range, so the range is centred on the lane under the
-    // cursor, not started there; the range then slides inside the link rather than overflowing.
+    // Compare actual range centres, not integer lane indices. Even lane counts and unequal
+    // lane widths put the grip between lane centres; rounding an index picks the wrong range.
     const int count=leading?connector->fromLaneCount:connector->toLaneCount;
     for(const auto& link:document_->network.links)if(link.id==ref->linkId) {
         const int lanes=static_cast<int>(link.lanes.size());
-        const auto at=std::find_if(link.lanes.begin(),link.lanes.end(),[&](const auto& l){return l.id==ref->laneId;});
-        if(at==link.lanes.end())return {};
-        const int index=static_cast<int>(std::distance(link.lanes.begin(),at));
-        ref->laneId=link.lanes[static_cast<std::size_t>(std::clamp(index-(count-1)/2,0,std::max(0,lanes-count)))].id;
+        const int width=std::min(count,lanes);double best=1e300;
+        const double station=attachmentStation(document_->network,*ref,leading);
+        for(int first=0;first+width<=lanes;++first) {
+            const auto edge=[&](int index) {
+                const auto g=laneBoundaryGeometry(link,static_cast<std::size_t>(index),document_->network.drivingSide);
+                return pointAlong(g,matchedStation(link.geometry,g,station));
+            };
+            const auto a=edge(first),b=edge(first+width);
+            const double distance=std::hypot((a.x+b.x)/2-p.x,(a.y+b.y)/2-p.y);
+            if(distance<best){best=distance;ref->laneId=link.lanes[static_cast<std::size_t>(first)].id;}
+        }
     }
     return ref;
 }
@@ -109,11 +117,9 @@ void EditorCanvas::drawConnectors() {
         // pointer shows is what one release commits. An impossible drop shows the original.
         if(c.id==primary && endpointDraft_ && endpointDrag_) try {
             auto moved=preview;
-            (*endpointDrag_?moved.from:moved.to)=*endpointDraft_;
-            moved.fromLaneCount=std::max(1,std::min(moved.fromLaneCount,lanesFromReference(document_->network,moved.from)));
-            moved.toLaneCount=std::max(1,std::min(moved.toLaneCount,lanesFromReference(document_->network,moved.to)));
-            (void)connectorPaths(document_->network,moved);
-            anchorConnectorEnds(document_->network,moved);
+            if(connectorReferenced(*document_,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
+            retargetConnector(document_->network,moved,*endpointDrag_?*endpointDraft_:moved.from,
+                              *endpointDrag_?moved.to:*endpointDraft_);
             preview=std::move(moved);
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;
@@ -130,7 +136,8 @@ void EditorCanvas::drawConnectors() {
         // A ribbon that overlaps itself on a tight turn is still road there. The even-odd
         // default punched the overlap out as a hole, which read as a tear in the surface.
         surface.setFillRule(Qt::WindingFill);
-        scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+4);
+        auto* road=scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour));road->setZValue(z+4);
+        road->setData(0,QStringLiteral("road-surface"));road->setData(1,QString::fromStdString(c.id));
         for(const auto& marking:markingStrokes(connectorMarkings(document_->network,preview))) {
             // See network_view: an outer edge is solid, an interior divider draws its own type.
             QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
