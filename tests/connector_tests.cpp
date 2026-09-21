@@ -1,6 +1,8 @@
 #include "test.hpp"
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/network_commands.hpp"
+#include "../src/commands/demand_commands.hpp"
+#include "../src/project/run.hpp"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -203,4 +205,51 @@ TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
         test::near(centre[i].y,(boundaries.front()[i].y+boundaries.back()[i].y)/2,1e-9);
     }
     CHECK(editableConnector(d,id).geometry==c.geometry);
+}
+// Two Connectors arriving at the SAME station of one lane. THIS RECORDS A DEFECT, and the last
+// CHECK is the defect rather than the specification: see docs/CONNECTOR_PARITY_AUDIT.md §3.3.
+//
+// A cut at a station already cut is refused as an unsectionable cut, because runtimeSections asks
+// whether the new station sits `kMinSectionLength` clear of the last BOUNDARY -- and the boundary
+// the first arrival just made is at that very station, so the second arrival is measured against
+// itself. Run is blocked on it. Nothing is physically wrong with the pair: the cut the second
+// Connector needs is the one the first already made, and both paths would then arrive on the same
+// section, which is the ordinary merge the engine handles.
+//
+// When that is fixed, the second half of this test becomes: both Connectors compile, the lane below
+// the arrival gains the two of them as feeders, `derivedPriorityRules` emits one rule per arriving
+// path -- and BOTH name the lane section upstream of the arrival, so neither ever names the other.
+// That last shape is what §3.3 describes, and it is a separate question from the refusal; this test
+// does not reach it while the refusal stands.
+TEST(connectors, two_connectors_arriving_at_one_station_are_refused_though_one_cut_would_serve) {
+    auto d=roads();
+    const auto first=addConnector(d,{"in","in-1"},{"out","out-1",35});
+    // The forcing, and the half that must not be lost: ONE interior arrival runs. Without this the
+    // refusal below could just be "an interior arrival does not run", which is not the finding.
+    CHECK(connectorRuntimeIssues(d.network).empty());
+    CHECK(runtimeSections(d.network).unsectionable.empty());
+    const auto second=addConnector(d,{"in","in-2"},{"out","out-1",35});
+    CHECK(d.network.connectors.size()==2);
+    // Both really do arrive inside the BODY of out-1, at the same drawn metre, on different lanes.
+    for(const auto& c:d.network.connectors) {
+        CHECK(!attachedAtLinkEnd(d.network,c.to,false));
+        CHECK(c.to.laneId=="out-1");CHECK(c.to.station.has_value());
+        test::near(*c.to.station,35,1e-9);
+    }
+    CHECK(d.network.connectors[0].from.laneId!=d.network.connectors[1].from.laneId);
+    const auto viaA=putRoute(d,{"viaA",{"in-1",first,"out-1"}});
+    const auto viaB=putRoute(d,{"viaB",{"in-2",second,"out-1"}});
+    putInput(d,{"",viaA,"car",600,0,60});putInput(d,{"",viaB,"car",600,0,60});
+    validateDocument(d);
+    // The cut the first arrival made is still there and still fine; only the SECOND is refused, and
+    // it is refused for want of room behind a boundary that is itself at 35.
+    const auto table=runtimeSections(d.network);
+    CHECK(table.unsectionable==std::vector<std::string>({second}));
+    test::near(sectionStartingAt(table,"out-1",35).start,35,1e-9);
+    // The consequence: the pair cannot be run at all, so no rule for it is ever derived.
+    const auto issues=connectorRuntimeIssues(d.network);
+    CHECK(issues.size()==1);
+    CHECK(issues.front().code=="UNSUPPORTED_CONNECTOR_POSITION");
+    CHECK(issues.front().path=="connectors[1]");
+    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_CONNECTOR_POSITION");
 }

@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-18-m1.19-lane-middles.md`](archive/PROGRESS-2026-09-18-m1.19-lane-middles.md) — 2026-09-18, M1.19, the Connector lane middles land on the Link lane middles; moved out 2026-09-21 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md) — 2026-09-18, the square-mouth revert (M1.17 reverted); moved out 2026-09-21 when it was the oldest live entry and the parity audit superseded it
 - [`archive/PROGRESS-2026-09-18-earlier.md`](archive/PROGRESS-2026-09-18-earlier.md) — 2026-09-18, the snapping audit, the engine profile and the M1.17 revert
 - [`archive/PROGRESS-2026-09-18-flush-mouth.md`](archive/PROGRESS-2026-09-18-flush-mouth.md) — 2026-09-18, M1.18, the flush mouth
@@ -13,6 +14,63 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-21 — A toolchain, and the audit's §3.3 answered with a measurement
+
+**Request:** the owner asked whether the toolchain was hard to install, whether VS Code could be
+used, then *"do as recommended"* — install it and verify the build.
+
+**The toolchain went into the WSL2 Ubuntu that was already on the machine.** No admin rights and
+no reboot were needed, and the tight `C:` drive is irrelevant because WSL has 955 GB free:
+`apt-get install g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev` gives `g++ 15.2.0`,
+`cmake 4.2.3`, `ninja 1.13.2`, Qt 6 Widgets and Qt 6 Test. This is the first time in this
+workstream that anything was built at all.
+
+| Preset | Build | Tests |
+|---|---|---|
+| `headless` | 65/65, exit 0 | **21/21 passed**, 4.30 s |
+| `desktop` (Qt 6 Widgets) | 93/93, exit 0 | **30/30 passed**, 9.47 s |
+
+`QT_QPA_PLATFORM=offscreen` is needed for the desktop suite on a displayless machine — the
+checked-in `desktop` preset does not set it. **And ninja's default parallelism OOMs the Qt build
+here**: the host has 7.66 GB and WSL is given 3.74 GB, so the first desktop build died with exit
+code 15. Build with `-- -j 3`. That is this machine, not the project. The four gates that matter
+for the audit all passed — `file-sizes` (so the `PROGRESS.md` archive move was required, not
+cosmetic), `all-model-tests`, `architecture` and `reference`. **Linux only**, so this is not
+cross-platform evidence; the Windows MSVC path is still unexercised.
+
+**Finding 1 is answered, and the audit's first reading of it was wrong.** Two Connectors arriving
+at the same station on one lane do **not** compile and then overlap — the second is **refused**.
+`runtimeSections` (`sections.cpp:68`) tests each cut against `boundaries.back() + kMinSectionLength`,
+and the boundary the *first* arrival just made is at that very station, so the second arrival is
+measured against itself and lands in `table.unsectionable` → `UNSUPPORTED_CONNECTOR_POSITION`,
+which blocks Run. Nothing is physically wrong with the pair: the cut the second needs is the one
+the first already made. So the defect is the **refusal**, and "they do not yield to each other" is
+a second question sitting behind it that this session never reaches.
+
+**One test added**, `connectors.two_connectors_arriving_at_one_station_are_refused_though_one_cut_would_serve`
+in `tests/connector_tests.cpp`. It asserts the behaviour **as it is**, not as it should be, and its
+comment carries what it should assert once the refusal is fixed — so the fix turns the test into
+the specification rather than deleting it. It follows the standing rule: the forcing comes first
+(one interior arrival is clean, the cut at the drawn station survives, both ends really are inside
+the body at the same metre), then the consequence.
+
+**No production C++ was changed, and no milestone is closed.** The fix is a behaviour change to the
+section table, which every other surface reads; it is one system and it is booked as M3.2 work
+beside conflict areas. `CONNECTOR_PARITY_AUDIT.md` §3.3 is rewritten to the measurement and gains a
+new §7 recording the verification above.
+
+### Next
+
+Two independent things, neither started. First, **the §3.3 fix**: make `runtimeSections` reuse an
+existing cut when a second arrival lands on the same station within `kMinSectionLength`, instead of
+rejecting it — the test above then flips to its commented-out expectation. That is a section-table
+change, so it wants its own session and a check that nothing downstream regressed. Second, resume
+the separately booked M1.22 features and the owner's M1.21.1 recheck against their original
+`.traffic.json`. Do **not** start §3.2 curve parameters or §16 visual overrides. Keep M3.2
+(conflict areas, lane changing) as the home for the §3.3 second half, §3.4 and §3.6.
 
 ---
 
@@ -69,15 +127,9 @@ was touched that could not be verified. Booked:
 **No milestone is closed by this entry.** No gate is met by documentation. M0/M1 owner acceptance
 and M6 validation remain open, and no test was added or run.
 
-### Next
-
-Run the audit's §5 sequence. First, a **test for the untested case above** — two Connectors
-arriving at one station, run it, and record whether the engine allows an overlap; that answer
-decides whether it is a defect or M3.2 work, and it needs a build, so it is the first thing to do
-where a toolchain exists. Second, resume the separately booked M1.22 features and the owner's
-M1.21.1 recheck against their original `.traffic.json`. Do not start §3.2 curve parameters or §16
-visual overrides: they would be the first fields accepted on load that change nothing at Run.
-Keep M3.2 (conflict areas, lane changing) as the home for findings 1 and 2.
+**Superseded the same day, in the entry above:** finding 1 was answered with a toolchain — the pair
+is *refused*, not overlapped, so the audit's §3.3 has been rewritten and a test added. Findings 2
+and 3 stand as recorded.
 
 ---
 
@@ -263,84 +315,20 @@ right distance for "off the Link" — it is one constant, in `laneContains`.
 
 ---
 
-## 2026-09-18 — The middle of every Connector lane now lands on the middle of the Link lane it feeds (M1.19)
-
-**The owner's requirement, after seeing M1.18's mouth in the editor:** each lane of a Connector must
-line up with the lane of the Link it joins — not merely meet the Link's cross-section somewhere
-along it.
-
-**What M1.18 left.** It slid each boundary along its own curve until the mouth lay ON the Link's
-cross-section, which made the mouth flush. But every boundary kept its full offset square to the
-Connector, so resolved onto that oblique cut the lanes came out spread by `1/cos(arrival)`: the
-mouth was the right line at the right angle and the wrong width, and each lane middle sat beside
-the Link lane middle it feeds. Measured on a two-lane body attachment: **0.42 m out at the worst
-arrival**, and a mouth spanning up to 28.9 m on a 7 m road at the clamp.
-
-**What replaces it.** The offsets the boundaries leave each mouth at are no longer the Connector's
-own stacked widths. They are read off **the Link's own lane boundaries at the attachment**,
-projected onto the Connector's cross-section — one projection per boundary, then re-solved against
-the end leg each boundary actually produces (`kMouthPasses`, a fixed 8 iterations; never a
-convergence test, hard rule 2). The slide then lands each boundary exactly on the Link's own lane
-boundary, so every lane middle coincides with the Link's, and the slide is `O(width)` rather than
-`O(width/cos)` — the spike the `kMouthShiftLimit` clamp existed to bound no longer arises.
-
-**Measured, on a two-lane Connector into a two-lane Link, worst lane middle off its Link lane's:**
-
-| arrival | before | after | | mouth span (7 m road) | before | after |
-|---|---|---|---|---|---|---|
-| shallow | 0.42 m | 0.0001 m | | 0-60 degrees | up to 16.6 m | **7.000 m** |
-| 45 deg | 0.16 m | 0.005 m | | 60-90 degrees | up to 28.9 m | 7.1-9.2 m |
-| 75 deg | 0.05 m | 0.0006 m | | | | |
-
-Over the 288-case heading x arrival sweep: **0 folds, 0 ring self-crossings** — unchanged, and
-structurally so, because nothing here moves a vertex laterally past its neighbour. In the 84 cases
-where the mouth's two outer edges land on the Link's outer edges, every interior divider and every
-lane middle agrees with the Link's to **1 mm**.
-
-**Three bounds, each there for a measured failure.** `kMouthSpanFloor` (0.25) stops the mouth being
-compressed to a point where the arrival faces along the Link's cross-section and every Link lane
-boundary projects onto the same place — the spike, in the other direction. `kMouthShiftLimit` now
-also caps the offsets themselves: the solve is unbounded in that direction and produced a reading
-of **3.6e7 metres** before the cap. And where the Connector's lane order runs opposite the Link's —
-a Connector arriving from the far side — the mouth keeps the Connector's own cross-section, because
-building it on the Link's would turn the ribbon over between its two ends: **120 of 288 sweep cases
-self-crossed** until that fallback was added.
-
-**M1.12.3 is closed by this, in the only way it can be.** The mouth is built from the **Link's**
-widths, never an authored `laneWidths`: a lane laid at a width the Link does not have cannot have
-both its middle on the Link's lane middle and its edges on the Link's edges — the two coincide only
-when the widths do. The authored width takes over through the body, over a transition zone of one
-carriageway width (capped at a quarter of the Connector each end). A Connector drawn as a single
-straight segment has no interior vertex for its own cross-section to appear at, so its authored
-width does not show; raise Intermediate points.
-
-**Tests changed, not loosened.** The measure at a mouth is now the separation of the two edges
-**along the cut** — which is what the mouth is — and that is the exact one: the taper fixture reads
-3.000/4.000 m at its source and 3.500 m at its target to 1e-9, and the diverge's far mouth, bounded
-at 2.8-3.2 m before, is pinned at 3 m. `squareWidth` at a mouth was dropped: it reads the lane over
-the cosine of the arrival by construction, so asserting 3.5 m there was asserting a square cut.
-Where a bound replaced an equality it carries its number: 2.8 mm where the slide is longer than the
-boundary's own end leg, 3.1 cm inside a transition zone at a 90-degree arrival, 0.17 mm of solver
-residue at the middle of a short Connector. `an_authored_width_is_exact_where_the_connector_is_
-straight` was rebuilt on collinear Links so it has a body to measure, and now states both halves:
-the author's width through the body, the Link's at each mouth.
-
-**Verification:** 24/24 CTest on Qt 6.4.2 under `xvfb`, file sizes green.
-`trafficsim-cli 42` unchanged at `meanDelay 29.249359418430977` — `connectorBoundaries` is
-presentational and hit-test only. *Linux only — no desktop verification claimed.*
-
-### Next
-
-**The Connector keeps its own position** — done, as M1.20; its entry is above.
-
----
-
 ## Next
 
-**No engineering item is open. M1 is the owner's alone, once the two changes below have been
-driven by hand.**
+**One engineering item is open** — item 0 below, from the Connector parity audit. Everything else
+here is the owner's.
 
-**0. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
+**0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
+station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
+its cut against `boundaries.back() + kMinSectionLength` and the boundary the FIRST arrival just made
+is at that very station — so it is measured against itself, and Run is blocked for a pair that is
+physically fine. Reuse the existing cut instead of rejecting it. Section table only, one system, and
+the test already in `tests/connector_tests.cpp` flips to its commented expectation when it lands.
+See the top entry of this file, and `CONNECTOR_PARITY_AUDIT.md` §3.3.
+
+**1. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
 layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on
 screen. Watch for a Connector deleted by a Link drag the author did not expect to touch it (the
 Undo is there; the surprise is the thing to judge), and for whether half a lane width is the right
@@ -360,7 +348,7 @@ M1.19. `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
-**1. Run the timed acceptance exercise** in [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). It is the only
+**2. Run the timed acceptance exercise** in [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). It is the only
 thing that closes M1 and it cannot be delegated: an engineer draws a four-leg intersection with
 turn pockets over an aerial image, from a blank editor, **under 10 minutes, without documentation
 or assistance**, then the file is reopened and compared field for field. Not one row of that record
@@ -373,11 +361,11 @@ the Qt suites on Windows too, and CI run 105 previously failed in `windows-core`
 owner actually draws on. The M1.12 review checklist from the 2026-09-16 sessions is the list to
 work through first.
 
-**2. Record the M0 plausibility observation** separately — acceleration, queue at red, discharge at
+**3. Record the M0 plausibility observation** separately — acceleration, queue at red, discharge at
 green. Owner observation, not calibration, and not M6 validation. The not-yet-validated marker
 stays either way.
 
-**3. Decide the name (Q5).** D11 deferred it "until the end of M1", and that trigger is now live.
+**4. Decide the name (Q5).** D11 deferred it "until the end of M1", and that trigger is now live.
 `Velk` is the strongest recorded candidate — clean on npm, PyPI and a brand search, with
 `velk.com`/`velk.io` held, which is ordinary for a four-letter word. Do **not** re-derive the
 candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have

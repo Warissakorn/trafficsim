@@ -155,22 +155,44 @@ entry, since it is append-only.
 Both are corrected in this session. A header comment is a contract; a wrong one costs the next
 session the same rediscovery twice.
 
-### 3.3 Two Connectors arriving at the same station on the same lane do not yield to each other
+### 3.3 Two Connectors arriving at the same station on the same lane are refused, not arbitrated
 
-`derivedPriorityRules` (`sections.cpp:195-220`) always names the **upstream lane section** as the
-conflict segment. So each arriving path gives way to the traffic already on the lane, and never to
-another arriving path. In Vissim this interaction is a conflict area (§7.1 of the supplied
-specification); there is no ConflictArea object here, so the interaction has no counterpart.
+**Measured 2026-09-21, with a toolchain, after this audit first wrote it down as an uncovered case.
+The original reading was wrong and this replaces it.**
 
-The engine's own comment (`simulation.cpp:170-175`) explains why this matters: car-following
-*"already works without any of this, because spans are bucketed by GLOBAL segment index, so two
-vehicles see each other the moment they share a segment."* Two arrivals reaching the shared
-downstream section **in the same step** share it only after moving, so a one-step overlap at the
-drawn station is possible.
+The first draft said the two arrivals compile and then overlap, because `derivedPriorityRules`
+(`sections.cpp:195-220`) always names the **upstream lane section** as the conflict segment, so
+neither arrival ever gives way to the other. That contradiction is real, but the pair never reaches
+it: **the second arrival is refused outright and Run is blocked.**
 
-**Stated carefully:** no test covers this case, and this audit did not run one. It is reported as
-an uncovered case, not as a measured overlap. It needs a test before it is called either way, and
-the fix belongs with conflict areas in M3.2.
+`runtimeSections` (`sections.cpp:66-75`) builds the cut list and then checks each cut with
+
+```cpp
+if (cut.station < boundaries.back() + kMinSectionLength || cut.station > full - kMinSectionLength)
+```
+
+`boundaries.back()` is the last cut **already accepted**. The first arrival at station *s* pushes
+*s*; the second arrival at the same *s* is then measured against itself — `s < s + 0.2` — and is
+pushed onto `table.unsectionable`. `connectorRuntimeIssues` (`compile.cpp:42-44`) turns that into
+`UNSUPPORTED_CONNECTOR_POSITION`, and `compileScenario` (`compile.cpp:98-101`) throws on it.
+
+Nothing is physically wrong with the pair. The cut the second Connector needs is the one the first
+already made; both paths would then arrive on the same section, which is the ordinary merge the
+engine handles, and `derivedPriorityRules` would emit **two** rules, both conflicting with the
+upstream lane section — the shape the first draft described. So the defect is the refusal, and the
+"do not yield to each other" half is a second, separate question sitting behind it.
+
+`tests/connector_tests.cpp` now pins all of it:
+`two_connectors_arriving_at_one_station_are_refused_though_one_cut_would_serve` asserts that one
+interior arrival is clean, that the second is refused as the **only** unsectionable connector after
+the forced cut really was made, that the cut at the drawn station survives, and that compiling
+throws `UNSUPPORTED_CONNECTOR_POSITION` at `connectors[1]`. The test's own comment carries what it
+should assert once the refusal is fixed.
+
+**Not fixed in this session** — it is a behaviour change to the section table, which is the
+foundation every other surface reads, and it is one system, not two. It is booked as M3.2 work
+beside conflict areas, and the test is written so that fixing it turns that test into the
+specification rather than deleting it.
 
 ### 3.4 A merge at a lane's *start* is uncontrolled, and unreported
 
@@ -222,10 +244,11 @@ it.
 
 ## 4. What this audit did not do, and why
 
-- **No C++ was changed.** The environment had no `cmake`, `g++`, `cl`, `clang++` or `ninja`, so
-  nothing could be built or tested. Hard rule 7 forbids leaving the build unverified, and hard
-  rule 4 forbids claiming a fix that was not measured. Everything in §3 that needs code — 3.3,
-  3.4, 3.6 — is booked, not fixed.
+- **No production C++ was changed.** The audit itself was written with no toolchain present: there
+  was no `cmake`, `g++`, `cl`, `clang++` or `ninja` on the machine. Hard rule 4 forbids claiming a
+  fix that was not measured, so everything in §3 that needs code — 3.3, 3.4, 3.6 — is booked, not
+  fixed. The only C++ added is **one test** (below), and it asserts the behaviour as it is rather
+  than the behaviour it should be.
 - **Nothing was closed.** No milestone gate is met by this file. M0/M1 owner acceptance and M6
   validation remain open.
 - **Vissim was not measured.** No timing, counting or photography was done. §1's "matches" is
@@ -237,10 +260,15 @@ it.
 
 1. **The documentation corrections** in §3.1 and §3.2 — done in this session, since they are
    free and they are what the next session reads first.
-2. **A test for §3.3**, before any fix. Two Connectors arriving at one station: does the engine
-   allow an overlap? The answer decides whether this is M3.2 work or a defect.
+2. ~~**A test for §3.3**, before any fix.~~ **Done.** A toolchain was installed (WSL2 Ubuntu, see
+   [`BUILDING.md`](BUILDING.md)) and the question was answered: the pair is **refused**, not
+   overlapped. The test is in `tests/connector_tests.cpp`, and §3.3 has been rewritten to the
+   measured result. The follow-up is now a fix to `runtimeSections`' cut list — a duplicate station
+   should reuse the existing cut instead of being rejected as too close to itself.
 3. **Conflict areas** — the largest real gap, and the reason this project exists
-   ([`PROBLEM.md`](PROBLEM.md) §2). Until they exist, §3.3 and §3.4 have no home.
+   ([`PROBLEM.md`](PROBLEM.md) §2). They are also what §3.3's *second* half and §3.4 need: once the
+   refusal is fixed, two arrivals share a downstream section with no rule between them, and that is
+   a conflict area, not a priority rule.
 4. **The §5–§9 extension block**, behind its engine contracts, in the order
    [`SPEC_AUDIT.md`](SPEC_AUDIT.md) already books: behavior ownership at M2.1, lane changing and
    crossing conflicts at M3.2, signals at M4.1.
@@ -263,3 +291,34 @@ it.
 | Tests | `tests/connector_tests.cpp`, `connector_shape_tests.cpp`, `connector_point_tests.cpp`, `connector_mouth_tests.cpp`, `connector_ui_tests.cpp`, `attachment_tests.cpp`, `attachment_ui_tests.cpp`, `range_tests.cpp`, `network_lifecycle_tests.cpp` |
 | The supplied target | [`specs/connector/part-01.md`](specs/connector/part-01.md), [`part-02.md`](specs/connector/part-02.md) |
 | The recorded gap analysis | [`VISSIM_PARITY.md`](VISSIM_PARITY.md), [`SPEC_AUDIT.md`](SPEC_AUDIT.md), [`NETWORK_LIFECYCLE_AUDIT.md`](NETWORK_LIFECYCLE_AUDIT.md) |
+
+---
+
+## 7. How this audit was verified
+
+With no toolchain on the machine the first draft could not be built, so every claim in it was a
+reading of source. That is now backed by a real run. The toolchain was installed **inside the
+WSL2 Ubuntu already present on the machine** — `g++ 15.2.0`, `cmake 4.2.3`, `ninja 1.13.2`,
+`nlohmann-json3-dev`, `qt6-base-dev` — so no administrator rights and no reboot were needed, and
+the tight `C:` drive is not a constraint because WSL has 955 GB free.
+
+| Preset | Build | Tests |
+|---|---|---|
+| `headless` | 65/65, exit 0 | **21/21 passed**, 4.30 s |
+| `desktop` (Qt 6 Widgets) | 93/93, exit 0 | **30/30 passed**, 9.47 s |
+
+`QT_QPA_PLATFORM=offscreen` is required for the desktop suite on a displayless machine — the
+checked-in `desktop` test preset does not set it.
+
+Two things worth noting for the next session:
+
+- **Ninja's default parallelism OOMs the Qt build here.** The host has 7.66 GB, WSL is given
+  3.74 GB, and `nproc` is 12; the first `desktop` build was killed with exit code 15. Build with
+  `-- -j 3`. This is a property of this machine, not of the project.
+- The four gates that matter for this audit all passed: `file-sizes` (the `PROGRESS.md` archive
+  move was required, not cosmetic), `all-model-tests` (no test fell out of registration),
+  `architecture` (core purity intact) and `reference` (the four frozen TypeScript baselines are
+  still inside tolerance).
+
+This is **Linux only**. Per the project's own rule, it is not cross-platform evidence, and the
+Windows MSVC path in [`BUILDING.md`](BUILDING.md) is still unexercised in this workstream.

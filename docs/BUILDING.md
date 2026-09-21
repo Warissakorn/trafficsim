@@ -79,6 +79,25 @@ ctest --preset desktop
 In displayless CI the desktop test uses `QT_QPA_PLATFORM=offscreen`. Normal launches
 use your desktop session's platform plugin to display a visible window.
 
+### Windows host without a Linux box: WSL2
+
+The same commands work in WSL2 Ubuntu, which needs no administrator rights and no reboot, and keeps
+the build off the Windows drive. Verified 2026-09-21 on Ubuntu 26.04 with `g++ 15.2.0`,
+`cmake 4.2.3`, `ninja 1.13.2`, Qt 6 Widgets and `nlohmann-json3-dev` — headless 21/21 and
+desktop 30/30 green.
+
+Two things to know:
+
+- **Do not use ninja's default parallelism for the Qt build.** Ninja reads `nproc` (12 on the
+  machine this was verified on) but WSL inherits only a share of the host RAM, and the desktop
+  build is killed with exit code 15 rather than reporting an error. Build with `-- -j 3`, or raise
+  the WSL memory limit in `.wslconfig`.
+- WSL is displayless, so the desktop suite needs `QT_QPA_PLATFORM=offscreen` — the checked-in
+  `desktop` test preset does not set it.
+
+A WSL build is a Linux build. It is **not** evidence about the Windows MSVC path above, which
+stays the platform the owner actually draws on.
+
 ## Headless, custom paths and installation
 
 ```bash
