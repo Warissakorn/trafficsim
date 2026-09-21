@@ -59,6 +59,7 @@ Scenario JSON and editor `*.traffic.json` projects are two formats on purpose �
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | To see which milestone this is and what closes it. |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Every session. Read `Next` first. |
 | [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. Says which gaps are booked and which are deliberately not. |
+| [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
 
 ## Stack
 

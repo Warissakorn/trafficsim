@@ -14,14 +14,19 @@ bool connectorReferenced(const ProjectDocument&, const Connector&);
 // Run mutations through History::execute for validation, rollback and Undo/Redo.
 Connector& editableConnector(ProjectDocument&, const std::string& id);
 std::string addConnector(ProjectDocument&, const LaneReference& from, const LaneReference& to);
-// Only interior points may change; the two endpoints are attached to their lanes.
+// Any point may move, endpoints included: a Connector keeps its own position, so its ends may be
+// dragged off the Link, where the Connector is then deleted. What this may NOT do is name a
+// different lane -- that is changeConnectorEndpoints, which guards route topology.
 void changeConnectorGeometry(ProjectDocument&, const std::string& id, const std::vector<Point>& geometry);
 // Referenced connectors cannot be retargeted: doing so would change route topology.
 void changeConnectorEndpoints(ProjectDocument&, const std::string& id, LaneReference from, LaneReference to);
 void resetConnectorCurve(ProjectDocument&, const std::string& id, bool straight = false);
-// Vissim's Intermediate points field. The Connector's current road is re-laid with `count`
-// interior points at equal spacing along it, so raising or lowering the count re-fairs the shape
-// the author already has rather than throwing it away for the default curve.
+// Vissim's Intermediate points field. Raising the count splits the longest leg each time, so no
+// point the author placed is lost and the road keeps the shape it already had; lowering it
+// re-spaces the points evenly along that same shape, giving up only the detail the lower count
+// cannot hold. Either way the author's road is re-faired rather than replaced by the default
+// curve. Re-laying at even spacing on the way UP was measured to cut a hand-placed corner by up
+// to 1.00 m, which is why the two directions differ.
 void resampleConnectorPoints(ProjectDocument&, const std::string& id, int count);
 // Deletes affected routes and their inputs in the same undoable transaction.
 void deleteConnector(ProjectDocument&, const std::string& id);

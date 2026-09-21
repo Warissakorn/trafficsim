@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md) — 2026-09-18, the square-mouth revert (M1.17 reverted); moved out 2026-09-21 when it was the oldest live entry and the parity audit superseded it
 - [`archive/PROGRESS-2026-09-18-earlier.md`](archive/PROGRESS-2026-09-18-earlier.md) — 2026-09-18, the snapping audit, the engine profile and the M1.17 revert
 - [`archive/PROGRESS-2026-09-18-flush-mouth.md`](archive/PROGRESS-2026-09-18-flush-mouth.md) — 2026-09-18, M1.18, the flush mouth
 - [`archive/PROGRESS-2026-09-17-mouth.md`](archive/PROGRESS-2026-09-17-mouth.md) — 2026-09-17, the wedge mouth and the miter "bulge"
@@ -12,6 +13,71 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-21 — Connector parity audit (documentation only; no code changed)
+
+**Request:** the owner asked whether the Connector matches Vissim in every respect, then asked
+for everything that could actually be done about it in the session.
+
+**The audit itself** is `CONNECTOR_PARITY_AUDIT.md`. It is the first place in this repository that
+states the **two benchmarks** side by side: the owner's supplied Thai specification (a *target*,
+per `specs/README.md` and `SPEC_AUDIT.md`) and Vissim itself (**never measured here** — only the
+owner's screenshots are on file). §1 of the audit lists what matches the specification, §2 what is
+absent, §3 the defects, §4 what was deliberately not done. Do not quote §1's "matches" as a
+Vissim claim.
+
+**What was changed in this session** is documentation and comments only:
+
+- `CONNECTOR_PARITY_AUDIT.md` — new.
+- `VISSIM_PARITY.md` — a 2026-09-21 entry, plus a one-line inline "superseded" note on the
+  2026-09-18 wedge entry, whose sentence *"a plain square end. That is now what is drawn"* has
+  been false since M1.18.
+- `connector_commands.hpp` — two header comments corrected against the code they declare:
+  `changeConnectorGeometry` *does* move the endpoints (only the lane reference is fixed there),
+  and `resampleConnectorPoints` splits the longest leg when **raising** the count rather than
+  re-spacing evenly, because even re-spacing was measured to cut a hand-placed corner by 1.00 m.
+- `CLAUDE.md` — a row in the "Read these before working" table.
+
+**The stale `PROGRESS.md` entry was not rewritten — it was moved whole to
+[`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md).** The
+2026-09-18 entry *"The Connector mouth is a plain square end again"* is append-only history, so its
+text is preserved exactly as written; only its **location** changed, and the reason is hard rule 6
+— this entry pushed the live file to 504 lines, past the 500-line guard `tools/check_file_sizes.cpp`
+fails on. It was the oldest live entry, so it is the one the file's own header says to move. This
+entry is the correction of record: what is drawn today is the **M1.18 longitudinal slide onto the
+Link's cross-section**, with a full-width square end kept only as the fallback for an arrival more
+than roughly 75° off its spine (`road_boundaries.cpp:324-325`), reported as
+`WARN_CONNECTOR_ALIGNMENT`.
+
+**Three runtime findings are recorded, not fixed** — all need a build, and this session had no
+C++ toolchain (`cmake`, `g++`, `cl`, `clang++`, `ninja` all absent), so under hard rule 7 nothing
+was touched that could not be verified. Booked:
+
+1. **Two Connectors arriving at the same station on one lane do not yield to each other.** The
+   derived rule names only the upstream lane section, never another Connector's path
+   (`sections.cpp:195`). Whether that permits a one-step overlap at the drawn station is
+   **untested either way** — a test comes before any fix, and the fix belongs with conflict areas
+   in M3.2.
+2. **A merge at a lane's *start* is uncontrolled and unreported** (`sections.cpp:203`). Consistent
+   with `UNSUPPORTED_MERGE`, but nothing tells the author.
+3. **`buildScenario` can carry a zero-gap priority rule** when the catalog is unset; only the
+   `compileScenario` path refuses it (`compile.cpp:95`, `core/validate.cpp:73`). Latent — no such
+   caller exists today.
+
+**No milestone is closed by this entry.** No gate is met by documentation. M0/M1 owner acceptance
+and M6 validation remain open, and no test was added or run.
+
+### Next
+
+Run the audit's §5 sequence. First, a **test for the untested case above** — two Connectors
+arriving at one station, run it, and record whether the engine allows an overlap; that answer
+decides whether it is a defect or M3.2 work, and it needs a build, so it is the first thing to do
+where a toolchain exists. Second, resume the separately booked M1.22 features and the owner's
+M1.21.1 recheck against their original `.traffic.json`. Do not start §3.2 curve parameters or §16
+visual overrides: they would be the first fields accepted on load that change nothing at Run.
+Keep M3.2 (conflict areas, lane changing) as the home for findings 1 and 2.
 
 ---
 
@@ -266,45 +332,6 @@ presentational and hit-test only. *Linux only — no desktop verification claime
 ### Next
 
 **The Connector keeps its own position** — done, as M1.20; its entry is above.
-
----
-
-## 2026-09-18 — The Connector mouth is a plain square end again (M1.17 reverted)
-
-**The owner asked for the first Connector geometry back:** the end of a Connector simply meets the
-Link, with no realignment towards the Link's direction and a plain square end. Done, on
-instruction — this is a deliberate revert of M1.17, not a defect fix.
-
-`connectorBoundaries` now stops at `offsetGeometry`. The whole end-cut block is gone: the
-fixed-distance cut onto the Link's cross-section, the bounded re-miter that stood in where that cut
-folded, the fold test that chose between them, and the `legCrossing`/`remiter` helpers. `endCross`
-stays — the source end's cross-section is still what fixes which way lane order runs, and nothing
-else reads it now.
-
-**What is unchanged:** the body. The cross-section is not interpolated between the two mouths, so a
-3.5 m lane is 3.5 m at every interior point (interpolation drew 1.06 m on a reverse curve, 0.46 m at
-a 90-degree arrival). Only the two end samples move.
-
-**The step is the accepted shape now, not a bug.** A square end stands clear of the Link's lane
-edges at an oblique arrival: 4.7-17.2 cm on a gentle join, 0.12-0.29 m where a Link has been
-rotated under the curve, up to 0.88 m on a hard reverse curve, and up to ~1.8 m where the Connector
-arrives square across the lane. The polygon overlaps the carriageway across that step.
-
-**Tests were rewritten, not deleted.** The three that asserted the wedge now assert the square end:
-`mouthLine` still checks the mouth is one straight line, a new `mouthSquareness` checks that line is
-square to the boundaries' own end legs (exact where widths are constant, 1e-2 where a lane tapers,
-because a tapering edge leans against the ribbon by construction), and `stepTo` bounds the step to
-the Link's lane edge instead of demanding it be zero. 127 tests pass, 16/16 ctest.
-
-### Next
-
-The engineering side of M1 is unchanged by this: **the only open item is the owner's timed
-four-leg / aerial-image / reopen exercise in `docs/M1_ACCEPTANCE.md`.** If the square mouth looks
-wrong once seen in the editor, the wedge is in Git history at `55294fa` and its reasoning is in
-[`archive/PROGRESS-2026-09-17-mouth.md`](archive/PROGRESS-2026-09-17-mouth.md) — do not re-derive it.
-*(It did look wrong; M1.18 above replaced it with a longitudinal slide, not the wedge.)*
-
-*Verified on Linux, headless preset only (Qt not installed here); no desktop verification claimed.*
 
 ---
 
