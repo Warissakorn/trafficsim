@@ -384,6 +384,26 @@ not things that are slow.
 
 ---
 
+## 2026-09-21 — the Connector, audited end to end
+
+The owner asked whether the Connector matches Vissim in every respect. The full audit is
+[`CONNECTOR_PARITY_AUDIT.md`](CONNECTOR_PARITY_AUDIT.md); it is the place to look, and it names
+its own limits. Two points from it belong in this file:
+
+**The 2026-09-18 entry below is stale on one sentence.** It says the Connector end is "a plain
+square end. That is now what is drawn." What is drawn is the **M1.18 longitudinal slide onto the
+Link's cross-section**, with a square end kept only as the fallback for an arrival more than
+about 75° off its spine — reported as `WARN_CONNECTOR_ALIGNMENT`. The entry's reasoning about why
+the wedge was withdrawn still holds; only the description of what replaced it is out of date.
+
+**There are two benchmarks, and this file only has one of them.** Everything recorded here as a
+Vissim gap comes from the owner's screenshots and dialog references. The other benchmark — the
+owner's supplied Thai specification — is a *target*, and `SPEC_AUDIT.md` and `specs/README.md`
+both say so. The audit keeps them apart deliberately; do not let a section number from the
+specification be read here as a measured Vissim behaviour.
+
+---
+
 ## 2026-09-18 — snapping, audited against the owner's list of Vissim's four snaps
 
 The owner listed what Vissim snaps to and asked for all of it. Audited against live code, only one
@@ -420,7 +440,9 @@ than left as a silent disagreement with the instruction.
 ## 2026-09-18 — the wedge is withdrawn on the owner's instruction
 
 The owner asked for the original Connector geometry: the end meets the Link and nothing more — no
-turn towards the Link's direction, a plain square end. That is now what is drawn, so the two entries
+turn towards the Link's direction, a plain square end. *(Superseded: see the 2026-09-21 entry
+above. The end is the M1.18 longitudinal slide, with the square end kept as the steep-arrival
+fallback.)* So the two entries
 below record why the wedge was adopted and bounded, not what the editor does today. The
 parity gap they close is reopened deliberately: our mouth stands 4.7 cm to 0.88 m clear of the road
 where Vissim's lies on it, and that is the owner's call. Everything about the *body* in those
