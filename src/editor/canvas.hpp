@@ -140,6 +140,21 @@ private:
     Point hoverPoint_{};
     int animationPhase_{}, commitPulse_{}, rejectPulse_{};
     QTimer* animation_{};
+    // Connector geometry is the most expensive thing a frame does, and a frame recomputed all
+    // of it even when nothing had moved. What `connectorPaths` and `connectorBoundaries` read is
+    // exactly the Connector, the two Links it names and the driving side -- nothing else in the
+    // Network can change their answer -- so those values ARE the cache key, compared by value
+    // rather than trusted from a revision counter. A preview Connector simply misses.
+    struct CachedConnector {
+        Connector connector; Link from, to; DrivingSide side{};
+        std::optional<std::vector<ConnectorPath>> paths;
+        std::optional<std::vector<std::vector<Point>>> boundaries;
+    };
+    mutable std::map<std::string,CachedConnector> connectorCache_;
+    CachedConnector& connectorEntry(const Connector&) const;
+    void pruneConnectorCache();
+    const std::vector<ConnectorPath>& cachedPaths(const Connector&) const;
+    const std::vector<std::vector<Point>>& cachedBoundaries(const Connector&) const;
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;

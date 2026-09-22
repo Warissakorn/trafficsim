@@ -123,7 +123,7 @@ void EditorCanvas::drawConnectors() {
             preview=std::move(moved);
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;
-        const auto boundaries=connectorBoundaries(document_->network,preview);
+        const auto& boundaries=cachedBoundaries(preview);
         // Trimming each rail on its own only cuts a loop within that one rail. The two rails
         // cross EACH OTHER where the near and far edges are cut onto the link's cross-section at
         // a sharp merge angle, which draws as a spike/notch unless the closed ring is trimmed as

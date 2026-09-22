@@ -167,6 +167,30 @@ int main(int argc,char** argv) {
         }
         painter.end();
         if(argc>1)require(sheet.save(QString::fromUtf8(argv[1])),"Screenshot failed");
+        // The canvas caches each Connector's drawn geometry, keyed by the Connector, the two
+        // Links it names and the driving side -- the only inputs connectorBoundaries reads. The
+        // dangerous case is the one where the Connector itself does not change: widen a lane of
+        // the Link it leaves and the mouth moves, so a cache that keyed on the Connector alone
+        // would keep drawing the old road. Force it, check the forcing worked, then assert.
+        {
+            auto d=roads(DrivingSide::left);h.reset(d);refresh();
+            const auto id=h.document().network.connectors.front().id;
+            const auto before=surface(c,id);
+            h.execute("lanes",[&](auto& doc){changeLanes(doc,"a",{3,9,4,6});});refresh();
+            require(h.document().network.links.front().lanes[1].width==9,"Lane widths did not change");
+            require(h.document().network.connectors.front()==d.network.connectors.front(),
+                    "The Connector itself changed, so this does not test the cache");
+            require(surface(c,id)!=before,"A Link edit left the cached connector surface stale");
+            const auto widened=surface(c,id);
+            h.execute("side",[&](auto& doc){changeDrivingSide(doc,DrivingSide::right);});refresh();
+            require(surface(c,id)!=widened,"A driving-side change left the cached surface stale");
+            // Deleting the Connector must not leave its entry to be drawn again.
+            h.execute("delete",[&](auto& doc){deleteObjects(doc,{id});});refresh();
+            bool drawn=false;
+            for(auto* item:c.scene()->items())if(item->data(0).toString()=="road-surface" &&
+                item->data(1).toString()==QString::fromStdString(id))drawn=true;
+            require(!drawn,"A deleted connector was drawn from the cache");
+        }
         std::cout<<"Endpoint range picking, preview/commit equality, cancellation, coalesced release and invalid drafts passed\n";
         return 0;
     }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
