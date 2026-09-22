@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md`](archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md) — 2026-09-21, M1.22.1, editor history and the keyboard workflow; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-toolchain-and-3.3.md`](archive/PROGRESS-2026-09-21-toolchain-and-3.3.md) — 2026-09-21, the toolchain install and the §3.3 measurement; moved out 2026-09-22
 - [`archive/PROGRESS-2026-09-21-connector-parity-audit.md`](archive/PROGRESS-2026-09-21-connector-parity-audit.md) — 2026-09-21, the Connector parity audit; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md`](archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md) — 2026-09-21, M1.21.1, the Network lifecycle correctness audit; moved out 2026-09-22 as the oldest live entry
@@ -19,6 +20,70 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-22 — The build stops re-reading its headers (M1.27, build stage)
+
+**Request:** the owner asked to optimize every dimension — performance, code quality, data/API,
+build, and UX/UI — *"ทุกข้อ + UX UI ได้หรือไม่"*. One system per session still applies, so the
+work was carved into **M1.27** with four stages and only the build stage was executed. The
+other three are booked with gates in ROADMAP; none of them is started.
+
+**Measured first, on this machine (GCC 13.3, Qt 6.4.2, 4 cores).** A single editor translation
+unit cost 5.8–7.3 s to compile, of which 3.14 s was the header set nearly every one of them
+shares: 2.46 s of Qt and 1.47 s of `nlohmann/json.hpp`, against 0.36 s for `json_fwd.hpp`. An
+empty translation unit is 0.016 s, so almost all of it was re-reading the same headers.
+
+**Two changes, applied and measured one at a time.**
+
+- `src/project/json.hpp` includes `<nlohmann/json_fwd.hpp>`. It only ever *declared* with
+  `Json`; `document.hpp` includes it, so all 27 editor and shell files paid for the definition
+  while five used it. The thirteen files that build or read a `Json` now include it themselves —
+  the compiler named every one, which is what made this safe rather than a guess.
+- `trafficsim_shell` (26 Qt sources) precompiles `<QGraphicsView> <QPainterPath> <QWidget>`, and
+  the eleven single-source UI test executables take that same PCH through `REUSE_FROM`.
+
+| configuration | wall `-j4` | ninja edge-seconds | compiling |
+|---|---|---|---|
+| before | 86 s | — | — |
+| json_fwd only | 77 s | 299 s | 274 s |
+| + shell PCH | 69 s | 264 s | 234 s |
+| + `REUSE_FROM` | **64 s** | **243 s** | **213 s** |
+
+`src/editor/canvas.cpp` alone: 5.77 s → 3.29 s. **Nothing about the program changed** —
+`trafficsim-cli 42` still prints `29.249359418430977`, the four seed fixtures are untouched and
+`check` is 35/35 on Linux. Windows is CI's to confirm.
+
+**One variant was measured and reverted**, which is worth as much as the ones kept: adding
+`<nlohmann/json.hpp>` to the shell PCH grew the `.gch` from 4.9 s to 6.9 s, and because that
+sits on the critical path of `src/shell` it cancelled what the eleven reusing objects saved
+(258 edge-seconds against 243 without it). The CMake comment records it so it is not re-tried.
+No project header is precompiled: touching `canvas.hpp` still rebuilds 38 objects and no
+`.gch`, so incremental builds are unchanged. A dead `distanceTo` left by M1.26 was deleted.
+
+**Decision D27 — a PCH holds third-party headers only.** A precompiled project header would
+turn every edit to it into a full-target rebuild, which is the cost this change exists to
+remove. `REUSE_FROM` is how a single-source target gets one without paying to build it.
+
+### Next
+
+**The build stage of M1.27 is done; the other three stages are not started**, in priority order
+and one session each. **M1.27.1, editor redraw:** `EditorCanvas::redraw()` clears and rebuilds
+the whole scene on every mouse move, and inside one frame `connectorBoundaries` recomputes
+`connectorPaths` twice per connector while `headPosition` scans every connector path per signal
+head. Evidence so far is a **call count read from the code, not a timing** — so the first step
+is the large-network frame-time benchmark M1.23 already requires, committed, *before* any
+caching. **M1.27.2, `Vehicle` string ids:** measured 2026-09-18, gate is the four baselines
+byte-identical. **M1.27.3, UX:** the `Ctrl`+left-click collision (extends the selection here,
+duplicates in Vissim) and the rows of `VISSIM_PARITY.md` that now misreport the product —
+`Tab` cycling, `Ctrl+B`, tool shortcuts and Connector lane ranges all exist.
+
+Unchanged and still ahead of all of it: **M1.26.1** adjustable per-lane shares (decide where the
+shares live first), then **M2.1**'s positioned routing decision behind **M2's pre-registered
+criteria, still unwritten, which block all of M2** and need the owner. M1.22 remains open, as
+does the shared-station `runtimeSections` refusal (§3.3, M3.2). Scenario-JSON export from the
+editor is still neither implemented nor booked. M1's timed owner exercise closes none of this.
 
 ---
 
@@ -256,51 +321,6 @@ follow-up remain separate work. Do not fold simulation changes into the editor w
 
 ---
 
-## 2026-09-21 — Network Editor history and keyboard workflow (M1.22.1)
-
-**Request:** improve and fix the Network Editor. This session completes the history/nudging
-slice of M1.22 and fixes two confirmed selection/gesture defects within the editor system.
-
-**Changed:** bilingual History dock (Ctrl+Shift+H), named Undo/Redo, current/saved markers,
-explicit Enter/double-click restoration, retained redo states and monotonically increasing
-revision IDs after branching. The dock reads metadata from the existing History snapshots;
-it introduces neither a second document store nor a new project schema. Restoring a state
-clears a compiled run and refreshes all editor surfaces.
-
-Arrow keys nudge Link/Connector selections by the snap grid, or 1 m with Snap off; Shift
-multiplies the step by ten. The same group-translation command preserves M1.20 attachment
-semantics and makes every step undoable. Head-only selections still ride their parent road.
-Filtering levels drops hidden selections; explicit table/inspector selection reveals hidden
-objects and synchronizes the filter. Unknown IDs are ignored. Active drags/copies/creation
-cancel on focus loss, so late releases cannot commit; multi-click drafts survive ordinary
-focus changes between clicks. Help/command names are translated in both catalogs.
-
-**Verification:** Linux, GCC 13.3 / Qt 6.4.2. Original baseline suites pass (30/30); separate
-regressions reproduce hidden selection and focus-lost drag commits against c69cad5 before
-checking their fixed behavior. Desktop `check` passes **32/32** suites, including the new
-history and workflow suites, all model cases, replay baselines, architecture and file sizes.
-Coverage includes both driving sides, group/Connector nudges, save-point restoration,
-branching, rejected/no-op edits, 100-entry eviction, run invalidation, field-focus isolation,
-level/inspector synchronization, cancellation and Thai translation. The Thai History dock
-was rendered and visually inspected. This is Linux evidence; Windows CI and owner acceptance
-are separate. See [EDITOR_WORKFLOW.md](EDITOR_WORKFLOW.md) for exact controls.
-
-### Next
-
-M1.22 remains open for rotation, geometry/snapping tools, layer locks, bulk inspection,
-context menus and the keyboard-only owner exercise; M1's timed gate remains open. The
-previous session's shared-station runtime-section fix remains separate work, with its
-existing regression and M3.2 conflict-policy follow-up. No runtime/curve-parameter or visual-
-override work was folded into this editor change.
-
----
-
-
----
-
-
----
-
 ## Next
 
 **Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
@@ -456,3 +476,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D24 | 2026-09-22 | **Retire the M0 harness window; the editor is the only window** | The owner asked whether it could go, and the measured answer is yes: `trafficsim-cli` already prints a superset of the figures it showed (`meanDelay`, `safetyClamps`, plus `--events`), and `parseDocument` needs only `network`, so the editor opens bare M0 scenarios already. Keeping a second window meant a second renderer (`src/render/`), a second run loop and a second place for the delay figure to drift from the CLI. What makes the removal safe is not the deletion but the replacement: `scenario-run-ui` pins the editor's run of `crossing.json` to the CLI baseline exactly (31 trips, mean delay 29.249359418430977), so the M0 plausibility observation changed surface without changing meaning. The gate itself was not touched — only the sentence naming where the observation is made. | If a results screen ever needs to run a scenario without the authoring surface (a batch review window, M5), build it on `runSimulation` and the event stream, not by restoring `MainWindow`. If the editor ever stops opening bare M0 scenarios, this decision is void and the CLI becomes the only M0 surface. |
 | D25 | 2026-09-22 | **An authored route names Links and Connectors; the per-lane routes are compiled** | The owner's ruling: *Routing เป็นการสร้างบนทุกช่องจราจร … ไม่ได้สร้างเป็นรายช่อง*. A lane-level route tied demand to a Connector's lane count, so narrowing one either invalidated the route or had to be refused — and it was refused, which left an author unable to correct their own drawing. Naming the objects makes the lane chains derived data, which is where they belong: `routeLaneChains` recomputes them on every compile, the reference guards disappear because nothing a route names can vanish, and a vehicle input becomes what Vissim's is, a Link total split across the lanes that carry it. The single-lane expansion deliberately keeps the authored id, which is what lets the four frozen baselines replay unchanged. | What it costs is the lane-specific route: a turn pocket where only the left lane may turn cannot be expressed. If that has to come back before M2.1's positioned routing decision, the honest fix is an explicit lane restriction on the route, not a return to lane ids — the ids were the thing that made every Connector edit fragile. |
 | D26 | 2026-09-22 | **A Connector gesture connects every lane of both Links by default** | This reverses the M1.12 default of one lane per drag, which existed for a good reason at the time: pre-filling the maximum authored a wide Connector from a single-lane gesture, and the author could not narrow it afterwards once a route used it. D25 removes that trap, and the owner asked for the wide default explicitly — *ให้เชื่อมจำนวนช่องตามจำนวนช่องใน Link ทั้งหมดก่อน ค่อยปรับลงภายหลัง*. | If authors start drawing single-lane turns more often than full carriageways, make the default follow the drag width instead of flipping it back: the dialog already has both counts, and the gesture knows which lane it started on. |
+| D27 | 2026-09-22 | **A precompiled header holds third-party headers only** | `trafficsim_shell` compiles 26 Qt translation units and re-read the same 2.46 s of `<QGraphicsView>` in every one of them; precompiling it and sharing that PCH with the eleven single-source UI test executables through `REUSE_FROM` took a clean build from 86 s to 64 s. What is deliberately *not* in it is any project header: a PCH over a header that changes turns every edit to it into a full-target rebuild, which is the cost this exists to remove — measured, touching `canvas.hpp` still rebuilds 38 objects and no `.gch`. Adding `<nlohmann/json.hpp>` was tried and reverted: it grew the `.gch` by 2 s on `src/shell`'s critical path and cancelled the saving (258 edge-seconds against 243 without). | If the shell is ever split into two targets, give each its own PCH rather than one shared across different flag sets — GCC rejects a `.gch` whose macro state differs, silently, and the only symptom is the speed-up quietly disappearing. |

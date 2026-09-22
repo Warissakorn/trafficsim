@@ -20,7 +20,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-7 authoring codec, schema-1–6 migration and revision run snapshots |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-8 authoring codec, schema-1–7 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |

@@ -15,11 +15,6 @@ QPainterPath polylinePath(const std::vector<Point>& points) {
     for(std::size_t i=1;i<points.size();++i)path.lineTo(points[i].x,points[i].y);
     return path;
 }
-double distanceTo(const std::vector<Point>& geometry,Point p) {
-    if(geometry.size()<2)return 1e300;
-    const auto at=pointAlong(geometry,stationOfClosestPoint(geometry,p));
-    return std::hypot(at.x-p.x,at.y-p.y);
-}
 }
 // What a click means to the route and input tools: the Link or Connector under the pointer,
 // which is what a route names. hitObjects already answers that question for every other tool,

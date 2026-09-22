@@ -199,35 +199,17 @@ Owner Windows interaction and timed acceptance remain open.
 
 ---
 
-### M1.12.1 — A Connector's own lane widths and markings
+### M1.12.1–M1.20 — Completed geometry and authoring iterations
 
-**Implemented.** `Connector::laneWidths` and `laneMarkings`, both empty by default meaning
-"derive it from the Links", in schema 6; `connectorLaneWidths` is the single place a width is
-decided. Full body, including what it does NOT claim about Vissim parity, in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
-
-**Closed.** The reported 24% over-width was measured ALONG the cross-section, where a mitered
-corner's diagonal is `width / cos(φ/2)` by construction; square to the road the carriageway is
-7.000000 m exactly, so `offsetGeometry` was not changed. Measurements in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-### M1.12.3 — The Link wins at the mouth (widths) — **closed by M1.19**
-
-**Closed by M1.19**: the mouth is built from the Link's widths and the authored width takes over
-through the body, over a transition of one carriageway width, pinned to 1e-9 by
-`an_authored_width_is_exact_where_the_connector_is_straight`. `TIGHT_CONNECTOR_RADIUS` was not
-re-derived — it reads `connectorShapeIssues`, which is unchanged. The carve-out's reasoning is in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-### M1.13–M1.20 — Completed geometry and authoring iterations
-
-Implemented: metre attachment stations (M1.13), intermediate points (M1.14), names (M1.15),
-group moves (M1.16), flush mouths (M1.18), lane-aligned mouths (M1.19), and independent
-Connector placement with off-Link cleanup (M1.20). M1.17's lateral wedge remains reverted.
-The complete original entries are retained in
-[archive/ROADMAP-M1-implemented.md](archive/ROADMAP-M1-implemented.md).
+**All closed**, with the original entries in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md): a Connector's own
+`laneWidths` and `laneMarkings` in schema 6, `connectorLaneWidths` the single place a width is
+decided (M1.12.1); the 24% miter "bulge" measured along the cross-section, where a mitered
+corner's diagonal is `width / cos(φ/2)` by construction, so `offsetGeometry` was not changed
+(M1.12.2); metre attachment stations (M1.13), intermediate points (M1.14), names (M1.15), group
+moves (M1.16), flush mouths (M1.18), lane-aligned mouths (M1.19) and independent Connector
+placement with off-Link cleanup (M1.20). M1.19 also settled the mouth and closed M1.12.3,
+leaving `TIGHT_CONNECTOR_RADIUS` as it was. M1.17's lateral wedge remains reverted.
 
 ### M1.21 / M1.21.1 — Supplied-spec authoring, and the lifecycle audit
 
@@ -268,12 +250,10 @@ reproducible real-network benchmark. Do not claim 10k/100k-object performance in
 
 ### M1.24 / M1.25 — One window, and demand authored by pointer
 
-Implemented: `trafficsim-desktop` opens the network editor directly, the separate M0 harness
-window and its QPainter view are gone, and the editor's run status carries the mean trip delay
-and safety-clamp count from the `SummaryAccumulator` the CLI uses (M1.24). Routes and vehicle
-inputs are then drawn by pointer — click the start, click each destination, and the chain
-between them is appended — with the draft, the selected route and each input drawn on the canvas
-(M1.25). Neither changed the engine, the schema or any measured number. Full entries in
+Implemented: `trafficsim-desktop` opens the network editor directly and its run status carries
+the mean trip delay and safety-clamp count from the `SummaryAccumulator` the CLI uses (M1.24);
+routes and vehicle inputs are then drawn by pointer (M1.25). Neither changed the engine, the
+schema or any measured number. Full entries in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.26 — Demand is authored per Link and compiled per lane
@@ -311,6 +291,23 @@ the editor and `buildScenario` read them, and `VehicleInput` is a core type the 
 shares, so this is a schema-and-signature decision, not a dialog field. **Gate:** shares
 round-trip through save/reopen, normalise, and leave an unedited input's compiled volumes
 bit-identical to the equal split.
+
+### M1.27 — Optimization program: build, redraw, engine, UX
+
+**Build stage implemented.** `src/project/json.hpp` declares `Json` through
+`<nlohmann/json_fwd.hpp>`, and `trafficsim_shell` precompiles the Qt surface the single-source
+UI test executables reuse: clean build `-j4` **86 s → 64 s**, one editor translation unit
+5.8 s → 3.3 s, no behaviour change, frozen baselines untouched. Three stages are measured or
+counted and deliberately **not** done, one session each. **M1.27.1, editor redraw:**
+`redraw()` clears and rebuilds the whole scene on every mouse move, recomputing
+`connectorPaths` several times per connector per frame while `headPosition` scans every
+connector path per signal head — *gate:* the large-network frame-time benchmark M1.23 already
+requires, showing a cache and a head index paying with the UI suites unchanged. **M1.27.2,
+`Vehicle` string ids:** the 2026-09-18 profile put ~36% of instructions in `std::string` and
+11.8% in the vehicle sort, and taking the ids off `Vehicle` touches a core type and every test
+that builds one — *gate:* the four baselines byte-identical. **M1.27.3, UX:** the
+`Ctrl`+left-click collision and the stale rows in `VISSIM_PARITY.md` — *gate:* a counted
+walkthrough delta, which does **not** close M1's timed owner exercise.
 
 ---
 
