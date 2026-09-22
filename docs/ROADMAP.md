@@ -280,37 +280,37 @@ shares, so this is a schema-and-signature decision, not a dialog field. **Gate:*
 round-trip through save/reopen, normalise, and leave an unedited input's compiled volumes
 bit-identical to the equal split.
 
-### M1.27 — Optimization program: build, redraw, engine, UX
+### M1.27 — Optimization program: build, redraw, engine, UX · **CLOSED**
 
-**Build and redraw stages implemented.** `src/project/json.hpp` declares `Json` through
-`<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the single-source UI
-test executables reuse: clean build `-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the
-editor measurable, and the canvas caches each Connector's paths, boundaries and markings against
-the only three inputs they read — the Connector, the two Links it names and the driving side —
-compared by value, never by a revision counter. Interleaved medians, Debug: a 160-link corridor
-redraws in **22.5 ms instead of 93.4** and picks in **7.1 instead of 39.0**,
-so a mouse move goes from about 8 frames per second to 34. The UI suites are the guard, plus a
-new one that widens a Link the Connector does not name and requires the drawn surface to move.
+**Build and redraw.** `src/project/json.hpp` declares `Json` through `<nlohmann/json_fwd.hpp>`
+and `trafficsim_shell` precompiles the Qt surface the UI test executables reuse: clean build
+`-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the editor measurable, and the canvas
+caches each Connector's paths, boundaries and markings against the only three inputs they read
+— the Connector, its two Links and the driving side — by value, never by a revision counter. A
+160-link corridor redraws in **22.5 ms instead of 93.4** and picks in **7.1 instead of 39.0**.
 
 **The gate said "a cache and a head index"; the head index was not built** — callgrind put the
-`headPosition` scan below the reporting threshold and `connectorMarkings` at 52.6%, so the
-booked hypothesis was wrong and the profile is what the work followed. A Link geometry cache was
-built, measured and **reverted**: a Link's polyline is cheap enough that validating the entry
-costs what recomputing it saves (−1% at 80 intersections, +9% on picking). What remains is
-`QGraphicsScene` item construction, which is M1.23's culling and LOD work.
+`headPosition` scan below the threshold and `connectorMarkings` at 52.6%, so the profile chose
+the work. A Link geometry cache was built, measured and **reverted**: validating the entry cost
+what recomputing it saved. What remains is `QGraphicsScene` construction — M1.23's culling/LOD.
 
 #### M1.27.2 — A vehicle carries scenario slots · M1.27.3 — UX
 
-**M1.27.2 implemented.** `tools/engine_benchmark.cpp` commits the corridor the 2026-09-18
-session had to generate by hand, and its profile reproduced that session's finding: 17.4% of
-instructions in `std::string` copying, 11.4% in the per-tick vehicle sort, 10.3% in
-`resolveRefs`. `PendingVehicle` now holds `inputIndex`/`routeIndex`/`typeIndex` into the
-canonical Scenario, resolved once in `ScenarioIndex`; `routeOfId`/`typeOfId` and `IdSlot` go
-with the ids they resolved. Events and checkpoints still carry the NAMES, so the frozen
-fixtures are byte-identical. Interleaved medians **1560.8 → 792.6 ms** at 12 intersections and
-**2566.2 → 1331.0** at 24, same trips and peak. **M1.27.3, UX, is open**: the `Ctrl`+left-click
-collision and the `VISSIM_PARITY.md` rows that misreport the product — *gate:* a counted
-walkthrough delta, which does **not** close M1's timed owner exercise.
+**M1.27.2.** `tools/engine_benchmark.cpp` commits the corridor the 2026-09-18 session had to
+generate by hand, and its profile reproduced that session's finding: 17.4% of instructions in
+`std::string`, 11.4% in the per-tick vehicle sort, 10.3% in `resolveRefs`. `PendingVehicle` now
+holds `inputIndex`/`routeIndex`/`typeIndex` into the canonical Scenario, resolved once in
+`ScenarioIndex`; `routeOfId`/`typeOfId` and `IdSlot` go with the ids they resolved. Events and
+checkpoints still carry the NAMES, so the frozen fixtures are byte-identical: **1560.8 → 792.6
+ms** at 12 and **2566.2 → 1331.0** at 24 intersections, interleaved medians, same trips.
+
+**M1.27.3, and M1.27 with it.** `tools/gesture_walkthrough.cpp` counts the inputs each authoring
+task costs and replays the Vissim reflexes against the drawing it makes: **six replayed, five
+transfer**. The sixth, `Ctrl`+left-click, is not the *collision* the parity table has ranked High
+since 2026-09-14 — measured, it does **nothing** on an already-selected object — and the owner
+ruled it stays so (D30), leaving the counted delta zero by decision. The table itself was the
+defect: a dozen rows under-reported the product; §1a carries the measured state. **This does not
+close M1's timed owner exercise.**
 
 ---
 

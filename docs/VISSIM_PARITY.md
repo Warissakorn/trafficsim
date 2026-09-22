@@ -4,25 +4,17 @@ The point of D1 is a tool that behaves like the modelling surface its audience a
 This file measures how far the native editor is from that, **feature by feature and gesture by
 gesture**, so the gap is a list of decisions rather than a feeling.
 
-**Historical review:** sections 1–6 describe the 2026-09-14 pre-completion state after
-M1.1–M1.5. Their "today" columns and line references are retained as the original gap
-assessment, not current implementation claims. Use the status below and ROADMAP for
-current work.
-
-**M1 completion update (2026-09-14):** typed demand/control editing, in-editor Run with
-revision snapshots, locked recovery, controlled-link splits, the Network Objects
-sidebar, Ctrl+right creation, connector lane ranges/corner handles, duplication,
-Delete/Ctrl+Delete, Tab overlap cycling, levels and data-driven display types now
-exist. Ctrl+B toggles the image and Ctrl+Shift+O toggles tables; Shift extends selection.
-[NETWORK_EDITOR.md](NETWORK_EDITOR.md) documents the exact controls and limitations.
-Group drag/rotation, additional network object types and editable table cells were
-not added to M1. Owner usability and engine-validation gates remain open.
+**Which parts are current.** §1 and §6 are the 2026-09-14 pre-completion assessment and are
+kept as written — their "today" columns describe an editor that no longer exists. **§1a and §2
+are the current state**, §1a measured by `trafficsim-gesture-walkthrough` rather than read off
+the code. Everything M1.1–M1.10 built is listed in [`NETWORK_EDITOR.md`](NETWORK_EDITOR.md);
+group drag (M1.16), rotation (M1.22.2), Connector lane ranges and corner handles, `Tab`
+cycling, tool shortcuts and levels all exist now and §1/§6 say they do not.
 
 **Owner correction (2026-09-15, M1.12):** Ctrl+click adds selection; Ctrl+drag already
-selected objects duplicates them. This supersedes the historical Ctrl+click claim below.
-Lane handles now work on both sides without recentering existing lanes. Outer road
-markings and internal dividers replace lane-centre dashes. Independent Connector and
-Signal head copies require valid attachments; see NETWORK_EDITOR for exact behavior.
+selected objects duplicates them. Lane handles work on both sides without recentering existing
+lanes. Outer road markings and internal dividers replace lane-centre dashes. Independent
+Connector and Signal head copies require valid attachments.
 
 **How to read it.** A gap is not automatically work. `PROBLEM.md` owns scope and `ROADMAP.md`
 owns sequence; this file only tells the truth about the distance and proposes where each item
@@ -63,66 +55,91 @@ invalidated the conclusion drawn from it. Do not restore it.
 | Moving several objects | Drag the selection **?** | Not possible — "There is no group drag" (`docs/NETWORK_EDITOR.md` §M1.5) | Known and documented. Reanchoring every attached connector is the reason; it is real work, not an oversight |
 
 **Summary, corrected.** Vissim's creation verb is **`Ctrl` + right-drag**, uniformly, for every
-network object. That single fact changes the M1.9 design in two ways:
+network object, and adopting it cost nothing here because right-drag panning was never the
+obstacle. What blocked it was the *model* — one Vissim gesture creates a connector across a lane
+range, and `Connector { from, to }` held one lane pair — so M1.9 was a model change with a
+gesture on top. Both were built. §1a is what the same rows measure today.
 
-1. **Right-drag panning is not the obstacle.** The first draft of this review claimed the
-   two-click connector flow was forced by giving right-drag to panning. It was not — the chord
-   Vissim uses is still free here. Adopting it costs nothing we currently have.
-2. **The blocker is the model, not the mouse.** One Vissim gesture creates a connector across a
-   *lane range*; `Connector { from, to }` holds one lane pair. The gesture cannot be adopted
-   honestly until the connector model carries a range, so M1.9 is a model change with a gesture
-   on top — not a UI-only milestone. Sizing it as UI-only would be wrong.
+---
 
-The `Ctrl`+left-click collision is the one item here that can destroy work rather than merely
-annoy, and it should be settled before any other gesture change.
+## 1a. The same rows, measured (2026-09-22, M1.27.3)
+
+§1 is the 2026-09-14 assessment, kept as written. This is what `trafficsim-gesture-walkthrough`
+observes on the current build: it replays each reflex against a real drawing and reports what
+the **document** did, so a row is a measurement, not a reading of the code. Run it with
+`QT_QPA_PLATFORM=offscreen trafficsim-gesture-walkthrough data`.
+
+| Vissim reflex | Today | |
+|---|---|---|
+| `Ctrl`+right-drag on empty space | Draws a Link; the Link Data dialog takes lane count and widths | transfers |
+| `Ctrl`+right-drag from a lane to a lane | Creates a Connector; the dialog defaults to the **whole carriageway**, so a 3-lane movement is one drag, not three | transfers |
+| `Ctrl`+right-click on a Link | Inserts a curve point | transfers |
+| `Alt`+left-drag on the selection | Rotates it (M1.22.2) | transfers |
+| Drag the selection | Moves all of it (M1.16) | transfers |
+| Right-drag | Pans | transfers |
+| `Tab` | Cycles the objects under the pointer (`EditorCanvas::cycleOverlap`) | transfers |
+| Corner drag points on a Connector | Change the lane count at either end | transfers¹ |
+| `Ctrl`+left-click on the selection | **Nothing happens** | dead end |
+
+¹ The only row the harness does not replay; the `editor-gestures` suite covers it instead.
+
+**Counted cost, native path,** where one input is one click, drag, keystroke or dialog field:
+draw a 3-lane Link 4 · connect two 3-lane Links 3 · add a curve point 3 · duplicate 2 · rotate 2.
+
+**The one dead end, and the owner's ruling.** §1 and §2 both call `Ctrl`+left-click a *collision*
+— the chord that duplicates in Vissim extending the selection here. That is only true of an
+object that is **not** already selected, which is not the case a Vissim user's hand is in: on a
+selected object it does nothing at all. Offered the Vissim verb, **the owner ruled on 2026-09-22
+that it stays a dead end** (D30). Nothing is lost: `Shift`+click already extends a selection and
+`Ctrl`+*drag* already duplicates. It is the last reflex that does not transfer, deliberately.
 
 ---
 
 ## 2. Keyboard
 
-Vissim users work with one hand on the keyboard. The current set is thin — this is the honest
-inventory, not a curated one.
+Vissim users work with one hand on the keyboard. **Rewritten 2026-09-22 (M1.27.3)** — the
+2026-09-14 inventory described a much thinner editor and had become wrong in five rows.
 
 ### What the editor binds today
 
-| Action | Today | Source |
+| Action | Chord | Source |
 |---|---|---|
-| New / Open / Save / Save As | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | `src/shell/editor_window.cpp:44-51` |
-| Undo / Redo | Qt platform defaults — Redo is `Ctrl+Shift+Z` on Linux, `Ctrl+Y` on Windows | `src/shell/editor_window.cpp:53-54` |
-| Fit network | `F` | `src/shell/editor_window.cpp:61` |
-| Properties dock | `Ctrl+I` | `src/shell/editor_inspector.cpp:76` |
-| Objects and problems dock | `Ctrl+B` | `src/shell/editor_tables.cpp:59` |
-| Cancel current gesture | `Esc` | `src/editor/canvas_input.cpp:135` |
-| Finish the link being drawn | `Enter` | `src/editor/canvas_input.cpp:136` |
-| Remove the selected geometry point | `Delete` | `src/editor/canvas_input.cpp:137` |
-
-The **simulation window bound no shortcut at all** — Run, Step and Reset were buttons only.
-**Superseded by M1.24:** that window is removed; the editor's Run/Step carry F5 and F6/Space
-(`src/shell/editor_run.cpp`), so this gap is closed rather than outstanding.
+| New / Open / Save / Save As | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | `editor_window.cpp` |
+| Undo / Redo | `Ctrl+Z` / platform default **and `Ctrl+Y`** on every platform | `editor_palette.cpp` |
+| Choose a tool | `S` select · `L` link · `C` connector · `R` route · `V` input · `H` head · `X` split · `M` measure · `K` calibrate | `editor_palette.cpp` |
+| Run · step · stop | `F5` · `F6` or `Space` · `Esc` | `editor_run.cpp` |
+| Background image | `Ctrl+B` | `editor_palette.cpp` |
+| Properties · Objects and problems · History docks | `Ctrl+I` · `Ctrl+Shift+O` · `Ctrl+Shift+H` | `editor_inspector.cpp`, `editor_tables.cpp`, `editor_history.cpp` |
+| Fit network | `F` | `editor_window.cpp` |
+| Cycle the objects under the pointer | `Tab` | `canvas_display.cpp` |
+| Delete the selection · delete a geometry point | `Delete` · `Ctrl+Delete` | `canvas_input.cpp` |
+| Nudge the selection by one grid step (`Shift` ×10) | arrow keys | `canvas_input.cpp` |
+| Finish the Link or route being drawn · drop its last segment | `Enter` · `Backspace` | `canvas_input.cpp` |
+| Cancel the current gesture | `Esc` | `canvas_input.cpp` |
 
 ### Collisions with Vissim
 
-Not "missing" — **bound to something else**. These are the rows that will actively mislead a
-Vissim user, listed before the gaps because a wrong action is worse than an absent one.
+Not "missing" — **bound to something else**. A wrong action is worse than an absent one, so
+these come before the gaps. Three of the six rows this table used to carry are gone because the
+editor was changed to match: `Ctrl+B` is the background image, the Objects dock moved to
+`Ctrl+Shift+O`, `Delete` deletes the selection, and `Ctrl+Y` redoes on Linux too.
 
 | Chord | Vissim ✔ | Here | Severity |
 |---|---|---|---|
-| `Ctrl+B` | Show/hide the **background image** | Toggle the Objects and problems dock | **High** — the editor *has* a background image (M1.2), so both meanings are live and plausible in the same window |
-| `Ctrl` + left-click | **Duplicate** the selection | Add/remove one object from the selection | **High** — see §1; the same chord, two incompatible verbs |
-| `Ctrl+N` | Toggle simple network display | New project | Medium — `Ctrl+N` = New is near-universal outside Vissim. A deliberate choice to make, not an automatic change |
-| `Ctrl+A` | Toggle wireframe / normal link display | Unbound | Low — free to take |
-| `Esc` | **Stop the simulation** | Cancel the current drawing gesture | Deferred — harmless today, becomes live the moment M1.8 puts Run in this window |
-| Redo | `Ctrl+Y` | Platform default (`Ctrl+Shift+Z` on Linux) | Low — Windows already matches; Linux does not |
+| `Ctrl` + left-click | **Duplicate** the selection | **Nothing** on an already-selected object; adds an unselected one | Settled, not open — measured a dead end and ruled deliberate on 2026-09-22 (D30, §1a) |
+| `Esc` | **Stop the simulation** | Stops the run **and** cancels the drawing gesture, in that order | Low — M1.24 made both meanings live in one window, and doing both is the safe reading |
+
+**Owner correction (2026-09-22).** An earlier revision listed `Ctrl+N` as Vissim's *simple
+network display* toggle and called it a Medium collision with New. **It is not: the display
+toggle is `Ctrl+A`.** `Ctrl+N` = New collides with nothing, and `Ctrl+A` is unbound here.
 
 ### Absent, and worth taking
 
 | Vissim ✔ | Purpose | Where it belongs |
 |---|---|---|
-| `F5` / `F6` / `Space` / `Esc` / `+` / `-` | Run continuously · single step · next step · stop · faster · slower | **M1.8** — adopt this set wholesale rather than inventing one; note `Esc` above |
-| `Tab` | Cycle objects overlapping the click point | M1.9 |
+| `Ctrl+A` | Toggle wireframe / simple link display | Unbound and free — but there is no simplified display to toggle until M1.23's culling and LOD work builds one |
 | `Ctrl+C` / `Ctrl+V` | Copy / paste network objects | Not booked — needs an ID-allocation policy for pasted objects |
-| `Ctrl+Q` | Quick mode (draw less, simulate faster) | M1.8, if the vehicle layer needs it |
-| Per-object-type keys | Select the active network object type | M1.9 — today **no shortcut selects a tool at all**, so the most repeated action in a drawing session has no keyboard path |
+| `Ctrl+Q` | Quick mode (draw less, simulate faster) | Not booked — revisit when a run is slow enough to need it |
 
 `Ctrl+D` (3D), `Ctrl+U` (time format), `Ctrl+T` and the 3D navigation keys (`K` `I` `J` `L`
 `Q` `A`) are out of scope: there is no 3D mode and no wall-clock display to toggle.
@@ -242,26 +259,26 @@ are not attempted. **Whatever is built, the not-yet-validated marker stays** unt
 
 ## 6. Ranked gaps
 
-Ranked by how much each one costs a Vissim user per hour of drawing, against the work it takes.
-Re-ranked 2026-09-14 against the owner's gesture/hotkey reference: two items moved **up** because
-they mislead rather than merely lack, and item 3 grew because it is a model change, not a gesture.
+Ranked 2026-09-14 by how much each one cost a Vissim user per hour of drawing. **Closed
+2026-09-22 (M1.27.3):** items 1–8 were all built, and `trafficsim-gesture-walkthrough` now
+measures what is left rather than this list estimating it. They are collapsed to one line each
+so the ranking stays readable as history; §1a is the current state.
 
-| # | Gap | Cost to the user | Booked as |
-|---|---|---|---|
-| 1 | No Run in the editor | Breaks the core loop; sends them to a window that rejects their file | **M1.8** (needs M1.5.1 + M1.7) |
-| 2 | `Ctrl`+left-click extends the selection; in Vissim it **duplicates** | The one collision that can destroy work rather than annoy — settle it before any other gesture change | **M1.9**, first |
-| 3 | Connector creation is per-lane-pair, and the model has no lane range | A four-lane movement costs four gestures instead of one `Ctrl`+right-drag — and cannot be fixed in the UI alone | **M1.9** (model + gesture) |
-| 4 | No Network Objects sidebar | Every mode change is a dropdown trip; and without it a single creation chord has no way to say *what* it creates | **M1.9** |
-| 5 | `Ctrl+B` toggles the Objects dock; in Vissim it toggles the **background image** | Both meanings are live in this window — the editor has a background image | **M1.9** |
-| 6 | `Delete` deletes a vertex, not the selection | Wrong-thing-deleted; contradicts near-universal convention | **M1.9** |
-| 7 | No tool shortcuts at all; no `Tab` to cycle overlapping objects | The most repeated action has no keyboard path; objects behind others are unreachable | **M1.9** |
-| 8 | No levels, no display types | Overlapping geometry cannot be ordered or styled | **M1.10** |
-| 9 | Object tables are read-only | A Vissim user will try to type in them | Not booked — M1.5 limit, revisit with M1.5.1 |
-| 10 | No group drag, no `Alt`-drag rotate, no copy/paste | Real, documented, and expensive (connector reanchoring; ID allocation for pasted objects) | Not booked |
-| 11 | Missing object types (nodes, priority rules, stop signs, reduced speed areas, parking lots, signal groups, …) | Large, but each one needs engine behaviour first | Not booked — see §4 and §2b |
-
-Items 9–11 are recorded deliberately without a milestone. Booking work the engine cannot yet
-honour is how a roadmap stops being true (`ROADMAP.md` rule 2).
+| # | Gap | Closed by |
+|---|---|---|
+| 1 | No Run in the editor | M1.8, and M1.24 removed the second window |
+| 2 | `Ctrl`+left-click extends the selection; in Vissim it **duplicates** | Not built — measured a dead end, and the owner ruled it stays one (§1a) |
+| 3 | Connector creation is per-lane-pair, and the model has no lane range | M1.9 widened the model; M1.26 made the whole carriageway the default |
+| 4 | No Network Objects sidebar | M1.9 (`editor_palette.cpp`) |
+| 5 | `Ctrl+B` toggles the Objects dock; in Vissim it toggles the **background image** | M1.9 — `Ctrl+B` is the image, the dock moved to `Ctrl+Shift+O` |
+| 6 | `Delete` deletes a vertex, not the selection | M1.9 — `Delete` is the selection, `Ctrl+Delete` the vertex |
+| 7 | No tool shortcuts; no `Tab` to cycle overlapping objects | M1.9 — `S L C R V H X M K`, and `Tab` is `cycleOverlap` |
+| 8 | No levels, no display types | M1.10 |
+| 9 | Object tables are read-only | Open — M1.5 limit, revisit with M1.5.1 |
+| 10 | No group drag, no `Alt`-drag rotate, no copy/paste | Group drag M1.16, rotate M1.22.2; copy/paste still unbooked (ID allocation) |
+| 11 | Missing object types (nodes, priority rules, stop signs, reduced speed areas, parking lots, signal groups, …) | Open — each one needs engine behaviour first; see §4 and §2b |
+Items 9–11 stay without a milestone deliberately. Booking work the engine cannot yet honour is
+how a roadmap stops being true (`ROADMAP.md` rule 2).
 
 **Nodes are the one omission worth re-reading later.** They are absent here and unbooked, but in
 Vissim they are how delay and queue are aggregated per junction — which is the output a traffic
@@ -476,20 +493,8 @@ This does not reopen the square-cut question it settled. It bounds where the wed
 all, which is a different statement, and the 0.12–0.29 m step the square end leaves is the step the
 owner's own Vissim screenshot of this joint shows.
 
-## 2026-09-17 — The mouth is a wedge, and the square cut was a misreading
+---
 
-The owner circled the joint on a Vissim screenshot: a Connector arriving on a Link **body** at an
-angle, its mouth cut on the Link's cross-section. Ours was square to the Connector, from
-`e6dd394`. Restored to the cut, which is what `e81a591` — the commit immediately before it — had
-already judged Vissim-correct: *"only the joint, where the Connector arrives across the lane and
-is cut on that lane's cross-section, is shorter through the corner, as it is in Vissim."*
-
-`e6dd394` re-quoted the **interpolation's** numbers as if they were the end cut's, and traded a
-Vissim-correct wedge for a non-Vissim overlap of 0.12-0.29 m. Measured after the restoration:
-every mouth lands on its Link's lane edges to 1e-9, the mouth width along the cross-section is
-exactly the Link's lane width at 30/60/90/120 degrees, and every interior boundary vertex is
-unchanged bit for bit.
-
-This is the second time in two days that a screenshot of the real thing overturned a reading of
-Vissim taken from our own geometry — the first was the spline. The lesson is on the record:
-**when a shape is meant to match Vissim, ask for a picture of Vissim before reasoning about it.**
+**Archived.** The 2026-09-17 first follow-up (the wedge mouth and the square-cut misreading)
+moved to [`archive/VISSIM_PARITY-2026-09-17-wedge-mouth.md`](archive/VISSIM_PARITY-2026-09-17-wedge-mouth.md)
+on 2026-09-22 to keep this file inside the 500-line limit. M1.18 and M1.19 superseded it.

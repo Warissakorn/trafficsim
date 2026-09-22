@@ -22,6 +22,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 using namespace trafficsim;
@@ -84,33 +85,29 @@ void accept(const char* expected, int lanes = 0, int fields = 0) {
     });
     timer->start(5);
 }
+// Enough of the document to tell one verb from another: counts, where the geometry is, and
+// what is selected. `span` moves when anything is dragged, which counts alone would miss.
 struct Shape {
     std::size_t links{}, connectors{}, points{}, selected{};
+    double span{};
+    std::string primary;
     bool operator==(const Shape&) const = default;
 };
 Shape shapeOf(const EditorWindow& w) {
     const auto& n = w.history().document().network;
-    Shape s{n.links.size(), n.connectors.size(), 0, w.canvas()->selection().size()};
-    for (const auto& l : n.links) s.points += l.geometry.size();
-    for (const auto& c : n.connectors) s.points += c.geometry.size();
+    Shape s{n.links.size(), n.connectors.size(), 0, w.canvas()->selection().size(), 0,
+            w.canvas()->selected()};
+    const auto add = [&](const std::vector<Point>& g) {
+        s.points += g.size();
+        for (const auto& p : g) s.span += p.x + p.y;
+    };
+    for (const auto& l : n.links) add(l.geometry);
+    for (const auto& c : n.connectors) add(c.geometry);
     return s;
 }
 void task(const char* name, const char* reference, int count) {
     std::cout << "  " << std::left << std::setw(44) << name << std::setw(3) << count
               << " input" << (count == 1 ? " " : "s") << "   Vissim: " << reference << '\n';
-}
-// What the reflex did, judged against what the user reaching for it meant. `expected` is the
-// document shape that reflex produces in Vissim, translated into this editor's terms.
-void reflex(const char* name, const Shape& before, const Shape& after, const Shape& expected) {
-    const char* verdict = after == expected ? "transfers"
-        : after == before ? "DEAD END -- nothing happened"
-        : "WRONG VERB -- it did something else";
-    std::cout << "  " << std::left << std::setw(44) << name << verdict;
-    if (after != expected && after != before)
-        std::cout << " (links " << after.links - before.links << ", points " << after.points - before.points
-                  << ", selected " << after.selected << "; wanted links " << expected.links - before.links
-                  << ", points " << expected.points - before.points << ", selected " << expected.selected << ")";
-    std::cout << '\n';
 }
 }
 int main(int argc, char** argv) {
@@ -157,23 +154,84 @@ int main(int argc, char** argv) {
         task("Rotate a link", "Alt + left-drag on the selection", inputs);
 
         std::cout << "\nVissim reflexes, replayed here\n";
-        // Each reflex is judged against the document shape the same reflex produces in Vissim.
+        // Each row states, as a predicate, what the reflex means in Vissim translated into this
+        // document. `transferred` is that predicate; `changed` separates a dead end from a wrong
+        // verb, because doing nothing and doing the wrong thing are not the same failure. The
+        // order matters: the rows that move geometry come last, so no row measures the one above.
+        const auto reflex = [](const char* name, bool transferred, bool changed) {
+            std::cout << "  " << std::left << std::setw(44) << name
+                      << (transferred ? "transfers"
+                          : changed ? "WRONG VERB -- it did something else"
+                                    : "DEAD END -- nothing happened") << '\n';
+        };
+        const auto geometryOf = [&w](const std::string& id) {
+            for (const auto& l : w.history().document().network.links) if (l.id == id) return l.geometry;
+            return std::vector<Point>{};
+        };
+        const auto last = w.history().document().network.links.back().id;
+
         canvas->setSelection({}); click({-75, 0});
         auto before = shapeOf(w);
-        Shape duplicated = before; duplicated.links += 1; duplicated.points += 2;
         click({-75, 0}, Qt::LeftButton, Qt::ControlModifier);
-        reflex("Ctrl + left-click on the selection", before, shapeOf(w), duplicated);
+        auto after = shapeOf(w);
+        // Vissim duplicates the selection: one more Link, and the copy becomes the selection.
+        reflex("Ctrl + left-click on the selection",
+               after.links == before.links + 1 && after.selected == 1, after != before);
+
+        before = shapeOf(w);
+        const auto centre = canvas->mapToScene(canvas->viewport()->rect().center());
+        drag({-75, 0}, {-55, 10}, Qt::RightButton);
+        const bool panned = canvas->mapToScene(canvas->viewport()->rect().center()) != centre;
+        reflex("Right-drag", panned && shapeOf(w) == before, !panned || shapeOf(w) != before);
 
         canvas->setSelection({}); before = shapeOf(w);
-        Shape pointAdded = before; pointAdded.points += 1; pointAdded.selected = 1;
         click({-90, 0}, Qt::RightButton, Qt::ControlModifier);
-        reflex("Ctrl + right-click on a link", before, shapeOf(w), pointAdded);
+        after = shapeOf(w);
+        reflex("Ctrl + right-click on a link",
+               after.points == before.points + 1 && after.links == before.links, after != before);
 
-        canvas->setSelection({}); before = shapeOf(w);
-        Shape rotated = before; rotated.selected = 1;
-        click({-75, 0}); drag({-75, 0}, {-75, 20}, Qt::LeftButton, Qt::AltModifier);
-        reflex("Alt + left-drag on the selection", before, shapeOf(w), rotated);
+        // Tab reaches the object behind, so it needs two objects at one point: draw a Link
+        // across the first one, which is what overlaps in a real drawing.
+        accept("editorLinkDialog", 3, 1); drag({-75, -25}, {-75, 25}, Qt::RightButton, Qt::ControlModifier);
+        const auto crossing = w.history().document().network.links.back().id;
+        canvas->setSelection({}); click({-75, 0}); before = shapeOf(w);
+        key(Qt::Key_Tab);
+        after = shapeOf(w);
+        reflex("Tab at the pointer",
+               after.primary != before.primary && !after.primary.empty() &&
+               after.links == before.links && after.span == before.span,
+               after != before);
 
+        // Two Links that no Connector joins: moving only one end of a Connector detaches it,
+        // which is a different behaviour and would be measured here by accident.
+        canvas->setSelection({last, crossing});
+        before = shapeOf(w);
+        const auto lastWas = geometryOf(last), crossingWas = geometryOf(crossing);
+        drag({-100, 30}, {-100, 40}, Qt::LeftButton);
+        after = shapeOf(w);
+        // BOTH selected Links travel 10 m in y. A gesture that moved only the one under the
+        // pointer, or that changed the drawing's object count, fails this.
+        const auto travelled = [](const std::vector<Point>& was, const std::vector<Point>& now) {
+            if (was.size() != now.size() || was.empty()) return false;
+            for (std::size_t i = 0; i < was.size(); ++i)
+                if (std::abs(now[i].x - was[i].x) > 0.01 || std::abs(now[i].y - was[i].y - 10) > 0.01) return false;
+            return true;
+        };
+        reflex("Drag a multi-selection",
+               after.links == before.links && after.connectors == before.connectors &&
+               travelled(lastWas, geometryOf(last)) && travelled(crossingWas, geometryOf(crossing)),
+               after != before);
+
+        // Rotate the crossing Link, which no Connector attaches to. Grab it away from its own
+        // centre: an angle has no stable direction at the pivot, and the editor refuses it there.
+        canvas->setSelection({}); click({-75, 28}); before = shapeOf(w);
+        const auto crossingBefore = geometryOf(crossing);
+        drag({-75, 28}, {-60, 28}, Qt::LeftButton, Qt::AltModifier);
+        after = shapeOf(w);
+        reflex("Alt + left-drag on the selection",
+               after.links == before.links && after.connectors == before.connectors &&
+               after.points == before.points && geometryOf(crossing) != crossingBefore,
+               after != before);
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "Walkthrough: " << error.what() << '\n';
