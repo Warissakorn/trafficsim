@@ -2,6 +2,7 @@
 #include <QMouseEvent>
 #include <QApplication>
 #include <QKeyEvent>
+#include <QFocusEvent>
 #include <QScrollBar>
 #include <cmath>
 
@@ -267,6 +268,38 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) { finishDrawing(); return; }
     if(e->key()==Qt::Key_Tab) {cycleOverlap();return;}
     if(e->key()==Qt::Key_Delete) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
+    const bool arrow = e->key()==Qt::Key_Left || e->key()==Qt::Key_Right ||
+                       e->key()==Qt::Key_Up || e->key()==Qt::Key_Down;
+    if (arrow && tool_==Tool::select &&
+        !(e->modifiers() & (Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier))) {
+        // Never pan or commit a second edit underneath an unfinished mouse gesture.
+        if (mouseGestureActive()) { e->accept(); return; }
+        bool movable = false;
+        if (document_) {
+            for (const auto& link : document_->network.links) movable = movable || isSelected(link.id);
+            for (const auto& connector : document_->network.connectors) movable = movable || isSelected(connector.id);
+        }
+        if (movable && translateRequested) {
+            double step = snap && std::isfinite(grid) && grid>0 ? grid : 1.;
+            if (e->modifiers() & Qt::ShiftModifier) step *= 10;
+            Point delta{};
+            if (e->key()==Qt::Key_Left) delta.x=-step;
+            if (e->key()==Qt::Key_Right) delta.x=step;
+            if (e->key()==Qt::Key_Up) delta.y=step;
+            if (e->key()==Qt::Key_Down) delta.y=-step;
+            cancel();
+            translateRequested(delta);
+            e->accept(); return;
+        }
+    }
     QGraphicsView::keyPressEvent(e);
+}
+bool EditorCanvas::mouseGestureActive() const {
+    return creating_ || !copyPick_.empty() || groupDrag_ || endpointDrag_ ||
+           laneResize_ || panning_ || band_ || dragging_;
+}
+void EditorCanvas::focusOutEvent(QFocusEvent* e) {
+    if (mouseGestureActive()) cancel();
+    QGraphicsView::focusOutEvent(e);
 }
 }

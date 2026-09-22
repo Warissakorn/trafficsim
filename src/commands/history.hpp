@@ -11,6 +11,15 @@ public:
     bool dirty() const { return revision() != saved_; }
     bool canUndo() const { return !undo_.empty(); }
     bool canRedo() const { return !redo_.empty(); }
+    struct State { std::uint64_t revision; std::string name; bool saved; };
+    // Reachable states in chronological order, including the oldest retained snapshot.
+    // Names are command keys; presentation/translation belongs to the shell.
+    std::vector<State> states() const;
+    std::string undoName() const { return canUndo() ? undo_.back().name : std::string{}; }
+    std::string redoName() const { return canRedo() ? redo_.back().name : std::string{}; }
+    // Navigate existing history without creating a revision or discarding redo states.
+    // An unknown/expired revision throws before changing anything.
+    bool restore(std::uint64_t revision);
     void reset(ProjectDocument document = {});
     void markSaved() { saved_ = revision(); }
     void markUnsaved() { saved_ = ~std::uint64_t{}; } // A recovered document requires an explicit save.

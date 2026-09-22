@@ -46,11 +46,8 @@ void EditorCanvas::setDocument(const ProjectDocument* d) {
     document_ = d; cancel();
     // Drop ids the new document no longer has, rather than clearing an otherwise valid selection.
     std::erase_if(selection_, [&](const auto& id) {
-        if (!document_) return true;
-        for (const auto& link : document_->network.links) if (link.id == id) return false;
-        for (const auto& c : document_->network.connectors) if (c.id == id) return false;
-        for (const auto& h : document_->network.signalHeads) if (h.id == id) return false;
-        return true;
+        const auto level = objectLevel(id);
+        return !level || !levelVisible(*level);
     });
     redraw();
 }

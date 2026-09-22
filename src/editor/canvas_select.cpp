@@ -4,28 +4,52 @@
 #include <cmath>
 
 namespace trafficsim {
+std::optional<int> EditorCanvas::objectLevel(const std::string& id) const {
+    if (!document_) return {};
+    for (const auto& link : document_->network.links) if (link.id == id) return link.level;
+    for (const auto& connector : document_->network.connectors) if (connector.id == id) return connector.level;
+    for (const auto& head : document_->network.signalHeads) if (head.id == id)
+        if (const auto at = headPosition(head)) return at->second;
+    return {};
+}
+void EditorCanvas::setVisibleLevel(std::optional<int> level) {
+    visibleLevel_ = level;
+    std::erase_if(selection_, [&](const auto& id) {
+        const auto at = objectLevel(id);
+        return !at || !levelVisible(*at);
+    });
+    cancel();
+    if (visibleLevelChanged) visibleLevelChanged(level);
+    if (selectionChanged) selectionChanged();
+}
 bool EditorCanvas::isSelected(const std::string& id) const {
     return std::find(selection_.begin(), selection_.end(), id) != selection_.end();
 }
 void EditorCanvas::notifySelection() { redraw(); if (selectionChanged) selectionChanged(); }
 void EditorCanvas::select(const std::string& id) {
-    cancel(); selection_.clear();
-    if (!id.empty()) selection_.push_back(id);
-    vertex_ = -1; notifySelection();
+    setSelection({id});
 }
 void EditorCanvas::setSelection(std::vector<std::string> ids) {
     cancel(); selection_.clear();
-    for (auto& id : ids) if (!id.empty() && !isSelected(id)) selection_.push_back(std::move(id));
+    bool reveal = false;
+    for (auto& id : ids) if (const auto level = objectLevel(id); level && !isSelected(id)) {
+        reveal = reveal || !levelVisible(*level);
+        selection_.push_back(std::move(id));
+    }
+    // A deliberate table/diagnostic selection should be visible, not an invisible edit target.
+    if (reveal) {
+        visibleLevel_.reset();
+        if (visibleLevelChanged) visibleLevelChanged({});
+    }
     vertex_ = -1; notifySelection();
 }
 void EditorCanvas::toggle(const std::string& id) {
-    cancel();
-    if (id.empty()) return;
-    const auto at = std::find(selection_.begin(), selection_.end(), id);
+    auto ids = selection_;
+    const auto at = std::find(ids.begin(), ids.end(), id);
     // Re-adding moves the object to the end, so the last thing clicked is always the primary.
-    if (at != selection_.end()) selection_.erase(at);
-    else selection_.push_back(id);
-    vertex_ = -1; notifySelection();
+    if (at != ids.end()) ids.erase(at);
+    else ids.push_back(id);
+    setSelection(std::move(ids));
 }
 std::vector<std::string> EditorCanvas::inRectangle(Point a, Point b) const {
     std::vector<std::string> result;
