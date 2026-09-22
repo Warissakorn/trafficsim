@@ -12,6 +12,12 @@ target_precompile_headers(trafficsim_shell PRIVATE <QGraphicsView> <QPainterPath
 # -- but they compile against the same Qt surface, so they can reuse the one already built.
 # Nothing else goes in it: adding <nlohmann/json.hpp> was measured and reverted, because the
 # 2 s it added to the .gch sits on this directory's critical path and cancelled the saving.
+# Not a test and not in `check`: it prints frame times, it does not assert them. It lives here
+# rather than beside the other tools because it drives the real EditorCanvas, so it needs Qt.
+add_executable(trafficsim-editor-benchmark ../../tools/editor_benchmark.cpp)
+target_link_libraries(trafficsim-editor-benchmark PRIVATE trafficsim_shell trafficsim_options)
+target_precompile_headers(trafficsim-editor-benchmark REUSE_FROM trafficsim_shell)
+
 qt_add_executable(trafficsim-desktop main.cpp)
 target_link_libraries(trafficsim-desktop PRIVATE trafficsim_shell trafficsim_options)
 set_target_properties(trafficsim-desktop PROPERTIES WIN32_EXECUTABLE TRUE)
