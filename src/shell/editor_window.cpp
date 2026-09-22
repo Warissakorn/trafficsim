@@ -61,6 +61,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     tool_->hide();
     tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
+    tools->addAction(action("editorRotate",QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_R),[this]{rotateSelection();}));
     tools->addAction(action("editorDeleteVertex",{},[this]{canvas_->removeVertex();}));
     tools->addAction(action("editorDeleteLink",{},[this]{
         const auto id=canvas_->selected(); if(id.empty()) return;
@@ -135,6 +136,10 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->translateRequested=[this](Point delta){
         const auto ids=canvas_->selection();if(ids.empty())return;
         execute("editorMove",[&](auto& d){translateObjects(d,ids,delta);});
+    };
+    canvas_->rotateRequested=[this](Point pivot,double degrees){
+        const auto ids=canvas_->selection();
+        execute("editorRotate",[&](auto& d){rotateObjects(d,ids,pivot,degrees);});
     };
     canvas_->createDemandGesture=[this](const auto& lane,auto mode){
         if(mode==EditorCanvas::Tool::route)editRoute({}, {lane.laneId});
@@ -233,6 +238,7 @@ void EditorWindow::refresh(bool modelChanged) {
     const auto& b=history_.document().background;
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
     actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
+    actions_.at("editorRotate")->setEnabled(canvas_->rotationPivot().has_value());
     refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshDiagnostics();refreshRun();
 }
 }

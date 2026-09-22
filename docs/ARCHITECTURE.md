@@ -77,6 +77,12 @@ callback that keeps the shell's filter synchronized. Active mouse gestures are c
 focus loss, while multi-click drawing/connection drafts remain available between clicks.
 Project never imports commands; a boundary check and negative fixtures enforce this.
 
+`model/network/rotation` supplies the affected object set, surface-bounds pivot and point
+transform shared by the rotation preview and command. Alt-drag and the exact-angle dialog
+submit `rotateObjects` through History. Internal Connectors retain authored references under
+a rigid group rotation; only affected partial attachments are re-read. Detached Connectors
+use the existing deletion cascade. No preview geometry is stored, and no schema changes.
+
 `EditorCanvas` renders a const document and sends gesture callbacks. Drag previews are
 transient and one release submits one command. `EditorWindow` composes native actions,
 inspector controls, translation, save prompts and QSaveFile atomic replacement. It is

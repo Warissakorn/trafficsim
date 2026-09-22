@@ -53,6 +53,7 @@ private:
     QListWidget* palette_{};
     QListWidget* historyList_{};
     void buildHistory();
+    void rotateSelection();
     void refreshHistory();
     void restoreHistory(std::uint64_t revision);
     QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};

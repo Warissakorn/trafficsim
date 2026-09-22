@@ -9,6 +9,7 @@
 namespace trafficsim {
 void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     setFocus();
+    if(rotationPivot_) {if(e->button()==Qt::LeftButton)return;cancel();}
     if(creating_ && e->button()==Qt::LeftButton) {
         draft_.back()=world(e->pos());draft_.push_back(draft_.back());redraw();return;
     }
@@ -38,6 +39,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         copyDragging_=false;copyOffset_={};return;
     }
     if(tool_==Tool::route || tool_==Tool::input || tool_==Tool::head)return;
+    if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {startRotation(e->pos());return;}
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
     if (tool_==Tool::draw || tool_==Tool::measure || tool_==Tool::calibrate) {
@@ -109,6 +111,7 @@ int EditorCanvas::vertexAt(QPoint position) const {
 }
 void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if(cursorMoved) cursorMoved(world(e->pos(),false));
+    if(rotationPivot_) {updateRotation(e->pos(),e->modifiers()&Qt::ShiftModifier);return;}
     if(creating_) {
         draft_.back()=world(e->pos());
         if(creationTool_==Tool::connect) {
@@ -151,6 +154,14 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     }
 }
 void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
+    if(e->button()==Qt::LeftButton && rotationPivot_) {
+        // Native platforms may coalesce the last move; commit the release angle once.
+        updateRotation(e->pos(),e->modifiers()&Qt::ShiftModifier);
+        const auto pivot=*rotationPivot_;const double degrees=rotationDegrees_;
+        cancel();
+        if(degrees!=0 && rotateRequested)rotateRequested(pivot,degrees);
+        return;
+    }
     if(e->button()==Qt::RightButton && creating_) {
         // The release position is authoritative: native platforms may coalesce the final move.
         draft_.back()=world(e->pos());
@@ -223,6 +234,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
 }
 void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton) return;
+    if(e->modifiers()&Qt::AltModifier)return;
     if(tool_==Tool::draw) { finishDrawing(); return; }
     if(tool_!=Tool::select) return;
     cancel();
@@ -295,7 +307,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     QGraphicsView::keyPressEvent(e);
 }
 bool EditorCanvas::mouseGestureActive() const {
-    return creating_ || !copyPick_.empty() || groupDrag_ || endpointDrag_ ||
+    return creating_ || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
            laneResize_ || panning_ || band_ || dragging_;
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {
