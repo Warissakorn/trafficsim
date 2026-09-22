@@ -36,9 +36,10 @@ jobs:
           Requires Qt 6 Widgets runtime on the machine, e.g. on Ubuntu 24.04:
               sudo apt install libqt6widgets6
 
-          Run the desktop harness:
+          Run the desktop editor:
               ./bin/trafficsim-desktop
-              ./bin/trafficsim-desktop --editor --language th
+              ./bin/trafficsim-desktop --language th
+              ./bin/trafficsim-desktop --scenario data/scenarios/crossing.json
           Run the headless CLI with a seed:
               ./bin/trafficsim-cli 42
 
@@ -86,9 +87,10 @@ jobs:
           @'
           TrafficSim - Windows x64 build (Qt runtime bundled)
 
-          Run the desktop harness:
+          Run the desktop editor:
               bin\trafficsim-desktop.exe
-              bin\trafficsim-desktop.exe --editor --language th
+              bin\trafficsim-desktop.exe --language th
+              bin\trafficsim-desktop.exe --scenario data\scenarios\crossing.json
           Run the headless CLI with a seed:
               bin\trafficsim-cli.exe 42
 

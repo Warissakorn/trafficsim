@@ -37,6 +37,11 @@ These are separate from the ten-minute drawing task.
 - Author a supported route and vehicle input; Run in the editor, Pause, Step and Reset
   with the same seed. Observe that the revision is displayed and editing clears the run.
   Do not expect unsupported merges or crossing-conflict behaviour from the M0 core.
+- **The M0 plausibility observation, since M1.24.** Open `data/scenarios/crossing.json` in the
+  editor and Run it. Judge whether vehicles accelerate, queue at red and discharge at green
+  the way a traffic engineer expects. The run status shows the completed-trip mean delay and
+  the safety-clamp count; `trafficsim-cli 42` prints the same run's figures for comparison.
+  This is the observation ROADMAP M0 asks for; it used to be made in a separate window.
 - Save a copy, make an unsaved edit, allow a recovery checkpoint, then terminate only
   that test instance. Reopen and recover it. Confirm it is untitled/dirty, Save asks for
   a destination, and the original saved project is intact.

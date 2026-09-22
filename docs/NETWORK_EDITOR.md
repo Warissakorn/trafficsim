@@ -10,14 +10,17 @@ The owner's M0 plausibility and M1 timed usability gates remain open. See
 
 ## Start
 
-Build as described in [BUILDING.md](BUILDING.md), then select Network Editor in the
-simulation window or run:
+Build as described in [BUILDING.md](BUILDING.md), then run:
 
 ```bash
-./build/desktop/bin/trafficsim-desktop --editor
-./build/desktop/bin/trafficsim-desktop --editor --language th
-./build/desktop/bin/trafficsim-desktop --editor --scenario network.traffic.json
+./build/desktop/bin/trafficsim-desktop
+./build/desktop/bin/trafficsim-desktop --language th
+./build/desktop/bin/trafficsim-desktop --scenario network.traffic.json
+./build/desktop/bin/trafficsim-desktop --scenario data/scenarios/crossing.json
 ```
+
+Since M1.24 the editor is what `trafficsim-desktop` opens; the separate M0 simulation window
+is gone and `--editor` is accepted as a no-op.
 
 A new editor starts empty. Multiple editors own independent documents and recovery
 locks. The Network Objects sidebar stays visible; Properties is on the right and the
@@ -449,14 +452,16 @@ Unknown future versions are rejected.
 | Typical name | `crossing.json` | `network.traffic.json` |
 | Root keys | `network`, `definition` | Versioned envelope plus network, definition and background |
 | Definition | Required | Optional until demand/control is authored |
-| Opened by | Simulation window or editor | Editor |
-| Runs | M0 harness | Editor after demand/catalog/runtime checks |
+| Opened by | Editor (or `trafficsim-cli --scenario`) | Editor |
+| Runs | Editor, or `trafficsim-cli` | Editor after demand/catalog/runtime checks |
 
 The editor opens bare M0 authoring files and schema-1–6 projects and saves schema 7.
 Schema 4 stores the lane bundle offset and Connector interpolation weights; older versions
 default to centred lanes and arclength interpolation. Old files retain their positions.
-The M0 simulation window recognizes an editor project before reading its fields and
-offers to open it in the editor, even if that project already contains demand.
+A bare M0 scenario carries no `schemaVersion`, so the editor reads it with the pre-5
+meaning; saving it writes a schema-7 project. Writing scenario JSON back out is not
+implemented — `trafficsim-cli` still reads the format, and `loadScenario` still rejects a
+project with `SCENARIO_IS_PROJECT` for callers that want only a runnable scenario.
 
 Schema 7 adds shared Link boundary markings and `none`/`double` marking kinds. Unsupported
 schema-7 network object fields are rejected before replacing the current document. See

@@ -3,6 +3,7 @@
 #include "../commands/connector_commands.hpp"
 #include "../project/diagnostics.hpp"
 #include "../project/run.hpp"
+#include "../eval/summary.hpp"
 #include "../project/display.hpp"
 #include "../commands/appearance_commands.hpp"
 #include "../commands/demand_commands.hpp"
@@ -101,11 +102,15 @@ private:
     double runCredit_{};
     std::optional<RunSnapshot> runSnapshot_;
     SimState runState_;
+    // Fed every step, exactly as the retired M0 window did: the clamp count is the only signal
+    // that the prototype car-following is being pushed, so it has to be visible where the run is.
+    SummaryAccumulator runSummary_;
     QLineEdit* runSeed_{};
     QComboBox* runSpeed_{};
     QLabel* runInfo_{};
 public:
     const SimState& runState() const { return runState_; }
+    RunSummary runSummary() const { return runSummary_.summary(); }
 private:
     QString file_;
     std::map<QString,QJsonObject> locales_;

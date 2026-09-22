@@ -138,8 +138,9 @@ No commercial license or redistribution arrangement is assumed by this repositor
 
 ## Network editor
 
-After building the desktop, run `trafficsim-desktop --editor` (add `--language th` for
-Thai). `--scenario path/to/network.traffic.json` opens an editor document when used with
-`--editor`; without it the application still opens the M0 simulation harness. See
+`trafficsim-desktop` opens the editor (add `--language th` for Thai).
+`--scenario path/to/file.json` opens either file kind in it — an editor project or a bare M0
+authoring scenario such as `data/scenarios/crossing.json`. `--editor` is still accepted and
+does nothing; M1.24 retired the separate M0 harness window. See
 [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for drawing, images and saving.
 The headless build includes document/history tests but does not build Qt editor tests.
