@@ -93,8 +93,6 @@ struct RouteHead { std::size_t headIndex{}; double partStart{}; };
 // The same idea for a priority rule: a rule whose yield segment lies on this route, with the start
 // station of the first route part carrying it, so the stop line is a route coordinate.
 struct RouteRule { std::size_t ruleIndex{}; double partStart{}; };
-// One id -> position entry in a sorted lookup table.
-struct IdSlot { std::string id; std::size_t index{}; };
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
@@ -104,26 +102,30 @@ struct ScenarioIndex {
     // search by id. SIZE_MAX when the rule names a segment that does not exist; validation
     // rejects that scenario, but a hand-built index must not read out of bounds before it does.
     std::vector<std::size_t> conflictSegmentOfRule;  // parallel to Scenario::priorityRules
-    // Id lookups a vehicle needs every tick, resolved once per scenario. Before this, every tick
-    // re-derived the same three indices for every vehicle by linear search over string ids, which
-    // the profile showed as a quarter of the whole run.
-    //
-    // Sorted by id, searched by lower_bound -- NOT a hash map: core/ may not use unordered
-    // containers at all (hard rule 2, enforced by tools/check_architecture.cpp), because their
-    // iteration order is unspecified and that would put reproducibility at the mercy of the
-    // standard library. Ties are ordered by the element's own position, so a lookup on a repeated
-    // id selects its FIRST occurrence -- exactly the element byId's linear scan returned.
-    std::vector<IdSlot> routeOfId, typeOfId;
     // The behaviour a vehicle uses depends only on its TYPE, so it needs no per-vehicle lookup
-    // at all once the type is known.
+    // at all once the type is known. The sorted routeOfId/typeOfId tables that used to live here
+    // are gone with the string ids they existed to resolve: a vehicle carries its slots.
     std::vector<std::size_t> behaviourOfType;        // parallel to Scenario::vehicleTypes
+    // The slots a released vehicle is stamped with. An input's route and type never change, so
+    // resolving them per input per tick -- which is what generateArrivals did once the vehicle
+    // stopped carrying ids -- was the same lookup in a new place.
+    std::vector<std::uint32_t> routeOfInput, typeOfInput; // parallel to Scenario::inputs
 };
 // Scenario lookups for one vehicle, resolved once per tick instead of once per use.
 struct VehicleRefs { std::size_t route{}, type{}, behaviour{}; };
 enum class FollowingMode { free, approaching, following, braking };
 struct PendingVehicle {
     std::uint64_t id{};
-    std::string inputId, routeId, vehicleTypeId;
+    // SLOTS in the canonical Scenario, not ids. A Scenario is immutable and sorted by id from
+    // createSimulation onwards, so an index names exactly the object an id named -- and a tick
+    // copies, compares and sorts the whole vehicle list, which three std::strings per vehicle
+    // made the most expensive thing the engine did. Resolution happens once, where the vehicle
+    // is created; nothing downstream looks an id up again.
+    //
+    // kNoInput marks a vehicle placed directly rather than released by an input. Only tests do
+    // that; nothing indexes `inputs` with it, and it serialises as an empty inputId.
+    static constexpr std::uint32_t kNoInput = 0xffffffffU;
+    std::uint32_t inputIndex{kNoInput}, routeIndex{}, typeIndex{};
     double scheduledTime{}, desiredSpeed{}, driverFactor{};
     bool operator==(const PendingVehicle&) const = default;
 };
@@ -132,8 +134,10 @@ struct Vehicle : PendingVehicle {
     FollowingMode mode{FollowingMode::free};
     bool operator==(const Vehicle&) const = default;
 };
+// Parallel to Scenario::inputs, one entry each and in that order: createSimulation builds it
+// that way, and stepSimulation asserts it. There is deliberately no id here -- it would be a
+// second copy of Scenario::inputs[i].id, free to disagree with it (hard rule 3).
 struct InputState {
-    std::string id;
     std::optional<double> nextArrival;
     std::vector<PendingVehicle> queue;
     bool operator==(const InputState&) const = default;

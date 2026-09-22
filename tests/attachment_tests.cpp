@@ -206,9 +206,7 @@ TEST(attachments, an_arriving_vehicle_holds_at_the_connector_while_the_lane_is_o
     // Route coordinates: the arriving vehicle's stop line is at 100 m of a1 plus the Connector.
     const double stopLine=100+length(id);
     const auto place=[&](std::uint64_t vid,const std::string& route,double distance,double speed){
-        Vehicle v;v.id=vid;v.distance=distance;v.speed=speed;
-        v.inputId="input";v.routeId=route;v.vehicleTypeId="car";v.desiredSpeed=15;v.driverFactor=.5;
-        return v;};
+        return test::Placement{vid,route,distance,speed};};
     // A major vehicle 20 m short of the conflict point at 40 m, moving slowly enough that it
     // stays inside the three-second gap time for several seconds.
     auto state=test::withVehicles(scenario,{place(1,arriving,stopLine-3,0),

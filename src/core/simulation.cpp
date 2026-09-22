@@ -77,6 +77,10 @@ SimState stepSimulation(const SimState& state) {
 SimState stepSimulation(const SimState& state, double dt) {
     if (!state.scenario) throw std::invalid_argument("Simulation must be initialized");
     if (dt != state.scenario->timeStep) throw std::invalid_argument("dt must equal scenario.timeStep");
+    // A vehicle's inputIndex is a position in BOTH vectors, so a hand-built state that does not
+    // hold one entry per scenario input must say so here rather than index past the end later.
+    if (state.inputs.size() != state.scenario->inputs.size())
+        throw std::invalid_argument("state.inputs must be parallel to scenario.inputs");
     if (state.tick >= totalTicks(*state.scenario)) return state;
     const auto& scenario = *state.scenario;
     // States built by createSimulation always carry an index; tolerate a hand-built one.
@@ -111,9 +115,9 @@ SimState stepSimulation(const SimState& state, double dt) {
     SpanBuckets candidateBuckets;
     bool spansBuilt = false;
     for (const auto& pending : candidates) {
-        const auto& route = detail::byId(scenario.routes, pending.routeId);
+        const auto& route = scenario.routes[pending.routeIndex];
         if (!attemptedSources.insert(route.segmentIds.front()).second) continue;
-        const auto& type = detail::byId(scenario.vehicleTypes, pending.vehicleTypeId);
+        const auto& type = scenario.vehicleTypes[pending.typeIndex];
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         if (!spansBuilt) {
             candidateRefs = resolveRefs(scenario, vehicles, index);
@@ -134,9 +138,10 @@ SimState stepSimulation(const SimState& state, double dt) {
         candidateRefs.push_back(inserted);
         appendVehicleSpans(candidateSpans, scenario, index, vehicle, inserted);
         candidateBuckets = bucketSpans(candidateSpans, scenario.segments.size());
-        for (auto& input : next.inputs)
-            if (input.id == pending.inputId) { input.queue.erase(input.queue.begin()); break; }
-        events.emplace_back(DepartedEvent{state.time, vehicle.id, vehicle.routeId,
+        next.inputs[pending.inputIndex].queue.erase(next.inputs[pending.inputIndex].queue.begin());
+        // Events still carry the route's NAME: they are the run's output, read by the evaluator
+        // and by every frozen fixture, and a slot would mean nothing outside this Scenario.
+        events.emplace_back(DepartedEvent{state.time, vehicle.id, route.id,
                                          vehicle.scheduledTime, vehicle.desiredSpeed});
     }
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
@@ -219,7 +224,8 @@ SimState stepSimulation(const SimState& state, double dt) {
         const double routeLength = parts.back().start + parts.back().length;
         if (moved.distance >= routeLength) {
             ++next.completed;
-            events.emplace_back(ArrivedEvent{time, vehicle.id, vehicle.routeId, time - vehicle.enteredTime,
+            events.emplace_back(ArrivedEvent{time, vehicle.id, scenario.routes[vehicle.routeIndex].id,
+                time - vehicle.enteredTime,
                 vehicle.enteredTime - vehicle.scheduledTime, routeLength / vehicle.desiredSpeed});
         } else {
             next.vehicles.push_back(moved);
