@@ -138,7 +138,7 @@ void EditorCanvas::drawConnectors() {
         surface.setFillRule(Qt::WindingFill);
         auto* road=scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour));road->setZValue(z+4);
         road->setData(0,QStringLiteral("road-surface"));road->setData(1,QString::fromStdString(c.id));
-        for(const auto& marking:markingStrokes(connectorMarkings(document_->network,preview))) {
+        for(const auto& marking:markingStrokes(cachedMarkings(preview))) {
             // An outer edge is solid; an interior divider draws its own type.
             QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
                      marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);

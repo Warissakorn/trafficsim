@@ -16,7 +16,7 @@ EditorCanvas::CachedConnector& EditorCanvas::connectorEntry(const Connector& c) 
     auto& entry=connectorCache_[c.id];
     if(entry.connector==c && entry.side==network.drivingSide && entry.from==from && entry.to==to)
         return entry;
-    entry={c,from,to,network.drivingSide,{},{}};
+    entry={c,from,to,network.drivingSide,{},{},{}};
     return entry;
 }
 // Deleted Connectors would otherwise keep their entries for the life of the window. This is the
@@ -42,5 +42,12 @@ const std::vector<std::vector<Point>>& EditorCanvas::cachedBoundaries(const Conn
     auto& entry=connectorEntry(c);
     if(!entry.boundaries)entry.boundaries=connectorBoundaries(document_->network,c);
     return *entry.boundaries;
+}
+const std::vector<ConnectorMarking>& EditorCanvas::cachedMarkings(const Connector& c) const {
+    auto& entry=connectorEntry(c);
+    // connectorMarkings recomputes the boundaries itself, which is why it was the most
+    // expensive thing a frame did once the boundaries themselves were cached.
+    if(!entry.markings)entry.markings=connectorMarkings(document_->network,c);
+    return *entry.markings;
 }
 }
