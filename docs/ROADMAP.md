@@ -199,7 +199,7 @@ Owner Windows interaction and timed acceptance remain open.
 
 ---
 
-### M1.12.1–M1.21.1 — Completed geometry, authoring and audit iterations
+### M1.12.1–M1.25 — Completed geometry, authoring, audit and editor iterations
 
 **All closed**, with the originals and what none of them claims about Vissim parity in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md): a Connector carries
@@ -212,8 +212,10 @@ lane-aligned mouths (M1.19, which closed M1.12.3 and left `TIGHT_CONNECTOR_RADIU
 independent Connector placement with off-Link cleanup (M1.20); schema 7's supported subset
 of the owner's specifications, where an unsupported field fails on load rather than vanishing on
 save (M1.21); and the lifecycle audit's wrong-side retargets, pathological mouths, physical
-range picking and coalesced releases (M1.21.1). M1.17's wedge remains reverted, owner M1
-acceptance remains open, and none of this closes the supplied target specifications.
+range picking and coalesced releases (M1.21.1); the one-window editor, whose run status carries
+the CLI's own delay figure (M1.24); and demand drawn by pointer (M1.25). M1.17's wedge remains
+reverted, owner M1 acceptance remains open, and none of this closes the supplied target
+specifications.
 
 ### M1.22 — Remaining authoring and interaction requirements
 
@@ -241,13 +243,6 @@ recent files/tabs, spatial indexing/culling/LOD and optional renderer accelerati
 Competitor-format imports and 3D require an explicit scope revision before implementation.
 **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
 reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
-
-### M1.24 / M1.25 — One window, and demand authored by pointer
-
-Implemented: `trafficsim-desktop` opens the network editor directly and its run status carries
-the mean trip delay and safety-clamp count from the `SummaryAccumulator` the CLI uses (M1.24);
-routes and vehicle inputs are then drawn by pointer (M1.25). Full entries in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.26 — Demand is authored per Link and compiled per lane
 
@@ -304,13 +299,18 @@ built, measured and **reverted**: a Link's polyline is cheap enough that validat
 costs what recomputing it saves (−1% at 80 intersections, +9% on picking). What remains is
 `QGraphicsScene` item construction, which is M1.23's culling and LOD work.
 
-#### M1.27.2 — `Vehicle` string ids · M1.27.3 — UX
+#### M1.27.2 — A vehicle carries scenario slots · M1.27.3 — UX
 
-**Both open.** The 2026-09-18 profile put ~36% of instructions in `std::string` and 11.8% in the
-vehicle sort; taking the three ids off `Vehicle` touches a core type and every test that builds
-one — *gate:* the four baselines byte-identical. UX carries the `Ctrl`+left-click collision and
-the `VISSIM_PARITY.md` rows that misreport the product — *gate:* a counted walkthrough delta,
-which does **not** close M1's timed owner exercise.
+**M1.27.2 implemented.** `tools/engine_benchmark.cpp` commits the corridor the 2026-09-18
+session had to generate by hand, and its profile reproduced that session's finding: 17.4% of
+instructions in `std::string` copying, 11.4% in the per-tick vehicle sort, 10.3% in
+`resolveRefs`. `PendingVehicle` now holds `inputIndex`/`routeIndex`/`typeIndex` into the
+canonical Scenario, resolved once in `ScenarioIndex`; `routeOfId`/`typeOfId` and `IdSlot` go
+with the ids they resolved. Events and checkpoints still carry the NAMES, so the frozen
+fixtures are byte-identical. Interleaved medians **1560.8 → 792.6 ms** at 12 intersections and
+**2566.2 → 1331.0** at 24, same trips and peak. **M1.27.3, UX, is open**: the `Ctrl`+left-click
+collision and the `VISSIM_PARITY.md` rows that misreport the product — *gate:* a counted
+walkthrough delta, which does **not** close M1's timed owner exercise.
 
 ---
 

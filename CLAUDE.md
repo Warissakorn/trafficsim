@@ -44,8 +44,10 @@ executables reuse — a clean build is 86 s → 64 s, and a PCH here holds third
 (D27). `tools/editor_benchmark.cpp` then made the canvas measurable: the editor caches each
 Connector's paths, boundaries and markings **against the values they are derived from** (D28),
 taking a 160-link corridor from 93 ms a frame to 22. Read D28 before adding another cache — the
-same one for Link geometry was measured and reverted. M1.27.2 (the `std::string` ids on
-`Vehicle`) and M1.27.3 (UX) are booked and not started.
+same one for Link geometry was measured and reverted. **M1.27.2:** `tools/engine_benchmark.cpp`
+commits an engine fixture, and a runtime vehicle now names its input, route and type by **slot
+in the canonical Scenario** rather than by id (D29), halving the run; names survive at the
+boundary, so every frozen fixture is byte-identical. M1.27.3 (UX) is booked and not started.
 
 **Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,

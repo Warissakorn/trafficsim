@@ -5,6 +5,7 @@ the work.** Never delete an entry; move old blocks whole into `docs/archive/` if
 long. Older entries are preserved whole there:
 
 - [`archive/PROGRESS-2026-09-22-m1.24-one-window.md`](archive/PROGRESS-2026-09-22-m1.24-one-window.md) — 2026-09-22, M1.24, the one-window editor; moved out 2026-09-22 as the oldest live entry
+- [`archive/PROGRESS-2026-09-22-m1.25-pointer-demand.md`](archive/PROGRESS-2026-09-22-m1.25-pointer-demand.md) — 2026-09-22, M1.25, demand drawn by pointer; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.22.2-rotation.md`](archive/PROGRESS-2026-09-22-m1.22.2-rotation.md) — 2026-09-22, M1.22.2, selection rotation; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md`](archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md) — 2026-09-21, M1.22.1, editor history and the keyboard workflow; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-toolchain-and-3.3.md`](archive/PROGRESS-2026-09-21-toolchain-and-3.3.md) — 2026-09-21, the toolchain install and the §3.3 measurement; moved out 2026-09-22
@@ -22,6 +23,82 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-22 — A vehicle stops carrying its names (M1.27.2)
+
+**Request:** continue M1.27 with the engine stage. This is the one item another session
+measured first: 2026-09-18 profiled the engine, found ~36% of instructions in `std::string` and
+11.8% in the per-tick vehicle sort, wrote the fix into its `Next` and left it, because it
+changes a core public type and every test that builds a `Vehicle`.
+
+**Its corridors were never committed, so its numbers could not be reproduced.** That came
+first: `tools/benchmark_network.hpp` now holds the generator both benchmarks use, and
+`tools/engine_benchmark.cpp` compiles a corridor through `compileDocument` and runs it — no Qt,
+so the engine stays measurable under the headless preset. Its one parameter is where the
+northbound approach joins: the editor keeps the end attachment M1.27.1's published numbers were
+measured on, and the engine passes a station, because a **mid-body arrival is what derives the
+M3.1 priority rule a merge needs to run at all** — without it the corridor will not compile.
+
+**The profile on that fixture reproduced 2026-09-18 exactly**, which is the useful part: string
+copy ctor 17.4%, `Vehicle` copy ctor 12.1%, the vehicle sort 11.4% (they measured 11.8%),
+`resolveRefs` 10.3% of which `lookup` 9.1%, `~string` 8.1%.
+
+**What changed.** A `Scenario` is immutable and canonically sorted from `createSimulation`
+onwards, so an index names exactly the object an id named — and unlike an id it costs nothing to
+copy, compare or sort. `PendingVehicle` holds `inputIndex`/`routeIndex`/`typeIndex`, resolved
+once per scenario in `ScenarioIndex`'s new `routeOfInput`/`typeOfInput`. `routeOfId`,
+`typeOfId`, `IdSlot` and the `lookup` they served are gone: that undoes part of 2026-09-18's own
+optimisation, which this subsumes, because there is no id left to look up. `InputState` loses
+its `id`, which duplicated `scenario.inputs[i].id` once the vector became index-addressed.
+
+**Resolving in `generateArrivals` was not enough, and the profile said so.** The first version
+looked the input's route and type up there instead — the same lookup in a new place, 11% of the
+run, once per input per tick whether or not a vehicle arrived. Hoisting it into the index is
+what took the second half of the win.
+
+Interleaved medians of five, alternating the two binaries, Debug, 300 simulated seconds:
+
+| intersections | segments | before | after | |
+|---|---|---|---|---|
+| 12 | 171 | 1560.8 ms | **792.6 ms** | −49.2% |
+| 24 | 351 | 2566.2 ms | **1331.0 ms** | −48.1% |
+
+**The trajectory is identical, not merely the summary.** The four seed fixtures and
+`trajectory-digest.json` pass unchanged — the digest pins per-tick position, speed, acceleration
+**and vehicle ordering**, so a reordering could not hide — `trafficsim-cli 42` still prints
+`29.249359418430977`, and the benchmark completes the same 475 trips with the same peak of 235
+vehicles. No fixture was regenerated. What protects this is that ids only ever became slots
+through `detail::byId`, whose first-occurrence rule is what every lookup they replaced returned.
+
+**Names did not disappear, they moved to the boundary.** `DepartedEvent` and `ArrivedEvent`
+still carry `routeId`, read from the scenario where the event is built, and `pendingJson` takes
+the `Scenario` and emits the same three strings — a slot means nothing outside one Scenario, and
+the fixtures are read by people. `checkpointJson` now throws rather than dereferencing a null
+scenario, because without one there is nothing to resolve against.
+
+**Tests.** `test::Placement` describes a vehicle by route and type id and `withVehicles`
+resolves it against the canonical scenario, so the two representations meet in one place instead
+of in three test files. `stepSimulation` asserts `state.inputs` is parallel to
+`scenario.inputs`, so a hand-built state mis-indexes loudly instead of reading past the end.
+
+### Next
+
+**M1.27.3, UX, is the last stage of M1.27 and is not started.** It carries two things already
+documented as High severity in `VISSIM_PARITY.md`: `Ctrl`+left-click extends the selection here
+and **duplicates** in Vissim, and link creation is a polyline of clicks where the Vissim reflex
+is `Ctrl`+right-drag. It also has to correct that table's stale rows — `Tab` cycling
+(`EditorCanvas::cycleOverlap`), `Ctrl+B`, the tool shortcuts and Connector lane ranges all exist
+now and the table says they do not. **Gate:** a counted walkthrough delta (clicks per task, dead
+ends before and after), which does **not** close M1's timed owner exercise. UX changes are
+behaviour changes, so each needs the owner's approval in user-facing words before it is made.
+
+Unchanged: **M1.26.1** adjustable per-lane shares (decide where the shares live first), then
+**M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**. M1.22,
+M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, and the shared-station
+`runtimeSections` refusal (§3.3, M3.2) remain open. Inside a tick `occupiedSpans` is now the
+largest single cost at 9.8%; there is no booked milestone for it and none is needed yet.
 
 ---
 
@@ -241,71 +318,6 @@ from the editor is still not implemented and still not booked.
 
 ---
 
-## 2026-09-22 — Routes and vehicle inputs are drawn, not typed (M1.25)
-
-**Request:** the owner asked how to continue, then chose routing, vehicle inputs and the tools
-around them, "easy to use like Vissim", and asked for visual effects as well. Scope agreed with
-them: pointer authoring and drawing only — the demand model stays as it is, because compositions
-and per-interval volumes are M2.1 and M2's pre-registered criteria are still unwritten.
-
-**Changed.** A route is now built by clicking. `Ctrl`+right-click or a left-click on the start
-lane opens a draft; each further click resolves the lane or Connector path under the pointer and
-appends **the whole chain that leads there**, so the four-leg crossing is two clicks rather than
-three dialog picks. `Backspace` drops the last segment, `Enter` or a double-click commits through
-the same `putRoute` the dialog uses (one History entry), `Esc` and loss of canvas focus cancel.
-The Vehicle inputs tool places an input on the lane its traffic enters on and opens the dialog on
-the route starting there, offering to draw one when none does. A right-click that does not pan
-opens a context menu on a drawn route or input.
-
-**One rule, in the model.** `routeContinuations`, `routeChainTo` and `routeGeometry` are new in
-`src/model/network/routing.cpp`, with no Qt. The route dialog's inline copy of "what may follow
-this segment" is deleted and calls `routeContinuations` instead, so the dialog and the gesture
-cannot drift. `routeChainTo` is a bounded breadth-first walk over the same rule and returns
-**nothing** where two chains reach the clicked segment at the same depth: an ambiguity is the
-author's to settle by clicking an intermediate segment, never this code's to guess.
-
-**Visual effects, all of it paint state.** Draft and selected route draw as marching dashes with
-direction arrows; a rubber band follows the pointer and turns red over a lane no chain reaches;
-the hovered lane carries a halo, because `nearestLane` used to pick in silence; each vehicle
-input draws a chevron and its volume, pulsing while its row is selected; a commit and a refusal
-each flash once. One `QTimer` drives all of it and stops when nothing is animatable, so an idle
-editor is idle. The phase is a settable member — a test that slept on an animation would be
-flaky, and nothing measured may depend on a clock.
-
-**Verification.** New `demand-ui` suite: the click starts a draft, the hover halo and rubber band
-report reachability before the click, an unreachable click is refused and authors nothing,
-Backspace/Enter/Esc behave, the commit is one History entry that Undo and Redo carry, the drawn
-route and its arrows and the input chevron and volume are on the canvas, stepping the animation
-phase moves the dashes, an input placed by pointer opens on the right route, save/reopen keeps
-both, the marker answers the context-menu hit test, and the Thai hint is translated. Three model
-cases pin the continuation rule against the dialog's old behaviour, the chain resolution
-including ambiguity and unreachability, and route geometry against the compiled length on both
-driving sides. Linux GCC 13.3 / Qt 6.4.2 `check` passes **35/35** including architecture, file
-sizes and the frozen replay baselines. The draft, the committed route, the input marker and the
-Thai layout were rendered offscreen and inspected. Windows evidence would come from CI.
-
-`ROADMAP` books this as M1.25 and says what it is not; `VISSIM_PARITY` §"Vehicle routes" and the
-two snapping rows are corrected from "not placed by pointer at all" and "not booked". Completed
-M1.12.2/M1.12.3/M1.21 detail moved into `archive/ROADMAP-M1-implemented.md` to keep ROADMAP under
-the 500-line limit this change would otherwise have broken.
-
-### Next
-
-**M1.25 is implemented, not closed:** its gate is the keyboard-only equivalent of both gestures
-and the owner's timed exercise. The obvious next slices, in order of value: a **routing decision
-as a positioned object** (Vissim places it at a station along the link, we still start a route at
-a lane's beginning) — that is M2.1 and must wait for M2's **pre-registered criteria, which are
-still unwritten and block all of M2**; writing them is a session of its own and needs the owner.
-Meanwhile M1.22 remains open for geometry/snapping tools, custom rotation pivots, layer locks and
-bulk inspection, and signal heads are the last object still placed only through a dialog — the
-same `segmentAt`/`inputPlaced` shape would give them pointer placement inside M1.22.
-The shared-station `runtimeSections` refusal (§3.3, its test in `connector_tests.cpp` already
-carries the expectation the fix must flip) and the M3.2 conflict-policy work remain separate.
-Exporting scenario JSON from the editor is still not implemented and still not booked.
-Do not fold simulation or demand-model changes into editor work.
-
----
-
 ## Next
 
 **Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
@@ -463,3 +475,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D26 | 2026-09-22 | **A Connector gesture connects every lane of both Links by default** | This reverses the M1.12 default of one lane per drag, which existed for a good reason at the time: pre-filling the maximum authored a wide Connector from a single-lane gesture, and the author could not narrow it afterwards once a route used it. D25 removes that trap, and the owner asked for the wide default explicitly — *ให้เชื่อมจำนวนช่องตามจำนวนช่องใน Link ทั้งหมดก่อน ค่อยปรับลงภายหลัง*. | If authors start drawing single-lane turns more often than full carriageways, make the default follow the drag width instead of flipping it back: the dialog already has both counts, and the gesture knows which lane it started on. |
 | D27 | 2026-09-22 | **A precompiled header holds third-party headers only** | `trafficsim_shell` compiles 26 Qt translation units and re-read the same 2.46 s of `<QGraphicsView>` in every one of them; precompiling it and sharing that PCH with the eleven single-source UI test executables through `REUSE_FROM` took a clean build from 86 s to 64 s. What is deliberately *not* in it is any project header: a PCH over a header that changes turns every edit to it into a full-target rebuild, which is the cost this exists to remove — measured, touching `canvas.hpp` still rebuilds 38 objects and no `.gch`. Adding `<nlohmann/json.hpp>` was tried and reverted: it grew the `.gch` by 2 s on `src/shell`'s critical path and cancelled the saving (258 edge-seconds against 243 without). | If the shell is ever split into two targets, give each its own PCH rather than one shared across different flag sets — GCC rejects a `.gch` whose macro state differs, silently, and the only symptom is the speed-up quietly disappearing. |
 | D28 | 2026-09-22 | **Derived geometry is cached against the values it is derived from, never against a revision** | The canvas recomputed every Connector's ribbon on every frame, which callgrind put at 67% of a run. What makes the cache safe is not the speed-up but the key: `connectorPaths` and `connectorBoundaries` read the Connector, the two Links it names and the driving side and nothing else — checked in the source, not assumed — so comparing those four values is exactly as strong as recomputing. `ProjectDocument::revision` was rejected as a key for two independent reasons: `History::undo` restores an older revision, so the number is not monotonic, and `History::reset` continues from the file's own revision, so two documents can share one. A preview object differs by value and misses, which is the behaviour a drag needs anyway. | If a future `connectorBoundaries` starts reading a third object — a neighbouring Connector at a shared station, say, which §3.3 may force — this key silently goes stale. The defence is the test that widens a Link the Connector does not name: extend it the same way for whatever the new input is, and make it fail first. And do not generalise the pattern by reflex: the same cache for Link geometry was measured and reverted, because recomputing a polyline is cheaper than proving the cache is still valid. |
+| D29 | 2026-09-22 | **A runtime vehicle names its scenario objects by SLOT; only the boundary uses names** | A `Scenario` is immutable and canonically sorted from `createSimulation` onwards, so an index identifies exactly what an id identified — and a tick copies, sorts and compares the whole vehicle list, which three `std::string`s per vehicle made the engine's largest cost (17.4% string copying, 11.4% the sort, 10.3% `resolveRefs`). Slots halved the run. What keeps it honest is that ids become slots only through `detail::byId`, whose first-occurrence rule is exactly what the lookups it replaced returned, and that **names survive at the boundary**: events carry `routeId`, `pendingJson` takes the `Scenario` and emits the same three strings, so the frozen fixtures are byte-identical and a human still reads names. The reverse direction — a slot escaping into a file or an event — is the thing to refuse: a slot means nothing outside the Scenario it indexes. | If a `Scenario` ever becomes mutable after `createSimulation`, or if anything re-sorts one mid-run, every slot in flight is wrong at once and silently. That is the invariant to defend, not the indices. `stepSimulation` already asserts `state.inputs` is parallel to `scenario.inputs`; add the same kind of assertion for anything else that starts indexing the scenario. |
