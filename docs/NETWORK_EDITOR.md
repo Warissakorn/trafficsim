@@ -338,7 +338,8 @@ Connectors keep their world positions and are reanchored or removed with their d
 references when no longer on their Links (see the attachment section). Signal heads ride their
 parent road. A selection containing only heads cannot move independently. Each move is one
 undo entry; a drag below the system threshold is a click. Arrow keys nudge the selection;
-see [History and keyboard editing](EDITOR_WORKFLOW.md) for increments and cancellation.
+see [History, keyboard editing and rotation](EDITOR_WORKFLOW.md) for increments and cancellation.
+Alt-left-drag rotates the selection; Shift snaps to 15°. Ctrl+Shift+R opens the exact-angle dialog.
 
 Hold Ctrl and left-drag an already selected object to duplicate the whole selection.
 A translucent outline previews the drag offset; release commits once, including when

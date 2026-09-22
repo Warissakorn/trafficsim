@@ -1,6 +1,7 @@
 #include "appearance_commands.hpp"
 #include "connector_commands.hpp"
 #include "network_commands.hpp"
+#include "../model/network/rotation.hpp"
 #include <algorithm>
 #include <map>
 #include <set>
@@ -76,6 +77,33 @@ void translateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Poi
             for(auto& p:c.geometry){p.x+=offset.x;p.y+=offset.y;}
     }
     reanchorConnectors(d);
+}
+void rotateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point pivot,double degrees) {
+    rotatePoint(pivot,pivot,degrees); // Validate the transform even for an otherwise empty edit.
+    for(const auto& id:ids) {
+        bool found=false;
+        for(const auto& l:d.network.links)found=found || l.id==id;
+        for(const auto& c:d.network.connectors)found=found || c.id==id;
+        for(const auto& h:d.network.signalHeads)found=found || h.id==id;
+        if(!found)throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+    }
+    const auto objects=rotationObjects(d.network,ids);
+    if(objects.empty())throw std::invalid_argument("EDIT_ROTATE_TARGET");
+    if(std::remainder(degrees,360.)==0)return; // No station re-read and no spurious revision.
+    const std::set<std::string> rotating(objects.begin(),objects.end());
+    for(auto& l:d.network.links)if(rotating.contains(l.id))
+        for(auto& p:l.geometry)p=rotatePoint(p,pivot,degrees);
+    for(auto& c:d.network.connectors)if(rotating.contains(c.id))
+        for(auto& p:c.geometry)p=rotatePoint(p,pivot,degrees);
+    std::vector<std::string> detached;
+    for(auto& c:d.network.connectors) {
+        const bool from=rotating.contains(c.from.linkId),to=rotating.contains(c.to.linkId);
+        // Both parent roads underwent the same rigid transform. Their authored stations and
+        // lane references remain exact, even when large coordinates amplify round-off.
+        if(from && to)continue;
+        if((from || to || rotating.contains(c.id)) && !reanchorConnector(d.network,c))detached.push_back(c.id);
+    }
+    for(const auto& id:detached)deleteConnector(d,id);
 }
 std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point offset) {
     if(!std::isfinite(offset.x) || !std::isfinite(offset.y))throw std::invalid_argument("INVALID_GEOMETRY");

@@ -305,5 +305,8 @@
   "editorHistoryChange": "Edit",
   "editorMove": "Move selection",
   "EDIT_HISTORY_REVISION": "This history state is no longer available. Choose a state from the current list.",
-  "editorKeyboardHelp": "Select (S): arrow keys move selected Links/Connectors by the grid interval (1 m with Snap off); Shift moves ten intervals. Ctrl+Shift+H opens History."
+  "editorKeyboardHelp": "Select (S): arrow keys move selected Links/Connectors by the grid interval (1 m with Snap off); Shift moves ten intervals. Ctrl+Shift+H opens History. Alt + left-drag rotates the selection; hold Shift for 15° steps. Ctrl+Shift+R enters an exact angle.",
+  "editorRotate": "Rotate selection",
+  "editorRotationHelp": "Angle in degrees around the centre of the selected roads. Positive turns counter-clockwise; negative turns clockwise. Connectors that leave their parent roads are removed with their dependent routes and heads; Undo restores the whole edit.",
+  "EDIT_ROTATE_TARGET": "Select at least one Link or Connector to rotate. Signal heads rotate with their parent road."
 }

@@ -249,8 +249,8 @@ the restored CTest point group and preserved M1.20 semantics. Owner acceptance s
 
 **Open.** Link spline/arc construction and curve parameters, extend/merge and safe referenced
 reversal; tapered cross-sections, shoulders/median/sidewalk display; per-Link driving-side
-semantics; snap priorities, alignment/angle constraints, group rotation/nudging; layer locks,
-history panel, multi-property inspector, context menus, shortcuts and accessibility.
+semantics; snap priorities, alignment/angle constraints; layer locks, multi-property inspector,
+context menus, shortcuts and accessibility. History, nudging and rotation are implemented below.
 **Gate:** command/reference roundtrips plus both-side gesture tests and keyboard-only owner
 exercise. Settle the conflicts in SPEC_AUDIT before changing geometry or gestures.
 
@@ -260,9 +260,18 @@ Implemented: a bilingual History dock with named Undo/Redo, current/saved-state 
 navigation through the retained 100 edits and branch-safe revision IDs; arrow-key nudging
 through the existing group-move command, with grid/Shift increments. Level filtering removes
 hidden selections, explicit table/inspector selections reveal their objects, and loss of canvas
-focus cancels active mouse gestures. These changes do not close M1.22: rotation, remaining
+focus cancels active mouse gestures. These changes do not close M1.22: remaining
 geometry/snapping tools, layer locks, bulk inspection, context menus and the keyboard-only
 owner exercise remain open. M1's timed intersection/reopen gate also remains open.
+
+#### M1.22.2 — Selection rotation
+
+Implemented: Alt-left-drag with pivot/angle/outline preview, Shift for 15-degree steps, and
+an exact-angle dialog (Ctrl+Shift+R), translated in both languages. The shared rigid transform
+preserves internal Connector shapes, stations, lane metadata and carried heads. Partial edits
+retain M1.20 attachment cleanup in one Undo/Redo transaction. Both-side model and Qt gesture
+tests cover reference cleanup, cancellation, no-ops, saved files and run invalidation.
+Custom pivots, other alignment/snap priorities and owner keyboard/timed acceptance remain open.
 
 ### M1.23 — Interchange, document workflow and measured rendering
 

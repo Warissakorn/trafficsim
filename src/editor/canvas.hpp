@@ -52,6 +52,8 @@ public:
     std::function<void(LaneReference,Tool)> createDemandGesture;
     std::function<void(Point)> duplicateRequested;
     std::function<void(Point)> translateRequested;
+    std::function<void(Point,double)> rotateRequested;
+    std::optional<Point> rotationPivot() const;
     std::function<void(int,int,bool)> resizeRangeRequested;
     std::function<void(int,bool)> resizeLinkRequested;
     std::function<void()> creationRejected;
@@ -90,6 +92,13 @@ private:
     // a click, which is what keeps a plain click on a selected object from moving anything.
     bool groupDrag_{}, groupDragging_{};
     Point groupOffset_{};
+    std::optional<Point> rotationPivot_;
+    Point rotationStart_{};
+    double rotationDegrees_{};
+    bool rotationDragging_{};
+    void startRotation(QPoint);
+    void updateRotation(QPoint, bool angleSnap);
+    void drawRotationPreview();
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;

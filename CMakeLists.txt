@@ -41,7 +41,7 @@ target_link_libraries(trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
     src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp src/model/network/road_boundaries.cpp
-    src/model/network/sections.cpp src/model/network/markings.cpp)
+    src/model/network/sections.cpp src/model/network/markings.cpp src/model/network/rotation.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
@@ -94,8 +94,8 @@ if(BUILD_TESTING)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
-    target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp)
-    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history)
+    target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp)
+    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history rotation)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
     # Also run the registry without a filter: a newly registered group must never silently
