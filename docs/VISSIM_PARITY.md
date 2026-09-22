@@ -96,8 +96,9 @@ inventory, not a curated one.
 | Finish the link being drawn | `Enter` | `src/editor/canvas_input.cpp:136` |
 | Remove the selected geometry point | `Delete` | `src/editor/canvas_input.cpp:137` |
 
-The **simulation window binds no shortcut at all** — Run, Step and Reset are buttons only
-(`src/shell/main_window.cpp`; no `setShortcut` anywhere in it).
+The **simulation window bound no shortcut at all** — Run, Step and Reset were buttons only.
+**Superseded by M1.24:** that window is removed; the editor's Run/Step carry F5 and F6/Space
+(`src/shell/editor_run.cpp`), so this gap is closed rather than outstanding.
 
 ### Collisions with Vissim
 
@@ -205,8 +206,9 @@ property is most of why the tool feels like one tool.
 Today:
 
 - The editor "does not simulate edited projects yet" (`docs/NETWORK_EDITOR.md:3`).
-- The simulation window is a **separate** `MainWindow` that loads M0 scenario JSON
-  (`src/shell/main_window.cpp`, `src/project/load.cpp`).
+- The simulation window was a **separate** `MainWindow` that loaded M0 scenario JSON.
+  **Superseded by M1.24:** it is removed and the editor opens both file kinds; `loadScenario`
+  (`src/project/load.cpp`) survives for `trafficsim-cli`.
 - Until this session, that window could not even *open* a project file: it read
   `definition` unguarded, and an editor project legitimately saves `"definition": null`, so it
   failed with a raw `json.exception.type_error.304`. It now names the file kind and offers to
@@ -231,7 +233,8 @@ Steps 1–3 already exist on the roadmap; only step 4 needed booking. Hence M1.8
 and M1.7 stays the *plumbing* — see `ROADMAP.md`.
 
 **Final output.** Vissim ends in evaluation: node results, movement delay, queue lengths, LOS.
-Here `src/eval/` produces a completed-trip mean delay and the simulation window shows it. The
+Here `src/eval/` produces a completed-trip mean delay, shown on the editor's run status since
+M1.24 (the simulation window that used to show it is gone). The
 per-movement delay and LOS tables that a traffic impact study actually needs are M2 onwards and
 are not attempted. **Whatever is built, the not-yet-validated marker stays** until M6 (D5).
 
@@ -279,7 +282,7 @@ The project produces **two** JSON kinds that used to be indistinguishable to the
 | Typical name | `data/scenarios/crossing.json` | `network.traffic.json` |
 | Root keys | `network`, `definition` | `format`, `schemaVersion`, `nextId`, `revision`, `network`, `definition`, `background` |
 | `definition` | Required, complete | **Null** for any network drawn from scratch — that is correct, not corrupt |
-| Opened by | The simulation window | The network editor |
+| Opened by | The network editor, or `trafficsim-cli` (M1.24; formerly the simulation window) | The network editor |
 | Runs? | Yes | No — it has no demand yet (§5) |
 
 Both matched the same `*.json` filter, and the editor's default save name is
@@ -288,8 +291,9 @@ exception about a null, which described the JSON accurately and the user's situa
 
 Now: `loadScenario` classifies the file before reading any field and fails with a named,
 translated code (`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_NETWORK`,
-`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`), the simulation window offers **Open in
-Network Editor** for a project, and the dialogs default to `*.traffic.json` for projects.
+`SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`), and the dialogs default to
+`*.traffic.json` for projects. The **Open in Network Editor** hand-off the simulation window
+offered is moot since M1.24: the editor opens both kinds itself.
 See `docs/NETWORK_EDITOR.md` §"Two file kinds".
 
 The two kinds were **not** merged into one schema, deliberately. A single format would make

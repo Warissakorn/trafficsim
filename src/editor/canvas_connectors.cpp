@@ -127,7 +127,7 @@ void EditorCanvas::drawConnectors() {
         // Trimming each rail on its own only cuts a loop within that one rail. The two rails
         // cross EACH OTHER where the near and far edges are cut onto the link's cross-section at
         // a sharp merge angle, which draws as a spike/notch unless the closed ring is trimmed as
-        // one curve -- see network_view, which draws the same shape for the plain harness.
+        // one curve.
         std::vector<Point> ring(boundaries.front());
         ring.insert(ring.end(),boundaries.back().rbegin(),boundaries.back().rend());
         ring=trimSelfIntersections(ring);
@@ -139,7 +139,7 @@ void EditorCanvas::drawConnectors() {
         auto* road=scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour));road->setZValue(z+4);
         road->setData(0,QStringLiteral("road-surface"));road->setData(1,QString::fromStdString(c.id));
         for(const auto& marking:markingStrokes(connectorMarkings(document_->network,preview))) {
-            // See network_view: an outer edge is solid, an interior divider draws its own type.
+            // An outer edge is solid; an interior divider draws its own type.
             QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
                      marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
             pen.setCosmetic(true);

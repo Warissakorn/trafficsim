@@ -4,10 +4,11 @@ A traffic microsimulator with its own **C++20 engine, link-based network model a
 Widgets desktop interface**, aimed at the modelling workflow of traffic impact studies.
 `TrafficSim` remains a working name until the end of M1 (D11).
 
-**M0 native implementation available; owner acceptance remains open.** The desktop harness
-shows seeded vehicles accelerating, queueing at fixed-time signals and crossing explicit
-connectors. It has English/Thai controls, Run/Pause/Step/Reset, seed and playback speed,
-and read-only scenario loading. The Network Editor provides undoable
+**M0 native implementation available; owner acceptance remains open.** `trafficsim-desktop`
+opens the Network Editor, which runs seeded vehicles accelerating, queueing at fixed-time
+signals and crossing explicit connectors. It has English/Thai controls, Run/Pause/Step/Reset,
+seed and playback speed, and opens both editor projects and bare M0 scenario JSON. The
+separate M0 harness window was retired in M1.24. The Network Editor provides undoable
 Link/Lane drawing, connector lane ranges, image calibration, typed demand and signal
 editing, project recovery, and simulation on the same canvas (M1 implementation).
 The owner's timed M1 acceptance exercise remains open.
@@ -107,8 +108,7 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 
 ## Native network editor
 
-Launch `trafficsim-desktop --editor --language th` or use the Network Editor entry
-in the simulation window. The Network Objects sidebar provides Links, Connectors,
+Launch `trafficsim-desktop --language th`; the editor is what the application opens. The Network Objects sidebar provides Links, Connectors,
 Routes, Vehicle inputs and Signal heads. Ctrl+right-drag creates links and connector
 lane ranges; the Objects dock has demand and signal-program editing actions.
 

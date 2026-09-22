@@ -9,6 +9,13 @@
 #include <QToolBar>
 #include <algorithm>
 namespace trafficsim {
+namespace {
+// Every path that advances the run funnels through here. SimState::events holds the latest
+// step only, so a step whose events are not accumulated is one whose clamps are lost for good.
+void accumulate(SummaryAccumulator& summary, const SimState& state) {
+    for (const auto& event : state.events) summary.add(event);
+}
+}
 void EditorWindow::buildRunControls() {
     addToolBarBreak();
     auto* bar=addToolBar(QString());bar->setObjectName("editorRunToolbar");texts_["editorRunToolbar"]=bar;
@@ -32,7 +39,7 @@ void EditorWindow::buildRunControls() {
 }
 void EditorWindow::pauseRun(){runTimer_.stop();runCredit_=0;refreshRun();}
 void EditorWindow::clearRun(){
-    runTimer_.stop();runCredit_=0;runSnapshot_.reset();runState_={};canvas_->clearRunFrame();refreshRun();
+    runTimer_.stop();runCredit_=0;runSnapshot_.reset();runState_={};runSummary_={};canvas_->clearRunFrame();refreshRun();
 }
 bool EditorWindow::prepareRun() {
     if(runSnapshot_)return true;
@@ -42,6 +49,9 @@ bool EditorWindow::prepareRun() {
         auto snapshot=compileDocument(history_.document(),data_);
         auto state=createSimulation(snapshot.scenario,seed);
         runSnapshot_=std::move(snapshot);runState_=std::move(state);
+        // createSimulation can already emit events at t=0; start the count from them, not from
+        // the first step, or a departure at time zero is missing from every later figure.
+        runSummary_={};accumulate(runSummary_,runState_);
         canvas_->setRunNetwork(runSnapshot_->network);canvas_->setRunFrame(runState_);
         error_->clear();return true;
     }catch(const std::exception& e){
@@ -57,7 +67,7 @@ void EditorWindow::toggleRun(){
 }
 void EditorWindow::stepRun(){
     if(!prepareRun())return;
-    if(runState_.tick<totalTicks(*runState_.scenario))runState_=stepSimulation(runState_);
+    if(runState_.tick<totalTicks(*runState_.scenario)){runState_=stepSimulation(runState_);accumulate(runSummary_,runState_);}
     if(runState_.tick>=totalTicks(*runState_.scenario))runTimer_.stop();
     canvas_->setRunFrame(runState_);refreshRun();
 }
@@ -68,7 +78,7 @@ void EditorWindow::tickRun(){
     int budget=200;
     while(runCredit_>=runState_.scenario->timeStep && runTimer_.isActive() && budget-->0) {
         runCredit_-=runState_.scenario->timeStep;
-        runState_=stepSimulation(runState_);
+        runState_=stepSimulation(runState_);accumulate(runSummary_,runState_);
         if(runState_.tick>=totalTicks(*runState_.scenario))runTimer_.stop();
     }
     runCredit_=std::min(runCredit_,5.);
@@ -80,7 +90,12 @@ void EditorWindow::refreshRun(){
     actions_.at("editorStep")->setEnabled(!runTimer_.isActive());
     runSeed_->setAccessibleName(text("seed"));runSpeed_->setAccessibleName(text("speed"));
     if(!runSnapshot_){runInfo_->setText(text("editorRunReady"));return;}
+    // A tooltip, not another banner line: the status sits under a word-wrapped scope label and
+    // the canvas takes the rest of the window, so growing the visible text moves the drawing.
+    runInfo_->setToolTip(text("editorRunStatusNote"));
+    const auto summary=runSummary_.summary();
     runInfo_->setText(text("editorRunStatus").arg(runSnapshot_->revision).arg(runState_.seed)
-        .arg(runState_.time,0,'f',1).arg(runState_.vehicles.size()).arg(pendingCount(runState_)).arg(runState_.completed));
+        .arg(runState_.time,0,'f',1).arg(runState_.vehicles.size()).arg(pendingCount(runState_)).arg(runState_.completed)
+        .arg(summary.meanDelay?QString::number(*summary.meanDelay,'f',2):text("empty")).arg(summary.safetyClamps));
 }
 }

@@ -1,5 +1,4 @@
-add_library(trafficsim_shell STATIC main_window.cpp ../render/network_view.cpp
-    editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
+add_library(trafficsim_shell STATIC editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
     editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_control.cpp editor_run.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
     ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)
@@ -32,10 +31,10 @@ if(BUILD_TESTING)
     add_test(NAME authoring-ui COMMAND trafficsim-authoring-ui-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(authoring-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     add_dependencies(check trafficsim-authoring-ui-tests)
-    add_executable(trafficsim-desktop-tests ../../tests/desktop_tests.cpp)
-    target_link_libraries(trafficsim-desktop-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
-    add_test(NAME desktop-controls COMMAND trafficsim-desktop-tests "${PROJECT_SOURCE_DIR}/data")
-    set_tests_properties(desktop-controls PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    add_executable(trafficsim-scenario-run-tests ../../tests/scenario_run_ui_tests.cpp)
+    target_link_libraries(trafficsim-scenario-run-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    add_test(NAME scenario-run-ui COMMAND trafficsim-scenario-run-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(scenario-run-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
     add_executable(trafficsim-editor-tests ../../tests/editor_ui_tests.cpp)
     target_link_libraries(trafficsim-editor-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     add_test(NAME editor-ui COMMAND trafficsim-editor-tests "${PROJECT_SOURCE_DIR}/data")
@@ -63,5 +62,5 @@ if(BUILD_TESTING)
     add_test(NAME editor-gestures COMMAND trafficsim-gesture-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(editor-gestures PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_dependencies(check trafficsim-gesture-tests)
-    add_dependencies(check trafficsim-desktop-tests trafficsim-editor-tests trafficsim-connector-tests trafficsim-table-tests)
+    add_dependencies(check trafficsim-scenario-run-tests trafficsim-editor-tests trafficsim-connector-tests trafficsim-table-tests)
 endif()

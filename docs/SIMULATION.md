@@ -21,10 +21,13 @@ ctest --preset desktop
 
 Use the `headless` preset to build core/model/CLI without Qt.
 
-The development harness provides Run/Pause, single step, reset, seed and playback speed,
-and English/Thai text. Changing the seed resets the run. Playback speed changes the number
-of fixed steps scheduled by the UI; it never changes the engine timestep. Pausing stops
-the Qt timer. The QPainter view is a diagnostic view, not the network editor.
+The editor provides Run/Pause (F5), single step (F6 or Space), reset, seed and playback
+speed, and English/Thai text. Changing the seed clears the run, as does editing the drawing.
+Playback speed changes the number of fixed steps scheduled by the UI; it never changes the
+engine timestep. Pausing stops the Qt timer. The run status shows the completed-trip mean
+delay and the safety-clamp count; both are diagnostics, not HCM control delay or LOS.
+M1.24 retired the separate M0 harness window — the editor and `trafficsim-cli` are the two
+surfaces that run a scenario, and they produce the same run for the same seed.
 
 ## Public contracts
 

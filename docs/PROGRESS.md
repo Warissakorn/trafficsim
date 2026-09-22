@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-20-m1.21-authoring.md`](archive/PROGRESS-2026-09-20-m1.21-authoring.md) — 2026-09-20, M1.21, the supplied-spec audit and authoring foundation; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-connector-position.md`](archive/PROGRESS-2026-09-18-connector-position.md) — 2026-09-18, M1.20; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-m1.19-lane-middles.md`](archive/PROGRESS-2026-09-18-m1.19-lane-middles.md) — 2026-09-18, M1.19, the Connector lane middles land on the Link lane middles; moved out 2026-09-21 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md) — 2026-09-18, the square-mouth revert (M1.17 reverted); moved out 2026-09-21 when it was the oldest live entry and the parity audit superseded it
@@ -15,6 +16,57 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-22 — One window: the M0 harness window retired (M1.24)
+
+**Request:** the owner asked whether the M0 simulation window could be removed from startup,
+since the editor already runs, and clarified that this meant the **UI only** — `src/core/`, the
+engine that produces the numbers, stays. Re-analysis found two of the session's earlier
+objections wrong: `trafficsim-cli` already prints a superset of what that window showed
+(`meanDelay`, `safetyClamps`, plus an event log `--events` the UI never had), and
+`parseDocument` requires only `network` and reads `definition` when present, so the editor
+opens a bare M0 scenario already. The owner then authorized all three parts together.
+
+**Changed:** `trafficsim-desktop` opens the editor. `MainWindow` and `src/render/`
+(`NetworkView`, which only that window used) are removed; `--scenario` opens either file kind
+in the editor and `--editor` is accepted as a no-op so existing shortcuts keep working. The
+editor's run status now carries the completed-trip mean delay and the safety-clamp count,
+accumulated from `SimState::events` into the same `SummaryAccumulator` the CLI uses — every
+path that advances the run funnels through one helper, because a step whose events are not
+accumulated loses its clamps permanently. What the figures mean moved to the status tooltip;
+the "not yet validated" marker was already on the editor's scope banner. Sixteen locale keys
+that only the retired window used are deleted from both catalogs; `SCENARIO_*` codes stay
+because `loadScenario` still produces them for the CLI. ROADMAP M0 now says where the
+plausibility observation is made, without touching the gate itself.
+
+**Verification:** `scenario-run-ui` replaces `desktop-controls` and is the stronger test: it
+opens `data/scenarios/crossing.json` in the editor, steps 1800 fixed steps at seed 42 and
+requires **31 completed trips and mean delay 29.249359418430977 within 1e-7** — the same
+numbers CTest pins on `trafficsim-cli 42` — then that a finished run cannot step past its end,
+that both figures appear in the status line, that Reset clears the summary, that an overflow
+seed produces no run, and that the Thai status carries the delay. Linux GCC 13.3 / Qt 6.4.2
+`check` passes **34/34** including architecture and file sizes; the headless preset passes
+23/23. The finished run was rendered and visually inspected in both languages. Windows
+evidence would come from CI, not these Linux results.
+
+One regression was caught and fixed during the session: appending the delay caveat to the
+editor's scope banner made that word-wrapped label taller, which shortened the canvas viewport
+and moved `connector-ui`'s scene-mapped clicks onto the wrong lane. The caveat is a tooltip
+instead. Any future addition to that banner will move the drawing the same way.
+
+### Next
+
+M1.22 remains open for geometry/snapping tools (including custom rotation pivots), layer
+locks, bulk inspection, context menus and the keyboard-only owner exercise. **Perform the
+owner's M0 plausibility observation in the editor** (open `data/scenarios/crossing.json`, Run,
+watch queueing at red and discharge at green) and the timed four-leg/aerial-image/reopen
+exercise in M1_ACCEPTANCE.md; automated checks do not close either gate. Exporting scenario
+JSON from the editor is still not implemented — the editor reads M0 scenarios but saves
+schema 7, so hand-writing is still the only way to make one; book it before promising it. The
+shared-station runtime-section fix and the M3.2 conflict-policy follow-up remain separate work.
+Do not fold simulation changes into the editor workflow.
 
 ---
 
@@ -261,65 +313,6 @@ by this bug-fix audit. Keep the finite coverage and the remaining manual accepta
 
 ---
 
-## 2026-09-20 — Supplied-spec audit and authoring foundation (M1.21)
-
-**Request:** audit the three supplied Link/Connector/Network Editor specifications against the
-repository, implement missing features, then add the documents. `SPEC_AUDIT.md` maps every
-section to baseline code and records conflicts. This session implements one authoring system,
-following CLAUDE's one-system rule; it does **not** claim the full target specifications are done.
-Open numbered follow-ups M1.22/M1.23, M2.1, M3.2, M4.1 and M5.1 are in ROADMAP.
-
-**A concrete correctness gap found by the audit:** Connector commands checked width/divider
-counts, but imported files and direct model edits bypassed those checks. `validateNetwork` now
-checks list lengths, finite positive widths, valid marking enums and the editor's 12-lane limit.
-Retargeting to fewer paths clears stale lane properties, as range resizing already did.
-
-**Delivered, end to end:**
-
-- Link insert-at-station, longest-segment midpoint, straighten and unreferenced reverse actions.
-  Reverse preserves each named lane's physical footprint on both driving sides. Referenced
-  reversal rejects atomically; existing-vertex insertion leaves revision/redo/dirty unchanged.
-- Shared `Link::boundaryMarkings` (N+1 in lane order), and solid/dashed/none/double paint for
-  Links and Connector dividers. Shared stroke derivation drives both renderers; double lines
-  are 0.15 m apart and never alter the surface, mouth geometry or runtime paths.
-- Width/marking preservation across Link resize, split/pocket, duplicate and opposite creation.
-  New bilingual inspector fields/actions use the existing History boundary.
-- Schema 7 saves these fields; schemas 1–6 retain their migrations/defaults. Unknown schema-7
-  network-object fields fail before replacing the current document, rather than losing proposed
-  behavior/detector/elevation properties on save. This is deliberately a supported subset.
-- Real advisory severity and a short-Connector warning (<5 m), neither blocking Save nor Run.
-- Original Thai specs preserved byte-for-byte in section-sized files under `docs/specs/`.
-  Their manifest records source names and SHA-256 digests. Maintained docs stay in English;
-  the original claims are source material, not assertions about implemented fidelity.
-
-**Decisions:** a shared boundary is authored once, instead of duplicated per-lane left/right
-fields; physical left/right depends on lane-order/driving-side conventions. Keep Link widths at
-Connector mouths (M1.19) and all M1.20 attachment cleanup behavior. Do not retrofit the supplied
-0.5–20 m width limit onto older files that legitimately used positive widths outside it.
-Per-Link speed ownership, signal-versus-conflict priority and blocked-vehicle removal remain
-explicit design conflicts in the audit, not unimplemented controls pretending to affect a run.
-
-**Verification:** GNU 13.3.0, Qt 6.5.3, Linux. Baseline headless 17/17 after providing a writable
-temporary directory; updated headless 18/18 and desktop/offscreen 26/26 CTest pass. Ten new
-model/command tests plus `authoring-ui` cover inspector actions, canvas pen styles, language,
-Undo/Redo, reopen, invalid imported data and retained documents on rejected open. Architecture,
-negative architecture fixtures and file-size checks pass. Seed 42 remains 31 completed,
-0 active/pending, 0 safety clamps, mean completed-trip delay **29.249359418430977 s**.
-The original-spec concatenations match all three supplied byte streams. No manual desktop,
-Windows or traffic-engineering acceptance is claimed by these local tests.
-
-### Next
-
-Continue **M1.22** with the remaining Link geometry contract (spline/arc/reset/extend/merge and
-reference-safe reversal), first defining how attachment stations and routes survive each edit.
-Use SPEC_AUDIT's section table to retain the unfinished scope; do not merely add inert schema
-fields for engine features. The owner still needs to drive M1.19/M1.20 and the new actions by
-hand, then perform `M1_ACCEPTANCE.md`. M0/M1 usability and M6 validation remain open.
-M2.1 must not start until M2's pre-registered owner-test criteria are written.
-
----
-
-
 ## Next
 
 **One engineering item is open** — item 0 below, from the Connector parity audit. Everything else
@@ -461,3 +454,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D21 | 2026-09-17 | **Lane sections are derived every compile, never persisted** | `ROADMAP.md` forbids persisted duplicate runtime networks, and sectioning changes no authored id, so it is a pure function of the drawing — unlike `splitLink`, which must rewrite routes because the ids an author stored really do change. `sectionId(laneId, 0)` returns `laneId`, so an uncut lane compiles to exactly the `Segment` it always did, which is what keeps the four frozen baselines valid; breaking that one identity fails 54 tests. Route expansion lives **inside** `buildScenario` because `validateAuthoredDemand` compiles on every save, and anywhere else would break saving. | If sectioning ever becomes expensive enough to matter, cache it beside the document — but never store it in the project file, and never let an authored route name a section id. |
 | D22 | 2026-09-17 | **A Connector's `laneMarkings` is indexed per interior divider, not per lane** | Vissim's `Lanes` tab field is per lane, but a lane has two edges and there are `paths + 1` boundary lines, so per-lane does not map onto them unambiguously — any choice is a choice. Per divider is complete and unambiguous, and the two outer edges stay solid because they are the edge of the carriageway, not a lane divider. **Not verified against Vissim**, and recorded as a chosen representation rather than a parity claim (rule 4). | A look at real Vissim showing the field means something else. The change is small — the vector's length and one index — so it was not worth blocking M1 to confirm. |
 | D23 | 2026-09-17 | **The reported miter "bulge" is closed as a measurement error; `offsetGeometry` is unchanged** | Measured on 90.47° of deflection: 9.9403 m along the cross-section at the mitered vertex, 7.0425 m perpendicular point-to-polyline, and **exactly 7.000000 m projected across the leg**. The first is `width/cos(φ/2)`, which is what the intersection of two offset legs is — the diagonal of a correct mitered joint, not a bulge. The 8.698 m on record is the same identity at a gentler bend. Removing the miter would reinstate the pinch it exists to fix (30% at a right angle), and `network_tests` pins it to 1e-9. What was actually missing was an **upper** bound on width; it is now asserted exactly on every interior leg, and catches a 0.1% error. | Nothing, unless Vissim is shown to cut corners rather than miter them. The standing lesson: a distance between two boundaries is a width only when taken square to the road — `perpendicular()` says so in its comment, `apart()` does not, and the 24% figure was taken with `apart()`. |
+| D24 | 2026-09-22 | **Retire the M0 harness window; the editor is the only window** | The owner asked whether it could go, and the measured answer is yes: `trafficsim-cli` already prints a superset of the figures it showed (`meanDelay`, `safetyClamps`, plus `--events`), and `parseDocument` needs only `network`, so the editor opens bare M0 scenarios already. Keeping a second window meant a second renderer (`src/render/`), a second run loop and a second place for the delay figure to drift from the CLI. What makes the removal safe is not the deletion but the replacement: `scenario-run-ui` pins the editor's run of `crossing.json` to the CLI baseline exactly (31 trips, mean delay 29.249359418430977), so the M0 plausibility observation changed surface without changing meaning. The gate itself was not touched — only the sentence naming where the observation is made. | If a results screen ever needs to run a scenario without the authoring surface (a batch review window, M5), build it on `runSimulation` and the event stream, not by restoring `MainWindow`. If the editor ever stops opening bare M0 scenarios, this decision is void and the CLI becomes the only M0 surface. |

@@ -1,7 +1,7 @@
 # ARCHITECTURE — TrafficSim
 
 **Current stack: C++20, CMake, Qt 6 Widgets.** D15 supersedes the initial TypeScript stack.
-M0 core/network functionality has been ported, with a native desktop harness and CLI.
+M0 core/network functionality has been ported, with the native desktop editor and CLI.
 The traffic-engineering acceptance gate remains open. M1 editing and in-editor simulation are implemented; owner M0/M1 acceptance remains open.
 
 ## Boundaries
@@ -22,9 +22,9 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
 | `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-7 authoring codec, schema-1–6 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
-| `trafficsim_shell` | `src/shell/`, `src/render/`, `src/editor/` | Commands, Qt Widgets | M0 harness and independent native editor |
+| `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
-| `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point |
+| `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
 and test the engine, model and CLI on a machine without Qt.
@@ -58,10 +58,11 @@ engine. The M0 workload runs on the UI thread; playback credit is capped per cal
 A future worker handoff must retain snapshots and deterministic step order. First
 parallelize independent batch seeds when M5 is implemented.
 
-`NetworkView` reads model geometry and runtime snapshots. It owns no edits, signals,
-arrival generation or simulation timer; Qt repaints only when data/exposure changes.
-The current renderer is a QPainter diagnostic, not a performance-tested production
-renderer or the M1 editor.
+`EditorCanvas` is the only surface that draws a run. It reads model geometry and runtime
+snapshots and owns no edits, signals, arrival generation or simulation timer. `src/render/`
+held a second, simpler `NetworkView` for the M0 harness window; M1.24 removed both. The
+current renderer is a QGraphicsView/QPainter diagnostic, not a performance-tested production
+renderer.
 
 ## Editor boundary
 
@@ -86,7 +87,7 @@ use the existing deletion cascade. No preview geometry is stored, and no schema 
 `EditorCanvas` renders a const document and sends gesture callbacks. Drag previews are
 transient and one release submits one command. `EditorWindow` composes native actions,
 inspector controls, translation, save prompts and QSaveFile atomic replacement. It is
-independent from the M0 simulation window and runs its own compiled revision. Qt stays out of
+the only window, and runs its own compiled revision. Qt stays out of
 project/model/core. Embedded background bytes are immutable and shared across history.
 `connectorCurve` in the model returns a sampled cubic aligned to the endpoint lane
 directions. Only its polyline is persisted; its interior points are the editable curve
@@ -129,7 +130,7 @@ one station onto any lane or boundary derived from the same reference.
 `laneAttachment` is shared by curve construction, derived paths, validation and reanchoring.
 The editor's side-resize gestures submit one Link/range command on release; preview data
 never enters History. `runtimeSections` derives the runtime lane sections an interior attachment needs (M1.11.1) and is
-the single source `buildScenario`, head rebasing and both vehicle render sites read; a lane with
+the single source `buildScenario`, head rebasing and the canvas's vehicle layer read; a lane with
 nothing attached yields one section carrying the lane's own id, so uncut networks compile
 unchanged. `derivedPriorityRules` arbitrates the merge an arrival creates (M3.1).
 `connectorRuntimeIssues` now blocks only an attachment too close to a lane end or another
@@ -139,7 +140,7 @@ decided (M1.12.1), read by both `connectorBoundaries` for drawing and `connector
 fail before mutation.
 
 M1.21 stores shared Link boundary markings once per boundary in lane order. `markings.cpp`
-derives the same solid/dashed/none/double strokes for both renderers; paint never modifies
+derives the solid/dashed/none/double strokes the canvas paints; paint never modifies
 lane/Connector surface geometry or runtime behavior. Schema 7 rejects unsupported network
 object fields instead of dropping them on save. `link_geometry_commands.cpp` adds station
 insertion, midpoint, straighten and unreferenced reverse through the existing History boundary.

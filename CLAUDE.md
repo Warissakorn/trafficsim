@@ -43,8 +43,10 @@ the Link wins at the mouth and authored Connector widths take over through the b
 **Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
 `docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
 
-**Status: M0 C++ core and network model implemented; acceptance gate still open.** A Qt
-Widgets desktop harness and native CLI exercise both systems. Read `docs/SIMULATION.md`
+**Status: M0 C++ core and network model implemented; acceptance gate still open.** The Qt
+Widgets network editor and the native CLI exercise both systems; **M1.24 retired the separate
+M0 harness window**, so `trafficsim-desktop` opens the editor and the M0 plausibility
+observation is made there (ROADMAP M0 says where). Read `docs/SIMULATION.md`
 for the current simulation contracts, `docs/NETWORK_EDITOR.md` for the editor, then `Next` in `docs/PROGRESS.md`.
 Scenario JSON and editor `*.traffic.json` projects are two formats on purpose — see
 `docs/NETWORK_EDITOR.md` §"Two file kinds" and D19a before touching either loader.
@@ -137,7 +139,6 @@ src/core/       simulation engine — imports nothing
 src/model/      network · demand · control data model
 src/commands/   every mutation, undoable, one registry
 src/project/    load, save, revisions, validation
-src/render/     network view, isolated
 src/editor/     tools, inspector, tables
 src/shell/      layout, palette, i18n
 src/eval/       event stream → measurements

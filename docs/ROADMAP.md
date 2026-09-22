@@ -26,6 +26,16 @@ that prints average delay.
 discharging at green in a way a traffic engineer recognises as plausible — and CTest
 proves the same seed produces the same run on a fixed engine/toolchain.
 
+**Where that observation is made (M1.24):** open `data/scenarios/crossing.json` in the
+editor and use Run/Pause/Step/Reset there. Until M1.24 this said the same thing about a
+separate M0 window; that window is gone, the observation is not. The editor reads a bare M0
+scenario, steps the unchanged core, and its run status shows the mean trip delay and the
+safety-clamp count the retired window showed. `scenario-run-ui` pins that this path
+reproduces `trafficsim-cli 42` exactly — 31 completed trips, mean delay 29.249359418430977 —
+so an engineer judging plausibility in the editor is judging the same run the CLI prints.
+**The gate itself is unchanged and still open:** no automated test closes it, and the
+plausibility judgement is the owner’s to make.
+
 **Explicitly not in M0:** lane changing, editing anything, saving anything, LOS, multiple
 seeds, priority control. The slice is about the *shape*, not the feature set.
 
@@ -35,12 +45,14 @@ seeds, priority control. The slice is about the *shape*, not the feature set.
 
 **Status:** implemented; Linux native/desktop checks passed. Owner M0 acceptance remains open.
 
-**Technical scope:** C++20 core/model/evaluation and CLI, CMake/CTest, Qt Widgets harness,
+**Technical scope:** C++20 core/model/evaluation and CLI, CMake/CTest, a Qt Widgets desktop
+(originally a separate harness window; the editor since M1.24),
 strict JSON loading, four TypeScript baseline fixtures, and native developer checks.
 The former TS application remains in Git history. All new application development is C++.
 
 **Done when:** core/network behaviour passes the saved baseline comparisons and native
-regressions; the desktop compiles and passes Run/Pause/Step/Reset/seed/language smoke tests;
+regressions; the desktop compiles and passes Run/Pause/Step/Reset/seed/language smoke tests
+(in the editor since M1.24, which retired the separate harness window);
 and the native build/run instructions are usable. This does not close the owner's M0
 plausibility gate, the M1 editor or M7 installer.
 
@@ -280,6 +292,21 @@ recent files/tabs, spatial indexing/culling/LOD and optional renderer accelerati
 Competitor-format imports and 3D require an explicit scope revision before implementation.
 **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
 reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
+
+### M1.24 — One window: the M0 harness window retired
+
+Implemented: `trafficsim-desktop` opens the network editor directly. The separate M0
+simulation window (`MainWindow`) and the QPainter diagnostic view it owned (`src/render/`)
+are removed; `--scenario` opens either file kind in the editor, and `--editor` is accepted
+as a no-op so existing shortcuts keep working. The editor’s run status carries the mean
+trip delay and safety-clamp count the retired window showed, fed from the same
+`SummaryAccumulator` the CLI uses. `scenario-run-ui` replaces `desktop-controls` and pins
+the editor’s run of `crossing.json` against the CLI baseline.
+
+**Not in M1.24, deliberately:** no engine, schema or measurement change — `src/core/` is
+untouched and every figure is still the not-yet-validated diagnostic M6 must replace.
+Saving an opened M0 scenario still writes a schema-7 project; exporting scenario JSON from
+the editor is not implemented and stays open.
 
 ---
 
