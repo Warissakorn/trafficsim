@@ -34,9 +34,12 @@ void EditorWindow::createRangeDialog(LaneReference from,LaneReference to,const s
     auto* fromCount=new QSpinBox(&dialog);fromCount->setObjectName("editorRangeFromCount");
     auto* toCount=new QSpinBox(&dialog);toCount->setObjectName("editorRangeToCount");
     const auto ranges=[&]{fromCount->setRange(1,std::max(1,source->count()-source->currentIndex()));toCount->setRange(1,std::max(1,target->count()-target->currentIndex()));};
-    // One dragged lane is one lane. Pre-filling the maximum silently authored a wide
-    // connector from a single-lane gesture, which then drew lane dividers nobody asked for.
-    ranges();fromCount->setValue(1);toCount->setValue(1);
+    // The owner's rule (M1.26): connect the WHOLE carriageway first and narrow it afterwards,
+    // which is now safe because a route names the Connector rather than its paths. This
+    // reverses the earlier default of one lane per gesture -- that default existed because
+    // narrowing a routed Connector used to be refused outright.
+    source->setCurrentIndex(0);target->setCurrentIndex(0);
+    ranges();fromCount->setValue(fromCount->maximum());toCount->setValue(toCount->maximum());
     connect(source,&QComboBox::currentIndexChanged,&dialog,ranges);connect(target,&QComboBox::currentIndexChanged,&dialog,ranges);
     form->addRow(text("editorConnectorFrom"),source);form->addRow(text("editorFromLaneCount"),fromCount);
     form->addRow(text("editorConnectorTo"),target);form->addRow(text("editorToLaneCount"),toCount);

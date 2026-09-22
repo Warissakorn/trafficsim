@@ -4,6 +4,8 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-21-toolchain-and-3.3.md`](archive/PROGRESS-2026-09-21-toolchain-and-3.3.md) — 2026-09-21, the toolchain install and the §3.3 measurement; moved out 2026-09-22
+- [`archive/PROGRESS-2026-09-21-connector-parity-audit.md`](archive/PROGRESS-2026-09-21-connector-parity-audit.md) — 2026-09-21, the Connector parity audit; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md`](archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md) — 2026-09-21, M1.21.1, the Network lifecycle correctness audit; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-20-m1.21-authoring.md`](archive/PROGRESS-2026-09-20-m1.21-authoring.md) — 2026-09-20, M1.21, the supplied-spec audit and authoring foundation; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-connector-position.md`](archive/PROGRESS-2026-09-18-connector-position.md) — 2026-09-18, M1.20; moved out 2026-09-22 as the oldest live entry
@@ -17,6 +19,83 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-22 — A route belongs to the carriageway (M1.26)
+
+**Request:** three findings against M1.25, in the owner's words: the drawn route ran *"สวนทิศทาง
+จราจรบน Link"* (against the traffic), routing and vehicle inputs should be created *"บนทุกช่อง
+จราจรบน Link ไม่ใช่แค่ช่องที่คลิกโดน"* with the Connector connecting every lane first and narrowed
+later, and after a route existed the Link and Connector *"แก้ไขไม่ได้"*. Asked how to handle a
+narrowed Connector, the owner settled the design: **Routing เป็นการสร้างบนทุกช่องจราจร … ไม่ได้
+สร้างเป็นรายช่อง — จะเพิ่มหรือลดจำนวนช่องจราจรของ Connector อย่างไร Routing ก็ยังอยู่.**
+
+**What changed.** An authored route names **Links and Connectors**, never a lane and never a
+Connector path. `routeLaneChains` (`src/model/network/routing.cpp`) derives one lane chain per
+lane the drawing actually carries, and `buildScenario` expands each authored route into one core
+route per chain, each still resolved through `expandRouteSegments`. A vehicle input expands the
+same way: the authored volume is the **Link total**, divided equally across those lanes. All
+three complaints fall out of that one change:
+
+- **The backwards line** was `routeGeometry` drawing whole lanes. A Connector dragged onto a Link
+  body attaches at a station, so the drawing ran from the lane's start — upstream of where the
+  traffic joins. `routeGeometries` draws the compiled chain, whose sections are already clipped.
+- **Every lane** is covered because the route names the carriageway; the lane clicked is not
+  stored anywhere. The Connector dialog now defaults to all lanes of both Links.
+- **Editing is no longer refused.** `changeConnectorRange`, `changeConnectorEndpoints`,
+  `changeLanes` and `reverseLink` lost their route guards — nothing a route names can be removed
+  by a lane-count change. The connector and signal-head guards stay; those name positions.
+
+**What a route can no longer do, said plainly.** A lane-specific route — Vissim's turn pocket,
+where only the left lane may turn — cannot be expressed. That is the cost of the owner's ruling
+and it is booked against M2.1's positioned routing decision. Adjustable per-lane shares, which
+the owner also asked for, are **not** implemented: the numbers must live where both the editor
+and the compiler read them, and `VehicleInput` is a core type the scenario format shares, so that
+is a schema-and-signature decision of its own — booked as **M1.26.1**.
+
+**Two things that took care to get right.** Compiling an already-compiled Scenario has to stay a
+no-op, so a route already given in lane or section ids passes through untouched
+(`routeAlreadyExpanded`). And two Links named one after the other **imply** the Connector between
+them, each lane finding its own — without that, `splitLink` would break every route it touched,
+because a split makes one bridging Connector per lane and no single one of them can stand in an
+object chain.
+
+**Schema 8.** `migrateRoutesToObjects` maps a stored lane or path id to its owner and is
+idempotent, so it can run on every read. It runs in `parseDocument` **and** in `loadScenario`,
+because the CLI reads M0 scenarios through the same authoring path — missing that would have
+silently changed what `trafficsim-cli` compiles. `putRoute` normalises the same way and now
+refuses an id that names no object at all (`EDIT_UNKNOWN_OBJECT`).
+
+**A broken route is reported, not deleted and not refused.** `routeRuntimeIssues` emits
+`UNSUPPORTED_ROUTE_TOPOLOGY` for a route whose objects do not join up for any lane: the edit goes
+through, the Problems panel names the route, Run refuses it. That is D18b's boundary applied to
+routes — an author retargeting a Connector must not have the document reject the change.
+
+**Verification.** Linux GCC 13.3 / Qt 6.4.2 `check` passes **35/35**, including architecture,
+file sizes, and — the acceptance condition for this whole change — the `cli` and `reference`
+baselines: a single-lane expansion keeps the authored route and input ids, so the four frozen
+trajectories and `29.249359418430977` are untouched. New model cases pin the continuation rule at
+object level, the chain-to-destination including ambiguity, a three-lane route surviving a
+narrowed Connector with the Link total redistributed, the single-lane id rule, and the drawn
+route against the compiled length at a mid-body arrival — the last one fails on the old code.
+Ten existing tests were rewritten to the new contract rather than deleted, each keeping what it
+was really testing. Rendered offscreen and inspected: a three-lane route drawn over a mid-body
+arrival, the input row reading `1800 = 3 × 600.0`, and the Thai layout. Windows evidence comes
+from CI, not from these Linux results.
+
+### Next
+
+**M1.26 is implemented, not closed:** its gate is the keyboard-only equivalent of both pointer
+gestures plus the owner's timed exercise. The ordered follow-ups: **M1.26.1** adjustable per-lane
+shares (decide where the shares live before writing any UI — that is the whole task); then the
+routing decision as a positioned object, which is **M2.1** and must wait for **M2's
+pre-registered criteria, still unwritten, which block all of M2** and need the owner. M1.22
+remains open for geometry/snapping tools, custom pivots, layer locks and bulk inspection; signal
+heads are the last object still placed only through a dialog, and `objectAt`/`inputPlaced` in
+`src/editor/canvas_demand.cpp` are the shape to copy. The shared-station `runtimeSections`
+refusal (§3.3, M3.2) and the M3.2 conflict-policy work remain separate. Exporting scenario JSON
+from the editor is still not implemented and still not booked.
 
 ---
 
@@ -216,119 +295,9 @@ override work was folded into this editor change.
 
 ---
 
-## 2026-09-21 — A toolchain, and the audit's §3.3 answered with a measurement
-
-**Request:** the owner asked whether the toolchain was hard to install, whether VS Code could be
-used, then *"do as recommended"* — install it and verify the build.
-
-**The toolchain went into the WSL2 Ubuntu that was already on the machine.** No admin rights and
-no reboot were needed, and the tight `C:` drive is irrelevant because WSL has 955 GB free:
-`apt-get install g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev` gives `g++ 15.2.0`,
-`cmake 4.2.3`, `ninja 1.13.2`, Qt 6 Widgets and Qt 6 Test. This is the first time in this
-workstream that anything was built at all.
-
-| Preset | Build | Tests |
-|---|---|---|
-| `headless` | 65/65, exit 0 | **21/21 passed**, 4.30 s |
-| `desktop` (Qt 6 Widgets) | 93/93, exit 0 | **30/30 passed**, 9.47 s |
-
-`QT_QPA_PLATFORM=offscreen` is needed for the desktop suite on a displayless machine — the
-checked-in `desktop` preset does not set it. **And ninja's default parallelism OOMs the Qt build
-here**: the host has 7.66 GB and WSL is given 3.74 GB, so the first desktop build died with exit
-code 15. Build with `-- -j 3`. That is this machine, not the project. The four gates that matter
-for the audit all passed — `file-sizes` (so the `PROGRESS.md` archive move was required, not
-cosmetic), `all-model-tests`, `architecture` and `reference`. **Linux only**, so this is not
-cross-platform evidence; the Windows MSVC path is still unexercised.
-
-**Finding 1 is answered, and the audit's first reading of it was wrong.** Two Connectors arriving
-at the same station on one lane do **not** compile and then overlap — the second is **refused**.
-`runtimeSections` (`sections.cpp:68`) tests each cut against `boundaries.back() + kMinSectionLength`,
-and the boundary the *first* arrival just made is at that very station, so the second arrival is
-measured against itself and lands in `table.unsectionable` → `UNSUPPORTED_CONNECTOR_POSITION`,
-which blocks Run. Nothing is physically wrong with the pair: the cut the second needs is the one
-the first already made. So the defect is the **refusal**, and "they do not yield to each other" is
-a second question sitting behind it that this session never reaches.
-
-**One test added**, `connectors.two_connectors_arriving_at_one_station_are_refused_though_one_cut_would_serve`
-in `tests/connector_tests.cpp`. It asserts the behaviour **as it is**, not as it should be, and its
-comment carries what it should assert once the refusal is fixed — so the fix turns the test into
-the specification rather than deleting it. It follows the standing rule: the forcing comes first
-(one interior arrival is clean, the cut at the drawn station survives, both ends really are inside
-the body at the same metre), then the consequence.
-
-**No production C++ was changed, and no milestone is closed.** The fix is a behaviour change to the
-section table, which every other surface reads; it is one system and it is booked as M3.2 work
-beside conflict areas. `CONNECTOR_PARITY_AUDIT.md` §3.3 is rewritten to the measurement and gains a
-new §7 recording the verification above.
-
-### Next
-
-Two independent things, neither started. First, **the §3.3 fix**: make `runtimeSections` reuse an
-existing cut when a second arrival lands on the same station within `kMinSectionLength`, instead of
-rejecting it — the test above then flips to its commented-out expectation. That is a section-table
-change, so it wants its own session and a check that nothing downstream regressed. Second, resume
-the separately booked M1.22 features and the owner's M1.21.1 recheck against their original
-`.traffic.json`. Do **not** start §3.2 curve parameters or §16 visual overrides. Keep M3.2
-(conflict areas, lane changing) as the home for the §3.3 second half, §3.4 and §3.6.
 
 ---
 
-## 2026-09-21 — Connector parity audit (documentation only; no code changed)
-
-**Request:** the owner asked whether the Connector matches Vissim in every respect, then asked
-for everything that could actually be done about it in the session.
-
-**The audit itself** is `CONNECTOR_PARITY_AUDIT.md`. It is the first place in this repository that
-states the **two benchmarks** side by side: the owner's supplied Thai specification (a *target*,
-per `specs/README.md` and `SPEC_AUDIT.md`) and Vissim itself (**never measured here** — only the
-owner's screenshots are on file). §1 of the audit lists what matches the specification, §2 what is
-absent, §3 the defects, §4 what was deliberately not done. Do not quote §1's "matches" as a
-Vissim claim.
-
-**What was changed in this session** is documentation and comments only:
-
-- `CONNECTOR_PARITY_AUDIT.md` — new.
-- `VISSIM_PARITY.md` — a 2026-09-21 entry, plus a one-line inline "superseded" note on the
-  2026-09-18 wedge entry, whose sentence *"a plain square end. That is now what is drawn"* has
-  been false since M1.18.
-- `connector_commands.hpp` — two header comments corrected against the code they declare:
-  `changeConnectorGeometry` *does* move the endpoints (only the lane reference is fixed there),
-  and `resampleConnectorPoints` splits the longest leg when **raising** the count rather than
-  re-spacing evenly, because even re-spacing was measured to cut a hand-placed corner by 1.00 m.
-- `CLAUDE.md` — a row in the "Read these before working" table.
-
-**The stale `PROGRESS.md` entry was not rewritten — it was moved whole to
-[`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md).** The
-2026-09-18 entry *"The Connector mouth is a plain square end again"* is append-only history, so its
-text is preserved exactly as written; only its **location** changed, and the reason is hard rule 6
-— this entry pushed the live file to 504 lines, past the 500-line guard `tools/check_file_sizes.cpp`
-fails on. It was the oldest live entry, so it is the one the file's own header says to move. This
-entry is the correction of record: what is drawn today is the **M1.18 longitudinal slide onto the
-Link's cross-section**, with a full-width square end kept only as the fallback for an arrival more
-than roughly 75° off its spine (`road_boundaries.cpp:324-325`), reported as
-`WARN_CONNECTOR_ALIGNMENT`.
-
-**Three runtime findings are recorded, not fixed** — all need a build, and this session had no
-C++ toolchain (`cmake`, `g++`, `cl`, `clang++`, `ninja` all absent), so under hard rule 7 nothing
-was touched that could not be verified. Booked:
-
-1. **Two Connectors arriving at the same station on one lane do not yield to each other.** The
-   derived rule names only the upstream lane section, never another Connector's path
-   (`sections.cpp:195`). Whether that permits a one-step overlap at the drawn station is
-   **untested either way** — a test comes before any fix, and the fix belongs with conflict areas
-   in M3.2.
-2. **A merge at a lane's *start* is uncontrolled and unreported** (`sections.cpp:203`). Consistent
-   with `UNSUPPORTED_MERGE`, but nothing tells the author.
-3. **`buildScenario` can carry a zero-gap priority rule** when the catalog is unset; only the
-   `compileScenario` path refuses it (`compile.cpp:95`, `core/validate.cpp:73`). Latent — no such
-   caller exists today.
-
-**No milestone is closed by this entry.** No gate is met by documentation. M0/M1 owner acceptance
-and M6 validation remain open, and no test was added or run.
-
-**Superseded the same day, in the entry above:** finding 1 was answered with a toolchain — the pair
-is *refused*, not overlapped, so the audit's §3.3 has been rewritten and a test added. Findings 2
-and 3 stand as recorded.
 
 ---
 
@@ -336,14 +305,17 @@ and 3 stand as recorded.
 
 **Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
 
-**0b. M1.25's own gate, and what the pointer tools still lack.** Routes and vehicle inputs are
-now authored by clicking (see the top entry), but the gate is the keyboard-only equivalent of
-both gestures plus the owner's timed exercise below, and neither is done. Signal heads are the
-last object still placed only through a dialog; `segmentAt`/`inputPlaced` in
-`src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22. A routing decision as an
-object at a station along the link — which is what Vissim actually places — is **M2.1**, and M2
-may not start until its pre-registered criteria are written into `ROADMAP.md`. Writing them is
-the owner's, and it blocks all of M2.
+**0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
+authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
+entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
+exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is open and its
+real question is where the shares live, since `VehicleInput` is a core type the scenario format
+shares. Signal heads are the last object still placed only through a dialog;
+`objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
+A routing decision as an object at a station along the link — what Vissim actually places, and
+what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
+until its pre-registered criteria are written into `ROADMAP.md`. Writing them is the owner's,
+and it blocks all of M2.
 
 **0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
 station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
@@ -368,8 +340,8 @@ distance for "off the Link" — one constant, in `laneContains`.
 > what a mouth could not reach, in metres.
 
 Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
-M1.12.1, M1.21–M1.21.1 and M1.24–M1.25, with M1.12.2 closed as a measurement error rather than a
-defect and M1.12.3 closed by M1.19. M1.22 and M1.23 remain open. `docs/ROADMAP.md` is
+M1.12.1, M1.21–M1.21.1 and M1.24–M1.26, with M1.12.2 closed as a measurement error rather than a
+defect and M1.12.3 closed by M1.19. M1.22, M1.23 and M1.26.1 remain open. `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
@@ -482,3 +454,5 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D22 | 2026-09-17 | **A Connector's `laneMarkings` is indexed per interior divider, not per lane** | Vissim's `Lanes` tab field is per lane, but a lane has two edges and there are `paths + 1` boundary lines, so per-lane does not map onto them unambiguously — any choice is a choice. Per divider is complete and unambiguous, and the two outer edges stay solid because they are the edge of the carriageway, not a lane divider. **Not verified against Vissim**, and recorded as a chosen representation rather than a parity claim (rule 4). | A look at real Vissim showing the field means something else. The change is small — the vector's length and one index — so it was not worth blocking M1 to confirm. |
 | D23 | 2026-09-17 | **The reported miter "bulge" is closed as a measurement error; `offsetGeometry` is unchanged** | Measured on 90.47° of deflection: 9.9403 m along the cross-section at the mitered vertex, 7.0425 m perpendicular point-to-polyline, and **exactly 7.000000 m projected across the leg**. The first is `width/cos(φ/2)`, which is what the intersection of two offset legs is — the diagonal of a correct mitered joint, not a bulge. The 8.698 m on record is the same identity at a gentler bend. Removing the miter would reinstate the pinch it exists to fix (30% at a right angle), and `network_tests` pins it to 1e-9. What was actually missing was an **upper** bound on width; it is now asserted exactly on every interior leg, and catches a 0.1% error. | Nothing, unless Vissim is shown to cut corners rather than miter them. The standing lesson: a distance between two boundaries is a width only when taken square to the road — `perpendicular()` says so in its comment, `apart()` does not, and the 24% figure was taken with `apart()`. |
 | D24 | 2026-09-22 | **Retire the M0 harness window; the editor is the only window** | The owner asked whether it could go, and the measured answer is yes: `trafficsim-cli` already prints a superset of the figures it showed (`meanDelay`, `safetyClamps`, plus `--events`), and `parseDocument` needs only `network`, so the editor opens bare M0 scenarios already. Keeping a second window meant a second renderer (`src/render/`), a second run loop and a second place for the delay figure to drift from the CLI. What makes the removal safe is not the deletion but the replacement: `scenario-run-ui` pins the editor's run of `crossing.json` to the CLI baseline exactly (31 trips, mean delay 29.249359418430977), so the M0 plausibility observation changed surface without changing meaning. The gate itself was not touched — only the sentence naming where the observation is made. | If a results screen ever needs to run a scenario without the authoring surface (a batch review window, M5), build it on `runSimulation` and the event stream, not by restoring `MainWindow`. If the editor ever stops opening bare M0 scenarios, this decision is void and the CLI becomes the only M0 surface. |
+| D25 | 2026-09-22 | **An authored route names Links and Connectors; the per-lane routes are compiled** | The owner's ruling: *Routing เป็นการสร้างบนทุกช่องจราจร … ไม่ได้สร้างเป็นรายช่อง*. A lane-level route tied demand to a Connector's lane count, so narrowing one either invalidated the route or had to be refused — and it was refused, which left an author unable to correct their own drawing. Naming the objects makes the lane chains derived data, which is where they belong: `routeLaneChains` recomputes them on every compile, the reference guards disappear because nothing a route names can vanish, and a vehicle input becomes what Vissim's is, a Link total split across the lanes that carry it. The single-lane expansion deliberately keeps the authored id, which is what lets the four frozen baselines replay unchanged. | What it costs is the lane-specific route: a turn pocket where only the left lane may turn cannot be expressed. If that has to come back before M2.1's positioned routing decision, the honest fix is an explicit lane restriction on the route, not a return to lane ids — the ids were the thing that made every Connector edit fragile. |
+| D26 | 2026-09-22 | **A Connector gesture connects every lane of both Links by default** | This reverses the M1.12 default of one lane per drag, which existed for a good reason at the time: pre-filling the maximum authored a wide Connector from a single-lane gesture, and the author could not narrow it afterwards once a route used it. D25 removes that trap, and the owner asked for the wide default explicitly — *ให้เชื่อมจำนวนช่องตามจำนวนช่องใน Link ทั้งหมดก่อน ค่อยปรับลงภายหลัง*. | If authors start drawing single-lane turns more often than full carriageways, make the default follow the drag width instead of flipping it back: the dialog already has both counts, and the gesture knows which lane it started on. |

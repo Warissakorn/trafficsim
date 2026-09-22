@@ -46,8 +46,8 @@ void checkRemovedLanes(const ProjectDocument& d,const std::set<std::string>& rem
     }
     for (const auto& h : d.network.signalHeads)
         if (removed.contains(h.lane.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
-    if (d.definition) for (const auto& r : d.definition->routes) for (const auto& s : r.segmentIds)
-        if (removed.contains(s)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
+    // No route arm here since M1.26: a route names the Link, so removing one of its lanes leaves
+    // the route valid and simply one lane narrower when it expands.
 }
 }
 void changeLanes(ProjectDocument& d, const std::string& id, const std::vector<double>& widths) {

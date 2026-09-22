@@ -95,6 +95,10 @@ std::vector<Diagnostic> runtimeDiagnostics(const Network& network, const Scenari
     std::vector<Diagnostic> result;
     for(const auto& issue:connectorRuntimeIssues(network))
         result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
+    // A route is not a network object, so there is nothing on the canvas to select for it;
+    // resolve() would look one up and find none. The row names the route's path instead.
+    for(const auto& issue:routeRuntimeIssues(network,definition))
+        result.push_back({issue.code,issue.path,{},{},DiagnosticSeverity::runtime});
     for(const auto& issue:priorityDefaultsIssues(network,definition.priorityDefaults))
         result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
     // Shape advisories sit beside the runtime rows: visible and selectable, but they never

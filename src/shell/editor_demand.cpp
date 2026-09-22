@@ -94,15 +94,31 @@ void EditorWindow::refreshDemand() {
             // The author sees the ids they stored; the length comes from the COMPILED route,
             // which is the expanded chain of sections. Summing the authored ids instead would
             // charge a route that turns off part way along a lane for the whole lane.
-            for(const auto& compiled:scenario.routes)if(compiled.id==r.id)
+            // A route covers every lane, so the compiled id is the authored one only when it
+            // expanded to a single lane; otherwise the lanes carry "/lane-k" and the row shows
+            // the first of them -- one lane's distance, not the sum of all of them.
+            const auto prefix=r.id+"/lane-";
+            for(const auto& compiled:scenario.routes) {
+                if(compiled.id!=r.id && compiled.id.rfind(prefix,0)!=0) continue;
                 for(const auto& id:compiled.segmentIds)for(const auto& s:scenario.segments)if(s.id==id)length+=s.length;
+                break;
+            }
             const int n=routeTable_->rowCount();routeTable_->insertRow(n);
             row(routeTable_,n,{QString::fromStdString(r.id),ids.join(" → "),QString::number(length,'f',2)},r.id);
         }
         for(const auto& i:def.inputs) {
+            // The authored number is the Link total. What the run receives is that total divided
+            // across the lanes the route reaches, so the row says both -- an author reading only
+            // the total would not know what each lane actually gets.
+            std::size_t lanes=0;
+            for(const auto& r:def.routes)if(r.id==i.routeId)
+                lanes=routeLaneChains(history_.document().network,r.segmentIds).size();
+            auto volume=QString::number(i.vehiclesPerHour);
+            if(lanes>1)volume+=" = "+QString::number(lanes)+QString::fromUtf8(" \u00d7 ")+
+                QString::number(i.vehiclesPerHour/static_cast<double>(lanes),'f',1);
             const int n=inputTable_->rowCount();inputTable_->insertRow(n);
             row(inputTable_,n,{QString::fromStdString(i.id),QString::fromStdString(i.routeId),
-                QString::number(i.vehiclesPerHour)+" ["+QString::number(i.startTime)+", "+QString::number(i.endTime)+"]"},i.id);
+                volume+" ["+QString::number(i.startTime)+", "+QString::number(i.endTime)+"]"},i.id);
         }
         for(const auto& p:def.signalPrograms) {
             double cycle=0;for(const auto& f:p.phases)cycle+=f.duration;
@@ -144,14 +160,13 @@ void EditorWindow::editRoute(const std::string& id,const std::vector<std::string
     auto* back=new QPushButton(text("editorRemoveLast"),&dialog);back->setObjectName("editorRemoveLast");layout->addWidget(back);
     // Whole lanes and connector paths, never a derived section id: a route is stored in the
     // project file, and offering a section would put a copy of derived data in it.
-    const auto table=runtimeSections(history_.document().network);
     const auto refresh=[&] {
         list->clear();next->clear();
         for(const auto& s:value.segmentIds)list->addItem(QString::fromStdString(s));
-        // Whole lanes and connector paths, never a derived section id: a route is stored in
-        // the project file, and offering a section would put a copy of derived data in it.
-        // The rule itself lives in the model, where the canvas gesture reads the same one.
-        for(const auto& id:routeContinuations(table,value.segmentIds))
+        // Links and Connectors, never a lane and never a derived section id: a route is stored
+        // in the project file and belongs to the carriageway, so narrowing a Connector must not
+        // be able to invalidate it. The rule lives in the model, where the canvas reads the same one.
+        for(const auto& id:routeContinuations(history_.document().network,value.segmentIds))
             next->addItem(QString::fromStdString(id),QString::fromStdString(id));
         add->setEnabled(next->count()>0);back->setEnabled(!value.segmentIds.empty());
     };
@@ -186,6 +201,10 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
         form->addRow(text(key),field);return field;
     };
     auto* volume=number("editorInputVolume",value.vehiclesPerHour);
+    // Rule 4: say what the split is and is not. It divides the Link total equally because the
+    // engine has no lane changing, not because traffic distributes itself that way.
+    auto* split=new QLabel(text("editorInputSplitHelp"),&dialog);split->setObjectName("editorInputSplitHelp");
+    split->setWordWrap(true);form->addRow(split);
     auto* start=number("editorInputStart",value.startTime);auto* end=number("editorInputEnd",value.endTime);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));

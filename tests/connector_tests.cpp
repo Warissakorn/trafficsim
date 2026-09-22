@@ -46,7 +46,7 @@ TEST(connectors, create_turn_straight_and_uturn_on_both_driving_sides) {
         anchored(d);validateDocument(d);
         const auto json=documentJson(d);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
-        CHECK(json["schemaVersion"]==7);
+        CHECK(json["schemaVersion"]==8);
     }
 }
 TEST(connectors, invalid_creation_preserves_ids_revision_savepoint_and_redo) {
@@ -150,10 +150,22 @@ TEST(connectors, retarget_preserves_shape_and_rejects_duplicates_or_missing_lane
     CHECK(h.document().network.connectors[0].from==d.network.connectors[0].to);
     CHECK(h.document().network.connectors[0].to==d.network.connectors[0].from);anchored(h.document());
 }
-TEST(connectors, referenced_connector_can_reshape_but_cannot_retarget) {
+TEST(connectors, retargeting_a_routed_connector_is_allowed_and_reports_the_route_it_breaks) {
     auto d=crossing();History h;h.reset(d);const auto before=documentJson(d);
-    test::throws([&]{h.execute("retarget",[](auto& m){changeConnectorEndpoints(m,"west-east",{"west","west-1"},{"north","north-1"});});},"EDIT_REFERENCED_CONNECTOR");
-    CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
+    // The forcing: this route really is carried by the Connector about to be retargeted.
+    const auto& route=h.document().definition->routes.front().segmentIds;
+    CHECK(std::find(route.begin(),route.end(),"west-east")!=route.end());
+    CHECK(routeLaneChains(h.document().network,route).size()==1);
+    // M1.26: the edit goes through. Refusing it left an author unable to correct a Connector
+    // they had already routed, which is the defect this milestone exists to remove.
+    h.execute("retarget",[](auto& m){changeConnectorEndpoints(m,"west-east",{"west","west-1"},{"north","north-1"});});
+    CHECK(h.document().definition->routes.size()==2);
+    // The route is kept and REPORTED, not deleted: nothing can travel it until the author says
+    // where it goes now, and Run refuses it by name rather than running a network without it.
+    const auto issues=routeRuntimeIssues(h.document().network,*h.document().definition);
+    CHECK(issues.size()==1);CHECK(issues.front().code=="UNSUPPORTED_ROUTE_TOPOLOGY");
+    test::throws([&]{compileDocument(h.document(),test::root()/"data");},"UNSUPPORTED_ROUTE_TOPOLOGY");
+    h.undo();CHECK(documentJson(h.document())==before);
     h.execute("reshape",[](auto& m){changeConnectorGeometry(m,"west-east",{{-10,0},{0,3},{10,0}});});
     CHECK(documentJson(h.document())["definition"]==documentJson(d)["definition"]);anchored(h.document());
     h.undo();CHECK(documentJson(h.document())==before);

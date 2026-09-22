@@ -39,7 +39,9 @@ std::string addConnector(ProjectDocument& d, const LaneReference& from, const La
 bool connectorReferenced(const ProjectDocument& d,const Connector& c) {
     std::set<std::string> ids;
     for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)ids.insert(connectorPathId(c,i));
-    if(d.definition)for(const auto& r:d.definition->routes)for(const auto& s:r.segmentIds)if(ids.contains(s))return true;
+    // A ROUTE is deliberately not a reference any more (M1.26): it names this Connector, not its
+    // paths, so adding or removing a lane changes how many lanes the route expands to and
+    // nothing else. A signal head does name a path, and still holds the range still.
     for(const auto& h:d.network.signalHeads)if(ids.contains(h.connectorId))return true;
     return false;
 }

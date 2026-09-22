@@ -18,7 +18,34 @@ template<class T> void remove(std::vector<T>& values, const std::string& id) {
 }
 std::string putRoute(ProjectDocument& d, Route value) {
     if (value.id.empty()) value.id=allocateId(d,"route");
-    const auto id=value.id; put(demand(d).routes,std::move(value)); return id;
+    const auto id=value.id;
+    // A route may name only objects that exist. Objects that exist but do not join up are a
+    // different matter -- tolerated while authoring, reported by routeRuntimeIssues, refused by
+    // Run -- because an author must be able to move a Connector without the edit being rejected.
+    for (const auto& named : value.segmentIds) {
+        const bool known =
+            std::any_of(d.network.links.begin(), d.network.links.end(),
+                        [&](const auto& l) {
+                            if (l.id == named) return true;
+                            return std::any_of(l.lanes.begin(), l.lanes.end(),
+                                               [&](const auto& lane) { return lane.id == named; });
+                        }) ||
+            std::any_of(d.network.connectors.begin(), d.network.connectors.end(),
+                        [&](const auto& c) {
+                            if (c.id == named) return true;
+                            for (int i = 0; i < std::max(c.fromLaneCount, c.toLaneCount); ++i)
+                                if (connectorPathId(c, i) == named) return true;
+                            return false;
+                        });
+        if (!known) throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+    }
+    auto& routes=demand(d).routes;
+    put(routes,std::move(value));
+    // A route names Links and Connectors (M1.26). A caller that named a lane or a Connector path
+    // meant the object it belongs to, so it is stored that way here rather than refused: this is
+    // the same mapping a schema-7 file gets on load, and it keeps one meaning in the document.
+    migrateRoutesToObjects(d.network,demand(d));
+    return id;
 }
 std::string putInput(ProjectDocument& d, VehicleInput value) {
     if (value.id.empty()) value.id=allocateId(d,"input");

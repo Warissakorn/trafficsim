@@ -39,21 +39,39 @@ TEST(ranges, one_object_compiles_stable_lane_paths_on_both_driving_sides) {
         changeDrivingSide(d,side==DrivingSide::left?DrivingSide::right:DrivingSide::left);anchored(d);
     }
 }
-TEST(ranges, shrinking_retargeting_duplicates_and_delete_are_atomic) {
+TEST(ranges, a_route_survives_narrowing_while_a_duplicate_and_a_delete_stay_atomic) {
     auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},3,3);
-    const auto route=putRoute(d,{"",{"a3",id+"/lane-3","b3"}});putInput(d,{"",route,"car",600,0,60});
+    const auto route=putRoute(d,{"",{"a",id,"b"}});putInput(d,{"",route,"car",600,0,60});
     History h;h.reset(d);const auto before=documentJson(d);
-    test::throws([&]{h.execute("shrink",[](auto& m){changeLanes(m,"a",{3,4});});},"EDIT_REFERENCED_LANE");
-    test::throws([&]{h.execute("range",[&](auto& m){changeConnectorRange(m,id,2,2);});},"EDIT_REFERENCED_CONNECTOR");
+    // The forcing: the route really does carry all three lanes before anything is narrowed.
+    CHECK(routeLaneChains(h.document().network,{"a",id,"b"}).size()==3);
+    // M1.26: a route names the Link and the Connector, so narrowing either is an ordinary edit.
+    // It used to be refused outright, which left an author unable to correct their own drawing.
+    h.execute("range",[&](auto& m){changeConnectorRange(m,id,2,2);});
+    CHECK(h.document().definition->routes.size()==1);
+    CHECK(h.document().definition->inputs.size()==1);
+    CHECK(h.document().definition->routes.front().segmentIds==std::vector<std::string>({"a",id,"b"}));
+    CHECK(routeLaneChains(h.document().network,{"a",id,"b"}).size()==2);
+    // The third lane is free of the Connector now, so the Link can lose it too -- an edit the
+    // route used to block. A lane a CONNECTOR still uses is a different question, guarded above.
+    h.execute("shrink",[](auto& m){changeLanes(m,"a",{3,4});});
+    CHECK(h.document().definition->routes.size()==1);
+    CHECK(h.document().definition->inputs.size()==1);
+    // And the Link total the author typed is still the Link total, now across two lanes.
+    const auto scenario=buildScenario(h.document().network,*h.document().definition);
+    double total=0;for(const auto& i:scenario.inputs)total+=i.vehiclesPerHour;
+    test::near(total,600,1e-9);
+    h.undo();h.undo();CHECK(documentJson(h.document())==before);
+    CHECK(routeLaneChains(h.document().network,{"a",id,"b"}).size()==3);
     test::throws([&]{h.execute("duplicate",[](auto& m){addConnector(m,{"a","a3"},{"b","b3"});});},"DUPLICATE_CONNECTION");
-    CHECK(documentJson(h.document())==before);CHECK(!h.canUndo());
+    CHECK(documentJson(h.document())==before);
     h.execute("delete",[&](auto& m){deleteConnector(m,id);});
     CHECK(h.document().definition->routes.empty());CHECK(h.document().definition->inputs.empty());
     h.undo();CHECK(documentJson(h.document())==before);
 }
 TEST(ranges, unequal_ranges_author_merges_without_weakening_runtime_guard) {
     auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},3,2);
-    const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
+    const auto route=putRoute(d,{"",{"a",id,"b"}});putInput(d,{"",route,"car",600,0,60});
     validateDocument(d);anchored(d);
     test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_MERGE");
 }
@@ -79,6 +97,6 @@ TEST(ranges, catalogs_are_content_and_schema_one_upgrades_without_losing_ids) {
     for(auto& c:old["network"]["connectors"])for(const auto* key:{"fromLaneCount","toLaneCount","level","displayType"})c.erase(key);
     const auto restored=parseDocument(old);CHECK(restored.network.connectors.front().id==id);
     CHECK(restored.network.connectors.front().fromLaneCount==1);CHECK(restored.network.links.front().level==0);
-    CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==7);
+    CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==8);
     old["schemaVersion"]=999;test::throws([&]{parseDocument(old);},"EDIT_VERSION");
 }

@@ -1,11 +1,29 @@
 #include "network.hpp"
 #include "../../core/validate.hpp"
 #include <cmath>
+#include <map>
 #include <algorithm>
 #include <limits>
 #include <vector>
 
 namespace trafficsim {
+namespace {
+// A route already given in lane or section ids, rather than the Links and Connectors an author
+// names. Compiling an already-compiled Scenario has to be a no-op -- callers do it -- so such a
+// route passes through untouched instead of being reported as one no lane can travel.
+bool routeAlreadyExpanded(const RuntimeSections& table, const std::vector<std::string>& ids) {
+    if (ids.empty()) return false;
+    for (const auto& id : ids) {
+        const bool known =
+            std::any_of(table.sections.begin(), table.sections.end(),
+                        [&](const auto& s) { return s.id == id; }) ||
+            std::any_of(table.paths.begin(), table.paths.end(),
+                        [&](const auto& p) { return p.id == id; });
+        if (!known) return false;
+    }
+    return true;
+}
+}
 Scenario buildScenario(const Network& network, const ScenarioDefinition& definition) {
     Scenario scenario;
     static_cast<ScenarioDefinition&>(scenario) = definition;
@@ -18,10 +36,54 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     for (std::size_t p = 0; p < table.paths.size(); ++p)
         scenario.segments.push_back({table.paths[p].id, polylineLength(table.paths[p].geometry),
                                      {table.pathNext[p]}});
-    // A route is authored on whole lanes, because that is what an author draws and stores. The
-    // runtime travels sections, so the chain is resolved here -- inside buildScenario, which is
-    // the one place every caller goes through, including the save-time demand validation.
-    for (auto& route : scenario.routes) route.segmentIds = expandRouteSegments(table, route.segmentIds);
+    // A route is authored on LINKS AND CONNECTORS, because that is the object an author places
+    // and keeps editing. The runtime travels one lane, so each authored route expands here into
+    // one core route per lane the drawing actually carries -- inside buildScenario, which is the
+    // one place every caller goes through, including the save-time demand validation.
+    //
+    // An expansion of exactly one lane keeps the authored id. That is load-bearing: every
+    // reference network is single-lane, so the four frozen baselines still name the same routes
+    // and replay the same trajectories. Only a genuinely multi-lane route gains "/lane-k".
+    std::vector<Route> routes;
+    std::vector<VehicleInput> inputs;
+    std::map<std::string, std::vector<std::string>> expanded; // authored route id -> core ids
+    for (const auto& route : scenario.routes) {
+        if (routeAlreadyExpanded(table, route.segmentIds)) {
+            routes.push_back(route); expanded[route.id].push_back(route.id); continue;
+        }
+        const auto chains = routeLaneChains(network, route.segmentIds);
+        for (std::size_t k = 0; k < chains.size(); ++k) {
+            const auto id = chains.size() == 1 ? route.id : route.id + "/lane-" + std::to_string(k + 1);
+            routes.push_back({id, expandRouteSegments(table, chains[k])});
+            expanded[route.id].push_back(id);
+        }
+    }
+    for (const auto& input : scenario.inputs) {
+        const auto found = expanded.find(input.routeId);
+        // A route no lane can travel emits no core route, and its inputs go with it rather than
+        // dangling as UNKNOWN_ROUTE. That is not silence: routeRuntimeIssues names the route,
+        // the Problems panel shows it and Run refuses, while the EDIT still goes through -- an
+        // author must be able to move a Connector without the document rejecting the change.
+        const bool authored = std::any_of(definition.routes.begin(), definition.routes.end(),
+                                          [&](const auto& r) { return r.id == input.routeId; });
+        if (found == expanded.end() || found->second.empty()) {
+            if (!authored) inputs.push_back(input);
+            continue;
+        }
+        const auto& lanes = found->second;
+        for (std::size_t k = 0; k < lanes.size(); ++k) {
+            auto share = input;
+            share.id = lanes.size() == 1 ? input.id : input.id + "/lane-" + std::to_string(k + 1);
+            share.routeId = lanes[k];
+            // The authored volume is the LINK total, divided across the lanes it reaches. It is
+            // an authoring convenience, not a lane-choice model: the engine has no lane changing,
+            // so nothing here claims that this is how traffic really distributes itself.
+            share.vehiclesPerHour = input.vehiclesPerHour / static_cast<double>(lanes.size());
+            inputs.push_back(std::move(share));
+        }
+    }
+    scenario.routes = std::move(routes);
+    scenario.inputs = std::move(inputs);
     for (const auto& head : network.signalHeads) scenario.signalHeads.push_back(rebaseHead(table, head));
     // Appended, not assigned: an authored rule keeps its own two numbers, and a derived one is
     // added for each merge the drawing creates. Order follows path order, so it is reproducible.
@@ -42,6 +104,20 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {
         if(std::find(table.unsectionable.begin(),table.unsectionable.end(),c.id)!=
            table.unsectionable.end())
             issues.push_back({"UNSUPPORTED_CONNECTOR_POSITION",path});
+    }
+    return issues;
+}
+std::vector<ValidationIssue> routeRuntimeIssues(const Network& network,
+                                                const ScenarioDefinition& definition) {
+    std::vector<ValidationIssue> issues;
+    const auto table = runtimeSections(network);
+    for (std::size_t i = 0; i < definition.routes.size(); ++i) {
+        const auto& route = definition.routes[i];
+        if (route.segmentIds.empty() || routeAlreadyExpanded(table, route.segmentIds) ||
+            !routeLaneChains(network, route.segmentIds).empty()) continue;
+        // The objects named do not join up for a single lane, so nothing can travel this route.
+        // UNSUPPORTED_ prefix on purpose: authoring tolerates it (D18b), Run does not.
+        issues.push_back({"UNSUPPORTED_ROUTE_TOPOLOGY", "routes[" + std::to_string(i) + "]"});
     }
     return issues;
 }
@@ -96,6 +172,8 @@ Scenario compileScenario(const Network& network, const ScenarioDefinition& defin
     // Order is load-bearing: the network pass reports UNKNOWN_LANE before laneGeometry can throw.
     assertValidNetwork(network);
     auto issues=connectorRuntimeIssues(network);
+    for(auto& issue:routeRuntimeIssues(network,definition))
+        issues.push_back(std::move(issue));
     for(auto& issue:priorityDefaultsIssues(network,definition.priorityDefaults))
         issues.push_back(std::move(issue));
     if(!issues.empty())throw ValidationError(std::move(issues));

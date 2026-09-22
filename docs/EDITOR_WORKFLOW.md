@@ -74,12 +74,12 @@ a later release cannot commit it. Existing copy, move and vertex gestures keep t
 
 | Gesture | Effect |
 |---|---|
-| `R`, then left-click (or `Ctrl`+right-click) a lane | Starts a route draft there |
-| Left-click a further lane or connector | Appends the whole chain leading to it; refused, with a red flash, when none leads there or two do |
+| `R`, then left-click (or `Ctrl`+right-click) a link | Starts a route draft there, covering every lane of it |
+| Left-click a further link or connector | Appends the whole chain leading to it; refused, with a red flash, when none leads there or two do |
 | `Backspace` | Removes the last segment of the draft |
 | `Enter` or double-click | Stores the route — one History entry, the same command the dialog uses |
 | `Esc`, or moving focus off the canvas | Cancels the draft; nothing is stored |
-| `V`, then left-click a lane | Places a vehicle input on the route starting there, or offers to draw one |
+| `V`, then left-click a link | Places a vehicle input on the route starting there, or offers to draw one. Its volume is the link total, split across the lanes the route reaches |
 | Right-click (without dragging) a drawn route or input | Edit, delete, or show it in its table |
 
 The draft and the selected route draw as moving dashes with direction arrows, the hovered

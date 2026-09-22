@@ -128,7 +128,7 @@ int main(int argc,char** argv) {
             const auto saved=documentJson(w.history().document());
             w.saveFile(lanesFile);w.openFile(lanesFile);
             require(documentJson(w.history().document())==saved,"Lanes tab lost on save/reopen");
-            require(saved["schemaVersion"]==7,"Lanes tab did not write schema 7");
+            require(saved["schemaVersion"]==8,"Lanes tab did not write schema 8");
             c->select(id);
             require(item<QLineEdit>(w,"editorConnectorWidths")->text().contains("4.75"),
                     "Lanes tab did not reload into the field");
@@ -171,8 +171,18 @@ int main(int argc,char** argv) {
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(0);
         lane(item<QComboBox>(w,"editorConnectorObject"),"west-east");
         lane(target,"north-1");const auto controlled=documentJson(w.history().document());action(w,"editorApplyConnector");
-        require(documentJson(w.history().document())==controlled,"Retarget broke existing route");
-        require(item<QLabel>(w,"editorError")->text().contains("route uses"),"Referenced-route feedback missing");
+        // M1.26: a route names the Connector, not its paths, so retargeting is allowed. The
+        // route it can no longer carry is kept and reported, not deleted and not refused.
+        require(documentJson(w.history().document())!=controlled,"Retarget was still refused");
+        require(w.history().document().definition->routes.size()==2,"Retarget dropped a route");
+        {
+            const auto issues=routeRuntimeIssues(w.history().document().network,
+                                                 *w.history().document().definition);
+            require(issues.size()==1 && issues.front().code=="UNSUPPORTED_ROUTE_TOPOLOGY",
+                    "Broken route was not reported");
+        }
+        action(w,"editorUndo");
+        require(documentJson(w.history().document())==controlled,"Retarget undo lost the route");
         answer(QMessageBox::No);action(w,"editorDeleteConnector");
         require(documentJson(w.history().document())==controlled,"Cancelled delete changed document");
         answer(QMessageBox::Yes);action(w,"editorDeleteConnector");

@@ -44,7 +44,7 @@ Json documentJson(const ProjectDocument& d) {
     for (const auto& h : d.network.signalHeads)
         network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}, {"name",h.name}});
     const auto& b = d.background;
-    return {{"format", "TrafficSim"}, {"schemaVersion", 7}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
+    return {{"format", "TrafficSim"}, {"schemaVersion", 8}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
@@ -67,7 +67,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 7) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 8) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -84,7 +84,13 @@ ProjectDocument parseDocument(const Json& j) {
     }
     if (!present(j, "network")) throw std::invalid_argument("EDIT_NO_NETWORK");
     d.network = parseNetwork(j.at("network"), j.contains("schemaVersion") ? j.at("schemaVersion").get<int>() : 0);
-    if (present(j, "definition")) d.definition = parseAuthoringDefinition(j.at("definition"));
+    if (present(j, "definition")) {
+        d.definition = parseAuthoringDefinition(j.at("definition"));
+        // Schema 7 and earlier stored a route as lanes and Connector paths. Schema 8 stores the
+        // Links and Connectors those belong to, so that narrowing a Connector cannot invalidate
+        // a route. The mapping is idempotent, which is what lets it run on every read.
+        migrateRoutesToObjects(d.network, *d.definition);
+    }
     validateDocument(d);
     return d;
 }

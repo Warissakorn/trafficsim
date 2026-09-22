@@ -26,7 +26,9 @@ TEST(demand, failed_edits_preserve_redo_and_allocator) {
     History h;h.reset();
     h.execute("road",[](auto& d){addLink(d,{{0,0},{100,0}},1,3.5);});h.undo();
     const auto before=documentJson(h.document());
-    test::throws([&]{h.execute("bad route",[](auto& d){putRoute(d,{"",{"ghost"}});});},"UNKNOWN_SEGMENT");
+    // A route names objects (M1.26), and an object that does not exist is refused where the
+    // route is stored -- not later, by a compile that would report a segment nobody authored.
+    test::throws([&]{h.execute("bad route",[](auto& d){putRoute(d,{"",{"ghost"}});});},"EDIT_UNKNOWN_OBJECT");
     CHECK(documentJson(h.document())==before);CHECK(h.canRedo());CHECK(!h.canUndo());
 }
 TEST(demand, catalog_overrides_and_missing_catalog_are_explicit) {

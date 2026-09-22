@@ -158,6 +158,10 @@ double attachmentStation(const Network&, const LaneReference&, bool outgoing);
 // case the M0 whole-lane runtime can traverse.
 bool attachedAtLinkEnd(const Network&, const LaneReference&, bool outgoing);
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
+// A route whose Links and Connectors do not join up for any lane: nothing can travel it, so Run
+// refuses it. Authoring tolerates it, because an author moving a Connector must not have the
+// document reject the edit -- the route is reported, not deleted.
+std::vector<ValidationIssue> routeRuntimeIssues(const Network&, const ScenarioDefinition&);
 // Blocks Run when the drawing creates a merge but the numbers that arbitrate it were not read
 // from data/priority-rules/. Separate from connectorRuntimeIssues because it needs the resolved
 // definition, and shared with runtimeDiagnostics so the panel and Run agree.
@@ -223,23 +227,31 @@ std::vector<std::string> expandRouteSegments(const RuntimeSections&, const std::
 // and store in a route. Never used to run anything -- offering a derived section id as something
 // to persist would put a copy of derived data in the project file.
 std::vector<Segment> authoringSegments(const RuntimeSections&);
-// What an author may append to a route they are building: whole lanes and Connector paths that
-// the tail actually leads to, never a segment already in the route. One rule, used by the route
-// dialog and by the pointer gesture on the canvas -- two copies of it would drift apart.
-std::vector<std::string> routeContinuations(const RuntimeSections&, const std::vector<std::string>& authored);
+// An authored route names LINKS and CONNECTORS in travel order, never a lane and never a
+// Connector path: a route belongs to the carriageway, so changing how many lanes a Connector
+// carries can never invalidate it. The per-lane chains are derived below, at compile time.
+//
+// What may follow the tail of `authored`, never an object already in it. One rule, used by the
+// route dialog and by the pointer gesture on the canvas -- two copies of it would drift apart.
 std::vector<std::string> routeContinuations(const Network&, const std::vector<std::string>& authored);
-// The chain of segments that leads from the tail of `authored` to `target`, so an author can
-// click a destination instead of naming every segment on the way. Empty when the target cannot
+// The chain of objects that leads from the tail of `authored` to `target`, so an author can
+// click a destination instead of naming every object on the way. Empty when the target cannot
 // be reached, is further than the search bound, or is reachable two ways at the same depth --
 // an ambiguity is the author's to settle, never this function's to guess.
-std::vector<std::string> routeChainTo(const RuntimeSections&, const std::vector<std::string>& authored,
-                                      const std::string& target);
 std::vector<std::string> routeChainTo(const Network&, const std::vector<std::string>& authored,
                                       const std::string& target);
-// The polyline a route draws as: its lanes' and Connector paths' geometry, end to end. Drawing
-// only, and tolerant of a network that would not compile, because a draft is drawn while it is
-// still being built.
-std::vector<Point> routeGeometry(const Network&, const std::vector<std::string>& segmentIds);
+// One lane-level chain per lane the route actually carries: lane k of the first Link, the
+// Connector path that leaves that lane, the lane it arrives on, and so on. A lane with no path
+// onward contributes no chain, which is exactly what makes narrowing a Connector safe. Empty
+// when the objects do not connect at all -- a route nothing can travel, which Run must refuse.
+std::vector<std::vector<std::string>> routeLaneChains(const Network&,
+                                                      const std::vector<std::string>& objectIds);
+// The centreline of one Link or Connector, for drawing what the pointer is over. Empty for an
+// unknown id or geometry that does not build, because a draft is drawn mid-edit.
+std::vector<Point> objectGeometry(const Network&, const std::string& objectId);
+// One polyline per lane chain, clipped to the sections the vehicles actually travel. Drawing
+// the whole lane instead put a line upstream of a mid-body arrival, against the traffic on it.
+std::vector<std::vector<Point>> routeGeometries(const Network&, const std::vector<std::string>& objectIds);
 // One priority rule per Connector arriving inside a lane body: the arriving path gives way to the
 // section upstream of the arrival, which is the merge that sectioning creates. Derived from the
 // drawing, never authored or persisted. Throws EDIT_NO_PRIORITY_DEFAULTS rather than deriving a

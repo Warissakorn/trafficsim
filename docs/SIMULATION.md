@@ -86,8 +86,14 @@ Desired speeds belong to the vehicle-type distribution, not the link.
 
 - Routes explicitly list connected lane/connector segment IDs. Route order is meaningful.
   There is no routing algorithm, lane changing or repeated segment within a route yet.
+  **The runtime route is compiled, never authored** (M1.26): an authored route names Links and
+  Connectors, and `buildScenario` expands it into one runtime route per lane the drawing
+  carries, keeping the authored id when there is exactly one.
 - Sources must begin on segments with no predecessor. They are Poisson processes with
   a rate in vehicles/hour over `[startTime, endTime)`. Zero-rate inputs generate no cars.
+  An authored input's volume is the **Link total** and is divided **equally** across its
+  route's lanes at compile time. That split is an authoring convenience, not a lane-choice
+  model — this engine has no lane changing — and like every figure here it is unvalidated.
 - A segment with multiple predecessors is rejected with `UNSUPPORTED_MERGE` **unless the merge is
   arbitrated** (M3.1): it is accepted only when at least *n*−1 of its *n* predecessors carry a
   `PriorityRule` naming another of them, so exactly one has priority and the rest have somewhere
