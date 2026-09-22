@@ -223,6 +223,23 @@ std::vector<std::string> expandRouteSegments(const RuntimeSections&, const std::
 // and store in a route. Never used to run anything -- offering a derived section id as something
 // to persist would put a copy of derived data in the project file.
 std::vector<Segment> authoringSegments(const RuntimeSections&);
+// What an author may append to a route they are building: whole lanes and Connector paths that
+// the tail actually leads to, never a segment already in the route. One rule, used by the route
+// dialog and by the pointer gesture on the canvas -- two copies of it would drift apart.
+std::vector<std::string> routeContinuations(const RuntimeSections&, const std::vector<std::string>& authored);
+std::vector<std::string> routeContinuations(const Network&, const std::vector<std::string>& authored);
+// The chain of segments that leads from the tail of `authored` to `target`, so an author can
+// click a destination instead of naming every segment on the way. Empty when the target cannot
+// be reached, is further than the search bound, or is reachable two ways at the same depth --
+// an ambiguity is the author's to settle, never this function's to guess.
+std::vector<std::string> routeChainTo(const RuntimeSections&, const std::vector<std::string>& authored,
+                                      const std::string& target);
+std::vector<std::string> routeChainTo(const Network&, const std::vector<std::string>& authored,
+                                      const std::string& target);
+// The polyline a route draws as: its lanes' and Connector paths' geometry, end to end. Drawing
+// only, and tolerant of a network that would not compile, because a draft is drawn while it is
+// still being built.
+std::vector<Point> routeGeometry(const Network&, const std::vector<std::string>& segmentIds);
 // One priority rule per Connector arriving inside a lane body: the arriving path gives way to the
 // section upstream of the arrival, which is the merge that sectioning creates. Derived from the
 // drawing, never authored or persisted. Throws EDIT_NO_PRIORITY_DEFAULTS rather than deriving a

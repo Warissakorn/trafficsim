@@ -201,37 +201,25 @@ Owner Windows interaction and timed acceptance remain open.
 
 ### M1.12.1 — A Connector's own lane widths and markings
 
-**Implemented.** `Connector::laneWidths` (one metre value per lane path) and `laneMarkings` (a
-`MarkingType` per interior divider), both empty by default meaning "derive it from the Links", in
-schema 6. `connectorLaneWidths` is the single place a width is decided. The full body, including the
-per-divider indexing note and what it does NOT claim about Vissim parity, is in
+**Implemented.** `Connector::laneWidths` and `laneMarkings`, both empty by default meaning
+"derive it from the Links", in schema 6; `connectorLaneWidths` is the single place a width is
+decided. Full body, including what it does NOT claim about Vissim parity, in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
 
 **Closed.** The reported 24% over-width was measured ALONG the cross-section, where a mitered
-corner's diagonal is `width / cos(φ/2)` by construction; projected across the leg the vertex lies
-on, the carriageway is 7.000000 m exactly. `offsetGeometry` was not changed — removing the miter
-would reinstate the pinch it exists to fix (18% at 63°, 30% at a right angle). The full
-measurements, and the lesson that a distance between two boundaries is only a width if it is
-measured square to the road, are in
+corner's diagonal is `width / cos(φ/2)` by construction; square to the road the carriageway is
+7.000000 m exactly, so `offsetGeometry` was not changed. Measurements in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.12.3 — The Link wins at the mouth (widths) — **closed by M1.19**
 
-Carved out of M1.12.1. An authored width replaces the Link's width at **both** ends
-(`road_boundaries.cpp:69-70`), so a Connector whose author typed a width no longer matches the
-lanes it attaches to. The owner's rule: the Link wins at the mouth, the authored width takes over
-through the body, the difference shows as a taper. Deliberately not done alongside M1.18 — that
-one moves where a mouth sits, this one how wide it is, and together a failing width test and a
-failing mouth test are indistinguishable.
-
-**Closed by M1.19**, which had to decide the same question to put the lane middles on the Link's:
-the mouth is built from the Link's widths, the authored width takes over through the body over a
-transition zone of one carriageway width. `an_authored_width_is_exact_where_the_connector_is_
-straight` pins both halves to 1e-9. `TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) was **not**
-re-derived: it reads `connectorShapeIssues`, which measures from `connectorLaneWidths`, and that
-function is unchanged.
+**Closed by M1.19**: the mouth is built from the Link's widths and the authored width takes over
+through the body, over a transition of one carriageway width, pinned to 1e-9 by
+`an_authored_width_is_exact_where_the_connector_is_straight`. `TIGHT_CONNECTOR_RADIUS` was not
+re-derived — it reads `connectorShapeIssues`, which is unchanged. The carve-out's reasoning is in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.13–M1.20 — Completed geometry and authoring iterations
 
@@ -241,21 +229,15 @@ Connector placement with off-Link cleanup (M1.20). M1.17's lateral wedge remains
 The complete original entries are retained in
 [archive/ROADMAP-M1-implemented.md](archive/ROADMAP-M1-implemented.md).
 
-### M1.21 — Authoring extensions from the supplied specifications
+### M1.21 / M1.21.1 — Supplied-spec authoring, and the lifecycle audit
 
-**Implemented; automated verification recorded in PROGRESS.** Shared Link boundary markings,
-none/double marking strokes in both renderers, schema-7 persistence, Link insert/midpoint/
-straighten/unreferenced-reverse actions, import cross-section validation and warning severity.
-Unknown schema-7 network-object fields are rejected, so unsupported behavior is never silently
-lost. [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md) defines the actual supported subset.
-Owner M1 acceptance remains open. This does not close the supplied target specifications.
-
-### M1.21.1 — Network lifecycle correctness audit
-
-Wrong-side endpoint retarget, steep-mouth fallback/advisory, physical range picking,
-release-only group/rectangle gestures, capacity-limited resize and degenerate lane/tangent
-handling are implemented. `NETWORK_LIFECYCLE_AUDIT.md` records finite model/UI coverage,
-the restored CTest point group and preserved M1.20 semantics. Owner acceptance stays open.
+**Implemented.** Schema 7 carries the supported subset of the owner's specifications (unsupported
+network-object fields fail on load rather than vanishing on save), and the 2026-09-21 lifecycle
+audit fixed wrong-side retargets, pathological mouths, physical range picking and coalesced
+releases. Both entries in full, with what they do not claim, are in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); see also
+`docs/SPEC_AUDIT.md`, `docs/AUTHORING_EXTENSIONS.md` and `docs/NETWORK_LIFECYCLE_AUDIT.md`.
+Owner M1 acceptance remains open, and neither closes the supplied target specifications.
 
 ### M1.22 — Remaining authoring and interaction requirements
 
@@ -272,18 +254,17 @@ Implemented: a bilingual History dock with named Undo/Redo, current/saved-state 
 navigation through the retained 100 edits and branch-safe revision IDs; arrow-key nudging
 through the existing group-move command, with grid/Shift increments. Level filtering removes
 hidden selections, explicit table/inspector selections reveal their objects, and loss of canvas
-focus cancels active mouse gestures. These changes do not close M1.22: remaining
-geometry/snapping tools, layer locks, bulk inspection, context menus and the keyboard-only
-owner exercise remain open. M1's timed intersection/reopen gate also remains open.
+focus cancels active mouse gestures. This does not close M1.22: geometry/snapping tools, layer
+locks, bulk inspection and the keyboard-only owner exercise remain open, as does M1's timed
+gate.
 
 #### M1.22.2 — Selection rotation
 
-Implemented: Alt-left-drag with pivot/angle/outline preview, Shift for 15-degree steps, and
-an exact-angle dialog (Ctrl+Shift+R), translated in both languages. The shared rigid transform
-preserves internal Connector shapes, stations, lane metadata and carried heads. Partial edits
-retain M1.20 attachment cleanup in one Undo/Redo transaction. Both-side model and Qt gesture
-tests cover reference cleanup, cancellation, no-ops, saved files and run invalidation.
-Custom pivots, other alignment/snap priorities and owner keyboard/timed acceptance remain open.
+Implemented: Alt-left-drag with pivot/angle/outline preview, Shift for 15-degree steps, and an
+exact-angle dialog (Ctrl+Shift+R), in both languages. The shared rigid transform preserves
+internal Connector shapes, stations, lane metadata and carried heads; partial edits retain M1.20
+attachment cleanup in one Undo/Redo transaction. Custom pivots, other alignment/snap priorities
+and owner keyboard/timed acceptance remain open.
 
 ### M1.23 — Interchange, document workflow and measured rendering
 
@@ -295,18 +276,37 @@ reproducible real-network benchmark. Do not claim 10k/100k-object performance in
 
 ### M1.24 — One window: the M0 harness window retired
 
-Implemented: `trafficsim-desktop` opens the network editor directly. The separate M0
-simulation window (`MainWindow`) and the QPainter diagnostic view it owned (`src/render/`)
-are removed; `--scenario` opens either file kind in the editor, and `--editor` is accepted
-as a no-op so existing shortcuts keep working. The editor’s run status carries the mean
-trip delay and safety-clamp count the retired window showed, fed from the same
-`SummaryAccumulator` the CLI uses. `scenario-run-ui` replaces `desktop-controls` and pins
-the editor’s run of `crossing.json` against the CLI baseline.
+Implemented: `trafficsim-desktop` opens the network editor directly. The separate M0 simulation
+window (`MainWindow`) and the QPainter view it owned (`src/render/`) are removed; `--scenario`
+opens either file kind in the editor and `--editor` is a no-op so existing shortcuts keep
+working. The editor's run status carries the mean trip delay and safety-clamp count the retired
+window showed, from the same `SummaryAccumulator` the CLI uses, and `scenario-run-ui` replaces
+`desktop-controls`, pinning the editor's run of `crossing.json` to the CLI baseline.
 
 **Not in M1.24, deliberately:** no engine, schema or measurement change — `src/core/` is
 untouched and every figure is still the not-yet-validated diagnostic M6 must replace.
 Saving an opened M0 scenario still writes a schema-7 project; exporting scenario JSON from
 the editor is not implemented and stays open.
+
+
+### M1.25 — Demand authoring by pointer (routes and vehicle inputs)
+
+Implemented: the Routes tool builds a route by clicking — `Ctrl`+right-click or left-click the
+start lane, then click each destination and the **whole chain** leading to the lane or Connector
+path under it is appended (Vissim's "click the destination"); `Backspace` drops the last, `Enter`
+or double-click stores it through the same `putRoute` the dialog uses, `Esc` and focus loss
+cancel. The Vehicle inputs tool places an input on the lane traffic enters on, opening the dialog
+on the route starting there; a right-click that does not pan opens a menu on a drawn route or
+input. The canvas draws draft and selected route as marching dashes with arrows, a rubber band
+reddening where no chain reaches, a halo on the hovered lane, a chevron per input and a pulse on
+commit or refusal — paint state behind one timer. `routeContinuations`
+(`src/model/network/routing.cpp`) is the one rule for what may follow a segment, which the dialog
+now calls instead of its own copy, and `routeChainTo` returns **nothing** where two chains reach
+the target at the same depth. **Not in M1.25:** one route, one vehicle type and one interval per
+input is unchanged; compositions, per-interval volumes, relative flows and a positioned routing
+decision are **M2.1**, behind M2's unwritten gate. **Its own gate:** the keyboard-only equivalent
+of both gestures and the owner's timed exercise in `M1_ACCEPTANCE.md`; automated gesture tests do
+not close it.
 
 ---
 

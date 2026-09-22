@@ -310,3 +310,53 @@ the trade the owner took at the time are in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ---
+
+
+---
+
+## Moved out of ROADMAP on 2026-09-22 (M1.25 session), to keep that file near 500 lines
+
+### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
+
+**Closed.** The reported 24% over-width was measured ALONG the cross-section, where a mitered
+corner's diagonal is `width / cos(φ/2)` by construction; projected across the leg the vertex lies
+on, the carriageway is 7.000000 m exactly. `offsetGeometry` was not changed — removing the miter
+would reinstate the pinch it exists to fix (18% at 63°, 30% at a right angle). The full
+measurements, and the lesson that a distance between two boundaries is only a width if it is
+measured square to the road, are in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+
+### M1.12.3 — The Link wins at the mouth (widths) — **closed by M1.19**
+
+Carved out of M1.12.1. An authored width replaces the Link's width at **both** ends
+(`road_boundaries.cpp:69-70`), so a Connector whose author typed a width no longer matches the
+lanes it attaches to. The owner's rule: the Link wins at the mouth, the authored width takes over
+through the body, the difference shows as a taper. Deliberately not done alongside M1.18 — that
+one moves where a mouth sits, this one how wide it is, and together a failing width test and a
+failing mouth test are indistinguishable.
+
+**Closed by M1.19**, which had to decide the same question to put the lane middles on the Link's:
+the mouth is built from the Link's widths, the authored width takes over through the body over a
+transition zone of one carriageway width. `an_authored_width_is_exact_where_the_connector_is_
+straight` pins both halves to 1e-9. `TIGHT_CONNECTOR_RADIUS` (`compile.cpp:73`) was **not**
+re-derived: it reads `connectorShapeIssues`, which measures from `connectorLaneWidths`, and that
+function is unchanged.
+
+
+
+### M1.21 — Authoring extensions from the supplied specifications
+
+**Implemented; automated verification recorded in PROGRESS.** Shared Link boundary markings,
+none/double marking strokes in both renderers, schema-7 persistence, Link insert/midpoint/
+straighten/unreferenced-reverse actions, import cross-section validation and warning severity.
+Unknown schema-7 network-object fields are rejected, so unsupported behavior is never silently
+lost. [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md) defines the actual supported subset.
+Owner M1 acceptance remains open. This does not close the supplied target specifications.
+
+### M1.21.1 — Network lifecycle correctness audit
+
+Wrong-side endpoint retarget, steep-mouth fallback/advisory, physical range picking,
+release-only group/rectangle gestures, capacity-limited resize and degenerate lane/tangent
+handling are implemented. `NETWORK_LIFECYCLE_AUDIT.md` records finite model/UI coverage,
+the restored CTest point group and preserved M1.20 semantics. Owner acceptance stays open.
+

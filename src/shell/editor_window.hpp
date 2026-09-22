@@ -83,12 +83,21 @@ private:
     void refreshDemand();
     void translateDemand();
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
-    void editInput(const std::string& id = {});
+    void editInput(const std::string& id = {}, const std::string& preselectedRoute = {});
     void editProgram(const std::string& id = {});
     void editHead(const std::string& id = {});
     void editRunSettings();
     void deleteDemand(const std::string& kind, const std::string& id);
     void selectDemand(const std::string& id);
+    // Pointer authoring (M1.25): the canvas draws and gestures, the window commits. Both go
+    // through the same putRoute/putInput commands the dialogs use.
+    void buildRouting();
+    void commitDrawnRoute(const std::vector<std::string>& segmentIds);
+    void placeInputOnLane(const LaneReference& lane);
+    void showDemandMenu(QPoint viewportPosition);
+    void syncHighlightedRoute();
+    void refreshToolHint();
+    QLabel* toolHint_{};
     void buildRunControls();
     void refreshRun();
     bool prepareRun();

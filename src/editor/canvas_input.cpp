@@ -15,7 +15,12 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     }
     if(e->button()==Qt::RightButton && (e->modifiers()&Qt::ControlModifier)) {
         lastPick_=world(e->pos(),false);
-        if(tool_==Tool::route || tool_==Tool::input || tool_==Tool::head) {
+        if(tool_==Tool::route || tool_==Tool::input) {
+            // Vissim starts a routing decision with Ctrl+right-click on the link it sits on.
+            // The same press on the left button does the same thing, through demandPress.
+            demandPress(e);return;
+        }
+        if(tool_==Tool::head) {
             const auto lane=nearestLane(lastPick_);
             if(lane && createDemandGesture)createDemandGesture(*lane,tool_);
             return;
@@ -29,7 +34,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         if(gestureFrom_)draft_.front()=laneAttachment(document_->network,*gestureFrom_,true);
         redraw();return;
     }
-    if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; panStart_=e->pos(); return; }
+    if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; panStart_=panPress_=e->pos(); return; }
     if (e->button()!=Qt::LeftButton) return;
     auto p=world(e->pos());lastPick_=world(e->pos(),false);
     if((e->modifiers()&Qt::ControlModifier) && tool_==Tool::select) {
@@ -38,7 +43,8 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         copyPick_=picked.first;copyArmed_=isSelected(copyPick_);copyStart_=e->pos();dragStart_=p;
         copyDragging_=false;copyOffset_={};return;
     }
-    if(tool_==Tool::route || tool_==Tool::input || tool_==Tool::head)return;
+    if(demandPress(e))return;
+    if(tool_==Tool::head)return;
     if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {startRotation(e->pos());return;}
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
@@ -135,6 +141,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         horizontalScrollBar()->setValue(horizontalScrollBar()->value()-delta.x());
         verticalScrollBar()->setValue(verticalScrollBar()->value()-delta.y()); return;
     }
+    if(demandHover(e))return;
     if (tool_==Tool::connect && connectorFrom_) {
         const auto hovered=hitLanePosition(world(e->pos(),false),false);
         if (hovered!=connectorHover_) { connectorHover_=hovered; redraw(); }
@@ -212,7 +219,15 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         else if(resizeRangeRequested)resizeRangeRequested(from,to,kind>4);
         redraw();return;
     }
-    if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=false; return; }
+    if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) {
+        const bool click=(e->pos()-panPress_).manhattanLength()<QApplication::startDragDistance();
+        panning_=false;
+        // A right-DRAG pans, which is the gesture this editor already spends the button on.
+        // A right-CLICK spent nothing until now, so a context menu displaces no gesture.
+        if(click && e->button()==Qt::RightButton && !(e->modifiers()&Qt::ControlModifier) && contextMenuRequested)
+            contextMenuRequested(e->pos());
+        return;
+    }
     if(e->button()==Qt::LeftButton && band_) {
         const auto p=world(e->pos(),false);
         const auto box=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized();
@@ -236,6 +251,7 @@ void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton) return;
     if(e->modifiers()&Qt::AltModifier)return;
     if(tool_==Tool::draw) { finishDrawing(); return; }
+    if(tool_==Tool::route) { commitRouteDraft(); return; }
     if(tool_!=Tool::select) return;
     cancel();
     insertVertex(world(e->pos(),false));
@@ -277,7 +293,12 @@ void EditorCanvas::removeVertex() {
 }
 void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     if(e->key()==Qt::Key_Escape) { if(stopRequested)stopRequested(); cancel(); return; }
-    if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) { finishDrawing(); return; }
+    if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) {
+        if(!routeDraft_.empty()) {commitRouteDraft();return;}
+        finishDrawing(); return;
+    }
+    // Only while a route draft is open: Backspace belongs to the view otherwise.
+    if(e->key()==Qt::Key_Backspace && !routeDraft_.empty()) { dropLastRouteSegment(); return; }
     if(e->key()==Qt::Key_Tab) {cycleOverlap();return;}
     if(e->key()==Qt::Key_Delete) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
     const bool arrow = e->key()==Qt::Key_Left || e->key()==Qt::Key_Right ||
@@ -307,7 +328,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     QGraphicsView::keyPressEvent(e);
 }
 bool EditorCanvas::mouseGestureActive() const {
-    return creating_ || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
+    return creating_ || !routeDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
            laneResize_ || panning_ || band_ || dragging_;
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {

@@ -7,6 +7,8 @@
 #include <optional>
 #include <map>
 
+class QTimer;
+
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
 public:
@@ -50,6 +52,27 @@ public:
     std::function<void(const std::vector<Point>&)> createLinkGesture;
     std::function<void(LaneReference,LaneReference,const std::vector<Point>&)> createRangeGesture;
     std::function<void(LaneReference,Tool)> createDemandGesture;
+    // A route drawn by pointer: the segments, in travel order, exactly as the dialog would
+    // have stored them. The canvas never writes to the document itself.
+    std::function<void(std::vector<std::string>)> routeDraftCommitted;
+    std::function<void(LaneReference)> inputPlaced;
+    const std::vector<std::string>& routeDraft() const { return routeDraft_; }
+    void commitRouteDraft();
+    void dropLastRouteSegment();
+    // Which route is drawn on the canvas. The shell owns table selection, so it says.
+    void setHighlightedRoute(std::string id);
+    // Begin a route at this segment without a click: the input tool offers it when no route
+    // starts where the author wants an input.
+    void startRouteDraft(const std::string& segmentId);
+    // The demand object drawn under this viewport position, for the context menu. Returns the
+    // id of a vehicle input or of the drawn route, and an empty string for anything else.
+    std::pair<std::string,std::string> demandObjectAt(QPoint viewportPosition) const;
+    std::function<void(QPoint)> contextMenuRequested;
+    const std::string& highlightedRoute() const { return highlightedRoute_; }
+    // Paint state only, advanced by a timer. Tests set it directly: waiting on wall clock for
+    // an animation is how a suite becomes flaky, and no measured number depends on it.
+    void setAnimationPhase(int phase);
+    int animationPhase() const { return animationPhase_; }
     std::function<void(Point)> duplicateRequested;
     std::function<void(Point)> translateRequested;
     std::function<void(Point,double)> rotateRequested;
@@ -99,6 +122,24 @@ private:
     void startRotation(QPoint);
     void updateRotation(QPoint, bool angleSnap);
     void drawRotationPreview();
+    void drawDemandOverlay();
+    void drawRouteArrows(const std::vector<Point>&, QColor);
+    std::string segmentAt(Point) const;
+    std::optional<LaneReference> laneOf(const std::string& segmentId) const;
+    std::vector<std::string> routeDraftWith(const std::string& target) const;
+    bool demandPress(QMouseEvent*);
+    bool demandHover(QMouseEvent*);
+    void clearRouteDraft();
+    void reject();
+    void animate();
+    bool animating() const;
+    std::vector<std::string> routeDraft_;
+    std::vector<Point> pulseGeometry_;
+    std::string hoverSegment_, highlightedRoute_;
+    bool hoverReachable_{};
+    Point hoverPoint_{};
+    int animationPhase_{}, commitPulse_{}, rejectPulse_{};
+    QTimer* animation_{};
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;
@@ -129,7 +170,7 @@ private:
     std::optional<LaneReference> connectorFrom_, connectorHover_;
     int vertex_{-1};
     bool dragging_{}, panning_{};
-    QPoint panStart_, dragPress_;
+    QPoint panStart_, panPress_, dragPress_;
     Point dragStart_{};
     Point world(QPoint position, bool snapped = true) const;
     const Link* selectedLink() const;

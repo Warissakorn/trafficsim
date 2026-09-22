@@ -147,7 +147,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         else editHead();
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
-    buildDemandTables(); buildRunControls(); buildRecovery(); buildPalette();
+    buildDemandTables(); buildRouting(); buildRunControls(); buildRecovery(); buildPalette();
     history_.reset(); translate(); refresh(); resize(1280,850); canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {
@@ -167,7 +167,7 @@ void EditorWindow::translate() {
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables(); translateDemand(); translatePalette();
+    retranslateTables(); translateDemand(); translatePalette(); refreshToolHint();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     error_->clear(); refresh();
 }

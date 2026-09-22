@@ -136,7 +136,7 @@ gesture at the same time as the model is far cheaper than retrofitting it.
 
 | Object | Vissim gesture ✔ | Status here |
 |---|---|---|
-| **Vehicle routes (static)** | `Ctrl`+right-click on the link/connector at the routing decision, then left-click the destination section | No authoring model — untyped JSON under `ProjectDocument::definition`. **M1.5.1** |
+| **Vehicle routes (static)** | `Ctrl`+right-click on the link/connector at the routing decision, then left-click the destination section | Typed since **M1.5.1**; the gesture itself is **M1.25**: the Routes tool takes the same `Ctrl`+right-click (or a plain left-click) at the start and a left-click on each destination, and the route draws on the canvas. Relative flows and per-interval volumes are still absent — M2.1 |
 | **Nodes** | Right-click-drag a polygon over the junction, double-click the first point to close | Absent entirely. Nodes are how Vissim aggregates delay and queue per junction — the output a traffic impact study needs. Belongs with **M5 evaluation**, not the editor |
 | **Signal controllers** | `Signal Control > Signal Controllers` table, right-click → **Add…**, then **Edit signal groups** | We have `NetworkSignalHead { programId }` and a flat `SignalProgram` — no controller, no signal groups, no head-to-group mapping. **M4** |
 | **Parking lots** | **Car Park Creator** generates bays and their connectors from a drawn area | Absent. Not booked (§4) |
@@ -417,10 +417,10 @@ placement for objects that are typed into a dialog today" are not the same size 
 
 | Vissim | ours, in code | verdict |
 |---|---|---|
-| **Snap to Links/Connectors** — dragging heads, stop signs, PT stops, vehicle inputs onto a lane | heads, inputs and routes are **not placed by pointer at all**: `canvas_input.cpp:16-20` takes `nearestLane()` for the lane and opens a dialog for the position. Stop signs and PT stops are not object types | Not a snap gap. Pointer placement is the gap, and the missing object types are §6 item 5, still blocked on engine behaviour |
+| **Snap to Links/Connectors** — dragging heads, stop signs, PT stops, vehicle inputs onto a lane | **routes and vehicle inputs are placed by pointer since M1.25** (`canvas_demand.cpp`: the click resolves to the lane or Connector path it lands on, and the hovered lane is haloed before the click). Signal heads still take `nearestLane()` and a dialog. Stop signs and PT stops are not object types | Partly closed. The head is the remaining pointer-placement gap; the missing object types are §6 item 5, still blocked on engine behaviour |
 | **Snap to Points** — endpoints and intermediate points when connecting | endpoints yes; a station another Connector already attaches at, yes (added the same day); **intermediate points, now added** | **Done.** This was the one real snap gap |
 | **Snap to CAD (DWG/DXF)** | `BackgroundImage` holds a base64 **PNG** and nothing vector | Needs an import path, a DXF/DWG reader, vector storage, rendering and vertex hit-testing. A milestone, not a session. **Not booked** — no done-condition written |
-| **Snap to Vehicle Routes** — decision points with a snap radius | routes are lists of segment ids authored in a dialog; nothing is placed on the canvas | Not a snap gap. Canvas routing decisions belong with demand authoring (M1.5.1/M2). **Not booked** |
+| **Snap to Vehicle Routes** — decision points with a snap radius | **M1.25** draws routes on the canvas and resolves a click to the lane or Connector path under it, within a tolerance; a routing decision is still not a separate object with its own position along the link | Booked and half-closed. What remains is the decision point as an object, which is demand-model work (M2.1), not a snap radius |
 
 **The owner's opening statement — that Vissim does not snap to a Link end — is not the one we
 implemented, and the measurement is why.** The owner's own *Snap to Points* item lists the End
