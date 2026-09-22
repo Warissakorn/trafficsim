@@ -1,4 +1,5 @@
 #include "editor_storage.hpp"
+#include <nlohmann/json.hpp>
 #include <QBuffer>
 #include <QFile>
 #include <QImageReader>

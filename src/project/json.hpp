@@ -1,7 +1,7 @@
 #pragma once
 #include "../model/network/network.hpp"
 #include "../eval/summary.hpp"
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 namespace trafficsim {
 using Json = nlohmann::json;

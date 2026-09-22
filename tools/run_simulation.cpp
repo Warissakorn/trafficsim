@@ -1,6 +1,7 @@
 #include "../src/core/simulation.hpp"
 #include "../src/project/load.hpp"
 #include "../src/project/json.hpp"
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
 
