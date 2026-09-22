@@ -248,23 +248,15 @@ context menus, shortcuts and accessibility. History, nudging and rotation are im
 **Gate:** command/reference roundtrips plus both-side gesture tests and keyboard-only owner
 exercise. Settle the conflicts in SPEC_AUDIT before changing geometry or gestures.
 
-#### M1.22.1 — History navigation and safe keyboard editing
+#### M1.22.1–M1.22.2 — History, keyboard editing and selection rotation
 
-Implemented: a bilingual History dock with named Undo/Redo, current/saved-state markers,
-navigation through the retained 100 edits and branch-safe revision IDs; arrow-key nudging
-through the existing group-move command, with grid/Shift increments. Level filtering removes
-hidden selections, explicit table/inspector selections reveal their objects, and loss of canvas
-focus cancels active mouse gestures. This does not close M1.22: geometry/snapping tools, layer
-locks, bulk inspection and the keyboard-only owner exercise remain open, as does M1's timed
-gate.
-
-#### M1.22.2 — Selection rotation
-
-Implemented: Alt-left-drag with pivot/angle/outline preview, Shift for 15-degree steps, and an
-exact-angle dialog (Ctrl+Shift+R), in both languages. The shared rigid transform preserves
-internal Connector shapes, stations, lane metadata and carried heads; partial edits retain M1.20
-attachment cleanup in one Undo/Redo transaction. Custom pivots, other alignment/snap priorities
-and owner keyboard/timed acceptance remain open.
+Implemented: a bilingual History dock with named Undo/Redo and saved-state markers, arrow-key
+nudging through the group-move command, level-filtered selection, and Alt-drag rotation with a
+pivot/angle preview, Shift steps and an exact-angle dialog — all preserving internal Connector
+shapes, stations, lane metadata and carried heads in one Undo transaction. Full entries in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md). These do not close
+M1.22: geometry/snapping tools, custom pivots, layer locks, bulk inspection and the
+keyboard-only owner exercise remain open, as does M1's timed gate.
 
 ### M1.23 — Interchange, document workflow and measured rendering
 
@@ -274,39 +266,51 @@ Competitor-format imports and 3D require an explicit scope revision before imple
 **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
 reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
 
-### M1.24 — One window: the M0 harness window retired
+### M1.24 / M1.25 — One window, and demand authored by pointer
 
-Implemented: `trafficsim-desktop` opens the network editor directly. The separate M0 simulation
-window (`MainWindow`) and the QPainter view it owned (`src/render/`) are removed; `--scenario`
-opens either file kind in the editor and `--editor` is a no-op so existing shortcuts keep
-working. The editor's run status carries the mean trip delay and safety-clamp count the retired
-window showed, from the same `SummaryAccumulator` the CLI uses, and `scenario-run-ui` replaces
-`desktop-controls`, pinning the editor's run of `crossing.json` to the CLI baseline.
+Implemented: `trafficsim-desktop` opens the network editor directly, the separate M0 harness
+window and its QPainter view are gone, and the editor's run status carries the mean trip delay
+and safety-clamp count from the `SummaryAccumulator` the CLI uses (M1.24). Routes and vehicle
+inputs are then drawn by pointer — click the start, click each destination, and the chain
+between them is appended — with the draft, the selected route and each input drawn on the canvas
+(M1.25). Neither changed the engine, the schema or any measured number. Full entries in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
-**Not in M1.24, deliberately:** no engine, schema or measurement change — `src/core/` is
-untouched and every figure is still the not-yet-validated diagnostic M6 must replace.
-Saving an opened M0 scenario still writes a schema-7 project; exporting scenario JSON from
-the editor is not implemented and stays open.
+### M1.26 — Demand is authored per Link and compiled per lane
 
+**Implemented.** An authored route names **Links and Connectors**, never a lane and never a
+Connector path, and `buildScenario` expands it into one core route per lane the drawing actually
+carries (`routeLaneChains`, `src/model/network/routing.cpp`). Consequences, all of them the point:
+a route covers every lane of the carriageway; Connector lane counts can no longer invalidate it,
+so `changeConnectorRange`, `changeConnectorEndpoints`, `changeLanes` and `reverseLink` lost their
+route guards; a vehicle input's volume is the **Link total**, split equally across the lanes its
+route reaches; and the canvas draws the compiled chain, fixing a route drawn upstream of a
+mid-body arrival — a line running against the traffic on that Link. Two Links named one after the
+other imply the Connector between them and each lane finds its own, which is what lets `splitLink`
+keep routes across the per-lane bridges it creates. Schema **8** stores object ids and
+`migrateRoutesToObjects` maps older files (and M0 scenarios, read through the same path by the
+CLI) on load, idempotently. A route whose objects do not join up for any lane is kept and reported
+as `UNSUPPORTED_ROUTE_TOPOLOGY`: authoring tolerates it, Run refuses it. The Connector creation
+dialog now defaults to **all** lanes of both Links, reversing M1.12's one-lane default, because
+narrowing afterwards is finally safe.
 
-### M1.25 — Demand authoring by pointer (routes and vehicle inputs)
+**Not in M1.26:** the engine, the segment contract and every measured number are unchanged, and
+the four frozen baselines replay identically because a single-lane expansion keeps the authored
+id. The equal split is an authoring convenience, not a lane-choice model — this engine has no
+lane changing. Adjustable shares are M1.26.1 below. **A lane-specific route cannot be expressed
+any more:** Vissim's turn pocket, where only the left lane may turn, is the cost of routing by
+Link, and restoring it is the first thing M2.1's positioned routing decision has to do.
 
-Implemented: the Routes tool builds a route by clicking — `Ctrl`+right-click or left-click the
-start lane, then click each destination and the **whole chain** leading to the lane or Connector
-path under it is appended (Vissim's "click the destination"); `Backspace` drops the last, `Enter`
-or double-click stores it through the same `putRoute` the dialog uses, `Esc` and focus loss
-cancel. The Vehicle inputs tool places an input on the lane traffic enters on, opening the dialog
-on the route starting there; a right-click that does not pan opens a menu on a drawn route or
-input. The canvas draws draft and selected route as marching dashes with arrows, a rubber band
-reddening where no chain reaches, a halo on the hovered lane, a chevron per input and a pulse on
-commit or refusal — paint state behind one timer. `routeContinuations`
-(`src/model/network/routing.cpp`) is the one rule for what may follow a segment, which the dialog
-now calls instead of its own copy, and `routeChainTo` returns **nothing** where two chains reach
-the target at the same depth. **Not in M1.25:** one route, one vehicle type and one interval per
-input is unchanged; compositions, per-interval volumes, relative flows and a positioned routing
-decision are **M2.1**, behind M2's unwritten gate. **Its own gate:** the keyboard-only equivalent
-of both gestures and the owner's timed exercise in `M1_ACCEPTANCE.md`; automated gesture tests do
-not close it.
+**Gate:** the keyboard-only equivalent of the pointer gestures and the owner's timed exercise
+in `M1_ACCEPTANCE.md`; automated tests do not close it.
+
+#### M1.26.1 — Adjustable per-lane shares
+
+**Open.** The owner asked that the equal split be adjustable. The numbers must live where both
+the editor and `buildScenario` read them, and `VehicleInput` is a core type the scenario format
+shares, so this is a schema-and-signature decision, not a dialog field. **Gate:** shares
+round-trip through save/reopen, normalise, and leave an unedited input's compiled volumes
+bit-identical to the equal split.
 
 ---
 

@@ -360,3 +360,60 @@ release-only group/rectangle gestures, capacity-limited resize and degenerate la
 handling are implemented. `NETWORK_LIFECYCLE_AUDIT.md` records finite model/UI coverage,
 the restored CTest point group and preserved M1.20 semantics. Owner acceptance stays open.
 
+
+
+#### M1.22.1 — History navigation and safe keyboard editing
+
+Implemented: a bilingual History dock with named Undo/Redo, current/saved-state markers,
+navigation through the retained 100 edits and branch-safe revision IDs; arrow-key nudging
+through the existing group-move command, with grid/Shift increments. Level filtering removes
+hidden selections, explicit table/inspector selections reveal their objects, and loss of canvas
+focus cancels active mouse gestures. This does not close M1.22: geometry/snapping tools, layer
+locks, bulk inspection and the keyboard-only owner exercise remain open, as does M1's timed
+gate.
+
+#### M1.22.2 — Selection rotation
+
+Implemented: Alt-left-drag with pivot/angle/outline preview, Shift for 15-degree steps, and an
+exact-angle dialog (Ctrl+Shift+R), in both languages. The shared rigid transform preserves
+internal Connector shapes, stations, lane metadata and carried heads; partial edits retain M1.20
+attachment cleanup in one Undo/Redo transaction. Custom pivots, other alignment/snap priorities
+and owner keyboard/timed acceptance remain open.
+
+
+
+### M1.24 — One window: the M0 harness window retired
+
+Implemented: `trafficsim-desktop` opens the network editor directly. The separate M0 simulation
+window (`MainWindow`) and the QPainter view it owned (`src/render/`) are removed; `--scenario`
+opens either file kind in the editor and `--editor` is a no-op so existing shortcuts keep
+working. The editor's run status carries the mean trip delay and safety-clamp count the retired
+window showed, from the same `SummaryAccumulator` the CLI uses, and `scenario-run-ui` replaces
+`desktop-controls`, pinning the editor's run of `crossing.json` to the CLI baseline.
+
+**Not in M1.24, deliberately:** no engine, schema or measurement change — `src/core/` is
+untouched and every figure is still the not-yet-validated diagnostic M6 must replace.
+Saving an opened M0 scenario still writes a schema-7 project; exporting scenario JSON from
+the editor is not implemented and stays open.
+
+
+### M1.25 — Demand authoring by pointer (routes and vehicle inputs)
+
+Implemented: the Routes tool builds a route by clicking — `Ctrl`+right-click or left-click the
+start lane, then click each destination and the **whole chain** leading to the lane or Connector
+path under it is appended (Vissim's "click the destination"); `Backspace` drops the last, `Enter`
+or double-click stores it through the same `putRoute` the dialog uses, `Esc` and focus loss
+cancel. The Vehicle inputs tool places an input on the lane traffic enters on, opening the dialog
+on the route starting there; a right-click that does not pan opens a menu on a drawn route or
+input. The canvas draws draft and selected route as marching dashes with arrows, a rubber band
+reddening where no chain reaches, a halo on the hovered lane, a chevron per input and a pulse on
+commit or refusal — paint state behind one timer. `routeContinuations`
+(`src/model/network/routing.cpp`) is the one rule for what may follow a segment, which the dialog
+now calls instead of its own copy, and `routeChainTo` returns **nothing** where two chains reach
+the target at the same depth. **Not in M1.25:** one route, one vehicle type and one interval per
+input is unchanged; compositions, per-interval volumes, relative flows and a positioned routing
+decision are **M2.1**, behind M2's unwritten gate. **Its own gate:** the keyboard-only equivalent
+of both gestures and the owner's timed exercise in `M1_ACCEPTANCE.md`; automated gesture tests do
+not close it.
+
+

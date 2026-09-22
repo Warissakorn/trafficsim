@@ -306,7 +306,7 @@ TEST(attachments, connector_lane_widths_round_trip_and_older_files_still_open) {
     History h;h.reset(d);
     h.execute("lanes",[&](auto& m){changeConnectorLanes(m,id,{4.25,4.75},{MarkingType::solid});});
     const auto json=documentJson(h.document());
-    CHECK(json["schemaVersion"]==7);
+    CHECK(json["schemaVersion"]==8);
     CHECK(json["network"]["connectors"][0]["laneWidths"][1]==4.75);
     CHECK(json["network"]["connectors"][0]["laneMarkings"][0]=="solid");
     // Round trip, exactly.

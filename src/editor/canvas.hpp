@@ -55,7 +55,7 @@ public:
     // A route drawn by pointer: the segments, in travel order, exactly as the dialog would
     // have stored them. The canvas never writes to the document itself.
     std::function<void(std::vector<std::string>)> routeDraftCommitted;
-    std::function<void(LaneReference)> inputPlaced;
+    std::function<void(std::string)> inputPlaced;
     const std::vector<std::string>& routeDraft() const { return routeDraft_; }
     void commitRouteDraft();
     void dropLastRouteSegment();
@@ -63,7 +63,7 @@ public:
     void setHighlightedRoute(std::string id);
     // Begin a route at this segment without a click: the input tool offers it when no route
     // starts where the author wants an input.
-    void startRouteDraft(const std::string& segmentId);
+    void startRouteDraft(const std::string& objectId);
     // The demand object drawn under this viewport position, for the context menu. Returns the
     // id of a vehicle input or of the drawn route, and an empty string for anything else.
     std::pair<std::string,std::string> demandObjectAt(QPoint viewportPosition) const;
@@ -124,8 +124,8 @@ private:
     void drawRotationPreview();
     void drawDemandOverlay();
     void drawRouteArrows(const std::vector<Point>&, QColor);
-    std::string segmentAt(Point) const;
-    std::optional<LaneReference> laneOf(const std::string& segmentId) const;
+    std::string objectAt(Point) const;
+    bool isLink(const std::string& objectId) const;
     std::vector<std::string> routeDraftWith(const std::string& target) const;
     bool demandPress(QMouseEvent*);
     bool demandHover(QMouseEvent*);
@@ -134,7 +134,7 @@ private:
     void animate();
     bool animating() const;
     std::vector<std::string> routeDraft_;
-    std::vector<Point> pulseGeometry_;
+    std::vector<std::vector<Point>> pulseGeometry_;
     std::string hoverSegment_, highlightedRoute_;
     bool hoverReachable_{};
     Point hoverPoint_{};

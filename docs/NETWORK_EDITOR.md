@@ -378,18 +378,18 @@ Levels only affect display and selection; they do not change runtime conflicts.
 ## Routes, inputs and fixed-time signals
 
 1. Draw a continuous path using links and connectors.
-2. With the Routes tool (R), click the start lane, then click each destination: the whole chain
-   leading there is appended, so a crossing takes two clicks. Ctrl+right-click starts one the same
-   way, Backspace removes the last segment, Enter or double-click stores it, Esc cancels. Draft
-   and selected route draw with direction arrows, the hovered lane is haloed, and the rubber band
-   reddens where no chain reaches; a refused click, including one where two chains reach the
-   clicked segment equally, authors nothing. Routes > Add opens the dialog: the keyboard path.
-3. With the Vehicle inputs tool (V), click the lane traffic enters on: the dialog opens on the
-   route starting there, and offers to draw one when none does. Enter vehicles per hour and the
-   start/end interval (initially the project duration); source routes must begin at a supported
-   external entry for Run. Each input draws a chevron and its volume, and names one route, one
-   type and one interval — compositions, several intervals and relative flows are M2.1.
-   Right-clicking a drawn route or input, rather than dragging to pan, edits or deletes it.
+2. With the Routes tool (R), click the start link, then click each destination: the whole chain
+   leading there is appended, so a crossing takes two clicks. A route names Links and Connectors
+   and covers **every lane** of them, so a Connector's lane count never invalidates it.
+   Ctrl+right-click starts one the same way, Backspace removes the last object, Enter stores it,
+   Esc cancels; the draft and the selected route draw with arrows, the hovered object is haloed,
+   and a click no chain reaches, or two reach equally, authors nothing (Add is the same, by dialog).
+3. With the Vehicle inputs tool (V), click the link traffic enters on: the dialog opens on the
+   route starting there, and offers to draw one when none does. The volume is the **link
+   total**, divided equally across the lanes its route reaches — an authoring convenience, not
+   a lane-choice model, since this engine has no lane changing (adjustable shares are M1.26.1;
+   compositions, intervals and relative flows are M2.1). Each input draws a chevron and its
+   volume. Right-clicking a drawn route or input, rather than dragging to pan, edits or deletes.
 4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal
    head on a lane or derived connector path, choose a program and position in metres.
    Program deletion is blocked while a head references it.

@@ -93,7 +93,7 @@ private:
     // through the same putRoute/putInput commands the dialogs use.
     void buildRouting();
     void commitDrawnRoute(const std::vector<std::string>& segmentIds);
-    void placeInputOnLane(const LaneReference& lane);
+    void placeInputOnLink(const std::string& linkId);
     void showDemandMenu(QPoint viewportPosition);
     void syncHighlightedRoute();
     void refreshToolHint();

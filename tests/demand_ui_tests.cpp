@@ -65,13 +65,15 @@ int main(int argc,char** argv) {
         require(argc>1,"Expected data directory");
         QTemporaryDir temp;require(temp.isValid(),"Temporary directory unavailable");
         ProjectDocument d;
-        const auto west=addLink(d,{{-100,0},{-10,0}},1,3.5);
-        const auto east=addLink(d,{{10,0},{100,0}},1,3.5);
-        const auto north=addLink(d,{{200,-40},{200,40}},1,3.5); // never reachable from the others
+        // Two lanes each way, because the point of M1.26 is that one click routes the whole
+        // carriageway rather than the lane the pointer happened to land on.
+        const auto west=addLink(d,{{-100,0},{-10,0}},2,3.5);
+        const auto east=addLink(d,{{10,0},{100,0}},2,3.5);
+        const auto north=addLink(d,{{200,-40},{200,40}},2,3.5); // never reachable from the others
         const auto westLane=d.network.links[0].lanes.front().id;
         const auto eastLane=d.network.links[1].lanes.front().id;
         const auto northLane=d.network.links[2].lanes.front().id;
-        const auto connector=addConnector(d,{west,westLane},{east,eastLane});
+        const auto connector=addConnectorRange(d,{west,westLane},{east,eastLane},2,2);
         const auto file=temp.filePath("demand.traffic.json");write(file,d);
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(30);
         w.openFile(file);QApplication::processEvents();
@@ -84,18 +86,19 @@ int main(int argc,char** argv) {
         tool->setCurrentIndex(6);QApplication::processEvents();
         require(!hint->text().isEmpty(),"Route tool explained nothing");
 
-        // The forcing: the click really does land on the lane, and the draft is what starts.
+        // The forcing: the click lands on a LANE of the Link, and what starts is a route on the
+        // whole Link -- the lane clicked is not stored anywhere.
         click(w,laneMiddle(w,west,westLane));
-        require(w.canvas()->routeDraft()==std::vector<std::string>({westLane}),"Click did not start a route");
-        // Hovering an unreachable lane says so BEFORE the click, and the click is refused.
+        require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"Click did not start a route on the Link");
+        // Hovering an unreachable Link says so BEFORE the click, and the click is refused.
         hover(w,laneMiddle(w,north,northLane));
         auto* halo=drawn(w,"demand-hover");
-        require(halo && halo->data(1).toString().toStdString()==northLane,"Hover halo missed the lane");
-        require(!halo->data(2).toBool(),"Unreachable lane drew as reachable");
+        require(halo && halo->data(1).toString().toStdString()==north,"Hover halo missed the Link");
+        require(!halo->data(2).toBool(),"Unreachable Link drew as reachable");
         auto* band=drawn(w,"route-band");
         require(band && !band->data(2).toBool(),"Rubber band did not warn");
         click(w,laneMiddle(w,north,northLane));
-        require(w.canvas()->routeDraft()==std::vector<std::string>({westLane}),"Unreachable click was appended");
+        require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"Unreachable click was appended");
         require(drawn(w,"demand-reject-pulse"),"Refused click drew no feedback");
         require(!w.history().document().definition || w.history().document().definition->routes.empty(),
             "A refused click authored a route");
@@ -104,7 +107,7 @@ int main(int argc,char** argv) {
         hover(w,laneMiddle(w,east,eastLane));
         require(drawn(w,"demand-hover")->data(2).toBool(),"Reachable lane drew as unreachable");
         click(w,laneMiddle(w,east,eastLane));
-        require(w.canvas()->routeDraft()==std::vector<std::string>({westLane,connector,eastLane}),
+        require(w.canvas()->routeDraft()==std::vector<std::string>({west,connector,east}),
             "Destination click did not append the chain");
         require(drawn(w,"route-draft"),"Draft route was not drawn");
         require(drawnCount(w,"route-arrow")>0,"Draft route drew no direction");
@@ -115,8 +118,13 @@ int main(int argc,char** argv) {
         QTest::keyClick(w.canvas(),Qt::Key_Return);QApplication::processEvents();
         const auto& definition=w.history().document().definition;
         require(definition && definition->routes.size()==1,"Enter did not store the route");
-        require(definition->routes.front().segmentIds==std::vector<std::string>({westLane,connector,eastLane}),
+        require(definition->routes.front().segmentIds==std::vector<std::string>({west,connector,east}),
             "Stored route is not the drawn one");
+        // One route, both lanes: the carriageway is routed, and the compiler is what turns that
+        // into one runtime route per lane.
+        require(routeLaneChains(w.history().document().network,
+                                definition->routes.front().segmentIds).size()==2,
+                "The route did not cover every lane of the Link");
         require(w.canvas()->routeDraft().empty(),"Draft survived the commit");
         require(w.history().revision()!=revision,"Commit made no history entry");
         require(item<QTableWidget>(w,"editorRouteTable")->rowCount()==1,"Route table missed the drawn route");

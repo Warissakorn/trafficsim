@@ -146,8 +146,8 @@ int main(int argc,char** argv) {
         const auto file=directory.path()+"/ranges.traffic.json";w.saveFile(file);w.openFile(file);
         require(documentJson(w.history().document())==decorated,"Range/level/display reopen lost data");
         require(w.history().document().network.links.back().displayType=="ramp","Display type was not applied");
-        // A drag from one lane is one lane: the range dialog used to pre-fill every lane from
-        // the picked one to the end of the link, so a single-lane gesture drew lane dividers.
+        // A drag connects the whole carriageway: the range dialog pre-fills every lane of both
+        // Links, and the author narrows it afterwards (M1.26).
         c->setTransform(QTransform::fromScale(4,-4));c->centerOn(0,-60);
         confirm("editorLinkDialog");drag(c,{-60,-60},{-10,-60},Qt::RightButton,Qt::ControlModifier);
         confirm("editorLinkDialog");drag(c,{10,-60},{60,-60},Qt::RightButton,Qt::ControlModifier);
@@ -159,12 +159,16 @@ int main(int argc,char** argv) {
         drag(c,laneGeometry(source,source.lanes[0].id,DrivingSide::left).back(),
              laneGeometry(target,target.lanes[0].id,DrivingSide::left).front(),Qt::RightButton,Qt::ControlModifier);
         const auto single=w.history().document().network.connectors.back();
-        require(w.history().document().network.connectors.size()==2,"Single-lane Connector was not created");
-        require(single.fromLaneCount==1 && single.toLaneCount==1,"Dragging one lane did not default to one lane");
+        require(w.history().document().network.connectors.size()==2,"Connector was not created");
+        // M1.26, at the owner's request: the gesture connects the WHOLE carriageway and the
+        // author narrows it afterwards, which is safe now that a route names the Connector
+        // rather than its paths. Before, a routed Connector could not be narrowed at all, so
+        // the drag deliberately defaulted to the single lane it started on.
+        require(single.fromLaneCount==3 && single.toLaneCount==3,"Drag did not connect every lane");
         int markings=0;
         for(auto* item:c->scene()->items())
             if(item->data(0).toString()=="road-marking" && item->data(1).toString()==QString::fromStdString(single.id))++markings;
-        require(markings==2,"A one-lane Connector is drawn with lane dividers");
+        require(markings==4,"A three-lane Connector is not drawn with its two dividers");
         w.saveFile(file); // Leave the document clean; closing a dirty window waits on a prompt.
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");
         require(item<QListWidget>(w,"editorObjectPalette")->item(2)->text().contains(QString::fromUtf8("เชื่อม")),"Thai palette missing");

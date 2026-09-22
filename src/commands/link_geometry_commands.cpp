@@ -46,10 +46,8 @@ void reverseLink(ProjectDocument& d,const std::string& id) {
         if(c.from.linkId==id || c.to.linkId==id)throw std::invalid_argument("EDIT_REFERENCED_LINK");
     for(const auto& head:d.network.signalHeads)
         if(head.lane.linkId==id)throw std::invalid_argument("EDIT_REFERENCED_LINK");
-    std::set<std::string> lanes;
-    for(const auto& lane:link.lanes)lanes.insert(lane.id);
-    if(d.definition)for(const auto& route:d.definition->routes)for(const auto& segment:route.segmentIds)
-        if(lanes.contains(segment))throw std::invalid_argument("EDIT_REFERENCED_LINK");
+    // A route names this Link rather than its lanes (M1.26), so reversing the lane order does
+    // not invalidate it. The Connector and head guards above still do: those hold positions.
     std::reverse(link.geometry.begin(),link.geometry.end());
     std::reverse(link.lanes.begin(),link.lanes.end());
     std::reverse(link.boundaryMarkings.begin(),link.boundaryMarkings.end());

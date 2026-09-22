@@ -54,8 +54,12 @@ TEST(editor, split_remaps_routes_and_preserves_old_snapshot) {
     History h;h.reset(sample());const auto old=documentJson(h.document());std::string downstream;
     h.execute("split",[&](auto& d){downstream=splitLink(d,"east",70);});
     CHECK(h.document().network.links.size()==5);CHECK(h.document().network.connectors.size()==3);
+    // A route names objects, so the split adds the new downstream Link after the one cut: the
+    // bridging Connector is implied, and each lane finds its own when the route expands.
     const auto& ids=h.document().definition->routes[0].segmentIds;
-    CHECK(ids.size()==5);CHECK(h.document().network.connectors[0].to.linkId=="east");
+    CHECK(ids==std::vector<std::string>({"west","west-east","east",downstream}));
+    CHECK(routeLaneChains(h.document().network,ids).size()==1);
+    CHECK(h.document().network.connectors[0].to.linkId=="east");
     const auto& n=h.document().network;CHECK(validateNetwork(n).empty());
     h.undo();CHECK(documentJson(h.document())==old);h.redo();CHECK(h.document().network.links.back().id==downstream);
 }
@@ -150,7 +154,13 @@ TEST(editor, signal_bearing_split_preserves_control_and_routes) {
         }
         CHECK(validateNetwork(n).empty());
         const auto& ids=h.document().definition->routes.front().segmentIds;
-        CHECK(ids.size()==5);CHECK(ids[1]==n.signalHeads[1].connectorId);
+        CHECK(ids.size()==4);
+        // The head that landed on a bridging Connector is still on the route's expansion, even
+        // though no route names that Connector: the lane chain finds it between the two Links.
+        const auto chains=routeLaneChains(n,ids);
+        CHECK(chains.size()==1);
+        CHECK(std::find(chains.front().begin(),chains.front().end(),n.signalHeads[1].connectorId)
+              !=chains.front().end());
         for(const auto& head:n.signalHeads)CHECK(head.programId=="east-west-program");
         CHECK(documentJson(parseDocument(Json::parse(documentJson(h.document()).dump())))==documentJson(h.document()));
         h.undo();CHECK(documentJson(h.document())==before);h.redo();CHECK(h.document().network.links.size()==5);
@@ -234,53 +244,116 @@ TEST(editor, a_group_move_carries_a_whole_junction_rigidly) {
     test::throws([&]{h.execute("nan",[&](auto& d){translateObjects(d,{a},{std::nan(""),0});});},"INVALID_GEOMETRY");
     CHECK(h.document()==together);
 }
-TEST(editor, route_continuations_are_the_rule_the_dialog_applied) {
+TEST(editor, route_continuations_name_links_and_connectors) {
     const auto d=sample();const auto& n=d.network;
     // The forcing: this network really does have the two-Connector crossing the rest relies on.
     CHECK(n.links.size()==4);CHECK(n.connectors.size()==2);
     const auto starts=routeContinuations(n,{});
-    // Every lane and every Connector path may start a route; nothing else may.
+    // Every Link and every Connector may start a route, and nothing else may -- a lane is not
+    // an object an author routes on, because its Connector's lane count keeps changing.
     CHECK(starts.size()==n.links.size()+n.connectors.size());
-    for(const auto& l:n.links)CHECK(std::find(starts.begin(),starts.end(),l.lanes.front().id)!=starts.end());
-    const auto afterWest=routeContinuations(n,{"west-1"});
+    for(const auto& l:n.links)CHECK(std::find(starts.begin(),starts.end(),l.id)!=starts.end());
+    CHECK(std::find(starts.begin(),starts.end(),"west-1")==starts.end());
+    const auto afterWest=routeContinuations(n,{"west"});
     CHECK(afterWest==std::vector<std::string>({"west-east"}));
-    CHECK(routeContinuations(n,{"west-1","west-east"})==std::vector<std::string>({"east-1"}));
-    // The end of the road leads nowhere, and a segment already in the route is never offered
+    CHECK(routeContinuations(n,{"west","west-east"})==std::vector<std::string>({"east"}));
+    // The end of the road leads nowhere, and an object already in the route is never offered
     // again -- a route that revisited one would loop.
-    CHECK(routeContinuations(n,{"west-1","west-east","east-1"}).empty());
-    CHECK(std::find(afterWest.begin(),afterWest.end(),"west-1")==afterWest.end());
+    CHECK(routeContinuations(n,{"west","west-east","east"}).empty());
+    CHECK(std::find(afterWest.begin(),afterWest.end(),"west")==afterWest.end());
 }
 TEST(editor, route_chain_to_a_clicked_destination_or_nothing) {
     const auto d=sample();const auto& n=d.network;
     // One click on the far side of the junction authors the whole crossing.
-    CHECK(routeChainTo(n,{"west-1"},"east-1")==std::vector<std::string>({"west-east","east-1"}));
-    // From nothing, the chain includes the segment clicked itself.
+    CHECK(routeChainTo(n,{"west"},"east")==std::vector<std::string>({"west-east","east"}));
+    // From nothing, the chain includes the object clicked itself.
     CHECK(routeChainTo(n,{},"west-east")==std::vector<std::string>({"west-east"}));
     // The two arms never meet, so there is no chain -- and the click must be refused rather
     // than resolved to the nearest thing that does connect.
-    CHECK(routeChainTo(n,{"west-1"},"north-1").empty());
-    CHECK(routeChainTo(n,{"west-1"},"no-such-lane").empty());
-    CHECK(routeChainTo(n,{"west-1"},"").empty());
+    CHECK(routeChainTo(n,{"west"},"north").empty());
+    CHECK(routeChainTo(n,{"west"},"no-such-link").empty());
+    CHECK(routeChainTo(n,{"west"},"").empty());
     // A target already in the route is not a destination: it would close a loop.
-    CHECK(routeChainTo(n,{"west-1","west-east","east-1"},"west-1").empty());
+    CHECK(routeChainTo(n,{"west","west-east","east"},"west").empty());
 }
-TEST(editor, route_geometry_draws_the_compiled_length) {
-    const auto d=sample();const auto& n=d.network;
-    const std::vector<std::string> route{"west-1","west-east","east-1"};
-    const auto drawn=routeGeometry(n,route);
-    CHECK(drawn.size()>=3);
+TEST(editor, a_route_covers_every_lane_the_drawing_carries) {
+    ProjectDocument d;
+    const auto west=addLink(d,{{-100,0},{-10,0}},3,3.5);
+    const auto east=addLink(d,{{10,0},{100,0}},3,3.5);
+    const auto lanes=d.network.links[0].lanes;
+    const auto connector=addConnectorRange(d,{west,lanes.front().id},
+                                           {east,d.network.links[1].lanes.front().id},3,3);
+    // The forcing: the Connector really does carry all three lanes before anything is narrowed.
+    CHECK(connectorPaths(d.network,d.network.connectors.front()).size()==3);
+    const std::vector<std::string> route{west,connector,east};
+    const auto chains=routeLaneChains(d.network,route);
+    CHECK(chains.size()==3);
+    for(std::size_t k=0;k<chains.size();++k) {
+        CHECK(chains[k].size()==3);
+        CHECK(chains[k].front()==d.network.links[0].lanes[k].id);
+        CHECK(chains[k].back()==d.network.links[1].lanes[k].id);
+    }
+    // Narrowing the Connector does NOT invalidate the route: it names the objects, so it simply
+    // expands to the lanes that still connect. This is the whole point of M1.26.
+    const auto id=putRoute(d,{"whole-link",route});
+    putInput(d,{"load",id,"car",1800,0,60});
+    changeConnectorRange(d,connector,2,2,false);
+    CHECK(d.definition->routes.size()==1);
+    CHECK(d.definition->routes.front().segmentIds==route);
+    CHECK(d.definition->inputs.size()==1);
+    CHECK(routeLaneChains(d.network,route).size()==2);
+    // And the demand the run receives is still the Link total, now across two lanes.
+    const auto scenario=buildScenario(d.network,*d.definition);
+    CHECK(scenario.routes.size()==2);CHECK(scenario.inputs.size()==2);
+    double total=0;for(const auto& i:scenario.inputs)total+=i.vehiclesPerHour;
+    test::near(total,1800,1e-9);
+    for(const auto& i:scenario.inputs)test::near(i.vehiclesPerHour,900,1e-9);
+    CHECK(scenario.inputs[0].routeId!=scenario.inputs[1].routeId);
+    for(const auto& i:scenario.inputs)
+        CHECK(std::any_of(scenario.routes.begin(),scenario.routes.end(),
+                          [&](const auto& r){return r.id==i.routeId;}));
+}
+TEST(editor, a_single_lane_route_keeps_its_authored_id_and_volume) {
+    const auto d=sample();
+    // The frozen baselines depend on this: a one-lane expansion must not rename anything.
+    const auto scenario=buildScenario(d.network,*d.definition);
+    CHECK(scenario.routes.size()==d.definition->routes.size());
+    for(std::size_t i=0;i<scenario.routes.size();++i)
+        CHECK(scenario.routes[i].id==d.definition->routes[i].id);
+    CHECK(scenario.inputs.size()==d.definition->inputs.size());
+    for(std::size_t i=0;i<scenario.inputs.size();++i) {
+        CHECK(scenario.inputs[i].id==d.definition->inputs[i].id);
+        test::near(scenario.inputs[i].vehiclesPerHour,d.definition->inputs[i].vehiclesPerHour,1e-12);
+    }
+}
+TEST(editor, the_drawn_route_starts_where_the_traffic_joins) {
+    ProjectDocument d;
+    const auto west=addLink(d,{{-100,0},{-10,0}},1,3.5);
+    const auto east=addLink(d,{{0,0},{90,0}},1,3.5);
+    const auto eastLane=d.network.links[1].lanes.front().id;
+    // A Connector dragged onto the Link BODY attaches at a station, which is what the editor
+    // stores for every drag that does not end on the Link's end.
+    const auto connector=addConnector(d,{west,d.network.links[0].lanes.front().id},{east,eastLane,35});
+    CHECK(!attachedAtLinkEnd(d.network,d.network.connectors.front().to,false));
+    const std::vector<std::string> route{west,connector,east};
+    const auto drawn=routeGeometries(d.network,route);
+    CHECK(drawn.size()==1);
     double parts=0;
-    const auto table=runtimeSections(n);
-    for(const auto& id:expandRouteSegments(table,route)) {
+    const auto table=runtimeSections(d.network);
+    for(const auto& id:expandRouteSegments(table,routeLaneChains(d.network,route).front())) {
         for(const auto& s:table.sections)if(s.id==id)parts+=s.end-s.start;
         for(const auto& p:table.paths)if(p.id==id)parts+=polylineLength(p.geometry);
     }
-    // The drawing follows the road the route travels, so it is as long as the compiled chain.
-    test::near(polylineLength(drawn),parts,1e-6);
-    CHECK(routeGeometry(n,{"no-such-lane"}).empty());
+    // Drawing the whole destination lane put 35 m of line upstream of the arrival, running
+    // against the traffic on that Link. The drawing is the compiled chain, so it cannot.
+    test::near(polylineLength(drawn.front()),parts,1e-6);
+    const auto arrival=pointAlong(laneGeometry(d.network.links[1],eastLane,d.network.drivingSide),35);
+    const auto last=drawn.front().back();
+    test::near(std::hypot(last.x-arrival.x,last.y-arrival.y),90-35,1e-6);
+    CHECK(routeGeometries(d.network,{"no-such-link"}).empty());
     // Both driving sides draw: lane geometry is offset from the reference line either way.
     auto mirrored=d.network;mirrored.drivingSide=DrivingSide::right;
-    const auto other=routeGeometry(mirrored,route);
-    CHECK(other.size()==drawn.size());
-    test::near(polylineLength(other),polylineLength(drawn),1e-6);
+    const auto other=routeGeometries(mirrored,route);
+    CHECK(other.size()==1);
+    test::near(polylineLength(other.front()),polylineLength(drawn.front()),1e-6);
 }

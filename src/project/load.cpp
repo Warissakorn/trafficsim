@@ -74,7 +74,11 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
         const auto& declared = section(value, "definition");
         // An M0 scenario carries no schemaVersion, so it is read with the pre-5 meaning.
         auto network = parseNetwork(section(value, "network"), 0);
-        auto definition = resolveCatalogs(parseAuthoringDefinition(declared),dataDirectory);
+        auto authored = parseAuthoringDefinition(declared);
+        // An M0 scenario names lanes in its routes, like a schema-7 project; the same migration
+        // runs here, or the CLI and the editor would compile the same file two different ways.
+        migrateRoutesToObjects(network, authored);
+        auto definition = resolveCatalogs(authored,dataDirectory);
         auto scenario = compileScenario(network, definition);
         return {std::move(network), std::move(scenario)};
     } catch (const std::exception& error) {

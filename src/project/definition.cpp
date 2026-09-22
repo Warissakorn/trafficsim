@@ -1,6 +1,7 @@
 #include "document.hpp"
 #include "../core/validate.hpp"
 #include <algorithm>
+#include <vector>
 
 namespace trafficsim {
 AuthoringDefinition parseAuthoringDefinition(const Json& j) {
@@ -39,6 +40,30 @@ Json definitionJson(const AuthoringDefinition& d) {
                 {"followingTime",b.followingTime},{"speedThreshold",b.speedThreshold}});
     }
     return j;
+}
+void migrateRoutesToObjects(const Network& network, AuthoringDefinition& definition) {
+    const auto owner = [&](const std::string& id) {
+        for (const auto& link : network.links) {
+            if (link.id == id) return id;
+            for (const auto& lane : link.lanes) if (lane.id == id) return link.id;
+        }
+        for (const auto& connector : network.connectors) {
+            if (connector.id == id) return id;
+            for (int i = 0; i < std::max(connector.fromLaneCount, connector.toLaneCount); ++i)
+                if (connectorPathId(connector, i) == id) return connector.id;
+        }
+        return id; // Unknown ids are left for validation to name; this is a rename, not a check.
+    };
+    for (auto& route : definition.routes) {
+        std::vector<std::string> objects;
+        for (const auto& id : route.segmentIds) {
+            auto mapped = owner(id);
+            // Several lanes of one Link collapse to that Link once, which is what makes the
+            // mapping idempotent: running it again finds the object ids and keeps them.
+            if (objects.empty() || objects.back() != mapped) objects.push_back(std::move(mapped));
+        }
+        route.segmentIds = std::move(objects);
+    }
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;

@@ -26,13 +26,17 @@ unsupported network-object fields fail on load rather than disappearing on save.
 requested audit → implementation → inclusion of the original specs; source copies are in
 `docs/specs/`. All remaining runtime, editor and scientific-validation gates remain open.
 
-**Pointer authoring (M1.25):** routes and vehicle inputs are drawn on the canvas — click the start
-lane, click each destination, and the whole chain between them is appended; an input is placed on
-the lane its traffic enters on. One rule decides what may follow a segment (`routeContinuations`
-in `src/model/network/routing.cpp`), which the route dialog now calls instead of its own copy.
-The demand model is unchanged: one route, one vehicle type, one interval per input. Compositions,
-per-interval volumes and a positioned routing decision are M2.1, behind M2's pre-registered gate,
-whose criteria are still unwritten and block all of M2.
+**Demand authoring (M1.25, M1.26):** routes and vehicle inputs are drawn on the canvas — click
+the start, click each destination, and the chain between them is appended. **An authored route
+names Links and Connectors, never a lane**, and `buildScenario` expands it into one runtime
+route per lane (`routeLaneChains`, `src/model/network/routing.cpp`); an input's volume is the
+Link total, split equally across those lanes. So a route covers the whole carriageway, changing
+a Connector's lane count cannot invalidate it, and no command refuses an edit because a route
+exists. Schema 8; older files and M0 scenarios migrate on load. A route whose objects do not
+join up is kept and reported as `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does
+not. A lane-specific route (a turn pocket) can no longer be expressed; adjustable per-lane
+shares are M1.26.1; compositions, per-interval volumes and a positioned routing decision are
+M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
 
 **Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,

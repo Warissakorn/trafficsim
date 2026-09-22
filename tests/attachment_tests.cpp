@@ -39,7 +39,7 @@ TEST(attachments, interior_positions_ranges_persistence_edits_and_history) {
         auto d=roads(side);const auto id=addConnectorRange(d,{"a","a1",at(d,"a",.4)},{"b","b1",at(d,"b",.6)},3,3);
         attached(d);const auto& c=d.network.connectors.front();
         CHECK(c.geometry.front()!=d.network.links.front().geometry.back());
-        const auto json=documentJson(d);CHECK(json["schemaVersion"]==7);
+        const auto json=documentJson(d);CHECK(json["schemaVersion"]==8);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
         History h;h.reset(d);h.execute("move",[](auto& m){changeGeometry(m,"a",{{0,10},{30,10},{80,20}});});
         // A Connector keeps its own position, so moving a Link does not drag it: the Link goes and
@@ -122,8 +122,13 @@ TEST(attachments, an_interior_target_attachment_runs_and_its_merge_is_arbitrated
     for(const auto& r:snapshot.scenario.routes)if(r.id==route)
         CHECK(r.segmentIds==std::vector<std::string>({"a1",id,"b1/sec-2"}));
     const auto before=documentJson(d);History h;h.reset(d);
-    test::throws([&]{h.execute("move station",[&](auto& m){changeConnectorEndpoints(m,id,{"a","a1",at(d,"a",.3)},{"b","b1",at(d,"b",.5)});});},"EDIT_REFERENCED_CONNECTOR");
-    CHECK(documentJson(h.document())==before);
+    // M1.26: moving the station a routed Connector attaches at is an ordinary edit. The route
+    // names the Connector, so it still says the same thing and still expands to one lane.
+    h.execute("move station",[&](auto& m){changeConnectorEndpoints(m,id,{"a","a1",at(d,"a",.3)},{"b","b1",at(d,"b",.5)});});
+    CHECK(h.document().definition->routes.size()==1);
+    CHECK(routeLaneChains(h.document().network,h.document().definition->routes.front().segmentIds).size()==1);
+    CHECK(routeRuntimeIssues(h.document().network,*h.document().definition).empty());
+    h.undo();CHECK(documentJson(h.document())==before);
 }
 // The numbers that arbitrate a derived merge are data. Their absence must block Run -- a zero gap
 // time is a merge nobody gives way at -- but it must NOT block an edit, which is D18b's boundary.
@@ -189,7 +194,10 @@ TEST(attachments, an_arriving_vehicle_holds_at_the_connector_while_the_lane_is_o
     d.network.links[0].geometry={{0,0},{100,0}};d.network.links[1].geometry={{140,0},{240,0}};
     const auto id=addConnector(d,{"a","a1",100},{"b","b1",40});
     const auto arriving=putRoute(d,{"arriving",{"a1",id,"b1"}});
+    // Link b has three lanes, so a route on it expands to three: the major traffic this test
+    // places is the one on b1, the lane the Connector arrives on.
     const auto major=putRoute(d,{"major",{"b1"}});
+    const std::string majorLane=major+"/lane-1";
     putInput(d,{"",arriving,"car",600,0,60});
     const auto scenario=compileDocument(d,test::root()/"data").scenario;
     const auto length=[&](const std::string& sid){
@@ -204,7 +212,7 @@ TEST(attachments, an_arriving_vehicle_holds_at_the_connector_while_the_lane_is_o
     // A major vehicle 20 m short of the conflict point at 40 m, moving slowly enough that it
     // stays inside the three-second gap time for several seconds.
     auto state=test::withVehicles(scenario,{place(1,arriving,stopLine-3,0),
-                                            place(2,major,20,5)});
+                                            place(2,majorLane,20,5)});
     const auto distanceOf=[](const SimState& st,std::uint64_t vid){
         for(const auto& v:st.vehicles)if(v.id==vid)return v.distance;
         return -1.0;};
@@ -298,10 +306,14 @@ TEST(attachments, a_route_authored_on_whole_lanes_expands_to_the_sections_it_tra
     // Going straight on travels both sections, in order.
     CHECK(ids("through")==std::vector<std::string>({"a1","a1/sec-2",ahead,"b2"}));
     CHECK(validateScenario(scenario).empty());
-    // The negative: a route naming a connector that leaves a different lane is not quietly
-    // stitched together. The expansion runs off the end of the lane and the core says so.
-    auto other=d;putRoute(other,{"bogus",{"a2",turn,"b1"}});
-    test::throws([&]{assertValidScenario(buildScenario(other.network,demand(other)));},"DISCONNECTED_ROUTE");
+    // The negative, in the terms a route is now authored in: objects that do not join up are
+    // not quietly stitched together. Naming them is allowed -- an author must be able to draw
+    // in any order -- but nothing can travel the route, and Run says so by name.
+    auto other=d;putRoute(other,{"bogus",{"b",turn,"a"}});
+    const auto issues=routeRuntimeIssues(other.network,demand(other));
+    CHECK(issues.size()==1);CHECK(issues.front().code=="UNSUPPORTED_ROUTE_TOPOLOGY");
+    CHECK(issues.front().path=="routes[2]");
+    test::throws([&]{compileScenario(other.network,demand(other));},"UNSUPPORTED_ROUTE_TOPOLOGY");
 }
 // A zero-length segment is not something the core accepts, so a cut with no room either side of it
 // is the one interior source attachment that still cannot run.
@@ -444,7 +456,7 @@ TEST(attachments, schema_four_fractions_migrate_to_stations_at_the_same_place) {
     const auto migrated=parseDocument(legacy);
     const auto after=laneAttachment(migrated.network,migrated.network.connectors.front().from,true);
     test::near(after.x,before.x,1e-6);test::near(after.y,before.y,1e-6);
-    CHECK(documentJson(migrated)["schemaVersion"]==7);
+    CHECK(documentJson(migrated)["schemaVersion"]==8);
     // The unit is decided by the version, never by which key happens to be present.
     auto mixed=documentJson(d);mixed["network"]["connectors"][0]["from"]["fraction"]=.4;
     test::throws([&]{parseDocument(mixed);},"EDIT_VERSION");

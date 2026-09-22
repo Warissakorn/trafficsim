@@ -54,11 +54,11 @@ TEST(authoring, imported_connector_cross_sections_cannot_bypass_commands) {
     test::throws([&]{h.execute("bad",[](auto& m){m.network.connectors[0].laneWidths={-2,3};});},"INVALID_WIDTH");
     CHECK(h.document()==before);CHECK(!h.canUndo());CHECK(!h.dirty());
 }
-TEST(authoring, schema_seven_roundtrip_and_legacy_marking_defaults) {
+TEST(authoring, schema_eight_roundtrip_and_legacy_marking_defaults) {
     auto d=connected();
     changeLinkMarkings(d,"a",{MarkingType::none,MarkingType::doubleLine,MarkingType::dashed});
     changeConnectorLanes(d,d.network.connectors[0].id,{3,4},{MarkingType::doubleLine});
-    auto j=documentJson(d);CHECK(j["schemaVersion"]==7);
+    auto j=documentJson(d);CHECK(j["schemaVersion"]==8);
     CHECK(j["network"]["links"][0]["boundaryMarkings"]==Json::array({"none","double","dashed"}));
     CHECK(parseDocument(Json::parse(j.dump()))==d);
     const auto old=connected();
@@ -183,18 +183,25 @@ TEST(authoring, reversing_unreferenced_links_keeps_named_lanes_on_the_same_road)
     }
 }
 TEST(authoring, reversing_a_referenced_link_rejects_without_touching_history) {
-    for(int kind=0;kind<3;++kind) {
+    for(int kind=0;kind<2;++kind) {
         auto d=roads();
         if(kind==0)addConnector(d,{"a","a1"},{"b","b1"});
         if(kind==1) {
             const auto program=putProgram(d,{"",0,{{10,SignalColor::green}}});
             putSignalHead(d,{"",{"a","a1"},10,program,{}});
         }
-        if(kind==2)putRoute(d,{"",{"a1"}});
         History h;h.reset(d);const auto before=h.document();
         test::throws([&]{h.execute("reverse",[](auto& m){reverseLink(m,"a");});},"EDIT_REFERENCED_LINK");
         CHECK(h.document()==before);CHECK(!h.canUndo());CHECK(!h.dirty());
     }
+    // A ROUTE no longer holds the Link (M1.26): it names the Link itself, not its lanes, so
+    // reversing the lane order leaves it saying the same thing.
+    auto d=roads();const auto route=putRoute(d,{"",{"a"}});
+    History h;h.reset(d);
+    h.execute("reverse",[](auto& m){reverseLink(m,"a");});
+    CHECK(h.document().definition->routes.size()==1);
+    CHECK(h.document().definition->routes.front().id==route);
+    CHECK(h.document().network.links.front().lanes.front().id=="a2");
 }
 TEST(authoring, short_connectors_are_selectable_advisories_and_still_compile) {
     auto d=roads();d.network.links[1].geometry={{44,0},{100,0}};

@@ -10,17 +10,17 @@
 
 namespace trafficsim {
 namespace {
-// The route a vehicle input placed on this lane would feed: one that starts there. An input
+// The route a vehicle input placed on this Link would feed: one that starts there. An input
 // belongs to a route in this engine, so placing one by pointer still has to name a route.
-std::string routeStartingOn(const AuthoringDefinition& definition,const std::string& laneId) {
+std::string routeStartingOn(const AuthoringDefinition& definition,const std::string& linkId) {
     for(const auto& route:definition.routes)
-        if(!route.segmentIds.empty() && route.segmentIds.front()==laneId)return route.id;
+        if(!route.segmentIds.empty() && route.segmentIds.front()==linkId)return route.id;
     return {};
 }
 }
 void EditorWindow::buildRouting() {
     canvas_->routeDraftCommitted=[this](const auto& segments){commitDrawnRoute(segments);};
-    canvas_->inputPlaced=[this](const auto& lane){placeInputOnLane(lane);};
+    canvas_->inputPlaced=[this](const auto& link){placeInputOnLink(link);};
     canvas_->contextMenuRequested=[this](QPoint position){showDemandMenu(position);};
     // The pointer tools are gestures with no dialog to explain them, so the status bar says
     // what a click will do while one of them is chosen.
@@ -43,9 +43,9 @@ void EditorWindow::commitDrawnRoute(const std::vector<std::string>& segmentIds) 
         selectDemand(created);canvas_->setHighlightedRoute(created);
     }
 }
-void EditorWindow::placeInputOnLane(const LaneReference& lane) {
+void EditorWindow::placeInputOnLink(const std::string& linkId) {
     const auto existing=history_.document().definition
-        ?routeStartingOn(*history_.document().definition,lane.laneId):std::string{};
+        ?routeStartingOn(*history_.document().definition,linkId):std::string{};
     if(!existing.empty()) {editInput({},existing);return;}
     // No route starts here, and an input without one would run nothing. Offer the gesture that
     // fixes it rather than an empty combo box.
@@ -55,7 +55,7 @@ void EditorWindow::placeInputOnLane(const LaneReference& lane) {
     box.button(QMessageBox::No)->setText(text("editorCancel"));
     if(box.exec()!=QMessageBox::Yes)return;
     tool_->setCurrentIndex(6); // the route tool
-    canvas_->startRouteDraft(lane.laneId);
+    canvas_->startRouteDraft(linkId);
 }
 void EditorWindow::syncHighlightedRoute() {
     if(!routeTable_)return;

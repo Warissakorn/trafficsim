@@ -24,6 +24,10 @@ struct ProjectDocument {
     bool operator==(const ProjectDocument&) const = default;
 };
 AuthoringDefinition parseAuthoringDefinition(const Json&);
+// Rewrites a route's stored ids to the Links and Connectors that own them (schema 8). Lane and
+// path ids from older files map to their owner; ids that already name an object are left alone,
+// so running this on an already-migrated definition changes nothing.
+void migrateRoutesToObjects(const Network&, AuthoringDefinition&);
 Json definitionJson(const AuthoringDefinition&);
 void validateAuthoredDemand(const ProjectDocument&);
 Json documentJson(const ProjectDocument& document);
