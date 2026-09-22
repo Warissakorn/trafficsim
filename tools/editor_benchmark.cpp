@@ -9,9 +9,7 @@
 //
 //   trafficsim-editor-benchmark [intersections] [frames]
 #include "../src/editor/canvas.hpp"
-#include "../src/commands/network_commands.hpp"
-#include "../src/commands/connector_commands.hpp"
-#include "../src/commands/demand_commands.hpp"
+#include "benchmark_network.hpp"
 #include <QApplication>
 #include <chrono>
 #include <cstdlib>
@@ -19,37 +17,6 @@
 #include <iostream>
 using namespace trafficsim;
 namespace {
-constexpr int kLanes = 3;
-// A corridor of signalised crossings: at each one an eastbound carriageway meets a northbound
-// approach, both of them turning into the next crossing's eastbound link. That gives two
-// Links, two Connectors and one signal head per intersection, which is the shape of the
-// network a corridor study actually draws -- and the shape whose cost redraw() pays per frame.
-ProjectDocument corridor(int intersections) {
-    ProjectDocument document;
-    std::vector<std::string> eastbound, northbound;
-    for (int k = 0; k < intersections; ++k) {
-        const double x = 200. * k;
-        eastbound.push_back(addLink(document, {{x, 0}, {x + 90, 0}}, kLanes, 3.5));
-        northbound.push_back(addLink(document, {{x + 95, -100}, {x + 95, -10}}, kLanes, 3.5));
-    }
-    const auto firstLane = [&](const std::string& link) {
-        for (const auto& l : document.network.links) if (l.id == link) return l.lanes.front().id;
-        return std::string{};
-    };
-    for (int k = 0; k + 1 < intersections; ++k) {
-        addConnectorRange(document, {eastbound[k], firstLane(eastbound[k])},
-                          {eastbound[k + 1], firstLane(eastbound[k + 1])}, kLanes, kLanes);
-        addConnectorRange(document, {northbound[k], firstLane(northbound[k])},
-                          {eastbound[k + 1], firstLane(eastbound[k + 1])}, kLanes, kLanes);
-    }
-    for (int k = 0; k < intersections; ++k) {
-        NetworkSignalHead head;
-        head.lane = {northbound[k], firstLane(northbound[k])};
-        head.position = 45;
-        putSignalHead(document, head);
-    }
-    return document;
-}
 double millis(const std::function<void()>& work, int times) {
     const auto start = std::chrono::steady_clock::now();
     for (int i = 0; i < times; ++i) work();
@@ -66,7 +33,7 @@ int main(int argc, char** argv) {
     const int intersections = argc > 1 ? std::atoi(argv[1]) : 40;
     const int frames = argc > 2 ? std::atoi(argv[2]) : 20;
     if (intersections < 2 || frames < 1) { std::cerr << "usage: [intersections>=2] [frames>=1]\n"; return 2; }
-    const auto document = corridor(intersections);
+    const auto document = benchmark::corridor(intersections).document;
     EditorCanvas canvas;
     canvas.resize(1600, 900);
     canvas.setDocument(&document);

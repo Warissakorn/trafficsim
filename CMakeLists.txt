@@ -78,6 +78,13 @@ trafficsim_runtime_data(trafficsim-cli)
 install(TARGETS trafficsim-cli RUNTIME DESTINATION bin)
 install(DIRECTORY data/ DESTINATION bin/data)
 
+# Not a test and not in `check`: it prints tick rates, it does not assert them. It needs no Qt,
+# so the engine stays measurable under the headless preset.
+add_executable(trafficsim-engine-benchmark tools/engine_benchmark.cpp)
+target_link_libraries(trafficsim-engine-benchmark PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-engine-benchmark PRIVATE <nlohmann/json.hpp>)
+trafficsim_runtime_data(trafficsim-engine-benchmark)
+
 add_executable(trafficsim-check-architecture tools/check_architecture.cpp)
 add_executable(trafficsim-check-file-sizes tools/check_file_sizes.cpp)
 target_link_libraries(trafficsim-check-architecture PRIVATE trafficsim_options)
