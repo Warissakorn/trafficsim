@@ -18,6 +18,15 @@ add_executable(trafficsim-editor-benchmark ../../tools/editor_benchmark.cpp)
 target_link_libraries(trafficsim-editor-benchmark PRIVATE trafficsim_shell trafficsim_options)
 target_precompile_headers(trafficsim-editor-benchmark REUSE_FROM trafficsim_shell)
 
+# The M1.27.3 gate: it counts inputs per authoring task and replays the Vissim reflexes. Not a
+# test and not in `check` -- it reports what happened, the UI suites are what assert it. It needs
+# Qt6::Test for the input simulation, which is why it is not guarded by BUILD_TESTING: the
+# measurement has to be available in a plain build or it will not be re-run.
+find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
+add_executable(trafficsim-gesture-walkthrough ../../tools/gesture_walkthrough.cpp)
+target_link_libraries(trafficsim-gesture-walkthrough PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+target_precompile_headers(trafficsim-gesture-walkthrough REUSE_FROM trafficsim_shell)
+
 qt_add_executable(trafficsim-desktop main.cpp)
 target_link_libraries(trafficsim-desktop PRIVATE trafficsim_shell trafficsim_options)
 set_target_properties(trafficsim-desktop PROPERTIES WIN32_EXECUTABLE TRUE)
