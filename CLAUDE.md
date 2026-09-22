@@ -38,12 +38,14 @@ not. A lane-specific route (a turn pocket) can no longer be expressed; adjustabl
 shares are M1.26.1; compositions, per-interval volumes and a positioned routing decision are
 M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
 
-**Build (M1.27, build stage):** `src/project/json.hpp` declares `Json` through
+**Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
 `<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test
-executables reuse — a clean build is 86 s → 64 s with no behaviour change. A PCH here holds
-third-party headers only (D27). The redraw, engine-string and UX stages of M1.27 are booked
-and not started; the editor-redraw evidence is a call count, not a timing, so its first step
-is the benchmark, not a cache.
+executables reuse — a clean build is 86 s → 64 s, and a PCH here holds third-party headers only
+(D27). `tools/editor_benchmark.cpp` then made the canvas measurable: the editor caches each
+Connector's paths, boundaries and markings **against the values they are derived from** (D28),
+taking a 160-link corridor from 93 ms a frame to 22. Read D28 before adding another cache — the
+same one for Link geometry was measured and reverted. M1.27.2 (the `std::string` ids on
+`Vehicle`) and M1.27.3 (UX) are booked and not started.
 
 **Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,

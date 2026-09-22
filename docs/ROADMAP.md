@@ -199,27 +199,21 @@ Owner Windows interaction and timed acceptance remain open.
 
 ---
 
-### M1.12.1–M1.20 — Completed geometry and authoring iterations
+### M1.12.1–M1.21.1 — Completed geometry, authoring and audit iterations
 
-**All closed**, with the original entries in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md): a Connector's own
-`laneWidths` and `laneMarkings` in schema 6, `connectorLaneWidths` the single place a width is
-decided (M1.12.1); the 24% miter "bulge" measured along the cross-section, where a mitered
-corner's diagonal is `width / cos(φ/2)` by construction, so `offsetGeometry` was not changed
-(M1.12.2); metre attachment stations (M1.13), intermediate points (M1.14), names (M1.15), group
-moves (M1.16), flush mouths (M1.18), lane-aligned mouths (M1.19) and independent Connector
-placement with off-Link cleanup (M1.20). M1.19 also settled the mouth and closed M1.12.3,
-leaving `TIGHT_CONNECTOR_RADIUS` as it was. M1.17's lateral wedge remains reverted.
-
-### M1.21 / M1.21.1 — Supplied-spec authoring, and the lifecycle audit
-
-**Implemented.** Schema 7 carries the supported subset of the owner's specifications (unsupported
-network-object fields fail on load rather than vanishing on save), and the 2026-09-21 lifecycle
-audit fixed wrong-side retargets, pathological mouths, physical range picking and coalesced
-releases. Both entries in full, with what they do not claim, are in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); see also
-`docs/SPEC_AUDIT.md`, `docs/AUTHORING_EXTENSIONS.md` and `docs/NETWORK_LIFECYCLE_AUDIT.md`.
-Owner M1 acceptance remains open, and neither closes the supplied target specifications.
+**All closed**, with the originals and what none of them claims about Vissim parity in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md): a Connector carries
+its own `laneWidths` and `laneMarkings` in schema 6, `connectorLaneWidths` the single place a
+width is decided (M1.12.1); the 24% miter "bulge" measured along the cross-section, where a
+mitered corner's diagonal is `width / cos(φ/2)` by construction, so `offsetGeometry` was not
+changed (M1.12.2); metre attachment stations (M1.13),
+intermediate points (M1.14), names (M1.15), group moves (M1.16), flush mouths (M1.18),
+lane-aligned mouths (M1.19, which closed M1.12.3 and left `TIGHT_CONNECTOR_RADIUS` alone) and
+independent Connector placement with off-Link cleanup (M1.20); schema 7's supported subset
+of the owner's specifications, where an unsupported field fails on load rather than vanishing on
+save (M1.21); and the lifecycle audit's wrong-side retargets, pathological mouths, physical
+range picking and coalesced releases (M1.21.1). M1.17's wedge remains reverted, owner M1
+acceptance remains open, and none of this closes the supplied target specifications.
 
 ### M1.22 — Remaining authoring and interaction requirements
 
@@ -252,8 +246,7 @@ reproducible real-network benchmark. Do not claim 10k/100k-object performance in
 
 Implemented: `trafficsim-desktop` opens the network editor directly and its run status carries
 the mean trip delay and safety-clamp count from the `SummaryAccumulator` the CLI uses (M1.24);
-routes and vehicle inputs are then drawn by pointer (M1.25). Neither changed the engine, the
-schema or any measured number. Full entries in
+routes and vehicle inputs are then drawn by pointer (M1.25). Full entries in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.26 — Demand is authored per Link and compiled per lane
@@ -294,20 +287,30 @@ bit-identical to the equal split.
 
 ### M1.27 — Optimization program: build, redraw, engine, UX
 
-**Build stage implemented.** `src/project/json.hpp` declares `Json` through
-`<nlohmann/json_fwd.hpp>`, and `trafficsim_shell` precompiles the Qt surface the single-source
-UI test executables reuse: clean build `-j4` **86 s → 64 s**, one editor translation unit
-5.8 s → 3.3 s, no behaviour change, frozen baselines untouched. Three stages are measured or
-counted and deliberately **not** done, one session each. **M1.27.1, editor redraw:**
-`redraw()` clears and rebuilds the whole scene on every mouse move, recomputing
-`connectorPaths` several times per connector per frame while `headPosition` scans every
-connector path per signal head — *gate:* the large-network frame-time benchmark M1.23 already
-requires, showing a cache and a head index paying with the UI suites unchanged. **M1.27.2,
-`Vehicle` string ids:** the 2026-09-18 profile put ~36% of instructions in `std::string` and
-11.8% in the vehicle sort, and taking the ids off `Vehicle` touches a core type and every test
-that builds one — *gate:* the four baselines byte-identical. **M1.27.3, UX:** the
-`Ctrl`+left-click collision and the stale rows in `VISSIM_PARITY.md` — *gate:* a counted
-walkthrough delta, which does **not** close M1's timed owner exercise.
+**Build and redraw stages implemented.** `src/project/json.hpp` declares `Json` through
+`<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the single-source UI
+test executables reuse: clean build `-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the
+editor measurable, and the canvas caches each Connector's paths, boundaries and markings against
+the only three inputs they read — the Connector, the two Links it names and the driving side —
+compared by value, never by a revision counter. Interleaved medians, Debug: a 160-link corridor
+redraws in **22.5 ms instead of 93.4** and picks in **7.1 instead of 39.0**,
+so a mouse move goes from about 8 frames per second to 34. The UI suites are the guard, plus a
+new one that widens a Link the Connector does not name and requires the drawn surface to move.
+
+**The gate said "a cache and a head index"; the head index was not built** — callgrind put the
+`headPosition` scan below the reporting threshold and `connectorMarkings` at 52.6%, so the
+booked hypothesis was wrong and the profile is what the work followed. A Link geometry cache was
+built, measured and **reverted**: a Link's polyline is cheap enough that validating the entry
+costs what recomputing it saves (−1% at 80 intersections, +9% on picking). What remains is
+`QGraphicsScene` item construction, which is M1.23's culling and LOD work.
+
+#### M1.27.2 — `Vehicle` string ids · M1.27.3 — UX
+
+**Both open.** The 2026-09-18 profile put ~36% of instructions in `std::string` and 11.8% in the
+vehicle sort; taking the three ids off `Vehicle` touches a core type and every test that builds
+one — *gate:* the four baselines byte-identical. UX carries the `Ctrl`+left-click collision and
+the `VISSIM_PARITY.md` rows that misreport the product — *gate:* a counted walkthrough delta,
+which does **not** close M1's timed owner exercise.
 
 ---
 
