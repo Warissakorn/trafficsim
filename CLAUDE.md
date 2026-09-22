@@ -26,6 +26,14 @@ unsupported network-object fields fail on load rather than disappearing on save.
 requested audit → implementation → inclusion of the original specs; source copies are in
 `docs/specs/`. All remaining runtime, editor and scientific-validation gates remain open.
 
+**Pointer authoring (M1.25):** routes and vehicle inputs are drawn on the canvas — click the start
+lane, click each destination, and the whole chain between them is appended; an input is placed on
+the lane its traffic enters on. One rule decides what may follow a segment (`routeContinuations`
+in `src/model/network/routing.cpp`), which the route dialog now calls instead of its own copy.
+The demand model is unchanged: one route, one vehicle type, one interval per input. Compositions,
+per-interval volumes and a positioned routing decision are M2.1, behind M2's pre-registered gate,
+whose criteria are still unwritten and block all of M2.
+
 **Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
 body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,

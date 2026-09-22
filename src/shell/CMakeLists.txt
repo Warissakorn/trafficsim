@@ -1,6 +1,6 @@
 add_library(trafficsim_shell STATIC editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
-    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_control.cpp editor_run.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
-    ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp)
+    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
+    ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp ../editor/canvas_demand.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)
 qt_add_executable(trafficsim-desktop main.cpp)
 target_link_libraries(trafficsim-desktop PRIVATE trafficsim_shell trafficsim_options)
@@ -26,6 +26,11 @@ if(BUILD_TESTING)
     add_test(NAME network-lifecycle-ui COMMAND trafficsim-lifecycle-ui-tests)
     set_tests_properties(network-lifecycle-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_dependencies(check trafficsim-lifecycle-ui-tests)
+    add_executable(trafficsim-demand-ui-tests ../../tests/demand_ui_tests.cpp)
+    target_link_libraries(trafficsim-demand-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    add_test(NAME demand-ui COMMAND trafficsim-demand-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(demand-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-demand-ui-tests)
     add_executable(trafficsim-authoring-ui-tests ../../tests/authoring_ui_tests.cpp)
     target_link_libraries(trafficsim-authoring-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     add_test(NAME authoring-ui COMMAND trafficsim-authoring-ui-tests "${PROJECT_SOURCE_DIR}/data")

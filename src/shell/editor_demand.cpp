@@ -54,6 +54,8 @@ void EditorWindow::buildDemandTables() {
         [this](const auto& id){editInput(id);},"input");
     page(programTable_,"editorProgramTable","editorAddProgram","editorEditProgram","editorDeleteProgram",
         [this](const auto& id){editProgram(id);},"program");
+    connect(routeTable_,&QTableWidget::itemSelectionChanged,this,[this]{syncHighlightedRoute();});
+    connect(inputTable_,&QTableWidget::itemSelectionChanged,this,[this]{syncHighlightedRoute();});
     connect(routeTable_,&QTableWidget::itemSelectionChanged,this,[this]{
         if(syncing_ || !history_.document().definition) return;
         const auto id=selectedId(routeTable_);
@@ -143,22 +145,14 @@ void EditorWindow::editRoute(const std::string& id,const std::vector<std::string
     // Whole lanes and connector paths, never a derived section id: a route is stored in the
     // project file, and offering a section would put a copy of derived data in it.
     const auto table=runtimeSections(history_.document().network);
-    auto segments=authoringSegments(table);
-    for(std::size_t p=0;p<table.paths.size();++p)
-        segments.push_back({table.paths[p].id,polylineLength(table.paths[p].geometry),{table.pathNext[p]}});
-    // A path's successor is a section; name the lane it belongs to, which is what an author picks.
-    for(auto& segment:segments)for(auto& next:segment.next)
-        for(const auto& section:table.sections)if(section.id==next)next=section.laneId;
     const auto refresh=[&] {
         list->clear();next->clear();
         for(const auto& s:value.segmentIds)list->addItem(QString::fromStdString(s));
-        for(const auto& s:segments) {
-            bool allowed=value.segmentIds.empty();
-            if(!allowed)for(const auto& last:segments)if(last.id==value.segmentIds.back())
-                allowed=std::find(last.next.begin(),last.next.end(),s.id)!=last.next.end();
-            if(allowed && std::find(value.segmentIds.begin(),value.segmentIds.end(),s.id)==value.segmentIds.end())
-                next->addItem(QString::fromStdString(s.id),QString::fromStdString(s.id));
-        }
+        // Whole lanes and connector paths, never a derived section id: a route is stored in
+        // the project file, and offering a section would put a copy of derived data in it.
+        // The rule itself lives in the model, where the canvas gesture reads the same one.
+        for(const auto& id:routeContinuations(table,value.segmentIds))
+            next->addItem(QString::fromStdString(id),QString::fromStdString(id));
         add->setEnabled(next->count()>0);back->setEnabled(!value.segmentIds.empty());
     };
     connect(add,&QPushButton::clicked,&dialog,[&]{value.segmentIds.push_back(next->currentData().toString().toStdString());refresh();});
@@ -169,7 +163,7 @@ void EditorWindow::editRoute(const std::string& id,const std::vector<std::string
     refresh();dialog.resize(500,430);if(dialog.exec()!=QDialog::Accepted)return;
     std::string created;if(execute("editorEditRoute",[&](auto& d){created=putRoute(d,value);}))selectDemand(created);
 }
-void EditorWindow::editInput(const std::string& id) {
+void EditorWindow::editInput(const std::string& id,const std::string& preselectedRoute) {
     VehicleInput value{id,{},{},600,0,history_.document().definition?history_.document().definition->duration:180};
     if(history_.document().definition)for(const auto& i:history_.document().definition->inputs)if(i.id==id)value=i;
     ScenarioDefinition catalog;
@@ -179,6 +173,8 @@ void EditorWindow::editInput(const std::string& id) {
     auto* form=new QFormLayout(&dialog);
     auto* route=new QComboBox(&dialog);route->setObjectName("editorInputRoute");
     for(const auto& r:catalog.routes)route->addItem(QString::fromStdString(r.id));
+    // A route placed by pointer names the route it was dropped on; the dialog opens on it.
+    if(value.routeId.empty())value.routeId=preselectedRoute;
     if(!value.routeId.empty())route->setCurrentText(QString::fromStdString(value.routeId));
     form->addRow(text("editorInputRoute"),route);
     auto* type=new QComboBox(&dialog);type->setObjectName("editorInputType");

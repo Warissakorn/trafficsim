@@ -378,22 +378,28 @@ Levels only affect display and selection; they do not change runtime conflicts.
 ## Routes, inputs and fixed-time signals
 
 1. Draw a continuous path using links and connectors.
-2. In Routes, choose Add and append lane/connector segments in travel order. The next
-   segment menu lists valid continuations. Remove last backs up a choice. R followed
-   by Ctrl+right-click on a lane starts the route dialog with that lane.
-3. In Vehicle inputs, choose Add, select a route and vehicle type, and enter vehicles
-   per hour and the start/end interval. The initial interval is the project duration.
-   Source routes must begin at a supported external entry for Run.
+2. With the Routes tool (R), click the start lane, then click each destination: the whole chain
+   leading there is appended, so a crossing takes two clicks. Ctrl+right-click starts one the same
+   way, Backspace removes the last segment, Enter or double-click stores it, Esc cancels. Draft
+   and selected route draw with direction arrows, the hovered lane is haloed, and the rubber band
+   reddens where no chain reaches; a refused click, including one where two chains reach the
+   clicked segment equally, authors nothing. Routes > Add opens the dialog: the keyboard path.
+3. With the Vehicle inputs tool (V), click the lane traffic enters on: the dialog opens on the
+   route starting there, and offers to draw one when none does. Enter vehicles per hour and the
+   start/end interval (initially the project duration); source routes must begin at a supported
+   external entry for Run. Each input draws a chevron and its volume, and names one route, one
+   type and one interval — compositions, several intervals and relative flows are M2.1.
+   Right-clicking a drawn route or input, rather than dragging to pan, edits or deletes it.
 4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal
    head on a lane or derived connector path, choose a program and position in metres.
    Program deletion is blocked while a head references it.
 5. Run settings edits duration and fixed timeStep together. All demand/control changes
    validate and commit through the same Undo/Redo history as network edits.
 
-Vehicle types and driver behaviours normally resolve from `data/`. Embed catalogs
-stores explicit copies in the project for portability. Explicit empty overrides remain
-empty and do not silently fall back to installed data. Intrinsic demand errors block
-edits; unsupported runtime topology is a separate diagnostic.
+Vehicle types and driver behaviours normally resolve from `data/`; Embed catalogs stores
+explicit copies for portability, and an explicit empty override stays empty rather than
+falling back to installed data. Intrinsic demand errors block edits; unsupported runtime
+topology is a separate diagnostic.
 
 ## Check and Run
 
@@ -468,30 +474,27 @@ schema-7 network object fields are rejected before replacing the current documen
 [Authoring extensions](AUTHORING_EXTENSIONS.md) for the exact supported subset and the new
 Link station-insert, midpoint, straighten and unreferenced-reverse inspector actions.
 
-Save uses atomic QSaveFile replacement without direct-write fallback. A failed save
-keeps the previous destination and dirty state; a failed load keeps the current model.
-An empty or unrunnable drawing can be saved. New/Open/Close prompt Save/Discard/Cancel.
-Undo history is in memory, bounded to 100 operations; saved-revision tracking determines
-the title's asterisk and history resets on load.
+Save uses atomic QSaveFile replacement without direct-write fallback. A failed save keeps the
+previous destination and dirty state; a failed load keeps the current model. An empty or
+unrunnable drawing can be saved, and New/Open/Close prompt Save/Discard/Cancel. Undo history is
+in memory, bounded to 100 operations; saved-revision tracking drives the title's asterisk, and
+history resets on load.
 The **History** toolbar button or **Ctrl+Shift+H** opens named states with current/saved markers.
 Double-click or Enter restores a state; browsing does not edit. See [the workflow guide](EDITOR_WORKFLOW.md).
 
-Every 15 seconds, a dirty revision is atomically written to a separate recovery copy in
-the platform's application-data recovery directory. Per-window UUIDs and process locks
-prevent offering copies owned by active editors. Startup offers stale copies; Recover
-can inspect them later. Recovery validates before replacing the document, then opens
-untitled and dirty so Save asks for a real destination. A successful save or intentional
-discard removes the consumed copy. Recovery is a checkpoint, not a persisted Undo log;
-up to 15 seconds of recent edits may be absent after a crash.
+Every 15 seconds a dirty revision is atomically written to a recovery copy in the platform's
+application-data recovery directory. Per-window UUIDs and process locks prevent offering copies
+owned by active editors; startup offers stale ones and Recover can inspect them later. Recovery
+validates before replacing the document, then opens untitled and dirty so Save asks for a real
+destination, and a successful save or intentional discard removes the consumed copy. It is a
+checkpoint, not a persisted Undo log: up to 15 seconds of edits may be absent after a crash.
 
 ## Verification
 
-CTest includes core/baseline replay, model/project/command suites and native offscreen
-UI workflows. These cover controlled splits, both driving sides, connector ranges,
-catalog override semantics, atomic rollback, reference-safe deletion, persistence,
-migration, demand dialogs, in-editor Run and deterministic Reset, recovery, Thai UI,
-creation/cancellation gestures and level-aware overlap selection.
-
-These checks do not perform the owner's timed exercise, establish model fidelity, or
-measure large-network performance. Windows core checks do not imply Windows/macOS GUI
-verification; installers and clean-machine packaging remain M7.
+CTest covers core/baseline replay, the model/project/command suites and native offscreen UI
+workflows: controlled splits, both driving sides, connector ranges, catalog override semantics,
+atomic rollback, reference-safe deletion, persistence, migration, demand dialogs and pointer
+authoring, in-editor Run and deterministic Reset, recovery, Thai UI, creation/cancellation
+gestures and level-aware overlap selection. They do **not** perform the owner's timed exercise,
+establish model fidelity or measure large-network performance, and Windows core checks do not
+imply Windows/macOS GUI verification; installers remain M7.

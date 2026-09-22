@@ -234,3 +234,53 @@ TEST(editor, a_group_move_carries_a_whole_junction_rigidly) {
     test::throws([&]{h.execute("nan",[&](auto& d){translateObjects(d,{a},{std::nan(""),0});});},"INVALID_GEOMETRY");
     CHECK(h.document()==together);
 }
+TEST(editor, route_continuations_are_the_rule_the_dialog_applied) {
+    const auto d=sample();const auto& n=d.network;
+    // The forcing: this network really does have the two-Connector crossing the rest relies on.
+    CHECK(n.links.size()==4);CHECK(n.connectors.size()==2);
+    const auto starts=routeContinuations(n,{});
+    // Every lane and every Connector path may start a route; nothing else may.
+    CHECK(starts.size()==n.links.size()+n.connectors.size());
+    for(const auto& l:n.links)CHECK(std::find(starts.begin(),starts.end(),l.lanes.front().id)!=starts.end());
+    const auto afterWest=routeContinuations(n,{"west-1"});
+    CHECK(afterWest==std::vector<std::string>({"west-east"}));
+    CHECK(routeContinuations(n,{"west-1","west-east"})==std::vector<std::string>({"east-1"}));
+    // The end of the road leads nowhere, and a segment already in the route is never offered
+    // again -- a route that revisited one would loop.
+    CHECK(routeContinuations(n,{"west-1","west-east","east-1"}).empty());
+    CHECK(std::find(afterWest.begin(),afterWest.end(),"west-1")==afterWest.end());
+}
+TEST(editor, route_chain_to_a_clicked_destination_or_nothing) {
+    const auto d=sample();const auto& n=d.network;
+    // One click on the far side of the junction authors the whole crossing.
+    CHECK(routeChainTo(n,{"west-1"},"east-1")==std::vector<std::string>({"west-east","east-1"}));
+    // From nothing, the chain includes the segment clicked itself.
+    CHECK(routeChainTo(n,{},"west-east")==std::vector<std::string>({"west-east"}));
+    // The two arms never meet, so there is no chain -- and the click must be refused rather
+    // than resolved to the nearest thing that does connect.
+    CHECK(routeChainTo(n,{"west-1"},"north-1").empty());
+    CHECK(routeChainTo(n,{"west-1"},"no-such-lane").empty());
+    CHECK(routeChainTo(n,{"west-1"},"").empty());
+    // A target already in the route is not a destination: it would close a loop.
+    CHECK(routeChainTo(n,{"west-1","west-east","east-1"},"west-1").empty());
+}
+TEST(editor, route_geometry_draws_the_compiled_length) {
+    const auto d=sample();const auto& n=d.network;
+    const std::vector<std::string> route{"west-1","west-east","east-1"};
+    const auto drawn=routeGeometry(n,route);
+    CHECK(drawn.size()>=3);
+    double parts=0;
+    const auto table=runtimeSections(n);
+    for(const auto& id:expandRouteSegments(table,route)) {
+        for(const auto& s:table.sections)if(s.id==id)parts+=s.end-s.start;
+        for(const auto& p:table.paths)if(p.id==id)parts+=polylineLength(p.geometry);
+    }
+    // The drawing follows the road the route travels, so it is as long as the compiled chain.
+    test::near(polylineLength(drawn),parts,1e-6);
+    CHECK(routeGeometry(n,{"no-such-lane"}).empty());
+    // Both driving sides draw: lane geometry is offset from the reference line either way.
+    auto mirrored=d.network;mirrored.drivingSide=DrivingSide::right;
+    const auto other=routeGeometry(mirrored,route);
+    CHECK(other.size()==drawn.size());
+    test::near(polylineLength(other),polylineLength(drawn),1e-6);
+}

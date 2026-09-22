@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md`](archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md) — 2026-09-21, M1.21.1, the Network lifecycle correctness audit; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-20-m1.21-authoring.md`](archive/PROGRESS-2026-09-20-m1.21-authoring.md) — 2026-09-20, M1.21, the supplied-spec audit and authoring foundation; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-connector-position.md`](archive/PROGRESS-2026-09-18-connector-position.md) — 2026-09-18, M1.20; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-18-m1.19-lane-middles.md`](archive/PROGRESS-2026-09-18-m1.19-lane-middles.md) — 2026-09-18, M1.19, the Connector lane middles land on the Link lane middles; moved out 2026-09-21 as the oldest live entry
@@ -16,6 +17,71 @@ long. Older entries are preserved whole there:
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-22 — Routes and vehicle inputs are drawn, not typed (M1.25)
+
+**Request:** the owner asked how to continue, then chose routing, vehicle inputs and the tools
+around them, "easy to use like Vissim", and asked for visual effects as well. Scope agreed with
+them: pointer authoring and drawing only — the demand model stays as it is, because compositions
+and per-interval volumes are M2.1 and M2's pre-registered criteria are still unwritten.
+
+**Changed.** A route is now built by clicking. `Ctrl`+right-click or a left-click on the start
+lane opens a draft; each further click resolves the lane or Connector path under the pointer and
+appends **the whole chain that leads there**, so the four-leg crossing is two clicks rather than
+three dialog picks. `Backspace` drops the last segment, `Enter` or a double-click commits through
+the same `putRoute` the dialog uses (one History entry), `Esc` and loss of canvas focus cancel.
+The Vehicle inputs tool places an input on the lane its traffic enters on and opens the dialog on
+the route starting there, offering to draw one when none does. A right-click that does not pan
+opens a context menu on a drawn route or input.
+
+**One rule, in the model.** `routeContinuations`, `routeChainTo` and `routeGeometry` are new in
+`src/model/network/routing.cpp`, with no Qt. The route dialog's inline copy of "what may follow
+this segment" is deleted and calls `routeContinuations` instead, so the dialog and the gesture
+cannot drift. `routeChainTo` is a bounded breadth-first walk over the same rule and returns
+**nothing** where two chains reach the clicked segment at the same depth: an ambiguity is the
+author's to settle by clicking an intermediate segment, never this code's to guess.
+
+**Visual effects, all of it paint state.** Draft and selected route draw as marching dashes with
+direction arrows; a rubber band follows the pointer and turns red over a lane no chain reaches;
+the hovered lane carries a halo, because `nearestLane` used to pick in silence; each vehicle
+input draws a chevron and its volume, pulsing while its row is selected; a commit and a refusal
+each flash once. One `QTimer` drives all of it and stops when nothing is animatable, so an idle
+editor is idle. The phase is a settable member — a test that slept on an animation would be
+flaky, and nothing measured may depend on a clock.
+
+**Verification.** New `demand-ui` suite: the click starts a draft, the hover halo and rubber band
+report reachability before the click, an unreachable click is refused and authors nothing,
+Backspace/Enter/Esc behave, the commit is one History entry that Undo and Redo carry, the drawn
+route and its arrows and the input chevron and volume are on the canvas, stepping the animation
+phase moves the dashes, an input placed by pointer opens on the right route, save/reopen keeps
+both, the marker answers the context-menu hit test, and the Thai hint is translated. Three model
+cases pin the continuation rule against the dialog's old behaviour, the chain resolution
+including ambiguity and unreachability, and route geometry against the compiled length on both
+driving sides. Linux GCC 13.3 / Qt 6.4.2 `check` passes **35/35** including architecture, file
+sizes and the frozen replay baselines. The draft, the committed route, the input marker and the
+Thai layout were rendered offscreen and inspected. Windows evidence would come from CI.
+
+`ROADMAP` books this as M1.25 and says what it is not; `VISSIM_PARITY` §"Vehicle routes" and the
+two snapping rows are corrected from "not placed by pointer at all" and "not booked". Completed
+M1.12.2/M1.12.3/M1.21 detail moved into `archive/ROADMAP-M1-implemented.md` to keep ROADMAP under
+the 500-line limit this change would otherwise have broken.
+
+### Next
+
+**M1.25 is implemented, not closed:** its gate is the keyboard-only equivalent of both gestures
+and the owner's timed exercise. The obvious next slices, in order of value: a **routing decision
+as a positioned object** (Vissim places it at a station along the link, we still start a route at
+a lane's beginning) — that is M2.1 and must wait for M2's **pre-registered criteria, which are
+still unwritten and block all of M2**; writing them is a session of its own and needs the owner.
+Meanwhile M1.22 remains open for geometry/snapping tools, custom rotation pivots, layer locks and
+bulk inspection, and signal heads are the last object still placed only through a dialog — the
+same `segmentAt`/`inputPlaced` shape would give them pointer placement inside M1.22.
+The shared-station `runtimeSections` refusal (§3.3, its test in `connector_tests.cpp` already
+carries the expectation the fix must flip) and the M3.2 conflict-policy work remain separate.
+Exporting scenario JSON from the editor is still not implemented and still not booked.
+Do not fold simulation or demand-model changes into editor work.
 
 ---
 
@@ -266,57 +332,18 @@ and 3 stand as recorded.
 
 ---
 
-## 2026-09-21 — Network lifecycle correctness audit (M1.21.1)
-
-**Request:** investigate and fix Network authoring failures, especially moving a Connector end
-to the other side and perpendicular mouths becoming needles. This takes priority over the
-previous M1.22 feature follow-up. `NETWORK_LIFECYCLE_AUDIT.md` records the state matrix,
-confirmed defects and limits. The screenshots do not include the source project; fixtures
-reproduce the mechanisms without claiming exact source coordinates.
-
-**Changed:** shared explicit retarget rebuilds the directed curve at the existing point count,
-clears stale blend/cross-section data where appropriate, and is used by the preview and command.
-The two initial regressions failed against main: a backwards last leg after retarget, and a
-stretched steep mouth. Near-perpendicular/backwards mouth fitting now uses full-width square
-ends, never the ill-conditioned slide, and exposes a bilingual alignment advisory. Ordinary
-mouth fitting and M1.20 Link-movement semantics remain distinct and preserved.
-
-Range grips pick actual cross-section centres, including even counts/unequal widths. Group
-drag and rectangle selection use release coordinates. Body tabs follow actual boundaries;
-outward growth of a capacity-limited taper no longer contracts it. Direction sampling chooses
-the incoming/outgoing segment at a vertex, rather than averaging a cusp to zero. Validation
-rejects collapsed derived lanes/centrelines before the canvas/runtime can sample them;
-collapsed drag previews remain drawable and reject atomically on release. Double-click
-insertion cancels all transient drag state.
-
-**Test coverage:** new lifecycle model/UI suites, 144 generated heading cases, 66 anchored
-sharp-arrival fixtures, a 36-case range transition matrix, preview/commit equality, cancellation,
-release-only input, offset collapse, serialization and exact Undo/Redo. The historical 288-case
-mouth sweep now asserts a genuinely anchored fixture. The four `points` tests existed but
-were not registered in CTest; they now run explicitly, and an unfiltered registry test prevents
-that omission recurring. Core reference fixtures were not regenerated.
-
-**Verification:** local Linux/Qt 6.5.3 desktop CTest passes **30/30**; the unfiltered model
-registry includes 147 cases. See the associated PR for final Linux/Windows CI results. A local incremental
-build left one generated test executable without its executable bit; a clean target rebuild
-restored the normal build artifact. This was not a product assertion failure and no test was
-disabled. Visual QA uses the real canvas/catalog with generated and 89/90/91-degree authored
-joins on both driving sides. No automated result closes the owner's M0/M1 acceptance gates.
-
-### Next
-
-Review the lifecycle fixes against the owner's original `.traffic.json` if supplied, especially
-previously authored near-perpendicular shapes: they are retained and diagnosed, not silently
-regenerated on load. Explicit retarget/Reset curve produces a fresh directed turn. Then resume
-the separately booked M1.22 authoring features; do not describe that feature scope as completed
-by this bug-fix audit. Keep the finite coverage and the remaining manual acceptance explicit.
-
----
-
 ## Next
 
-**One engineering item is open** — item 0 below, from the Connector parity audit. Everything else
-here is the owner's.
+**Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
+
+**0b. M1.25's own gate, and what the pointer tools still lack.** Routes and vehicle inputs are
+now authored by clicking (see the top entry), but the gate is the keyboard-only equivalent of
+both gestures plus the owner's timed exercise below, and neither is done. Signal heads are the
+last object still placed only through a dialog; `segmentAt`/`inputPlaced` in
+`src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22. A routing decision as an
+object at a station along the link — which is what Vissim actually places — is **M2.1**, and M2
+may not start until its pre-registered criteria are written into `ROADMAP.md`. Writing them is
+the owner's, and it blocks all of M2.
 
 **0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
 station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
@@ -340,9 +367,9 @@ distance for "off the Link" — one constant, in `laneContains`.
 > cannot: `kMouthSpanFloor` in `road_boundaries.cpp` is the dial, and `connectorMouthFit` reports
 > what a mouth could not reach, in metres.
 
-Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1 and
-M1.12.1, with M1.12.2 closed as a measurement error rather than a defect and M1.12.3 closed by
-M1.19. `docs/ROADMAP.md` is
+Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
+M1.12.1, M1.21–M1.21.1 and M1.24–M1.25, with M1.12.2 closed as a measurement error rather than a
+defect and M1.12.3 closed by M1.19. M1.22 and M1.23 remain open. `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 

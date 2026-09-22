@@ -79,6 +79,7 @@ void EditorCanvas::cancel() {
     creating_=false;gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
+    clearRouteDraft();
     if (connectorDraftChanged) connectorDraftChanged();
     redraw();
 }
@@ -161,7 +162,7 @@ void EditorCanvas::redraw() {
     }
     drawConnectors();
     drawLaneHandles();
-    drawCopyPreview();drawRotationPreview();
+    drawCopyPreview();drawRotationPreview();drawDemandOverlay();
     for(const auto& head:document_->network.signalHeads) {
         std::vector<Point> geometry;int level=0;
         if(head.connectorId.empty()) {
