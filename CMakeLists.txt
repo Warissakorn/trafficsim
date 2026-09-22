@@ -51,11 +51,12 @@ add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
-# nlohmann/json is a large header-only template library: on its own it costs about 1.2 s to parse
-# and instantiate, and src/project/document.hpp puts it in 57 of the repository's 78 translation
-# units. Precompiling it on the targets that have several sources each turns that into one cost per
-# target instead of one per file. Single-source targets are left alone deliberately -- there a PCH
-# costs about as much as the file it would accelerate.
+# nlohmann/json is a large header-only template library: 1.47 s to parse and instantiate here,
+# against 0.36 s for <nlohmann/json_fwd.hpp>. src/project/json.hpp includes the forward
+# declaration, so only a translation unit that builds or reads a Json pays for the definition,
+# and precompiling it on the multi-source targets turns that into one cost per target. A
+# single-source target gets no PCH of its own -- it would cost about what it saves -- but it can
+# REUSE_FROM one that already exists, which src/shell does for the UI test executables.
 target_precompile_headers(trafficsim_project PRIVATE <nlohmann/json.hpp>)
 
 add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp
@@ -76,6 +77,13 @@ target_link_libraries(trafficsim-cli PRIVATE trafficsim_project trafficsim_optio
 trafficsim_runtime_data(trafficsim-cli)
 install(TARGETS trafficsim-cli RUNTIME DESTINATION bin)
 install(DIRECTORY data/ DESTINATION bin/data)
+
+# Not a test and not in `check`: it prints tick rates, it does not assert them. It needs no Qt,
+# so the engine stays measurable under the headless preset.
+add_executable(trafficsim-engine-benchmark tools/engine_benchmark.cpp)
+target_link_libraries(trafficsim-engine-benchmark PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-engine-benchmark PRIVATE <nlohmann/json.hpp>)
+trafficsim_runtime_data(trafficsim-engine-benchmark)
 
 add_executable(trafficsim-check-architecture tools/check_architecture.cpp)
 add_executable(trafficsim-check-file-sizes tools/check_file_sizes.cpp)

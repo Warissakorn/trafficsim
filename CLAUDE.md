@@ -38,6 +38,21 @@ not. A lane-specific route (a turn pocket) can no longer be expressed; adjustabl
 shares are M1.26.1; compositions, per-interval volumes and a positioned routing decision are
 M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
 
+**Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
+`<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test
+executables reuse — a clean build is 86 s → 64 s, and a PCH here holds third-party headers only
+(D27). `tools/editor_benchmark.cpp` then made the canvas measurable: the editor caches each
+Connector's paths, boundaries and markings **against the values they are derived from** (D28),
+taking a 160-link corridor from 93 ms a frame to 22. Read D28 before adding another cache — the
+same one for Link geometry was measured and reverted. **M1.27.2:** `tools/engine_benchmark.cpp`
+commits an engine fixture, and a runtime vehicle now names its input, route and type by **slot
+in the canonical Scenario** rather than by id (D29), halving the run; names survive at the
+boundary, so every frozen fixture is byte-identical. **M1.27.3 closes the program:**
+`tools/gesture_walkthrough.cpp` counts the inputs an authoring task costs and replays the Vissim
+reflexes — five of six transfer, and the sixth, `Ctrl`+left-click, does **nothing** rather than
+the wrong thing the parity table claimed, which the owner ruled stays as it is (D30). None of the
+three benchmarks is in `check`, so re-run them before repeating any of these numbers.
+
 **Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
 body attachments, fixed lane edges and Ctrl selection/copy, attachment stations in metres,
@@ -72,7 +87,7 @@ Scenario JSON and editor `*.traffic.json` projects are two formats on purpose �
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Before adding a system. Update when the map changes. |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | To see which milestone this is and what closes it. |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Every session. Read `Next` first. |
-| [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. Says which gaps are booked and which are deliberately not. |
+| [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
 | [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
 
 ## Stack

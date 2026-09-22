@@ -1,5 +1,6 @@
 #include "editor_window.hpp"
 #include "editor_storage.hpp"
+#include <nlohmann/json.hpp>
 #include <QBuffer>
 #include <QCloseEvent>
 #include <QDoubleSpinBox>

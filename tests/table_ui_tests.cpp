@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QAction>
 #include <QAbstractButton>

@@ -13,8 +13,13 @@ const char* modeName(FollowingMode mode) {
                    case FollowingMode::following: return "following"; case FollowingMode::braking: return "braking"; }
     return "invalid";
 }
-Json pendingJson(const PendingVehicle& v) {
-    return {{"id", v.id}, {"inputId", v.inputId}, {"routeId", v.routeId}, {"vehicleTypeId", v.vehicleTypeId},
+// A vehicle carries scenario SLOTS, not names; a checkpoint carries the names, because it is
+// read by people and by the frozen fixtures and a slot means nothing outside one Scenario.
+Json pendingJson(const Scenario& scenario, const PendingVehicle& v) {
+    const std::string inputId = v.inputIndex == PendingVehicle::kNoInput ? std::string{}
+                                                                        : scenario.inputs[v.inputIndex].id;
+    return {{"id", v.id}, {"inputId", inputId}, {"routeId", scenario.routes[v.routeIndex].id},
+            {"vehicleTypeId", scenario.vehicleTypes[v.typeIndex].id},
             {"scheduledTime", v.scheduledTime}, {"desiredSpeed", v.desiredSpeed}, {"driverFactor", v.driverFactor}};
 }
 Json optionalNumber(const std::optional<double>& value) { return value ? Json(*value) : Json(nullptr); }
@@ -45,17 +50,22 @@ Json eventJson(const SimEvent& event) {
     }, event);
 }
 Json checkpointJson(const SimState& state) {
+    // Every slot in the state is a position in this scenario, so there is nothing to serialise
+    // without it. Say that, rather than dereferencing a null.
+    if (!state.scenario) throw std::invalid_argument("Checkpoint requires a scenario");
+    const auto& scenario = *state.scenario;
     Json vehicles = Json::array(), inputs = Json::array();
     for (const auto& vehicle : state.vehicles) {
-        auto j = pendingJson(vehicle);
+        auto j = pendingJson(scenario, vehicle);
         j["enteredTime"] = vehicle.enteredTime; j["distance"] = vehicle.distance;
         j["speed"] = vehicle.speed; j["acceleration"] = vehicle.acceleration; j["mode"] = modeName(vehicle.mode);
         vehicles.push_back(std::move(j));
     }
-    for (const auto& input : state.inputs) {
+    for (std::size_t i = 0; i < state.inputs.size(); ++i) {
         Json queue = Json::array();
-        for (const auto& pending : input.queue) queue.push_back(pendingJson(pending));
-        inputs.push_back({{"id", input.id}, {"nextArrival", optionalNumber(input.nextArrival)}, {"queue", queue}});
+        for (const auto& pending : state.inputs[i].queue) queue.push_back(pendingJson(scenario, pending));
+        inputs.push_back({{"id", scenario.inputs[i].id},
+                          {"nextArrival", optionalNumber(state.inputs[i].nextArrival)}, {"queue", queue}});
     }
     return {{"tick", state.tick}, {"randomState", state.randomState}, {"nextVehicleId", state.nextVehicleId},
             {"completed", state.completed}, {"vehicles", vehicles}, {"inputs", inputs}};

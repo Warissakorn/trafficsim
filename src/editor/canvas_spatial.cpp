@@ -7,7 +7,7 @@ std::optional<std::pair<Point,int>> EditorCanvas::headPosition(const NetworkSign
     if(head.connectorId.empty()) {
         for(const auto& l:document_->network.links)if(l.id==head.lane.linkId)
             return std::pair{pointAlong(laneGeometry(l,head.lane.laneId,document_->network.drivingSide),head.position),l.level};
-    } else for(const auto& c:document_->network.connectors)for(const auto& path:connectorPaths(document_->network,c))
+    } else for(const auto& c:document_->network.connectors)for(const auto& path:cachedPaths(c))
         if(path.id==head.connectorId)return std::pair{pointAlong(path.geometry,head.position),c.level};
     return {};
 }
@@ -22,7 +22,7 @@ QPainterPath EditorCanvas::objectShape(const std::string& id) const {
     for(const auto& l:document_->network.links)if(l.id==id)
         return polygon(laneBoundaryGeometry(l,0,document_->network.drivingSide),laneBoundaryGeometry(l,l.lanes.size(),document_->network.drivingSide));
     for(const auto& c:document_->network.connectors)if(c.id==id) {
-        const auto boundaries=connectorBoundaries(document_->network,c);return polygon(boundaries.front(),boundaries.back());
+        const auto& boundaries=cachedBoundaries(c);return polygon(boundaries.front(),boundaries.back());
     }
     for(const auto& h:document_->network.signalHeads)if(h.id==id)if(const auto at=headPosition(h)) {
         const double r=4/std::abs(transform().m11());QPainterPath shape;
@@ -46,7 +46,7 @@ void EditorCanvas::drawCopyPreview() {
         if(!isSelected(c.id) && isSelected(c.from.linkId) && isSelected(c.to.linkId))draw(c.id);
     for(const auto& h:document_->network.signalHeads) {
         bool copied=isSelected(h.lane.linkId);
-        for(const auto& c:document_->network.connectors)for(const auto& path:connectorPaths(document_->network,c))
+        for(const auto& c:document_->network.connectors)for(const auto& path:cachedPaths(c))
             if(path.id==h.connectorId)copied=isSelected(c.id) || (isSelected(c.from.linkId) && isSelected(c.to.linkId));
         if(copied && !isSelected(h.id))draw(h.id);
     }

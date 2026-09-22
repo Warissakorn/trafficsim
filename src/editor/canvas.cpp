@@ -93,7 +93,7 @@ std::pair<std::string, double> EditorCanvas::hit(Point p,bool connectors) const 
     return hits.empty()?std::pair<std::string,double>{}:hits.front();
 }
 void EditorCanvas::redraw() {
-    runItems_.clear();scene_.clear();
+    runItems_.clear();scene_.clear();pruneConnectorCache();
     if (!document_) return;
     const auto& bg=document_->background;
     if (backgroundVisible_ && !bg.pngBase64->empty()) {
@@ -169,7 +169,7 @@ void EditorCanvas::redraw() {
             for(const auto& l:document_->network.links)if(l.id==head.lane.linkId) {
                 geometry=laneGeometry(l,head.lane.laneId,document_->network.drivingSide);level=l.level;
             }
-        } else for(const auto& c:document_->network.connectors)for(const auto& p:connectorPaths(document_->network,c))
+        } else for(const auto& c:document_->network.connectors)for(const auto& p:cachedPaths(c))
             if(p.id==head.connectorId){geometry=p.geometry;level=c.level;}
         if(geometry.empty() || !levelVisible(level))continue;
         const auto p=pointAlong(geometry,head.position);const double r=3/std::abs(transform().m11());

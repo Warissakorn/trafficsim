@@ -43,17 +43,33 @@ inline trafficsim::Scenario straight() {
     s.inputs = {{"input", "route", "car", 900, 0, 60}};
     return s;
 }
-inline trafficsim::Vehicle vehicle(std::uint64_t id, double distance, double speed = 0) {
-    trafficsim::Vehicle v;
-    v.id = id; v.distance = distance; v.speed = speed;
-    v.inputId = "input"; v.routeId = "route"; v.vehicleTypeId = "car";
-    v.desiredSpeed = 15; v.driverFactor = 0.5;
-    return v;
+// A vehicle to place on the network by hand. It names its route and type by ID, because that is
+// what a test can read; withVehicles turns those into the canonical scenario's slots, which is
+// the only place the two representations meet. Placed vehicles come from no input, so they carry
+// PendingVehicle::kNoInput and nothing erases a queue entry for them.
+struct Placement {
+    std::uint64_t id{}; std::string routeId; double distance{}, speed{};
+    std::string vehicleTypeId{"car"};
+};
+inline Placement vehicle(std::uint64_t id, double distance, double speed = 0) {
+    return {id, "route", distance, speed};
 }
-inline trafficsim::SimState withVehicles(trafficsim::Scenario s, std::vector<trafficsim::Vehicle> vehicles) {
+inline trafficsim::SimState withVehicles(trafficsim::Scenario s, const std::vector<Placement>& placements) {
     s.inputs.clear(); auto state = trafficsim::createSimulation(s, 42);
-    state.vehicles = std::move(vehicles);
-    for (const auto& v : state.vehicles) state.nextVehicleId = std::max(state.nextVehicleId, v.id + 1);
+    // createSimulation canonicalises, so resolve against the scenario the state actually holds.
+    const auto slot = [](const auto& items, const std::string& id) {
+        for (std::uint32_t i = 0; i < items.size(); ++i) if (items[i].id == id) return i;
+        throw std::invalid_argument("Unknown test id: " + id);
+    };
+    for (const auto& p : placements) {
+        trafficsim::Vehicle v;
+        v.id = p.id; v.distance = p.distance; v.speed = p.speed;
+        v.routeIndex = slot(state.scenario->routes, p.routeId);
+        v.typeIndex = slot(state.scenario->vehicleTypes, p.vehicleTypeId);
+        v.desiredSpeed = 15; v.driverFactor = 0.5;
+        state.vehicles.push_back(v);
+        state.nextVehicleId = std::max(state.nextVehicleId, v.id + 1);
+    }
     return state;
 }
 inline trafficsim::SimState finish(trafficsim::SimState state) {

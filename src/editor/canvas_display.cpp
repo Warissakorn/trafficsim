@@ -31,7 +31,7 @@ std::vector<std::pair<std::string,double>> EditorCanvas::hitObjects(Point p,bool
     }
     if(connectors)for(const auto& c:document_->network.connectors)if(levelVisible(c.level)) {
         double distance=proximity(c.geometry);
-        for(const auto& path:connectorPaths(document_->network,c))distance=std::min(distance,proximity(path.geometry));
+        for(const auto& path:cachedPaths(c))distance=std::min(distance,proximity(path.geometry));
         if(contains(c.id))hits.push_back({c.id,stationOfClosestPoint(c.geometry,p),distance,c.level,4});
     }
     if(connectors)for(const auto& h:document_->network.signalHeads)if(const auto at=headPosition(h))

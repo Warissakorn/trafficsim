@@ -4,6 +4,11 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md`](archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md) — 2026-09-22, M1.26, a route belongs to the carriageway; moved out 2026-09-22 as the oldest live entry
+- [`archive/PROGRESS-2026-09-22-m1.24-one-window.md`](archive/PROGRESS-2026-09-22-m1.24-one-window.md) — 2026-09-22, M1.24, the one-window editor; moved out 2026-09-22 as the oldest live entry
+- [`archive/PROGRESS-2026-09-22-m1.25-pointer-demand.md`](archive/PROGRESS-2026-09-22-m1.25-pointer-demand.md) — 2026-09-22, M1.25, demand drawn by pointer; moved out 2026-09-22 as the oldest live entry
+- [`archive/PROGRESS-2026-09-22-m1.22.2-rotation.md`](archive/PROGRESS-2026-09-22-m1.22.2-rotation.md) — 2026-09-22, M1.22.2, selection rotation; moved out 2026-09-22 as the oldest live entry
+- [`archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md`](archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md) — 2026-09-21, M1.22.1, editor history and the keyboard workflow; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-toolchain-and-3.3.md`](archive/PROGRESS-2026-09-21-toolchain-and-3.3.md) — 2026-09-21, the toolchain install and the §3.3 measurement; moved out 2026-09-22
 - [`archive/PROGRESS-2026-09-21-connector-parity-audit.md`](archive/PROGRESS-2026-09-21-connector-parity-audit.md) — 2026-09-21, the Connector parity audit; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md`](archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md) — 2026-09-21, M1.21.1, the Network lifecycle correctness audit; moved out 2026-09-22 as the oldest live entry
@@ -22,282 +27,295 @@ long. Older entries are preserved whole there:
 
 ---
 
-## 2026-09-22 — A route belongs to the carriageway (M1.26)
+## 2026-09-22 — The reflexes, counted (M1.27.3)
 
-**Request:** three findings against M1.25, in the owner's words: the drawn route ran *"สวนทิศทาง
-จราจรบน Link"* (against the traffic), routing and vehicle inputs should be created *"บนทุกช่อง
-จราจรบน Link ไม่ใช่แค่ช่องที่คลิกโดน"* with the Connector connecting every lane first and narrowed
-later, and after a route existed the Link and Connector *"แก้ไขไม่ได้"*. Asked how to handle a
-narrowed Connector, the owner settled the design: **Routing เป็นการสร้างบนทุกช่องจราจร … ไม่ได้
-สร้างเป็นรายช่อง — จะเพิ่มหรือลดจำนวนช่องจราจรของ Connector อย่างไร Routing ก็ยังอยู่.**
+**Request:** finish M1.27 with the UX stage. Its gate is a counted walkthrough, so the
+instrument came first, exactly as the two stages before it.
 
-**What changed.** An authored route names **Links and Connectors**, never a lane and never a
-Connector path. `routeLaneChains` (`src/model/network/routing.cpp`) derives one lane chain per
-lane the drawing actually carries, and `buildScenario` expands each authored route into one core
-route per chain, each still resolved through `expandRouteSegments`. A vehicle input expands the
-same way: the authored volume is the **Link total**, divided equally across those lanes. All
-three complaints fall out of that one change:
+**`tools/gesture_walkthrough.cpp` drives the real `EditorWindow` offscreen**, counts the
+primitive inputs each authoring task costs, then replays the Vissim reflexes from
+`VISSIM_PARITY.md` §1 against the drawing it just made. A reflex is judged by what it did to
+the **document** — it transfers, it is a dead end, or it silently does something else, which is
+the case worth finding. Not a test and not in `check`: it reports, the UI suites assert.
 
-- **The backwards line** was `routeGeometry` drawing whole lanes. A Connector dragged onto a Link
-  body attaches at a station, so the drawing ran from the lane's start — upstream of where the
-  traffic joins. `routeGeometries` draws the compiled chain, whose sections are already clipped.
-- **Every lane** is covered because the route names the carriageway; the lane clicked is not
-  stored anywhere. The Connector dialog now defaults to all lanes of both Links.
-- **Editing is no longer refused.** `changeConnectorRange`, `changeConnectorEndpoints`,
-  `changeLanes` and `reverseLink` lost their route guards — nothing a route names can be removed
-  by a lane-count change. The connector and signal-head guards stay; those name positions.
+| Task, native path | inputs |
+|---|---|
+| Draw a 3-lane Link | 4 |
+| Connect two 3-lane Links, all 3 lanes | 3 |
+| Add a curve point to a Link | 3 |
+| Duplicate a Link | 2 |
+| Rotate a Link | 2 |
 
-**What a route can no longer do, said plainly.** A lane-specific route — Vissim's turn pocket,
-where only the left lane may turn — cannot be expressed. That is the cost of the owner's ruling
-and it is booked against M2.1's positioned routing decision. Adjustable per-lane shares, which
-the owner also asked for, are **not** implemented: the numbers must live where both the editor
-and the compiler read them, and `VehicleInput` is a core type the scenario format shares, so that
-is a schema-and-signature decision of its own — booked as **M1.26.1**.
+**Five of the six replayed reflexes transfer.** `Ctrl`+right-click inserts a curve point,
+`Alt`+left-drag rotates, dragging moves a whole selection, right-drag pans, `Tab` reaches the
+object behind. `Ctrl`+right-drag drawing a Link and creating a Connector is measured by the two
+creation tasks above. The one row nothing here replays is the Connector's corner handles, which
+the `editor-gestures` suite covers.
 
-**Two things that took care to get right.** Compiling an already-compiled Scenario has to stay a
-no-op, so a route already given in lane or section ids passes through untouched
-(`routeAlreadyExpanded`). And two Links named one after the other **imply** the Connector between
-them, each lane finding its own — without that, `splitLink` would break every route it touched,
-because a split makes one bridging Connector per lane and no single one of them can stand in an
-object chain.
+**Each row is a predicate, not a reading of the code**: what that reflex means in Vissim,
+translated into this document. Two rows only started reporting the truth after the predicate
+got stricter — `Alt`+left-drag passed a naive check while doing nothing, because the harness
+grabbed the Link at its own centre, where the editor refuses to rotate on purpose.
 
-**Schema 8.** `migrateRoutesToObjects` maps a stored lane or path id to its owner and is
-idempotent, so it can run on every read. It runs in `parseDocument` **and** in `loadScenario`,
-because the CLI reads M0 scenarios through the same authoring path — missing that would have
-silently changed what `trafficsim-cli` compiles. `putRoute` normalises the same way and now
-refuses an id that names no object at all (`EDIT_UNKNOWN_OBJECT`).
+**The ninth contradicted the documentation, in the useful direction.** §1 and §2 called
+`Ctrl`+left-click a *collision* — the chord that duplicates in Vissim extending the selection
+here. Measured, it extends the selection only on an object that is **not** already selected,
+which is not the case a Vissim user's hand is in: on a selected object it does **nothing**. So
+the danger the table has ranked High since 2026-09-14 is not a wrong verb, it is a dead end.
 
-**A broken route is reported, not deleted and not refused.** `routeRuntimeIssues` emits
-`UNSUPPORTED_ROUTE_TOPOLOGY` for a route whose objects do not join up for any lane: the edit goes
-through, the Problems panel names the route, Run refuses it. That is D18b's boundary applied to
-routes — an author retargeting a Connector must not have the document reject the change.
+**Offered the Vissim verb for that dead end, the owner ruled it stays as it is** (D30). The
+counted delta is therefore zero by decision, not by omission, and the harness is committed so
+the next person can measure a real one.
 
-**Verification.** Linux GCC 13.3 / Qt 6.4.2 `check` passes **35/35**, including architecture,
-file sizes, and — the acceptance condition for this whole change — the `cli` and `reference`
-baselines: a single-lane expansion keeps the authored route and input ids, so the four frozen
-trajectories and `29.249359418430977` are untouched. New model cases pin the continuation rule at
-object level, the chain-to-destination including ambiguity, a three-lane route surviving a
-narrowed Connector with the Link total redistributed, the single-lane id rule, and the drawn
-route against the compiled length at a mid-body arrival — the last one fails on the old code.
-Ten existing tests were rewritten to the new contract rather than deleted, each keeping what it
-was really testing. Rendered offscreen and inspected: a three-lane route drawn over a mid-body
-arrival, the input row reading `1800 = 3 × 600.0`, and the Thai layout. Windows evidence comes
-from CI, not from these Linux results.
+**A second owner correction:** the table listed `Ctrl+N` as Vissim's simple-network-display
+toggle and called it a Medium collision with New. **It is `Ctrl+A`.** `Ctrl+N` collides with
+nothing, and `Ctrl+A` is unbound here — and stays unbound, because there is no simplified
+display to toggle until M1.23 builds one.
+
+**What the documentation cost.** `VISSIM_PARITY.md` was wrong in about a dozen rows, all in the
+same direction: it under-reported the product. §1 and §6 are kept as the dated 2026-09-14
+assessment and a new **§1a** carries the measured state; §2's three keyboard tables were
+rewritten, since a table headed *what the editor binds today* cannot be excused as history.
+Three of the six collision rows are gone because the editor was changed to match Vissim. The
+2026-09-17 wedge-mouth follow-up moved to `docs/archive/` to pay for the space.
 
 ### Next
 
-**M1.26 is implemented, not closed:** its gate is the keyboard-only equivalent of both pointer
-gestures plus the owner's timed exercise. The ordered follow-ups: **M1.26.1** adjustable per-lane
-shares (decide where the shares live before writing any UI — that is the whole task); then the
-routing decision as a positioned object, which is **M2.1** and must wait for **M2's
-pre-registered criteria, still unwritten, which block all of M2** and need the owner. M1.22
-remains open for geometry/snapping tools, custom pivots, layer locks and bulk inspection; signal
-heads are the last object still placed only through a dialog, and `objectAt`/`inputPlaced` in
-`src/editor/canvas_demand.cpp` are the shape to copy. The shared-station `runtimeSections`
-refusal (§3.3, M3.2) and the M3.2 conflict-policy work remain separate. Exporting scenario JSON
-from the editor is still not implemented and still not booked.
+**M1.27 is closed.** Its four stages are done: clean build 86 s → 64 s, a 160-link corridor
+93.4 → 22.5 ms a frame and 39.0 → 7.1 ms a pick, the engine run roughly halved, and the
+gesture surface counted with one deliberate dead end left in it. Three benchmarks are committed
+— `trafficsim-engine-benchmark`, `trafficsim-editor-benchmark`, `trafficsim-gesture-walkthrough`
+— and none of them is in `check`, so re-run them by hand before claiming any of those numbers
+again.
+
+**M1.26.1, adjustable per-lane shares, is next**, and the owner asked for it two sessions ago.
+Decide where the shares live before writing any UI — that is the whole task, because
+`VehicleInput` is a core type the scenario format shares, and an equal split must stay the
+compiled result of an unedited input, bit for bit.
+
+Then **M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**
+and need the owner. Still open: M1.22 (geometry/snapping tools, custom pivots, layer locks,
+bulk inspection), M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, the shared-station
+`runtimeSections` refusal (§3.3, M3.2), and scenario-JSON export from the editor, which is
+neither implemented nor booked. Inside a tick `occupiedSpans` is the largest single cost at
+9.8%; no milestone is booked for it and none is needed yet. **M1's timed owner exercise
+(`docs/M1_ACCEPTANCE.md`) is untouched by all of this** — a counted walkthrough is not a timed
+one, and M1.27.3 never claimed to close it.
 
 ---
 
-## 2026-09-22 — Routes and vehicle inputs are drawn, not typed (M1.25)
+## 2026-09-22 — A vehicle stops carrying its names (M1.27.2)
 
-**Request:** the owner asked how to continue, then chose routing, vehicle inputs and the tools
-around them, "easy to use like Vissim", and asked for visual effects as well. Scope agreed with
-them: pointer authoring and drawing only — the demand model stays as it is, because compositions
-and per-interval volumes are M2.1 and M2's pre-registered criteria are still unwritten.
+**Request:** continue M1.27 with the engine stage. This is the one item another session
+measured first: 2026-09-18 profiled the engine, found ~36% of instructions in `std::string` and
+11.8% in the per-tick vehicle sort, wrote the fix into its `Next` and left it, because it
+changes a core public type and every test that builds a `Vehicle`.
 
-**Changed.** A route is now built by clicking. `Ctrl`+right-click or a left-click on the start
-lane opens a draft; each further click resolves the lane or Connector path under the pointer and
-appends **the whole chain that leads there**, so the four-leg crossing is two clicks rather than
-three dialog picks. `Backspace` drops the last segment, `Enter` or a double-click commits through
-the same `putRoute` the dialog uses (one History entry), `Esc` and loss of canvas focus cancel.
-The Vehicle inputs tool places an input on the lane its traffic enters on and opens the dialog on
-the route starting there, offering to draw one when none does. A right-click that does not pan
-opens a context menu on a drawn route or input.
+**Its corridors were never committed, so its numbers could not be reproduced.** That came
+first: `tools/benchmark_network.hpp` now holds the generator both benchmarks use, and
+`tools/engine_benchmark.cpp` compiles a corridor through `compileDocument` and runs it — no Qt,
+so the engine stays measurable under the headless preset. Its one parameter is where the
+northbound approach joins: the editor keeps the end attachment M1.27.1's published numbers were
+measured on, and the engine passes a station, because a **mid-body arrival is what derives the
+M3.1 priority rule a merge needs to run at all** — without it the corridor will not compile.
 
-**One rule, in the model.** `routeContinuations`, `routeChainTo` and `routeGeometry` are new in
-`src/model/network/routing.cpp`, with no Qt. The route dialog's inline copy of "what may follow
-this segment" is deleted and calls `routeContinuations` instead, so the dialog and the gesture
-cannot drift. `routeChainTo` is a bounded breadth-first walk over the same rule and returns
-**nothing** where two chains reach the clicked segment at the same depth: an ambiguity is the
-author's to settle by clicking an intermediate segment, never this code's to guess.
+**The profile on that fixture reproduced 2026-09-18 exactly**, which is the useful part: string
+copy ctor 17.4%, `Vehicle` copy ctor 12.1%, the vehicle sort 11.4% (they measured 11.8%),
+`resolveRefs` 10.3% of which `lookup` 9.1%, `~string` 8.1%.
 
-**Visual effects, all of it paint state.** Draft and selected route draw as marching dashes with
-direction arrows; a rubber band follows the pointer and turns red over a lane no chain reaches;
-the hovered lane carries a halo, because `nearestLane` used to pick in silence; each vehicle
-input draws a chevron and its volume, pulsing while its row is selected; a commit and a refusal
-each flash once. One `QTimer` drives all of it and stops when nothing is animatable, so an idle
-editor is idle. The phase is a settable member — a test that slept on an animation would be
-flaky, and nothing measured may depend on a clock.
+**What changed.** A `Scenario` is immutable and canonically sorted from `createSimulation`
+onwards, so an index names exactly the object an id named — and unlike an id it costs nothing to
+copy, compare or sort. `PendingVehicle` holds `inputIndex`/`routeIndex`/`typeIndex`, resolved
+once per scenario in `ScenarioIndex`'s new `routeOfInput`/`typeOfInput`. `routeOfId`,
+`typeOfId`, `IdSlot` and the `lookup` they served are gone: that undoes part of 2026-09-18's own
+optimisation, which this subsumes, because there is no id left to look up. `InputState` loses
+its `id`, which duplicated `scenario.inputs[i].id` once the vector became index-addressed.
 
-**Verification.** New `demand-ui` suite: the click starts a draft, the hover halo and rubber band
-report reachability before the click, an unreachable click is refused and authors nothing,
-Backspace/Enter/Esc behave, the commit is one History entry that Undo and Redo carry, the drawn
-route and its arrows and the input chevron and volume are on the canvas, stepping the animation
-phase moves the dashes, an input placed by pointer opens on the right route, save/reopen keeps
-both, the marker answers the context-menu hit test, and the Thai hint is translated. Three model
-cases pin the continuation rule against the dialog's old behaviour, the chain resolution
-including ambiguity and unreachability, and route geometry against the compiled length on both
-driving sides. Linux GCC 13.3 / Qt 6.4.2 `check` passes **35/35** including architecture, file
-sizes and the frozen replay baselines. The draft, the committed route, the input marker and the
-Thai layout were rendered offscreen and inspected. Windows evidence would come from CI.
+**Resolving in `generateArrivals` was not enough, and the profile said so.** The first version
+looked the input's route and type up there instead — the same lookup in a new place, 11% of the
+run, once per input per tick whether or not a vehicle arrived. Hoisting it into the index is
+what took the second half of the win.
 
-`ROADMAP` books this as M1.25 and says what it is not; `VISSIM_PARITY` §"Vehicle routes" and the
-two snapping rows are corrected from "not placed by pointer at all" and "not booked". Completed
-M1.12.2/M1.12.3/M1.21 detail moved into `archive/ROADMAP-M1-implemented.md` to keep ROADMAP under
-the 500-line limit this change would otherwise have broken.
+Interleaved medians of five, alternating the two binaries, Debug, 300 simulated seconds:
+
+| intersections | segments | before | after | |
+|---|---|---|---|---|
+| 12 | 171 | 1560.8 ms | **792.6 ms** | −49.2% |
+| 24 | 351 | 2566.2 ms | **1331.0 ms** | −48.1% |
+
+**The trajectory is identical, not merely the summary.** The four seed fixtures and
+`trajectory-digest.json` pass unchanged — the digest pins per-tick position, speed, acceleration
+**and vehicle ordering**, so a reordering could not hide — `trafficsim-cli 42` still prints
+`29.249359418430977`, and the benchmark completes the same 475 trips with the same peak of 235
+vehicles. No fixture was regenerated. What protects this is that ids only ever became slots
+through `detail::byId`, whose first-occurrence rule is what every lookup they replaced returned.
+
+**Names did not disappear, they moved to the boundary.** `DepartedEvent` and `ArrivedEvent`
+still carry `routeId`, read from the scenario where the event is built, and `pendingJson` takes
+the `Scenario` and emits the same three strings — a slot means nothing outside one Scenario, and
+the fixtures are read by people. `checkpointJson` now throws rather than dereferencing a null
+scenario, because without one there is nothing to resolve against.
+
+**Tests.** `test::Placement` describes a vehicle by route and type id and `withVehicles`
+resolves it against the canonical scenario, so the two representations meet in one place instead
+of in three test files. `stepSimulation` asserts `state.inputs` is parallel to
+`scenario.inputs`, so a hand-built state mis-indexes loudly instead of reading past the end.
 
 ### Next
 
-**M1.25 is implemented, not closed:** its gate is the keyboard-only equivalent of both gestures
-and the owner's timed exercise. The obvious next slices, in order of value: a **routing decision
-as a positioned object** (Vissim places it at a station along the link, we still start a route at
-a lane's beginning) — that is M2.1 and must wait for M2's **pre-registered criteria, which are
-still unwritten and block all of M2**; writing them is a session of its own and needs the owner.
-Meanwhile M1.22 remains open for geometry/snapping tools, custom rotation pivots, layer locks and
-bulk inspection, and signal heads are the last object still placed only through a dialog — the
-same `segmentAt`/`inputPlaced` shape would give them pointer placement inside M1.22.
-The shared-station `runtimeSections` refusal (§3.3, its test in `connector_tests.cpp` already
-carries the expectation the fix must flip) and the M3.2 conflict-policy work remain separate.
-Exporting scenario JSON from the editor is still not implemented and still not booked.
-Do not fold simulation or demand-model changes into editor work.
+**M1.27.3, UX, is the last stage of M1.27 and is not started.** It carries two things already
+documented as High severity in `VISSIM_PARITY.md`: `Ctrl`+left-click extends the selection here
+and **duplicates** in Vissim, and link creation is a polyline of clicks where the Vissim reflex
+is `Ctrl`+right-drag. It also has to correct that table's stale rows — `Tab` cycling
+(`EditorCanvas::cycleOverlap`), `Ctrl+B`, the tool shortcuts and Connector lane ranges all exist
+now and the table says they do not. **Gate:** a counted walkthrough delta (clicks per task, dead
+ends before and after), which does **not** close M1's timed owner exercise. UX changes are
+behaviour changes, so each needs the owner's approval in user-facing words before it is made.
+
+Unchanged: **M1.26.1** adjustable per-lane shares (decide where the shares live first), then
+**M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**. M1.22,
+M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, and the shared-station
+`runtimeSections` refusal (§3.3, M3.2) remain open. Inside a tick `occupiedSpans` is now the
+largest single cost at 9.8%; there is no booked milestone for it and none is needed yet.
 
 ---
 
-## 2026-09-22 — One window: the M0 harness window retired (M1.24)
+## 2026-09-22 — The editor stops redrawing what has not moved (M1.27.1)
 
-**Request:** the owner asked whether the M0 simulation window could be removed from startup,
-since the editor already runs, and clarified that this meant the **UI only** — `src/core/`, the
-engine that produces the numbers, stays. Re-analysis found two of the session's earlier
-objections wrong: `trafficsim-cli` already prints a superset of what that window showed
-(`meanDelay`, `safetyClamps`, plus an event log `--events` the UI never had), and
-`parseDocument` requires only `network` and reads `definition` when present, so the editor
-opens a bare M0 scenario already. The owner then authorized all three parts together.
+**Request:** continue M1.27 with the editor-redraw stage. It was booked on a **call count read
+from the code**, not a timing, so the first deliverable was the measurement.
 
-**Changed:** `trafficsim-desktop` opens the editor. `MainWindow` and `src/render/`
-(`NetworkView`, which only that window used) are removed; `--scenario` opens either file kind
-in the editor and `--editor` is accepted as a no-op so existing shortcuts keep working. The
-editor's run status now carries the completed-trip mean delay and the safety-clamp count,
-accumulated from `SimState::events` into the same `SummaryAccumulator` the CLI uses — every
-path that advances the run funnels through one helper, because a step whose events are not
-accumulated loses its clamps permanently. What the figures mean moved to the status tooltip;
-the "not yet validated" marker was already on the editor's scope banner. Sixteen locale keys
-that only the retired window used are deleted from both catalogs; `SCENARIO_*` codes stay
-because `loadScenario` still produces them for the CLI. ROADMAP M0 now says where the
-plausibility observation is made, without touching the gate itself.
+**The benchmark came first, and is committed.** `tools/editor_benchmark.cpp` builds a
+deterministic corridor of signalised crossings — two Links, two Connectors and one signal head
+each, three lanes throughout — drives the real `EditorCanvas` offscreen and times `redraw()` and
+`hitObjects()`. It prints and asserts nothing, so it is not in `check`, but it is built by
+default so it cannot rot. M1.23 has wanted this harness since it was written.
 
-**Verification:** `scenario-run-ui` replaces `desktop-controls` and is the stronger test: it
-opens `data/scenarios/crossing.json` in the editor, steps 1800 fixed steps at seed 42 and
-requires **31 completed trips and mean delay 29.249359418430977 within 1e-7** — the same
-numbers CTest pins on `trafficsim-cli 42` — then that a finished run cannot step past its end,
-that both figures appear in the status line, that Reset clears the summary, that an overflow
-seed produces no run, and that the Thai status carries the delay. Linux GCC 13.3 / Qt 6.4.2
-`check` passes **34/34** including architecture and file sizes; the headless preset passes
-23/23. The finished run was rendered and visually inspected in both languages. Windows
-evidence would come from CI, not these Linux results.
+**It said the lag is real.** An 80-link network redrew in 37 ms and picked in 18; a mouse move
+costs one of each, so the editor was already at about 18 frames per second, and 8 at 160 links.
 
-One regression was caught and fixed during the session: appending the delay caveat to the
-editor's scope banner made that word-wrapped label taller, which shortened the canvas viewport
-and moved `connector-ui`'s scene-mapped clicks onto the wrong lane. The caveat is a tooltip
-instead. Any future addition to that banner will move the drawing the same way.
+**Then callgrind said the booked hypothesis was wrong.** The expected culprit, `headPosition`
+scanning every connector path per signal head, came in below the reporting threshold.
+`drawConnectors` was **67%**, through `connectorBoundaries` (39%), `offsetGeometry` (27%) and
+`connectorPaths` (21%) — the editor recomputed every Connector's ribbon on every frame. After
+caching those, `connectorMarkings` rose to **52.6%**, because it recomputes the boundaries
+itself rather than taking them. So the profile, not the plan, chose both changes.
+
+**The cache key is the inputs, by value.** `connectorPaths` and `connectorBoundaries` read
+exactly the Connector, the two Links it names and the driving side; nothing else in the Network
+can change their answer, which is a property of the code rather than a hope. A revision counter
+would have been wrong twice over: `History::undo` restores an older revision, and two files can
+be opened at the same one. A Connector carrying a drag preview differs by value and simply
+misses. Interleaved medians, alternating the two binaries, Debug, ms per call:
+
+| intersections | links | redraw before → after | pick before → after |
+|---|---|---|---|
+| 20 | 40 | 15.22 → **3.02** | 6.29 → **1.15** |
+| 40 | 80 | 37.11 → **7.19** | 18.17 → **2.45** |
+| 80 | 160 | 93.35 → **22.49** | 38.98 → **7.05** |
+
+A mouse move on the 160-link corridor went from about 132 ms to 30 — 8 frames per second to 34.
+
+**One change was built, measured and reverted**, which is worth as much as the two kept. The
+same cache for Link geometry looked like a win on single samples (−23%) and was not one when the
+two binaries were run alternately: −1% redraw at 80 intersections and **+9% on picking**. A
+Link's polyline is cheap enough to recompute that validating a cache entry costs what it saves,
+which is exactly what is *not* true of a Connector's ribbon. An experiment with
+`QGraphicsScene::NoIndex` also changed nothing and was dropped.
+
+**What guards it.** `network_lifecycle_ui_tests` widens a lane of the Link a Connector leaves,
+asserts both that the widths really changed and that the Connector compares equal to the one
+before — so the test is about the cache and not about the Connector — then requires the drawn
+surface to have moved; it also covers a driving-side change and a deleted Connector. Weakening
+the key to the Connector alone makes it fail, which is how it was verified. Entries are erased
+only in `pruneConnectorCache()` at the top of `redraw()`, because callers hold references into
+the map across several cached calls and an erase mid-frame would dangle one.
+
+**Two limits found, neither fixed.** `QGraphicsScene` item construction is now the floor, which
+is M1.23's culling/LOD work. And `EditorCanvas`'s `sceneRect` is hard-coded to 20 km square
+(`src/editor/canvas.cpp:26`), so the 80-intersection fixture runs off the end of it — a real
+16 km corridor would too. `NoIndex` showed it does not distort these numbers, but it is a
+drawable-area limit a corridor study can reach, and it belongs with M1.23.
 
 ### Next
 
-M1.22 remains open for geometry/snapping tools (including custom rotation pivots), layer
-locks, bulk inspection, context menus and the keyboard-only owner exercise. **Perform the
-owner's M0 plausibility observation in the editor** (open `data/scenarios/crossing.json`, Run,
-watch queueing at red and discharge at green) and the timed four-leg/aerial-image/reopen
-exercise in M1_ACCEPTANCE.md; automated checks do not close either gate. Exporting scenario
-JSON from the editor is still not implemented — the editor reads M0 scenarios but saves
-schema 7, so hand-writing is still the only way to make one; book it before promising it. The
-shared-station runtime-section fix and the M3.2 conflict-policy follow-up remain separate work.
-Do not fold simulation changes into the editor workflow.
+**M1.27.1 is implemented; its gate as written said "a cache and a head index", and the head
+index was not built** — the profile put it below the threshold, so building it would have been
+work with no measured cause. The gate in ROADMAP now says what the evidence supports, and the
+correction is the honest part of this entry, not a shortcut. Remaining in M1.27, one session
+each: **M1.27.2**, the three `std::string` ids on `Vehicle` (2026-09-18's profile; gate is the
+four baselines byte-identical), and **M1.27.3**, UX — the `Ctrl`+left-click collision and the
+`VISSIM_PARITY.md` rows that misreport the product.
+
+Unchanged and still ahead of both: **M1.26.1** adjustable per-lane shares (decide where the
+shares live first), then **M2.1** behind **M2's pre-registered criteria, still unwritten, which
+block all of M2**. M1.22 and the shared-station `runtimeSections` refusal (§3.3, M3.2) remain
+open, scenario-JSON export is still neither implemented nor booked, and M1's timed owner
+exercise closes none of it.
 
 ---
 
-## 2026-09-22 — Network Editor selection rotation (M1.22.2)
+## 2026-09-22 — The build stops re-reading its headers (M1.27, build stage)
 
-**Request:** continue improving the Network Editor after PR #47. That history/nudging change
-is merged; its GitHub Linux and Windows matrix passed. The current main baseline passes all
-32 desktop CTest suites locally. This session remains within the editor system.
+**Request:** the owner asked to optimize every dimension — performance, code quality, data/API,
+build, and UX/UI — *"ทุกข้อ + UX UI ได้หรือไม่"*. One system per session still applies, so the
+work was carved into **M1.27** with four stages and only the build stage was executed. The
+other three are booked with gates in ROADMAP; none of them is started.
 
-**Changed:** Alt-left-drag rotates selected roads around their surface-bounds centre, with
-an amber outline, pivot and angle preview; Shift quantizes to 15 degrees. The bilingual
-Rotate selection action / Ctrl+Shift+R dialog accepts exact signed angles. Model helpers
-share the affected object set, pivot and transform with the canvas. Each release or accepted
-dialog commits one History transaction; zero/full turns preserve saved state and redo.
+**Measured first, on this machine (GCC 13.3, Qt 6.4.2, 4 cores).** A single editor translation
+unit cost 5.8–7.3 s to compile, of which 3.14 s was the header set nearly every one of them
+shares: 2.46 s of Qt and 1.47 s of `nlohmann/json.hpp`, against 0.36 s for `json_fwd.hpp`. An
+empty translation unit is 0.016 s, so almost all of it was re-reading the same headers.
 
-Internal Connectors rotate exactly once with both parent Links. Authored stations, frozen
-lane blends, widths, markings and names survive; heads ride unchanged stations. Skipping a
-station round trip for these rigidly carried Connectors avoids rewriting author numbers
-through coordinate round-off. Partial edits use M1.20 reanchoring and existing reference
-cleanup; Undo restores detached Connectors, dependent routes/inputs and heads together.
-Clicks, centre singularities and cancelled gestures cannot commit stale releases. Help
-explains the attachment cleanup and the fixed centre; no project-schema/runtime change.
+**Two changes, applied and measured one at a time.**
 
-**Verification:** four new model cases and a Qt rotation suite cover both driving sides,
-curved unequal-width ranges, large-coordinate pivots, metadata/derived-boundary preservation,
-partial attachment survival/removal, atomic undo/redo, invalid inputs, no-ops and save/reopen.
-Canvas tests cover preview, coalesced release, Shift snapping, click thresholds, head-only
-selection, cancellation, exact-angle dialog/shortcut, translation and run invalidation.
-Linux GCC 13.3 / Qt 6.4.2 desktop `check` passes **34/34** suites, including architecture,
-file sizes and the existing replay baselines. The rotation preview and wrapped Thai angle
-dialog were rendered and visually inspected. Some local build executables needed their execute
-permissions restored before the harness could start; the complete rerun passed. Windows evidence comes
-from this PR's CI, not these Linux results; owner acceptance remains open.
+- `src/project/json.hpp` includes `<nlohmann/json_fwd.hpp>`. It only ever *declared* with
+  `Json`; `document.hpp` includes it, so all 27 editor and shell files paid for the definition
+  while five used it. The thirteen files that build or read a `Json` now include it themselves —
+  the compiler named every one, which is what made this safe rather than a guess.
+- `trafficsim_shell` (26 Qt sources) precompiles `<QGraphicsView> <QPainterPath> <QWidget>`, and
+  the eleven single-source UI test executables take that same PCH through `REUSE_FROM`.
+
+| configuration | wall `-j4` | ninja edge-seconds | compiling |
+|---|---|---|---|
+| before | 86 s | — | — |
+| json_fwd only | 77 s | 299 s | 274 s |
+| + shell PCH | 69 s | 264 s | 234 s |
+| + `REUSE_FROM` | **64 s** | **243 s** | **213 s** |
+
+`src/editor/canvas.cpp` alone: 5.77 s → 3.29 s. **Nothing about the program changed** —
+`trafficsim-cli 42` still prints `29.249359418430977`, the four seed fixtures are untouched and
+`check` is 35/35 on Linux. Windows is CI's to confirm.
+
+**One variant was measured and reverted**, which is worth as much as the ones kept: adding
+`<nlohmann/json.hpp>` to the shell PCH grew the `.gch` from 4.9 s to 6.9 s, and because that
+sits on the critical path of `src/shell` it cancelled what the eleven reusing objects saved
+(258 edge-seconds against 243 without it). The CMake comment records it so it is not re-tried.
+No project header is precompiled: touching `canvas.hpp` still rebuilds 38 objects and no
+`.gch`, so incremental builds are unchanged. A dead `distanceTo` left by M1.26 was deleted.
+
+**Decision D27 — a PCH holds third-party headers only.** A precompiled project header would
+turn every edit to it into a full-target rebuild, which is the cost this change exists to
+remove. `REUSE_FROM` is how a single-source target gets one without paying to build it.
 
 ### Next
 
-M1.22 remains open for geometry/snapping tools (including custom rotation pivots), layer
-locks, bulk inspection, context menus and the keyboard-only owner exercise. Perform the
-owner's timed four-leg/aerial-image/reopen exercise in M1_ACCEPTANCE.md; automated checks do
-not close M0/M1 acceptance. The shared-station runtime-section fix and M3.2 conflict-policy
-follow-up remain separate work. Do not fold simulation changes into the editor workflow.
+**The build stage of M1.27 is done; the other three stages are not started**, in priority order
+and one session each. **M1.27.1, editor redraw:** `EditorCanvas::redraw()` clears and rebuilds
+the whole scene on every mouse move, and inside one frame `connectorBoundaries` recomputes
+`connectorPaths` twice per connector while `headPosition` scans every connector path per signal
+head. Evidence so far is a **call count read from the code, not a timing** — so the first step
+is the large-network frame-time benchmark M1.23 already requires, committed, *before* any
+caching. **M1.27.2, `Vehicle` string ids:** measured 2026-09-18, gate is the four baselines
+byte-identical. **M1.27.3, UX:** the `Ctrl`+left-click collision (extends the selection here,
+duplicates in Vissim) and the rows of `VISSIM_PARITY.md` that now misreport the product —
+`Tab` cycling, `Ctrl+B`, tool shortcuts and Connector lane ranges all exist.
 
----
-
-## 2026-09-21 — Network Editor history and keyboard workflow (M1.22.1)
-
-**Request:** improve and fix the Network Editor. This session completes the history/nudging
-slice of M1.22 and fixes two confirmed selection/gesture defects within the editor system.
-
-**Changed:** bilingual History dock (Ctrl+Shift+H), named Undo/Redo, current/saved markers,
-explicit Enter/double-click restoration, retained redo states and monotonically increasing
-revision IDs after branching. The dock reads metadata from the existing History snapshots;
-it introduces neither a second document store nor a new project schema. Restoring a state
-clears a compiled run and refreshes all editor surfaces.
-
-Arrow keys nudge Link/Connector selections by the snap grid, or 1 m with Snap off; Shift
-multiplies the step by ten. The same group-translation command preserves M1.20 attachment
-semantics and makes every step undoable. Head-only selections still ride their parent road.
-Filtering levels drops hidden selections; explicit table/inspector selection reveals hidden
-objects and synchronizes the filter. Unknown IDs are ignored. Active drags/copies/creation
-cancel on focus loss, so late releases cannot commit; multi-click drafts survive ordinary
-focus changes between clicks. Help/command names are translated in both catalogs.
-
-**Verification:** Linux, GCC 13.3 / Qt 6.4.2. Original baseline suites pass (30/30); separate
-regressions reproduce hidden selection and focus-lost drag commits against c69cad5 before
-checking their fixed behavior. Desktop `check` passes **32/32** suites, including the new
-history and workflow suites, all model cases, replay baselines, architecture and file sizes.
-Coverage includes both driving sides, group/Connector nudges, save-point restoration,
-branching, rejected/no-op edits, 100-entry eviction, run invalidation, field-focus isolation,
-level/inspector synchronization, cancellation and Thai translation. The Thai History dock
-was rendered and visually inspected. This is Linux evidence; Windows CI and owner acceptance
-are separate. See [EDITOR_WORKFLOW.md](EDITOR_WORKFLOW.md) for exact controls.
-
-### Next
-
-M1.22 remains open for rotation, geometry/snapping tools, layer locks, bulk inspection,
-context menus and the keyboard-only owner exercise; M1's timed gate remains open. The
-previous session's shared-station runtime-section fix remains separate work, with its
-existing regression and M3.2 conflict-policy follow-up. No runtime/curve-parameter or visual-
-override work was folded into this editor change.
-
----
-
-
----
-
+Unchanged and still ahead of all of it: **M1.26.1** adjustable per-lane shares (decide where the
+shares live first), then **M2.1**'s positioned routing decision behind **M2's pre-registered
+criteria, still unwritten, which block all of M2** and need the owner. M1.22 remains open, as
+does the shared-station `runtimeSections` refusal (§3.3, M3.2). Scenario-JSON export from the
+editor is still neither implemented nor booked. M1's timed owner exercise closes none of this.
 
 ---
 
@@ -340,8 +358,10 @@ distance for "off the Link" — one constant, in `laneContains`.
 > what a mouth could not reach, in metres.
 
 Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
-M1.12.1, M1.21–M1.21.1 and M1.24–M1.26, with M1.12.2 closed as a measurement error rather than a
-defect and M1.12.3 closed by M1.19. M1.22, M1.23 and M1.26.1 remain open. `docs/ROADMAP.md` is
+M1.12.1, M1.21–M1.21.1 and M1.24–M1.27, with M1.12.2 closed as a measurement error rather than a
+defect and M1.12.3 closed by M1.19. M1.22, M1.23 and M1.26.1 remain open. **M1.27.3 counted the
+authoring gestures; a counted walkthrough is not the timed exercise in item 2 and closes nothing
+of it.** `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
@@ -456,3 +476,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D24 | 2026-09-22 | **Retire the M0 harness window; the editor is the only window** | The owner asked whether it could go, and the measured answer is yes: `trafficsim-cli` already prints a superset of the figures it showed (`meanDelay`, `safetyClamps`, plus `--events`), and `parseDocument` needs only `network`, so the editor opens bare M0 scenarios already. Keeping a second window meant a second renderer (`src/render/`), a second run loop and a second place for the delay figure to drift from the CLI. What makes the removal safe is not the deletion but the replacement: `scenario-run-ui` pins the editor's run of `crossing.json` to the CLI baseline exactly (31 trips, mean delay 29.249359418430977), so the M0 plausibility observation changed surface without changing meaning. The gate itself was not touched — only the sentence naming where the observation is made. | If a results screen ever needs to run a scenario without the authoring surface (a batch review window, M5), build it on `runSimulation` and the event stream, not by restoring `MainWindow`. If the editor ever stops opening bare M0 scenarios, this decision is void and the CLI becomes the only M0 surface. |
 | D25 | 2026-09-22 | **An authored route names Links and Connectors; the per-lane routes are compiled** | The owner's ruling: *Routing เป็นการสร้างบนทุกช่องจราจร … ไม่ได้สร้างเป็นรายช่อง*. A lane-level route tied demand to a Connector's lane count, so narrowing one either invalidated the route or had to be refused — and it was refused, which left an author unable to correct their own drawing. Naming the objects makes the lane chains derived data, which is where they belong: `routeLaneChains` recomputes them on every compile, the reference guards disappear because nothing a route names can vanish, and a vehicle input becomes what Vissim's is, a Link total split across the lanes that carry it. The single-lane expansion deliberately keeps the authored id, which is what lets the four frozen baselines replay unchanged. | What it costs is the lane-specific route: a turn pocket where only the left lane may turn cannot be expressed. If that has to come back before M2.1's positioned routing decision, the honest fix is an explicit lane restriction on the route, not a return to lane ids — the ids were the thing that made every Connector edit fragile. |
 | D26 | 2026-09-22 | **A Connector gesture connects every lane of both Links by default** | This reverses the M1.12 default of one lane per drag, which existed for a good reason at the time: pre-filling the maximum authored a wide Connector from a single-lane gesture, and the author could not narrow it afterwards once a route used it. D25 removes that trap, and the owner asked for the wide default explicitly — *ให้เชื่อมจำนวนช่องตามจำนวนช่องใน Link ทั้งหมดก่อน ค่อยปรับลงภายหลัง*. | If authors start drawing single-lane turns more often than full carriageways, make the default follow the drag width instead of flipping it back: the dialog already has both counts, and the gesture knows which lane it started on. |
+| D27 | 2026-09-22 | **A precompiled header holds third-party headers only** | `trafficsim_shell` compiles 26 Qt translation units and re-read the same 2.46 s of `<QGraphicsView>` in every one of them; precompiling it and sharing that PCH with the eleven single-source UI test executables through `REUSE_FROM` took a clean build from 86 s to 64 s. What is deliberately *not* in it is any project header: a PCH over a header that changes turns every edit to it into a full-target rebuild, which is the cost this exists to remove — measured, touching `canvas.hpp` still rebuilds 38 objects and no `.gch`. Adding `<nlohmann/json.hpp>` was tried and reverted: it grew the `.gch` by 2 s on `src/shell`'s critical path and cancelled the saving (258 edge-seconds against 243 without). | If the shell is ever split into two targets, give each its own PCH rather than one shared across different flag sets — GCC rejects a `.gch` whose macro state differs, silently, and the only symptom is the speed-up quietly disappearing. |
+| D28 | 2026-09-22 | **Derived geometry is cached against the values it is derived from, never against a revision** | The canvas recomputed every Connector's ribbon on every frame, which callgrind put at 67% of a run. What makes the cache safe is not the speed-up but the key: `connectorPaths` and `connectorBoundaries` read the Connector, the two Links it names and the driving side and nothing else — checked in the source, not assumed — so comparing those four values is exactly as strong as recomputing. `ProjectDocument::revision` was rejected as a key for two independent reasons: `History::undo` restores an older revision, so the number is not monotonic, and `History::reset` continues from the file's own revision, so two documents can share one. A preview object differs by value and misses, which is the behaviour a drag needs anyway. | If a future `connectorBoundaries` starts reading a third object — a neighbouring Connector at a shared station, say, which §3.3 may force — this key silently goes stale. The defence is the test that widens a Link the Connector does not name: extend it the same way for whatever the new input is, and make it fail first. And do not generalise the pattern by reflex: the same cache for Link geometry was measured and reverted, because recomputing a polyline is cheaper than proving the cache is still valid. |
+| D29 | 2026-09-22 | **A runtime vehicle names its scenario objects by SLOT; only the boundary uses names** | A `Scenario` is immutable and canonically sorted from `createSimulation` onwards, so an index identifies exactly what an id identified — and a tick copies, sorts and compares the whole vehicle list, which three `std::string`s per vehicle made the engine's largest cost (17.4% string copying, 11.4% the sort, 10.3% `resolveRefs`). Slots halved the run. What keeps it honest is that ids become slots only through `detail::byId`, whose first-occurrence rule is exactly what the lookups it replaced returned, and that **names survive at the boundary**: events carry `routeId`, `pendingJson` takes the `Scenario` and emits the same three strings, so the frozen fixtures are byte-identical and a human still reads names. The reverse direction — a slot escaping into a file or an event — is the thing to refuse: a slot means nothing outside the Scenario it indexes. | If a `Scenario` ever becomes mutable after `createSimulation`, or if anything re-sorts one mid-run, every slot in flight is wrong at once and silently. That is the invariant to defend, not the indices. `stepSimulation` already asserts `state.inputs` is parallel to `scenario.inputs`; add the same kind of assertion for anything else that starts indexing the scenario. |
+| D30 | 2026-09-22 | **`Ctrl`+left-click stays a dead end; it does not duplicate** | The owner's ruling, asked in user-facing words during M1.27.3 and answered *ไม่มีอะไรเกิดขึ้น*. `VISSIM_PARITY.md` had ranked this High since 2026-09-14 as a *collision* — the chord that duplicates in Vissim extending the selection here — but `trafficsim-gesture-walkthrough` measured it doing **nothing at all** on an already-selected object, which is the only case a Vissim user's hand reaches for. So the choice offered was not "take a verb away" but "fill an empty slot", and the owner declined to fill it. Nothing is lost: `Shift`+click extends a selection and `Ctrl`+drag duplicates. | Do not re-open it from the §1/§2 text alone — those rows describe the 2026-09-14 editor. Re-run the walkthrough first. If a future session gives `Ctrl`+left-click any verb, it must not be one that edits the drawing without a visible result, which is what made this chord dangerous on paper.

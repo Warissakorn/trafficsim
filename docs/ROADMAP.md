@@ -199,45 +199,23 @@ Owner Windows interaction and timed acceptance remain open.
 
 ---
 
-### M1.12.1 — A Connector's own lane widths and markings
+### M1.12.1–M1.25 — Completed geometry, authoring, audit and editor iterations
 
-**Implemented.** `Connector::laneWidths` and `laneMarkings`, both empty by default meaning
-"derive it from the Links", in schema 6; `connectorLaneWidths` is the single place a width is
-decided. Full body, including what it does NOT claim about Vissim parity, in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-### M1.12.2 — The miter "bulge": investigated, measured, and **not a defect**
-
-**Closed.** The reported 24% over-width was measured ALONG the cross-section, where a mitered
-corner's diagonal is `width / cos(φ/2)` by construction; square to the road the carriageway is
-7.000000 m exactly, so `offsetGeometry` was not changed. Measurements in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-### M1.12.3 — The Link wins at the mouth (widths) — **closed by M1.19**
-
-**Closed by M1.19**: the mouth is built from the Link's widths and the authored width takes over
-through the body, over a transition of one carriageway width, pinned to 1e-9 by
-`an_authored_width_is_exact_where_the_connector_is_straight`. `TIGHT_CONNECTOR_RADIUS` was not
-re-derived — it reads `connectorShapeIssues`, which is unchanged. The carve-out's reasoning is in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-### M1.13–M1.20 — Completed geometry and authoring iterations
-
-Implemented: metre attachment stations (M1.13), intermediate points (M1.14), names (M1.15),
-group moves (M1.16), flush mouths (M1.18), lane-aligned mouths (M1.19), and independent
-Connector placement with off-Link cleanup (M1.20). M1.17's lateral wedge remains reverted.
-The complete original entries are retained in
-[archive/ROADMAP-M1-implemented.md](archive/ROADMAP-M1-implemented.md).
-
-### M1.21 / M1.21.1 — Supplied-spec authoring, and the lifecycle audit
-
-**Implemented.** Schema 7 carries the supported subset of the owner's specifications (unsupported
-network-object fields fail on load rather than vanishing on save), and the 2026-09-21 lifecycle
-audit fixed wrong-side retargets, pathological mouths, physical range picking and coalesced
-releases. Both entries in full, with what they do not claim, are in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); see also
-`docs/SPEC_AUDIT.md`, `docs/AUTHORING_EXTENSIONS.md` and `docs/NETWORK_LIFECYCLE_AUDIT.md`.
-Owner M1 acceptance remains open, and neither closes the supplied target specifications.
+**All closed**, with the originals and what none of them claims about Vissim parity in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md): a Connector carries
+its own `laneWidths` and `laneMarkings` in schema 6, `connectorLaneWidths` the single place a
+width is decided (M1.12.1); the 24% miter "bulge" measured along the cross-section, where a
+mitered corner's diagonal is `width / cos(φ/2)` by construction, so `offsetGeometry` was not
+changed (M1.12.2); metre attachment stations (M1.13),
+intermediate points (M1.14), names (M1.15), group moves (M1.16), flush mouths (M1.18),
+lane-aligned mouths (M1.19, which closed M1.12.3 and left `TIGHT_CONNECTOR_RADIUS` alone) and
+independent Connector placement with off-Link cleanup (M1.20); schema 7's supported subset
+of the owner's specifications, where an unsupported field fails on load rather than vanishing on
+save (M1.21); and the lifecycle audit's wrong-side retargets, pathological mouths, physical
+range picking and coalesced releases (M1.21.1); the one-window editor, whose run status carries
+the CLI's own delay figure (M1.24); and demand drawn by pointer (M1.25). M1.17's wedge remains
+reverted, owner M1 acceptance remains open, and none of this closes the supplied target
+specifications.
 
 ### M1.22 — Remaining authoring and interaction requirements
 
@@ -265,16 +243,6 @@ recent files/tabs, spatial indexing/culling/LOD and optional renderer accelerati
 Competitor-format imports and 3D require an explicit scope revision before implementation.
 **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
 reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
-
-### M1.24 / M1.25 — One window, and demand authored by pointer
-
-Implemented: `trafficsim-desktop` opens the network editor directly, the separate M0 harness
-window and its QPainter view are gone, and the editor's run status carries the mean trip delay
-and safety-clamp count from the `SummaryAccumulator` the CLI uses (M1.24). Routes and vehicle
-inputs are then drawn by pointer — click the start, click each destination, and the chain
-between them is appended — with the draft, the selected route and each input drawn on the canvas
-(M1.25). Neither changed the engine, the schema or any measured number. Full entries in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
 ### M1.26 — Demand is authored per Link and compiled per lane
 
@@ -311,6 +279,38 @@ the editor and `buildScenario` read them, and `VehicleInput` is a core type the 
 shares, so this is a schema-and-signature decision, not a dialog field. **Gate:** shares
 round-trip through save/reopen, normalise, and leave an unedited input's compiled volumes
 bit-identical to the equal split.
+
+### M1.27 — Optimization program: build, redraw, engine, UX · **CLOSED**
+
+**Build and redraw.** `src/project/json.hpp` declares `Json` through `<nlohmann/json_fwd.hpp>`
+and `trafficsim_shell` precompiles the Qt surface the UI test executables reuse: clean build
+`-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the editor measurable, and the canvas
+caches each Connector's paths, boundaries and markings against the only three inputs they read
+— the Connector, its two Links and the driving side — by value, never by a revision counter. A
+160-link corridor redraws in **22.5 ms instead of 93.4** and picks in **7.1 instead of 39.0**.
+
+**The gate said "a cache and a head index"; the head index was not built** — callgrind put the
+`headPosition` scan below the threshold and `connectorMarkings` at 52.6%, so the profile chose
+the work. A Link geometry cache was built, measured and **reverted**: validating the entry cost
+what recomputing it saved. What remains is `QGraphicsScene` construction — M1.23's culling/LOD.
+
+#### M1.27.2 — A vehicle carries scenario slots · M1.27.3 — UX
+
+**M1.27.2.** `tools/engine_benchmark.cpp` commits the corridor the 2026-09-18 session had to
+generate by hand, and its profile reproduced that session's finding: 17.4% of instructions in
+`std::string`, 11.4% in the per-tick vehicle sort, 10.3% in `resolveRefs`. `PendingVehicle` now
+holds `inputIndex`/`routeIndex`/`typeIndex` into the canonical Scenario, resolved once in
+`ScenarioIndex`; `routeOfId`/`typeOfId` and `IdSlot` go with the ids they resolved. Events and
+checkpoints still carry the NAMES, so the frozen fixtures are byte-identical: **1560.8 → 792.6
+ms** at 12 and **2566.2 → 1331.0** at 24 intersections, interleaved medians, same trips.
+
+**M1.27.3, and M1.27 with it.** `tools/gesture_walkthrough.cpp` counts the inputs each authoring
+task costs and replays the Vissim reflexes against the drawing it makes: **six replayed, five
+transfer**. The sixth, `Ctrl`+left-click, is not the *collision* the parity table has ranked High
+since 2026-09-14 — measured, it does **nothing** on an already-selected object — and the owner
+ruled it stays so (D30), leaving the counted delta zero by decision. The table itself was the
+defect: a dozen rows under-reported the product; §1a carries the measured state. **This does not
+close M1's timed owner exercise.**
 
 ---
 

@@ -61,7 +61,7 @@ TEST(core, streaming_equals_stepping_and_final_tick) {
 TEST(core, final_subinterval_demand) {
     auto s = test::straight(); s.duration = 1; s.inputs[0].endTime = 1;
     auto state = createSimulation(s, 1);
-    state.tick = 9; state.time = 0.9; state.inputs = {{"input", 0.95, {}}};
+    state.tick = 9; state.time = 0.9; state.inputs = {{0.95, {}}};
     state = stepSimulation(state);
     CHECK(!state.inputs[0].queue.empty()); CHECK(state.inputs[0].queue[0].scheduledTime == 0.95);
     CHECK(state.vehicles.empty()); CHECK(state.nextVehicleId > 1);
@@ -191,12 +191,8 @@ Scenario mergeScenario(double gapTime, double headway, bool withRule = true) {
     if (withRule) s.priorityRules = {{"give-way", "minor", 100, "major", 150, gapTime, headway}};
     return s;
 }
-Vehicle on(std::uint64_t id, const char* route, double distance, double speed) {
-    Vehicle v;
-    v.id = id; v.distance = distance; v.speed = speed;
-    v.inputId = "input"; v.routeId = route; v.vehicleTypeId = "car";
-    v.desiredSpeed = 15; v.driverFactor = 0.5;
-    return v;
+test::Placement on(std::uint64_t id, const char* route, double distance, double speed) {
+    return {id, route, distance, speed};
 }
 double distanceOf(const SimState& state, std::uint64_t id) {
     for (const auto& v : state.vehicles) if (v.id == id) return v.distance;

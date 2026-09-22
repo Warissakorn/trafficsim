@@ -60,23 +60,19 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
         index.conflictSegmentOfRule.push_back(found == scenario.segments.end() ? SIZE_MAX :
             static_cast<std::size_t>(found - scenario.segments.begin()));
     }
-    // Sorting by (id, position) puts a repeated id's FIRST occurrence at the front of its equal
-    // range, so the lower_bound below returns what byId's find_if returned.
-    const auto buildTable = [](const auto& items) {
-        std::vector<IdSlot> table;
-        table.reserve(items.size());
-        for (std::size_t i = 0; i < items.size(); ++i) table.push_back({items[i].id, i});
-        std::sort(table.begin(), table.end(), [](const IdSlot& a, const IdSlot& b) {
-            return a.id == b.id ? a.index < b.index : a.id < b.id;
-        });
-        return table;
-    };
-    index.routeOfId = buildTable(scenario.routes);
-    index.typeOfId = buildTable(scenario.vehicleTypes);
     index.behaviourOfType.reserve(scenario.vehicleTypes.size());
     for (const auto& type : scenario.vehicleTypes) {
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         index.behaviourOfType.push_back(static_cast<std::size_t>(&behaviour - scenario.behaviours.data()));
+    }
+    // Through byId, so a slot names the element the id named -- its first occurrence.
+    index.routeOfInput.reserve(scenario.inputs.size());
+    index.typeOfInput.reserve(scenario.inputs.size());
+    for (const auto& input : scenario.inputs) {
+        const auto& route = detail::byId(scenario.routes, input.routeId);
+        const auto& type = detail::byId(scenario.vehicleTypes, input.vehicleTypeId);
+        index.routeOfInput.push_back(static_cast<std::uint32_t>(&route - scenario.routes.data()));
+        index.typeOfInput.push_back(static_cast<std::uint32_t>(&type - scenario.vehicleTypes.data()));
     }
     index.routeRules.resize(scenario.routes.size());
     for (std::size_t r = 0; r < scenario.routes.size(); ++r)
@@ -96,25 +92,13 @@ const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenari
 VehicleLocation locateOnParts(const std::vector<RoutePart>& parts, const Vehicle& vehicle) {
     return locate(parts, vehicle);
 }
-namespace {
-// Same miss as byId, so an unknown id still fails the same way and with the same message.
-std::size_t lookup(const std::vector<IdSlot>& table, const std::string& id) {
-    const auto found = std::lower_bound(table.begin(), table.end(), id,
-        [](const IdSlot& slot, const std::string& key) { return slot.id < key; });
-    if (found == table.end() || found->id != id) throw std::logic_error("Unknown runtime ID: " + id);
-    return found->index;
-}
-}
 std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
                                      const ScenarioIndex& index) {
-    (void)scenario; // Every id this needs is already resolved in the index.
+    (void)scenario; // A vehicle carries its own slots; only the behaviour is still derived.
     std::vector<VehicleRefs> refs;
     refs.reserve(vehicles.size());
-    for (const auto& vehicle : vehicles) {
-        const auto route = lookup(index.routeOfId, vehicle.routeId);
-        const auto type = lookup(index.typeOfId, vehicle.vehicleTypeId);
-        refs.push_back({route, type, index.behaviourOfType[type]});
-    }
+    for (const auto& vehicle : vehicles)
+        refs.push_back({vehicle.routeIndex, vehicle.typeIndex, index.behaviourOfType[vehicle.typeIndex]});
     return refs;
 }
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
@@ -130,24 +114,24 @@ void appendVehicleSpans(std::vector<OccupiedSpan>& spans, const Scenario& scenar
     appendSpans(spans, index.parts[refs.route], vehicle, scenario.vehicleTypes[refs.type].length);
 }
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle) {
-    return locate(routeParts(scenario, detail::byId(scenario.routes, vehicle.routeId)), vehicle);
+    return locate(routeParts(scenario, scenario.routes[vehicle.routeIndex]), vehicle);
 }
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle, const ScenarioIndex& index) {
-    return locate(partsFor(index, scenario, detail::byId(scenario.routes, vehicle.routeId)), vehicle);
+    return locate(partsFor(index, scenario, scenario.routes[vehicle.routeIndex]), vehicle);
 }
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles) {
     std::vector<OccupiedSpan> spans;
     for (const auto& vehicle : vehicles)
-        appendSpans(spans, routeParts(scenario, detail::byId(scenario.routes, vehicle.routeId)), vehicle,
-                    detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId).length);
+        appendSpans(spans, routeParts(scenario, scenario.routes[vehicle.routeIndex]), vehicle,
+                    scenario.vehicleTypes[vehicle.typeIndex].length);
     return spans;
 }
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
                                         const ScenarioIndex& index) {
     std::vector<OccupiedSpan> spans;
     for (const auto& vehicle : vehicles)
-        appendSpans(spans, partsFor(index, scenario, detail::byId(scenario.routes, vehicle.routeId)), vehicle,
-                    detail::byId(scenario.vehicleTypes, vehicle.vehicleTypeId).length);
+        appendSpans(spans, partsFor(index, scenario, scenario.routes[vehicle.routeIndex]), vehicle,
+                    scenario.vehicleTypes[vehicle.typeIndex].length);
     return spans;
 }
 }

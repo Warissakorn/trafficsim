@@ -136,6 +136,14 @@ Desired speeds belong to the vehicle-type distribution, not the link.
 7. Carry residual travel through every crossed segment, remove front bumpers that reach
    the route sink, and emit events. Vehicle front distance never resets at a connector.
 
+A runtime vehicle identifies its input, route and vehicle type by **index into the canonical
+`Scenario`**, not by id (D29). `createSimulation` sorts the scenario once and never changes it
+again, so a slot names exactly what an id named; `ScenarioIndex` resolves each input's route and
+type once, and nothing looks an id up per tick. Names reappear at the boundary and only there:
+every event carries `routeId`, and a checkpoint carries `inputId`, `routeId` and
+`vehicleTypeId`, read back from the scenario. A slot must never be written to a file or an
+event — it means nothing outside the `Scenario` it indexes.
+
 At the final tick, arrivals from the last subinterval are retained in the pending queue;
 they are not silently lost merely because no step remains to insert them. No vehicle is
 teleported out of a blocked input. Results must show active and pending vehicles as well

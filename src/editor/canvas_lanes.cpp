@@ -42,8 +42,8 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         }
         if(!from || !to)return {};
         std::vector<LaneHandle> result;
-        const auto paths=connectorPaths(document_->network,*connector);
-        const auto boundaries=connectorBoundaries(document_->network,*connector);
+        const auto& paths=cachedPaths(*connector);
+        const auto& boundaries=cachedBoundaries(*connector);
         const auto widths=connectorLaneWidths(document_->network,*connector);
         for(bool leading:{false,true}) {
             const int extra=leading?4:0;
