@@ -106,21 +106,40 @@ Replay is byte-identical: the four seed fixtures and `trajectory-digest.json` pa
 `trafficsim-cli 42` prints `29.249359418430977`, and the benchmark completes the same 475 trips
 with the same peak of 235 vehicles.
 
+### And a click stopped rebuilding the scene twice
+
+`cancel()` forgets the in-flight gesture **and** repaints. Four callers then repainted again for
+their own reasons, so every click on the canvas rebuilt the whole scene twice. `cancel()` is now
+`resetGesture(); redraw();`, and the callers that already draw take `resetGesture()`.
+
+The harness only timed `redraw()`, so the click had to be made measurable first — a new row that
+alternates between two links, committed with its baseline before the fix. At 160 links, medians
+of five: **20.51 → 9.70 ms a click, −53%**, against 10.9 ms for a single redraw. A click now
+costs one rebuild, which is the floor.
+
+**One of the four was not a double at all, and `editor-rotation-ui` said so.** `setVisibleLevel`
+ends in `visibleLevelChanged` and `selectionChanged`, which tell the shell but do not draw, so
+`cancel()`'s repaint was its only one; dropping it left a cancelled rotation preview on the
+canvas. That site keeps `cancel()`, with a comment saying why. The test that caught it counts
+preview items in the scene after each of six cancellation routes — it was written for M1.22.2 and
+it earned its keep here.
+
 ### Next
 
-**The optimization pass resumes at item 4: `setSelection` redraws twice** — `cancel()` calls
-`redraw()` and so does `notifySelection()` (`src/editor/canvas.cpp:74-84`), so every click
-rebuilds the whole scene twice, about 11 ms wasted at 160 links. Then item 5, the docs:
-`CLAUDE.md` is 3,151 tokens and `PROGRESS.md` 14,818, and the standing orders send every session
-into both although `Next` is twenty lines; `src/render/` was deleted long ago and
-`ARCHITECTURE.md` still points at it.
+**The optimization pass resumes at item 5, the documents.** `CLAUDE.md` is 3,151 tokens and
+`PROGRESS.md` 14,818, and the standing orders send every session into both although `Next` is
+twenty lines — splitting `Next` into its own file is about 12k tokens off every session start.
+`src/render/` was deleted long ago and `ARCHITECTURE.md`, a read-before-working file, still
+points at it. The audit is `.optimize/baseline/docs_audit.md` (69 files, 173,401 tokens); most of
+its 79 "broken refs" are false positives — `nlohmann/json.hpp`, `id/lane-2`, the TS paths in
+`MIGRATION.md`, and the files `docs/specs/` proposes but nothing has built.
 
 Below the bar and deliberately unbooked: the per-tick vehicle `std::sort` (2.8%, and the vector
-is nearly sorted), and `compileDocument` (15.2%, but paid once per Run press, not per tick).
-Inside `occupiedSpans` what is left is the `push_back` work itself, not the search.
+is nearly sorted), and `compileDocument` (15.2%, paid once per Run press, not per tick). Inside
+`occupiedSpans` what is left is the `push_back` work itself, not the search.
 
 **Measure the engine with callgrind, not the clock, until this box settles.** ±7% on wall time
-cannot resolve a 3% change, and the instruction count decided both calls this session.
+cannot resolve a 3% change. The editor's numbers are steadier (±2%) and the clock is fine there.
 
 Unchanged and ahead of all of it in the owner's order: **M1.26.1**, adjustable per-lane shares.
 
