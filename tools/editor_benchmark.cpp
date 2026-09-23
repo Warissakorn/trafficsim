@@ -18,8 +18,16 @@
 using namespace trafficsim;
 namespace {
 double millis(const std::function<void()>& work, int times) {
+    // The event loop MUST run between frames, because the real editor's does and because
+    // QGraphicsScene needs it: `clear()` hands its items to an index that reclaims them on a
+    // deferred update, so a tight loop that empties and refills the scene measures an index
+    // growing without bound rather than the drawing. Measured 2026-09-23 at 160 links: six
+    // batches of ten frames climbed 28 -> 54 -> 85 -> 109 -> 136 -> 159 ms without this call
+    // and stayed flat at 11.5 ms with it. Every number this tool printed before that date is
+    // that artifact, and the repetition count decided the answer.
+    QApplication::processEvents();
     const auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < times; ++i) work();
+    for (int i = 0; i < times; ++i) { work(); QApplication::processEvents(); }
     const auto end = std::chrono::steady_clock::now();
     return std::chrono::duration<double, std::milli>(end - start).count() / times;
 }
