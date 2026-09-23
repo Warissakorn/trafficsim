@@ -4,6 +4,7 @@ Append-only. Newest entry at the top. **This is what a session with no memory re
 the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
 long. Older entries are preserved whole there:
 
+- [`archive/PROGRESS-2026-09-22-m1.27.1-redraw.md`](archive/PROGRESS-2026-09-22-m1.27.1-redraw.md) — 2026-09-22, M1.27.1, the connector cache; its numbers corrected 2026-09-23; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27-build-stage.md`](archive/PROGRESS-2026-09-22-m1.27-build-stage.md) — 2026-09-22, M1.27 build stage, the PCH and json_fwd work; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md`](archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md) — 2026-09-22, M1.26, a route belongs to the carriageway; moved out 2026-09-22 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.24-one-window.md`](archive/PROGRESS-2026-09-22-m1.24-one-window.md) — 2026-09-22, M1.24, the one-window editor; moved out 2026-09-22 as the oldest live entry
@@ -70,23 +71,56 @@ nothing reopens under rule 8 — which is the answer this had to establish befor
 frame-rate sentences, the M1.27.3 summary line, ROADMAP M1.27 and `CLAUDE.md` all carry the
 measured numbers now, each marked as corrected on this date.
 
+### Then `occupiedSpans` stopped reading the whole route
+
+The pass's next item. `appendSpans` (`src/core/routes.cpp`) walked **every** `RoutePart` of a
+vehicle's route for every vehicle on every tick. Parts are contiguous and ordered by station, so
+the ones a vehicle covers are a single run: `lower_bound` to the first part whose end is past the
+rear bumper, then forward while the front has reached the next start. Both comparisons are
+written exactly as the scan wrote them — same subtraction, same operand order — so the same parts
+match in the same order. `occupiedSpans` also now reserves, since most vehicles sit in one
+segment and the vector is rebuilt from empty every tick.
+
+**The wall clock could not resolve it.** The box swung ±7% this session, the same size as the
+effect: one round said −6.3%, the next spanned 975–1119 ms. So the judgement was made on
+callgrind instruction counts, which have no noise at all.
+
+| | 6 intersections | 24 intersections |
+|---|---|---|
+| `occupiedSpans` itself | 34.98M → **30.96M** (−11.5%) | 180.96M → **130.44M** (−27.9%) |
+| whole program | 328.0M → **324.0M** (−1.2%) | 1930.3M → **1879.9M** (−2.6%) |
+
+Isolated at 24 intersections: the binary search is −1.94% and the `reserve` a further −0.67%, so
+the one line pays for itself.
+
+**The estimate was 10–13% and the answer is 2.6%, which is the part worth remembering.** The
+scan was not 90% waste, it was about 28% at this size: the per-element test is two comparisons,
+so scanning fifty of them is not much dearer than six `lower_bound` steps — and **80% of the
+fixture's vehicles are on the short entering routes** (12 × 600 veh/h) rather than the long
+through route (1800 veh/h). The route length was the wrong thing to reason from; the demand mix
+decides how many vehicles ever pay the long scan. The fixture was not changed to flatter the
+change. The owner kept it at −2.6% because the saving is a complexity one and grows with the
+network (−11.5% → −27.9% of `occupiedSpans` between the two sizes), where M2 and M5 will be.
+
+Replay is byte-identical: the four seed fixtures and `trajectory-digest.json` pass untouched,
+`trafficsim-cli 42` prints `29.249359418430977`, and the benchmark completes the same 475 trips
+with the same peak of 235 vehicles.
+
 ### Next
 
-**The optimization pass resumes at item 3 of its plan, `occupiedSpans`** — 10.7% of the program
-and about 15% of the run in today's profile. `appendSpans` (`src/core/routes.cpp:14`) walks
-**every** `RoutePart` of a vehicle's route for every vehicle every tick, while a vehicle occupies
-one or two of roughly twenty-five; parts are sorted by `start` and contiguous, so a
-`lower_bound` plus a short forward walk replaces the scan, and `spans` wants a `reserve`. The
-`RoutePart` iterator helpers are another ~5% of the program on top.
-
-Then item 4: **`setSelection` redraws twice** — `cancel()` calls `redraw()` and so does
-`notifySelection()` (`src/editor/canvas.cpp:74-84`), so every click rebuilds the whole scene
-twice, about 11 ms wasted at 160 links. Then item 5, the docs: `CLAUDE.md` is 3,151 tokens and
-`PROGRESS.md` 14,818, and the standing orders send every session into both although `Next` is
-twenty lines; `src/render/` was deleted long ago and `ARCHITECTURE.md` still points at it.
+**The optimization pass resumes at item 4: `setSelection` redraws twice** — `cancel()` calls
+`redraw()` and so does `notifySelection()` (`src/editor/canvas.cpp:74-84`), so every click
+rebuilds the whole scene twice, about 11 ms wasted at 160 links. Then item 5, the docs:
+`CLAUDE.md` is 3,151 tokens and `PROGRESS.md` 14,818, and the standing orders send every session
+into both although `Next` is twenty lines; `src/render/` was deleted long ago and
+`ARCHITECTURE.md` still points at it.
 
 Below the bar and deliberately unbooked: the per-tick vehicle `std::sort` (2.8%, and the vector
 is nearly sorted), and `compileDocument` (15.2%, but paid once per Run press, not per tick).
+Inside `occupiedSpans` what is left is the `push_back` work itself, not the search.
+
+**Measure the engine with callgrind, not the clock, until this box settles.** ±7% on wall time
+cannot resolve a 3% change, and the instruction count decided both calls this session.
 
 Unchanged and ahead of all of it in the owner's order: **M1.26.1**, adjustable per-lane shares.
 
@@ -243,85 +277,6 @@ Unchanged: **M1.26.1** adjustable per-lane shares (decide where the shares live 
 M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, and the shared-station
 `runtimeSections` refusal (§3.3, M3.2) remain open. Inside a tick `occupiedSpans` is now the
 largest single cost at 9.8%; there is no booked milestone for it and none is needed yet.
-
----
-
-## 2026-09-22 — The editor stops redrawing what has not moved (M1.27.1)
-
-**Request:** continue M1.27 with the editor-redraw stage. It was booked on a **call count read
-from the code**, not a timing, so the first deliverable was the measurement.
-
-**The benchmark came first, and is committed.** `tools/editor_benchmark.cpp` builds a
-deterministic corridor of signalised crossings — two Links, two Connectors and one signal head
-each, three lanes throughout — drives the real `EditorCanvas` offscreen and times `redraw()` and
-`hitObjects()`. It prints and asserts nothing, so it is not in `check`, but it is built by
-default so it cannot rot. M1.23 has wanted this harness since it was written.
-
-**It said the lag is real.** An 80-link network redrew in 37 ms and picked in 20; a mouse move
-costs one of each, so the editor was at about 18 frames per second, and 6.6 at 160 links.
-
-**Then callgrind said the booked hypothesis was wrong.** The expected culprit, `headPosition`
-scanning every connector path per signal head, came in below the reporting threshold.
-`drawConnectors` was **67%**, through `connectorBoundaries` (39%), `offsetGeometry` (27%) and
-`connectorPaths` (21%) — the editor recomputed every Connector's ribbon on every frame. After
-caching those, `connectorMarkings` rose to **52.6%**, because it recomputes the boundaries
-itself rather than taking them. So the profile, not the plan, chose both changes.
-
-**The cache key is the inputs, by value.** `connectorPaths` and `connectorBoundaries` read
-exactly the Connector, the two Links it names and the driving side; nothing else in the Network
-can change their answer, which is a property of the code rather than a hope. A revision counter
-would have been wrong twice over: `History::undo` restores an older revision, and two files can
-be opened at the same one. A Connector carrying a drag preview differs by value and simply
-misses. Interleaved medians, alternating the two binaries, Debug, ms per call:
-
-**Corrected 2026-09-23** — the harness that produced this table was timing its own artifact
-(see that day's entry). Re-measured against the fixed one, same interleaved medians of five:
-
-| intersections | links | redraw before → after | pick before → after |
-|---|---|---|---|
-| 20 | 40 | 15.73 → **2.30** | 8.53 → **1.28** |
-| 40 | 80 | 36.78 → **4.91** | 20.15 → **3.31** |
-| 80 | 160 | 95.07 → **10.64** | 57.18 → **9.98** |
-
-A mouse move on the 160-link corridor went from about 152 ms to 21 — 6.6 frames per second to
-48. The cache pays MORE than this entry originally claimed, not less.
-
-**One change was built, measured and reverted**, which is worth as much as the two kept. The
-same cache for Link geometry looked like a win on single samples (−23%) and was not one when the
-two binaries were run alternately: −1% redraw at 80 intersections and **+9% on picking**. A
-Link's polyline is cheap enough to recompute that validating a cache entry costs what it saves,
-which is exactly what is *not* true of a Connector's ribbon. An experiment with
-`QGraphicsScene::NoIndex` also changed nothing and was dropped.
-
-**What guards it.** `network_lifecycle_ui_tests` widens a lane of the Link a Connector leaves,
-asserts both that the widths really changed and that the Connector compares equal to the one
-before — so the test is about the cache and not about the Connector — then requires the drawn
-surface to have moved; it also covers a driving-side change and a deleted Connector. Weakening
-the key to the Connector alone makes it fail, which is how it was verified. Entries are erased
-only in `pruneConnectorCache()` at the top of `redraw()`, because callers hold references into
-the map across several cached calls and an erase mid-frame would dangle one.
-
-**Two limits found, neither fixed.** `QGraphicsScene` item construction is now the floor, which
-is M1.23's culling/LOD work. And `EditorCanvas`'s `sceneRect` is hard-coded to 20 km square
-(`src/editor/canvas.cpp:26`), so the 80-intersection fixture runs off the end of it — a real
-16 km corridor would too. `NoIndex` showed it does not distort these numbers, but it is a
-drawable-area limit a corridor study can reach, and it belongs with M1.23.
-
-### Next
-
-**M1.27.1 is implemented; its gate as written said "a cache and a head index", and the head
-index was not built** — the profile put it below the threshold, so building it would have been
-work with no measured cause. The gate in ROADMAP now says what the evidence supports, and the
-correction is the honest part of this entry, not a shortcut. Remaining in M1.27, one session
-each: **M1.27.2**, the three `std::string` ids on `Vehicle` (2026-09-18's profile; gate is the
-four baselines byte-identical), and **M1.27.3**, UX — the `Ctrl`+left-click collision and the
-`VISSIM_PARITY.md` rows that misreport the product.
-
-Unchanged and still ahead of both: **M1.26.1** adjustable per-lane shares (decide where the
-shares live first), then **M2.1** behind **M2's pre-registered criteria, still unwritten, which
-block all of M2**. M1.22 and the shared-station `runtimeSections` refusal (§3.3, M3.2) remain
-open, scenario-JSON export is still neither implemented nor booked, and M1's timed owner
-exercise closes none of it.
 
 ---
 

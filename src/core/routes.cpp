@@ -13,11 +13,20 @@ VehicleLocation locate(const std::vector<RoutePart>& parts, const Vehicle& vehic
 }
 void appendSpans(std::vector<OccupiedSpan>& spans, const std::vector<RoutePart>& parts,
                  const Vehicle& vehicle, double length) {
-    for (const auto& part : parts)
-        if (vehicle.distance >= part.start && vehicle.distance - length < part.start + part.length)
-            spans.push_back({vehicle.id, part.segmentIndex,
-                std::max(0.0, vehicle.distance - length - part.start),
-                std::min(part.length, vehicle.distance - part.start), vehicle.speed});
+    // Parts are contiguous and ordered by station, so the ones a vehicle covers are a single
+    // run: from the first whose end is past the rear bumper, through the last whose start the
+    // front has reached. A corridor route crosses twenty-five segments and a vehicle occupies
+    // one or two, so the scan this replaces read the whole route for every vehicle every tick.
+    // Both comparisons are written exactly as the scan wrote them -- the same subtraction, the
+    // same operand order -- so the same parts match in the same order and the spans are
+    // identical, which is what replay depends on.
+    const double rear = vehicle.distance - length;
+    const auto first = std::lower_bound(parts.begin(), parts.end(), rear,
+        [](const RoutePart& part, double at) { return !(at < part.start + part.length); });
+    for (auto part = first; part != parts.end() && vehicle.distance >= part->start; ++part)
+        spans.push_back({vehicle.id, part->segmentIndex,
+            std::max(0.0, rear - part->start),
+            std::min(part->length, vehicle.distance - part->start), vehicle.speed});
 }
 }
 std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route) {
@@ -104,6 +113,9 @@ std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
                                         const ScenarioIndex& index, const std::vector<VehicleRefs>& refs) {
     std::vector<OccupiedSpan> spans;
+    // Most vehicles sit inside one segment, so this is the whole answer for most ticks and a
+    // couple of growth steps for the rest. The vector is rebuilt from empty every tick.
+    spans.reserve(vehicles.size());
     for (std::size_t i = 0; i < vehicles.size(); ++i)
         appendSpans(spans, index.parts[refs[i].route], vehicles[i],
                     scenario.vehicleTypes[refs[i].type].length);
