@@ -30,6 +30,28 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-23 — Compact desktop workspace
+
+**Owner request:** improve the UI and use screen space efficiently. The shell now has a light
+slate/teal palette, local line icons, translated menus, a compact command row that splits at
+narrow widths, independently scrolling property tabs, a collapsible appearance section, and
+contextual table actions. The application opens maximized. All run figures and the permanent
+unvalidated marker remain visible above the canvas, with wrapping instead of toolbar clipping.
+
+Focus on network (Ctrl+Shift+F) snapshots the dock layout, hides panels and restores their
+positions and visibility. Opening a panel exits focus; Reset panel layout recovers the default
+workspace. Layout never mutates the document or simulation. Language also has a menu fallback.
+
+The larger viewport exposed an outdated connector UI assertion after Link movement: M1.20 can
+retain the attachment at a station along the Link. The test now checks the authored attachment,
+including its station, rather than assuming it must still be the last vertex. No geometry,
+engine, schema or baseline fixture is changed.
+
+**Validation checkpoint:** the previous local pass covered the original suites and screenshots;
+this reconstructed branch is awaiting the final desktop check and bilingual layout verification.
+No M0/M1 engineering acceptance or scientific-validation gate is closed by this UI work.
+
+
 ## 2026-09-23 — The editor benchmark was measuring itself
 
 **Request:** another optimization pass. The booked candidate was `occupiedSpans`, the largest

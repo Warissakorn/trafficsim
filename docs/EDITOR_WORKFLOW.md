@@ -5,7 +5,7 @@ existing authoring commands; they do not change the project format or simulation
 
 ## History
 
-Use the History toolbar button or **Ctrl+Shift+H**. The dock lists reachable states from oldest
+Use **View → History** or **Ctrl+Shift+H**. The dock lists reachable states from oldest
 to newest, including undone states. The current state is bold and labelled; the saved state
 has its own marker. Undo/Redo buttons name the operation they will perform.
 
@@ -85,3 +85,21 @@ a later release cannot commit it. Existing copy, move and vertex gestures keep t
 The draft and the selected route draw as moving dashes with direction arrows, the hovered
 lane is haloed, and each input draws a chevron with its volume. That is all paint state: it
 is not saved, and no measured number depends on it.
+
+## Workspace and screen space
+
+The application opens maximized. The command bar uses one row on wide windows and two rows
+below 1180 logical pixels, keeping playback and language controls reachable. File, Edit, View,
+Simulation, Help and Language menus retain full command names and keyboard shortcuts.
+
+- **Ctrl+Shift+F** (View → Focus on network) hides docks and restores the previous layout on
+  the next press, including hidden and floating panels. Opening a panel also leaves focus mode.
+- **View → Reset panel layout** restores the palette, Properties and Objects docks.
+- **Ctrl+I**, **Ctrl+Shift+O**, **Ctrl+Shift+H** and **Ctrl+Shift+T** toggle Properties, Objects,
+  History and the Network Objects palette respectively.
+- Properties keeps ID, Name and its tabs visible while each tab scrolls independently.
+  Expand **Network and appearance** for drivingSide, level and display type.
+- Signal-head table actions appear on the Signal heads tab. Run settings and runnability
+  checks are always available in the Simulation menu. **F1** opens gesture/keyboard help.
+
+The unvalidated marker and complete simulation figures remain visible in focus mode.

@@ -36,9 +36,11 @@ void lane(QComboBox* box,const std::string& id) {
 }
 void anchored(const ProjectDocument& d) {
     require(validateNetwork(d.network).empty(),"Invalid authored geometry");
-    for (const auto& c : d.network.connectors) for (const auto& link : d.network.links) {
-        if (link.id==c.from.linkId) require(c.geometry.front()==laneGeometry(link,c.from.laneId,d.network.drivingSide).back(),"Source detached");
-        if (link.id==c.to.linkId) require(c.geometry.back()==laneGeometry(link,c.to.laneId,d.network.drivingSide).front(),"Target detached");
+    // Link movement can preserve a world-position attachment part-way along the Link
+    // (M1.20). Check the authored reference, including its station, at every zoom level.
+    for (const auto& c : d.network.connectors) {
+        require(c.geometry.front()==laneAttachment(d.network,c.from,true),"Source detached");
+        require(c.geometry.back()==laneAttachment(d.network,c.to,false),"Target detached");
     }
 }
 void answer(QMessageBox::StandardButton choice) {

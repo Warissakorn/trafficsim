@@ -299,5 +299,18 @@
   "editorRotate": "Rotate selection",
   "editorRotationHelp": "Angle in degrees around the centre of the selected roads. Positive turns counter-clockwise; negative turns clockwise. Connectors that leave their parent roads are removed with their dependent routes and heads; Undo restores the whole edit.",
   "EDIT_ROTATE_TARGET": "Select at least one Link or Connector to rotate. Signal heads rotate with their parent road.",
-  "editorInputSplitHelp": "The volume is the whole link's total. It is divided equally across the lanes the route reaches — an authoring convenience, not a lane-choice model: this engine has no lane changing, and none of these figures are validated."
+  "editorInputSplitHelp": "The volume is the whole link's total. It is divided equally across the lanes the route reaches — an authoring convenience, not a lane-choice model: this engine has no lane changing, and none of these figures are validated.",
+  "editorScopeCompact": "Not yet validated · Wiedemann-inspired prototype; no conflict resolution, lane changing or LOS.",
+  "editorFileMenu": "File",
+  "editorEditMenu": "Edit",
+  "editorViewMenu": "View",
+  "editorSimulationMenu": "Simulation",
+  "editorHelpMenu": "Help",
+  "editorWorkspace": "Workspace",
+  "editorFocusCanvas": "Focus on network",
+  "editorResetLayout": "Reset panel layout",
+  "editorShortcuts": "Keyboard and mouse shortcuts",
+  "editorAppearance": "Network and appearance",
+  "editorPaletteHint": "Ctrl + right-drag to create.\nF1 for all shortcuts.",
+  "editorSeedLabel": "Seed"
 }

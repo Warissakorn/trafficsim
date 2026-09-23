@@ -1,5 +1,7 @@
 #include "editor_window.hpp"
 #include "path.hpp"
+#include "editor_style.hpp"
+#include <QMenu>
 #include <QAction>
 #include <QComboBox>
 #include <QDockWidget>
@@ -35,12 +37,15 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     language_=new QComboBox(this); language_->setObjectName("editorLanguage");
     language_->addItem(locales_.at("en").value("english").toString(),"en");
     language_->addItem(locales_.at("en").value("thai").toString(),"th"); language_->setCurrentIndex(language=="th"?1:0);
+    applyEditorStyle(this);
     auto* central=new QWidget(this); auto* layout=new QVBoxLayout(central);
-    auto* scope=new QLabel(central); scope->setWordWrap(true); texts_["editorScope"]=scope; layout->addWidget(scope);
-    scope->setStyleSheet("background:#fff3cd;color:#614700;padding:8px;");
+    layout->setContentsMargins(6,6,6,4);layout->setSpacing(5);
+    auto* scope=new QLabel(central); scope->setWordWrap(true); scope->setObjectName("editorScope"); texts_["editorScopeCompact"]=scope; layout->addWidget(scope);
+    scope->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
     canvas_=new EditorCanvas(central);canvas_->setDisplayCatalog(displayCatalog_); layout->addWidget(canvas_,1);
     error_=new QLabel(central); error_->setObjectName("editorError"); error_->setWordWrap(true);
-    error_->setStyleSheet("color:#a5263c"); layout->addWidget(error_); setCentralWidget(central);
+    error_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+    layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
     files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
@@ -49,34 +54,32 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         if(!file.isEmpty()) try{openFile(file);}catch(const std::exception& e){showError(e);}
     }));
     files->addAction(action("editorSave",QKeySequence::Save,[this]{saveDialog();}));
-    files->addAction(action("editorSaveAs",QKeySequence::SaveAs,[this]{saveDialog(true);}));
+    action("editorSaveAs",QKeySequence::SaveAs,[this]{saveDialog(true);});
     files->addSeparator();
     files->addAction(action("editorUndo",QKeySequence::Undo,[this]{clearRun();history_.undo();refresh();}));
     files->addAction(action("editorRedo",QKeySequence::Redo,[this]{clearRun();history_.redo();refresh();}));
-    buildHistory(); files->addAction(actions_.at("editorHistory"));
-    files->addWidget(language_);
-    addToolBarBreak(); auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
+    buildHistory();
+    auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
     for(int i=0;i<9;++i) tool_->addItem("",i);
     tool_->hide();
     tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
     tools->addAction(action("editorRotate",QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_R),[this]{rotateSelection();}));
-    tools->addAction(action("editorDeleteVertex",{},[this]{canvas_->removeVertex();}));
-    tools->addAction(action("editorDeleteLink",{},[this]{
+    action("editorDeleteVertex",{},[this]{canvas_->removeVertex();});
+    action("editorDeleteLink",{},[this]{
         const auto id=canvas_->selected(); if(id.empty()) return;
         QMessageBox box(QMessageBox::Question,text("editorDeleteLink"),text("editorDeleteWarning"),QMessageBox::Yes|QMessageBox::No,this);
         box.button(QMessageBox::Yes)->setText(text("editorConfirm"));box.button(QMessageBox::No)->setText(text("editorCancel"));box.setDefaultButton(QMessageBox::No);
         if(box.exec()==QMessageBox::Yes) execute("editorDeleteLink",[&](auto& d){deleteLink(d,id);});
-    }));
+    });
     auto* snap=action("editorSnap",{},[this]{canvas_->snap=actions_.at("editorSnap")->isChecked();});
     snap->setCheckable(true); snap->setChecked(true); tools->addAction(snap);
-    grid_=new QDoubleSpinBox(this); grid_->setRange(0.1,100); grid_->setValue(1); grid_->setSuffix(" m"); grid_->setObjectName("editorGrid"); tools->addWidget(grid_);
+    grid_=new QDoubleSpinBox(this); grid_->setRange(0.1,100); grid_->setValue(1); grid_->setSuffix(" m"); grid_->setObjectName("editorGrid");grid_->setMaximumWidth(86); tools->addWidget(grid_);
     coordinates_=new QLabel(this); statusBar()->addPermanentWidget(coordinates_);
-    buildInspector(); tools->addAction(actions_.at("editorInspector"));
+    buildInspector();
     tools->addAction(action("editorDeleteSelected",{},[this]{deleteSelected();}));
-    buildObjectTables(); tools->addAction(actions_.at("editorObjects"));
-    tools->addAction(actions_.at("editorRecheck"));
+    buildObjectTables();
     connect(language_,&QComboBox::currentIndexChanged,this,[this]{translate();});
     connect(tool_,&QComboBox::currentIndexChanged,this,[this](int index){
         canvas_->setTool(static_cast<EditorCanvas::Tool>(index));
@@ -148,7 +151,8 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
     buildDemandTables(); buildRouting(); buildRunControls(); buildRecovery(); buildPalette();
-    history_.reset(); translate(); refresh(); resize(1280,850); canvas_->centerOn(0,0);
+    resize(1360,860);buildWorkspace();
+    history_.reset(); translate(); refresh();canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {
     auto* a=new QAction(this); a->setObjectName(QString::fromStdString(key)); a->setShortcut(shortcut);
@@ -161,6 +165,7 @@ void EditorWindow::translate() {
         if(auto* label=qobject_cast<QLabel*>(w)) label->setText(text(key));
         else if(auto* dock=qobject_cast<QDockWidget*>(w)) dock->setWindowTitle(text(key));
         else if(auto* bar=qobject_cast<QToolBar*>(w)) bar->setWindowTitle(text(key));
+        else if(auto* menu=qobject_cast<QMenu*>(w)) menu->setTitle(text(key));
     }
     const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable"};
     for(int i=0;i<9;++i) tool_->setItemText(i,text(modes[i]));
@@ -169,6 +174,8 @@ void EditorWindow::translate() {
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
     retranslateTables(); translateDemand(); translatePalette(); refreshToolHint();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
+    language_->setAccessibleName(text("language"));
+    texts_.at("editorScopeCompact")->setToolTip(text("editorScope"));
     error_->clear(); refresh();
 }
 bool EditorWindow::execute(const std::string& name,const std::function<void(ProjectDocument&)>& change) {

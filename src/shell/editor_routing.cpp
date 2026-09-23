@@ -25,7 +25,8 @@ void EditorWindow::buildRouting() {
     // The pointer tools are gestures with no dialog to explain them, so the status bar says
     // what a click will do while one of them is chosen.
     toolHint_=new QLabel(this);toolHint_->setObjectName("editorToolHint");
-    statusBar()->addWidget(toolHint_);
+    toolHint_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+    statusBar()->addWidget(toolHint_,1);
     connect(tool_,&QComboBox::currentIndexChanged,this,[this]{refreshToolHint();});
     refreshToolHint();
 }
@@ -33,6 +34,7 @@ void EditorWindow::refreshToolHint() {
     if(!toolHint_)return;
     const int index=tool_->currentIndex();
     toolHint_->setText(index==6?text("editorRouteClickHelp"):index==7?text("editorInputPlaceHelp"):QString{});
+    toolHint_->setToolTip(toolHint_->text());
 }
 void EditorWindow::commitDrawnRoute(const std::vector<std::string>& segmentIds) {
     if(segmentIds.empty())return;

@@ -11,6 +11,11 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
+The owner requested the compact UI refresh ahead of the engineering queue below. Finish its
+desktop `check` and inspect English/Thai at 1360×860 and 1024×768, including focus/restore and
+narrow-toolbar language access, before marking the draft ready. The M1 acceptance exercise
+and the engineering priorities below remain open.
+
 **The measure-first optimization pass is finished.** Items 1–5 and 7 shipped; item 6 was built,
 measured and **reverted**. Do not re-try any of these without a new measurement:
 

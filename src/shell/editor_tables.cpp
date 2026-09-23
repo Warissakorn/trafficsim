@@ -34,13 +34,14 @@ void EditorWindow::buildObjectTables() {
     auto* dock=new QDockWidget(this); dock->setObjectName("editorObjectsDock"); texts_["editorObjectsDock"]=dock;
     dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetClosable);
     auto* body=new QWidget(dock); auto* layout=new QVBoxLayout(body);
+    layout->setContentsMargins(6,2,6,6);layout->setSpacing(4);
     objects_=new QTabWidget(body); objects_->setObjectName("editorObjectTabs"); layout->addWidget(objects_);
     linkTable_=table(objects_,"editorLinkTable",5);
     connectorTable_=table(objects_,"editorConnectorTable",5);
     signalTable_=table(objects_,"editorSignalTable",5);
     for (auto* view : {linkTable_,connectorTable_,signalTable_}) objects_->addTab(view,QString());
     buildDiagnostics();
-    auto* help=new QLabel(body); help->setWordWrap(true); texts_["editorTablesHelp"]=help; layout->addWidget(help);
+
     // Selection flows one way at a time: the sync flag keeps the two views from echoing.
     for (auto* view : {linkTable_,connectorTable_,signalTable_})
         connect(view,&QTableWidget::itemSelectionChanged,this,[this,view]{
