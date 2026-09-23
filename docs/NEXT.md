@@ -11,12 +11,16 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-**The measure-first optimization pass has finished items 1–5 of its plan.** What is left:
+**The measure-first optimization pass is finished.** Items 1–5 shipped; item 6 was built,
+measured and **reverted**. Do not re-try any of these without a new measurement:
 
-- **Item 6:** `redraw()` copies every `Link` by value each frame (`for (auto link : ...links)`
-  in `src/editor/canvas.cpp`) so one of them can carry the drag preview. Copy only the primary.
-  Effect unknown — measure before deciding, the way item 3 turned out to be 2.6% against an
-  estimate of 10–13%.
+- **Item 6, reverted — do not retry.** `redraw()` copies every `Link` by value (`for (auto link
+  : ...links)` in `src/editor/canvas.cpp`) so the primary can carry a drag preview. Copying only
+  the primary was worth **−1.2% of `redraw()`** and −0.5% of the program, inside the wall
+  clock's own spread, and it cost a scratch `Link` plus a reference-selecting ternary to read.
+  A frame is dominated by `QGraphicsItem` construction — thousands of items against 159 Link
+  copies — so the ratio does not improve at any network size. What is actually left in a frame
+  is M1.23's culling and LOD work.
 - **Deliberately not booked:** the per-tick vehicle `std::sort` (2.8% of instructions, and the
   vector is nearly sorted), `compileDocument` (15.2%, but paid once per Run press, not per
   tick), and what is left inside `occupiedSpans`, which is the `push_back` work, not the search.

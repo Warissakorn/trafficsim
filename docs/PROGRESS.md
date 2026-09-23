@@ -125,6 +125,24 @@ canvas. That site keeps `cancel()`, with a comment saying why. The test that cau
 preview items in the scene after each of six cancellation routes — it was written for M1.22.2 and
 it earned its keep here.
 
+### And item 6 was built, measured and reverted
+
+`redraw()` copies every `Link` by value so that one of them — the primary — can carry a drag or
+lane-resize preview. Copying only that one, and drawing the rest straight out of the document,
+removes 159 Link copies a frame at 160 links.
+
+| | before | after | |
+|---|---|---|---|
+| `redraw()` inclusive | 200,879,176 Ir | 198,519,361 Ir | −1.17% |
+| whole program | 551,679,517 Ir | 548,798,736 Ir | −0.52% |
+| wall, 160 links, median of 7 | 11.28 ms | 10.91 ms | −3.3%, inside a ±10% spread |
+
+**Reverted.** A frame is `QGraphicsItem` construction — thousands of items against 159 struct
+copies — so the ratio does not improve at any network size, and unlike item 3 there is no
+scaling argument to keep it on. It also read worse: a scratch `Link` and a reference-selecting
+ternary in place of one loop variable. The number is recorded so nobody measures it twice; what
+is actually left in a frame is M1.23's culling and LOD.
+
 ### And the standing orders stopped reading a 14,800-token file to find twenty lines
 
 The pass's last item, and the only one that is not about the program. `CLAUDE.md` said *read the
