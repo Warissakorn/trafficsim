@@ -287,7 +287,7 @@ and `trafficsim_shell` precompiles the Qt surface the UI test executables reuse:
 `-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the editor measurable, and the canvas
 caches each Connector's paths, boundaries and markings against the only three inputs they read
 — the Connector, its two Links and the driving side — by value, never by a revision counter. A
-160-link corridor redraws in **22.5 ms instead of 93.4** and picks in **7.1 instead of 39.0**.
+160-link corridor redraws in **10.6 ms instead of 95.1** and picks in **10.0 instead of 57.2**.
 
 **The gate said "a cache and a head index"; the head index was not built** — callgrind put the
 `headPosition` scan below the threshold and `connectorMarkings` at 52.6%, so the profile chose

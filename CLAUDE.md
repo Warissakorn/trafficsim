@@ -43,7 +43,7 @@ M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and bl
 executables reuse — a clean build is 86 s → 64 s, and a PCH here holds third-party headers only
 (D27). `tools/editor_benchmark.cpp` then made the canvas measurable: the editor caches each
 Connector's paths, boundaries and markings **against the values they are derived from** (D28),
-taking a 160-link corridor from 93 ms a frame to 22. Read D28 before adding another cache — the
+taking a 160-link corridor from 95 ms a frame to 11. Read D28 before adding another cache — the
 same one for Link geometry was measured and reverted. **M1.27.2:** `tools/engine_benchmark.cpp`
 commits an engine fixture, and a runtime vehicle now names its input, route and type by **slot
 in the canonical Scenario** rather than by id (D29), halving the run; names survive at the
@@ -51,7 +51,9 @@ boundary, so every frozen fixture is byte-identical. **M1.27.3 closes the progra
 `tools/gesture_walkthrough.cpp` counts the inputs an authoring task costs and replays the Vissim
 reflexes — five of six transfer, and the sixth, `Ctrl`+left-click, does **nothing** rather than
 the wrong thing the parity table claimed, which the owner ruled stays as it is (D30). None of the
-three benchmarks is in `check`, so re-run them before repeating any of these numbers.
+three benchmarks is in `check`, so re-run them before repeating any of these numbers — and a
+harness that drives Qt pumps the event loop between iterations or it times Qt's deferred work
+instead of the code (D31, which is how the editor's first published figures came out wrong).
 
 **Previous work:** M1 implementation covers M1.1–M1.20, including controlled splits,
 demand/control editing, recovery, in-editor Run, connector ranges and levels/display types,
