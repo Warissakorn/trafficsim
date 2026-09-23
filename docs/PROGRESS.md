@@ -47,8 +47,12 @@ retain the attachment at a station along the Link. The test now checks the autho
 including its station, rather than assuming it must still be the last vertex. No geometry,
 engine, schema or baseline fixture is changed.
 
-**Validation checkpoint:** the previous local pass covered the original suites and screenshots;
-this reconstructed branch is awaiting the final desktop check and bilingual layout verification.
+**Validation:** clean Linux desktop build and `check` pass (36/36 tests), including architecture
+and file-size guards. The new workspace test exercises focus/restore, floating and hidden docks,
+layout reset, narrow toolbar access and independent property scrolling in English and Thai.
+GitHub Actions passes Linux headless/release/desktop and Windows core/desktop for the code commit.
+Inspected screenshots are linked in `EDITOR_WORKFLOW.md`: the canvas is 807×474 in the English
+1360×860 window and 471×288 in the Thai 1024×768 window on the Linux offscreen Qt platform.
 No M0/M1 engineering acceptance or scientific-validation gate is closed by this UI work.
 
 

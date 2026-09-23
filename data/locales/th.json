@@ -312,5 +312,5 @@
   "editorShortcuts": "ปุ่มลัดและการใช้เมาส์",
   "editorAppearance": "โครงข่ายและการแสดงผล",
   "editorPaletteHint": "Ctrl + ลากเมาส์ขวาเพื่อสร้าง\nF1 ดูปุ่มลัดทั้งหมด",
-  "editorSeedLabel": "เมล็ดสุ่ม"
+  "editorSeedLabel": "ค่า seed"
 }

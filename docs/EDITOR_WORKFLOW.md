@@ -103,3 +103,8 @@ Simulation, Help and Language menus retain full command names and keyboard short
   checks are always available in the Simulation menu. **F1** opens gesture/keyboard help.
 
 The unvalidated marker and complete simulation figures remain visible in focus mode.
+
+Layout examples from the Linux offscreen Qt platform:
+[English, 1360×860](images/workspace-en.png),
+[Thai, 1024×768](images/workspace-th.png), and
+[Thai focus mode](images/workspace-focus.png).
