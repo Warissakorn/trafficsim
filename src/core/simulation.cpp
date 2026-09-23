@@ -105,6 +105,9 @@ SimState stepSimulation(const SimState& state, double dt) {
     std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
         return a.scheduledTime == b.scheduledTime ? a.id < b.id : a.scheduledTime < b.scheduledTime;
     });
+    // Where the arrivals will start. The survivors kept the order last tick's rebuild wrote
+    // them in, so everything before this point is already sorted by id.
+    const std::size_t survivors = vehicles.size();
     std::set<std::string> attemptedSources;
     // Built at most once per tick rather than per candidate, and only once a candidate actually
     // survives the source filter - most ticks have no arrival at all and must stay free.
@@ -144,7 +147,18 @@ SimState stepSimulation(const SimState& state, double dt) {
         events.emplace_back(DepartedEvent{state.time, vehicle.id, route.id,
                                          vehicle.scheduledTime, vehicle.desiredSpeed});
     }
-    std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
+    // Two sorted runs, not an unsorted list: the survivors in id order, then this tick's
+    // arrivals, which were appended in scheduled-time order. Sorting the short tail and merging
+    // is linear where sorting the whole fleet again is not, and ids are unique, so the result is
+    // the same total order std::sort produced. A hand-built initial state need not be ordered,
+    // so the prefix is checked rather than assumed; after the first tick the rebuild below is
+    // what guarantees it.
+    const auto byId = [](const auto& a, const auto& b) { return a.id < b.id; };
+    const auto arrivals = vehicles.begin() + static_cast<std::ptrdiff_t>(survivors);
+    std::sort(arrivals, vehicles.end(), byId);
+    if (std::is_sorted(vehicles.begin(), arrivals, byId))
+        std::inplace_merge(vehicles.begin(), arrivals, vehicles.end(), byId);
+    else std::sort(vehicles.begin(), vehicles.end(), byId);
     // Resolved once per tick rather than roughly six times per vehicle.
     const auto refs = resolveRefs(scenario, vehicles, index);
     const auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.

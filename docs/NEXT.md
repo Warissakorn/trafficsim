@@ -11,7 +11,7 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-**The measure-first optimization pass is finished.** Items 1–5 shipped; item 6 was built,
+**The measure-first optimization pass is finished.** Items 1–5 and 7 shipped; item 6 was built,
 measured and **reverted**. Do not re-try any of these without a new measurement:
 
 - **Item 6, reverted — do not retry.** `redraw()` copies every `Link` by value (`for (auto link
@@ -21,9 +21,9 @@ measured and **reverted**. Do not re-try any of these without a new measurement:
   A frame is dominated by `QGraphicsItem` construction — thousands of items against 159 Link
   copies — so the ratio does not improve at any network size. What is actually left in a frame
   is M1.23's culling and LOD work.
-- **Deliberately not booked:** the per-tick vehicle `std::sort` (2.8% of instructions, and the
-  vector is nearly sorted), `compileDocument` (15.2%, but paid once per Run press, not per
-  tick), and what is left inside `occupiedSpans`, which is the `push_back` work, not the search.
+- **Deliberately not booked:** `compileDocument` (15.2% of instructions, but paid once per Run
+  press, not per tick), and what is left inside `occupiedSpans`, which is the `push_back` work,
+  not the search. The per-tick fleet sort is **done** — it is a merge now, −1.75% to −2.06%.
 
 **Measure the engine with callgrind, not the clock, until this box settles.** Wall time swung
 ±7% on 2026-09-23, which cannot resolve a 3% change; instruction counts decided two calls that

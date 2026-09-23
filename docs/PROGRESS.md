@@ -125,6 +125,36 @@ canvas. That site keeps `cancel()`, with a comment saying why. The test that cau
 preview items in the scene after each of six cancellation routes — it was written for M1.22.2 and
 it earned its keep here.
 
+### The per-tick fleet sort became a merge
+
+Item 7 of the plan, which had been ranked "not recommended" at an estimated 1.5% and was asked
+for anyway. `stepSimulation` re-sorted the whole vehicle list by id every tick. It never needed
+to: the survivors arrive in the order last tick's rebuild wrote them, so the list is **two
+sorted runs** — the fleet, then this tick's arrivals, appended in scheduled-time order. Sorting
+the short tail and merging is linear where sorting the fleet again is `n log n`.
+
+| | before | after | |
+|---|---|---|---|
+| 6 intersections | 324,044,186 Ir | 317,359,614 Ir | −2.06% |
+| 24 intersections | 1,879,880,181 Ir | 1,847,057,272 Ir | −1.75% |
+
+The sort itself was 2.12% of the program at 24 intersections and is now about 0.03%; the rest of
+what it cost went into the `is_sorted` check, which is the honest way to do this. **A hand-built
+initial state need not be ordered** — `test::withVehicles` places vehicles in the caller's order
+— so the prefix is checked rather than assumed, and an unsorted one falls back to the full sort.
+Trusting `state.tick != 0` instead would have saved another 0.35% and bought a trap.
+
+Ids are unique, so id order is a total order and the merge produces exactly what `std::sort`
+produced. Replay is byte-identical: the four seed fixtures and `trajectory-digest.json` pass
+untouched, `trafficsim-cli 42` prints `29.249359418430977`, and the benchmark completes the same
+475 trips with the same peak of 235.
+
+**It does not scale up, and that is worth writing down.** The saving is slightly *smaller* at 24
+intersections than at 6, because the sort's share of a tick shrinks as the rest of the tick grows
+— the opposite of the `occupiedSpans` change, which was kept for exactly that scaling property.
+This one is worth its eight lines because it also states the invariant the code already relied
+on; it is not worth revisiting for more.
+
 ### And item 6 was built, measured and reverted
 
 `redraw()` copies every `Link` by value so that one of them — the primary — can carry a drag or
