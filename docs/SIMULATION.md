@@ -158,7 +158,7 @@ once per vehicle. The distance shape is inspired by the
 [PTV Wiedemann 74 parameter documentation](https://cgi.ptvgroup.com/vision-help/VISSIM_2025_ENG/Content/4_BasisdatenSim/FahrverhaltensparameterFolgeverh_Wied74.htm).
 Unlike that model, this prototype does not smear standstill distance or use its full
 perception thresholds. Its free/approaching/following/braking regime thresholds and
-acceleration equations are defined in `core/following.cpp`; they are our own reduced
+acceleration equations are defined in `src/core/following.cpp`; they are our own reduced
 approximation. Parameters must not be transferred from a calibrated Vissim model.
 
 ## Determinism, snapshots and events
@@ -204,7 +204,7 @@ use `runSimulation` callbacks to stream history without retaining all trajectory
 
 ## Evaluation and extension points
 
-`eval/summary.cpp` is a completed-trip diagnostic. Mean delay is actual travel time plus
+`src/eval/summary.cpp` is a completed-trip diagnostic. Mean delay is actual travel time plus
 source wait minus route length divided by sampled desired speed. It includes acceleration
 loss; it is **not HCM control delay or LOS**. An empty run returns `null`, not NaN. Incomplete
 trips do not enter this mean and must be reported separately.

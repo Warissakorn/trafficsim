@@ -103,7 +103,8 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 | [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md) | Correctness and working rules |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Modules, dependencies and contracts |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | M0–M7 and acceptance gates |
-| [`docs/PROGRESS.md`](docs/PROGRESS.md) | Decisions, log and next task |
+| [`docs/NEXT.md`](docs/NEXT.md) | The one live to-do |
+| [`docs/PROGRESS.md`](docs/PROGRESS.md) | Session log and the decision record |
 | [`CLAUDE.md`](CLAUDE.md) | Working instructions |
 
 ## Native network editor

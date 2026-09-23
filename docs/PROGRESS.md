@@ -1,8 +1,9 @@
 # PROGRESS — TrafficSim
 
-Append-only. Newest entry at the top. **This is what a session with no memory reads to rejoin
-the work.** Never delete an entry; move old blocks whole into `docs/archive/` if this gets
-long. Older entries are preserved whole there:
+Append-only. Newest entry at the top. **This is the history and the reasoning** — what a session
+reads to understand why the code is the way it is. What to do next is in
+[`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
+move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
 - [`archive/PROGRESS-2026-09-22-m1.27.1-redraw.md`](archive/PROGRESS-2026-09-22-m1.27.1-redraw.md) — 2026-09-22, M1.27.1, the connector cache; its numbers corrected 2026-09-23; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27-build-stage.md`](archive/PROGRESS-2026-09-22-m1.27-build-stage.md) — 2026-09-22, M1.27 build stage, the PCH and json_fwd work; moved out 2026-09-23 as the oldest live entry
@@ -124,24 +125,43 @@ canvas. That site keeps `cancel()`, with a comment saying why. The test that cau
 preview items in the scene after each of six cancellation routes — it was written for M1.22.2 and
 it earned its keep here.
 
-### Next
+### And the standing orders stopped reading a 14,800-token file to find twenty lines
 
-**The optimization pass resumes at item 5, the documents.** `CLAUDE.md` is 3,151 tokens and
-`PROGRESS.md` 14,818, and the standing orders send every session into both although `Next` is
-twenty lines — splitting `Next` into its own file is about 12k tokens off every session start.
-`src/render/` was deleted long ago and `ARCHITECTURE.md`, a read-before-working file, still
-points at it. The audit is `.optimize/baseline/docs_audit.md` (69 files, 173,401 tokens); most of
-its 79 "broken refs" are false positives — `nlohmann/json.hpp`, `id/lane-2`, the TS paths in
-`MIGRATION.md`, and the files `docs/specs/` proposes but nothing has built.
+The pass's last item, and the only one that is not about the program. `CLAUDE.md` said *read the
+**Next** section of `docs/PROGRESS.md`* — but a section is not a file, so every session paid for
+the whole log to reach it.
 
-Below the bar and deliberately unbooked: the per-tick vehicle `std::sort` (2.8%, and the vector
-is nearly sorted), and `compileDocument` (15.2%, paid once per Run press, not per tick). Inside
-`occupiedSpans` what is left is the `push_back` work itself, not the search.
+**`docs/NEXT.md` is now the one live to-do**: the thread of work in progress, and the owner's
+standing items, which were a second `## Next` further down the same file. `PROGRESS.md` keeps
+what it is good at — the history, the reasoning, and the decision log every `D`-number points
+at — and is read for the entry behind whatever is being changed, not as a matter of course.
 
-**Measure the engine with callgrind, not the clock, until this box settles.** ±7% on wall time
-cannot resolve a 3% change. The editor's numbers are steadier (±2%) and the clock is fine there.
+| what a session reads at start | before | after |
+|---|---|---|
+| `CLAUDE.md` | 3,180 | 3,320 |
+| `docs/ARCHITECTURE.md` | 3,271 | 3,273 |
+| `docs/PROGRESS.md` → `docs/NEXT.md` | 14,553 | **1,914** |
+| **total** | **21,004** | **8,507** (−59%) |
 
-Unchanged and ahead of all of it in the owner's order: **M1.26.1**, adjustable per-lane shares.
+Token counts are the audit script's character-based estimate, before and after with the same
+script. `CLAUDE.md` grew by 140: the new row and the rule that stops the duplication coming back.
+
+**The rule matters more than the move.** Two places saying what to do next is exactly what hard
+rule 3 forbids, and the copy that rots is always the one in the log — so `NEXT.md` is rewritten
+each session and a new entry carries no `Next` of its own. Entries written before today keep
+theirs, as history.
+
+**The audit's 79 "broken references" were mostly not broken, and saying so is the point.**
+`nlohmann/json.hpp`, `id/lane-2` and `chord/3` are not paths; `MIGRATION.md`'s TypeScript paths
+name a codebase that is deliberately in Git history only; `docs/specs/` names files its
+proposals would create; and `ARCHITECTURE.md`'s `src/render/` is a correct past-tense sentence
+about a directory M1.24 removed. **Five were real** and are fixed: three paths missing their
+`src/` prefix, and two markdown links inside `docs/archive/` written as if from `docs/`, which
+404ed — including one a file used to point at itself. The count reads 79 → 74; reporting it as
+79 → 0 would have meant breaking four dozen correct sentences to satisfy a script.
+
+**What comes next lives in [`NEXT.md`](NEXT.md)**, not here — one live to-do, not one
+per entry. Entries below this date keep the `Next` they shipped with, as history.
 
 ---
 
@@ -301,83 +321,8 @@ largest single cost at 9.8%; there is no booked milestone for it and none is nee
 
 ## Next
 
-**Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
-
-**0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
-authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
-entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
-exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is open and its
-real question is where the shares live, since `VehicleInput` is a core type the scenario format
-shares. Signal heads are the last object still placed only through a dialog;
-`objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
-A routing decision as an object at a station along the link — what Vissim actually places, and
-what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
-until its pre-registered criteria are written into `ROADMAP.md`. Writing them is the owner's,
-and it blocks all of M2.
-
-**0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
-station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
-its cut against `boundaries.back() + kMinSectionLength` and the boundary the FIRST arrival just made
-is at that very station — so it is measured against itself, and Run is blocked for a pair that is
-physically fine. Reuse the existing cut instead of rejecting it. Section table only, one system, and
-the test already in `tests/connector_tests.cpp` flips to its commented expectation when it lands.
-See the top entry of this file, and `CONNECTOR_PARITY_AUDIT.md` §3.3.
-
-**1. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
-layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on
-screen. Watch for a Connector deleted by a Link drag the author did not expect to touch it (the
-Undo is there; the surprise is the thing to judge), and for whether half a lane width is the right
-distance for "off the Link" — one constant, in `laneContains`.
-
-> **Carry into the acceptance exercise:** the mouth is the shape an author sees at every merge, and
-> both times it has been wrong it was found from a render, not from a test. When a Connector is
-> drawn onto a Link's body at a sharp angle, check the joint by eye: every lane of the Connector
-> should meet the lane of the Link it feeds, middle on middle, and the mouth should span the Link's
-> own carriageway rather than spreading past it. At arrivals steeper than about 60 degrees it
-> cannot: `kMouthSpanFloor` in `road_boundaries.cpp` is the dial, and `connectorMouthFit` reports
-> what a mouth could not reach, in metres.
-
-Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
-M1.12.1, M1.21–M1.21.1 and M1.24–M1.27, with M1.12.2 closed as a measurement error rather than a
-defect and M1.12.3 closed by M1.19. M1.22, M1.23 and M1.26.1 remain open. **M1.27.3 counted the
-authoring gestures; a counted walkthrough is not the timed exercise in item 2 and closes nothing
-of it.** `docs/ROADMAP.md` is
-the authority on each; the bodies of the long-implemented ones live in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
-
-**2. Run the timed acceptance exercise** in [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). It is the only
-thing that closes M1 and it cannot be delegated: an engineer draws a four-leg intersection with
-turn pockets over an aerial image, from a blank editor, **under 10 minutes, without documentation
-or assistance**, then the file is reopened and compared field for field. Not one row of that record
-has been filled in. Merged code does not close it (rule 1), and a rehearsed retry is not the first
-observation.
-
-**Do this on Windows.** Everything in these sessions was verified on Linux only. `native.yml` runs
-the Qt suites on Windows too, and CI run 105 previously failed in `windows-core` on a vcpkg
-`z-applocal` race before any test ran — so a green Linux run is not evidence about the platform the
-owner actually draws on. The M1.12 review checklist from the 2026-09-16 sessions is the list to
-work through first.
-
-**3. Record the M0 plausibility observation** separately — acceleration, queue at red, discharge at
-green. Owner observation, not calibration, and not M6 validation. The not-yet-validated marker
-stays either way.
-
-**4. Decide the name (Q5).** D11 deferred it "until the end of M1", and that trigger is now live.
-`Velk` is the strongest recorded candidate — clean on npm, PyPI and a brand search, with
-`velk.com`/`velk.io` held, which is ordinary for a four-letter word. Do **not** re-derive the
-candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have
-findings in the D11 row. **This is the owner's decision, not a session's.**
-
-**Not started, and deliberately:** M2 implementation. Its gate is pre-registered and
-`ROADMAP.md`'s "Pre-registered criteria: TO BE WRITTEN before M2 implementation starts" is still
-unfilled. Starting M2 before writing them **voids the gate** (D8), and that gate is the honesty
-check on the whole project's premise. Write the criteria first.
-
-**M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
-not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an
-authorable object with their own UI, stop and yield control, crossing conflicts and signal heads
-anywhere on a link are all still M3's, and its done-condition about minor-road delay responding to
-gap time is not met.
+Moved to [`NEXT.md`](NEXT.md) on 2026-09-23. A session read this whole file to find twenty
+lines of it; now it reads that one. The owner's standing items live there too.
 
 ---
 

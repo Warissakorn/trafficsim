@@ -262,8 +262,7 @@ travel whole. `Alt`-drag rotation is still not implemented and is not booked.
 
 A lateral wedge onto the Link's lane edges. It re-aimed each boundary's last leg, let neighbouring
 boundaries cross and folded the mouth to a point; reverted on the owner's instruction and
-superseded by M1.18, then M1.19. The body is in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+superseded by M1.18, then M1.19. The body is below, in this file.
 
 ---
 
@@ -306,8 +305,7 @@ met.** The owner's timed editor exercise in `docs/M1_ACCEPTANCE.md` is still the
 The mouth cut on the Link's own cross-section by sliding each boundary **longitudinally** along its
 own offset curve — not M1.17's lateral wedge, whose revert stands. Superseded in part by M1.19,
 which keeps the slide and changes the offsets it starts from. The full body, its measurements and
-the trade the owner took at the time are in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+the trade the owner took at the time are below, in this file.
 
 ---
 
@@ -323,8 +321,7 @@ corner's diagonal is `width / cos(φ/2)` by construction; projected across the l
 on, the carriageway is 7.000000 m exactly. `offsetGeometry` was not changed — removing the miter
 would reinstate the pinch it exists to fix (18% at 63°, 30% at a right angle). The full
 measurements, and the lesson that a distance between two boundaries is only a width if it is
-measured square to the road, are in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+measured square to the road, are below, in this file.
 
 ### M1.12.3 — The Link wins at the mouth (widths) — **closed by M1.19**
 

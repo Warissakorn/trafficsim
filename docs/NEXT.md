@@ -1,0 +1,114 @@
+# NEXT — what a session does first
+
+The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the history and the
+decision log; **this file is the part a session must read before starting.**
+
+**Write the next session's work here, not into a new `PROGRESS.md` entry.** Two copies of what
+to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
+the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as history.
+
+---
+
+## Immediate — the thread of work in progress
+
+**The measure-first optimization pass has finished items 1–5 of its plan.** What is left:
+
+- **Item 6:** `redraw()` copies every `Link` by value each frame (`for (auto link : ...links)`
+  in `src/editor/canvas.cpp`) so one of them can carry the drag preview. Copy only the primary.
+  Effect unknown — measure before deciding, the way item 3 turned out to be 2.6% against an
+  estimate of 10–13%.
+- **Deliberately not booked:** the per-tick vehicle `std::sort` (2.8% of instructions, and the
+  vector is nearly sorted), `compileDocument` (15.2%, but paid once per Run press, not per
+  tick), and what is left inside `occupiedSpans`, which is the `push_back` work, not the search.
+
+**Measure the engine with callgrind, not the clock, until this box settles.** Wall time swung
+±7% on 2026-09-23, which cannot resolve a 3% change; instruction counts decided two calls that
+day. The editor's timings are steadier (±2%) and the clock is fine there. Any harness driving Qt
+must pump the event loop between iterations (D31) or it times Qt's deferred work instead.
+
+**Ahead of all of it in the owner's order: M1.26.1**, adjustable per-lane shares. Decide where
+the shares live before writing any UI — that is the whole task, because `VehicleInput` is a core
+type the scenario format shares, and an equal split must stay the compiled result of an unedited
+input, bit for bit.
+
+---
+
+## Standing — the owner's items
+
+**Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
+
+**0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
+authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
+entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
+exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is open and its
+real question is where the shares live, since `VehicleInput` is a core type the scenario format
+shares. Signal heads are the last object still placed only through a dialog;
+`objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
+A routing decision as an object at a station along the link — what Vissim actually places, and
+what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
+until its pre-registered criteria are written into `ROADMAP.md`. Writing them is the owner's,
+and it blocks all of M2.
+
+**0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
+station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
+its cut against `boundaries.back() + kMinSectionLength` and the boundary the FIRST arrival just made
+is at that very station — so it is measured against itself, and Run is blocked for a pair that is
+physically fine. Reuse the existing cut instead of rejecting it. Section table only, one system, and
+the test already in `tests/connector_tests.cpp` flips to its commented expectation when it lands.
+See the top entry of this file, and `CONNECTOR_PARITY_AUDIT.md` §3.3.
+
+**1. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
+layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on
+screen. Watch for a Connector deleted by a Link drag the author did not expect to touch it (the
+Undo is there; the surprise is the thing to judge), and for whether half a lane width is the right
+distance for "off the Link" — one constant, in `laneContains`.
+
+> **Carry into the acceptance exercise:** the mouth is the shape an author sees at every merge, and
+> both times it has been wrong it was found from a render, not from a test. When a Connector is
+> drawn onto a Link's body at a sharp angle, check the joint by eye: every lane of the Connector
+> should meet the lane of the Link it feeds, middle on middle, and the mouth should span the Link's
+> own carriageway rather than spreading past it. At arrivals steeper than about 60 degrees it
+> cannot: `kMouthSpanFloor` in `road_boundaries.cpp` is the dial, and `connectorMouthFit` reports
+> what a mouth could not reach, in metres.
+
+Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
+M1.12.1, M1.21–M1.21.1 and M1.24–M1.27, with M1.12.2 closed as a measurement error rather than a
+defect and M1.12.3 closed by M1.19. M1.22, M1.23 and M1.26.1 remain open. **M1.27.3 counted the
+authoring gestures; a counted walkthrough is not the timed exercise in item 2 and closes nothing
+of it.** `docs/ROADMAP.md` is
+the authority on each; the bodies of the long-implemented ones live in
+[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
+
+**2. Run the timed acceptance exercise** in [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). It is the only
+thing that closes M1 and it cannot be delegated: an engineer draws a four-leg intersection with
+turn pockets over an aerial image, from a blank editor, **under 10 minutes, without documentation
+or assistance**, then the file is reopened and compared field for field. Not one row of that record
+has been filled in. Merged code does not close it (rule 1), and a rehearsed retry is not the first
+observation.
+
+**Do this on Windows.** Everything in these sessions was verified on Linux only. `native.yml` runs
+the Qt suites on Windows too, and CI run 105 previously failed in `windows-core` on a vcpkg
+`z-applocal` race before any test ran — so a green Linux run is not evidence about the platform the
+owner actually draws on. The M1.12 review checklist from the 2026-09-16 sessions is the list to
+work through first.
+
+**3. Record the M0 plausibility observation** separately — acceleration, queue at red, discharge at
+green. Owner observation, not calibration, and not M6 validation. The not-yet-validated marker
+stays either way.
+
+**4. Decide the name (Q5).** D11 deferred it "until the end of M1", and that trigger is now live.
+`Velk` is the strongest recorded candidate — clean on npm, PyPI and a brand search, with
+`velk.com`/`velk.io` held, which is ordinary for a four-letter word. Do **not** re-derive the
+candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have
+findings in the D11 row. **This is the owner's decision, not a session's.**
+
+**Not started, and deliberately:** M2 implementation. Its gate is pre-registered and
+`ROADMAP.md`'s "Pre-registered criteria: TO BE WRITTEN before M2 implementation starts" is still
+unfilled. Starting M2 before writing them **voids the gate** (D8), and that gate is the honesty
+check on the whole project's premise. Write the criteria first.
+
+**M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
+not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an
+authorable object with their own UI, stop and yield control, crossing conflicts and signal heads
+anywhere on a link are all still M3's, and its done-condition about minor-road delay responding to
+gap time is not met.

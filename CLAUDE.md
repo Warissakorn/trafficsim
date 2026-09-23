@@ -76,7 +76,7 @@ the Link wins at the mouth and authored Connector widths take over through the b
 Widgets network editor and the native CLI exercise both systems; **M1.24 retired the separate
 M0 harness window**, so `trafficsim-desktop` opens the editor and the M0 plausibility
 observation is made there (ROADMAP M0 says where). Read `docs/SIMULATION.md`
-for the current simulation contracts, `docs/NETWORK_EDITOR.md` for the editor, then `Next` in `docs/PROGRESS.md`.
+for the current simulation contracts, `docs/NETWORK_EDITOR.md` for the editor, then `docs/NEXT.md`.
 Scenario JSON and editor `*.traffic.json` projects are two formats on purpose — see
 `docs/NETWORK_EDITOR.md` §"Two file kinds" and D19a before touching either loader.
 
@@ -88,7 +88,8 @@ Scenario JSON and editor `*.traffic.json` projects are two formats on purpose �
 | [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md) | Before arguing with an existing choice. Rules 1–4 are correctness. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Before adding a system. Update when the map changes. |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | To see which milestone this is and what closes it. |
-| [`docs/PROGRESS.md`](docs/PROGRESS.md) | Every session. Read `Next` first. |
+| [`docs/NEXT.md`](docs/NEXT.md) | **Every session, first.** The one live to-do; write the next session's work here, never into a `PROGRESS.md` entry. |
+| [`docs/PROGRESS.md`](docs/PROGRESS.md) | The history and the reasoning, including the **decision log** every `D`-number here points at. Read the entry that touches what you are about to change. |
 | [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
 | [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
 
@@ -146,24 +147,28 @@ get broken by accident:
   lets a later session build against this without reading its insides.
 - **Smallest version that works.** Speculative generality written blind is the most expensive
   thing in this repo.
-- **Update `docs/PROGRESS.md` before committing** — what changed, what is next, and the
-  reasoning behind any non-obvious decision. This is the memory the next session runs on.
+- **Update `docs/PROGRESS.md` before committing** — what changed and the reasoning behind any
+  non-obvious decision. This is the memory the next session runs on. **What is next goes in
+  `docs/NEXT.md` instead**, rewritten rather than appended, so there is one live to-do.
 
 ## Session start
 
-Read this file, `docs/ARCHITECTURE.md`, and the **Next** section of `docs/PROGRESS.md`. Run
-the test command. Then start on `Next` — do not re-plan; the plan is already here.
+Read this file, `docs/ARCHITECTURE.md`, and `docs/NEXT.md`. Run the test command. Then start
+on what `NEXT.md` says — do not re-plan; the plan is already there. Reach into `PROGRESS.md`
+for the entry behind whatever you are changing, not as a matter of course: it is long, and
+reading all of it to find twenty lines is what moved `Next` out of it.
 
 ## Session end
 
 Stop at roughly three-quarters of context, or when the current system is done. In order:
-build green (or reverted to green) → `Next` written specifically enough to need no questions
-→ decisions logged with reasons → commit → tell the user what changed, in outcomes.
+build green (or reverted to green) → `docs/NEXT.md` rewritten specifically enough to need no
+questions → decisions logged with reasons in `PROGRESS.md` → commit → tell the user what
+changed, in outcomes.
 
 ## Layout
 
 ```
-docs/           PROBLEM · PRINCIPLES · ARCHITECTURE · ROADMAP · PROGRESS
+docs/           NEXT · PROBLEM · PRINCIPLES · ARCHITECTURE · ROADMAP · PROGRESS
 src/core/       simulation engine — imports nothing
 src/model/      network · demand · control data model
 src/commands/   every mutation, undoable, one registry

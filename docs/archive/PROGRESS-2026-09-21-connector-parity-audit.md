@@ -25,7 +25,7 @@ Vissim claim.
 - `CLAUDE.md` — a row in the "Read these before working" table.
 
 **The stale `PROGRESS.md` entry was not rewritten — it was moved whole to
-[`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md).** The
+[`PROGRESS-2026-09-18-square-mouth.md`](PROGRESS-2026-09-18-square-mouth.md).** The
 2026-09-18 entry *"The Connector mouth is a plain square end again"* is append-only history, so its
 text is preserved exactly as written; only its **location** changed, and the reason is hard rule 6
 — this entry pushed the live file to 504 lines, past the 500-line guard `tools/check_file_sizes.cpp`
