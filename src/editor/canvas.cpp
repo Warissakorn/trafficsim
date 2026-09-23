@@ -43,7 +43,7 @@ const std::vector<Point>* EditorCanvas::selectedGeometry() const {
     return nullptr;
 }
 void EditorCanvas::setDocument(const ProjectDocument* d) {
-    document_ = d; cancel();
+    document_ = d; resetGesture();
     // Drop ids the new document no longer has, rather than clearing an otherwise valid selection.
     std::erase_if(selection_, [&](const auto& id) {
         const auto level = objectLevel(id);
@@ -52,7 +52,7 @@ void EditorCanvas::setDocument(const ProjectDocument* d) {
     redraw();
 }
 void EditorCanvas::setTool(Tool tool) {
-    cancel(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
+    resetGesture(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
 }
 std::vector<Point> EditorCanvas::handleGeometry() const {
     const auto* geometry=selectedGeometry();
@@ -71,7 +71,13 @@ std::vector<Point> EditorCanvas::handleGeometry() const {
     } catch(const std::exception&) { /* An invalid draft still needs draggable grips. */ }
     return points;
 }
-void EditorCanvas::cancel() {
+void EditorCanvas::cancel() { resetGesture(); redraw(); }
+// Everything cancel() forgets, without the repaint. A caller that is about to redraw for its own
+// reasons takes this one instead: rebuilding the scene is the most expensive thing the canvas
+// does, and paying for two of them in one event was the whole cost of a click on a large
+// network. The callbacks stay here, in the order cancel() ran them, so the only difference a
+// caller can observe is the frame that is no longer drawn and immediately thrown away.
+void EditorCanvas::resetGesture() {
     copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
     groupDrag_=groupDragging_=false;groupOffset_={};
     rotationPivot_.reset();rotationDegrees_=0;rotationDragging_=false;
@@ -81,7 +87,6 @@ void EditorCanvas::cancel() {
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
     clearRouteDraft();
     if (connectorDraftChanged) connectorDraftChanged();
-    redraw();
 }
 Point EditorCanvas::world(QPoint position, bool snapped) const {
     const auto p = mapToScene(position); Point result{p.x(), p.y()};

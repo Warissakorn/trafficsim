@@ -44,7 +44,7 @@ public:
     std::function<void()> deleteRequested;
     void redraw();
     void fitNetwork();
-    void cancel();
+    void cancel();                                        // forget the gesture AND repaint
     void finishDrawing();
     void removeVertex();
     bool snap{true};
@@ -204,6 +204,8 @@ private:
     std::optional<LaneReference> hitLanePosition(Point p, bool outgoing) const;
     void pickConnector(Point p);
     void notifySelection();
+    // cancel() without the repaint, for callers that redraw for their own reasons anyway.
+    void resetGesture();
     void drawConnectors();
     struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; };
     std::vector<LaneHandle> laneHandles() const;

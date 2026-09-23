@@ -18,6 +18,8 @@ void EditorCanvas::setVisibleLevel(std::optional<int> level) {
         const auto at = objectLevel(id);
         return !at || !levelVisible(*at);
     });
+    // cancel(), not resetGesture(): this is the only repaint here -- the callbacks below tell
+    // the shell, they do not draw -- so dropping it leaves a cancelled preview on the canvas.
     cancel();
     if (visibleLevelChanged) visibleLevelChanged(level);
     if (selectionChanged) selectionChanged();
@@ -30,7 +32,7 @@ void EditorCanvas::select(const std::string& id) {
     setSelection({id});
 }
 void EditorCanvas::setSelection(std::vector<std::string> ids) {
-    cancel(); selection_.clear();
+    resetGesture(); selection_.clear();
     bool reveal = false;
     for (auto& id : ids) if (const auto level = objectLevel(id); level && !isSelected(id)) {
         reveal = reveal || !levelVisible(*level);
