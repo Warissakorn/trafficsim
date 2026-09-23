@@ -58,5 +58,14 @@ int main(int argc, char** argv) {
     // passes over every connector.
     canvas.select(network.links.front().id);
     row("redraw (with a selection)", millis([&] { canvas.redraw(); }, frames));
+    // What a click costs. It alternates so the selection really changes each time, and it is
+    // timed apart from redraw() because a click is not one frame: selecting resets the gesture
+    // state and then tells the shell, and each of those steps can rebuild the scene.
+    const auto& other = network.links[network.links.size() / 2];
+    bool first = true;
+    row("select (one click on a link)", millis([&] {
+        canvas.select(first ? network.links.front().id : other.id);
+        first = !first;
+    }, frames));
     return 0;
 }
