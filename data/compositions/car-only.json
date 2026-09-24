@@ -1,0 +1,4 @@
+{
+  "id": "car-only",
+  "types": [{ "vehicleTypeId": "car", "share": 1 }]
+}

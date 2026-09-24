@@ -166,7 +166,12 @@ exactly today's input. Schema 10 with migration; Poisson per interval with the e
 draw order. **Gate:** the four frozen baselines and `trafficsim-cli 42` byte-identical; an interval
 table in the input dialog accepts pasted 15-minute counts.
 
-### M2.3 — Vehicle compositions
+### M2.3 — Vehicle compositions · **Implemented 2026-09-24**
+
+Done as below, with `urban-mixed` (95% car, 5% heavy vehicle) and `car-only` as content; still
+schema 10, which had not been released. Open question for the owner: Thai counts are
+motorcycle-heavy, and a motorcycle without lane-sharing behaviour would be a claim the engine
+cannot back — so none is shipped.
 
 Compositions as content under `data/compositions/` (type + relative flow). An input names a type
 **or** a composition. **Gate:** single-type inputs draw nothing extra from the PRNG (fixtures

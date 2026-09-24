@@ -265,6 +265,29 @@ int main(int argc,char** argv) {
         action(w,"editorEditInput");
         require(w.history().document().definition->inputs.front()==beforeCancel,"Cancelling changed the counts");
 
+        // M2.3: a composition is chosen from the same list as a vehicle type.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not open for a composition");
+            auto* type=dialog->findChild<QComboBox*>("editorInputType");
+            const int at=type->findData("composition:urban-mixed");
+            require(at>=0,"The composition catalog was not offered");
+            require(type->currentData().toString()=="type:car","An input's own type was not preselected");
+            type->setCurrentIndex(at);dialog->accept();
+        });
+        action(w,"editorEditInput");
+        require(w.history().document().definition->inputs.front().compositionId=="urban-mixed" &&
+                w.history().document().definition->inputs.front().vehicleTypeId.empty(),
+                "Choosing a composition did not store it in place of the type");
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not reopen on a composition");
+            require(dialog->findChild<QComboBox*>("editorInputType")->currentData().toString()=="composition:urban-mixed",
+                "A stored composition was not shown back");
+            dialog->reject();
+        });
+        action(w,"editorEditInput");
+
         // Save and reopen: both objects are project data, not canvas state.
         w.saveFile(file);w.openFile(file);QApplication::processEvents();
         require(w.history().document().definition->routes.size()==1 &&

@@ -21,6 +21,7 @@ Json definitionJson(const AuthoringDefinition& d) {
         // Omitted rather than an empty array when unset, so an unedited input round-trips through
         // an older reader unchanged and the equal-split default never appears in the file.
         if (!i.laneShares.empty()) input["laneShares"] = i.laneShares;
+        if (!i.compositionId.empty()) input["compositionId"] = i.compositionId; // M2.3
         // M2.2, the same way: absent unless set. The scalars above are then derived from it.
         if (!i.intervals.empty()) {
             input["intervals"] = Json::array();
@@ -82,7 +83,14 @@ void validateAuthoredDemand(const ProjectDocument& d) {
     // Checked on the authored intervals, before they are expanded: an overlap is a property of
     // the table the author typed, and would otherwise surface as two core inputs that each look fine.
     if (auto periods = inputIntervalIssues(*d.definition); !periods.empty()) throw ValidationError(std::move(periods));
-    auto issues = validateScenario(buildScenario(d.network,*d.definition));
+    // An input drawing from a composition (M2.3) names no vehicle type of its own; its types are
+    // checked against the catalog on Run, exactly as external vehicle types are. For the checks
+    // here it borrows an embedded type, if the document carries any.
+    auto checked = *d.definition;
+    for (auto& input : checked.inputs)
+        if (!input.compositionId.empty() && !checked.vehicleTypes.empty())
+            input.vehicleTypeId = checked.vehicleTypes.front().id;
+    auto issues = validateScenario(buildScenario(d.network,checked));
     // Authoring supports topology beyond M0. Catalog references are checked on Run.
     std::erase_if(issues,[&](const auto& i) {
         return i.code=="EMPTY_NETWORK" || i.code.rfind("UNSUPPORTED_",0)==0 ||

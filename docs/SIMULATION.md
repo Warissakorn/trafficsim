@@ -98,6 +98,10 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   overlap; each becomes its own core input (`id/int-k`), so the core still sees one Poisson
   process per `[startTime, endTime)`. Restarting a Poisson stream at a boundary changes no
   statistics, and an input without intervals compiles exactly as before.
+  **Since M2.3 an input may name a composition** from `data/compositions/` instead of one vehicle
+  type; resolving the catalog splits it into one input per type (`id/type-<type>`, volume ×
+  normalised share), which is exact for Poisson arrivals. `heavy-vehicle` is a plausible,
+  **unvalidated** type added for it. Motorcycles are not offered: lane sharing is not modelled.
 - A segment with multiple predecessors is rejected with `UNSUPPORTED_MERGE` **unless the merge is
   arbitrated** (M3.1): it is accepted only when at least *n*−1 of its *n* predecessors carry a
   `PriorityRule` naming another of them, so exactly one has priority and the rest have somewhere

@@ -20,7 +20,11 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     VehicleInput value{id,{},{},600,0,history_.document().definition?history_.document().definition->duration:180};
     if(history_.document().definition)for(const auto& i:history_.document().definition->inputs)if(i.id==id)value=i;
     ScenarioDefinition catalog;
-    try {catalog=resolveCatalogs(history_.document().definition.value_or(AuthoringDefinition{}),data_);}
+    std::vector<Composition> compositions;
+    try {
+        catalog=resolveCatalogs(history_.document().definition.value_or(AuthoringDefinition{}),data_);
+        compositions=loadCompositions(data_);
+    }
     catch(const std::exception& e){showError(e);return;}
     QDialog dialog(this);dialog.setObjectName("editorInputDialog");dialog.setWindowTitle(text("editorEditInput"));
     auto* form=new QFormLayout(&dialog);
@@ -31,8 +35,16 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     if(!value.routeId.empty())route->setCurrentText(QString::fromStdString(value.routeId));
     form->addRow(text("editorInputRoute"),route);
     auto* type=new QComboBox(&dialog);type->setObjectName("editorInputType");
-    for(const auto& t:catalog.vehicleTypes)type->addItem(QString::fromStdString(t.id));
-    if(!value.vehicleTypeId.empty())type->setCurrentText(QString::fromStdString(value.vehicleTypeId));
+    // One list for both (M2.3): a vehicle type, or a composition of types from data/compositions/.
+    // The item data says which, so an id shared by a type and a composition cannot be confused.
+    for(const auto& t:catalog.vehicleTypes)
+        type->addItem(QString::fromStdString(t.id),"type:"+QString::fromStdString(t.id));
+    for(const auto& c:compositions)
+        type->addItem(text("editorInputCompositionItem").arg(QString::fromStdString(c.id)),
+                      "composition:"+QString::fromStdString(c.id));
+    const auto current=value.compositionId.empty()?"type:"+QString::fromStdString(value.vehicleTypeId)
+                                                  :"composition:"+QString::fromStdString(value.compositionId);
+    if(const int at=type->findData(current);at>=0)type->setCurrentIndex(at);
     form->addRow(text("editorInputType"),type);
     const auto number=[&](const char* key,double v){
         auto* field=new QDoubleSpinBox(&dialog);field->setObjectName(key);field->setRange(0,10000000);field->setDecimals(3);field->setValue(v);
@@ -117,7 +129,14 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     buttons->button(QDialogButtonBox::Ok)->setEnabled(route->count()>0 && type->count()>0);
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
     if(dialog.exec()!=QDialog::Accepted)return;
-    value.routeId=route->currentText().toStdString();value.vehicleTypeId=type->currentText().toStdString();
+    value.routeId=route->currentText().toStdString();
+    {
+        const auto chosen=type->currentData().toString();
+        const bool composition=chosen.startsWith("composition:");
+        const auto id=chosen.mid(chosen.indexOf(':')+1).toStdString();
+        value.compositionId=composition?id:std::string{};
+        value.vehicleTypeId=composition?std::string{}:id;
+    }
     value.vehiclesPerHour=volume->value();value.startTime=start->value();value.endTime=end->value();
     // Left alone, the fields the author saw stay unwritten and the input keeps whatever
     // laneShares it already had (usually empty -- the M1.26 equal split). Touched, they replace

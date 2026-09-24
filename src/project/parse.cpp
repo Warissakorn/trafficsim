@@ -183,6 +183,12 @@ VehicleType parseVehicleType(const Json& t) {
         {field<double>(range, "min"), field<double>(range, "max")}, field<double>(t, "maxAcceleration"),
         field<double>(t, "comfortableDeceleration"), field<double>(t, "maxDeceleration"), field<std::string>(t, "behaviourId")};
 }
+Composition parseComposition(const Json& c) {
+    Composition composition{field<std::string>(c, "id"), {}};
+    for (const auto& t : array(c, "types"))
+        composition.types.push_back({field<std::string>(t, "vehicleTypeId"), field<double>(t, "share")});
+    return composition;
+}
 ScenarioDefinition parseDefinition(const Json& value) {
     ScenarioDefinition definition;
     definition.duration = field<double>(value, "duration");
@@ -194,6 +200,7 @@ ScenarioDefinition parseDefinition(const Json& value) {
             field<std::string>(i, "vehicleTypeId"), field<double>(i, "vehiclesPerHour"),
             field<double>(i, "startTime"), field<double>(i, "endTime")};
         if (i.contains("laneShares")) input.laneShares = doubles(i, "laneShares");
+        if (i.contains("compositionId")) input.compositionId = field<std::string>(i, "compositionId");
         if (i.contains("intervals")) {
             for (const auto& p : array(i, "intervals"))
                 input.intervals.push_back({field<double>(p, "startTime"), field<double>(p, "endTime"),

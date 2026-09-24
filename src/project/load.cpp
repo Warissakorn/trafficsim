@@ -1,8 +1,10 @@
 #include "load.hpp"
 #include "json.hpp"
 #include "run.hpp"
+#include "../core/validate.hpp"
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
@@ -25,6 +27,51 @@ std::vector<Json> catalog(const std::filesystem::path& directory) {
     return result;
 }
 }
+std::vector<Composition> loadCompositions(const std::filesystem::path& dataDirectory) {
+    std::vector<Composition> result;
+    // A data directory with no compositions is legal: nothing may name one, and that is checked
+    // where one is named. A composition file that does not parse is a broken catalog.
+    if (!std::filesystem::is_directory(dataDirectory / "compositions")) return result;
+    try {
+        for (const auto& item : catalog(dataDirectory / "compositions")) result.push_back(parseComposition(item));
+    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    return result;
+}
+namespace {
+bool validComposition(const Composition& c, const std::vector<VehicleType>& types) {
+    if (c.types.empty()) return false;
+    for (const auto& t : c.types) {
+        if (!(std::isfinite(t.share) && t.share > 0)) return false;
+        if (std::none_of(types.begin(), types.end(), [&](const auto& v) { return v.id == t.vehicleTypeId; }))
+            return false;
+    }
+    return true;
+}
+const Composition* findComposition(const std::vector<Composition>& all, const std::string& id) {
+    for (const auto& c : all) if (c.id == id) return &c;
+    return nullptr;
+}
+}
+std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& authored,
+                                               const std::filesystem::path& dataDirectory) {
+    std::vector<ValidationIssue> issues;
+    if (std::none_of(authored.inputs.begin(), authored.inputs.end(),
+                     [](const auto& i) { return !i.compositionId.empty(); })) return issues;
+    const auto all = loadCompositions(dataDirectory);
+    const auto types = resolveCatalogs(AuthoringDefinition{authored}, dataDirectory).vehicleTypes;
+    for (std::size_t i = 0; i < authored.inputs.size(); ++i) {
+        const auto& id = authored.inputs[i].compositionId;
+        if (id.empty()) continue;
+        const auto path = "inputs[" + std::to_string(i) + "].compositionId";
+        const auto* c = findComposition(all, id);
+        if (!c) { issues.push_back({"UNKNOWN_COMPOSITION", path}); continue; }
+        if (c->types.empty() || std::any_of(c->types.begin(), c->types.end(),
+                [](const auto& t) { return !(std::isfinite(t.share) && t.share > 0); }))
+            issues.push_back({"INVALID_SHARE", path});
+        else if (!validComposition(*c, types)) issues.push_back({"UNKNOWN_VEHICLE_TYPE", path});
+    }
+    return issues;
+}
 ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
     ScenarioDefinition definition=authored;
     try {
@@ -39,6 +86,32 @@ ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const st
                 definition.behaviours.push_back(parseBehaviour(item));
         }
     } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    // M2.3. Splitting a Poisson stream by fixed shares gives independent Poisson streams, so one
+    // input per type is the composition exactly, not an approximation of it. Read only when
+    // an input names one, so a document without compositions never touches the directory.
+    if (std::any_of(authored.inputs.begin(), authored.inputs.end(),
+                    [](const auto& i) { return !i.compositionId.empty(); })) {
+        const auto all = loadCompositions(dataDirectory);
+        std::vector<VehicleInput> inputs;
+        for (const auto& input : definition.inputs) {
+            if (input.compositionId.empty()) { inputs.push_back(input); continue; }
+            const auto* c = findComposition(all, input.compositionId);
+            if (!c || !validComposition(*c, definition.vehicleTypes)) continue; // compositionIssues names it
+            double sum = 0;
+            for (const auto& t : c->types) sum += t.share;
+            for (const auto& t : c->types) {
+                auto part = input;
+                part.compositionId.clear();
+                part.vehicleTypeId = t.vehicleTypeId;
+                if (c->types.size() > 1) part.id = input.id + "/type-" + t.vehicleTypeId;
+                const double fraction = t.share / sum;
+                part.vehiclesPerHour = input.vehiclesPerHour * fraction;
+                for (auto& period : part.intervals) period.vehiclesPerHour *= fraction;
+                inputs.push_back(std::move(part));
+            }
+        }
+        definition.inputs = std::move(inputs);
+    }
     // Best-effort, and deliberately NOT inside the block above: a document carrying its own
     // vehicle types and behaviours must stay portable to a machine with no data directory, which
     // is a contract a test already pins. These numbers are only needed when a priority rule has
@@ -78,6 +151,8 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
         // An M0 scenario names lanes in its routes, like a schema-7 project; the same migration
         // runs here, or the CLI and the editor would compile the same file two different ways.
         migrateRoutesToObjects(network, authored);
+        if (auto issues = compositionIssues(authored, dataDirectory); !issues.empty())
+            throw ValidationError(std::move(issues));
         auto definition = resolveCatalogs(authored,dataDirectory);
         auto scenario = compileScenario(network, definition);
         return {std::move(network), std::move(scenario)};

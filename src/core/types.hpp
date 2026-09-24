@@ -49,6 +49,9 @@ struct VehicleInput {
     // (deriveInputTotals) so tables still read one figure; buildScenario expands it into one core
     // input per period and the core never sees it.
     std::vector<VolumeInterval> intervals;
+    // Authoring only (M2.3): a composition from data/compositions/ instead of one vehicle type.
+    // Non-empty means vehicleTypeId is unused; resolveCatalogs expands it into one input per type.
+    std::string compositionId;
     bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };
