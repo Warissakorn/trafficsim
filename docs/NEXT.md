@@ -35,14 +35,13 @@ measured and **reverted**. Do not re-try any of these without a new measurement:
 day. The editor's timings are steadier (±2%) and the clock is fine there. Any harness driving Qt
 must pump the event loop between iterations (D31) or it times Qt's deferred work instead.
 
-**M1.26.1's storage decision is made (D32):** `VehicleInput.laneShares`, optional weights in
-`routeLaneChains` order, normalised by `buildScenario`, empty or stale-sized degrading to the
-M1.26 equal split, schema 9. `docs/ROADMAP.md`'s M1.26.1 entry has the shape and the two tests
-that hold the gate. **What is left of M1.26.1 is the editor surface**: no dialog or table lets an
-author set a share today. Follow `objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` and
-the vehicle-input dialog for the pattern to extend — one row of weights per lane the route
-currently reaches, and re-reading `routeLaneChains` on every open since that count can change
-under the author's feet (that is exactly the case the stale-size fallback exists for).
+**M1.26.1 is closed.** `VehicleInput.laneShares` (D32), the vehicle-input dialog's per-lane weight
+fields, and the `demand-ui` test covering set/reopen/cancel are all in; see `docs/ROADMAP.md`'s
+M1.26.1 entry. Not done by it: no gesture places a share from the canvas the way a route or an
+input itself is placed by pointer, and the input table row (`refreshDemand`,
+`src/shell/editor_demand.cpp`) still shows only the compiled equal-split figure even when shares
+are set. If either turns out to matter before M1's acceptance exercise, they are small follow-ups
+on the same dialog and table, not a new design question.
 
 ---
 
@@ -53,9 +52,8 @@ under the author's feet (that is exactly the case the stale-size fallback exists
 **0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
 entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
-exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) has its storage
-decided (D32, top entry) and its UI still open. Signal heads are the last object still placed
-only through a dialog;
+exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is closed (D32, top
+entry). Signal heads are the last object still placed only through a dialog;
 `objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
 A routing decision as an object at a station along the link — what Vissim actually places, and
 what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
@@ -85,8 +83,8 @@ distance for "off the Link" — one constant, in `laneContains`.
 > what a mouth could not reach, in metres.
 
 Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
-M1.12.1, M1.21–M1.21.1 and M1.24–M1.27, with M1.12.2 closed as a measurement error rather than a
-defect and M1.12.3 closed by M1.19. M1.22, M1.23 and M1.26.1 remain open. **M1.27.3 counted the
+M1.12.1, M1.21–M1.21.1, M1.24–M1.27 and M1.26.1, with M1.12.2 closed as a measurement error rather
+than a defect and M1.12.3 closed by M1.19. M1.22 and M1.23 remain open. **M1.27.3 counted the
 authoring gestures; a counted walkthrough is not the timed exercise in item 2 and closes nothing
 of it.** `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in

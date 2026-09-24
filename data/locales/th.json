@@ -206,6 +206,8 @@
   "editorInputVolume": "ปริมาณรถ (vehiclesPerHour)",
   "editorInputStart": "เริ่ม (startTime, วินาที)",
   "editorInputEnd": "สิ้นสุด (endTime, วินาที)",
+  "editorInputShareLane": "น้ำหนักช่องจราจรที่ %1",
+  "editorInputShareHelp": "ไม่บังคับ (laneShares) ใช้ถ่วงน้ำหนักการแบ่งไปยังช่องจราจรด้านบนแทนการแบ่งเท่า ๆ กัน หากไม่แก้ไข หรือหากผังถนนเปลี่ยนไปหลังตั้งค่าไว้ การแบ่งจะกลับไปเท่ากันเหมือนเดิม",
   "editorProgramOffset": "เวลาเหลื่อม (offset, วินาที)",
   "editorProgramCycle": "รอบสัญญาณ (วินาที)",
   "editorRunSettings": "ตั้งค่าการจำลอง",

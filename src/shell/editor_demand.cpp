@@ -17,6 +17,8 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <memory>
+#include <vector>
 
 namespace trafficsim {
 namespace {
@@ -208,6 +210,45 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     // engine has no lane changing, not because traffic distributes itself that way.
     auto* split=new QLabel(text("editorInputSplitHelp"),&dialog);split->setObjectName("editorInputSplitHelp");
     split->setWordWrap(true);form->addRow(split);
+    // M1.26.1: one weight per lane the SELECTED route currently reaches. Rebuilt whenever the
+    // route changes, because the lane count is the route's, not the input's. Seeded from a
+    // stored laneShares only when its size still matches -- a stale one (the drawing changed
+    // since) is exactly what buildScenario itself falls back from, so the dialog must not present
+    // it as if it still applied. "Dirty" tracks whether the author touched a field since the
+    // fields were last (re)built; leaving them alone keeps the input's default equal split,
+    // which is what keeps an unedited input's compiled volumes bit-identical (D32).
+    auto* sharesGroup=new QWidget(&dialog);sharesGroup->setObjectName("editorInputShares");
+    auto* sharesForm=new QFormLayout(sharesGroup);sharesForm->setContentsMargins(0,0,0,0);
+    form->addRow(sharesGroup);
+    auto* sharesHelp=new QLabel(text("editorInputShareHelp"),&dialog);sharesHelp->setObjectName("editorInputShareHelp");
+    sharesHelp->setWordWrap(true);form->addRow(sharesHelp);
+    auto sharesDirty=std::make_shared<bool>(false);
+    auto shareFields=std::make_shared<std::vector<QDoubleSpinBox*>>();
+    const auto laneCount=[&](const std::string& routeId)->std::size_t{
+        for(const auto& r:catalog.routes)if(r.id==routeId)
+            return std::max<std::size_t>(1,routeLaneChains(history_.document().network,r.segmentIds).size());
+        return 1;
+    };
+    const auto rebuildShares=[&,sharesDirty,shareFields]{
+        while(sharesForm->count()>0){auto* item=sharesForm->takeAt(0);delete item->widget();delete item;}
+        shareFields->clear();*sharesDirty=false;
+        const auto lanes=laneCount(route->currentText().toStdString());
+        sharesGroup->setVisible(lanes>1);sharesHelp->setVisible(lanes>1);
+        if(lanes<=1)return;
+        std::vector<double> seed(lanes,1.0);
+        if(value.laneShares.size()==lanes)seed=value.laneShares;
+        for(std::size_t k=0;k<lanes;++k){
+            auto* field=new QDoubleSpinBox(sharesGroup);
+            field->setObjectName(QString("editorInputShare%1").arg(k));
+            field->setRange(0,1000000);field->setDecimals(3);
+            {const QSignalBlocker guard(field);field->setValue(seed[k]);}
+            connect(field,&QDoubleSpinBox::valueChanged,&dialog,[sharesDirty](double){*sharesDirty=true;});
+            sharesForm->addRow(text("editorInputShareLane").arg(static_cast<int>(k+1)),field);
+            shareFields->push_back(field);
+        }
+    };
+    connect(route,&QComboBox::currentTextChanged,&dialog,[rebuildShares](const QString&){rebuildShares();});
+    rebuildShares();
     auto* start=number("editorInputStart",value.startTime);auto* end=number("editorInputEnd",value.endTime);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
@@ -216,6 +257,13 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     if(dialog.exec()!=QDialog::Accepted)return;
     value.routeId=route->currentText().toStdString();value.vehicleTypeId=type->currentText().toStdString();
     value.vehiclesPerHour=volume->value();value.startTime=start->value();value.endTime=end->value();
+    // Left alone, the fields the author saw stay unwritten and the input keeps whatever
+    // laneShares it already had (usually empty -- the M1.26 equal split). Touched, they replace
+    // it outright, weights for exactly the lanes shown.
+    if(*sharesDirty){
+        value.laneShares.clear();
+        for(auto* field:*shareFields)value.laneShares.push_back(field->value());
+    }
     std::string created;if(execute("editorEditInput",[&](auto& d){created=putInput(d,value);}))selectDemand(created);
 }
 }

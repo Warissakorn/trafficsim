@@ -13,6 +13,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <cmath>
 #include <iostream>
 using namespace trafficsim;
 namespace {
@@ -179,6 +180,54 @@ int main(int argc,char** argv) {
         const auto found=w.canvas()->demandObjectAt(w.canvas()->mapFromScene(centre));
         require(found.first=="input","Right-click on the marker found no vehicle input");
         require(found.second==w.history().document().definition->inputs.front().id,"Marker named the wrong input");
+        require(w.history().document().definition->inputs.front().laneShares.empty(),
+            "An unedited input authored lane shares nobody set");
+
+        // M1.26.1: reopening the input on its two-lane route shows one weight field per lane,
+        // defaulted to equal (1 each) because nothing has set laneShares yet.
+        auto* inputTable=item<QTableWidget>(w,"editorInputTable");
+        inputTable->selectRow(0);QApplication::processEvents();
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not reopen");
+            auto* shares=dialog->findChild<QWidget*>("editorInputShares");
+            require(shares && shares->isVisible(),"Two-lane route showed no lane-share fields");
+            auto* first=dialog->findChild<QDoubleSpinBox*>("editorInputShare0");
+            auto* second=dialog->findChild<QDoubleSpinBox*>("editorInputShare1");
+            require(first && second,"Lane-share fields missing for a two-lane route");
+            require(first->value()==1.0 && second->value()==1.0,"Unedited shares did not default to equal");
+            // Weighting the first lane twice the second: touching a field is what makes the
+            // dialog write laneShares at all -- leaving them alone must not have.
+            first->setValue(2.0);
+            dialog->accept();
+        });
+        action(w,"editorEditInput");
+        const auto& withShares=w.history().document().definition->inputs.front();
+        require(withShares.laneShares==std::vector<double>({2.0,1.0}),"Edited weights were not stored");
+        {
+            const auto scenario=buildScenario(w.history().document().network,*w.history().document().definition);
+            require(scenario.inputs.size()==2,"Weighted input did not expand to both lanes");
+            double first=0,second=0;
+            for(const auto& in:scenario.inputs) {
+                if(in.id==withShares.id+"/lane-1") first=in.vehiclesPerHour;
+                else if(in.id==withShares.id+"/lane-2") second=in.vehiclesPerHour;
+            }
+            require(std::abs(first-1200)<1e-6 && std::abs(second-600)<1e-6,
+                "The 2:1 weight did not compile to a 1200/600 split of 1800");
+        }
+        // Reopening and leaving the fields alone must not disturb what was just set.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not reopen a second time");
+            require(dialog->findChild<QDoubleSpinBox*>("editorInputShare0")->value()==2.0,
+                "Stored weights were not shown back to the author");
+            require(dialog->findChild<QDoubleSpinBox*>("editorInputShare1")->value()==1.0,
+                "Stored weights were not shown back to the author");
+            dialog->reject();
+        });
+        action(w,"editorEditInput");
+        require(w.history().document().definition->inputs.front().laneShares==std::vector<double>({2.0,1.0}),
+            "Cancelling a reopened dialog changed the stored weights");
 
         // Save and reopen: both objects are project data, not canvas state.
         w.saveFile(file);w.openFile(file);QApplication::processEvents();

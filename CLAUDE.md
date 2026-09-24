@@ -38,8 +38,11 @@ not. **M1.26.1:** `VehicleInput.laneShares` is optional relative weights, one pe
 currently expands to, in `routeLaneChains` order (D32); empty means the M1.26 equal split, and a
 stale size (the network changed lane count since) degrades to it rather than landing on the wrong
 lane. `buildScenario` normalises by their sum. Persisted only when set, so an unedited input's
-file and compiled volumes are unchanged. No editor UI reads or writes it yet — that is the rest
-of M1.26.1. Compositions, per-interval volumes and a positioned routing decision are
+file and compiled volumes are unchanged. The vehicle-input dialog (`src/shell/editor_demand.cpp`)
+now shows one weight field per lane the selected route currently reaches, seeded from a stored
+value only when its size still matches; leaving the fields untouched leaves `laneShares`
+untouched too, which is what keeps an unedited input's save and compiled volumes exactly as they
+were. Compositions, per-interval volumes and a positioned routing decision are
 M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
