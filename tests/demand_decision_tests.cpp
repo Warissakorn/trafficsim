@@ -33,7 +33,9 @@ TEST(demand, a_decision_compiles_to_the_hand_split_inputs) {
                               std::vector<double>{500, 120, 100}[k], 0, 900, {}, {}});
     const auto x = compileDocument(a.document, test::root() / "data").scenario;
     const auto y = compileDocument(b.document, test::root() / "data").scenario;
-    CHECK(x.inputs.size() == y.inputs.size());
+    // Through expands to both through lanes, left and right to one each: 4, on both sides. Not
+    // merely equal sizes -- two empty lists are equal too.
+    CHECK(x.inputs.size() == 4); CHECK(y.inputs.size() == 4);
     for (std::size_t i = 0; i < x.inputs.size(); ++i) {
         CHECK(x.inputs[i].id == y.inputs[i].id); CHECK(x.inputs[i].routeId == y.inputs[i].routeId);
         test::near(x.inputs[i].vehiclesPerHour, y.inputs[i].vehiclesPerHour, 1e-9);
@@ -47,24 +49,15 @@ TEST(demand, a_decision_with_counted_intervals_scales_each) {
     putInput(w.document, input);
     // The second period's share for route 1, summed over however many lanes it expands to:
     // what is under test is the scaling, not the lane expansion, which has its own tests.
+    // Copied to a local first: iterating `compileDocument(...).scenario.inputs` directly relies on
+    // extending a temporary's life through a member access, which MSVC did not do here -- the
+    // loop read a destroyed snapshot and saw no inputs at all.
+    const auto inputs = compileDocument(w.document, test::root() / "data").scenario.inputs;
+    CHECK(inputs.size() == 6); // through: 2 periods x 2 lanes; left: 2 periods x 1 lane
     const auto prefix = "in/route-" + w.routes[1] + "/int-2";
-    double second = 0; std::string seen;
-    for (const auto& i : compileDocument(w.document, test::root() / "data").scenario.inputs) {
-        seen += i.id + " ";
-        if (i.id.rfind(prefix, 0) == 0) second += i.vehiclesPerHour;
-    }
-    if (std::abs(second - 200) > 1e-9) {
-        // Everything each stage saw, so a platform-only failure explains itself from the CI log.
-        std::string stages = " | authored: " + documentJson(w.document)["definition"].dump();
-        const auto split = withRoutingDecisions(*w.document.definition);
-        stages += " | decided:";
-        for (const auto& i : split.inputs) stages += " " + i.id + "->" + i.routeId + "@" + std::to_string(i.intervals.size());
-        const auto resolved = resolveCatalogs(*w.document.definition, test::root() / "data");
-        stages += " | resolved:";
-        for (const auto& i : resolved.inputs) stages += " " + i.id + "->" + i.routeId;
-        throw std::runtime_error("expected 200 under " + prefix + ", got " + std::to_string(second) +
-                                 " in: " + seen + stages);
-    }
+    double second = 0;
+    for (const auto& i : inputs) if (i.id.rfind(prefix, 0) == 0) second += i.vehiclesPerHour;
+    test::near(second, 200);
 }
 TEST(demand, a_decision_mixing_origins_is_refused) {
     auto built = fixture::fourLegIntersection();
