@@ -40,10 +40,17 @@ struct RoutingDecision {
 };
 // M2.1.2 (D45). An entry's relative flow at time t: its interval's flow inside an interval, the
 // whole-period relativeFlow outside every one. t is when the vehicle ENTERS the network.
+// The decision's counts are proportions only: the input's volume is what is split (D46), so the
+// two tables need not agree. An interval with no turn counted at all (every flow 0) falls back
+// to the whole-period proportions rather than stranding the input's vehicles in it.
 inline double decisionFlowAt(const RoutingDecision& d, const DecisionRoute& entry, double t) {
+    const auto at = [](const DecisionRoute& e, std::size_t k) { return k < e.intervalFlows.size() ? e.intervalFlows[k] : 0.0; };
     for (std::size_t k = 0; k < d.intervals.size(); ++k)
-        if (t >= d.intervals[k].startTime && t < d.intervals[k].endTime)
-            return k < entry.intervalFlows.size() ? entry.intervalFlows[k] : 0.0;
+        if (t >= d.intervals[k].startTime && t < d.intervals[k].endTime) {
+            double sum = 0;
+            for (const auto& e : d.routes) if (at(e, k) > 0) sum += at(e, k);
+            return sum > 0 ? at(entry, k) : entry.relativeFlow;
+        }
     return entry.relativeFlow;
 }
 // Every time at which some decision's flows change, ascending, without duplicates.

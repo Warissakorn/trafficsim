@@ -86,7 +86,9 @@ TEST(demand, decision_intervals_are_validated) {
     auto mismatch = ok; mismatch.routes[0].intervalFlows = {1}; refused(mismatch, "ROUTING_DECISION_INTERVALS");
     auto overlap = ok; overlap.intervals[1].startTime = 800; refused(overlap, "INVALID_INTERVAL");
     auto negative = ok; negative.routes[0].intervalFlows = {1, -1}; refused(negative, "INVALID_SHARE");
-    auto empty = ok; empty.routes[0].intervalFlows = {1, 0}; refused(empty, "INVALID_SHARE");
+    // An interval with nothing counted is not refused (D46): it falls back, tested below.
+    { auto def = *w.d.definition; auto empty = ok; empty.id = "x"; empty.routes[0].intervalFlows = {1, 0};
+      def.routingDecisions.push_back(empty); CHECK(routingDecisionIssues(def).empty()); }
 }
 TEST(demand, decision_intervals_round_trip) {
     auto w = west();
@@ -97,4 +99,28 @@ TEST(demand, decision_intervals_round_trip) {
     CHECK(j["schemaVersion"] == 12);
     const auto back = parseDocument(j);
     CHECK(back.definition->routingDecisions == w.d.definition->routingDecisions);
+}
+TEST(demand, the_inputs_volume_is_split_by_counts_that_do_not_match_it) {
+    // D46: the decision's counts are proportions of the INPUT's volume. Here they disagree with
+    // it in total (input 1200 then 600 veh/h, counts 40+20 and 10+50 vehicles), in interval length
+    // (inputs by 15 min, turns by 10 min from 300 s), in coverage (no turns counted before 300 s
+    // or after 1500 s), and one interval has no turn counted at all.
+    auto w = west();
+    RoutingDecision decision{"", "", {{w.routes[0], 3, {}, {40, 10, 0}}, {w.routes[1], 1, {}, {20, 50, 0}}}};
+    decision.intervals = {{300, 900}, {900, 1500}, {1500, 1800}};
+    const auto id = putRoutingDecision(w.d, decision);
+    VehicleInput input{"in", "", "car", 0, 0, 0, {}, {}}; input.routingDecisionId = id;
+    input.intervals = {{0, 900, 1200}, {900, 1800, 600}};
+    putInput(w.d, input);
+    CHECK(routingDecisionIssues(*w.d.definition).empty());
+    const auto split = withRoutingDecisions(*w.d.definition).inputs;
+    CHECK(split.size() == 2);
+    // Before 300 s and in the uncounted last interval: whole-period 3:1. Otherwise the counts.
+    CHECK(split[0].intervals == (std::vector<VolumeInterval>{{0, 300, 900}, {300, 900, 800}, {900, 1500, 100}, {1500, 1800, 450}}));
+    CHECK(split[1].intervals == (std::vector<VolumeInterval>{{0, 300, 300}, {300, 900, 400}, {900, 1500, 500}, {1500, 1800, 150}}));
+    // Every vehicle of the input is still sent somewhere: the input's own total holds.
+    double vehicles = 0;
+    for (const auto& part : split) for (const auto& p : part.intervals) vehicles += p.vehiclesPerHour * (p.endTime - p.startTime) / 3600;
+    test::near(vehicles, 1200 * 0.25 + 600 * 0.25, 1e-9);
+    CHECK(compileDocument(w.d, data()).scenario.inputs.size() > 0);
 }

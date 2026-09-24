@@ -115,7 +115,12 @@ are exact per piece. **The interval is chosen by the time a vehicle enters the n
 time it reaches the decision** — off by the travel time from entry to decision, seconds against
 15-minute counts. A placed decision's paths are the union over the intervals, one runtime route
 each. Refused: `ROUTING_DECISION_INTERVALS` (a row's flow count differs from the intervals),
-`INVALID_INTERVAL`, and `INVALID_SHARE` for a negative flow or an interval where every flow is 0.
+`INVALID_INTERVAL`, and `INVALID_SHARE` for a negative flow.
+
+**The counts are proportions of the input's volume (D46).** The input's own volume per period is
+what is split; the decision's counts only set the proportions. Their totals, interval lengths and
+start times need not match the input's — the input is cut at both sets of boundaries — and an
+interval in which every flow is 0 (nothing counted) uses the whole-period `relativeFlow`.
 
 ## Runtime scope
 

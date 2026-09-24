@@ -121,10 +121,7 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
             if (!std::isfinite(p.startTime) || !std::isfinite(p.endTime) || p.startTime < 0 || p.startTime >= p.endTime ||
                 (i > 0 && p.startTime < decision.intervals[i - 1].endTime))
                 issues.push_back({"INVALID_INTERVAL", path + ".intervals[" + std::to_string(i) + "]"});
-            // Vehicles entering in an interval where every flow is zero would have nowhere to go.
-            double sum = 0;
-            for (const auto& entry : decision.routes) if (i < entry.intervalFlows.size() && entry.intervalFlows[i] > 0) sum += entry.intervalFlows[i];
-            if (!(sum > 0)) issues.push_back({"INVALID_SHARE", path + ".intervals[" + std::to_string(i) + "]"});
+            // An interval where every flow is zero is allowed: it uses the whole-period flows (D46).
         }
         // A placed decision's routes leave its Link; an unplaced one's leave the first route's.
         std::string origin = decision.linkId;
