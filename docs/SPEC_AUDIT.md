@@ -3,6 +3,8 @@
 Reviewed against `9066b08b4b0281aa7afe46dd676ff8b25056724f` on 2026-09-20.
 The three supplied Thai documents describe a target, not measured Vissim parity.
 Section numbers below refer to those documents (see [specs/README.md](specs/README.md)).
+The copies are verbatim except that, on the owner's instruction of 2026-09-24 (D38), one
+import-format entry was removed from §18.1 and from the part-04 comparison table.
 `Partial` means some contracts exist; it never means the entire section is implemented.
 
 ## Link
@@ -60,7 +62,7 @@ Section numbers below refer to those documents (see [specs/README.md](specs/READ
 | 15: picking | Partial: hit shapes/tolerance and Tab overlap cycling | Explicit spatial index and hover feedback |
 | 16: diagnostics | Partial: structured object-linked findings, on-demand recheck | Distinct advisories; incremental real-time validation needs profiling |
 | 17: menus/shortcuts | Partial: native actions and fixed keyboard shortcuts | Context menus and customization without gesture collisions |
-| 18: interchange | Native projects, scenarios and background images only | GeoJSON/OSM/SUMO/Shapefile, coordinate conversion and exports |
+| 18: interchange | Native projects, scenarios and background images only | GeoJSON/OSM/Shapefile, coordinate conversion and exports |
 | 19: projects | Partial: per-window document, save/reopen, recovery locks | Tabs/recent files/project settings; native JSON remains the source |
 | 20: performance | Unproven targets | Real-network benchmark before claiming 10k/100k-object performance |
 | 21: accessibility/i18n | Partial: English/Thai catalog, buddies and native widgets | Keyboard-only/accessibility audit, locale-number handling |

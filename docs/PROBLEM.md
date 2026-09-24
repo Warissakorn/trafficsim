@@ -22,44 +22,38 @@ Today that work is done in **PTV Vissim**. It works, and these users know it wel
 
 ## 2. The problem
 
-**Vissim costs more than most of these users can justify, and there is no free tool that
-does step 5.**
+**Vissim costs more than most of these users can justify, and no affordable tool gives them
+the modelling surface and the output their studies require.**
 
-The obvious answer is Eclipse SUMO: it is free, mature, actively developed, and its
-simulation quality is not in question. So the obvious project is a friendly UI over SUMO
-that gives Vissim users the workflow they already know.
+A tool is usable for this work only if the engineer can express the intersection as they
+actually analyse it, and get out the numbers the report needs:
 
-**That project was attempted and it does not fully work.** A prior effort spent six
-milestones building exactly that — a Vissim-shaped web UI over SUMO, with a real network
-editor, signal editor with ring-barrier, scenarios, and reporting. The UI succeeded. What
-it ran into was a set of walls that are **in the simulation engine, not in the UI**, and
-no amount of interface work moves them:
-
-| What the user needs | Why a SUMO wrapper cannot give it |
+| What the engineer needs | Why the study needs it |
 |---|---|
-| **Conflict areas** — pick which movement yields at each individual conflict point | SUMO derives right-of-way from junction type and link priority. The `<request>` matrix is an output, not an input. You can read it; you cannot set a cell. |
-| **Priority rules** — set gap time and headway in seconds/metres | Not expressible. There is no per-conflict gap-time parameter to write. |
-| **Signal heads anywhere on a link** | Signals must sit at a junction stop line. A mid-block signal requires inventing a junction. |
-| **Wiedemann car-following** | W99 exists as an approximation; W74 has no counterpart. Calibration values carried over from Vissim do not mean the same thing. |
-| **Desired speed distributions** | In Vissim a link has no speed — speed comes from the vehicle. In SUMO speed lives on the link and the vehicle applies a multiplier. The mental models do not line up, and the difference surfaces in every dialog. |
-| **Node evaluation** — delay/LOS/queue per movement | Does not exist anywhere in SUMO or its tool suite. Must be built from scratch regardless of the front end. |
-| **Multi-run averaging with confidence intervals** | Not built in. Must be built from scratch regardless of the front end. |
+| **Conflict areas** — pick which movement yields at each individual conflict point | Right-of-way at a real junction is a local engineering judgement, not something to be inferred from a junction type. The engineer must be able to set it and see its effect. |
+| **Priority rules** — set gap time and headway in seconds/metres | These are the parameters minor-road delay is tuned with and justified by in a report. |
+| **Signal heads anywhere on a link** | Mid-block crossings, staggered stop lines and pre-signals are ordinary study objects. |
+| **Wiedemann car-following** | Calibration practice and published parameter sets are expressed in W74/W99 terms. |
+| **Desired speed distributions** | Speed belongs to the vehicle and its driver, and every study dialog assumes it. |
+| **Node evaluation** — delay/LOS/queue per movement | The table that goes into the report. |
+| **Multi-run averaging with confidence intervals** | A single stochastic run is not a result. |
 
-The last two are the deliverable of the entire job. **The two things the user is actually
-paid to produce are the two things the wrapper approach has to build itself anyway** —
-while inheriting an engine whose right-of-way model it cannot reach.
+The last two are the deliverable of the entire job: **the two things the user is actually
+paid to produce.** The first five are what makes those numbers trustworthy for a given
+intersection.
 
 ## 3. What this project is
 
 **A traffic microsimulator with its own simulation engine, built to the model Vissim users
-already think in**, with the evaluation output that traffic impact reporting requires.
+already think in, usable in real engineering work**, with the evaluation output that traffic
+impact reporting requires.
 
-Not a SUMO front end. Not a SUMO fork. A separate engine, so that conflict areas, priority
-rules, signal placement, driver behaviour, and per-movement evaluation are all first-class
-inputs rather than things worked around.
+Its own engine, so that conflict areas, priority rules, signal placement, driver behaviour,
+and per-movement evaluation are all first-class inputs rather than things worked around.
 
 This is the expensive answer, chosen deliberately. See decision **D1** in
-[`PROGRESS.md`](PROGRESS.md) for the reasoning and for what would make it wrong.
+[`PROGRESS.md`](PROGRESS.md) for the reasoning, and **D38** for the current statement of
+purpose.
 
 ## 4. What "done" looks like
 
@@ -102,10 +96,10 @@ The gap is narrower than it looks:
 
 Recorded honestly, so it can be checked rather than defended:
 
-1. **If a SUMO wrapper turns out to be good enough for the users we actually have.** The
-   walls above are real, but a consultant who only ever models signalized intersections with
-   standard control may never hit them. **This must be tested with real users before
-   milestone 3.** See the M2 gate in `ROADMAP.md`.
+1. **If an engineer cannot complete a real study with it.** A tool that cannot carry one
+   real impact study from blank network to report table, in reasonable time, is not usable in
+   engineering work however good its engine is. **This is tested with a real study before
+   milestone 3** — see the M2 gate in `ROADMAP.md`.
 2. **If simulation fidelity cannot be validated.** An engine nobody trusts is worthless in a
    report that goes to a regulator. Validation against published benchmarks is a gate, not
    a nice-to-have.

@@ -2,7 +2,8 @@
 
 Written 2026-09-24 at the owner's request ("ตรวจสอบ M1 และวางแผนพัฒนา M2"). **§3 was the draft;
 the owner ratified it as drafted the same day and it is now registered in `ROADMAP.md` §M2
-(D34),** with one amendment: C0 is answered before M2.5 produces its first delay figure.
+(D34).** The same day, before any observation, the owner withdrew C0 and C3 and re-registered
+the gate as C1 + C2 with C4 recorded (D38); §3 below is the registered version.
 
 ---
 
@@ -72,40 +73,29 @@ produces a delay table.* Then the honesty gate.
 | Several seeds | CLI takes one seed | Averaging and confidence intervals are **M5**, not M2 |
 
 **Consequence for the gate:** the only study M2 can run honestly is a **signalised intersection
-with fully protected phasing**. That is also the case where a SUMO wrapper is *most* adequate
-(`PROBLEM.md` §7.1). The gate must therefore not rest on the one study alone — see C3 below.
+with fully protected phasing**. That is enough to show whether the tool carries a real study
+from blank network to report table (`PROBLEM.md` §7.1).
 
 ---
 
-## 3. Draft gate criteria — for the owner to accept, edit or reject
+## 3. Gate criteria (registered; C0 and C3 withdrawn by D38)
 
 Proposal only. Numbers in **[brackets]** are the owner's to set. Copy the accepted version into
 ROADMAP §M2 and commit it **before any M2.2+ code** — a criterion written after results exist is
 not a test (D8).
 
-- **C0 — Portfolio audit, recorded at pre-registration, before any M2 code.** For the owner's last
-  **[10]** real impact studies, list for each which `PROBLEM.md` §2 walls it actually needed:
-  authored conflict-area yielding, gap-time/headway priority rules, mid-block signal heads,
-  Wiedemann parameters carried from a calibrated model, vehicle-owned desired-speed
-  distributions. Node evaluation and multi-run averaging are **excluded** — both must be built
-  whichever engine is used, so they do not discriminate. Writing this now is the strongest
-  single mitigation of D8: it is answered before the owner has seen anything M2 produces.
 - **C1 — Completion.** One real study from the owner's practice (signalised, protected phasing,
   counted 15-minute volumes, the owner's actual timing plan) is completed end to end in TrafficSim:
   network over its aerial image, volumes, composition, timing, Run, per-movement delay and queue
   table. Fail if it needs hand-edited JSON, a code change during the study, or outside help.
 - **C2 — Effort.** Wall time in TrafficSim ≤ **[2.0]×** the time in the owner's current tool for
   the same study, both timed from a blank project. Record both regardless of outcome.
-- **C3 — The SUMO question, answered by rule rather than by feeling.** The answer is
-  "*a SUMO-based tool would have been good enough*" if fewer than **[3 of 10]** studies in C0
-  needed at least one wall. That answer **fails the gate** and triggers `PROBLEM.md` §7.1 — stop
-  and reconsider, not continue because effort was spent.
 - **C4 — Plausibility, recorded, not scored.** For each movement, the TrafficSim delay next to the
   current tool's. Neither engine is validated against the other and bit-agreement is a non-goal
   (`PROBLEM.md` §5), so C4 cannot pass or fail the gate; a movement more than **[two LOS
   letters]** away opens a numbered investigation milestone, per ROADMAP rule 2.
 
-**Pass = C1 and C2 pass and C3 answers "not good enough".** Reported as *not disproven*, never
+**Pass = C1 and C2 pass.** Reported as *not disproven*, never
 *confirmed* (D8). Evidence goes in a new `docs/M2_GATE.md`, shaped like `M1_ACCEPTANCE.md`.
 
 ---
@@ -190,7 +180,7 @@ It feeds the existing per-route inputs at compile time; it does **not** restore 
 routes (that is M2.1's positioned decision, D25). **Gate:** flows compile to the same core
 scenario as the equivalent hand-split inputs; tables and dialogs round-trip through save/reopen.
 
-### M2.5 — Movement evaluation, single run · **Waits for C0** (D34 amendment)
+### M2.5 — Movement evaluation, single run · **Next**
 
 In `src/eval/`, fed only by the event stream (`core/` unchanged):
 
@@ -210,14 +200,14 @@ whose delay and queue can be computed by hand — plus exact replay per seed.
 
 ### M2.6 — The gate study (owner)
 
-Run C1–C4 exactly as committed; fill in `docs/M2_GATE.md`; close M2 only on a pass. **M3 may not
+Run C1, C2 and C4 exactly as committed; fill in `docs/M2_GATE.md`; close M2 only on a pass. **M3 may not
 start before this** (ROADMAP §M2).
 
 ---
 
 ## 5. Owner decisions this plan needs
 
-1. **Accept, edit or reject C0–C4**, fill the bracketed numbers, commit them into ROADMAP §M2.
+1. **Accept, edit or reject the criteria** (done: D34, then D38), fill the bracketed numbers, commit them into ROADMAP §M2.
 2. **Confirm the M2.1 → M2.3/M2.4 rescope**, or keep compositions and routing decisions in M2.1.
 3. **Seeds for the gate study:** run one seed (M2 scope) or pull a minimal multi-seed mean
    forward from M5 so C4 compares like with like. Averaging with CIs is still M5's either way.

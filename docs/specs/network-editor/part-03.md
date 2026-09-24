@@ -366,7 +366,6 @@ class SpatialIndex {
 | **Shapefile** | Geometry + attributes | ใช้ GDAL |
 | **OSM** | Roads + lanes | ผ่าน Overpass API |
 | **CSV** | Detector data | สำหรับ calibration |
-| **SUMO** | Network | ผ่าน netconvert |
 | **VISSIM** | Network | ผ่าน .inpx (roadmap) |
 
 ### 18.2 Export Formats

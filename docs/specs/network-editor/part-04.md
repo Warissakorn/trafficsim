@@ -293,7 +293,7 @@ Network Editor ที่ออกแบบตามเอกสารนี้�
 | Inspector | ✅ live edit | ✅ |
 | Layers | ✅ toggle/lock/reorder | ✅ |
 | Validation | ✅ real-time | ✅ on-demand |
-| Import | GeoJSON, OSM, SUMO | หลายรูปแบบ |
+| Import | GeoJSON, OSM | หลายรูปแบบ |
 | Export | GeoJSON, CSV, PNG | หลายรูปแบบ |
 | Multi-doc | ✅ tab | ✅ |
 | Auto-save | ✅ | ✅ |

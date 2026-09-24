@@ -11,7 +11,9 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-**M2 is under way (2026-09-24).** The owner ratified the gate (ROADMAP §M2, D34) and ruled on
+**M2 is under way (2026-09-24).** The owner ratified the gate (ROADMAP §M2, D34), then restated
+the purpose — a simulator usable in real engineering work — and re-registered it as C1 + C2 with C4
+recorded (D38). The owner also ruled on
 M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own commit with
 `core/`, the frozen fixtures and `trafficsim-cli 42` unchanged:
 
@@ -23,11 +25,12 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
 - **M2.4** static routing decisions (Routing decisions tab), relative flows over routes leaving
   one Link.
 
-**Stop point — the next session does NOT start M2.5 until the owner fills in C0** in
-[`M2_GATE.md`](M2_GATE.md) (the last 10 studies against `PROBLEM.md` §2's walls). That is the
-ratified amendment: C0 must be answered blind to any delay figure this tool produces. When it is
-filled in, M2.5 is next: `M2_PLAN.md` §4 M2.5 is the specification (movement = entry/exit Link
-pair, simulated movement delay, queue counter with thresholds in `data/`, clamp count shown).
+**Next: M2.5 — movement delay and queue, one run.** No longer blocked (D38 withdrew C0).
+`M2_PLAN.md` §4 M2.5 is the specification: movement = entry/exit Link pair, simulated movement
+delay (not HCM control delay), queue counter with thresholds in `data/`, unserved demand and the
+clamp count shown beside every table, not-yet-validated marker, analytic fixtures as its gate.
+Code lives in `src/eval/`, fed by the event stream; `core/` stays unchanged. After it, M2.6 is the
+owner's gate study (`M2_GATE.md`).
 
 **Open questions for the owner, none blocking:** motorcycles (not shipped; lane sharing is
 unmodelled — Thai counts are motorcycle-heavy); per-interval turning proportions (M2.1).
@@ -72,9 +75,7 @@ exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is
 entry). Signal heads are the last object still placed only through a dialog;
 `objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
 A routing decision as an object at a station along the link — what Vissim actually places, and
-what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
-until its pre-registered criteria are written into `ROADMAP.md`. Writing them is the owner's,
-and it blocks all of M2.
+what would bring back the lane-specific route M1.26 gave up — is **M2.1**.
 
 **1. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
 layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on
@@ -121,8 +122,8 @@ stays either way.
 candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have
 findings in the D11 row. **This is the owner's decision, not a session's.**
 
-**M2's gate is registered** (ROADMAP §M2, D34, 2026-09-24). M2 implementation may proceed;
-**M2.5's first delay figure waits for the owner's C0 table in `M2_GATE.md`.**
+**M2's gate is registered** (ROADMAP §M2, D34, re-registered by D38 as C1 + C2 with C4 recorded).
+M2.5 may proceed; the gate study itself (M2.6) is the owner's.
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
 not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an

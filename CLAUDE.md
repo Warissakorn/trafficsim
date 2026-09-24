@@ -5,10 +5,10 @@ session.
 
 ## What this is
 
-A **traffic microsimulator with its own simulation engine**, built to the modelling surface
-PTV Vissim users already think in, producing the movement-level delay and LOS output that
-traffic impact studies require. Deliberately **not** a front end over another engine — see
-[`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for why that was tried and where it hit walls.
+A **traffic microsimulator with its own simulation engine, usable in real engineering work**
+(D38), built to the modelling surface PTV Vissim users already think in, producing the
+movement-level delay and LOS output that traffic impact studies require. See
+[`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for the capabilities a study needs from the engine.
 
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
@@ -46,8 +46,8 @@ were. **M2 is under way** — its gate criteria are registered (ROADMAP §M2, D3
 `intervals` (M2.2), `compositionId` from `data/compositions/` (M2.3) and static routing decisions
 (M2.4) are all expanded at compile/resolve time into ordinary core inputs, so `core/` and every
 frozen fixture are untouched. Connectors meeting at a lane start are ordered by M3.1's derived
-rule (M2.0.1, D35 — not M3). **M2.5's first delay figure waits for the owner's C0 table in
-`docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
+rule (M2.0.1, D35 — not M3). **M2.5 (movement delay and queue) is next; the gate is C1 + C2 with C4
+recorded (D38), in `docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
 `<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test

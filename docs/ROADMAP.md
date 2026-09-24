@@ -238,7 +238,7 @@ keyboard-only owner exercise remain open, as does M1's timed gate.
 
 ### M1.23 — Interchange, document workflow and measured rendering
 
-**Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile/SUMO import and CRS mapping;
+**Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile import and CRS mapping;
 recent files/tabs, spatial indexing/culling/LOD and optional renderer acceleration.
 Competitor-format imports and 3D require an explicit scope revision before implementation.
 **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
@@ -262,8 +262,8 @@ Vehicle inputs per interval, compositions, turning proportions. Press Run, get a
 table.
 
 **GATE — the honesty check.** Before M3 starts, a practising traffic engineer completes a
-small **real** study in this tool and in their current tool, and answers directly whether the
-free SUMO-based alternative would have been good enough for this job.
+small **real** study in this tool and in their current tool, and the result shows whether the
+tool is usable for real engineering work.
 
 > **This gate is currently performed by the project owner alone (D8), which makes it weak** —
 > the person judging is the person who chose to build an engine. It is therefore run as a
@@ -272,31 +272,22 @@ free SUMO-based alternative would have been good enough for this job.
 > under these conditions means "not disproven", never "confirmed". Recruiting outside
 > engineers later strengthens the gate and is never wasted effort.
 
-**Pre-registered criteria — ratified by the owner on 2026-09-24, before any M2 implementation**
-(drafted in `M2_PLAN.md` §3 and accepted as drafted; record in [`M2_GATE.md`](M2_GATE.md)):
+**Pre-registered criteria — ratified by the owner on 2026-09-24, re-registered the same day
+before any gate observation (D38)** (record in [`M2_GATE.md`](M2_GATE.md)):
 
-- **C0 — Portfolio audit.** For the owner's last **10** real impact studies, record which
-  `PROBLEM.md` §2 walls each needed: authored conflict-area yielding, gap-time/headway priority
-  rules, mid-block signal heads, Wiedemann parameters from a calibrated model, vehicle-owned
-  desired-speed distributions. Node evaluation and multi-run averaging are excluded (built either
-  way). **Amendment, same day:** C0 is answered **before M2.5 produces its first delay figure**.
 - **C1 — Completion.** One real study (signalised, protected phasing, counted 15-minute volumes,
   the owner's timing plan) completed end to end: network over its aerial image, volumes,
   composition, timing, Run, per-movement delay and queue table. Fails on hand-edited JSON, a code
   change during the study, or outside help.
 - **C2 — Effort.** Time in TrafficSim ≤ **2.0×** the owner's current tool, both from blank.
-- **C3 — The SUMO question, by rule.** Fewer than **3 of the 10** C0 studies needing a wall means
-  "a SUMO-based tool would have been good enough" — the gate **fails**, and §7.1 applies.
 - **C4 — Plausibility, recorded, not scored.** Per movement, TrafficSim delay beside the current
   tool's; a movement more than **two LOS letters** apart opens a numbered investigation.
 
-**Pass = C1 and C2 pass and C3 answers "not good enough"** — reported as *not disproven*.
+**Pass = C1 and C2 pass** — reported as *not disproven*. (C0 and C3 were withdrawn by D38; the
+remaining criteria keep their numbers so earlier records still resolve.)
 
-- If the answer is broadly *yes*, this project is the wrong answer to the problem —
-  see `PROBLEM.md` §7.1 — and the honest move is to stop and reconsider, not to continue
-  because effort has been spent.
-- This gate exists because the whole justification for owning an engine (`PROBLEM.md` §2)
-  is an argument, not yet an observation.
+- If C1 or C2 fails, the tool is not yet usable for the job it exists for — see `PROBLEM.md`
+  §7.1 — and M3 does not start until what failed is fixed and the gate re-run.
 
 ---
 
@@ -306,8 +297,8 @@ free SUMO-based alternative would have been good enough for this job.
 **M2.0.1** — Connectors meeting at a lane's start get M3.1's derived rule (D35; this extends M3.1,
 it does not start M3). **M2.2** time-varying volumes · **M2.3** vehicle compositions · **M2.4**
 static turning proportions (moved here from M2.1, D37) · **M2.5** movement delay and queue, one
-run, after C0 · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
-**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3 and M2.4 implemented; M2.5 waits for C0; the
+run · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
+**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3 and M2.4 implemented; M2.5 is next; the
 gate itself is open and nothing here closes it.
 
 ### M2.1 — Link/lane/Connector behavior and demand extensions
@@ -324,7 +315,7 @@ M2's pre-registered owner gate still precedes this work.
 
 ## M3 — Right-of-way: conflict areas and priority rules
 
-**The differentiating milestone.** Everything a SUMO wrapper structurally cannot do.
+**The right-of-way model an engineer controls.**
 
 - Conflict areas as **editable input**: at each conflict point, choose which movement yields,
   or make it undetermined.
@@ -333,8 +324,7 @@ M2's pre-registered owner gate still precedes this work.
 - Signal heads placed **anywhere on a link**, not only at a stop line.
 
 **Done when:** an unsignalized T-junction with a minor-road left turn produces plausible,
-tunable minor-road delay that responds correctly to changing the gap time — and the same
-network is demonstrably not expressible in a SUMO wrapper.
+tunable minor-road delay that responds correctly to changing the gap time.
 
 ---
 
