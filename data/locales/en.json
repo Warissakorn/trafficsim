@@ -206,6 +206,8 @@
   "editorInputVolume": "Volume (vehiclesPerHour)",
   "editorInputStart": "Start (startTime, s)",
   "editorInputEnd": "End (endTime, s)",
+  "editorInputShareLane": "Lane %1 weight",
+  "editorInputShareHelp": "Optional (laneShares). Weights the split across the lanes above instead of dividing equally. Left alone, or if the drawing has changed since it was set, the split stays equal.",
   "editorProgramOffset": "Offset (offset, s)",
   "editorProgramCycle": "Cycle (s)",
   "editorRunSettings": "Run settings",

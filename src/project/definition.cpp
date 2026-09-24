@@ -15,9 +15,14 @@ Json definitionJson(const AuthoringDefinition& d) {
     Json j = {{"duration", d.duration}, {"timeStep", d.timeStep},
         {"routes", Json::array()}, {"inputs", Json::array()}, {"signalPrograms", Json::array()}};
     for (const auto& r : d.routes) j["routes"].push_back({{"id",r.id},{"segmentIds",r.segmentIds}});
-    for (const auto& i : d.inputs)
-        j["inputs"].push_back({{"id",i.id},{"routeId",i.routeId},{"vehicleTypeId",i.vehicleTypeId},
-            {"vehiclesPerHour",i.vehiclesPerHour},{"startTime",i.startTime},{"endTime",i.endTime}});
+    for (const auto& i : d.inputs) {
+        Json input = {{"id",i.id},{"routeId",i.routeId},{"vehicleTypeId",i.vehicleTypeId},
+            {"vehiclesPerHour",i.vehiclesPerHour},{"startTime",i.startTime},{"endTime",i.endTime}};
+        // Omitted rather than an empty array when unset, so an unedited input round-trips through
+        // an older reader unchanged and the equal-split default never appears in the file.
+        if (!i.laneShares.empty()) input["laneShares"] = i.laneShares;
+        j["inputs"].push_back(std::move(input));
+    }
     for (const auto& p : d.signalPrograms) {
         Json phases = Json::array();
         for (const auto& f : p.phases) phases.push_back({{"duration",f.duration},

@@ -52,6 +52,14 @@ std::vector<std::string> strings(const Json& value, const char* name) {
     }
     return result;
 }
+std::vector<double> doubles(const Json& value, const char* name) {
+    std::vector<double> result;
+    for (const auto& item : array(value, name)) {
+        if (!item.is_number()) throw std::invalid_argument(std::string("Expected numbers: ") + name);
+        result.push_back(item.get<double>());
+    }
+    return result;
+}
 int integer(const Json& value,const char* key,int fallback) {
     if(!value.contains(key))return fallback;
     const auto& v=member(value,key);
@@ -181,10 +189,13 @@ ScenarioDefinition parseDefinition(const Json& value) {
     definition.timeStep = field<double>(value, "timeStep");
     for (const auto& r : array(value, "routes"))
         definition.routes.push_back({field<std::string>(r, "id"), strings(r, "segmentIds")});
-    for (const auto& i : array(value, "inputs"))
-        definition.inputs.push_back({field<std::string>(i, "id"), field<std::string>(i, "routeId"),
+    for (const auto& i : array(value, "inputs")) {
+        VehicleInput input{field<std::string>(i, "id"), field<std::string>(i, "routeId"),
             field<std::string>(i, "vehicleTypeId"), field<double>(i, "vehiclesPerHour"),
-            field<double>(i, "startTime"), field<double>(i, "endTime")});
+            field<double>(i, "startTime"), field<double>(i, "endTime")};
+        if (i.contains("laneShares")) input.laneShares = doubles(i, "laneShares");
+        definition.inputs.push_back(std::move(input));
+    }
     for (const auto& p : array(value, "signalPrograms")) {
         SignalProgram program{field<std::string>(p, "id"), field<double>(p, "offset"), {}};
         for (const auto& phase : array(p, "phases"))

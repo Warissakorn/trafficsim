@@ -264,21 +264,21 @@ narrowing afterwards is finally safe.
 
 **Not in M1.26:** the engine, the segment contract and every measured number are unchanged, and
 the four frozen baselines replay identically because a single-lane expansion keeps the authored
-id. The equal split is an authoring convenience, not a lane-choice model — this engine has no
-lane changing. Adjustable shares are M1.26.1 below. **A lane-specific route cannot be expressed
-any more:** Vissim's turn pocket, where only the left lane may turn, is the cost of routing by
-Link, and restoring it is the first thing M2.1's positioned routing decision has to do.
+id. The equal split is an authoring convenience, not a lane-choice model — no lane changing exists
+yet, and adjustable shares are M1.26.1 below. **A lane-specific route cannot be expressed any
+more:** Vissim's turn pocket, where only the left lane may turn, is the cost of routing by Link,
+and restoring it is the first thing M2.1's positioned routing decision has to do.
 
 **Gate:** the keyboard-only equivalent of the pointer gestures and the owner's timed exercise
 in `M1_ACCEPTANCE.md`; automated tests do not close it.
 
-#### M1.26.1 — Adjustable per-lane shares
+#### M1.26.1 — Adjustable per-lane shares · **CLOSED**
 
-**Open.** The owner asked that the equal split be adjustable. The numbers must live where both
-the editor and `buildScenario` read them, and `VehicleInput` is a core type the scenario format
-shares, so this is a schema-and-signature decision, not a dialog field. **Gate:** shares
-round-trip through save/reopen, normalise, and leave an unedited input's compiled volumes
-bit-identical to the equal split.
+`VehicleInput.laneShares` (D32): optional weights in `routeLaneChains` order, normalised by
+`buildScenario`; empty or stale degrades to the M1.26 equal split, and schema **9** writes it only
+when set, so an unedited save stays unchanged. The input dialog shows one weight per lane the
+route reaches; untouched fields leave `laneShares` untouched. Gated by the D32 tests and
+`demand-ui`'s round-trip; not covered: the M1 owner exercise, ridden on as M1.26 is.
 
 ### M1.27 — Optimization program: build, redraw, engine, UX · **CLOSED**
 

@@ -71,14 +71,25 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
             continue;
         }
         const auto& lanes = found->second;
+        // laneShares are weights in the same order as `lanes`. A stale size -- the network was
+        // edited since they were set -- degrades to the equal split rather than landing on the
+        // wrong lane (M1.26.1); so does any non-positive weight, which would otherwise divide by
+        // a zero or negative sum.
+        bool useShares = input.laneShares.size() == lanes.size();
+        double weightSum = 0;
+        if (useShares)
+            for (double w : input.laneShares) { if (!(w > 0)) { useShares = false; break; } weightSum += w; }
         for (std::size_t k = 0; k < lanes.size(); ++k) {
             auto share = input;
             share.id = lanes.size() == 1 ? input.id : input.id + "/lane-" + std::to_string(k + 1);
             share.routeId = lanes[k];
-            // The authored volume is the LINK total, divided across the lanes it reaches. It is
-            // an authoring convenience, not a lane-choice model: the engine has no lane changing,
-            // so nothing here claims that this is how traffic really distributes itself.
-            share.vehiclesPerHour = input.vehiclesPerHour / static_cast<double>(lanes.size());
+            share.laneShares.clear();
+            // The authored volume is the LINK total, divided across the lanes it reaches -- equally
+            // by default, or by the authored weights. It is an authoring convenience, not a
+            // lane-choice model: the engine has no lane changing, so nothing here claims that this
+            // is how traffic really distributes itself.
+            share.vehiclesPerHour = useShares ? input.vehiclesPerHour * (input.laneShares[k] / weightSum)
+                                              : input.vehiclesPerHour / static_cast<double>(lanes.size());
             inputs.push_back(std::move(share));
         }
     }

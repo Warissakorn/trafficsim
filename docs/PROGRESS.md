@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-23-compact-workspace.md`](archive/PROGRESS-2026-09-23-compact-workspace.md) — 2026-09-23, the compact desktop workspace; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.1-redraw.md`](archive/PROGRESS-2026-09-22-m1.27.1-redraw.md) — 2026-09-22, M1.27.1, the connector cache; its numbers corrected 2026-09-23; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27-build-stage.md`](archive/PROGRESS-2026-09-22-m1.27-build-stage.md) — 2026-09-22, M1.27 build stage, the PCH and json_fwd work; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md`](archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md) — 2026-09-22, M1.26, a route belongs to the carriageway; moved out 2026-09-22 as the oldest live entry
@@ -30,30 +31,31 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
-## 2026-09-23 — Compact desktop workspace
+## 2026-09-24 — M1.26.1, storage and the dialog
 
-**Owner request:** improve the UI and use screen space efficiently. The shell now has a light
-slate/teal palette, local line icons, translated menus, a compact command row that splits at
-narrow widths, independently scrolling property tabs, a collapsible appearance section, and
-contextual table actions. The application opens maximized. All run figures and the permanent
-unvalidated marker remain visible above the canvas, with wrapping instead of toolbar clipping.
+**M1.26.1's real question — decided (D32).** `VehicleInput` gains `laneShares`, optional relative
+weights in `routeLaneChains` order; empty is the M1.26 equal split, and a stale size (the route's
+lane count changed since) degrades to it rather than misapplying a weight. `buildScenario`
+normalises by their sum and clears the field on each compiled per-lane input; `definitionJson`
+persists it only when set, so an unedited file and its compiled volumes are unchanged. Schema
+bumped to 9 for the new optional field; six tests asserting the exact prior schema number were
+updated to match, and two new tests hold the gate: round-trip plus the unedited-file omission
+(`project_tests.cpp`), and an uneven 1:2:3 split plus the stale-size degrade
+(`editor_model_tests.cpp`). `headless` preset: 23/23, 162 test-function checks all passing.
 
-Focus on network (Ctrl+Shift+F) snapshots the dock layout, hides panels and restores their
-positions and visibility. Opening a panel exits focus; Reset panel layout recovers the default
-workspace. Layout never mutates the document or simulation. Language also has a menu fallback.
+**The editor surface, same session: M1.26.1 is closed.** The vehicle-input dialog
+(`src/shell/editor_demand.cpp`) now shows one `QDoubleSpinBox` per lane the *selected* route
+currently reaches, rebuilt whenever the route combo changes (the lane count is the route's, not
+the input's). Seeded from a stored `laneShares` only when its size still matches; a "dirty" flag
+set only by an actual `valueChanged` means leaving the fields alone leaves the input's
+`laneShares` exactly as it was — usually empty, which is what keeps the bit-identical default
+from the paragraph above true through the dialog too, not just through direct model edits.
+`demand-ui`'s existing two-lane fixture got three new checks: default fields read 1/1, a 2:1 edit
+round-trips through reopen, and cancelling a reopened dialog leaves the stored weights alone.
+Needed `qt6-base-dev` installed in this container (it was not present) to build and run the
+`desktop` preset at all; `desktop`: 36/36, `headless`: 23/23.
 
-The larger viewport exposed an outdated connector UI assertion after Link movement: M1.20 can
-retain the attachment at a station along the Link. The test now checks the authored attachment,
-including its station, rather than assuming it must still be the last vertex. No geometry,
-engine, schema or baseline fixture is changed.
-
-**Validation:** clean Linux desktop build and `check` pass (36/36 tests), including architecture
-and file-size guards. The new workspace test exercises focus/restore, floating and hidden docks,
-layout reset, narrow toolbar access and independent property scrolling in English and Thai.
-GitHub Actions passes Linux headless/release/desktop and Windows core/desktop for the code commit.
-Inspected screenshots are linked in `EDITOR_WORKFLOW.md`: the canvas is 807×474 in the English
-1360×860 window and 471×288 in the Thai 1024×768 window on the Linux offscreen Qt platform.
-No M0/M1 engineering acceptance or scientific-validation gate is closed by this UI work.
+---
 
 
 ## 2026-09-23 — The editor benchmark was measuring itself
@@ -480,3 +482,5 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D29 | 2026-09-22 | **A runtime vehicle names its scenario objects by SLOT; only the boundary uses names** | A `Scenario` is immutable and canonically sorted from `createSimulation` onwards, so an index identifies exactly what an id identified — and a tick copies, sorts and compares the whole vehicle list, which three `std::string`s per vehicle made the engine's largest cost (17.4% string copying, 11.4% the sort, 10.3% `resolveRefs`). Slots halved the run. What keeps it honest is that ids become slots only through `detail::byId`, whose first-occurrence rule is exactly what the lookups it replaced returned, and that **names survive at the boundary**: events carry `routeId`, `pendingJson` takes the `Scenario` and emits the same three strings, so the frozen fixtures are byte-identical and a human still reads names. The reverse direction — a slot escaping into a file or an event — is the thing to refuse: a slot means nothing outside the Scenario it indexes. | If a `Scenario` ever becomes mutable after `createSimulation`, or if anything re-sorts one mid-run, every slot in flight is wrong at once and silently. That is the invariant to defend, not the indices. `stepSimulation` already asserts `state.inputs` is parallel to `scenario.inputs`; add the same kind of assertion for anything else that starts indexing the scenario. |
 | D30 | 2026-09-22 | **`Ctrl`+left-click stays a dead end; it does not duplicate** | The owner's ruling, asked in user-facing words during M1.27.3 and answered *ไม่มีอะไรเกิดขึ้น*. `VISSIM_PARITY.md` had ranked this High since 2026-09-14 as a *collision* — the chord that duplicates in Vissim extending the selection here — but `trafficsim-gesture-walkthrough` measured it doing **nothing at all** on an already-selected object, which is the only case a Vissim user's hand reaches for. So the choice offered was not "take a verb away" but "fill an empty slot", and the owner declined to fill it. Nothing is lost: `Shift`+click extends a selection and `Ctrl`+drag duplicates. | Do not re-open it from the §1/§2 text alone — those rows describe the 2026-09-14 editor. Re-run the walkthrough first. If a future session gives `Ctrl`+left-click any verb, it must not be one that edits the drawing without a visible result, which is what made this chord dangerous on paper.
 | D31 | 2026-09-23 | **A Qt benchmark pumps the event loop between iterations, or it is measuring Qt's deferred work instead of the code** | `QGraphicsScene::clear()` defers reclaiming its index entries to the event loop. A tight timing loop that clears and refills the scene therefore measures an index growing without bound: six identical batches climbed 28 → 159 ms, and the same loop with `processEvents()` stayed flat at 11.5. The harness's answer depended on how many repetitions it was asked for, which is the signature of this class of bug. | Any future harness that drives a Qt object must pump the loop, and any number produced by one that did not must be re-measured before it is quoted. The tell is a result that changes with the repetition count — check that before trusting a Qt timing, the way an interleaved A/B is checked against the noise floor. |
+| D32 | 2026-09-24 | **Per-lane demand shares live on `VehicleInput` itself, as optional weights in `routeLaneChains` order** | `VehicleInput` is not wrapped by a separate editor type — `AuthoringDefinition` reuses `ScenarioDefinition`'s `VehicleInput` list directly (`src/model/demand/definition.hpp`) — so it is the only place both the editor and `buildScenario` already read, and the "schema-and-signature decision" the milestone named. Rejected: keying by lane id (the chain's starting lane), which is more robust to the network's lane count changing under an authored route (M1.26's whole point) but adds indirection nothing here asked for yet. Chose the plain positional vector instead, with a deliberately cheap safety net — a size that no longer matches the route's current lane count, or any non-positive weight, degrades to the M1.26 equal split rather than misapplying a weight to the wrong lane. Persisted only when non-empty (`definitionJson`), so an unedited input's saved file and compiled volumes are byte- and bit-identical to before this landed; schema bumped to 9 since the field is new, even though nothing here is version-gated the way network parsing is. `buildScenario` normalises by the weights' sum, so they need not sum to 1. The editor dialog landed later the same session (D33). | If a route's lane count turns out to change often enough in practice that the size-mismatch fallback fires constantly and authors find their shares silently reset, key by the chain's starting lane id instead — the rejected alternative above, not a redesign. The two tests holding the gate (`project.m1_26_1_lane_shares_round_trip_and_stay_out_of_an_unedited_file`, `editor.m1_26_1_lane_shares_weight_the_split_and_degrade_when_stale`) are the ones to extend, not replace, if that happens. |
+| D33 | 2026-09-24 | **The vehicle-input dialog writes `laneShares` only when a field was actually touched, never merely displayed** | The dialog has to show *something* in each lane's weight box, and the natural seed for an unset input is the equal split (1 each) — but if accepting the dialog always wrote whatever was showing, opening an unedited input and clicking OK would write an explicit `{1,1,...}` where D32 depends on empty meaning "equal split" for the bit-identical guarantee, and would defeat the size-mismatch fallback the first time anyone merely looked at the dialog after a network edit. A `sharesDirty` flag, set only by `QDoubleSpinBox::valueChanged` and reset whenever the fields are rebuilt (seeded via `QSignalBlocker` so the seeding itself never sets it), makes "touched" the actual question asked, not "was the dialog opened". Rebuilding the fields on every route-combo change was the other half: the lane count is the selected route's, not the input's, so switching routes mid-dialog must not silently resize the wrong array. | If a future field in this dialog needs the same "only write if changed" contract, copy the flag-plus-`QSignalBlocker` pattern rather than inferring dirtiness by comparing values — a user typing the same number back is not a meaningful distinction to make, but it also is not wrong to treat as dirty, and the flag is simpler than either comparison. |
