@@ -1,9 +1,8 @@
 # M2 plan — and the M1 review it starts from
 
-Written 2026-09-24 at the owner's request ("ตรวจสอบ M1 และวางแผนพัฒนา M2"). **This file is a
-plan and a draft, not a pre-registration.** M2's gate criteria are pre-registered only when the
-owner writes them into `ROADMAP.md` §M2 and commits them (D8). Until then the line
-"Pre-registered criteria: TO BE WRITTEN" stays, and no M2 implementation may start.
+Written 2026-09-24 at the owner's request ("ตรวจสอบ M1 และวางแผนพัฒนา M2"). **§3 was the draft;
+the owner ratified it as drafted the same day and it is now registered in `ROADMAP.md` §M2
+(D34),** with one amendment: C0 is answered before M2.5 produces its first delay figure.
 
 ---
 

@@ -131,12 +131,8 @@ stays either way.
 candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have
 findings in the D11 row. **This is the owner's decision, not a session's.**
 
-**Not started, and deliberately:** M2 implementation. Its gate is pre-registered and
-`ROADMAP.md`'s "Pre-registered criteria: TO BE WRITTEN before M2 implementation starts" is still
-unfilled. Starting M2 before writing them **voids the gate** (D8), and that gate is the honesty
-check on the whole project's premise. A draft to start from is `M2_PLAN.md` §3 — its C0, the audit
-of the owner's last studies against `PROBLEM.md` §2's walls, is best answered **now**, before any
-M2 output exists to colour it.
+**M2's gate is registered** (ROADMAP §M2, D34, 2026-09-24). M2 implementation may proceed;
+**M2.5's first delay figure waits for the owner's C0 table in `M2_GATE.md`.**
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
 not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an
