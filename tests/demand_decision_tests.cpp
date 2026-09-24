@@ -3,6 +3,8 @@
 #include "../src/project/run.hpp"
 #include <algorithm>
 #include <map>
+#include <stdexcept>
+#include <cmath>
 using namespace trafficsim;
 // M2.4: static turning proportions. A decision's relative flows split an input's volume across
 // routes leaving one Link; resolving it gives ordinary routed inputs, so core/ is untouched.
@@ -43,10 +45,16 @@ TEST(demand, a_decision_with_counted_intervals_scales_each) {
     VehicleInput input{"in", "", "car", 0, 0, 0, {}, {}};
     input.routingDecisionId = decision; input.intervals = {{0, 450, 400}, {450, 900, 800}};
     putInput(w.document, input);
-    std::map<std::string, double> volume;
-    for (const auto& i : compileDocument(w.document, test::root() / "data").scenario.inputs) volume[i.id] = i.vehiclesPerHour;
-    // Route 1 is a single-lane movement (left), so its core input id carries no lane suffix.
-    test::near(volume["in/route-" + w.routes[1] + "/int-2"], 200);
+    // The second period's share for route 1, summed over however many lanes it expands to:
+    // what is under test is the scaling, not the lane expansion, which has its own tests.
+    const auto prefix = "in/route-" + w.routes[1] + "/int-2";
+    double second = 0; std::string seen;
+    for (const auto& i : compileDocument(w.document, test::root() / "data").scenario.inputs) {
+        seen += i.id + " ";
+        if (i.id.rfind(prefix, 0) == 0) second += i.vehiclesPerHour;
+    }
+    if (std::abs(second - 200) > 1e-9) throw std::runtime_error("expected 200 under " + prefix + ", got " +
+                                                                std::to_string(second) + " in: " + seen);
 }
 TEST(demand, a_decision_mixing_origins_is_refused) {
     auto built = fixture::fourLegIntersection();
