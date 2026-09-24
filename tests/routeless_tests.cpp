@@ -217,3 +217,19 @@ TEST(routeless, round_trip_and_cascade) {
     deleteObjects(cut, {w.pocket});
     CHECK(cut.definition->routingDecisions.empty());
 }
+TEST(routeless, a_connector_drawn_just_short_of_the_end_leaves_from_the_end) {
+    // D44: the author clicked near the end. First assert the drawing really keeps the stations.
+    const auto split = [](double station) {
+        ProjectDocument d; d.definition = AuthoringDefinition{};
+        const auto a = addLink(d, {{0, 0}, {100, 0}}, 1, 3.5);
+        const auto b = addLink(d, {{120, 10}, {220, 10}}, 1, 3.5);
+        const auto c = addLink(d, {{120, -10}, {220, -10}}, 1, 3.5);
+        const auto lane = [&](const std::string& l) { return fixture::detail::lane(d, l, 0); };
+        addConnector(d, {a, lane(a), station}, {b, lane(b)});
+        addConnector(d, {a, lane(a), station}, {c, lane(c)});
+        CHECK(d.network.connectors[0].from.station.has_value());
+        return routelessChains(d.network, a, {}).chains.size();
+    };
+    CHECK(split(100 - kRoutelessStubLength + 1) == 2); // a 3.5 m remainder is not an exit
+    CHECK(split(100 - kRoutelessStubLength - 1) == 3); // a 5.5 m one is: a third leave there
+}

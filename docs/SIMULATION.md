@@ -90,8 +90,9 @@ routes. Both are expanded at compile time (`routelessChains`, `expandRouteless`)
 routes `link:<id>/path-k` and one input per complete path, at volume × probability:
 
 - **Free walk:** every Connector path leaving the vehicle's lane is one way out. Leaving the
-  network at the lane end is one more when no path leaves from the end. Each way gets an equal
-  share. A way out upstream of where the vehicle came onto the lane is behind it.
+  network at the lane end is one more when no path leaves from the end. A path leaving within
+  `kRoutelessStubLength` (4.5 m) of the end counts as leaving from the end, because a shorter
+  remainder cannot hold a vehicle (D44). Each way gets an equal share. A way out upstream of where the vehicle came onto the lane is behind it.
 - **Placed decision:** it acts when a routeless vehicle comes onto its Link. The station along
   the Link is not modelled. The vehicle takes a destination its lane can reach, by relative flow
   among those. A lane reaching none carries on routeless, with `ROUTING_DECISION_LANE_UNSERVED`.

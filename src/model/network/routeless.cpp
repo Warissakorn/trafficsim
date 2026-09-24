@@ -111,11 +111,16 @@ struct Walk {
               std::size_t lane, double share) {
         std::vector<const ConnectorPath*> out;
         bool fromEnd = false;
+        double end = 0;
+        for (const auto& l : network.links)
+            for (const auto& ln : l.lanes) if (ln.id == laneId) end = polylineLength(l.geometry);
         for (const auto& p : paths) {
             if (p.from.laneId != laneId) continue;
             // A way out upstream of where the vehicle came onto the lane is behind it.
             if (p.from.station && arrived && *p.from.station < *arrived - 1e-9) continue;
-            if (!p.from.station) fromEnd = true;
+            // D44: a path leaving within kRoutelessStubLength of the end leaves "from the end" --
+            // the remainder cannot hold a vehicle, so it is not a way out of the network.
+            if (!p.from.station || *p.from.station >= end - kRoutelessStubLength) fromEnd = true;
             out.push_back(&p);
         }
         const std::size_t ways = out.size() + (fromEnd ? 0 : 1);
