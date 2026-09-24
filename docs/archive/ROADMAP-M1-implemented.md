@@ -413,4 +413,70 @@ decision are **M2.1**, behind M2's unwritten gate. **Its own gate:** the keyboar
 of both gestures and the owner's timed exercise in `M1_ACCEPTANCE.md`; automated gesture tests do
 not close it.
 
+### M1.26 — Demand is authored per Link and compiled per lane
 
+**Implemented.** An authored route names **Links and Connectors**, never a lane and never a
+Connector path, and `buildScenario` expands it into one core route per lane the drawing actually
+carries (`routeLaneChains`, `src/model/network/routing.cpp`). Consequences, all of them the point:
+a route covers every lane of the carriageway; Connector lane counts can no longer invalidate it,
+so `changeConnectorRange`, `changeConnectorEndpoints`, `changeLanes` and `reverseLink` lost their
+route guards; a vehicle input's volume is the **Link total**, split equally across the lanes its
+route reaches; and the canvas draws the compiled chain, fixing a route drawn upstream of a
+mid-body arrival — a line running against the traffic on that Link. Two Links named one after the
+other imply the Connector between them and each lane finds its own, which is what lets `splitLink`
+keep routes across the per-lane bridges it creates. Schema **8** stores object ids and
+`migrateRoutesToObjects` maps older files (and M0 scenarios, read through the same path by the
+CLI) on load, idempotently. A route whose objects do not join up for any lane is kept and reported
+as `UNSUPPORTED_ROUTE_TOPOLOGY`: authoring tolerates it, Run refuses it. The Connector creation
+dialog now defaults to **all** lanes of both Links, reversing M1.12's one-lane default, because
+narrowing afterwards is finally safe.
+
+**Not in M1.26:** the engine, the segment contract and every measured number are unchanged, and
+the four frozen baselines replay identically because a single-lane expansion keeps the authored
+id. The equal split is an authoring convenience, not a lane-choice model — no lane changing exists
+yet, and adjustable shares are M1.26.1 below. **A lane-specific route cannot be expressed any
+more:** Vissim's turn pocket, where only the left lane may turn, is the cost of routing by Link,
+and restoring it is the first thing M2.1's positioned routing decision has to do.
+
+**Gate:** the keyboard-only equivalent of the pointer gestures and the owner's timed exercise
+in `M1_ACCEPTANCE.md`; automated tests do not close it.
+
+#### M1.26.1 — Adjustable per-lane shares · **CLOSED**
+
+`VehicleInput.laneShares` (D32): optional weights in `routeLaneChains` order, normalised by
+`buildScenario`; empty or stale degrades to the M1.26 equal split, and schema **9** writes it only
+when set, so an unedited save stays unchanged. The input dialog shows one weight per lane the
+route reaches; untouched fields leave `laneShares` untouched. Gated by the D32 tests and
+`demand-ui`'s round-trip; not covered: the M1 owner exercise, ridden on as M1.26 is.
+
+### M1.27 — Optimization program: build, redraw, engine, UX · **CLOSED**
+
+**Build and redraw.** `src/project/json.hpp` declares `Json` through `<nlohmann/json_fwd.hpp>`
+and `trafficsim_shell` precompiles the Qt surface the UI test executables reuse: clean build
+`-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the editor measurable, and the canvas
+caches each Connector's paths, boundaries and markings against the only three inputs they read
+— the Connector, its two Links and the driving side — by value, never by a revision counter. A
+160-link corridor redraws in **10.6 ms instead of 95.1** and picks in **10.0 instead of 57.2**.
+
+**The gate said "a cache and a head index"; the head index was not built** — callgrind put the
+`headPosition` scan below the threshold and `connectorMarkings` at 52.6%, so the profile chose
+the work. A Link geometry cache was built, measured and **reverted**: validating the entry cost
+what recomputing it saved. What remains is `QGraphicsScene` construction — M1.23's culling/LOD.
+
+#### M1.27.2 — A vehicle carries scenario slots · M1.27.3 — UX
+
+**M1.27.2.** `tools/engine_benchmark.cpp` commits the corridor the 2026-09-18 session had to
+generate by hand, and its profile reproduced that session's finding: 17.4% of instructions in
+`std::string`, 11.4% in the per-tick vehicle sort, 10.3% in `resolveRefs`. `PendingVehicle` now
+holds `inputIndex`/`routeIndex`/`typeIndex` into the canonical Scenario, resolved once in
+`ScenarioIndex`; `routeOfId`/`typeOfId` and `IdSlot` go with the ids they resolved. Events and
+checkpoints still carry the NAMES, so the frozen fixtures are byte-identical: **1560.8 → 792.6
+ms** at 12 and **2566.2 → 1331.0** at 24 intersections, interleaved medians, same trips.
+
+**M1.27.3, and M1.27 with it.** `tools/gesture_walkthrough.cpp` counts the inputs each authoring
+task costs and replays the Vissim reflexes against the drawing it makes: **six replayed, five
+transfer**. The sixth, `Ctrl`+left-click, is not the *collision* the parity table has ranked High
+since 2026-09-14 — measured, it does **nothing** on an already-selected object — and the owner
+ruled it stays so (D30), leaving the counted delta zero by decision. The table itself was the
+defect: a dozen rows under-reported the product; §1a carries the measured state. **This does not
+close M1's timed owner exercise.**

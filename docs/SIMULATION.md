@@ -94,6 +94,17 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   An authored input's volume is the **Link total** and is divided **equally** across its
   route's lanes at compile time. That split is an authoring convenience, not a lane-choice
   model — this engine has no lane changing — and like every figure here it is unvalidated.
+  **Since M2.2 an input may carry counted `intervals`** (start, end, veh/h), ordered without
+  overlap; each becomes its own core input (`id/int-k`), so the core still sees one Poisson
+  process per `[startTime, endTime)`. Restarting a Poisson stream at a boundary changes no
+  statistics, and an input without intervals compiles exactly as before.
+  **Since M2.3 an input may name a composition** from `data/compositions/` instead of one vehicle
+  type; resolving the catalog splits it into one input per type (`id/type-<type>`, volume ×
+  normalised share), which is exact for Poisson arrivals. `heavy-vehicle` is a plausible,
+  **unvalidated** type added for it. Motorcycles are not offered: lane sharing is not modelled.
+  **Since M2.4 an input may follow a static routing decision** — relative flows over routes that
+  leave one Link — and is split into one input per route (`id/route-<route>`) before everything
+  else. Turning proportions are then exact in expectation; lane choice is still fixed at entry.
 - A segment with multiple predecessors is rejected with `UNSUPPORTED_MERGE` **unless the merge is
   arbitrated** (M3.1): it is accepted only when at least *n*−1 of its *n* predecessors carry a
   `PriorityRule` naming another of them, so exactly one has priority and the rest have somewhere
@@ -111,6 +122,15 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   persisted, with their two numbers read from `data/priority-rules/`. Run refuses such a network
   with `EDIT_NO_PRIORITY_DEFAULTS` if those cannot be read, rather than defaulting to a zero gap
   time, which would be a merge nobody gives way at.
+  Two Connectors arriving at the **same** station share one cut, and the one drawn later also gives
+  way to each drawn earlier: lane, then first, then second — a strict order, never a cycle.
+  **Since M2.0.1 (D35) the same drawn-order rule arbitrates Connectors meeting at a lane's start**
+  — every turn into an intersection exit. The order is the drawing order, which is arbitrary;
+  authoring who has priority is M3. With protected (split) phasing those movements are never green
+  together, so the rule rarely binds; with permissive phasing it would decide, unvalidated.
+- Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
+  turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
+  in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).
 - Geometric crossings do not create conflicts automatically. Separate movement paths
   can intersect spatially; their interaction is **not** modelled. The demo uses separate
   fixed-time greens and clearance intervals, not a conflict-area solver. Arbitrary
@@ -208,6 +228,41 @@ use `runSimulation` callbacks to stream history without retaining all trajectory
 source wait minus route length divided by sampled desired speed. It includes acceleration
 loss; it is **not HCM control delay or LOS**. An empty run returns `null`, not NaN. Incomplete
 trips do not enter this mean and must be reported separately.
+
+### Movement evaluation (M2.5)
+
+`src/eval/movement.cpp` turns one run into a per-movement table and per-approach queues. It
+reads `SimState` snapshots and their events only (`MovementAccumulator::observe`, called once
+after `createSimulation` and once after every `stepSimulation`). `core/` does not know it exists.
+`src/project/evaluation.cpp` supplies what it measures (`evaluationSpec`).
+
+- **Movement:** an authored route's (first Link, last Link) pair, named from the Links' Names,
+  in authored route order. Two routes with the same pair are one movement. Every runtime route
+  (`id`, `id/lane-k`) maps through its authored id.
+- **Delay** per movement is the mean over completed trips of the run summary's own term:
+  `max(0, travelTime + departureDelay − freeFlowTime)` over the **whole route** (D39). The
+  movements' trips plus `notInMovement` equal the run's completed trips.
+  - The figure is labelled *simulated movement delay, one run* and is **not HCM control delay or
+    LOS**.
+  - **Known bias:** a vehicle enters the network from standstill, so an unimpeded trip already
+    carries about `v/(2a)` of acceleration delay (≈3 s for the car type). The analytic test pins
+    this rather than hiding it. Cross-section travel-time sections, which remove it, are M5's.
+- **Queue** per approach follows Vissim's queue counter at each signal head's stop line (D40).
+  - A vehicle enters queue state below `beginSpeed` and leaves it above `endSpeed`.
+  - Walking upstream from the line along each route that crosses it, the queue ends at the first
+    vehicle not in queue state or at a clear gap over `maxHeadway`. Its length runs to that last
+    vehicle's rear.
+  - An approach is the maximum over its lanes' heads at each step. The report gives the mean over
+    every observed step and the maximum, in metres.
+  - The conditions are content: `data/evaluation/queue-counter.json`, in km/h and m, with
+    Vissim's defaults of 5, 10 and 20.
+- **Unserved demand:** vehicles still in the network (`active`), vehicles waiting to enter
+  (`pending`) and safety clamps are reported beside every table. Incomplete trips are not in any
+  delay.
+
+The editor shows this in the **Results** tab, and `trafficsim-cli --project FILE [--csv FILE]`
+prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds,
+confidence intervals and LOS letters are M5.
 
 Catalog content lives under `data/vehicle-types`, `data/driver-behaviour` and
 `data/scenarios`. The compiled boundary allows editor/project work without importing its

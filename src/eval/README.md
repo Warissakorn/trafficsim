@@ -1,1 +1,1 @@
-C++ event accumulator for completed-trip diagnostics. HCM control delay, movement LOS, queue measures and confidence intervals remain planned.
+C++ accumulators fed by engine states and events. `summary` is the completed-trip diagnostic; `movement` is the M2.5 per-movement delay and approach-queue report for one run (see `docs/SIMULATION.md`). HCM control delay, LOS letters and confidence intervals remain planned.

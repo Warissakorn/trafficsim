@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-22-m1.27.2-slots.md`](archive/PROGRESS-2026-09-22-m1.27.2-slots.md) — 2026-09-22, M1.27.2, a vehicle carries scenario slots; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-23-compact-workspace.md`](archive/PROGRESS-2026-09-23-compact-workspace.md) — 2026-09-23, the compact desktop workspace; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.1-redraw.md`](archive/PROGRESS-2026-09-22-m1.27.1-redraw.md) — 2026-09-22, M1.27.1, the connector cache; its numbers corrected 2026-09-23; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27-build-stage.md`](archive/PROGRESS-2026-09-22-m1.27-build-stage.md) — 2026-09-22, M1.27 build stage, the PCH and json_fwd work; moved out 2026-09-23 as the oldest live entry
@@ -28,6 +29,75 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-24 — M2.5: delay per movement and queue per approach, one run
+
+`src/eval/movement.*` (core types only) and `src/project/evaluation.*` (movements from authored
+routes, counters from signal heads, queue conditions from `data/evaluation/`), shown in the
+editor's **Results** tab and printed by `trafficsim-cli --project FILE [--csv FILE]`. `core/`,
+every frozen fixture and `trafficsim-cli 42` are unchanged. The four-leg fixture, seed 42, gives
+12 movements with 6–134 trips, a mean delay of 35–56 s and approach queues up to 107 m. M2 runs one
+seed, so "plausible" is the only claim: a 120 s cycle with 20–30 s greens gives
+a uniform-delay term of 34–42 s before entry acceleration and queue spillback.
+**The analytic test found a bias worth knowing:** vehicles enter from standstill, so an
+unimpeded trip carries about `v/(2a)` ≈ 3 s of delay. It is pinned and documented, not hidden
+(D39). A run's first cut of the tab stacked the two tables and showed one row each, found from a
+screenshot; they are side by side now.
+
+---
+
+## 2026-09-24 — Purpose restated; gate re-registered (D38)
+
+Owner ruling: the project is a traffic simulator usable in real engineering work, and the
+comparison with another simulator is removed from every file. `PROBLEM.md` §2 now lists the
+capabilities a study needs rather than what another tool lacks, §7.1 is "an engineer cannot
+complete a real study with it", and the M2 gate is C1 + C2 with C4 recorded. Docs only; no code,
+test or fixture mentioned it. **M2.5 is next.**
+
+---
+
+## 2026-09-24 — M2 registered; M2.0.1 and M2.2–M2.4 implemented
+
+**Why everything expands before the core.** Intervals, compositions and routing decisions each
+split a Poisson stream — by period, by type share, by route share — and a split Poisson stream is
+exactly a set of independent Poisson streams. So each concept became an expansion into ordinary
+core inputs (decision → composition in `resolveCatalogs`, then period → lane in `buildScenario`),
+and one-way splits keep the plain id. The engine did not change, and neither did a fixture.
+**Why intervals are the source.** With `intervals` set, the scalar start/end/volume are derived
+(`deriveInputTotals`) on put and on read, so no file can hold two volumes. **Why M2.0.1 is not
+M3:** it applies M3.1's existing rule where it was skipped; drawing order decides, which is
+honest only because protected phasing rarely lets it bind (D35). Four tests that pinned the old
+refusal now pin the arbitrated merge and that removing the rule re-fires the guard.
+
+---
+
+## 2026-09-24 — M2.0 closed except its decisions: same-station cut, dropped lanes, amber clamps
+
+**Same station:** the cut is reused rather than refused, and the later Connector also gives way to
+the earlier one — without that the §3.3 pair would enter together. **Dropped lanes:** still
+dropped, now reported (`AMBIGUOUS_ROUTE_STEP`, advisory). **Clamps:** all at amber onset, and the
+frozen baselines hold the same, so fixing them needs the owner; a test pins the diagnosis. CI on
+the four-leg commit passed all five jobs, Windows included.
+
+## 2026-09-24 — The four-leg intersection, built and run (M2.0)
+
+`tools/four_leg_network.hpp` builds it through the editor's commands, so the committed
+`data/projects/four-leg-signalised.traffic.json` is a document an author could have drawn; the
+file is compared to the builder at 1e-9 (computed curves may round differently under MSVC).
+It runs with no diagnostic only because turns join each exit part way along — the natural drawing
+is 8 × `UNSUPPORTED_MERGE`, pinned by a test M3 or M2.0.1 flips. Findings: `M2_PLAN.md` M2.0.
+
+## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
+
+Owner request; everything is in [`M2_PLAN.md`](M2_PLAN.md), no code changed; `desktop` 36/36 and
+`check` green on Linux. **The criteria stay a draft** because D8 makes pre-registration the
+owner's own act; ROADMAP §M2 only points at it. M2 can only run protected phasing
+honestly, so the gate study is a signalised intersection with protected phasing (D38 later
+narrowed the criteria to C1 + C2).
+**No fixture builds a four-leg intersection anywhere**, so M2.0 (the duplicate-station fix plus
+a runnable four-leg fixture) goes first, allowed before the criteria as M1 defects.
 
 ---
 
@@ -319,82 +389,6 @@ one, and M1.27.3 never claimed to close it.
 
 ---
 
-## 2026-09-22 — A vehicle stops carrying its names (M1.27.2)
-
-**Request:** continue M1.27 with the engine stage. This is the one item another session
-measured first: 2026-09-18 profiled the engine, found ~36% of instructions in `std::string` and
-11.8% in the per-tick vehicle sort, wrote the fix into its `Next` and left it, because it
-changes a core public type and every test that builds a `Vehicle`.
-
-**Its corridors were never committed, so its numbers could not be reproduced.** That came
-first: `tools/benchmark_network.hpp` now holds the generator both benchmarks use, and
-`tools/engine_benchmark.cpp` compiles a corridor through `compileDocument` and runs it — no Qt,
-so the engine stays measurable under the headless preset. Its one parameter is where the
-northbound approach joins: the editor keeps the end attachment M1.27.1's published numbers were
-measured on, and the engine passes a station, because a **mid-body arrival is what derives the
-M3.1 priority rule a merge needs to run at all** — without it the corridor will not compile.
-
-**The profile on that fixture reproduced 2026-09-18 exactly**, which is the useful part: string
-copy ctor 17.4%, `Vehicle` copy ctor 12.1%, the vehicle sort 11.4% (they measured 11.8%),
-`resolveRefs` 10.3% of which `lookup` 9.1%, `~string` 8.1%.
-
-**What changed.** A `Scenario` is immutable and canonically sorted from `createSimulation`
-onwards, so an index names exactly the object an id named — and unlike an id it costs nothing to
-copy, compare or sort. `PendingVehicle` holds `inputIndex`/`routeIndex`/`typeIndex`, resolved
-once per scenario in `ScenarioIndex`'s new `routeOfInput`/`typeOfInput`. `routeOfId`,
-`typeOfId`, `IdSlot` and the `lookup` they served are gone: that undoes part of 2026-09-18's own
-optimisation, which this subsumes, because there is no id left to look up. `InputState` loses
-its `id`, which duplicated `scenario.inputs[i].id` once the vector became index-addressed.
-
-**Resolving in `generateArrivals` was not enough, and the profile said so.** The first version
-looked the input's route and type up there instead — the same lookup in a new place, 11% of the
-run, once per input per tick whether or not a vehicle arrived. Hoisting it into the index is
-what took the second half of the win.
-
-Interleaved medians of five, alternating the two binaries, Debug, 300 simulated seconds:
-
-| intersections | segments | before | after | |
-|---|---|---|---|---|
-| 12 | 171 | 1560.8 ms | **792.6 ms** | −49.2% |
-| 24 | 351 | 2566.2 ms | **1331.0 ms** | −48.1% |
-
-**The trajectory is identical, not merely the summary.** The four seed fixtures and
-`trajectory-digest.json` pass unchanged — the digest pins per-tick position, speed, acceleration
-**and vehicle ordering**, so a reordering could not hide — `trafficsim-cli 42` still prints
-`29.249359418430977`, and the benchmark completes the same 475 trips with the same peak of 235
-vehicles. No fixture was regenerated. What protects this is that ids only ever became slots
-through `detail::byId`, whose first-occurrence rule is what every lookup they replaced returned.
-
-**Names did not disappear, they moved to the boundary.** `DepartedEvent` and `ArrivedEvent`
-still carry `routeId`, read from the scenario where the event is built, and `pendingJson` takes
-the `Scenario` and emits the same three strings — a slot means nothing outside one Scenario, and
-the fixtures are read by people. `checkpointJson` now throws rather than dereferencing a null
-scenario, because without one there is nothing to resolve against.
-
-**Tests.** `test::Placement` describes a vehicle by route and type id and `withVehicles`
-resolves it against the canonical scenario, so the two representations meet in one place instead
-of in three test files. `stepSimulation` asserts `state.inputs` is parallel to
-`scenario.inputs`, so a hand-built state mis-indexes loudly instead of reading past the end.
-
-### Next
-
-**M1.27.3, UX, is the last stage of M1.27 and is not started.** It carries two things already
-documented as High severity in `VISSIM_PARITY.md`: `Ctrl`+left-click extends the selection here
-and **duplicates** in Vissim, and link creation is a polyline of clicks where the Vissim reflex
-is `Ctrl`+right-drag. It also has to correct that table's stale rows — `Tab` cycling
-(`EditorCanvas::cycleOverlap`), `Ctrl+B`, the tool shortcuts and Connector lane ranges all exist
-now and the table says they do not. **Gate:** a counted walkthrough delta (clicks per task, dead
-ends before and after), which does **not** close M1's timed owner exercise. UX changes are
-behaviour changes, so each needs the owner's approval in user-facing words before it is made.
-
-Unchanged: **M1.26.1** adjustable per-lane shares (decide where the shares live first), then
-**M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**. M1.22,
-M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, and the shared-station
-`runtimeSections` refusal (§3.3, M3.2) remain open. Inside a tick `occupiedSpans` is now the
-largest single cost at 9.8%; there is no booked milestone for it and none is needed yet.
-
----
-
 ## Next
 
 Moved to [`NEXT.md`](NEXT.md) on 2026-09-23. A session read this whole file to find twenty
@@ -440,13 +434,13 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 
 | # | Date | Decision | Why | What would make it wrong |
 |---|---|---|---|---|
-| D1 | 2026-09-10 | **Own simulation engine, not a front end over an existing one** | A prior six-milestone effort built a Vissim-shaped UI over SUMO and hit walls that are in the engine, not the interface: conflict areas are output-only, gap times are not expressible, signal heads must sit at stop lines, and the two things the job is actually paid for — per-movement evaluation and multi-run averaging — had to be built from scratch regardless. See `PROBLEM.md` §2. | If the M2 gate finds practising engineers would be satisfied by the wrapper. This is the single most expensive decision in the project and it has an explicit test. |
+| D1 | 2026-09-10 | **Own simulation engine, not a front end over an existing one** | Engineering use needs conflict areas and priority rules as authored inputs, signal heads anywhere on a link, and vehicle-owned driver behaviour, and the two things the job is actually paid for — per-movement evaluation and multi-run averaging — have to be built regardless. Owning the engine makes all of them first-class. See `PROBLEM.md` §2. | If the M2 gate (D38) shows an engineer cannot complete a real study with it. This is the single most expensive decision in the project and it has an explicit test. |
 | D2 | 2026-09-10 | **Link-based network model natively; junctions are derived, not authored** | This is how the audience thinks and it is the whole point of D1. Translating to a node–edge model would reintroduce the impedance the prior effort spent six milestones papering over. | If deriving junction geometry from links proves intractable at M1. |
 | D3 | 2026-09-10 | **TypeScript everywhere to start; `core/` written so it can be ported to a compiled language later without touching anything above it** | Microsimulation is CPU-bound and a compiled core is probably where this ends up. But picking a stack the user cannot run today, to solve a performance problem not yet measured, is the classic way to stall at milestone 0. Hard rule 1 (`core/` imports nothing) makes the port a contained job later, and makes it measurable first. | If M0 cannot reach real-time on a single intersection — then port immediately rather than optimising TypeScript. |
 | D4 | 2026-09-10 | **Desktop is a constraint from day one, a milestone at the end** | Web-first keeps the development loop fast; a framework-free core plus isolated rendering means desktop packaging is packaging, not a rewrite. A boot smoke test in a desktop shell runs from M1 so it never becomes a surprise. | If a required capability (native file dialogs, offline licensing) turns out to need a different shell architecture. |
 | D5 | 2026-09-10 | **A results screen carries a "not yet validated" marker until M6 passes** | Numbers from this tool go into documents submitted to regulators. An unvalidated engine that looks authoritative is worse than no tool. | Nothing. This one is not negotiable before M6. |
 | D7 | 2026-09-10 | **International audience from the start, not Thailand-first** | Nothing in the engine is jurisdiction-specific, and the parts that are — LOS thresholds, report layouts, units — are data, not code, so building them swappable costs little now and a retrofit costs a lot. Three concrete consequences: HCM is the default LOS pack with others as swappable data; metric internally with display units switchable; **left-hand and right-hand traffic is a first-class network setting from M1** (Thailand, UK, Japan, Australia all drive left — a prior effort never implemented it at all). | If it turns out every real user is in one jurisdiction and the generality is unused weight. |
-| D8 | 2026-09-10 | **The M2 gate is performed by the project owner alone, not three independent engineers** | The owner is a practising traffic engineer and no outside participants are available. Accepted with eyes open: this is **a materially weaker test than the one D1 needs**, because the person judging whether a free SUMO-based tool would have sufficed is the same person who chose to build an engine instead. Mitigation, mandatory: **the pass/fail criteria are written down and committed before M2 implementation starts**, so the judgement cannot be rationalised after the fact. Adding outside engineers later strengthens the gate and is never wasted. | Nothing makes it wrong; it is simply weak. Treat a pass as "not disproven", not as "confirmed". |
+| D8 | 2026-09-10 | **The M2 gate is performed by the project owner alone, not three independent engineers** | The owner is a practising traffic engineer and no outside participants are available. Accepted with eyes open: this is **a materially weaker test than the one D1 needs**, because the person judging whether the tool is usable for a real study is the same person who chose to build it. Mitigation, mandatory: **the pass/fail criteria are written down and committed before M2 implementation starts**, so the judgement cannot be rationalised after the fact. Adding outside engineers later strengthens the gate and is never wasted. | Nothing makes it wrong; it is simply weak. Treat a pass as "not disproven", not as "confirmed". |
 | D9 | 2026-09-10 | **The project is named Veytrix** | Chosen by the owner after working through several naming directions (domain jargon, borrowed engineering terms, abstract coinages, Thai-rooted feminine names). Verified free on npm and PyPI. **Two known flags, accepted:** `veytrix.com` is already resolving to something, and **Vectrix** is an existing electric-scooter company that is phonetically close. Neither blocks a repository or package name, but both are reasons a trademark search would be worth doing before any commercial use. | A trademark conflict surfacing later. Renaming is cheap while the repo is documentation only and gets steadily more expensive after that. **Superseded by D10 (Velk) on 2026-09-11.** |
 | D10 | 2026-09-11 | **The project is named Velk**, superseding D9 | Coined, one syllable, no meaning in any major language — the owner's stated requirement. Verified free on npm and PyPI, and a brand/company search found nothing using it. `velk.dev` and `velk.app` are free; `velk.com` and `velk.io` are held, which is ordinary for a four-letter word and irrelevant to a repository or package name — accepted as a known risk. **`MicroFlow Simulator` was considered first and rejected on collision grounds** (`microflow` taken on npm and PyPI, ≥7 GitHub projects plus two orgs and a GitHub Topic, both obvious domains held) — do not re-propose it. | A trademark conflict, or the name proving so anonymous that people cannot find the project. Both are cheap to fix now and expensive once source code, packages and links exist. **Superseded by D11 on 2026-09-11.** |
 | D11 | 2026-09-11 | **Keep the working name `TrafficSim`; defer naming until the end of M1** | The project was renamed three times in two days (TrafficSim → Veytrix → Velk) with several further candidate sets explored, and no code was written in that time. A name is far easier to judge against a working program than against a specification, and each further round costs a session without moving the project. Deferring also cancels work already queued: no GitHub repository rename, and no package or domain registrations to make and then undo. **Trigger to revisit: the end of M1**, when there is a working network editor to name. **Names already examined — start from these findings, do not re-derive them:** `Headway` rejected (`headwaymaps/headway`, an OSM maps stack, same field); `MicroFlow Simulator` rejected (`microflow` taken on npm and PyPI, ≥7 GitHub projects plus two orgs and a GitHub Topic, both obvious domains held); `Veytrix` set aside (`veytrix.com` held, `Vectrix` phonetically close); `Velk` set aside while clean on every channel checked (npm, PyPI, brand search; `velk.dev`/`velk.app` free) and therefore the strongest candidate to return to. | Drifting past M1 without ever deciding. The trigger exists to prevent exactly that. |
@@ -484,3 +478,10 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D31 | 2026-09-23 | **A Qt benchmark pumps the event loop between iterations, or it is measuring Qt's deferred work instead of the code** | `QGraphicsScene::clear()` defers reclaiming its index entries to the event loop. A tight timing loop that clears and refills the scene therefore measures an index growing without bound: six identical batches climbed 28 → 159 ms, and the same loop with `processEvents()` stayed flat at 11.5. The harness's answer depended on how many repetitions it was asked for, which is the signature of this class of bug. | Any future harness that drives a Qt object must pump the loop, and any number produced by one that did not must be re-measured before it is quoted. The tell is a result that changes with the repetition count — check that before trusting a Qt timing, the way an interleaved A/B is checked against the noise floor. |
 | D32 | 2026-09-24 | **Per-lane demand shares live on `VehicleInput` itself, as optional weights in `routeLaneChains` order** | `VehicleInput` is not wrapped by a separate editor type — `AuthoringDefinition` reuses `ScenarioDefinition`'s `VehicleInput` list directly (`src/model/demand/definition.hpp`) — so it is the only place both the editor and `buildScenario` already read, and the "schema-and-signature decision" the milestone named. Rejected: keying by lane id (the chain's starting lane), which is more robust to the network's lane count changing under an authored route (M1.26's whole point) but adds indirection nothing here asked for yet. Chose the plain positional vector instead, with a deliberately cheap safety net — a size that no longer matches the route's current lane count, or any non-positive weight, degrades to the M1.26 equal split rather than misapplying a weight to the wrong lane. Persisted only when non-empty (`definitionJson`), so an unedited input's saved file and compiled volumes are byte- and bit-identical to before this landed; schema bumped to 9 since the field is new, even though nothing here is version-gated the way network parsing is. `buildScenario` normalises by the weights' sum, so they need not sum to 1. The editor dialog landed later the same session (D33). | If a route's lane count turns out to change often enough in practice that the size-mismatch fallback fires constantly and authors find their shares silently reset, key by the chain's starting lane id instead — the rejected alternative above, not a redesign. The two tests holding the gate (`project.m1_26_1_lane_shares_round_trip_and_stay_out_of_an_unedited_file`, `editor.m1_26_1_lane_shares_weight_the_split_and_degrade_when_stale`) are the ones to extend, not replace, if that happens. |
 | D33 | 2026-09-24 | **The vehicle-input dialog writes `laneShares` only when a field was actually touched, never merely displayed** | The dialog has to show *something* in each lane's weight box, and the natural seed for an unset input is the equal split (1 each) — but if accepting the dialog always wrote whatever was showing, opening an unedited input and clicking OK would write an explicit `{1,1,...}` where D32 depends on empty meaning "equal split" for the bit-identical guarantee, and would defeat the size-mismatch fallback the first time anyone merely looked at the dialog after a network edit. A `sharesDirty` flag, set only by `QDoubleSpinBox::valueChanged` and reset whenever the fields are rebuilt (seeded via `QSignalBlocker` so the seeding itself never sets it), makes "touched" the actual question asked, not "was the dialog opened". Rebuilding the fields on every route-combo change was the other half: the lane count is the selected route's, not the input's, so switching routes mid-dialog must not silently resize the wrong array. | If a future field in this dialog needs the same "only write if changed" contract, copy the flag-plus-`QSignalBlocker` pattern rather than inferring dirtiness by comparing values — a user typing the same number back is not a meaningful distinction to make, but it also is not wrong to treat as dirty, and the flag is simpler than either comparison. |
+| D34 | 2026-09-24 | **M2's gate criteria are registered: C0–C4 as drafted in `M2_PLAN.md` §3** | Ratified by the owner in session, answering "accept as drafted", before any M2.2+ code. Amendment chosen by the owner the same day: C0, the portfolio audit, is answered before M2.5 produces its first delay figure rather than before any M2 code — its purpose is to be answered blind to TrafficSim's numbers, and until M2.5 there are none. The record lives in `M2_GATE.md`. | If a delay figure is produced before C0 is filled in, C3 stops being blind and the gate is weakened again; the stop point in NEXT exists for that. **C0 and C3, and the C0-before-M2.5 amendment, superseded by D38.** |
+| D35 | 2026-09-24 | **M2.0.1 extends M3.1's derived rule to Connectors meeting at a lane's start; it does not start M3** | Asked "can the necessary part of M3 be done first", the owner chose to run the natural four-leg drawing. What that needs is the already-implemented M3.1 rule applied where it was skipped (a joined section starting at 0), ordered by drawing order, as same-station body arrivals already are. Conflict areas, crossing conflicts and authorable priority rules stay M3, behind the M2 gate. | If a study needs a different priority than drawing order, that is authorable priority rules — M3, not a patch here. |
+| D36 | 2026-09-24 | **Amber stays red until M4** | Every safety clamp in the four-leg run and six in the frozen TS baselines are vehicles caught at the line by amber; a stop-or-go decision would change frozen fixtures. The owner chose to keep it; M2.5 shows the clamp count beside its figures. | When M4 builds signal control, or a study's delays are visibly driven by it. |
+| D37 | 2026-09-24 | **Compositions and the static routing decision move from M2.1 to M2.3/M2.4** | M2's done-condition (counted volumes on the M1 intersection) needs both; M2.1's gate (validated distributions, behaviour parameters) does not. Both expand at compile time into the core's existing inputs, so `core/` and every frozen fixture are untouched. | If a positioned or per-interval decision is needed for the gate study — that remains M2.1. |
+| D38 | 2026-09-24 | **The project is a simulator usable in real engineering work; the M2 gate is re-registered as C1 + C2, with C4 recorded** | Owner ruling in session: every reference to comparing against another simulator is removed from the repository, every file and line (git history keeps it), and the purpose is stated positively — a traffic simulation program engineers can use for real work. C0 (portfolio audit) and C3 (the comparison question) existed only to answer that comparison, so both are withdrawn; C1, C2 and C4 keep their numbers. Changed **before any gate observation** — C0 was never answered and M2.5 had produced no figure — so this is a re-registration, not a criterion moved after the fact (D8). M2.5 is unblocked. The owner's supplied spec copies in `docs/specs/` were edited too, on the same instruction. | An observation made before this date that the change could have been tailored to — none exists. |
+| D39 | 2026-09-24 | **Movement delay is the run summary's whole-route term, grouped by (entry Link, exit Link)** | Smallest version that adds up: the movements' trips plus `notInMovement` equal the run's completed trips, and each movement's route starts on its approach and ends on its exit anyway. It includes source wait and the entry acceleration from standstill (≈3 s for a car), which is stated beside the table and pinned by a test. | When an engineer needs delay between two cross-sections (a travel-time section), or the entry bias matters to a figure. That is M5's measurement, and it removes the bias. |
+| D40 | 2026-09-24 | **A queue counter at every signal head; an approach reports the maximum over its lanes** | Vissim's queue counter at the stop line with its default conditions (5 km/h, 10 km/h, 20 m) as data. It is measured along each route that crosses the line, so a queue spilling back past the pocket into the upstream Link is counted. Mean over every step, and the maximum. | An unsignalised approach (M3) needs a counter with no head, so counters become authorable objects then. |

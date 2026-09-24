@@ -4,6 +4,7 @@
 #include "../project/diagnostics.hpp"
 #include "../project/run.hpp"
 #include "../eval/summary.hpp"
+#include "../project/evaluation.hpp"
 #include "../project/display.hpp"
 #include "../commands/appearance_commands.hpp"
 #include "../commands/demand_commands.hpp"
@@ -79,13 +80,14 @@ private:
     void startAutosave();
     void clearRecovery();
     void recoverDialog(bool startup = false);
-    QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{};
+    QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{}, *decisionTable_{};
     void buildDemandTables();
     void refreshDemand();
     void translateDemand();
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
     void editInput(const std::string& id = {}, const std::string& preselectedRoute = {});
     void editProgram(const std::string& id = {});
+    void editDecision(const std::string& id = {}); // M2.4, src/shell/editor_decision.cpp
     void editHead(const std::string& id = {});
     void editRunSettings();
     void deleteDemand(const std::string& kind, const std::string& id);
@@ -115,12 +117,23 @@ private:
     // Fed every step, exactly as the retired M0 window did: the clamp count is the only signal
     // that the prototype car-following is being pushed, so it has to be visible where the run is.
     SummaryAccumulator runSummary_;
+    // M2.5: per-movement delay and approach queues, fed the same states as runSummary_.
+    std::optional<MovementAccumulator> runMovements_;
+    QTableWidget *movementTable_{}, *queueTable_{};
+    QLabel* resultsNote_{};
+    void buildResults();
+    void translateResults();
+    void refreshResults();
+    void observeRun();
     QLineEdit* runSeed_{};
     QComboBox* runSpeed_{};
     QLabel* runInfo_{};
 public:
     const SimState& runState() const { return runState_; }
     RunSummary runSummary() const { return runSummary_.summary(); }
+    std::optional<MovementReport> runReport() const {
+        return runMovements_ ? std::optional(runMovements_->report(runState_)) : std::nullopt;
+    }
 private:
     QString file_;
     std::map<QString,QJsonObject> locales_;

@@ -1,0 +1,7 @@
+{
+  "id": "queue-counter",
+  "description": "Queue conditions after Vissim's defaults (QueueDefBegSpeed, QueueDefEndSpeed, QueueDefMaxHdwy). Speeds in km/h, headway in metres.",
+  "beginSpeed": 5,
+  "endSpeed": 10,
+  "maxHeadway": 20
+}

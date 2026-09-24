@@ -1,0 +1,7 @@
+{
+  "id": "urban-mixed",
+  "types": [
+    { "vehicleTypeId": "car", "share": 0.95 },
+    { "vehicleTypeId": "heavy-vehicle", "share": 0.05 }
+  ]
+}

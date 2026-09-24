@@ -183,6 +183,23 @@ VehicleType parseVehicleType(const Json& t) {
         {field<double>(range, "min"), field<double>(range, "max")}, field<double>(t, "maxAcceleration"),
         field<double>(t, "comfortableDeceleration"), field<double>(t, "maxDeceleration"), field<std::string>(t, "behaviourId")};
 }
+Composition parseComposition(const Json& c) {
+    Composition composition{field<std::string>(c, "id"), {}};
+    for (const auto& t : array(c, "types"))
+        composition.types.push_back({field<std::string>(t, "vehicleTypeId"), field<double>(t, "share")});
+    return composition;
+}
+std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
+    std::vector<RoutingDecision> result;
+    for (const auto& x : array(definition, "routingDecisions")) {
+        RoutingDecision decision{field<std::string>(x, "id"),
+                                 present(x, "name") ? field<std::string>(x, "name") : std::string{}, {}};
+        for (const auto& r : array(x, "routes"))
+            decision.routes.push_back({field<std::string>(r, "routeId"), field<double>(r, "relativeFlow")});
+        result.push_back(std::move(decision));
+    }
+    return result;
+}
 ScenarioDefinition parseDefinition(const Json& value) {
     ScenarioDefinition definition;
     definition.duration = field<double>(value, "duration");
@@ -194,6 +211,16 @@ ScenarioDefinition parseDefinition(const Json& value) {
             field<std::string>(i, "vehicleTypeId"), field<double>(i, "vehiclesPerHour"),
             field<double>(i, "startTime"), field<double>(i, "endTime")};
         if (i.contains("laneShares")) input.laneShares = doubles(i, "laneShares");
+        if (i.contains("compositionId")) input.compositionId = field<std::string>(i, "compositionId");
+        if (i.contains("routingDecisionId")) input.routingDecisionId = field<std::string>(i, "routingDecisionId");
+        if (i.contains("intervals")) {
+            for (const auto& p : array(i, "intervals"))
+                input.intervals.push_back({field<double>(p, "startTime"), field<double>(p, "endTime"),
+                                           field<double>(p, "vehiclesPerHour")});
+            // The file's scalars are a convenience copy; the intervals are the source, so a
+            // hand edit that makes them disagree cannot create a second truth (hard rule 3).
+            deriveInputTotals(input);
+        }
         definition.inputs.push_back(std::move(input));
     }
     for (const auto& p : array(value, "signalPrograms")) {

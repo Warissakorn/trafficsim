@@ -11,10 +11,36 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-The compact UI refresh is implemented in PR #54, with the desktop `check` passing all 36 tests
-and English/Thai screenshots inspected at 1360×860 and 1024×768. Linux and Windows CI pass for
-the code change. Review the PR and include native Windows appearance and display scaling in
-the existing owner acceptance exercise; the M1 gate and engineering priorities below remain open.
+**M2 is under way (2026-09-24).** The owner ratified the gate (ROADMAP §M2, D34), then restated
+the purpose — a simulator usable in real engineering work — and re-registered it as C1 + C2 with C4
+recorded (D38). The owner also ruled on
+M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own commit with
+`core/`, the frozen fixtures and `trafficsim-cli 42` unchanged:
+
+- **M2.0.1** Connectors meeting at a lane start are ordered by M3.1's derived rule in drawing
+  order; the four-leg fixture is now the natural drawing and runs with no diagnostic.
+- **M2.2** counted `intervals` on an input (paste a count column in the dialog), schema 10.
+- **M2.3** `compositionId` from `data/compositions/` (`urban-mixed`, `car-only`) and a
+  `heavy-vehicle` type — plausible, unvalidated.
+- **M2.4** static routing decisions (Routing decisions tab), relative flows over routes leaving
+  one Link.
+
+- **M2.5** delay per movement and queue per approach for one run: the editor's **Results** tab and
+  `trafficsim-cli --project FILE [--csv FILE]` (D39, D40; contract in `SIMULATION.md`).
+
+**M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
+([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank
+project to the Results table, timed against the owner's current tool (C1, C2), with C4 recorded.
+Nothing in M3 starts before it passes.
+
+**Engineering work that can proceed without the owner, if asked:**
+- An in-editor CSV export of the Results tab. The CLI has one; the editor only shows the table.
+- A Results-tab refresh that skips work while the tab is hidden. It is cheap today (16 rows), so
+  measure first.
+- Removing the entry-acceleration bias needs travel-time sections (M5), not a correction factor.
+
+**Open questions for the owner, none blocking:** motorcycles (not shipped; lane sharing is
+unmodelled — Thai counts are motorcycle-heavy); per-interval turning proportions (M2.1).
 
 **The measure-first optimization pass is finished.** Items 1–5 and 7 shipped; item 6 was built,
 measured and **reverted**. Do not re-try any of these without a new measurement:
@@ -47,7 +73,7 @@ on the same dialog and table, not a new design question.
 
 ## Standing — the owner's items
 
-**Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
+**One engineering item is open** — item 0b below. Everything else here is the owner's.
 
 **0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
@@ -56,17 +82,7 @@ exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is
 entry). Signal heads are the last object still placed only through a dialog;
 `objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
 A routing decision as an object at a station along the link — what Vissim actually places, and
-what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
-until its pre-registered criteria are written into `ROADMAP.md`. Writing them is the owner's,
-and it blocks all of M2.
-
-**0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
-station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
-its cut against `boundaries.back() + kMinSectionLength` and the boundary the FIRST arrival just made
-is at that very station — so it is measured against itself, and Run is blocked for a pair that is
-physically fine. Reuse the existing cut instead of rejecting it. Section table only, one system, and
-the test already in `tests/connector_tests.cpp` flips to its commented expectation when it lands.
-See the top entry of this file, and `CONNECTOR_PARITY_AUDIT.md` §3.3.
+what would bring back the lane-specific route M1.26 gave up — is **M2.1**.
 
 **1. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
 layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on
@@ -113,10 +129,8 @@ stays either way.
 candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have
 findings in the D11 row. **This is the owner's decision, not a session's.**
 
-**Not started, and deliberately:** M2 implementation. Its gate is pre-registered and
-`ROADMAP.md`'s "Pre-registered criteria: TO BE WRITTEN before M2 implementation starts" is still
-unfilled. Starting M2 before writing them **voids the gate** (D8), and that gate is the honesty
-check on the whole project's premise. Write the criteria first.
+**M2's gate is registered** (ROADMAP §M2, D34, re-registered by D38 as C1 + C2 with C4 recorded).
+M2.5 may proceed; the gate study itself (M2.6) is the owner's.
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
 not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an

@@ -65,6 +65,12 @@ RuntimeSections runtimeSections(const Network& network) {
                          [](const auto& a, const auto& b) { return a.station < b.station; });
         std::vector<double> boundaries{0};
         for (const auto& cut : cuts) {
+            // A second arrival at a station this lane is already cut at needs no cut of its own:
+            // the one the first arrival made serves both, and both paths then join the same
+            // section. Measuring it against that boundary instead refused it for want of room
+            // behind ITSELF (CONNECTOR_PARITY_AUDIT.md §3.3). Only the identical station is
+            // reused -- one 0.1 m off is a different drawn metre, and still refused.
+            if (boundaries.size() > 1 && std::abs(cut.station - boundaries.back()) <= 1e-9) continue;
             if (cut.station < boundaries.back() + kMinSectionLength || cut.station > full - kMinSectionLength) {
                 const auto& id = network.connectors[owner[cut.path]].id;
                 if (std::find(table.unsectionable.begin(), table.unsectionable.end(), id) ==
@@ -196,11 +202,26 @@ std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
                                                const PriorityDefaults& defaults) {
     std::vector<PriorityRule> rules;
     for (std::size_t p = 0; p < table.paths.size(); ++p) {
-        // An arriving path whose successor section does not start at 0 arrived inside the body,
-        // so it and the section upstream of the arrival both feed that section: a merge.
         const auto joined = std::find_if(table.sections.begin(), table.sections.end(),
             [&](const auto& s) { return s.id == table.pathNext[p]; });
-        if (joined == table.sections.end() || joined->start <= 0) continue;
+        if (joined == table.sections.end()) continue;
+        // Several paths joining the same section would otherwise enter it together. The one drawn
+        // later gives way to every one drawn before it, at that path's own end: a strict order,
+        // so nothing waits on anything that waits on it. This covers two arrivals at one body
+        // station (CONNECTOR_PARITY_AUDIT.md §3.3) and -- M2.0.1, D35 -- Connectors meeting at a
+        // lane's START, which is how every turn meets the exit of an intersection. Drawing order
+        // is arbitrary, and says so in SIMULATION.md: choosing who has priority there is an
+        // authorable priority rule, which is M3.
+        for (std::size_t q = 0; q < p; ++q)
+            if (table.pathNext[q] == table.pathNext[p])
+                rules.push_back({"give-way/" + table.paths[p].id + "/to/" + table.paths[q].id,
+                                 table.paths[p].id, polylineLength(table.paths[p].geometry),
+                                 table.paths[q].id, polylineLength(table.paths[q].geometry),
+                                 defaults.gapTime, defaults.headway});
+        // An arriving path whose successor section does not start at 0 arrived inside the body,
+        // so it and the section upstream of the arrival both feed that section: a merge, where
+        // the lane has priority.
+        if (joined->start <= 0) continue;
         const auto upstream = std::find_if(table.sections.begin(), table.sections.end(),
             [&](const auto& s) { return s.laneId == joined->laneId && s.end == joined->start; });
         if (upstream == table.sections.end()) continue;

@@ -11,12 +11,11 @@
 #include <QToolBar>
 #include <algorithm>
 namespace trafficsim {
-namespace {
 // Every path that advances the run funnels through here. SimState::events holds the latest
 // step only, so a step whose events are not accumulated is one whose clamps are lost for good.
-void accumulate(SummaryAccumulator& summary, const SimState& state) {
-    for (const auto& event : state.events) summary.add(event);
-}
+void EditorWindow::observeRun() {
+    for (const auto& event : runState_.events) runSummary_.add(event);
+    if (runMovements_) runMovements_->observe(runState_);
 }
 void EditorWindow::buildRunControls() {
     auto* bar=addToolBar(QString());bar->setObjectName("editorRunToolbar");texts_["editorRunToolbar"]=bar;
@@ -42,7 +41,7 @@ void EditorWindow::buildRunControls() {
 }
 void EditorWindow::pauseRun(){runTimer_.stop();runCredit_=0;refreshRun();}
 void EditorWindow::clearRun(){
-    runTimer_.stop();runCredit_=0;runSnapshot_.reset();runState_={};runSummary_={};canvas_->clearRunFrame();refreshRun();
+    runTimer_.stop();runCredit_=0;runSnapshot_.reset();runState_={};runSummary_={};runMovements_.reset();canvas_->clearRunFrame();refreshRun();
 }
 bool EditorWindow::prepareRun() {
     if(runSnapshot_)return true;
@@ -51,10 +50,11 @@ bool EditorWindow::prepareRun() {
         try{seed=parseSeed(runSeed_->text().toStdString());}catch(const std::exception&){throw std::invalid_argument("invalidSeed");}
         auto snapshot=compileDocument(history_.document(),data_);
         auto state=createSimulation(snapshot.scenario,seed);
-        runSnapshot_=std::move(snapshot);runState_=std::move(state);
+        MovementAccumulator movements(evaluationSpec(history_.document(),snapshot,data_));
+        runSnapshot_=std::move(snapshot);runState_=std::move(state);runMovements_.emplace(std::move(movements));
         // createSimulation can already emit events at t=0; start the count from them, not from
         // the first step, or a departure at time zero is missing from every later figure.
-        runSummary_={};accumulate(runSummary_,runState_);
+        runSummary_={};observeRun();
         canvas_->setRunNetwork(runSnapshot_->network);canvas_->setRunFrame(runState_);
         error_->clear();return true;
     }catch(const std::exception& e){
@@ -70,7 +70,7 @@ void EditorWindow::toggleRun(){
 }
 void EditorWindow::stepRun(){
     if(!prepareRun())return;
-    if(runState_.tick<totalTicks(*runState_.scenario)){runState_=stepSimulation(runState_);accumulate(runSummary_,runState_);}
+    if(runState_.tick<totalTicks(*runState_.scenario)){runState_=stepSimulation(runState_);observeRun();}
     if(runState_.tick>=totalTicks(*runState_.scenario))runTimer_.stop();
     canvas_->setRunFrame(runState_);refreshRun();
 }
@@ -81,7 +81,7 @@ void EditorWindow::tickRun(){
     int budget=200;
     while(runCredit_>=runState_.scenario->timeStep && runTimer_.isActive() && budget-->0) {
         runCredit_-=runState_.scenario->timeStep;
-        runState_=stepSimulation(runState_);accumulate(runSummary_,runState_);
+        runState_=stepSimulation(runState_);observeRun();
         if(runState_.tick>=totalTicks(*runState_.scenario))runTimer_.stop();
     }
     runCredit_=std::min(runCredit_,5.);
@@ -89,6 +89,7 @@ void EditorWindow::tickRun(){
 }
 void EditorWindow::refreshRun(){
     if(!runInfo_)return;
+    refreshResults();
     actions_.at("editorRun")->setText(text(runTimer_.isActive()?"editorPause":"editorRun"));
     actions_.at("editorRun")->setIcon(editorIcon(runTimer_.isActive()?EditorIcon::pause:EditorIcon::run));
     actions_.at("editorStep")->setEnabled(!runTimer_.isActive());

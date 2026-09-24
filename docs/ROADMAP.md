@@ -238,93 +238,32 @@ keyboard-only owner exercise remain open, as does M1's timed gate.
 
 ### M1.23 — Interchange, document workflow and measured rendering
 
-**Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile/SUMO import and CRS mapping;
+**Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile import and CRS mapping;
 recent files/tabs, spatial indexing/culling/LOD and optional renderer acceleration.
 Competitor-format imports and 3D require an explicit scope revision before implementation.
 **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a
 reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
 
-### M1.26 — Demand is authored per Link and compiled per lane
+### M1.26–M1.27 — Carriageway demand, per-lane shares, optimization · **CLOSED**
 
-**Implemented.** An authored route names **Links and Connectors**, never a lane and never a
-Connector path, and `buildScenario` expands it into one core route per lane the drawing actually
-carries (`routeLaneChains`, `src/model/network/routing.cpp`). Consequences, all of them the point:
-a route covers every lane of the carriageway; Connector lane counts can no longer invalidate it,
-so `changeConnectorRange`, `changeConnectorEndpoints`, `changeLanes` and `reverseLink` lost their
-route guards; a vehicle input's volume is the **Link total**, split equally across the lanes its
-route reaches; and the canvas draws the compiled chain, fixing a route drawn upstream of a
-mid-body arrival — a line running against the traffic on that Link. Two Links named one after the
-other imply the Connector between them and each lane finds its own, which is what lets `splitLink`
-keep routes across the per-lane bridges it creates. Schema **8** stores object ids and
-`migrateRoutesToObjects` maps older files (and M0 scenarios, read through the same path by the
-CLI) on load, idempotently. A route whose objects do not join up for any lane is kept and reported
-as `UNSUPPORTED_ROUTE_TOPOLOGY`: authoring tolerates it, Run refuses it. The Connector creation
-dialog now defaults to **all** lanes of both Links, reversing M1.12's one-lane default, because
-narrowing afterwards is finally safe.
-
-**Not in M1.26:** the engine, the segment contract and every measured number are unchanged, and
-the four frozen baselines replay identically because a single-lane expansion keeps the authored
-id. The equal split is an authoring convenience, not a lane-choice model — no lane changing exists
-yet, and adjustable shares are M1.26.1 below. **A lane-specific route cannot be expressed any
-more:** Vissim's turn pocket, where only the left lane may turn, is the cost of routing by Link,
-and restoring it is the first thing M2.1's positioned routing decision has to do.
-
-**Gate:** the keyboard-only equivalent of the pointer gestures and the owner's timed exercise
-in `M1_ACCEPTANCE.md`; automated tests do not close it.
-
-#### M1.26.1 — Adjustable per-lane shares · **CLOSED**
-
-`VehicleInput.laneShares` (D32): optional weights in `routeLaneChains` order, normalised by
-`buildScenario`; empty or stale degrades to the M1.26 equal split, and schema **9** writes it only
-when set, so an unedited save stays unchanged. The input dialog shows one weight per lane the
-route reaches; untouched fields leave `laneShares` untouched. Gated by the D32 tests and
-`demand-ui`'s round-trip; not covered: the M1 owner exercise, ridden on as M1.26 is.
-
-### M1.27 — Optimization program: build, redraw, engine, UX · **CLOSED**
-
-**Build and redraw.** `src/project/json.hpp` declares `Json` through `<nlohmann/json_fwd.hpp>`
-and `trafficsim_shell` precompiles the Qt surface the UI test executables reuse: clean build
-`-j4` **86 s → 64 s**. `tools/editor_benchmark.cpp` made the editor measurable, and the canvas
-caches each Connector's paths, boundaries and markings against the only three inputs they read
-— the Connector, its two Links and the driving side — by value, never by a revision counter. A
-160-link corridor redraws in **10.6 ms instead of 95.1** and picks in **10.0 instead of 57.2**.
-
-**The gate said "a cache and a head index"; the head index was not built** — callgrind put the
-`headPosition` scan below the threshold and `connectorMarkings` at 52.6%, so the profile chose
-the work. A Link geometry cache was built, measured and **reverted**: validating the entry cost
-what recomputing it saved. What remains is `QGraphicsScene` construction — M1.23's culling/LOD.
-
-#### M1.27.2 — A vehicle carries scenario slots · M1.27.3 — UX
-
-**M1.27.2.** `tools/engine_benchmark.cpp` commits the corridor the 2026-09-18 session had to
-generate by hand, and its profile reproduced that session's finding: 17.4% of instructions in
-`std::string`, 11.4% in the per-tick vehicle sort, 10.3% in `resolveRefs`. `PendingVehicle` now
-holds `inputIndex`/`routeIndex`/`typeIndex` into the canonical Scenario, resolved once in
-`ScenarioIndex`; `routeOfId`/`typeOfId` and `IdSlot` go with the ids they resolved. Events and
-checkpoints still carry the NAMES, so the frozen fixtures are byte-identical: **1560.8 → 792.6
-ms** at 12 and **2566.2 → 1331.0** at 24 intersections, interleaved medians, same trips.
-
-**M1.27.3, and M1.27 with it.** `tools/gesture_walkthrough.cpp` counts the inputs each authoring
-task costs and replays the Vissim reflexes against the drawing it makes: **six replayed, five
-transfer**. The sixth, `Ctrl`+left-click, is not the *collision* the parity table has ranked High
-since 2026-09-14 — measured, it does **nothing** on an already-selected object — and the owner
-ruled it stays so (D30), leaving the counted delta zero by decision. The table itself was the
-defect: a dozen rows under-reported the product; §1a carries the measured state. **This does not
-close M1's timed owner exercise.**
+Full entries in [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md) (moved
+2026-09-24). **M1.26:** a route names Links and Connectors and is compiled per lane; an input is
+the Link total. **M1.26.1:** optional `laneShares` (D32). **M1.27:** build, redraw and engine
+optimization, and the counted gesture walkthrough. **Gate still open for M1.26:** the
+keyboard-only gestures and the owner's timed exercise in `M1_ACCEPTANCE.md`.
 
 ---
 
 ## M2 — Demand, run, first numbers · **GATE**
 
-Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay
-and queue per movement.
+Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay and queue per movement.
 
 **Done when:** the M1 intersection, loaded with counted volumes, runs and produces a delay
 table.
 
 **GATE — the honesty check.** Before M3 starts, a practising traffic engineer completes a
-small **real** study in this tool and in their current tool, and answers directly whether the
-free SUMO-based alternative would have been good enough for this job.
+small **real** study in this tool and in their current tool, and the result shows whether the
+tool is usable for real engineering work.
 
 > **This gate is currently performed by the project owner alone (D8), which makes it weak** —
 > the person judging is the person who chose to build an engine. It is therefore run as a
@@ -333,22 +272,43 @@ free SUMO-based alternative would have been good enough for this job.
 > under these conditions means "not disproven", never "confirmed". Recruiting outside
 > engineers later strengthens the gate and is never wasted effort.
 
-**Pre-registered criteria: TO BE WRITTEN before M2 implementation starts.** Leaving this
-line unfilled and starting M2 anyway voids the gate.
+**Pre-registered criteria — ratified by the owner on 2026-09-24, re-registered the same day
+before any gate observation (D38)** (record in [`M2_GATE.md`](M2_GATE.md)):
 
-- If the answer is broadly *yes*, this project is the wrong answer to the problem —
-  see `PROBLEM.md` §7.1 — and the honest move is to stop and reconsider, not to continue
-  because effort has been spent.
-- This gate exists because the whole justification for owning an engine (`PROBLEM.md` §2)
-  is an argument, not yet an observation.
+- **C1 — Completion.** One real study (signalised, protected phasing, counted 15-minute volumes,
+  the owner's timing plan) completed end to end: network over its aerial image, volumes,
+  composition, timing, Run, per-movement delay and queue table. Fails on hand-edited JSON, a code
+  change during the study, or outside help.
+- **C2 — Effort.** Time in TrafficSim ≤ **2.0×** the owner's current tool, both from blank.
+- **C4 — Plausibility, recorded, not scored.** Per movement, TrafficSim delay beside the current
+  tool's; a movement more than **two LOS letters** apart opens a numbered investigation.
+
+**Pass = C1 and C2 pass** — reported as *not disproven*. (C0 and C3 were withdrawn by D38; the
+remaining criteria keep their numbers so earlier records still resolve.)
+
+- If C1 or C2 fails, the tool is not yet usable for the job it exists for — see `PROBLEM.md`
+  §7.1 — and M3 does not start until what failed is fixed and the gate re-run.
 
 ---
+
+### M2.0–M2.6 — Slices (detail in [`M2_PLAN.md`](M2_PLAN.md) §4)
+
+**M2.0** preconditions: the four-leg fixture, same-station cuts, dropped-lane advisory, and
+**M2.0.1** — Connectors meeting at a lane's start get M3.1's derived rule (D35; this extends M3.1,
+it does not start M3). **M2.2** time-varying volumes · **M2.3** vehicle compositions · **M2.4**
+static turning proportions (moved here from M2.1, D37) · **M2.5** movement delay and queue, one
+run (implemented 2026-09-24, D39/D40) · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
+**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3, M2.4 and M2.5 implemented. M2's done-condition
+(the M1 intersection with counted volumes runs and produces a delay table) is met in code. M2.6 is
+next; the
+gate itself is open and nothing here closes it.
 
 ### M2.1 — Link/lane/Connector behavior and demand extensions
 
 **Open.** Resolve vehicle-owned desired speed versus Link limits/factors, then distributions,
-inheritance, road classes, lane types/restrictions, compositions and static/partial/dynamic
-routing decisions. Persistence must not imply runtime support; add explicit capability guards.
+inheritance, road classes, lane types/restrictions, and partial/dynamic/positioned routing
+decisions (compositions and the static decision moved to M2.3/M2.4, D37). Persistence must not
+imply runtime support; add explicit capability guards.
 **Gate:** validated distributions and references, deterministic sampling, old seed fixtures
 unchanged with defaults, observable runtime effects for every exposed behavior parameter.
 M2's pre-registered owner gate still precedes this work.
@@ -357,7 +317,7 @@ M2's pre-registered owner gate still precedes this work.
 
 ## M3 — Right-of-way: conflict areas and priority rules
 
-**The differentiating milestone.** Everything a SUMO wrapper structurally cannot do.
+**The right-of-way model an engineer controls.**
 
 - Conflict areas as **editable input**: at each conflict point, choose which movement yields,
   or make it undetermined.
@@ -366,8 +326,7 @@ M2's pre-registered owner gate still precedes this work.
 - Signal heads placed **anywhere on a link**, not only at a stop line.
 
 **Done when:** an unsignalized T-junction with a minor-road left turn produces plausible,
-tunable minor-road delay that responds correctly to changing the gap time — and the same
-network is demonstrably not expressible in a SUMO wrapper.
+tunable minor-road delay that responds correctly to changing the gap time.
 
 ---
 

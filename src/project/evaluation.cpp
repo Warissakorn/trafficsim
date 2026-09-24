@@ -1,0 +1,100 @@
+#include "evaluation.hpp"
+#include "json.hpp"
+#include <nlohmann/json.hpp>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <stdexcept>
+
+namespace trafficsim {
+QueueDefinition loadQueueDefinition(const std::filesystem::path& dataDirectory) {
+    try {
+        std::ifstream stream(dataDirectory / "evaluation" / "queue-counter.json");
+        if (!stream) throw std::runtime_error("missing");
+        const auto j = Json::parse(stream);
+        QueueDefinition q{j.at("beginSpeed").get<double>() / 3.6, j.at("endSpeed").get<double>() / 3.6,
+                          j.at("maxHeadway").get<double>()};
+        for (const double v : {q.beginSpeed, q.endSpeed, q.maxGap})
+            if (!(std::isfinite(v) && v >= 0)) throw std::runtime_error("range");
+        if (q.endSpeed < q.beginSpeed) throw std::runtime_error("order");
+        return q;
+    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+}
+namespace {
+std::string linkLabel(const Network& network, const std::string& id) {
+    for (const auto& link : network.links)
+        if (link.id == id) return link.name.empty() ? id : link.name;
+    return id;
+}
+}
+EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot& snapshot,
+                              const std::filesystem::path& dataDirectory) {
+    EvaluationSpec spec;
+    spec.queue = loadQueueDefinition(dataDirectory);
+    std::map<std::string, std::size_t> movementOfAuthored;
+    if (document.definition) {
+        std::map<std::pair<std::string, std::string>, std::size_t> movementOfPair;
+        for (const auto& route : document.definition->routes) {
+            if (route.segmentIds.empty()) continue;
+            const std::pair key{route.segmentIds.front(), route.segmentIds.back()};
+            auto [it, added] = movementOfPair.try_emplace(key, spec.movementNames.size());
+            if (added)
+                spec.movementNames.push_back(linkLabel(document.network, key.first) + " → " +
+                                             linkLabel(document.network, key.second));
+            movementOfAuthored[route.id] = it->second;
+        }
+    }
+    for (const auto& route : snapshot.scenario.routes)
+        if (const auto it = movementOfAuthored.find(route.id.substr(0, route.id.find('/')));
+            it != movementOfAuthored.end())
+            spec.movementOfRoute[route.id] = it->second;
+    for (const auto& link : snapshot.network.links) {
+        QueueCounter counter{link.name.empty() ? link.id : link.name, {}};
+        for (const auto& head : snapshot.network.signalHeads)
+            if (head.connectorId.empty() && head.lane.linkId == link.id) counter.headIds.push_back(head.id);
+        if (!counter.headIds.empty()) spec.counters.push_back(std::move(counter));
+    }
+    return spec;
+}
+namespace {
+std::string quoted(const std::string& text) {
+    std::string out = "\"";
+    for (const char c : text) { if (c == '"') out += '"'; out += c; }
+    return out + '"';
+}
+std::string number(const std::optional<double>& value) {
+    if (!value) return "";
+    std::ostringstream s; s << std::fixed << std::setprecision(2) << *value; return s.str();
+}
+}
+Json movementJson(const MovementReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "simulated movement delay, not HCM control delay; one run";
+    j["movements"] = Json::array();
+    for (const auto& m : r.movements)
+        j["movements"].push_back({{"movement", m.name}, {"vehicles", m.vehicles},
+                                  {"meanDelay", m.meanDelay ? Json(*m.meanDelay) : Json(nullptr)},
+                                  {"meanTravelTime", m.meanTravelTime ? Json(*m.meanTravelTime) : Json(nullptr)}});
+    j["queues"] = Json::array();
+    for (const auto& q : r.queues)
+        j["queues"].push_back({{"approach", q.name}, {"meanLength", q.meanLength}, {"maxLength", q.maxLength}});
+    j["completed"] = r.completed; j["notInMovement"] = r.unassigned; j["meanDelay"] = r.meanDelay ? Json(*r.meanDelay) : Json(nullptr);
+    j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
+    return j;
+}
+std::string movementCsv(const MovementReport& r) {
+    std::ostringstream out;
+    out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";
+    out << "movement,vehicles,meanDelay_s,meanTravelTime_s\n";
+    for (const auto& m : r.movements)
+        out << quoted(m.name) << ',' << m.vehicles << ',' << number(m.meanDelay) << ',' << number(m.meanTravelTime) << '\n';
+    out << "\napproach,meanQueue_m,maxQueue_m\n";
+    for (const auto& q : r.queues)
+        out << quoted(q.name) << ',' << number(q.meanLength) << ',' << number(q.maxLength) << '\n';
+    out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
+        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << '\n';
+    return out.str();
+}
+}

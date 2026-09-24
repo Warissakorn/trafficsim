@@ -10,7 +10,9 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QStandardPaths>
+#include <QTableWidget>
 #include <QTest>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 using namespace trafficsim;
@@ -61,6 +63,16 @@ int main(int argc, char** argv) {
         auto* info = item<QLabel>(w, "editorRunInfo");
         require(info->text().contains("mean delay 29.25"), "Mean delay missing from the run status");
         require(info->text().contains("safety clamps"), "Safety clamps missing from the run status");
+        // M2.5: the finished run fills the Results tab from the same states, marker included.
+        const auto report = w.runReport();
+        require(report && !report->movements.empty(), "A finished run has no movement report");
+        std::uint64_t trips = 0; for (const auto& m : report->movements) trips += m.vehicles;
+        require(trips + report->unassigned == 31, "Movement trips do not add up to the run's completed trips");
+        auto* movements = item<QTableWidget>(w, "editorMovementTable");
+        require(movements->rowCount() == static_cast<int>(report->movements.size()), "Results table rows differ from the report");
+        require(movements->item(0, 0)->text() == QString::fromStdString(report->movements[0].name), "Movement name missing");
+        require(item<QTableWidget>(w, "editorQueueTable")->rowCount() == static_cast<int>(report->queues.size()), "Queue rows differ");
+        require(item<QLabel>(w, "editorResultsNote")->text().startsWith("Not yet validated"), "Results carry no validation marker");
         // Captured on the finished run, so the artifact shows the figures being asserted.
         if (argc > 2) {
             w.resize(1280, 860); QTest::qWait(50);
@@ -69,6 +81,10 @@ int main(int argc, char** argv) {
 
         action(w, "editorReset");
         require(w.runState().tick == 0 && !w.runSummary().meanDelay, "Reset left a stale run summary");
+        // Reset prepares a fresh run at t = 0: the table is there, and nothing in it is stale.
+        const auto fresh = w.runReport();
+        require(fresh && std::all_of(fresh->movements.begin(), fresh->movements.end(),
+                                     [](const auto& m) { return m.vehicles == 0; }), "Reset left stale results");
 
         item<QLineEdit>(w, "editorSeed")->setText("4294967296");
         action(w, "editorRun");

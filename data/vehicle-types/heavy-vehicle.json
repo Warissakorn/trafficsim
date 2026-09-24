@@ -1,0 +1,10 @@
+{
+  "id": "heavy-vehicle",
+  "length": 12,
+  "width": 2.5,
+  "desiredSpeed": { "min": 11.11, "max": 13.89 },
+  "maxAcceleration": 1.0,
+  "comfortableDeceleration": 1.5,
+  "maxDeceleration": 6,
+  "behaviourId": "wiedemann-inspired-prototype"
+}

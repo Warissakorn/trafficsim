@@ -30,6 +30,13 @@ AuthoringDefinition parseAuthoringDefinition(const Json&);
 void migrateRoutesToObjects(const Network&, AuthoringDefinition&);
 Json definitionJson(const AuthoringDefinition&);
 void validateAuthoredDemand(const ProjectDocument&);
+// M2.4. A decision's routes must exist, share one origin Link and carry positive finite flows;
+// an input must name a decision that exists. Refused at authoring, like any bad reference.
+std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition&);
+// The same definition with every input that names a routing decision replaced by one input per
+// route, `id/route-<route>` at volume x normalised flow (every counted interval scaled alike). A
+// single-route decision keeps the plain id. Everything downstream sees ordinary routed inputs.
+AuthoringDefinition withRoutingDecisions(AuthoringDefinition);
 Json documentJson(const ProjectDocument& document);
 ProjectDocument parseDocument(const Json& json);
 void validateDocument(const ProjectDocument& document); // Empty networks are valid drafts.

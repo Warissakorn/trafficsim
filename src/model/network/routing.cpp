@@ -89,7 +89,8 @@ std::vector<std::string> routeChainTo(const Network& network,
     return {};
 }
 std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
-                                                      const std::vector<std::string>& objectIds) {
+                                                      const std::vector<std::string>& objectIds,
+                                                      std::vector<std::string>* ambiguous) {
     if (objectIds.empty()) return {};
     // A chain in progress: the lane-level ids so far, and where the vehicle currently is.
     struct Chain { std::vector<std::string> ids; LaneReference at; bool onConnector{}; };
@@ -131,14 +132,15 @@ std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
                 // in a route. Ambiguity is refused rather than guessed: where two Connectors
                 // serve the same lane pair, the author has to name the one they mean.
                 std::optional<ConnectorPath> bridge;
-                bool ambiguous = false;
+                bool twoWays = false;
                 for (const auto& connector : network.connectors)
                     for (const auto& path : pathsOf(connector))
                         if (path.from.laneId == chain.at.laneId && path.to.linkId == link->id) {
-                            if (bridge && bridge->id != path.id) ambiguous = true;
+                            if (bridge && bridge->id != path.id) twoWays = true;
                             if (!bridge) bridge = path;
                         }
-                if (!bridge || ambiguous) continue;
+                if (twoWays && ambiguous) ambiguous->push_back(chain.at.laneId);
+                if (!bridge || twoWays) continue;
                 auto ids = chain.ids; ids.push_back(bridge->id); ids.push_back(bridge->to.laneId);
                 carried.push_back({std::move(ids), bridge->to, false});
             }

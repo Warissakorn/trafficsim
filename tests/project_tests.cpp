@@ -46,7 +46,9 @@ TEST(project, missing_file) {
 }
 TEST(project, catalog_and_translation_keys) {
     const auto s = test::demo().scenario;
-    CHECK(s.vehicleTypes.size() == 1); CHECK(s.behaviours.size() == 1);
+    // car and heavy-vehicle (M2.3), sorted by id; one behaviour.
+    CHECK(s.vehicleTypes.size() == 2); CHECK(s.vehicleTypes[0].id == "car"); CHECK(s.vehicleTypes[1].id == "heavy-vehicle");
+    CHECK(s.behaviours.size() == 1);
     std::ifstream english(test::root() / "data/locales/en.json"), thai(test::root() / "data/locales/th.json");
     CHECK(english.good()); CHECK(thai.good());
     const auto en = Json::parse(english), th = Json::parse(thai);

@@ -13,6 +13,8 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QLineEdit>
+#include <QPlainTextEdit>
 #include <cmath>
 #include <iostream>
 using namespace trafficsim;
@@ -229,10 +231,103 @@ int main(int argc,char** argv) {
         require(w.history().document().definition->inputs.front().laneShares==std::vector<double>({2.0,1.0}),
             "Cancelling a reopened dialog changed the stored weights");
 
+        // M2.2: counts pasted as they come off a count sheet become the input's intervals.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not open for counts");
+            auto* counts=dialog->findChild<QPlainTextEdit*>("editorInputCounts");
+            require(counts && counts->toPlainText().isEmpty(),"An input with no intervals showed counts");
+            dialog->findChild<QDoubleSpinBox*>("editorInputIntervalMinutes")->setValue(1);
+            counts->setPlainText("30\t60\n");
+            dialog->accept();
+        });
+        action(w,"editorEditInput");
+        {
+            const auto& counted=w.history().document().definition->inputs.front();
+            require(counted.intervals==std::vector<VolumeInterval>({{0,60,1800},{60,120,3600}}),
+                "Pasted counts did not become one-minute intervals in veh/h");
+            require(counted.endTime==120 && std::abs(counted.vehiclesPerHour-2700)<1e-9,
+                "The scalars were not derived from the intervals");
+            require(counted.laneShares==std::vector<double>({2.0,1.0}),"Counts disturbed the lane weights");
+            require(item<QTableWidget>(w,"editorInputTable")->item(0,2)->text().contains("2 intervals"),
+                "The input row did not say its volume is a mean over intervals");
+        }
+        // Reopened, the counts read back as counts; cancelling changes nothing.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not reopen for counts");
+            require(dialog->findChild<QPlainTextEdit*>("editorInputCounts")->toPlainText()=="30\n60",
+                "Stored intervals were not shown back as counts");
+            require(dialog->findChild<QDoubleSpinBox*>("editorInputIntervalMinutes")->value()==1,
+                "Stored interval length was not shown back");
+            dialog->reject();
+        });
+        const auto beforeCancel=w.history().document().definition->inputs.front();
+        action(w,"editorEditInput");
+        require(w.history().document().definition->inputs.front()==beforeCancel,"Cancelling changed the counts");
+
+        // M2.3: a composition is chosen from the same list as a vehicle type.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not open for a composition");
+            auto* type=dialog->findChild<QComboBox*>("editorInputType");
+            const int at=type->findData("composition:urban-mixed");
+            require(at>=0,"The composition catalog was not offered");
+            require(type->currentData().toString()=="type:car","An input's own type was not preselected");
+            type->setCurrentIndex(at);dialog->accept();
+        });
+        action(w,"editorEditInput");
+        require(w.history().document().definition->inputs.front().compositionId=="urban-mixed" &&
+                w.history().document().definition->inputs.front().vehicleTypeId.empty(),
+                "Choosing a composition did not store it in place of the type");
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not reopen on a composition");
+            require(dialog->findChild<QComboBox*>("editorInputType")->currentData().toString()=="composition:urban-mixed",
+                "A stored composition was not shown back");
+            dialog->reject();
+        });
+        action(w,"editorEditInput");
+
+        // M2.4: a routing decision is authored in its own tab, and an input can follow it.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Routing decision dialog did not open");
+            dialog->findChild<QLineEdit*>("editorDecisionNameField")->setText("West turns");
+            auto* flow=dialog->findChild<QDoubleSpinBox*>("editorDecisionFlow0");
+            require(flow && flow->value()==0,"A new decision did not list the route with no flow");
+            flow->setValue(3);dialog->accept();
+        });
+        action(w,"editorAddDecision");
+        require(w.history().document().definition->routingDecisions.size()==1,"The decision was not stored");
+        const auto decisionId=w.history().document().definition->routingDecisions.front().id;
+        require(w.history().document().definition->routingDecisions.front().routes==
+                std::vector<DecisionRoute>({{routeId,3}}),"The decision's flow was not stored");
+        item<QTableWidget>(w,"editorInputTable")->selectRow(0);QApplication::processEvents();
+        const auto chooseRoute=[&](const QString& data){
+            QTimer::singleShot(0,[&,data]{
+                auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+                require(dialog,"Input dialog did not open for a decision");
+                auto* route=dialog->findChild<QComboBox*>("editorInputRoute");
+                const int at=route->findData(data);require(at>=0,"Route list is missing an entry");
+                route->setCurrentIndex(at);dialog->accept();
+            });
+            action(w,"editorEditInput");
+        };
+        chooseRoute("decision:"+QString::fromStdString(decisionId));
+        require(w.history().document().definition->inputs.front().routingDecisionId==decisionId &&
+                w.history().document().definition->inputs.front().routeId.empty(),
+                "Choosing a decision did not store it in place of the route");
+        chooseRoute("route:"+QString::fromStdString(routeId));
+        require(w.history().document().definition->inputs.front().routeId==routeId &&
+                w.history().document().definition->inputs.front().routingDecisionId.empty(),
+                "Choosing a route again did not clear the decision");
+
         // Save and reopen: both objects are project data, not canvas state.
         w.saveFile(file);w.openFile(file);QApplication::processEvents();
         require(w.history().document().definition->routes.size()==1 &&
-                w.history().document().definition->inputs.size()==1,"Reopen lost the drawn demand");
+                w.history().document().definition->inputs.size()==1 &&
+                w.history().document().definition->routingDecisions.size()==1,"Reopen lost the drawn demand");
         require(drawn(w,"input-marker"),"Reopened input drew no marker");
 
         // Selecting the input row draws the route it feeds.

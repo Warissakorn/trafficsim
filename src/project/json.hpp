@@ -1,6 +1,7 @@
 #pragma once
 #include "../model/network/network.hpp"
 #include "../eval/summary.hpp"
+#include "../model/demand/definition.hpp"
 #include <nlohmann/json_fwd.hpp>
 
 namespace trafficsim {
@@ -19,6 +20,8 @@ ScenarioDefinition parseDefinition(const Json& value);
 DriverBehaviour parseBehaviour(const Json& value);
 PriorityDefaults parsePriorityDefaults(const Json& value);
 VehicleType parseVehicleType(const Json& value);
+Composition parseComposition(const Json& value);
+std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition); // M2.4
 Json eventJson(const SimEvent& event);
 Json checkpointJson(const SimState& state);
 Json summaryJson(const RunSummary& summary);

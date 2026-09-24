@@ -5,10 +5,10 @@ session.
 
 ## What this is
 
-A **traffic microsimulator with its own simulation engine**, built to the modelling surface
-PTV Vissim users already think in, producing the movement-level delay and LOS output that
-traffic impact studies require. Deliberately **not** a front end over another engine — see
-[`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for why that was tried and where it hit walls.
+A **traffic microsimulator with its own simulation engine, usable in real engineering work**
+(D38), built to the modelling surface PTV Vissim users already think in, producing the
+movement-level delay and LOS output that traffic impact studies require. See
+[`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for the capabilities a study needs from the engine.
 
 `TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
 see D11. Do not rename the project, the repository, or any package before then.
@@ -32,7 +32,7 @@ names Links and Connectors, never a lane**, and `buildScenario` expands it into 
 route per lane (`routeLaneChains`, `src/model/network/routing.cpp`); an input's volume is the
 Link total, split equally across those lanes. So a route covers the whole carriageway, changing
 a Connector's lane count cannot invalidate it, and no command refuses an edit because a route
-exists. Schema 9; older files and M0 scenarios migrate on load. A route whose objects do not
+exists. Schema 10 (M2.2 adds counted `intervals`); older files and M0 scenarios migrate on load. A route whose objects do not
 join up is kept and reported as `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does
 not. **M1.26.1:** `VehicleInput.laneShares` is optional relative weights, one per lane the route
 currently expands to, in `routeLaneChains` order (D32); empty means the M1.26 equal split, and a
@@ -42,8 +42,14 @@ file and compiled volumes are unchanged. The vehicle-input dialog (`src/shell/ed
 now shows one weight field per lane the selected route currently reaches, seeded from a stored
 value only when its size still matches; leaving the fields untouched leaves `laneShares`
 untouched too, which is what keeps an unedited input's save and compiled volumes exactly as they
-were. Compositions, per-interval volumes and a positioned routing decision are
-M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
+were. **M2 is under way** — its gate criteria are registered (ROADMAP §M2, D34). Counted
+`intervals` (M2.2), `compositionId` from `data/compositions/` (M2.3) and static routing decisions
+(M2.4) are all expanded at compile/resolve time into ordinary core inputs, so `core/` and every
+frozen fixture are untouched. Connectors meeting at a lane start are ordered by M3.1's derived
+rule (M2.0.1, D35 — not M3). **M2.5 is implemented** — per-movement delay and per-approach queues for one run in the
+editor's Results tab and `trafficsim-cli --project` (D39, D40). It is whole-route delay, including
+≈3 s of entry acceleration. **Next is M2.6, the owner's gate study: C1 + C2 with C4 recorded (D38),
+in `docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
 `<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test

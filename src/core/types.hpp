@@ -29,6 +29,11 @@ struct VehicleType {
     std::string behaviourId;
     bool operator==(const VehicleType&) const = default;
 };
+// One period of an input's volume (M2.2). A counted 15-minute table is a list of these.
+struct VolumeInterval {
+    double startTime{}, endTime{}, vehiclesPerHour{};
+    bool operator==(const VolumeInterval&) const = default;
+};
 struct VehicleInput {
     std::string id, routeId, vehicleTypeId;
     double vehiclesPerHour{}, startTime{}, endTime{};
@@ -38,6 +43,18 @@ struct VehicleInput {
     // the shares were set) is treated the same as empty rather than misapplied to the wrong lane.
     // Normalised by their sum at compile time; the values themselves need not sum to 1.
     std::vector<double> laneShares;
+    // Authoring only, like laneShares (M2.2): the volume per period, ordered and non-overlapping.
+    // Empty means the one period [startTime, endTime) at vehiclesPerHour -- every input before
+    // M2.2. When set it is the source, and startTime/endTime/vehiclesPerHour are DERIVED from it
+    // (deriveInputTotals) so tables still read one figure; buildScenario expands it into one core
+    // input per period and the core never sees it.
+    std::vector<VolumeInterval> intervals;
+    // Authoring only (M2.3): a composition from data/compositions/ instead of one vehicle type.
+    // Non-empty means vehicleTypeId is unused; resolveCatalogs expands it into one input per type.
+    std::string compositionId;
+    // Authoring only (M2.4): a static routing decision instead of one route. Non-empty means
+    // routeId is unused; the decision's routes and relative flows split the volume.
+    std::string routingDecisionId;
     bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };

@@ -69,11 +69,20 @@ TEST(ranges, a_route_survives_narrowing_while_a_duplicate_and_a_delete_stay_atom
     CHECK(h.document().definition->routes.empty());CHECK(h.document().definition->inputs.empty());
     h.undo();CHECK(documentJson(h.document())==before);
 }
+// A 3-to-2 range: two of its paths converge on one lane. Since M2.0.1 (D35) that merge runs,
+// arbitrated by M3.1's derived rule in path order; the guard is narrowed, not removed.
 TEST(ranges, unequal_ranges_author_merges_without_weakening_runtime_guard) {
     auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},3,2);
-    const auto route=putRoute(d,{"",{"a",id,"b"}});putInput(d,{"",route,"car",600,0,60});
+    const auto route=putRoute(d,{"",{"a",id,"b"}});putInput(d,{"",route,"car",600,0,60,{}});
     validateDocument(d);anchored(d);
-    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_MERGE");
+    auto scenario=compileDocument(d,test::root()/"data").scenario;
+    CHECK(scenario.priorityRules.size()==1);
+    const auto& rule=scenario.priorityRules.front();
+    CHECK(rule.yieldSegmentId.rfind(id,0)==0);CHECK(rule.conflictSegmentId.rfind(id,0)==0);
+    CHECK(rule.gapTime>0);CHECK(rule.headway>0); // Read from data/priority-rules/, never zero.
+    scenario.priorityRules.clear();
+    const auto issues=validateScenario(scenario);
+    CHECK(std::any_of(issues.begin(),issues.end(),[](const auto& i){return i.code=="UNSUPPORTED_MERGE";}));
 }
 TEST(ranges, duplication_preserves_internal_geometry_control_and_metadata_without_demand) {
     auto d=roads();const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);
@@ -97,6 +106,6 @@ TEST(ranges, catalogs_are_content_and_schema_one_upgrades_without_losing_ids) {
     for(auto& c:old["network"]["connectors"])for(const auto* key:{"fromLaneCount","toLaneCount","level","displayType"})c.erase(key);
     const auto restored=parseDocument(old);CHECK(restored.network.connectors.front().id==id);
     CHECK(restored.network.connectors.front().fromLaneCount==1);CHECK(restored.network.links.front().level==0);
-    CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==9);
+    CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==10);
     old["schemaVersion"]=999;test::throws([&]{parseDocument(old);},"EDIT_VERSION");
 }
