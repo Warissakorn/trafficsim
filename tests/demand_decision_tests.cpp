@@ -53,8 +53,18 @@ TEST(demand, a_decision_with_counted_intervals_scales_each) {
         seen += i.id + " ";
         if (i.id.rfind(prefix, 0) == 0) second += i.vehiclesPerHour;
     }
-    if (std::abs(second - 200) > 1e-9) throw std::runtime_error("expected 200 under " + prefix + ", got " +
-                                                                std::to_string(second) + " in: " + seen);
+    if (std::abs(second - 200) > 1e-9) {
+        // Everything each stage saw, so a platform-only failure explains itself from the CI log.
+        std::string stages = " | authored: " + documentJson(w.document)["definition"].dump();
+        const auto split = withRoutingDecisions(*w.document.definition);
+        stages += " | decided:";
+        for (const auto& i : split.inputs) stages += " " + i.id + "->" + i.routeId + "@" + std::to_string(i.intervals.size());
+        const auto resolved = resolveCatalogs(*w.document.definition, test::root() / "data");
+        stages += " | resolved:";
+        for (const auto& i : resolved.inputs) stages += " " + i.id + "->" + i.routeId;
+        throw std::runtime_error("expected 200 under " + prefix + ", got " + std::to_string(second) +
+                                 " in: " + seen + stages);
+    }
 }
 TEST(demand, a_decision_mixing_origins_is_refused) {
     auto built = fixture::fourLegIntersection();
