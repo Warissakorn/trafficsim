@@ -51,8 +51,14 @@ TEST(fourleg, runs_and_every_movement_delivers) {
     // Nothing blocks Run and nothing is even advised: a drawing an engineer would hand in.
     CHECK(runDiagnostics(d, test::root() / "data").empty());
     const auto snapshot = compileDocument(d, test::root() / "data");
-    // Each staggered arrival derives one M3.1 rule: a left and a right per exit.
+    // The natural drawing: every turn meets its exit at the exit's start (M2.0.1, D35).
+    CHECK(std::none_of(d.network.connectors.begin(), d.network.connectors.end(),
+                       [](const auto& c) { return c.to.station.has_value(); }));
+    // Each exit lane is fed by two movements -- through and a turn -- so one drawn-order rule
+    // each: two lanes per exit, four exits.
     CHECK(snapshot.scenario.priorityRules.size() == 8);
+    CHECK(std::all_of(snapshot.scenario.priorityRules.begin(), snapshot.scenario.priorityRules.end(),
+                      [](const auto& r) { return r.id.find("/to/") != std::string::npos; }));
     std::map<std::string, int> arrived;
     std::vector<ArrivedEvent> trips;
     const auto end = runSimulation(snapshot.scenario, 42, [&](const SimEvent& e) {
@@ -74,19 +80,31 @@ TEST(fourleg, right_turn_reaches_the_pocket_only_through_its_named_entry) {
     // Were the pocket entry left implied, the inner upstream lane would be ambiguous and dropped.
     CHECK(snapshot.scenario.routes.size() == 16);
 }
-TEST(fourleg, natural_drawing_is_refused_until_conflict_areas_exist) {
-    // Every turn meeting its exit at the exit's start is how an engineer draws this in Vissim.
-    // The engine has no conflict areas before M3, so three movements feeding one lane start is
-    // a merge nobody arbitrates. M3 flips this test; until then it records the gap honestly.
-    fixture::FourLegOptions natural; natural.leftArrival = natural.rightArrival = 0;
-    const auto d = fixture::fourLegIntersection(natural).document;
-    // The forcing: no Connector in this drawing arrives part way along a Link.
-    CHECK(std::none_of(d.network.connectors.begin(), d.network.connectors.end(),
-                       [](const auto& c) { return c.to.station.has_value(); }));
-    const auto issues = runDiagnostics(d, test::root() / "data");
+TEST(fourleg, the_natural_drawing_needed_no_more_than_start_of_lane_ordering) {
+    // Before M2.0.1 the natural drawing was refused with 8 x UNSUPPORTED_MERGE: three movements
+    // feeding one lane start, nobody arbitrating. The rule it needed is M3.1's, applied where it
+    // was skipped. Without those rules the merge guard still fires -- it was narrowed by
+    // construction, never removed.
+    const auto d = parseDocument(committed());
+    auto scenario = compileDocument(d, test::root() / "data").scenario;
+    CHECK(validateScenario(scenario).empty());
+    scenario.priorityRules.clear();
+    const auto issues = validateScenario(scenario);
     CHECK(std::count_if(issues.begin(), issues.end(),
                         [](const auto& i) { return i.code == "UNSUPPORTED_MERGE"; }) == 8);
-    test::throws([&] { compileDocument(d, test::root() / "data"); }, "UNSUPPORTED_MERGE");
+}
+TEST(fourleg, the_staggered_drawing_still_runs) {
+    // Turns joining part way along each exit: the lane has priority over the turn there.
+    fixture::FourLegOptions staggered; staggered.leftArrival = 10; staggered.rightArrival = 20;
+    const auto d = fixture::fourLegIntersection(staggered).document;
+    CHECK(runDiagnostics(d, test::root() / "data").empty());
+    const auto snapshot = compileDocument(d, test::root() / "data");
+    CHECK(snapshot.scenario.priorityRules.size() == 8);
+    std::map<std::string, int> arrived;
+    runSimulation(snapshot.scenario, 42, [&](const SimEvent& e) {
+        if (const auto* a = std::get_if<ArrivedEvent>(&e)) arrived[authoredRoute(a->routeId)]++;
+    }, false);
+    for (const auto& route : d.definition->routes) CHECK(arrived[route.id] > 0);
 }
 TEST(fourleg, a_lane_dropped_at_an_ambiguous_implied_step_is_reported) {
     // M2.0.2. The inner upstream lane reaches the pocket Link twice -- on through, and into the

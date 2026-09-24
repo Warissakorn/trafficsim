@@ -133,7 +133,9 @@ M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not
    throwaway probe, not the test, and are **unvalidated** — they include acceleration loss and are
    not HCM control delay. What it surfaced, each its own item:
 
-   - **M2.0.1 — Turns meeting an exit at its start are refused (8 × `UNSUPPORTED_MERGE`).** That
+   - **M2.0.1 — Done (D35):** Connectors meeting at a lane start are ordered by M3.1's derived
+     rule in drawing order; the fixture is now the natural drawing. Original finding:
+     **Turns meeting an exit at its start are refused (8 × `UNSUPPORTED_MERGE`).** That
      is how an engineer draws this intersection, and `fourleg.natural_drawing_is_refused…`
      pins it. The fixture runs only because its left and right turns join the exit 10 m and
      20 m along the body, which derives M3.1 rules; on screen that is a short overlap of

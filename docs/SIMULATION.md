@@ -113,6 +113,10 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   time, which would be a merge nobody gives way at.
   Two Connectors arriving at the **same** station share one cut, and the one drawn later also gives
   way to each drawn earlier: lane, then first, then second — a strict order, never a cycle.
+  **Since M2.0.1 (D35) the same drawn-order rule arbitrates Connectors meeting at a lane's start**
+  — every turn into an intersection exit. The order is the drawing order, which is arbitrary;
+  authoring who has priority is M3. With protected (split) phasing those movements are never green
+  together, so the rule rarely binds; with permissive phasing it would decide, unvalidated.
 - Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
   turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
   in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).

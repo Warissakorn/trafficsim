@@ -181,11 +181,24 @@ TEST(connectors, deletion_and_undo_preserve_routes_inputs_and_heads) {
     h.undo();CHECK(documentJson(h.document())==before);
     h.redo();CHECK(h.document().network.connectors.size()==1);
 }
-TEST(connectors, authoring_merge_does_not_enable_unsupported_runtime_merging) {
-    auto d=roads();addConnector(d,{"in","in-1"},{"out","out-1"});
-    addConnector(d,{"in","in-2"},{"out","out-1"});validateDocument(d);
+// Two Connectors meeting at a lane's start. Before M2.0.1 (D35) that was refused outright as
+// UNSUPPORTED_MERGE; now M3.1's derived rule orders them by drawing order -- but only with the
+// numbers from data/priority-rules/. A merge never runs unarbitrated.
+TEST(connectors, a_merge_at_a_lane_start_runs_only_arbitrated) {
+    auto d=roads();const auto first=addConnector(d,{"in","in-1"},{"out","out-1"});
+    const auto second=addConnector(d,{"in","in-2"},{"out","out-1"});validateDocument(d);
     auto definition=test::straight();definition.routes.clear();definition.inputs.clear();
-    test::throws([&]{compileScenario(d.network,definition);},"UNSUPPORTED_MERGE");
+    // Without the defaults a derived rule would have a zero gap time: refused, naming the yielder.
+    test::throws([&]{compileScenario(d.network,definition);},"EDIT_NO_PRIORITY_DEFAULTS: connectors[1]");
+    definition.priorityDefaults={2,10};
+    auto scenario=compileScenario(d.network,definition);
+    CHECK(scenario.priorityRules.size()==1);
+    CHECK(scenario.priorityRules.front().yieldSegmentId.rfind(second,0)==0);
+    CHECK(scenario.priorityRules.front().conflictSegmentId.rfind(first,0)==0);
+    // The guard was narrowed by construction, never removed: take the rule away and it fires.
+    scenario.priorityRules.clear();
+    const auto issues=validateScenario(scenario);
+    CHECK(std::any_of(issues.begin(),issues.end(),[](const auto& i){return i.code=="UNSUPPORTED_MERGE";}));
 }
 TEST(connectors, moving_an_end_narrows_the_range_to_the_lanes_that_are_there) {
     auto d=roads();

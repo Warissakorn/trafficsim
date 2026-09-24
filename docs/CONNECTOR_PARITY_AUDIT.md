@@ -203,6 +203,10 @@ specification rather than deleting it.
 
 ### 3.4 A merge at a lane's *start* is uncontrolled, and unreported
 
+> **Superseded 2026-09-24 (M2.0.1, D35):** several Connectors meeting at one lane start are now
+> ordered by M3.1's derived rule in drawing order; without the priority defaults Run refuses them
+> as `EDIT_NO_PRIORITY_DEFAULTS`. The text below is the 2026-09-21 finding, kept as history.
+
 `sections.cpp:203` skips the rule when the joined section starts at 0 (`joined->start <= 0`).
 That is deliberate — an arrival at the lane's start is the lane's own upstream boundary, not a
 merge — and it is consistent: the merged section has only one predecessor, so `UNSUPPORTED_MERGE`

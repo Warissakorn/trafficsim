@@ -154,13 +154,18 @@ std::vector<ValidationIssue> priorityDefaultsIssues(const Network& network,
     // without the numbers from data/priority-rules/. One helper, two callers: compileScenario
     // throws on it and runtimeDiagnostics reports it, so Run and the panel cannot disagree.
     if(defaults.gapTime>0 && defaults.headway>0)return {};
+    // Exactly the Connectors that would give way under a derived rule: a body arrival, and since
+    // M2.0.1 every Connector after the first meeting at one lane start. Asking the rules
+    // themselves keeps this from drifting from derivedPriorityRules (hard rule 3).
     std::vector<ValidationIssue> issues;
-    const auto table=runtimeSections(network);
-    for(std::size_t i=0;i<network.connectors.size();++i)
-        if(!attachedAtLinkEnd(network,network.connectors[i].to,false) &&
-           std::find(table.unsectionable.begin(),table.unsectionable.end(),network.connectors[i].id)==
-           table.unsectionable.end())
-            issues.push_back({"EDIT_NO_PRIORITY_DEFAULTS","connectors["+std::to_string(i)+"]"});
+    const auto rules=derivedPriorityRules(runtimeSections(network),{1,1});
+    for(std::size_t i=0;i<network.connectors.size();++i) {
+        std::vector<ConnectorPath> paths;
+        try { paths=connectorPaths(network,network.connectors[i]); } catch(const std::exception&) { continue; }
+        const bool yields=std::any_of(paths.begin(),paths.end(),[&](const auto& path){
+            return std::any_of(rules.begin(),rules.end(),[&](const auto& r){return r.yieldSegmentId==path.id;});});
+        if(yields)issues.push_back({"EDIT_NO_PRIORITY_DEFAULTS","connectors["+std::to_string(i)+"]"});
+    }
     return issues;
 }
 std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {

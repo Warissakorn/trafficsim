@@ -73,14 +73,17 @@ TEST(diagnostics, empty_network_is_a_draft_not_an_error) {
 TEST(diagnostics, runtime_issues_are_informational_not_blocking) {
     auto d = merging();
     const auto rows = documentDiagnostics(d);
-    const auto* merge = find(rows, "UNSUPPORTED_MERGE");
+    // A merge at the exit's start needs M3.1's derived rule (M2.0.1), which needs the numbers
+    // a drawing alone does not carry: a runtime row on the Connector that would give way.
+    const auto* merge = find(rows, "EDIT_NO_PRIORITY_DEFAULTS");
+    const auto second = d.network.connectors[1].id;
     CHECK(merge && merge->severity == DiagnosticSeverity::runtime);
-    CHECK(merge->objectId == "exit-1" && merge->selectId == "exit");
+    CHECK(merge->objectId == second && merge->selectId == second);
     // The whole point of the separation: authoring the merge is still a legal, committable edit.
     CHECK(validateNetwork(d.network).empty());
     History history; history.reset(ProjectDocument{});
     CHECK(history.execute("test", [](auto& doc) { doc = merging(); }));
-    CHECK(find(documentDiagnostics(history.document()), "UNSUPPORTED_MERGE"));
+    CHECK(find(documentDiagnostics(history.document()), "EDIT_NO_PRIORITY_DEFAULTS"));
 }
 TEST(diagnostics, invalid_network_skips_the_runtime_pass_without_throwing) {
     auto d = merging();
@@ -160,7 +163,7 @@ TEST(diagnostics, a_tight_connector_is_advised_without_blocking_run) {
     CHECK(advised==1);
     // Neither the draft nor the run is refused because of it.
     auto definition=test::straight();definition.routes.clear();definition.inputs.clear();
-    test::throws([&]{compileScenario(d.network,definition);},"UNSUPPORTED_MERGE");
+    test::throws([&]{compileScenario(d.network,definition);},"EDIT_NO_PRIORITY_DEFAULTS");
     d.network.connectors.erase(d.network.connectors.begin()+1);
     CHECK(connectorShapeIssues(d.network).size()==1);
     CHECK(compileScenario(d.network,definition).segments.size()>0);

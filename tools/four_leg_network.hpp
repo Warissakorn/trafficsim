@@ -19,12 +19,12 @@
 
 namespace trafficsim::fixture {
 struct FourLegOptions {
-    // Where each turning Connector joins its exit Link. The engine has no conflict areas yet
-    // (M3), so two Connectors arriving at the SAME place on a lane are a merge it refuses with
-    // UNSUPPORTED_MERGE. Arriving part-way along the body instead derives an M3.1 priority rule,
-    // which is what makes the drawing run. Both zero is the drawing an engineer makes naturally,
-    // every turn meeting the exit at its start; `four-leg` keeps that one as the refused case.
-    double leftArrival = 10, rightArrival = 20;
+    // Where each turning Connector joins its exit Link, in metres along it. Zero -- the default,
+    // and how an engineer draws it -- meets the exit at its start, where the turns from three
+    // approaches merge and are ordered by M3.1's derived rule in drawing order (M2.0.1, D35).
+    // A positive value joins part way along the body instead: the staggered drawing that was
+    // needed before M2.0.1, kept as a variant so both shapes stay runnable.
+    double leftArrival = 0, rightArrival = 0;
 };
 struct FourLeg {
     ProjectDocument document;

@@ -170,10 +170,13 @@ int main(int argc,char** argv) {
         action(w,"editorRecheck");
         require(tabs->currentIndex()==3,"Recheck did not open Problems");
         require(item<QLabel>(w,"editorError")->text().isEmpty(),"Runnability check reported an edit error");
+        // Since M2.0.1 (D35) a merge at a lane's start is arbitrated by a derived rule, and a
+        // drawing with no demand has none of the numbers that rule needs: the row names the
+        // Connector that would give way, rather than the merged segment.
         int unsupported=-1;
         for (int i=0;i<problems->rowCount();++i)
-            if (problems->item(i,3) && problems->item(i,3)->text().startsWith("segments.")) unsupported=i;
-        require(unsupported>=0,"UNSUPPORTED_MERGE was not listed");
+            if (problems->item(i,3) && problems->item(i,3)->text().startsWith("connectors[")) unsupported=i;
+        require(unsupported>=0,"The merge was not listed");
         require(!problems->item(unsupported,2)->text().isEmpty(),"Merge row names no object");
         problems->selectRow(unsupported);QApplication::processEvents();
         require(!c->selected().empty(),"Jump from a runtime row selected nothing");
