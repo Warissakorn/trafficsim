@@ -157,6 +157,13 @@ session the same rediscovery twice.
 
 ### 3.3 Two Connectors arriving at the same station on the same lane are refused, not arbitrated
 
+> **Fixed 2026-09-24.** A second arrival at a station already cut now reuses that cut
+> (`runtimeSections`), and `derivedPriorityRules` makes the Connector drawn later give way to each
+> drawn earlier that joins the same section, as well as to the lane — a strict order, never a
+> cycle. The test is now `two_connectors_arriving_at_one_station_share_one_cut`, beside
+> `an_arrival_just_beside_an_existing_cut_is_still_refused`. The text below is the finding as
+> measured on 2026-09-21, kept as history.
+
 **Measured 2026-09-21, with a toolchain, after this audit first wrote it down as an uncovered case.
 The original reading was wrong and this replaces it.**
 

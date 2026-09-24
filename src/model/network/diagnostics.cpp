@@ -105,6 +105,8 @@ std::vector<Diagnostic> runtimeDiagnostics(const Network& network, const Scenari
     // reach compileScenario, so neither Run nor saving is blocked by one.
     for(const auto& issue:connectorShapeIssues(network))
         result.push_back(resolve(network,issue,DiagnosticSeverity::advisory));
+    for(const auto& issue:routeAmbiguityIssues(network,definition))
+        result.push_back({issue.code,issue.path,{},{},DiagnosticSeverity::advisory});
     try {
         const auto scenario = buildScenario(network, definition);
         for (const auto& issue : validateScenario(scenario)) {

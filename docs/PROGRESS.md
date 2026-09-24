@@ -32,6 +32,14 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-24 — M2.0 closed except its decisions: same-station cut, dropped lanes, amber clamps
+
+**Same station:** the cut is reused rather than refused, and the later Connector also gives way to
+the earlier one — without that the §3.3 pair would enter together. **Dropped lanes:** still
+dropped, now reported (`AMBIGUOUS_ROUTE_STEP`, advisory). **Clamps:** all at amber onset, and the
+frozen baselines hold the same, so fixing them needs the owner; a test pins the diagnosis. CI on
+the four-leg commit passed all five jobs, Windows included.
+
 ## 2026-09-24 — The four-leg intersection, built and run (M2.0)
 
 `tools/four_leg_network.hpp` builds it through the editor's commands, so the committed

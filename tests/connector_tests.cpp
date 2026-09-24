@@ -8,6 +8,7 @@
 #include <numbers>
 #include <numbers>
 #include <fstream>
+#include <map>
 using namespace trafficsim;
 namespace {
 ProjectDocument roads(DrivingSide side = DrivingSide::left) {
@@ -218,31 +219,23 @@ TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
     }
     CHECK(editableConnector(d,id).geometry==c.geometry);
 }
-// Two Connectors arriving at the SAME station of one lane. THIS RECORDS A DEFECT, and the last
-// CHECK is the defect rather than the specification: see docs/CONNECTOR_PARITY_AUDIT.md §3.3.
+// Two Connectors arriving at the SAME station of one lane (CONNECTOR_PARITY_AUDIT.md §3.3).
 //
-// A cut at a station already cut is refused as an unsectionable cut, because runtimeSections asks
-// whether the new station sits `kMinSectionLength` clear of the last BOUNDARY -- and the boundary
-// the first arrival just made is at that very station, so the second arrival is measured against
-// itself. Run is blocked on it. Nothing is physically wrong with the pair: the cut the second
-// Connector needs is the one the first already made, and both paths would then arrive on the same
-// section, which is the ordinary merge the engine handles.
-//
-// When that is fixed, the second half of this test becomes: both Connectors compile, the lane below
-// the arrival gains the two of them as feeders, `derivedPriorityRules` emits one rule per arriving
-// path -- and BOTH name the lane section upstream of the arrival, so neither ever names the other.
-// That last shape is what §3.3 describes, and it is a separate question from the refusal; this test
-// does not reach it while the refusal stands.
-TEST(connectors, two_connectors_arriving_at_one_station_are_refused_though_one_cut_would_serve) {
+// This used to be refused: runtimeSections measured the second cut against the boundary the first
+// had just made at that very station -- against itself -- and Run was blocked for a pair nothing
+// is physically wrong with. Now the second arrival reuses the first cut, both paths join the same
+// section, and the merge is arbitrated in a strict order: the lane first, then the Connector drawn
+// first, then the one drawn second. Without the last rule the two arrivals would each give way to
+// the lane and never to each other, which is the second half §3.3 described.
+TEST(connectors, two_connectors_arriving_at_one_station_share_one_cut) {
     auto d=roads();
     const auto first=addConnector(d,{"in","in-1"},{"out","out-1",35});
-    // The forcing, and the half that must not be lost: ONE interior arrival runs. Without this the
-    // refusal below could just be "an interior arrival does not run", which is not the finding.
+    // The forcing: ONE interior arrival runs, so what follows is about the second one.
     CHECK(connectorRuntimeIssues(d.network).empty());
     CHECK(runtimeSections(d.network).unsectionable.empty());
     const auto second=addConnector(d,{"in","in-2"},{"out","out-1",35});
     CHECK(d.network.connectors.size()==2);
-    // Both really do arrive inside the BODY of out-1, at the same drawn metre, on different lanes.
+    // Both really do arrive inside the BODY of out-1, at the same drawn metre, from different lanes.
     for(const auto& c:d.network.connectors) {
         CHECK(!attachedAtLinkEnd(d.network,c.to,false));
         CHECK(c.to.laneId=="out-1");CHECK(c.to.station.has_value());
@@ -251,17 +244,46 @@ TEST(connectors, two_connectors_arriving_at_one_station_are_refused_though_one_c
     CHECK(d.network.connectors[0].from.laneId!=d.network.connectors[1].from.laneId);
     const auto viaA=putRoute(d,{"viaA",{"in-1",first,"out-1"}});
     const auto viaB=putRoute(d,{"viaB",{"in-2",second,"out-1"}});
-    putInput(d,{"",viaA,"car",600,0,60});putInput(d,{"",viaB,"car",600,0,60});
+    putInput(d,{"",viaA,"car",600,0,60,{}});putInput(d,{"",viaB,"car",600,0,60,{}});
     validateDocument(d);
-    // The cut the first arrival made is still there and still fine; only the SECOND is refused, and
-    // it is refused for want of room behind a boundary that is itself at 35.
     const auto table=runtimeSections(d.network);
-    CHECK(table.unsectionable==std::vector<std::string>({second}));
-    test::near(sectionStartingAt(table,"out-1",35).start,35,1e-9);
-    // The consequence: the pair cannot be run at all, so no rule for it is ever derived.
-    const auto issues=connectorRuntimeIssues(d.network);
-    CHECK(issues.size()==1);
-    CHECK(issues.front().code=="UNSUPPORTED_CONNECTOR_POSITION");
-    CHECK(issues.front().path=="connectors[1]");
-    test::throws([&]{compileDocument(d,test::root()/"data");},"UNSUPPORTED_CONNECTOR_POSITION");
+    CHECK(table.unsectionable.empty());
+    // ONE cut at 35, not two: out-1 is two sections, and both paths join the one downstream.
+    CHECK(std::count_if(table.sections.begin(),table.sections.end(),
+                        [](const auto& s){return s.laneId=="out-1";})==2);
+    const auto& joined=sectionStartingAt(table,"out-1",35);
+    test::near(joined.start,35,1e-9);
+    CHECK(table.pathNext.size()==2);
+    CHECK(table.pathNext[0]==joined.id);CHECK(table.pathNext[1]==joined.id);
+    CHECK(connectorRuntimeIssues(d.network).empty());
+    // Three rules: each path gives way to the lane, and the second also to the first.
+    const auto rules=derivedPriorityRules(table,{2,10});
+    CHECK(rules.size()==3);
+    const auto gives=[&](const std::string& minor,const std::string& major) {
+        return std::any_of(rules.begin(),rules.end(),[&](const auto& r){
+            return r.yieldSegmentId==minor&&r.conflictSegmentId==major;});
+    };
+    CHECK(gives(table.paths[0].id,"out-1"));CHECK(gives(table.paths[1].id,"out-1"));
+    CHECK(gives(table.paths[1].id,table.paths[0].id));
+    CHECK(!gives(table.paths[0].id,table.paths[1].id)); // A strict order, never a cycle.
+    // And it runs: both routes deliver, and replay is exact.
+    const auto snapshot=compileDocument(d,test::root()/"data");
+    std::map<std::string,int> arrived;std::vector<ArrivedEvent> trips,again;
+    runSimulation(snapshot.scenario,42,[&](const SimEvent& e){
+        if(const auto* a=std::get_if<ArrivedEvent>(&e)){arrived[a->routeId]++;trips.push_back(*a);}},false);
+    CHECK(arrived[viaA]>0);CHECK(arrived[viaB]>0);
+    runSimulation(snapshot.scenario,42,[&](const SimEvent& e){
+        if(const auto* a=std::get_if<ArrivedEvent>(&e))again.push_back(*a);},false);
+    CHECK(trips==again);
+}
+// One 0.1 m off is a different drawn metre, not the same one, and the cut it would need is still
+// too close to the first: that stays refused, so the reuse above cannot swallow it.
+TEST(connectors, an_arrival_just_beside_an_existing_cut_is_still_refused) {
+    auto d=roads();
+    addConnector(d,{"in","in-1"},{"out","out-1",35});
+    const auto second=addConnector(d,{"in","in-2"},{"out","out-1",35.1});
+    // The forcing: the two stations really differ on the lane, by less than a section.
+    CHECK(std::abs(*d.network.connectors[1].to.station-*d.network.connectors[0].to.station)>1e-6);
+    CHECK(std::abs(*d.network.connectors[1].to.station-*d.network.connectors[0].to.station)<kMinSectionLength);
+    CHECK(runtimeSections(d.network).unsectionable==std::vector<std::string>({second}));
 }

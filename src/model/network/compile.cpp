@@ -132,6 +132,21 @@ std::vector<ValidationIssue> routeRuntimeIssues(const Network& network,
     }
     return issues;
 }
+std::vector<ValidationIssue> routeAmbiguityIssues(const Network& network,
+                                                  const ScenarioDefinition& definition) {
+    std::vector<ValidationIssue> issues;
+    const auto table = runtimeSections(network);
+    for (std::size_t i = 0; i < definition.routes.size(); ++i) {
+        const auto& route = definition.routes[i];
+        if (route.segmentIds.empty() || routeAlreadyExpanded(table, route.segmentIds)) continue;
+        std::vector<std::string> dropped;
+        // Only a route that still runs: one that does not is UNSUPPORTED_ROUTE_TOPOLOGY already,
+        // and a second row about the same route would say less than the first.
+        if (routeLaneChains(network, route.segmentIds, &dropped).empty() || dropped.empty()) continue;
+        issues.push_back({"AMBIGUOUS_ROUTE_STEP", "routes[" + std::to_string(i) + "]"});
+    }
+    return issues;
+}
 std::vector<ValidationIssue> priorityDefaultsIssues(const Network& network,
                                                     const PriorityDefaults& defaults) {
     // A merge the drawing creates is arbitrated by a DERIVED rule, and a rule with a zero gap

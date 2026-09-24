@@ -65,6 +65,12 @@ RuntimeSections runtimeSections(const Network& network) {
                          [](const auto& a, const auto& b) { return a.station < b.station; });
         std::vector<double> boundaries{0};
         for (const auto& cut : cuts) {
+            // A second arrival at a station this lane is already cut at needs no cut of its own:
+            // the one the first arrival made serves both, and both paths then join the same
+            // section. Measuring it against that boundary instead refused it for want of room
+            // behind ITSELF (CONNECTOR_PARITY_AUDIT.md §3.3). Only the identical station is
+            // reused -- one 0.1 m off is a different drawn metre, and still refused.
+            if (boundaries.size() > 1 && std::abs(cut.station - boundaries.back()) <= 1e-9) continue;
             if (cut.station < boundaries.back() + kMinSectionLength || cut.station > full - kMinSectionLength) {
                 const auto& id = network.connectors[owner[cut.path]].id;
                 if (std::find(table.unsectionable.begin(), table.unsectionable.end(), id) ==
@@ -215,6 +221,16 @@ std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
                          table.paths[p].id, polylineLength(table.paths[p].geometry),
                          upstream->id, upstream->end - upstream->start,
                          defaults.gapTime, defaults.headway});
+        // Two paths joining the same section at one station would otherwise both give way to the
+        // lane and never to each other, and enter together. The one drawn later also gives way to
+        // every one drawn before it, at that path's own end: a strict order -- lane, then first,
+        // then second -- so nothing waits on anything that waits on it.
+        for (std::size_t q = 0; q < p; ++q)
+            if (table.pathNext[q] == table.pathNext[p])
+                rules.push_back({"give-way/" + table.paths[p].id + "/to/" + table.paths[q].id,
+                                 table.paths[p].id, polylineLength(table.paths[p].geometry),
+                                 table.paths[q].id, polylineLength(table.paths[q].geometry),
+                                 defaults.gapTime, defaults.headway});
     }
     return rules;
 }

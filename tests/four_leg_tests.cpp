@@ -88,3 +88,54 @@ TEST(fourleg, natural_drawing_is_refused_until_conflict_areas_exist) {
                         [](const auto& i) { return i.code == "UNSUPPORTED_MERGE"; }) == 8);
     test::throws([&] { compileDocument(d, test::root() / "data"); }, "UNSUPPORTED_MERGE");
 }
+TEST(fourleg, a_lane_dropped_at_an_ambiguous_implied_step_is_reported) {
+    // M2.0.2. The inner upstream lane reaches the pocket Link twice -- on through, and into the
+    // pocket -- so a route naming only the two Links cannot say which, and drops that lane.
+    auto d = fixture::fourLegIntersection().document;
+    auto& route = d.definition->routes.front();
+    const auto named = route.segmentIds;
+    CHECK(named.size() == 5); // upstream, taper, pocket, through, exit
+    auto implied = named; implied.erase(implied.begin() + 1);
+    // The forcing: naming the taper carries both lanes; leaving it implied really does lose one.
+    std::vector<std::string> dropped;
+    CHECK(routeLaneChains(d.network, named, &dropped).size() == 2); CHECK(dropped.empty());
+    CHECK(routeLaneChains(d.network, implied, &dropped).size() == 1);
+    CHECK(dropped == std::vector<std::string>{fixture::detail::lane(d, named.front(), 1)});
+    // The consequence: one advisory naming the route, and Run is not blocked by it.
+    CHECK(runDiagnostics(d, test::root() / "data").empty());
+    route.segmentIds = implied;
+    const auto rows = runDiagnostics(d, test::root() / "data");
+    CHECK(rows.size() == 1);
+    CHECK(rows.front().code == "AMBIGUOUS_ROUTE_STEP"); CHECK(rows.front().path == "routes[0]");
+    CHECK(rows.front().severity == DiagnosticSeverity::advisory);
+    CHECK(compileDocument(d, test::root() / "data").scenario.routes.size() == 15);
+}
+TEST(fourleg, every_safety_clamp_is_a_vehicle_caught_at_its_stop_line_by_amber) {
+    // M2.0.3. The run clamps a handful of vehicles, and every one is the same thing: a vehicle
+    // within a couple of metres of its stop line at speed when the head turns amber. The engine
+    // treats amber as red with no stop-or-go decision (SIMULATION.md), so a vehicle that cannot
+    // stop is halted at the line by the clamp. The frozen TS baselines hold the same clamps
+    // (seeds 43 and 4294967295), which is why fixing it is a decision, not a patch. This test
+    // pins the diagnosis, so a clamp from anything else -- a priority rule, a merge -- fails here.
+    const auto snapshot = compileDocument(parseDocument(committed()), test::root() / "data");
+    std::map<std::string, const SignalHead*> headOnSegment;
+    for (const auto& head : snapshot.scenario.signalHeads) headOnSegment[head.segmentId] = &head;
+    std::map<std::string, SignalColor> color;
+    std::map<std::uint64_t, MovedEvent> last;
+    int clamps = 0, explained = 0;
+    runSimulation(snapshot.scenario, 42, [&](const SimEvent& e) {
+        if (const auto* s = std::get_if<SignalEvent>(&e)) color[s->signalId] = s->color;
+        // A clamp is emitted before the same step's moves, so `last` is the position it acted on.
+        if (const auto* c = std::get_if<SafetyClampEvent>(&e)) {
+            ++clamps;
+            const auto& before = last[c->vehicleId];
+            const auto head = headOnSegment.find(before.segmentId);
+            if (head != headOnSegment.end() && color[head->second->id] == SignalColor::amber &&
+                head->second->position - before.position >= 0 &&
+                head->second->position - before.position < 2) ++explained;
+        }
+        if (const auto* m = std::get_if<MovedEvent>(&e)) last[m->vehicleId] = *m;
+    }, true);
+    CHECK(clamps > 0); // The forcing: there is something to explain.
+    CHECK(explained == clamps);
+}

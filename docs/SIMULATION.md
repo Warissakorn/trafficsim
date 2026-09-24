@@ -111,6 +111,11 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   persisted, with their two numbers read from `data/priority-rules/`. Run refuses such a network
   with `EDIT_NO_PRIORITY_DEFAULTS` if those cannot be read, rather than defaulting to a zero gap
   time, which would be a merge nobody gives way at.
+  Two Connectors arriving at the **same** station share one cut, and the one drawn later also gives
+  way to each drawn earlier: lane, then first, then second — a strict order, never a cycle.
+- Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
+  turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
+  in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).
 - Geometric crossings do not create conflicts automatically. Separate movement paths
   can intersect spatially; their interaction is **not** modelled. The demo uses separate
   fixed-time greens and clearance intervals, not a conflict-area solver. Arbitrary

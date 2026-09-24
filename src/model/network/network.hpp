@@ -162,6 +162,9 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // refuses it. Authoring tolerates it, because an author moving a Connector must not have the
 // document reject the edit -- the route is reported, not deleted.
 std::vector<ValidationIssue> routeRuntimeIssues(const Network&, const ScenarioDefinition&);
+// Advisory: a route that DOES run but lost a lane at an implied Link-to-Link step, because that
+// lane reaches the next Link by two Connectors. Naming the one meant brings the lane back.
+std::vector<ValidationIssue> routeAmbiguityIssues(const Network&, const ScenarioDefinition&);
 // Blocks Run when the drawing creates a merge but the numbers that arbitrate it were not read
 // from data/priority-rules/. Separate from connectorRuntimeIssues because it needs the resolved
 // definition, and shared with runtimeDiagnostics so the panel and Run agree.
@@ -244,8 +247,12 @@ std::vector<std::string> routeChainTo(const Network&, const std::vector<std::str
 // Connector path that leaves that lane, the lane it arrives on, and so on. A lane with no path
 // onward contributes no chain, which is exactly what makes narrowing a Connector safe. Empty
 // when the objects do not connect at all -- a route nothing can travel, which Run must refuse.
+// `ambiguous`, when given, collects the lane ids a chain was dropped at because an IMPLIED step
+// between two named Links could take that lane two ways: dropping it is right (guessing would
+// author a route nobody chose), and doing it silently was not (M2.0.2).
 std::vector<std::vector<std::string>> routeLaneChains(const Network&,
-                                                      const std::vector<std::string>& objectIds);
+                                                      const std::vector<std::string>& objectIds,
+                                                      std::vector<std::string>* ambiguous = nullptr);
 // The centreline of one Link or Connector, for drawing what the pointer is over. Empty for an
 // unknown id or geometry that does not build, because a draft is drawn mid-edit.
 std::vector<Point> objectGeometry(const Network&, const std::string& objectId);

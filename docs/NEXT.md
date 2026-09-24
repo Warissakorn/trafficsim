@@ -20,16 +20,24 @@ pre-registration:** nothing past M2.0 starts until the owner edits it into `ROAD
 commits it.
 
 **The four-leg fixture exists and runs** (`data/projects/four-leg-signalised.traffic.json`,
-`fourleg` tests; M2_PLAN.md M2.0). It surfaced three items, each written up there: **M2.0.1**
-turns meeting an exit at its start are refused as `UNSUPPORTED_MERGE` — the fixture staggers them
-along the exit to run, and whether to pull start-of-lane arbitration forward is the owner's call;
-**M2.0.2** an implied Link→Link route step silently drops a lane that reaches the next Link twice;
-**M2.0.3** four safety clamps in 900 s, cause unknown.
+`fourleg` tests; M2_PLAN.md M2.0), and **M2.0 is done except its one owner decision:**
 
-**What a session may do now without the owner:** item 0 below (the duplicate-station refusal),
-then M2.0.2 (report the dropped lane rather than lose it silently) and M2.0.3 (find the clamps).
-All are M1-side defects, not M2 implementation, so they do not touch the gate. M2.0.1 waits on
-the owner's decision.
+- **Item 0 (the duplicate-station refusal) is fixed.** A second arrival at a station already cut
+  reuses that cut, and the Connector drawn later gives way to each drawn earlier at that section
+  as well as to the lane. The defect-recording test is now the specification.
+- **M2.0.2 is fixed.** A lane dropped at an ambiguous implied Link→Link step is reported as the
+  advisory `AMBIGUOUS_ROUTE_STEP` (English and Thai), and Run is not blocked.
+- **M2.0.3 is diagnosed, not fixed, on purpose.** Every clamp is a vehicle within 2 m of its stop
+  line at speed when its head turns amber: the engine treats amber as red with no stop-or-go
+  decision. The frozen TS baselines for seeds 43 and 4294967295 hold six such clamps, so adding a
+  decision changes frozen fixtures, which a session may not regenerate. **Owner decision:** keep
+  amber-as-red until M4, or accept an amber decision now with a new, logged baseline. A test pins
+  that every clamp in the four-leg run is this case, so any other source fails it.
+- **M2.0.1 waits on the owner:** start-of-lane arbitration now, or staggered arrivals in C1.
+
+**Next without the owner:** nothing in M2 — past M2.0 needs the criteria. The M1 side is still
+open: M1.22's keyboard-only demand gestures (item 0b) and M1.23 are engineering work a session can
+take.
 
 PR #54's compact UI refresh is merged; native Windows appearance and display scaling ride on the
 owner acceptance exercise below.
@@ -65,7 +73,7 @@ on the same dialog and table, not a new design question.
 
 ## Standing — the owner's items
 
-**Two engineering items are open** — items 0 and 0b below. Everything else here is the owner's.
+**One engineering item is open** — item 0b below. Everything else here is the owner's.
 
 **0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
@@ -77,14 +85,6 @@ A routing decision as an object at a station along the link — what Vissim actu
 what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start
 until its pre-registered criteria are written into `ROADMAP.md`. Writing them is the owner's,
 and it blocks all of M2.
-
-**0. Fix the duplicate-station refusal in `runtimeSections`.** A second Connector arriving at a
-station the lane is already cut at is rejected as unsectionable, because `sections.cpp:68` measures
-its cut against `boundaries.back() + kMinSectionLength` and the boundary the FIRST arrival just made
-is at that very station — so it is measured against itself, and Run is blocked for a pair that is
-physically fine. Reuse the existing cut instead of rejecting it. Section table only, one system, and
-the test already in `tests/connector_tests.cpp` flips to its commented expectation when it lands.
-See the top entry of this file, and `CONNECTOR_PARITY_AUDIT.md` §3.3.
 
 **1. Drive M1.19 and M1.20 in the desktop editor.** Both are measured at the model and command
 layer only. Nobody has yet dragged a Connector off a Link with a mouse, or looked at a mouth on

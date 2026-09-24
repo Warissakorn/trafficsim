@@ -120,8 +120,9 @@ M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not
 
 ### M2.0 — Preconditions (engineering items allowed before the criteria, since they are M1 defects)
 
-1. Fix the duplicate-station refusal in `runtimeSections` (NEXT item 0); the commented
-   expectation in `tests/connector_tests.cpp` flips.
+1. **Done 2026-09-24:** the duplicate-station refusal (NEXT item 0). The second arrival reuses
+   the cut, and gives way to the first as well as to the lane (`derivedPriorityRules`);
+   `two_connectors_arriving_at_one_station_share_one_cut` is the specification now.
 2. **Done 2026-09-24:** `data/projects/four-leg-signalised.traffic.json`, built by
    `tools/four_leg_network.hpp` through the editor's own commands and regenerated with
    `trafficsim-four-leg-fixture`; `fourleg` in `trafficsim-tests` holds it. Left-hand traffic,
@@ -142,13 +143,16 @@ M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not
      M3.1 rule derived for a start-of-lane merge as it already is for a body merge. Under split
      phasing no two of those movements are green together, so the rule rarely binds. Conflict
      areas themselves stay M3. **Owner decision.**
-   - **M2.0.2 — An implied Link→Link step silently drops an ambiguous lane.** The inner upstream
-     lane reaches the pocket Link twice (through lane and pocket), so a route naming only the two
-     Links loses that lane without a diagnostic; the fixture names the taper or pocket entry
-     Connector instead. A route that shrinks without saying so should at least be reported.
-   - **M2.0.3 — 4 safety clamps in 900 s.** Numerical overlap prevention overrode deceleration
-     four times. Find where before M2.5 publishes a delay from this network.
-   - Not hit: the duplicate-station refusal (item 1) — every arrival here is at its own station.
+   - **M2.0.2 — An implied Link→Link step silently drops an ambiguous lane. Fixed:** the lane
+     is still dropped (guessing would author a route nobody chose) but reported as the advisory
+     `AMBIGUOUS_ROUTE_STEP`; Run is not blocked. The fixture names the taper or pocket entry.
+   - **M2.0.3 — 4 safety clamps in 900 s. Diagnosed; owner decision.** Every one is a vehicle
+     under 2 m from its stop line at 4–12 m/s when its head turns amber — amber is treated as red
+     with no stop-or-go decision (`SIMULATION.md`). Not the M3.1 rules, not the merges. The frozen
+     TS baselines (seeds 43, 4294967295) hold six of the same clamps, so a decision changes
+     frozen fixtures and needs the owner: keep it until M4, or accept it now with a logged new
+     baseline. Its effect on M2.5 delay is small but real — a halted vehicle waits a red it would
+     have cleared. `fourleg.every_safety_clamp_is_…` fails if a clamp has any other cause.
 
 ### M2.2 — Time-varying volumes
 
@@ -202,7 +206,8 @@ start before this** (ROADMAP §M2).
 2. **Confirm the M2.1 → M2.3/M2.4 rescope**, or keep compositions and routing decisions in M2.1.
 3. **Seeds for the gate study:** run one seed (M2 scope) or pull a minimal multi-seed mean
    forward from M5 so C4 compares like with like. Averaging with CIs is still M5's either way.
-4. **M2.0.1:** accept staggered turn arrivals in the gate study, or pull start-of-lane merge
+4. **M2.0.3:** amber stays red until M4, or an amber decision now with a new logged baseline.
+5. **M2.0.1:** accept staggered turn arrivals in the gate study, or pull start-of-lane merge
    arbitration forward before it.
-5. **Order relative to G1:** recommended — do G1 first; its saved drawing *is* M2.0's fixture and
+6. **Order relative to G1:** recommended — do G1 first; its saved drawing *is* M2.0's fixture and
    M2's done-condition network, and it tests the editor on a network nobody has yet run.
