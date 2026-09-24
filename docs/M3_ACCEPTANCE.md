@@ -1,0 +1,133 @@
+# M3 acceptance design and evidence record
+
+**Status: not performed.** This is a prepared engineering test matrix and owner exercise,
+not a passed gate or a scientific validation result. M2.6 remains the prerequisite for
+implementation. [M3_CONTRACT.md](M3_CONTRACT.md) defines the proposed behavior;
+[M3_PLAN.md](M3_PLAN.md) names the slices. New tests and runnable fixtures are not added by
+this documentation change. Record actual evidence below as each slice is implemented.
+
+## 1. Automated matrix
+
+Every row starts **Pending**. A test for a rejected case must first prove that its setup
+actually contains that case. Compare physical quantities using a declared tolerance; keep
+same-build event replay exact. Do not weaken the frozen reference comparisons.
+
+| ID | Slice | Setup | Required result |
+|---|---|---|---|
+| A01 | .2 | Old schemas and M0 scenario; no new controls | Existing compiled scenario and four frozen runs unchanged; seed 42 regression retained |
+| A02 | .2 | Explicit crossing, merge group, rule, stop and counter | Save/Open preserves IDs, units, values and references; derived state absent from file |
+| A03 | .2 | Unknown field/version, NaN, duplicate ID, bad enum, dangling owner | Specific error; edit/load leaves the published document unchanged |
+| A04 | .2 | `undetermined`, stale lane pair, unsupported geometry | Draft can be inspected/saved; Problems identifies it and Run refuses |
+| A05 | .2 | Split, copy, lane resize, retarget and delete on curved roads, both driving sides | Correct remapping or explicit blocker; no ordinal reassignment; Undo/Redo restores exact authored state |
+| A06 | .2 | Two-way cycle, three-way cycle, tied major paths and missing pair | Effective graph rejected; a valid total order and legacy derived order accepted |
+| A07 | .2 | Reverse a merge's priority explicitly; then remove one rule | Fallback removed only for that whole group; no reciprocal hidden rule; incomplete group stays blocked |
+| A08 | .2 | Missing defaults with fully explicit rules, then with an automatic merge | Explicit saved group is portable; unresolved fallback reports missing defaults |
+| A09 | .3 | `d/headway` and `d/v/gapTime` just below, at, above thresholds | Exact inequality semantics in the contract; independent safety constraints remain active |
+| A10 | .3 | Moving/stopped major vehicle on the segment upstream of a section cut | It participates when its route reaches the conflict; no disappearance at the segment boundary |
+| A11 | .3 | Two vehicles arrive in the same tick; shuffle unordered input collections | Same permitted admission and event stream; preserve authored drawing order where it is intentionally semantic |
+| A12 | .3 | Short/long vehicles, front beyond exit but rear inside | Opposing admission denied until rear clearance; insufficient sink distance rejected |
+| A13 | .3 | Fast vehicles traverse a whole conflict within one tick | Swept trajectories cannot overlap even when end snapshots show an empty area |
+| A14 | .3 | Exit queue, simultaneous requests sharing exit space, then queue discharge | No double reservation; vehicles wait upstream and resume when receiving space clears |
+| A15 | .3 | Closely spaced conflict areas and an unsupported group topology | Atomic group admission where supported; otherwise explicit Run blocker, never partial unsafe entry |
+| A16 | .3 | Minor admitted, then priority vehicle arrives | Existing grant retained; major waits safely; finite demand clears without deleting vehicles |
+| A17 | .3 | Same-side following through an area | Ordinary longitudinal spacing remains; no unintended one-vehicle-per-area restriction on compatible traffic |
+| A18 | .5 | Empty major road, same arriving vehicle with Stop then Yield | Stop reaches and serves the line; Yield has no mandatory zero-speed dwell |
+| A19 | .5 | Several queued vehicles behind Stop; pause/resume and reset | Every vehicle serves at the line, not at queue tail; no repeated stop after service; reset clears service |
+| A20 | .5/.6 | Red/amber/green co-located with control; occupied conflict on green | Restrictions compose as documented; green does not erase physical safety |
+| A21 | .6 | Head before/on/after section cut, then stretch/split/copy Link | Current placement semantics retained; command/UI/run agree; both driving sides covered |
+| A22 | .6 | Known stationary queue at independent line; no signal heads | Correct metres and hysteresis; no fake signal objects; changing counter leaves trajectory unchanged |
+| A23 | .6 | Signal-derived counters and the same explicit measurement lines | Matching queues; shared CLI/editor delay and queue reports; no duplicate approach rows |
+| A24 | .4-.6 | English/Thai, pointer/keyboard create/edit/delete, cancel, Undo/Redo, reopen | Units/parameters correct; selection and Problems point to the authored object; successful edits invalidate run |
+| A25 | .3-.7 | Branch a copied state, same seed/toolchain; congested finite demand | Independent snapshots, exact replay, no lost vehicles; completed/active/pending/clamps reported |
+| A26 | .7 | T-junction gap/headway sweep described below | Controlled boundaries and admission times match; stochastic differences reported without invented monotonic guarantees |
+
+Extend the matrix for M3.2.8 before implementing lane changing. It must cover forward and
+rearward safety, required lane-change distance, cooperation, visibility, conflict reservations,
+emergency stopping, congestion accounting and replay. Passing A01-A26 alone does not close it.
+
+## 2. T-junction fixture specification
+
+Implement `tools/t_junction_network.hpp` through existing commands, following the four-leg
+fixture pattern, then generate `data/projects/t-junction-priority.traffic.json`. These are
+planned paths, not present artifacts. Tests compare the builder with the saved project and
+compile/run it through the same entry points the editor uses.
+
+- A two-way major road and one minor approach, at grade, with explicit through and turning
+  routes. Use a right-hand layout where the minor-road left turn crosses the opposing stream
+  and then merges, plus its left-hand mirror. Document the mirrored turning movement rather
+  than silently claiming a left-hand near-side turn exercises the same crossing.
+- The minor movement has at least one **crossing area and a separate downstream merge**.
+  This prevents an existing merge-only fixture from pretending to exercise crossing control.
+- Use dedicated lanes/routes, no runtime lane changes, no signals in the base case. Include
+  a Yield version, a Stop version and a blocked downstream receiving lane. The signal
+  composition case is a separate variant.
+- Put the waiting line before the first area; size the sink clearance for the longest tested
+  vehicle. Add a real queue measurement line on the minor approach. Keep vehicle and behavior
+  catalogs, duration, timestep and geometry identical across paired parameter runs.
+
+### Controlled cases before stochastic sweeps
+
+Use test-owned deterministic initial states/arrival schedules to isolate the threshold. This
+does not require a new public demand model. Hold the major vehicle at a prescribed approach
+speed and place the minor at its admission line. Ensure its receiving lane is free.
+
+Example: major front 50 m before entry at 10 m/s, `headway = 7 m`, so its instantaneous
+time to entry is 5 s. Check `gapTime = 4, 5, 6 s`: the threshold allows the first two and
+denies the third. Check headway separately at 7 m minus tolerance, exactly 7 m, and 7 m plus
+tolerance with time-gap blocking inactive. These are **predicate** expectations; the end-to-end
+solver must additionally satisfy clearance and swept safety before allowing movement.
+
+For the movement-level test, choose geometry/vehicle parameters so a permitted minor vehicle
+can clear before the major arrives. Assert the setup's clearance margin first. Changing only
+gap from the permitted to denied case must postpone this vehicle's admission and increase
+its eventual completed-trip delay with the same route/free-flow reference. Specify expected
+tick bounds from that setup before running it; do not freeze output from the new engine as
+its own oracle. Both finite-demand cases must drain, or compare unserved counts explicitly.
+
+### Diagnostic seeded sweep
+
+Before observing outputs, commit the final fixture metadata: duration, timestep, volumes,
+catalog IDs and hashes, geometry revision and build/toolchain. Start with seeds
+`0, 42, 43, 4294967295` and paired `gapTime = 3, 5, 7 s` at `headway = 7 m`, then paired
+`headway = 3, 7, 12 m` at `gapTime = 5 s`. These are test inputs, not calibrated values.
+Archive each run's completed movement counts, whole-route delay, approach mean/max queue,
+active/pending and clamps. Retain event traces for investigated cases.
+
+Expect greater restriction in controlled admissibility tests. Do **not** require delay to be
+monotone for every stochastic seed: interaction and incomplete-trip selection can change the
+reported mean. A smaller completed-trip mean with more unserved vehicles is not an improvement.
+Record differences and investigate unexplained changes; do not tune criteria after seeing them.
+This development sweep does not implement M5 batch reporting or establish M6 validity.
+
+## 3. Owner exercise
+
+After automated evidence is green, the owner uses a Windows build to create/open the fixture,
+inspect the two areas, set which movement yields, change gap/headway, and watch the crossing,
+merge, Stop and Yield variants. Then save, close, reopen and repeat the same seed. Confirm that
+the control lines and rule values survive and that the reported run repeats.
+
+Record whether the minor-road behavior and response are plausible, with actual timings,
+observations and defects. This operationalizes ROADMAP's existing M3 done-condition; it adds
+no fabricated delay tolerance or Vissim-equivalence test. A green CI run is not this exercise.
+Keep any failure in the record; fixes receive separate attempts rather than overwriting it.
+
+## 4. Evidence record
+
+| Field | Observation |
+|---|---|
+| M2 gate evidence and pass prerequisite | Pending |
+| Implementation commit / build / platform | Pending |
+| Fixture metadata and data hashes | Pending |
+| A01-A26: test names, results, artifacts, uncovered rows | Pending |
+| Linux headless/desktop and Windows native CI | Pending |
+| Frozen fixtures and seed-42 regression | Pending |
+| Same-build replay | Pending |
+| Controlled gap/headway/clearance outcomes | Pending |
+| Seeded sweep reports and unserved counts | Pending |
+| Owner, date, Windows version and attempt number | Pending |
+| Observed priority, crossing, Stop/Yield and queue behavior | Pending |
+| Save/reopen/repeat-seed outcome | Pending |
+| Plausibility verdict and unresolved defects | Pending |
+| **M3 right-of-way done-condition** | **Open** |
+| **M3.2.8 remaining behavior** | **Open** |
+| **M6 scientific validation** | **Open; not assessed here** |
