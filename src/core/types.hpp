@@ -32,6 +32,12 @@ struct VehicleType {
 struct VehicleInput {
     std::string id, routeId, vehicleTypeId;
     double vehiclesPerHour{}, startTime{}, endTime{};
+    // Relative weights, one per lane `routeLaneChains` currently expands `routeId` into, in that
+    // same order (M1.26.1). Empty is the default and means "split equally" -- the M1.26 behaviour
+    // -- and a size that no longer matches the route's lane count (the network was edited after
+    // the shares were set) is treated the same as empty rather than misapplied to the wrong lane.
+    // Normalised by their sum at compile time; the values themselves need not sum to 1.
+    std::vector<double> laneShares;
     bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };

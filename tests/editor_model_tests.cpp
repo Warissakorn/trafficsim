@@ -313,6 +313,40 @@ TEST(editor, a_route_covers_every_lane_the_drawing_carries) {
         CHECK(std::any_of(scenario.routes.begin(),scenario.routes.end(),
                           [&](const auto& r){return r.id==i.routeId;}));
 }
+TEST(editor, m1_26_1_lane_shares_weight_the_split_and_degrade_when_stale) {
+    ProjectDocument d;
+    const auto west=addLink(d,{{-100,0},{-10,0}},3,3.5);
+    const auto east=addLink(d,{{10,0},{100,0}},3,3.5);
+    const auto connector=addConnectorRange(d,{west,d.network.links[0].lanes.front().id},
+                                           {east,d.network.links[1].lanes.front().id},3,3);
+    const std::vector<std::string> route{west,connector,east};
+    const auto id=putRoute(d,{"whole-link",route});
+    auto input=VehicleInput{"load",id,"car",1800,0,60};
+    // Three weights for the three lanes the route currently reaches: 1:2:3 of 1800.
+    input.laneShares={1,2,3};
+    putInput(d,input);
+    {
+        const auto scenario=buildScenario(d.network,*d.definition);
+        CHECK(scenario.inputs.size()==3);
+        double total=0;for(const auto& i:scenario.inputs)total+=i.vehiclesPerHour;
+        test::near(total,1800,1e-9);
+        test::near(scenario.inputs[0].vehiclesPerHour,300,1e-9);
+        test::near(scenario.inputs[1].vehiclesPerHour,600,1e-9);
+        test::near(scenario.inputs[2].vehiclesPerHour,900,1e-9);
+        // A compiled per-lane share carries no further split of its own.
+        for(const auto& i:scenario.inputs) CHECK(i.laneShares.empty());
+    }
+    // Narrowing the Connector changes how many lanes the route reaches; the three authored
+    // weights no longer line up with them, so the split degrades to equal rather than landing
+    // a weight on the wrong lane.
+    changeConnectorRange(d,connector,2,2,false);
+    CHECK(routeLaneChains(d.network,route).size()==2);
+    {
+        const auto scenario=buildScenario(d.network,*d.definition);
+        CHECK(scenario.inputs.size()==2);
+        for(const auto& i:scenario.inputs) test::near(i.vehiclesPerHour,900,1e-9);
+    }
+}
 TEST(editor, a_single_lane_route_keeps_its_authored_id_and_volume) {
     const auto d=sample();
     // The frozen baselines depend on this: a one-lane expansion must not rename anything.

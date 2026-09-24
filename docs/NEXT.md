@@ -35,10 +35,14 @@ measured and **reverted**. Do not re-try any of these without a new measurement:
 day. The editor's timings are steadier (±2%) and the clock is fine there. Any harness driving Qt
 must pump the event loop between iterations (D31) or it times Qt's deferred work instead.
 
-**Ahead of all of it in the owner's order: M1.26.1**, adjustable per-lane shares. Decide where
-the shares live before writing any UI — that is the whole task, because `VehicleInput` is a core
-type the scenario format shares, and an equal split must stay the compiled result of an unedited
-input, bit for bit.
+**M1.26.1's storage decision is made (D32):** `VehicleInput.laneShares`, optional weights in
+`routeLaneChains` order, normalised by `buildScenario`, empty or stale-sized degrading to the
+M1.26 equal split, schema 9. `docs/ROADMAP.md`'s M1.26.1 entry has the shape and the two tests
+that hold the gate. **What is left of M1.26.1 is the editor surface**: no dialog or table lets an
+author set a share today. Follow `objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` and
+the vehicle-input dialog for the pattern to extend — one row of weights per lane the route
+currently reaches, and re-reading `routeLaneChains` on every open since that count can change
+under the author's feet (that is exactly the case the stale-size fallback exists for).
 
 ---
 
@@ -49,9 +53,9 @@ input, bit for bit.
 **0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
 entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
-exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is open and its
-real question is where the shares live, since `VehicleInput` is a core type the scenario format
-shares. Signal heads are the last object still placed only through a dialog;
+exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) has its storage
+decided (D32, top entry) and its UI still open. Signal heads are the last object still placed
+only through a dialog;
 `objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
 A routing decision as an object at a station along the link — what Vissim actually places, and
 what would bring back the lane-specific route M1.26 gave up — is **M2.1**, and M2 may not start

@@ -32,10 +32,14 @@ names Links and Connectors, never a lane**, and `buildScenario` expands it into 
 route per lane (`routeLaneChains`, `src/model/network/routing.cpp`); an input's volume is the
 Link total, split equally across those lanes. So a route covers the whole carriageway, changing
 a Connector's lane count cannot invalidate it, and no command refuses an edit because a route
-exists. Schema 8; older files and M0 scenarios migrate on load. A route whose objects do not
+exists. Schema 9; older files and M0 scenarios migrate on load. A route whose objects do not
 join up is kept and reported as `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does
-not. A lane-specific route (a turn pocket) can no longer be expressed; adjustable per-lane
-shares are M1.26.1; compositions, per-interval volumes and a positioned routing decision are
+not. **M1.26.1:** `VehicleInput.laneShares` is optional relative weights, one per lane the route
+currently expands to, in `routeLaneChains` order (D32); empty means the M1.26 equal split, and a
+stale size (the network changed lane count since) degrades to it rather than landing on the wrong
+lane. `buildScenario` normalises by their sum. Persisted only when set, so an unedited input's
+file and compiled volumes are unchanged. No editor UI reads or writes it yet — that is the rest
+of M1.26.1. Compositions, per-interval volumes and a positioned routing decision are
 M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through

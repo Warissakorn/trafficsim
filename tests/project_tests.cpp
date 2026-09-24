@@ -23,6 +23,24 @@ TEST(project, strict_json_shapes) {
     d = source.at("definition"); d.erase("timeStep");
     test::throws([&] { parseDefinition(d); });
 }
+TEST(project, m1_26_1_lane_shares_round_trip_and_stay_out_of_an_unedited_file) {
+    AuthoringDefinition d;
+    d.duration = 60; d.timeStep = 0.1;
+    d.routes.push_back({"r", {"a"}});
+    // Unedited: no laneShares at all. It must not appear in the saved file, so an older reader
+    // (and a byte-for-byte diff against a schema-8 save) sees exactly what it always did.
+    d.inputs.push_back({"i1", "r", "car", 900, 0, 60});
+    auto j = definitionJson(d);
+    CHECK(!j["inputs"][0].contains("laneShares"));
+    const auto reparsed = parseAuthoringDefinition(j);
+    CHECK(reparsed.inputs[0].laneShares.empty());
+    // Edited: the weights round-trip exactly.
+    d.inputs[0].laneShares = {1, 2, 3};
+    j = definitionJson(d);
+    CHECK(j["inputs"][0]["laneShares"] == Json({1, 2, 3}));
+    const auto withShares = parseAuthoringDefinition(j);
+    CHECK(withShares.inputs[0].laneShares == std::vector<double>{1, 2, 3});
+}
 TEST(project, missing_file) {
     test::throws([&] { loadScenario(test::root() / "missing.json", test::root() / "data"); }, "Cannot read JSON");
 }

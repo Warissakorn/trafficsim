@@ -274,11 +274,11 @@ in `M1_ACCEPTANCE.md`; automated tests do not close it.
 
 #### M1.26.1 — Adjustable per-lane shares
 
-**Open.** The owner asked that the equal split be adjustable. The numbers must live where both
-the editor and `buildScenario` read them, and `VehicleInput` is a core type the scenario format
-shares, so this is a schema-and-signature decision, not a dialog field. **Gate:** shares
-round-trip through save/reopen, normalise, and leave an unedited input's compiled volumes
-bit-identical to the equal split.
+**Storage decided and landed (D32); UI still open.** `VehicleInput.laneShares` — optional relative
+weights in `routeLaneChains` order; empty or a stale/non-positive weight degrades to the M1.26
+equal split. `buildScenario` normalises by their sum. Schema **9**, written only when set, so an
+unedited file and its compiled volumes are unchanged. Gated by two tests named for D32 in
+`PROGRESS.md`. No editor UI reads or writes the field yet — that is the rest of this sub-milestone.
 
 ### M1.27 — Optimization program: build, redraw, engine, UX · **CLOSED**
 

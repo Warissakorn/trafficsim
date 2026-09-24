@@ -97,6 +97,6 @@ TEST(ranges, catalogs_are_content_and_schema_one_upgrades_without_losing_ids) {
     for(auto& c:old["network"]["connectors"])for(const auto* key:{"fromLaneCount","toLaneCount","level","displayType"})c.erase(key);
     const auto restored=parseDocument(old);CHECK(restored.network.connectors.front().id==id);
     CHECK(restored.network.connectors.front().fromLaneCount==1);CHECK(restored.network.links.front().level==0);
-    CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==8);
+    CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==9);
     old["schemaVersion"]=999;test::throws([&]{parseDocument(old);},"EDIT_VERSION");
 }
