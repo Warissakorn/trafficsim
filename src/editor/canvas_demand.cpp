@@ -38,6 +38,7 @@ std::pair<std::string,std::string> EditorCanvas::demandObjectAt(QPoint viewportP
     for(const auto* item:items(viewportPosition)) {
         const auto kind=item->data(0).toString();
         if(kind=="input-marker")return {"input",item->data(1).toString().toStdString()};
+        if(kind=="decision-marker")return {"decision",item->data(1).toString().toStdString()};
         if(kind=="route-overlay")return {"route",item->data(1).toString().toStdString()};
     }
     return {};
@@ -152,8 +153,13 @@ void EditorCanvas::drawDemandOverlay() {
     if(document_->definition)for(const auto& input:document_->definition->inputs) {
         std::vector<std::string> segments;
         for(const auto& route:document_->definition->routes)if(route.id==input.routeId)segments=route.segmentIds;
-        if(segments.empty())continue;
-        const auto chains=routeGeometries(document_->network,segments);
+        // M2.1.1: a routeless input enters on its own Link, across all of that Link's lanes.
+        std::vector<std::vector<Point>> chains;
+        if(!input.linkId.empty()) {
+            chains={objectGeometry(document_->network,input.linkId)};
+            for(const auto& link:document_->network.links)if(link.id==input.linkId)
+                chains.resize(std::max<std::size_t>(1,link.lanes.size()),chains.front());
+        } else if(!segments.empty()) chains=routeGeometries(document_->network,segments);
         if(chains.empty() || chains.front().size()<2)continue;
         const auto& geometry=chains.front();
         const bool lit=input.routeId==highlightedRoute_;
@@ -175,6 +181,24 @@ void EditorCanvas::drawDemandOverlay() {
         label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
         label->setBrush(QColor("#0f766e"));label->setPos(at.x+r,at.y+r);label->setZValue(200006);
         label->setData(0,QStringLiteral("input-volume"));
+    }
+    // M2.1.1: a routing decision placed on a Link draws as a diamond a little way along it, where
+    // Vissim draws its decision marker; clicking it opens the decision.
+    if(document_->definition)for(const auto& decision:document_->definition->routingDecisions) {
+        if(decision.linkId.empty())continue;
+        const auto geometry=objectGeometry(document_->network,decision.linkId);
+        if(geometry.size()<2)continue;
+        const double r=6/scale;
+        const auto at=pointAlong(geometry,std::min(12.0,polylineLength(geometry)/2));
+        QPolygonF diamond;diamond<<QPointF(at.x+r,at.y)<<QPointF(at.x,at.y+r)<<QPointF(at.x-r,at.y)<<QPointF(at.x,at.y-r);
+        QPen pen(QColor("#9a3412"),1);pen.setCosmetic(true);
+        auto* marker=scene_.addPolygon(diamond,pen,QBrush(QColor("#fdba74")));
+        marker->setZValue(200005);marker->setData(0,QStringLiteral("decision-marker"));
+        marker->setData(1,QString::fromStdString(decision.id));
+        auto* label=scene_.addSimpleText(QString::fromStdString(decision.name.empty()?decision.id:decision.name));
+        label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+        label->setBrush(QColor("#9a3412"));label->setPos(at.x+r,at.y-r);label->setZValue(200006);
+        label->setData(0,QStringLiteral("decision-label"));
     }
     // A committed route draws only while it is selected, so the canvas does not silt up.
     if(document_->definition && !highlightedRoute_.empty())

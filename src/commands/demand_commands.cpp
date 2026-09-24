@@ -60,7 +60,7 @@ std::string putProgram(ProjectDocument& d, SignalProgram value) {
 void deleteRoute(ProjectDocument& d, const std::string& id) {
     auto& values=demand(d); remove(values.routes,id);
     std::erase_if(values.inputs,[&](const auto& i){return i.routeId==id;});
-    detail::pruneRoutingDecisions(values);
+    detail::pruneRoutingDecisions(values, d.network);
 }
 std::string putRoutingDecision(ProjectDocument& d, RoutingDecision value) {
     if (value.id.empty()) value.id=allocateId(d,"decision");
@@ -70,15 +70,22 @@ void deleteRoutingDecision(ProjectDocument& d, const std::string& id) {
     auto& values=demand(d); remove(values.routingDecisions,id);
     std::erase_if(values.inputs,[&](const auto& i){return i.routingDecisionId==id;});
 }
-void detail::pruneRoutingDecisions(AuthoringDefinition& values) {
-    // A decision entry for a route that is gone goes with it, as the route's own inputs do; a
-    // decision left with no routes cannot split anything, so it and its inputs go too.
+void detail::pruneRoutingDecisions(AuthoringDefinition& values, const Network& network) {
+    const auto linkExists=[&](const std::string& id){
+        return std::any_of(network.links.begin(),network.links.end(),[&](const auto& l){return l.id==id;});};
+    // A decision entry for a route that is gone goes with it, as the route's own inputs do, and
+    // so does a destination whose Link is gone (M2.1.1). A decision left with no entries cannot
+    // split anything, and a placed one whose Link is gone sits nowhere: it and its inputs go too.
     for (auto& decision : values.routingDecisions)
         std::erase_if(decision.routes,[&](const auto& entry){
+            if(!entry.destinationLinkId.empty())return !linkExists(entry.destinationLinkId);
             return std::none_of(values.routes.begin(),values.routes.end(),[&](const auto& r){return r.id==entry.routeId;});});
+    const auto gone=[&](const RoutingDecision& x){return x.routes.empty() || (!x.linkId.empty() && !linkExists(x.linkId));};
     std::vector<std::string> emptied;
-    for (const auto& decision : values.routingDecisions) if (decision.routes.empty()) emptied.push_back(decision.id);
-    std::erase_if(values.routingDecisions,[](const auto& x){return x.routes.empty();});
+    for (const auto& decision : values.routingDecisions) if (gone(decision)) emptied.push_back(decision.id);
+    std::erase_if(values.routingDecisions,gone);
+    // A routeless input enters on its Link; with the Link gone it enters nowhere.
+    std::erase_if(values.inputs,[&](const auto& i){return !i.linkId.empty() && !linkExists(i.linkId);});
     std::erase_if(values.inputs,[&](const auto& i){
         return std::find(emptied.begin(),emptied.end(),i.routingDecisionId)!=emptied.end();});
 }

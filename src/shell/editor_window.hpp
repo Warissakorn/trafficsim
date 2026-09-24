@@ -85,7 +85,7 @@ private:
     void refreshDemand();
     void translateDemand();
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
-    void editInput(const std::string& id = {}, const std::string& preselectedRoute = {});
+    void editInput(const std::string& id = {}, const std::string& preselectedRoute = {}, const std::string& preselectedLink = {});
     void editProgram(const std::string& id = {});
     void editDecision(const std::string& id = {}); // M2.4, src/shell/editor_decision.cpp
     void editHead(const std::string& id = {});

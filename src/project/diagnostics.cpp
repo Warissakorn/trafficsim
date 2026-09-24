@@ -1,3 +1,4 @@
+#include "demand_paths.hpp"
 #include "diagnostics.hpp"
 
 namespace trafficsim {
@@ -43,7 +44,8 @@ std::vector<Diagnostic> documentDiagnostics(const ProjectDocument& document) {
             return result;
         }
         // Inputs naming a routing decision (M2.4) name no route of their own until expanded.
-        const ScenarioDefinition definition = withRoutingDecisions(*document.definition);
+        const ScenarioDefinition definition =
+            expandRouteless(document.network, *document.definition, withRoutingDecisions(*document.definition));
         const bool catalogs = !definition.vehicleTypes.empty() && !definition.behaviours.empty();
         bool withheld = false;
         for (auto& row : runtimeDiagnostics(document.network, definition)) {

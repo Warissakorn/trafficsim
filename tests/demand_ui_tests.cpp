@@ -339,6 +339,42 @@ int main(int argc,char** argv) {
         tool->setCurrentIndex(6);QApplication::processEvents();
         require(item<QLabel>(w,"editorToolHint")->text().contains(QString::fromUtf8("เส้นทาง")),
             "Route gesture hint was not translated");
+        // M2.1.1: an input placed on a Link no route starts on needs none. The dialog opens on
+        // following the network from that Link, as Vissim's input does.
+        tool->setCurrentIndex(7);QApplication::processEvents();
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Placing an input on a routeless Link opened no dialog");
+            require(dialog->findChild<QComboBox*>("editorInputRoute")->currentData().toString()=="link:"+QString::fromStdString(north),
+                "The dialog did not open on following the network from the Link");
+            dialog->accept();
+        });
+        click(w,laneMiddle(w,north,northLane));
+        const auto& inputs=w.history().document().definition->inputs;
+        require(inputs.size()==2 && inputs.back().linkId==north && inputs.back().routeId.empty(),
+            "The routeless input was not stored on its Link");
+        require(drawnCount(w,"input-marker")==2,"The routeless input drew no marker");
+        // A routing decision placed on a Link, with a destination instead of a route.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Decision dialog did not open");
+            auto* place=dialog->findChild<QComboBox*>("editorDecisionLink");
+            place->setCurrentIndex(place->findData(QString::fromStdString(west)));
+            // Rows: the one route, then every Link as a destination in drawing order.
+            auto* own=dialog->findChild<QDoubleSpinBox*>("editorDecisionFlow1");
+            auto* toEast=dialog->findChild<QDoubleSpinBox*>("editorDecisionFlow2");
+            require(own && !own->isEnabled(),"The decision's own Link was offered as a destination");
+            require(toEast && toEast->isEnabled(),"A destination row was not enabled once placed");
+            toEast->setValue(2);dialog->accept();
+        });
+        action(w,"editorAddDecision");
+        const auto& decisions=w.history().document().definition->routingDecisions;
+        require(decisions.size()==2 && decisions.back().linkId==west &&
+                decisions.back().routes==std::vector<DecisionRoute>({{"",2,east}}),"The placed decision was not stored");
+        require(drawn(w,"decision-marker"),"The placed decision drew no marker");
+        action(w,"editorUndo");
+        require(w.history().document().definition->routingDecisions.size()==1 && !drawn(w,"decision-marker"),
+            "Undo left the placed decision behind");
         std::cout<<"demand ui ok\n";
     } catch(const std::exception& e) {std::cerr<<"FAIL: "<<e.what()<<"\n";return 1;}
     return 0;

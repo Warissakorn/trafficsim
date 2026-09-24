@@ -123,6 +123,14 @@ void EditorWindow::refreshDemand() {
             std::size_t lanes=0;
             for(const auto& r:def.routes)if(r.id==i.routeId)
                 lanes=routeLaneChains(history_.document().network,r.segmentIds).size();
+            // M2.1.1: a routeless input names its Link, and splits across that Link's lanes.
+            auto target=QString::fromStdString(i.routeId.empty()?i.routingDecisionId:i.routeId);
+            if(!i.linkId.empty()) {
+                target=text("editorInputLinkItem").arg(QString::fromStdString(i.linkId));
+                for(const auto& l:history_.document().network.links)if(l.id==i.linkId)lanes=l.lanes.size();
+                // A decision placed on this Link chooses the lanes by destination, so no equal split.
+                for(const auto& x:def.routingDecisions)if(x.linkId==i.linkId)lanes=0;
+            }
             auto volume=QString::number(i.vehiclesPerHour);
             if(lanes>1)volume+=" = "+QString::number(lanes)+QString::fromUtf8(" \u00d7 ")+
                 QString::number(i.vehiclesPerHour/static_cast<double>(lanes),'f',1);
@@ -130,11 +138,14 @@ void EditorWindow::refreshDemand() {
             // With counted intervals (M2.2) the figure is their mean over the span; say so.
             auto period=" ["+QString::number(i.startTime)+", "+QString::number(i.endTime)+"]";
             if(!i.intervals.empty())period+=" · "+text("editorInputIntervalCount").arg(static_cast<int>(i.intervals.size()));
-            row(inputTable_,n,{QString::fromStdString(i.id),QString::fromStdString(i.routeId),volume+period},i.id);
+            row(inputTable_,n,{QString::fromStdString(i.id),target,volume+period},i.id);
         }
         for(const auto& x:def.routingDecisions) {
             QStringList flows;
-            for(const auto& r:x.routes)flows<<QString::fromStdString(r.routeId)+" \u00d7 "+QString::number(r.relativeFlow);
+            for(const auto& r:x.routes)flows<<QString::fromStdString(r.destinationLinkId.empty()?r.routeId:"\u2192 "+r.destinationLinkId)
+                +" \u00d7 "+QString::number(r.relativeFlow);
+            // A placed decision (M2.1.1) says where it sits.
+            if(!x.linkId.empty())flows.prepend(text("editorDecisionAtLink").arg(QString::fromStdString(x.linkId)));
             const int n=decisionTable_->rowCount();decisionTable_->insertRow(n);
             row(decisionTable_,n,{QString::fromStdString(x.id),QString::fromStdString(x.name),flows.join(", ")},x.id);
         }

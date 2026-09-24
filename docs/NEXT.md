@@ -27,6 +27,10 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
 
 - **M2.5** delay per movement and queue per approach for one run: the editor's **Results** tab and
   `trafficsim-cli --project FILE [--csv FILE]` (D39, D40; contract in `SIMULATION.md`).
+- **M2.1.1** (owner request) a Vehicle input placed on a Link needs no route, and a routing
+  decision can be placed on a Link with destination Links and relative flows, schema 11 (D42, D43).
+  **For the gate study:** put counted turning volumes in a decision on the **entry** Link — there
+  they hold exactly; further downstream the lanes limit them until lane changing exists.
 
 **M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
 ([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank

@@ -16,7 +16,7 @@
 
 namespace trafficsim {
 // The vehicle-input dialog, split from editor_demand.cpp when M2.2 gave it counted intervals.
-void EditorWindow::editInput(const std::string& id,const std::string& preselectedRoute) {
+void EditorWindow::editInput(const std::string& id,const std::string& preselectedRoute,const std::string& preselectedLink) {
     VehicleInput value{id,{},{},600,0,history_.document().definition?history_.document().definition->duration:180};
     if(history_.document().definition)for(const auto& i:history_.document().definition->inputs)if(i.id==id)value=i;
     ScenarioDefinition catalog;
@@ -35,11 +35,17 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     if(history_.document().definition)for(const auto& x:history_.document().definition->routingDecisions)
         route->addItem(text("editorInputDecisionItem").arg(QString::fromStdString(x.name.empty()?x.id:x.name)),
                        "decision:"+QString::fromStdString(x.id));
-    // A route placed by pointer names the route it was dropped on; the dialog opens on it.
-    if(value.routeId.empty())value.routeId=preselectedRoute;
+    // M2.1.1: no route at all -- the vehicles follow the network from a Link, as in Vissim.
+    for(const auto& l:history_.document().network.links)
+        route->addItem(text("editorInputLinkItem").arg(QString::fromStdString(l.name.empty()?l.id:l.name)),
+                       "link:"+QString::fromStdString(l.id));
+    // A route placed by pointer names the route it was dropped on; the dialog opens on it. A Link
+    // with no route opens on following the network from that Link.
+    if(value.routeId.empty()&&value.linkId.empty()&&value.routingDecisionId.empty()){value.routeId=preselectedRoute;value.linkId=preselectedLink;}
     {
-        const auto current=value.routingDecisionId.empty()?"route:"+QString::fromStdString(value.routeId)
-                                                          :"decision:"+QString::fromStdString(value.routingDecisionId);
+        const auto current=!value.linkId.empty()?"link:"+QString::fromStdString(value.linkId)
+            :value.routingDecisionId.empty()?"route:"+QString::fromStdString(value.routeId)
+                                            :"decision:"+QString::fromStdString(value.routingDecisionId);
         if(const int at=route->findData(current);at>=0)route->setCurrentIndex(at);
     }
     form->addRow(text("editorInputRoute"),route);
@@ -78,15 +84,19 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     sharesHelp->setWordWrap(true);form->addRow(sharesHelp);
     auto sharesDirty=std::make_shared<bool>(false);
     auto shareFields=std::make_shared<std::vector<QDoubleSpinBox*>>();
-    const auto laneCount=[&](const std::string& routeId)->std::size_t{
-        for(const auto& r:catalog.routes)if(r.id==routeId)
+    const auto laneCount=[&](const QString& chosen)->std::size_t{
+        const auto id=chosen.mid(chosen.indexOf(':')+1).toStdString();
+        // A routeless input's weights are one per lane of its Link.
+        if(chosen.startsWith("link:"))for(const auto& l:history_.document().network.links)
+            if(l.id==id)return std::max<std::size_t>(1,l.lanes.size());
+        if(chosen.startsWith("route:"))for(const auto& r:catalog.routes)if(r.id==id)
             return std::max<std::size_t>(1,routeLaneChains(history_.document().network,r.segmentIds).size());
         return 1;
     };
     const auto rebuildShares=[&,sharesDirty,shareFields]{
         while(sharesForm->count()>0){auto* item=sharesForm->takeAt(0);delete item->widget();delete item;}
         shareFields->clear();*sharesDirty=false;
-        const auto lanes=laneCount(route->currentText().toStdString());
+        const auto lanes=laneCount(route->currentData().toString());
         sharesGroup->setVisible(lanes>1);sharesHelp->setVisible(lanes>1);
         if(lanes<=1)return;
         std::vector<double> seed(lanes,1.0);
@@ -140,10 +150,11 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     if(dialog.exec()!=QDialog::Accepted)return;
     {
         const auto chosen=route->currentData().toString();
-        const bool decision=chosen.startsWith("decision:");
+        const bool decision=chosen.startsWith("decision:"),link=chosen.startsWith("link:");
         const auto id=chosen.mid(chosen.indexOf(':')+1).toStdString();
         value.routingDecisionId=decision?id:std::string{};
-        value.routeId=decision?std::string{}:id;
+        value.linkId=link?id:std::string{};
+        value.routeId=decision||link?std::string{}:id;
     }
     {
         const auto chosen=type->currentData().toString();

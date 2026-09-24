@@ -194,8 +194,11 @@ std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
     for (const auto& x : array(definition, "routingDecisions")) {
         RoutingDecision decision{field<std::string>(x, "id"),
                                  present(x, "name") ? field<std::string>(x, "name") : std::string{}, {}};
-        for (const auto& r : array(x, "routes"))
+        if (present(x, "linkId")) decision.linkId = field<std::string>(x, "linkId"); // M2.1.1
+        for (const auto& r : array(x, "routes")) {
             decision.routes.push_back({field<std::string>(r, "routeId"), field<double>(r, "relativeFlow")});
+            if (present(r, "destinationLinkId")) decision.routes.back().destinationLinkId = field<std::string>(r, "destinationLinkId");
+        }
         result.push_back(std::move(decision));
     }
     return result;
@@ -213,6 +216,7 @@ ScenarioDefinition parseDefinition(const Json& value) {
         if (i.contains("laneShares")) input.laneShares = doubles(i, "laneShares");
         if (i.contains("compositionId")) input.compositionId = field<std::string>(i, "compositionId");
         if (i.contains("routingDecisionId")) input.routingDecisionId = field<std::string>(i, "routingDecisionId");
+        if (i.contains("linkId")) input.linkId = field<std::string>(i, "linkId"); // M2.1.1
         if (i.contains("intervals")) {
             for (const auto& p : array(i, "intervals"))
                 input.intervals.push_back({field<double>(p, "startTime"), field<double>(p, "endTime"),

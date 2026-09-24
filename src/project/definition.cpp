@@ -1,3 +1,4 @@
+#include "demand_paths.hpp"
 #include "document.hpp"
 #include "../core/validate.hpp"
 #include <algorithm>
@@ -25,6 +26,7 @@ Json definitionJson(const AuthoringDefinition& d) {
         if (!i.laneShares.empty()) input["laneShares"] = i.laneShares;
         if (!i.compositionId.empty()) input["compositionId"] = i.compositionId; // M2.3
         if (!i.routingDecisionId.empty()) input["routingDecisionId"] = i.routingDecisionId; // M2.4
+        if (!i.linkId.empty()) input["linkId"] = i.linkId; // M2.1.1
         // M2.2, the same way: absent unless set. The scalars above are then derived from it.
         if (!i.intervals.empty()) {
             input["intervals"] = Json::array();
@@ -38,9 +40,13 @@ Json definitionJson(const AuthoringDefinition& d) {
         j["routingDecisions"] = Json::array();
         for (const auto& x : d.routingDecisions) {
             Json routes = Json::array();
-            for (const auto& r : x.routes) routes.push_back({{"routeId",r.routeId},{"relativeFlow",r.relativeFlow}});
+            for (const auto& r : x.routes) {
+                routes.push_back({{"routeId",r.routeId},{"relativeFlow",r.relativeFlow}});
+                if (!r.destinationLinkId.empty()) routes.back()["destinationLinkId"] = r.destinationLinkId; // M2.1.1
+            }
             Json decision = {{"id",x.id},{"routes",routes}};
             if (!x.name.empty()) decision["name"] = x.name;
+            if (!x.linkId.empty()) decision["linkId"] = x.linkId; // M2.1.1
             j["routingDecisions"].push_back(std::move(decision));
         }
     }
@@ -101,11 +107,23 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
         const auto& decision = d.routingDecisions[k];
         const auto path = "routingDecisions[" + std::to_string(k) + "]";
         if (decision.routes.empty()) { issues.push_back({"INVALID_SHARE", path}); continue; }
-        std::string origin;
+        // M2.1.1: one decision per Link, since a vehicle reaching it cannot follow two.
+        if (!decision.linkId.empty())
+            for (std::size_t e = 0; e < k; ++e)
+                if (d.routingDecisions[e].linkId == decision.linkId) issues.push_back({"ROUTING_DECISION_DUPLICATE_LINK", path + ".linkId"});
+        // A placed decision's routes leave its Link; an unplaced one's leave the first route's.
+        std::string origin = decision.linkId;
         for (std::size_t j = 0; j < decision.routes.size(); ++j) {
             const auto& entry = decision.routes[j];
             const auto at = path + ".routes[" + std::to_string(j) + "]";
             if (!(std::isfinite(entry.relativeFlow) && entry.relativeFlow > 0)) issues.push_back({"INVALID_SHARE", at});
+            // A destination is reached from where the decision sits, so it needs a placed one,
+            // and an entry names one destination or one route -- never both.
+            if (!entry.destinationLinkId.empty()) {
+                if (decision.linkId.empty()) issues.push_back({"ROUTING_DECISION_NEEDS_LINK", at});
+                if (!entry.routeId.empty()) issues.push_back({"INPUT_TARGET_CONFLICT", at});
+                continue; // reachability depends on the network: placedDecisions checks it
+            }
             const auto* r = route(entry.routeId);
             if (!r) { issues.push_back({"UNKNOWN_ROUTE", at}); continue; }
             const auto start = r->segmentIds.empty() ? std::string{} : r->segmentIds.front();
@@ -118,6 +136,10 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
         if (!id.empty() && std::none_of(d.routingDecisions.begin(), d.routingDecisions.end(),
                                         [&](const auto& x) { return x.id == id; }))
             issues.push_back({"UNKNOWN_ROUTING_DECISION", "inputs[" + std::to_string(i) + "].routingDecisionId"});
+        // An input enters by exactly one of a route, a decision or a Link (M2.1.1).
+        const auto& input = d.inputs[i];
+        if (int(!input.routeId.empty()) + int(!input.routingDecisionId.empty()) + int(!input.linkId.empty()) > 1)
+            issues.push_back({"INPUT_TARGET_CONFLICT", "inputs[" + std::to_string(i) + "]"});
     }
     return issues;
 }
@@ -128,6 +150,12 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
         const auto decision = std::find_if(d.routingDecisions.begin(), d.routingDecisions.end(),
                                            [&](const auto& x) { return x.id == input.routingDecisionId; });
         if (decision == d.routingDecisions.end()) continue; // routingDecisionIssues names it
+        // A PLACED decision (M2.1.1) acts where it sits: the input becomes a routeless input on
+        // its Link, and expandRouteless meets the decision there on the network walk.
+        if (!decision->linkId.empty()) {
+            auto routeless = input; routeless.routingDecisionId.clear(); routeless.linkId = decision->linkId;
+            inputs.push_back(std::move(routeless)); continue;
+        }
         double sum = 0;
         for (const auto& entry : decision->routes) sum += entry.relativeFlow;
         if (!(sum > 0)) continue;
@@ -157,7 +185,9 @@ void validateAuthoredDemand(const ProjectDocument& d) {
     // checked against the catalog on Run, exactly as external vehicle types are. For the checks
     // here it borrows an embedded type, if the document carries any.
     if (auto decisions = routingDecisionIssues(*d.definition); !decisions.empty()) throw ValidationError(std::move(decisions));
-    auto checked = withRoutingDecisions(*d.definition);
+    // Routeless inputs (M2.1.1) are walked here too; one whose walk fails is left out and named
+    // by routelessIssues on Run, so an edit to the network is never refused because of it.
+    auto checked = expandRouteless(d.network, *d.definition, withRoutingDecisions(*d.definition));
     for (auto& input : checked.inputs)
         if (!input.compositionId.empty() && !checked.vehicleTypes.empty())
             input.vehicleTypeId = checked.vehicleTypes.front().id;

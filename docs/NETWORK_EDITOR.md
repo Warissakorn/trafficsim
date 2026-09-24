@@ -385,11 +385,11 @@ Levels only affect display and selection; they do not change runtime conflicts.
    Esc cancels; the draft and the selected route draw with arrows, the hovered object is haloed,
    and a click no chain reaches, or two reach equally, authors nothing (Add is the same, by dialog).
 3. With the Vehicle inputs tool (V), click the link traffic enters on: the dialog opens on the
-   route starting there, and offers to draw one when none does. The volume is the **link
-   total**, divided equally across the lanes its route reaches — an authoring convenience, not
-   a lane-choice model, since this engine has no lane changing (adjustable shares are M1.26.1;
-   compositions, intervals and relative flows are M2.1). Each input draws a chevron and its
-   volume. Right-clicking a drawn route or input, rather than dragging to pan, edits or deletes.
+   route starting there or, when none does, on **following the network from that link** with no
+   route (M2.1.1). The volume is the **link total**, divided across lanes (equally or by
+   weights; no lane changing). A routing decision can be **placed on a link** with destination
+   links and relative flows, and draws as a diamond (SIMULATION.md). Each input draws a chevron
+   and its volume. Right-clicking a route, input or decision marker edits or deletes it.
 4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal
    head on a lane or derived connector path, choose a program and position in metres.
    Program deletion is blocked while a head references it.

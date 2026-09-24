@@ -45,10 +45,30 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
             movementOfAuthored[route.id] = it->second;
         }
     }
-    for (const auto& route : snapshot.scenario.routes)
+    // A route no author drew -- a routeless path (M2.1.1) -- is a movement by the Links its lane
+    // sections belong to, first and last, grouped and named exactly as an authored one.
+    const auto table = runtimeSections(snapshot.network);
+    const auto linkOf = [&](const std::string& segment) -> std::string {
+        for (const auto& section : table.sections) if (section.id == segment) return section.linkId;
+        return {};
+    };
+    std::map<std::pair<std::string, std::string>, std::size_t> movementOfLinks;
+    if (document.definition)
+        for (const auto& route : document.definition->routes)
+            if (!route.segmentIds.empty())
+                movementOfLinks.try_emplace({route.segmentIds.front(), route.segmentIds.back()}, movementOfAuthored[route.id]);
+    for (const auto& route : snapshot.scenario.routes) {
         if (const auto it = movementOfAuthored.find(route.id.substr(0, route.id.find('/')));
-            it != movementOfAuthored.end())
-            spec.movementOfRoute[route.id] = it->second;
+            it != movementOfAuthored.end()) { spec.movementOfRoute[route.id] = it->second; continue; }
+        if (route.segmentIds.empty()) continue;
+        const std::pair key{linkOf(route.segmentIds.front()), linkOf(route.segmentIds.back())};
+        if (key.first.empty() || key.second.empty()) continue;
+        auto [it, added] = movementOfLinks.try_emplace(key, spec.movementNames.size());
+        if (added)
+            spec.movementNames.push_back(linkLabel(document.network, key.first) + " \u2192 " +
+                                         linkLabel(document.network, key.second));
+        spec.movementOfRoute[route.id] = it->second;
+    }
     for (const auto& link : snapshot.network.links) {
         QueueCounter counter{link.name.empty() ? link.id : link.name, {}};
         for (const auto& head : snapshot.network.signalHeads)

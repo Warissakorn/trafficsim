@@ -49,15 +49,10 @@ void EditorWindow::placeInputOnLink(const std::string& linkId) {
     const auto existing=history_.document().definition
         ?routeStartingOn(*history_.document().definition,linkId):std::string{};
     if(!existing.empty()) {editInput({},existing);return;}
-    // No route starts here, and an input without one would run nothing. Offer the gesture that
-    // fixes it rather than an empty combo box.
-    QMessageBox box(QMessageBox::Question,text("editorInputTable"),text("editorInputNeedsRoute"),
-        QMessageBox::Yes|QMessageBox::No,this);
-    box.button(QMessageBox::Yes)->setText(text("editorConfirm"));
-    box.button(QMessageBox::No)->setText(text("editorCancel"));
-    if(box.exec()!=QMessageBox::Yes)return;
-    tool_->setCurrentIndex(6); // the route tool
-    canvas_->startRouteDraft(linkId);
+    // No route starts here: as in Vissim, the input needs none (M2.1.1). Its vehicles follow the
+    // network from this Link -- equal shares at each branch, a placed routing decision's flows
+    // where they meet one -- so the dialog opens on exactly that.
+    editInput({},{},linkId);
 }
 void EditorWindow::syncHighlightedRoute() {
     if(!routeTable_)return;
@@ -81,14 +76,14 @@ void EditorWindow::showDemandMenu(QPoint position) {
     const auto [kind,id]=canvas_->demandObjectAt(position);
     if(kind.empty())return;
     QMenu menu(this);menu.setObjectName("editorDemandMenu");
-    auto* edit=menu.addAction(text(kind=="input"?"editorEditInput":"editorEditRoute"));
+    auto* edit=menu.addAction(text(kind=="input"?"editorEditInput":kind=="decision"?"editorEditDecision":"editorEditRoute"));
     edit->setObjectName("editorDemandMenuEdit");
-    auto* remove=menu.addAction(text(kind=="input"?"editorDeleteInput":"editorDeleteRoute"));
+    auto* remove=menu.addAction(text(kind=="input"?"editorDeleteInput":kind=="decision"?"editorDeleteDecision":"editorDeleteRoute"));
     remove->setObjectName("editorDemandMenuDelete");
     auto* reveal=menu.addAction(text("editorDemandMenuReveal"));
     reveal->setObjectName("editorDemandMenuReveal");
     const auto* chosen=menu.exec(canvas_->viewport()->mapToGlobal(position));
-    if(chosen==edit) {if(kind=="input")editInput(id);else editRoute(id);}
+    if(chosen==edit) {if(kind=="input")editInput(id);else if(kind=="decision")editDecision(id);else editRoute(id);}
     else if(chosen==remove)deleteDemand(kind,id);
     else if(chosen==reveal)selectDemand(id);
 }
