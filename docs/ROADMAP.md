@@ -328,6 +328,12 @@ M2's pre-registered owner gate still precedes this work.
 **Done when:** an unsignalized T-junction with a minor-road left turn produces plausible,
 tunable minor-road delay that responds correctly to changing the gap time.
 
+**Preparation (2026-09-24):** [M3_PLAN.md](M3_PLAN.md), [M3_CONTRACT.md](M3_CONTRACT.md)
+and [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) specify the ordered work and evidence. M2.6 is
+still unperformed; this design neither starts runtime implementation nor waives its gate.
+Interior signal positions already work in the model/runtime; M3 audits and completes the
+authoring/interaction path, rather than introducing a second signal-position mechanism.
+
 ---
 
 ### M3.1 — Merge priority by gap time and headway
@@ -378,6 +384,25 @@ cooperation, visibility and calibrated gap acceptance. Specify signal/right-of-w
 without disabling collision constraints; account explicitly for any removed blocked vehicle.
 **Gate:** controlled merges, diverges and crossing conflicts, congestion/no-overlap regression,
 deterministic replay and the M3 owner exercise; scientific claims remain gated by M6.
+
+#### M3.2.1-M3.2.8 — Ordered implementation slices
+
+All implementation below requires the M2 gate to pass. Dependencies and exact contracts
+are in [M3_PLAN.md](M3_PLAN.md); the live next action stays in `NEXT.md`.
+
+| Slice | Scope | Status / gate |
+|---|---|---|
+| M3.2.1 | Contracts and acceptance design | Prepared; documentation only, no runtime claim |
+| M3.2.2 | Authored controls, persistence, commands, compiler and effective-priority validation | Open; reference roundtrips, legacy compatibility, cycles/ties rejected |
+| M3.2.3 | Crossing occupancy, admission, rear clearance and downstream space | Open; no-overlap, congestion accounting and exact replay |
+| M3.2.4 | Conflict-area and priority-rule editor | Open; supported runtime effects, bilingual mouse/keyboard workflows |
+| M3.2.5 | Stop/Yield with signal composition | Open; each vehicle serves Stop, Yield can pass, green retains physical safety |
+| M3.2.6 | Signal-position workflow and unsignalised queue counters | Open; interior/cut positions, counter fixtures and CLI/editor agreement |
+| M3.2.7 | T-junction fixture and owner evidence | Open; controlled gap response, completed/unserved reporting and owner exercise |
+| M3.2.8 | Lane changing, cooperation, visibility and remaining behavior | Open; separate contract, controlled changes/conflicts, congestion and replay; calibrated gap acceptance still requires M6 evidence |
+
+Passing M3.2.7 alone does not close M3.2 or its remaining booked scope. No gate result is
+inferred from the preparation above, and the not-yet-validated marker remains.
 
 ---
 

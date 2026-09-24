@@ -33,6 +33,15 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
 project to the Results table, timed against the owner's current tool (C1, C2), with C4 recorded.
 Nothing in M3 starts before it passes.
 
+**M3 preparation is recorded (2026-09-24, D41).** The owner asked to carry out the proposed
+sequence. [M3_PLAN.md](M3_PLAN.md), [M3_CONTRACT.md](M3_CONTRACT.md) and
+[M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) now hold its contract and evidence design; no runtime
+or schema change has started. The immediate action remains the owner's M2.6 observation,
+not a request to approve the plan again. After C1/C2 pass and C4 is recorded in `M2_GATE.md`,
+start M3.2.2: authored references/model, codec, commands and effective-priority resolver,
+in that order, with A01-A08 evidence. Keep new controls Run-blocked until M3.2.3 implements
+their runtime. Do not infer a gate pass from the instruction to follow the sequence.
+
 **Engineering work that can proceed without the owner, if asked:**
 - An in-editor CSV export of the Results tab. The CLI has one; the editor only shows the table.
 - A Results-tab refresh that skips work while the tab is hidden. It is cheap today (16 rows), so
@@ -134,6 +143,7 @@ M2.5 may proceed; the gate study itself (M2.6) is the owner's.
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
 not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an
-authorable object with their own UI, stop and yield control, crossing conflicts and signal heads
-anywhere on a link are all still M3's, and its done-condition about minor-road delay responding to
-gap time is not met.
+authorable object with their own UI, stop and yield control and crossing conflicts are still
+M3's. Interior signal positions already exist in the model/runtime; their complete authoring
+workflow and interaction evidence remain open. M3's done-condition about minor-road delay
+responding to gap time is not met.

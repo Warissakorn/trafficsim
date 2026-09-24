@@ -32,6 +32,18 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-24 — M3 contract and acceptance preparation (D41)
+
+Owner requested the proposed sequence. `M3_PLAN.md`, `M3_CONTRACT.md` and `M3_ACCEPTANCE.md`
+record the source audit, interfaces, ordered slices and 26 evidence cases. The audit identifies
+missing authored priority persistence, insufficient merge-graph validation and signal-bound
+queue counters. No source, schema or fixture changed; M2.6 is still unperformed.
+Local file-size/architecture guards and the architecture negative self-test pass (standalone
+C++20 builds); `git diff --check` passes. CTest could not start: CMake/CTest/Ninja are absent.
+No local application, desktop or Windows verification is claimed. CI belongs to the draft PR.
+
+---
+
 ## 2026-09-24 — M2.5: delay per movement and queue per approach, one run
 
 `src/eval/movement.*` (core types only) and `src/project/evaluation.*` (movements from authored
@@ -485,3 +497,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D38 | 2026-09-24 | **The project is a simulator usable in real engineering work; the M2 gate is re-registered as C1 + C2, with C4 recorded** | Owner ruling in session: every reference to comparing against another simulator is removed from the repository, every file and line (git history keeps it), and the purpose is stated positively — a traffic simulation program engineers can use for real work. C0 (portfolio audit) and C3 (the comparison question) existed only to answer that comparison, so both are withdrawn; C1, C2 and C4 keep their numbers. Changed **before any gate observation** — C0 was never answered and M2.5 had produced no figure — so this is a re-registration, not a criterion moved after the fact (D8). M2.5 is unblocked. The owner's supplied spec copies in `docs/specs/` were edited too, on the same instruction. | An observation made before this date that the change could have been tailored to — none exists. |
 | D39 | 2026-09-24 | **Movement delay is the run summary's whole-route term, grouped by (entry Link, exit Link)** | Smallest version that adds up: the movements' trips plus `notInMovement` equal the run's completed trips, and each movement's route starts on its approach and ends on its exit anyway. It includes source wait and the entry acceleration from standstill (≈3 s for a car), which is stated beside the table and pinned by a test. | When an engineer needs delay between two cross-sections (a travel-time section), or the entry bias matters to a figure. That is M5's measurement, and it removes the bias. |
 | D40 | 2026-09-24 | **A queue counter at every signal head; an approach reports the maximum over its lanes** | Vissim's queue counter at the stop line with its default conditions (5 km/h, 10 km/h, 20 m) as data. It is measured along each route that crosses the line, so a queue spilling back past the pocket into the upstream Link is counted. Mean over every step, and the maximum. | An unsignalised approach (M3) needs a counter with no head, so counters become authorable objects then. |
+| D41 | 2026-09-24 | **Prepare the ordered M3 contract without inventing an M2 gate result** | The owner asked to carry out the plan, which explicitly retains the M2 prerequisite. The contract replaces overridden merge groups atomically, detects cyclic/incomplete priority, reserves finite crossing extents through rear clearance and gives unsignalised queues real measurement lines. M3.2.1-M3.2.8 retain the full existing scope. | M2.6 remains the prerequisite for implementation. No owner observation, gate waiver or calibration result is inferred from this instruction. |

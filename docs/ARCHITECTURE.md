@@ -159,6 +159,12 @@ See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 
 ## Remaining systems
 
+M3's proposed right-of-way seam is specified in [M3_CONTRACT.md](M3_CONTRACT.md): authored
+references resolve once into numeric runtime conflict intervals and route incidence; owned
+simulation state holds admission/stop service; evaluation can measure independent control
+lines. This is a design only, behind the M2 gate. No new dependency or runtime API has landed.
+The existing runtime `PriorityRule` member is not yet an authored project codec contract.
+
 | System | Location | Required boundary |
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
