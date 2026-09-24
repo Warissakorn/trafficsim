@@ -90,8 +90,9 @@ routes. Both are expanded at compile time (`routelessChains`, `expandRouteless`)
 routes `link:<id>/path-k` and one input per complete path, at volume × probability:
 
 - **Free walk:** every Connector path leaving the vehicle's lane is one way out. Leaving the
-  network at the lane end is one more when no path leaves from the end. Each way gets an equal
-  share. A way out upstream of where the vehicle came onto the lane is behind it.
+  network at the lane end is one more when no path leaves from the end. A path leaving within
+  `kRoutelessStubLength` (4.5 m) of the end counts as leaving from the end, because a shorter
+  remainder cannot hold a vehicle (D44). Each way gets an equal share. A way out upstream of where the vehicle came onto the lane is behind it.
 - **Placed decision:** it acts when a routeless vehicle comes onto its Link. The station along
   the Link is not modelled. The vehicle takes a destination its lane can reach, by relative flow
   among those. A lane reaching none carries on routeless, with `ROUTING_DECISION_LANE_UNSERVED`.
@@ -104,6 +105,22 @@ routes `link:<id>/path-k` and one input per complete path, at volume × probabil
   two decisions on one Link, or a destination no lane can reach. Inputs still start only on
   entry Links (`UNSUPPORTED_INTERNAL_INPUT`), as for routes.
 - Results group these paths into movements by (first Link, last Link), as for authored routes.
+
+**Per-interval turning proportions (M2.1.2, D45).** A routing decision, placed or not, may carry
+`intervals` (ordered, non-overlapping `startTime`/`endTime`) and, on every entry, `intervalFlows`
+with one relative flow per interval. Inside interval k an entry weighs `intervalFlows[k]`; outside
+every interval it weighs `relativeFlow` (the dialog writes the count total there). The input is cut
+at the interval boundaries and each piece is split at its own proportions, so the compiled volumes
+are exact per piece. **The interval is chosen by the time a vehicle enters the network, not the
+time it reaches the decision** — off by the travel time from entry to decision, seconds against
+15-minute counts. A placed decision's paths are the union over the intervals, one runtime route
+each. Refused: `ROUTING_DECISION_INTERVALS` (a row's flow count differs from the intervals),
+`INVALID_INTERVAL`, and `INVALID_SHARE` for a negative flow.
+
+**The counts are proportions of the input's volume (D46).** The input's own volume per period is
+what is split; the decision's counts only set the proportions. Their totals, interval lengths and
+start times need not match the input's — the input is cut at both sets of boundaries — and an
+interval in which every flow is 0 (nothing counted) uses the whole-period `relativeFlow`.
 
 ## Runtime scope
 

@@ -34,6 +34,11 @@ struct RoutelessResult {
     bool byDestination{};
 };
 constexpr std::size_t kMaxRoutelessPaths = 256;
+// D44: the lane end is a way out of the network only when the last way out along the lane leaves
+// more than this before it. A Connector drawn a little short of the end (the author clicked near
+// it) leaves a remainder shorter than the shortest shipped vehicle (car, 4.5 m), which no vehicle
+// can mean to drive into. Measured on the Link's reference polyline, like every station.
+constexpr double kRoutelessStubLength = 4.5;
 // Deterministic: the Link's lanes in order, then ways out in connector-path order, then
 // destinations in decision order. For each starting lane the shares sum to 1 unless an issue
 // cut a branch off.

@@ -32,8 +32,9 @@ names Links and Connectors, never a lane**, and `buildScenario` expands it into 
 route per lane (`routeLaneChains`, `src/model/network/routing.cpp`); an input's volume is the
 Link total, split equally across those lanes. So a route covers the whole carriageway, changing
 a Connector's lane count cannot invalidate it, and no command refuses an edit because a route
-exists. Schema 11 (M2.2 adds counted `intervals`; M2.1.1 adds `linkId` on an input and a placed routing
-decision with destination Links, expanded at compile time into static routes, D42/D43); older
+exists. Schema 12 (M2.2 adds counted `intervals`; M2.1.1 adds `linkId` on an input and a placed routing
+decision with destination Links, expanded at compile time into static routes, D42/D43; M2.1.2 adds
+per-interval turning flows on a decision, D45); older
 files and M0 scenarios migrate on load. A route whose objects do not
 join up is kept and reported as `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does
 not. **M1.26.1:** `VehicleInput.laneShares` is optional relative weights, one per lane the route
@@ -51,7 +52,7 @@ frozen fixture are untouched. Connectors meeting at a lane start are ordered by 
 rule (M2.0.1, D35 — not M3). **M2.5 is implemented** — per-movement delay and per-approach queues for one run in the
 editor's Results tab and `trafficsim-cli --project` (D39, D40). It is whole-route delay, including
 ≈3 s of entry acceleration. **Next is M2.6, the owner's gate study: C1 + C2 with C4 recorded (D38),
-in `docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
+in `docs/M2_GATE.md`.** A decision's station along its Link is still M2.1; per-interval flows are M2.1.2 (D45).
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
 `<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test

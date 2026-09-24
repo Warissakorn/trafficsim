@@ -146,6 +146,7 @@ void EditorWindow::refreshDemand() {
                 +" \u00d7 "+QString::number(r.relativeFlow);
             // A placed decision (M2.1.1) says where it sits.
             if(!x.linkId.empty())flows.prepend(text("editorDecisionAtLink").arg(QString::fromStdString(x.linkId)));
+            if(!x.intervals.empty())flows<<text("editorDecisionIntervalCount").arg(static_cast<int>(x.intervals.size())); // M2.1.2
             const int n=decisionTable_->rowCount();decisionTable_->insertRow(n);
             row(decisionTable_,n,{QString::fromStdString(x.id),QString::fromStdString(x.name),flows.join(", ")},x.id);
         }

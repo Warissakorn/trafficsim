@@ -320,6 +320,13 @@ vehicles to destination Links by relative flow; everything expands at compile ti
 routes (SIMULATION.md). Still open in M2.1: a decision's station along the Link, per-interval
 flows, and partial/dynamic decisions. Proportions after the entry Link wait for lane changing.
 
+#### M2.1.2 — Per-interval turning proportions · **Implemented 2026-09-24** (D45)
+
+Owner choice for the next engineering item. A routing decision takes counted turning volumes per
+interval (pasted per row in its dialog), schema 12; expanded at compile time per interval piece.
+The interval is chosen by network entry time, not the time at the decision. Still open in M2.1:
+a decision's station along the Link, and partial/dynamic decisions.
+
 ---
 
 ## M3 — Right-of-way: conflict areas and priority rules
