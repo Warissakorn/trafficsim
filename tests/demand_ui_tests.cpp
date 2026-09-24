@@ -375,6 +375,31 @@ int main(int argc,char** argv) {
         action(w,"editorUndo");
         require(w.history().document().definition->routingDecisions.size()==1 && !drawn(w,"decision-marker"),
             "Undo left the placed decision behind");
+        // M2.1.2: counted turning volumes per interval, pasted per row.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Decision dialog did not open for counts");
+            require(dialog->findChild<QDoubleSpinBox*>("editorDecisionIntervalMinutes")->value()==15,"Interval did not default to 15 min");
+            auto* counts=dialog->findChild<QLineEdit*>("editorDecisionCounts0");
+            require(counts,"The route row has no counts field");
+            counts->setText("30\t10");dialog->accept();
+        });
+        action(w,"editorAddDecision");
+        {
+            const auto& stored=w.history().document().definition->routingDecisions.back();
+            require(stored.intervals==std::vector<DecisionInterval>({{0,900},{900,1800}}) &&
+                    stored.routes==std::vector<DecisionRoute>({{routeId,40,"",{30,10}}}),"Counts were not stored per interval");
+        }
+        item<QTableWidget>(w,"editorDecisionTable")->selectRow(1);QApplication::processEvents();
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Decision dialog did not reopen");
+            require(dialog->findChild<QLineEdit*>("editorDecisionCounts0")->text()=="30 10","Stored counts were not shown back");
+            dialog->reject();
+        });
+        action(w,"editorEditDecision");
+        action(w,"editorUndo");
+        require(w.history().document().definition->routingDecisions.size()==1,"Undo left the counted decision behind");
         std::cout<<"demand ui ok\n";
     } catch(const std::exception& e) {std::cerr<<"FAIL: "<<e.what()<<"\n";return 1;}
     return 0;

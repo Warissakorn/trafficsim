@@ -33,6 +33,23 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-24 — M2.1.2: turning proportions per counted interval
+
+Owner choice among the engineering items that can proceed before M2.6. `RoutingDecision.intervals`
+and `DecisionRoute.intervalFlows` (schema 12). The decision dialog gains a counts column per row,
+a start time and an interval length (15 min by default), the M2.2 input dialog's convention; a
+row's `relativeFlow` becomes its count total, which applies outside the counted intervals.
+`withRoutingDecisions` cuts each input at the decision's boundaries (`cutPeriods`,
+`src/project/demand_paths.cpp`) and splits each piece at its own proportions. For placed decisions
+`expandRouteless` walks once per time slice between boundaries and merges the paths by lane chain,
+so every path keeps one runtime route; with no intervals it is one slice, the M2.1.1 walk, and every
+existing project compiles as before: `core/`, the frozen fixtures, `trafficsim-cli 42` and the
+four-leg results are unchanged, and only the four-leg file's `schemaVersion` changed (its tool).
+Exact per-interval volumes are pinned in `tests/decision_interval_tests.cpp`, for an unplaced
+decision and for a placed one on the four-leg West entry. **Measured, not a defect of this change:**
+a scratch four-leg run with West 3:1 then 1:3 completed 167 East and 112 North of an equal split;
+the North left queues (287 m maximum at the West pocket), so fewer of its vehicles finished.
+
 ## 2026-09-24 — M2.1.1: vehicle inputs with no route, and routing decisions placed on a Link
 
 Owner request: put a Vehicle input on a Link without drawing a route, as in Vissim, and place
@@ -479,3 +496,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D42 | 2026-09-24 | **A routeless input and a placed decision are expanded at compile time into static routes, one per complete path** | Every choice is random, independent and fixed, so a path's probability is the product along it, and splitting a Poisson stream by fixed probabilities is exact (as for M2.3/M2.4). The engine keeps one static route per vehicle. The rules: an equal share at each way out of a lane (the owner's choice); a decision acts where its Link begins (its station is not modelled); a lane that can reach no destination carries on routeless with an advisory; after its destination a vehicle is routeless again. A revisited lane, or more than 256 paths, blocks Run. | Lane changing (M3.2.8) makes a vehicle's lane a choice rather than a given, so decision legs must then be chosen per vehicle at run time, and this expansion is replaced. |
 | D43 | 2026-09-24 | **A decision on the entry Link places each destination's flow in the lanes that reach it** | Measured: on the four-leg drawing, decisions after the entry left the counted proportions unreachable (136:16:39 against 500:120:100), because without lane changing the equal lane split decides the turns. Drivers sort themselves by lane before the junction; putting the flow in those lanes is what that achieves. It ignores the input's lane weights, which the table stops showing. Decisions further downstream still split per lane and are documented as such. | When lane changing exists, and the lane choice becomes the drivers' own. |
 | D44 | 2026-09-24 | **A lane remainder shorter than 4.5 m after the last way out is not a network exit** | The owner's network had Connectors clicked 0.35–2.58 m short of Link ends, and the equal-split walk sent a third of the traffic out through the stub. 4.5 m is the shortest shipped vehicle (car), so no vehicle can be meant to drive into less. The owner chose this compile-time rule over snapping in the editor, which would restrict where a Connector can be drawn. A constant in `routeless.hpp`, not data: it is not a vehicle parameter a study tunes. | When a station on a decision is modelled, or a real exit this short turns up. |
+| D45 | 2026-09-24 | **A per-interval turning proportion is chosen by the time a vehicle enters the network** | The engine carries one static route per vehicle, so the choice must be made at compile time, where only the entry time is known. The error is the travel time from entry to decision -- seconds against 15-minute counts. Outside every counted interval the whole-period flow applies, so a count table shorter than the run is not refused. A choice at the decision itself needs route choice in `core/`. | When `core/` gets runtime route choice, or a study's decision sits minutes downstream of its entry. |

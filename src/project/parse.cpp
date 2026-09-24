@@ -198,7 +198,13 @@ std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
         for (const auto& r : array(x, "routes")) {
             decision.routes.push_back({field<std::string>(r, "routeId"), field<double>(r, "relativeFlow")});
             if (present(r, "destinationLinkId")) decision.routes.back().destinationLinkId = field<std::string>(r, "destinationLinkId");
+            if (present(r, "intervalFlows")) for (const auto& f : array(r, "intervalFlows")) { // M2.1.2
+                if (!f.is_number()) throw std::invalid_argument("INVALID_SHARE");
+                decision.routes.back().intervalFlows.push_back(f.get<double>());
+            }
         }
+        if (present(x, "intervals")) for (const auto& i : array(x, "intervals")) // M2.1.2
+            decision.intervals.push_back({field<double>(i, "startTime"), field<double>(i, "endTime")});
         result.push_back(std::move(decision));
     }
     return result;

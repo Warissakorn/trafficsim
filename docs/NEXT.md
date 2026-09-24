@@ -31,6 +31,8 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
   decision can be placed on a Link with destination Links and relative flows, schema 11 (D42, D43).
   **For the gate study:** put counted turning volumes in a decision on the **entry** Link — there
   they hold exactly; further downstream the lanes limit them until lane changing exists.
+- **M2.1.2** (owner choice) the decision dialog takes counted turning volumes per interval, one
+  pasted row per destination, schema 12 (D45). The interval follows network entry time.
 
 **M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
 ([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank
@@ -47,6 +49,8 @@ in that order, with A01-A08 evidence. Keep new controls Run-blocked until M3.2.3
 their runtime. Do not infer a gate pass from the instruction to follow the sequence.
 
 **Engineering work that can proceed without the owner, if asked:**
+- Deriving an input's interval volumes from its entry decision's turning counts, so a count sheet
+  is typed once. Today the input's counts and the decision's are entered separately.
 - An in-editor CSV export of the Results tab. The CLI has one; the editor only shows the table.
 - A Results-tab refresh that skips work while the tab is hidden. It is cheap today (16 rows), so
   measure first.

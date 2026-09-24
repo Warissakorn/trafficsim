@@ -106,6 +106,17 @@ routes `link:<id>/path-k` and one input per complete path, at volume × probabil
   entry Links (`UNSUPPORTED_INTERNAL_INPUT`), as for routes.
 - Results group these paths into movements by (first Link, last Link), as for authored routes.
 
+**Per-interval turning proportions (M2.1.2, D45).** A routing decision, placed or not, may carry
+`intervals` (ordered, non-overlapping `startTime`/`endTime`) and, on every entry, `intervalFlows`
+with one relative flow per interval. Inside interval k an entry weighs `intervalFlows[k]`; outside
+every interval it weighs `relativeFlow` (the dialog writes the count total there). The input is cut
+at the interval boundaries and each piece is split at its own proportions, so the compiled volumes
+are exact per piece. **The interval is chosen by the time a vehicle enters the network, not the
+time it reaches the decision** — off by the travel time from entry to decision, seconds against
+15-minute counts. A placed decision's paths are the union over the intervals, one runtime route
+each. Refused: `ROUTING_DECISION_INTERVALS` (a row's flow count differs from the intervals),
+`INVALID_INTERVAL`, and `INVALID_SHARE` for a negative flow or an interval where every flow is 0.
+
 ## Runtime scope
 
 - Routes explicitly list connected lane/connector segment IDs. Route order is meaningful.

@@ -43,10 +43,15 @@ Json definitionJson(const AuthoringDefinition& d) {
             for (const auto& r : x.routes) {
                 routes.push_back({{"routeId",r.routeId},{"relativeFlow",r.relativeFlow}});
                 if (!r.destinationLinkId.empty()) routes.back()["destinationLinkId"] = r.destinationLinkId; // M2.1.1
+                if (!r.intervalFlows.empty()) routes.back()["intervalFlows"] = r.intervalFlows; // M2.1.2
             }
             Json decision = {{"id",x.id},{"routes",routes}};
             if (!x.name.empty()) decision["name"] = x.name;
             if (!x.linkId.empty()) decision["linkId"] = x.linkId; // M2.1.1
+            if (!x.intervals.empty()) { // M2.1.2
+                decision["intervals"] = Json::array();
+                for (const auto& i : x.intervals) decision["intervals"].push_back({{"startTime",i.startTime},{"endTime",i.endTime}});
+            }
             j["routingDecisions"].push_back(std::move(decision));
         }
     }
@@ -111,12 +116,26 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
         if (!decision.linkId.empty())
             for (std::size_t e = 0; e < k; ++e)
                 if (d.routingDecisions[e].linkId == decision.linkId) issues.push_back({"ROUTING_DECISION_DUPLICATE_LINK", path + ".linkId"});
+        for (std::size_t i = 0; i < decision.intervals.size(); ++i) { // M2.1.2, as for an input's
+            const auto& p = decision.intervals[i];
+            if (!std::isfinite(p.startTime) || !std::isfinite(p.endTime) || p.startTime < 0 || p.startTime >= p.endTime ||
+                (i > 0 && p.startTime < decision.intervals[i - 1].endTime))
+                issues.push_back({"INVALID_INTERVAL", path + ".intervals[" + std::to_string(i) + "]"});
+            // Vehicles entering in an interval where every flow is zero would have nowhere to go.
+            double sum = 0;
+            for (const auto& entry : decision.routes) if (i < entry.intervalFlows.size() && entry.intervalFlows[i] > 0) sum += entry.intervalFlows[i];
+            if (!(sum > 0)) issues.push_back({"INVALID_SHARE", path + ".intervals[" + std::to_string(i) + "]"});
+        }
         // A placed decision's routes leave its Link; an unplaced one's leave the first route's.
         std::string origin = decision.linkId;
         for (std::size_t j = 0; j < decision.routes.size(); ++j) {
             const auto& entry = decision.routes[j];
             const auto at = path + ".routes[" + std::to_string(j) + "]";
             if (!(std::isfinite(entry.relativeFlow) && entry.relativeFlow > 0)) issues.push_back({"INVALID_SHARE", at});
+            // M2.1.2: one flow per interval; zero is allowed there (a turn closed for a period).
+            if (entry.intervalFlows.size() != decision.intervals.size()) issues.push_back({"ROUTING_DECISION_INTERVALS", at});
+            for (double f : entry.intervalFlows)
+                if (!(std::isfinite(f) && f >= 0)) { issues.push_back({"INVALID_SHARE", at + ".intervalFlows"}); break; }
             // A destination is reached from where the decision sits, so it needs a placed one,
             // and an entry names one destination or one route -- never both.
             if (!entry.destinationLinkId.empty()) {
@@ -159,6 +178,25 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
         double sum = 0;
         for (const auto& entry : decision->routes) sum += entry.relativeFlow;
         if (!(sum > 0)) continue;
+        if (!decision->intervals.empty()) { // M2.1.2: the fraction changes with the entry time
+            const auto pieces = cutPeriods(input, decisionBreakpoints({&*decision}));
+            for (const auto& entry : decision->routes) {
+                auto part = input;
+                part.routingDecisionId.clear(); part.routeId = entry.routeId; part.intervals.clear();
+                if (decision->routes.size() > 1) { part.id = input.id + "/route-" + entry.routeId; part.laneShares.clear(); }
+                for (const auto& piece : pieces) {
+                    const double mid = (piece.startTime + piece.endTime) / 2;
+                    double at = 0;
+                    for (const auto& other : decision->routes) at += decisionFlowAt(*decision, other, mid);
+                    const double fraction = at > 0 ? decisionFlowAt(*decision, entry, mid) / at : 0.0;
+                    if (fraction > 0) part.intervals.push_back({piece.startTime, piece.endTime, piece.vehiclesPerHour * fraction});
+                }
+                if (part.intervals.empty()) continue;
+                deriveInputTotals(part);
+                inputs.push_back(std::move(part));
+            }
+            continue;
+        }
         // Splitting a Poisson stream by fixed proportions is exact, as for a composition.
         for (const auto& entry : decision->routes) {
             auto part = input;
