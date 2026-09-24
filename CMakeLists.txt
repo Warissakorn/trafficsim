@@ -104,7 +104,7 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/demand_interval_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)

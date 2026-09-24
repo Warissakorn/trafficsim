@@ -194,6 +194,14 @@ ScenarioDefinition parseDefinition(const Json& value) {
             field<std::string>(i, "vehicleTypeId"), field<double>(i, "vehiclesPerHour"),
             field<double>(i, "startTime"), field<double>(i, "endTime")};
         if (i.contains("laneShares")) input.laneShares = doubles(i, "laneShares");
+        if (i.contains("intervals")) {
+            for (const auto& p : array(i, "intervals"))
+                input.intervals.push_back({field<double>(p, "startTime"), field<double>(p, "endTime"),
+                                           field<double>(p, "vehiclesPerHour")});
+            // The file's scalars are a convenience copy; the intervals are the source, so a
+            // hand edit that makes them disagree cannot create a second truth (hard rule 3).
+            deriveInputTotals(input);
+        }
         definition.inputs.push_back(std::move(input));
     }
     for (const auto& p : array(value, "signalPrograms")) {

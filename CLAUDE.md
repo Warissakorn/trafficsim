@@ -32,7 +32,7 @@ names Links and Connectors, never a lane**, and `buildScenario` expands it into 
 route per lane (`routeLaneChains`, `src/model/network/routing.cpp`); an input's volume is the
 Link total, split equally across those lanes. So a route covers the whole carriageway, changing
 a Connector's lane count cannot invalidate it, and no command refuses an edit because a route
-exists. Schema 9; older files and M0 scenarios migrate on load. A route whose objects do not
+exists. Schema 10 (M2.2 adds counted `intervals`); older files and M0 scenarios migrate on load. A route whose objects do not
 join up is kept and reported as `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does
 not. **M1.26.1:** `VehicleInput.laneShares` is optional relative weights, one per lane the route
 currently expands to, in `routeLaneChains` order (D32); empty means the M1.26 equal split, and a

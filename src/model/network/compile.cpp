@@ -79,18 +79,29 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
         double weightSum = 0;
         if (useShares)
             for (double w : input.laneShares) { if (!(w > 0)) { useShares = false; break; } weightSum += w; }
-        for (std::size_t k = 0; k < lanes.size(); ++k) {
-            auto share = input;
-            share.id = lanes.size() == 1 ? input.id : input.id + "/lane-" + std::to_string(k + 1);
-            share.routeId = lanes[k];
-            share.laneShares.clear();
-            // The authored volume is the LINK total, divided across the lanes it reaches -- equally
-            // by default, or by the authored weights. It is an authoring convenience, not a
-            // lane-choice model: the engine has no lane changing, so nothing here claims that this
-            // is how traffic really distributes itself.
-            share.vehiclesPerHour = useShares ? input.vehiclesPerHour * (input.laneShares[k] / weightSum)
-                                              : input.vehiclesPerHour / static_cast<double>(lanes.size());
-            inputs.push_back(std::move(share));
+        // One core input per period (M2.2), then per lane. A Poisson stream restarted at each
+        // period boundary is still Poisson, so splitting by period changes no statistics -- and
+        // one period keeps the plain id, which is what keeps every existing run byte-identical.
+        const auto periods = inputPeriods(input);
+        for (std::size_t p = 0; p < periods.size(); ++p) {
+            const auto periodId = periods.size() == 1 ? input.id : input.id + "/int-" + std::to_string(p + 1);
+            for (std::size_t k = 0; k < lanes.size(); ++k) {
+                auto share = input;
+                share.id = lanes.size() == 1 ? periodId : periodId + "/lane-" + std::to_string(k + 1);
+                share.routeId = lanes[k];
+                share.laneShares.clear();
+                share.intervals.clear();
+                share.startTime = periods[p].startTime;
+                share.endTime = periods[p].endTime;
+                // The authored volume is the LINK total, divided across the lanes it reaches --
+                // equally by default, or by the authored weights. It is an authoring convenience,
+                // not a lane-choice model: the engine has no lane changing, so nothing here claims
+                // that this is how traffic really distributes itself.
+                const double total = periods[p].vehiclesPerHour;
+                share.vehiclesPerHour = useShares ? total * (input.laneShares[k] / weightSum)
+                                                  : total / static_cast<double>(lanes.size());
+                inputs.push_back(std::move(share));
+            }
         }
     }
     scenario.routes = std::move(routes);
@@ -129,6 +140,36 @@ std::vector<ValidationIssue> routeRuntimeIssues(const Network& network,
         // The objects named do not join up for a single lane, so nothing can travel this route.
         // UNSUPPORTED_ prefix on purpose: authoring tolerates it (D18b), Run does not.
         issues.push_back({"UNSUPPORTED_ROUTE_TOPOLOGY", "routes[" + std::to_string(i) + "]"});
+    }
+    return issues;
+}
+std::vector<VolumeInterval> inputPeriods(const VehicleInput& input) {
+    if (!input.intervals.empty()) return input.intervals;
+    return {{input.startTime, input.endTime, input.vehiclesPerHour}};
+}
+void deriveInputTotals(VehicleInput& input) {
+    if (input.intervals.empty()) return;
+    double vehicles = 0;
+    for (const auto& period : input.intervals)
+        vehicles += period.vehiclesPerHour * (period.endTime - period.startTime) / 3600;
+    input.startTime = input.intervals.front().startTime;
+    input.endTime = input.intervals.back().endTime;
+    const double span = input.endTime - input.startTime;
+    input.vehiclesPerHour = span > 0 ? vehicles * 3600 / span : 0;
+}
+std::vector<ValidationIssue> inputIntervalIssues(const ScenarioDefinition& definition) {
+    std::vector<ValidationIssue> issues;
+    for (std::size_t i = 0; i < definition.inputs.size(); ++i) {
+        const auto& periods = definition.inputs[i].intervals;
+        for (std::size_t k = 0; k < periods.size(); ++k) {
+            const auto& p = periods[k];
+            const bool finite = std::isfinite(p.startTime) && std::isfinite(p.endTime) &&
+                                std::isfinite(p.vehiclesPerHour);
+            if (!finite || p.startTime < 0 || p.startTime >= p.endTime || p.vehiclesPerHour < 0 ||
+                (k > 0 && p.startTime < periods[k - 1].endTime))
+                issues.push_back({"INVALID_INTERVAL",
+                                  "inputs[" + std::to_string(i) + "].intervals[" + std::to_string(k) + "]"});
+        }
     }
     return issues;
 }

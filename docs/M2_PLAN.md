@@ -155,7 +155,11 @@ M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not
      baseline. Its effect on M2.5 delay is small but real — a halted vehicle waits a red it would
      have cleared. `fourleg.every_safety_clamp_is_…` fails if a clamp has any other cause.
 
-### M2.2 — Time-varying volumes
+### M2.2 — Time-varying volumes · **Implemented 2026-09-24**
+
+Done as below: `VehicleInput.intervals`, derived scalars (`deriveInputTotals`), `id/int-k`
+expansion, schema 10, and a counts box in the input dialog (paste one count per interval, length
+in minutes, default 15). Frozen fixtures and `trafficsim-cli 42` unchanged.
 
 `VehicleInput` gains an ordered interval list (start, end, veh/h); a single-interval input is
 exactly today's input. Schema 10 with migration; Poisson per interval with the existing PRNG and

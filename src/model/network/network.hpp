@@ -162,6 +162,14 @@ std::vector<ValidationIssue> connectorRuntimeIssues(const Network&);
 // refuses it. Authoring tolerates it, because an author moving a Connector must not have the
 // document reject the edit -- the route is reported, not deleted.
 std::vector<ValidationIssue> routeRuntimeIssues(const Network&, const ScenarioDefinition&);
+// M2.2. The periods an input releases vehicles over: its intervals, or its one scalar period.
+std::vector<VolumeInterval> inputPeriods(const VehicleInput&);
+// Sets startTime, endTime and vehiclesPerHour from `intervals` -- first start, last end, and the
+// mean rate over that span, gaps counting as zero -- so the scalars never disagree with them.
+// A no-op on an input without intervals.
+void deriveInputTotals(VehicleInput&);
+// Each interval finite, start before end, volume non-negative, and ordered without overlap.
+std::vector<ValidationIssue> inputIntervalIssues(const ScenarioDefinition&);
 // Advisory: a route that DOES run but lost a lane at an implied Link-to-Link step, because that
 // lane reaches the next Link by two Connectors. Naming the one meant brings the lane back.
 std::vector<ValidationIssue> routeAmbiguityIssues(const Network&, const ScenarioDefinition&);

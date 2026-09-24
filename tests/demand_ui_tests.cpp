@@ -13,6 +13,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QPlainTextEdit>
 #include <cmath>
 #include <iostream>
 using namespace trafficsim;
@@ -228,6 +229,41 @@ int main(int argc,char** argv) {
         action(w,"editorEditInput");
         require(w.history().document().definition->inputs.front().laneShares==std::vector<double>({2.0,1.0}),
             "Cancelling a reopened dialog changed the stored weights");
+
+        // M2.2: counts pasted as they come off a count sheet become the input's intervals.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not open for counts");
+            auto* counts=dialog->findChild<QPlainTextEdit*>("editorInputCounts");
+            require(counts && counts->toPlainText().isEmpty(),"An input with no intervals showed counts");
+            dialog->findChild<QDoubleSpinBox*>("editorInputIntervalMinutes")->setValue(1);
+            counts->setPlainText("30\t60\n");
+            dialog->accept();
+        });
+        action(w,"editorEditInput");
+        {
+            const auto& counted=w.history().document().definition->inputs.front();
+            require(counted.intervals==std::vector<VolumeInterval>({{0,60,1800},{60,120,3600}}),
+                "Pasted counts did not become one-minute intervals in veh/h");
+            require(counted.endTime==120 && std::abs(counted.vehiclesPerHour-2700)<1e-9,
+                "The scalars were not derived from the intervals");
+            require(counted.laneShares==std::vector<double>({2.0,1.0}),"Counts disturbed the lane weights");
+            require(item<QTableWidget>(w,"editorInputTable")->item(0,2)->text().contains("2 intervals"),
+                "The input row did not say its volume is a mean over intervals");
+        }
+        // Reopened, the counts read back as counts; cancelling changes nothing.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Input dialog did not reopen for counts");
+            require(dialog->findChild<QPlainTextEdit*>("editorInputCounts")->toPlainText()=="30\n60",
+                "Stored intervals were not shown back as counts");
+            require(dialog->findChild<QDoubleSpinBox*>("editorInputIntervalMinutes")->value()==1,
+                "Stored interval length was not shown back");
+            dialog->reject();
+        });
+        const auto beforeCancel=w.history().document().definition->inputs.front();
+        action(w,"editorEditInput");
+        require(w.history().document().definition->inputs.front()==beforeCancel,"Cancelling changed the counts");
 
         // Save and reopen: both objects are project data, not canvas state.
         w.saveFile(file);w.openFile(file);QApplication::processEvents();

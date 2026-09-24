@@ -21,6 +21,13 @@ Json definitionJson(const AuthoringDefinition& d) {
         // Omitted rather than an empty array when unset, so an unedited input round-trips through
         // an older reader unchanged and the equal-split default never appears in the file.
         if (!i.laneShares.empty()) input["laneShares"] = i.laneShares;
+        // M2.2, the same way: absent unless set. The scalars above are then derived from it.
+        if (!i.intervals.empty()) {
+            input["intervals"] = Json::array();
+            for (const auto& p : i.intervals)
+                input["intervals"].push_back({{"startTime",p.startTime},{"endTime",p.endTime},
+                                              {"vehiclesPerHour",p.vehiclesPerHour}});
+        }
         j["inputs"].push_back(std::move(input));
     }
     for (const auto& p : d.signalPrograms) {
@@ -72,6 +79,9 @@ void migrateRoutesToObjects(const Network& network, AuthoringDefinition& definit
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;
+    // Checked on the authored intervals, before they are expanded: an overlap is a property of
+    // the table the author typed, and would otherwise surface as two core inputs that each look fine.
+    if (auto periods = inputIntervalIssues(*d.definition); !periods.empty()) throw ValidationError(std::move(periods));
     auto issues = validateScenario(buildScenario(d.network,*d.definition));
     // Authoring supports topology beyond M0. Catalog references are checked on Run.
     std::erase_if(issues,[&](const auto& i) {

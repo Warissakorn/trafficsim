@@ -49,6 +49,7 @@ std::string putRoute(ProjectDocument& d, Route value) {
 }
 std::string putInput(ProjectDocument& d, VehicleInput value) {
     if (value.id.empty()) value.id=allocateId(d,"input");
+    deriveInputTotals(value); // M2.2: intervals, when given, are the source of the scalars.
     const auto id=value.id; put(demand(d).inputs,std::move(value)); return id;
 }
 std::string putProgram(ProjectDocument& d, SignalProgram value) {
