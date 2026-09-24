@@ -14,15 +14,18 @@ struct Composition {
     std::string id; std::vector<CompositionShare> types;
     bool operator==(const Composition&) const = default;
 };
-// M2.4. Vissim's static routing decision, in its smallest form: turning proportions as relative
-// flows over routes that all leave the same Link, for the whole period. Per-interval flows and a
-// decision positioned part way along a Link are M2.1.
+// M2.4. Vissim's static routing decision: turning proportions as relative flows over routes that
+// all leave the same Link, for the whole period. M2.1.1 places it: with `linkId` set it acts on
+// every routeless vehicle reaching that Link, and an entry may name a destination Link instead of
+// a route. Per-interval flows and a station part way along the Link are still M2.1.
 struct DecisionRoute {
     std::string routeId; double relativeFlow{};
+    std::string destinationLinkId; // M2.1.1: instead of routeId, on a placed decision only
     bool operator==(const DecisionRoute&) const = default;
 };
 struct RoutingDecision {
     std::string id, name; std::vector<DecisionRoute> routes;
+    std::string linkId; // M2.1.1: the Link it is placed on; empty keeps the M2.4 meaning
     bool operator==(const RoutingDecision&) const = default;
 };
 struct AuthoringDefinition : ScenarioDefinition {

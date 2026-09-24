@@ -58,7 +58,7 @@ TEST(authoring, schema_eight_roundtrip_and_legacy_marking_defaults) {
     auto d=connected();
     changeLinkMarkings(d,"a",{MarkingType::none,MarkingType::doubleLine,MarkingType::dashed});
     changeConnectorLanes(d,d.network.connectors[0].id,{3,4},{MarkingType::doubleLine});
-    auto j=documentJson(d);CHECK(j["schemaVersion"]==10);
+    auto j=documentJson(d);CHECK(j["schemaVersion"]==11);
     CHECK(j["network"]["links"][0]["boundaryMarkings"]==Json::array({"none","double","dashed"}));
     CHECK(parseDocument(Json::parse(j.dump()))==d);
     const auto old=connected();

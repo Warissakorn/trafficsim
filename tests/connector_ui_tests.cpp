@@ -131,7 +131,7 @@ int main(int argc,char** argv) {
             const auto saved=documentJson(w.history().document());
             w.saveFile(lanesFile);w.openFile(lanesFile);
             require(documentJson(w.history().document())==saved,"Lanes tab lost on save/reopen");
-            require(saved["schemaVersion"]==10,"Lanes tab did not write schema 10");
+            require(saved["schemaVersion"]==11,"Lanes tab did not write schema 11");
             c->select(id);
             require(item<QLineEdit>(w,"editorConnectorWidths")->text().contains("4.75"),
                     "Lanes tab did not reload into the field");

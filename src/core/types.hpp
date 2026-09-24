@@ -55,6 +55,10 @@ struct VehicleInput {
     // Authoring only (M2.4): a static routing decision instead of one route. Non-empty means
     // routeId is unused; the decision's routes and relative flows split the volume.
     std::string routingDecisionId;
+    // Authoring only (M2.1.1): no route at all. Vehicles enter on this Link and follow the
+    // network -- an equal share at every branch, and a placed routing decision's flows where they
+    // meet one. buildScenario expands it into one core input per complete path.
+    std::string linkId;
     bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };

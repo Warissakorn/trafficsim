@@ -18,7 +18,7 @@ void detail::removeRoutesUsingSegments(ProjectDocument& d, const std::set<std::s
         if (segments.contains(segment)) routes.insert(r.id);
     std::erase_if(d.definition->routes, [&](const auto& r) { return routes.contains(r.id); });
     std::erase_if(d.definition->inputs, [&](const auto& i) { return routes.contains(i.routeId); });
-    pruneRoutingDecisions(*d.definition);
+    pruneRoutingDecisions(*d.definition, d.network);
 }
 std::string addLink(ProjectDocument& d, const std::vector<Point>& geometry, int lanes, double width) {
     if (lanes < 1 || lanes > 12 || !std::isfinite(width) || width <= 0) throw std::invalid_argument("EDIT_LANES");

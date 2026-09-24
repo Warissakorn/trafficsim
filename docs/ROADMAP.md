@@ -313,6 +313,13 @@ imply runtime support; add explicit capability guards.
 unchanged with defaults, observable runtime effects for every exposed behavior parameter.
 M2's pre-registered owner gate still precedes this work.
 
+#### M2.1.1 — Routeless inputs and placed routing decisions · **Implemented 2026-09-24** (D42, D43)
+
+Owner request. An input on a Link needs no route; a decision placed on a Link sends routeless
+vehicles to destination Links by relative flow; everything expands at compile time into static
+routes (SIMULATION.md). Still open in M2.1: a decision's station along the Link, per-interval
+flows, and partial/dynamic decisions. Proportions after the entry Link wait for lane changing.
+
 ---
 
 ## M3 — Right-of-way: conflict areas and priority rules

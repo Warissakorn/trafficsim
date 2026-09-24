@@ -82,6 +82,29 @@ the runtime route, demand, vehicle and control references.
 connector. This is derived data, not a second persisted representation of the network.
 Desired speeds belong to the vehicle-type distribution, not the link.
 
+### Routeless inputs and placed routing decisions (M2.1.1, D42, D43)
+
+A vehicle input may name a Link (`linkId`) instead of a route, and a routing decision may be
+placed on a Link (`linkId`), with rows that are destination Links (`destinationLinkId`) or
+routes. Both are expanded at compile time (`routelessChains`, `expandRouteless`) into static core
+routes `link:<id>/path-k` and one input per complete path, at volume × probability:
+
+- **Free walk:** every Connector path leaving the vehicle's lane is one way out. Leaving the
+  network at the lane end is one more when no path leaves from the end. Each way gets an equal
+  share. A way out upstream of where the vehicle came onto the lane is behind it.
+- **Placed decision:** it acts when a routeless vehicle comes onto its Link. The station along
+  the Link is not modelled. The vehicle takes a destination its lane can reach, by relative flow
+  among those. A lane reaching none carries on routeless, with `ROUTING_DECISION_LANE_UNSERVED`.
+  After the destination it is routeless again.
+- **On the entry Link** a decision instead puts each destination's flow in the lanes that reach
+  it, so typed proportions hold exactly and the input's lane weights are unused (D43).
+- **No lane changing:** further downstream, a vehicle's lane fixes its reachable destinations,
+  and the proportions shift towards what the lanes allow.
+- **Refused on Run:** a revisited lane (`ROUTELESS_CYCLE`), more than 256 paths, an unknown Link,
+  two decisions on one Link, or a destination no lane can reach. Inputs still start only on
+  entry Links (`UNSUPPORTED_INTERNAL_INPUT`), as for routes.
+- Results group these paths into movements by (first Link, last Link), as for authored routes.
+
 ## Runtime scope
 
 - Routes explicitly list connected lane/connector segment IDs. Route order is meaningful.

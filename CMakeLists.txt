@@ -42,13 +42,13 @@ add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
     src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp src/model/network/road_boundaries.cpp
     src/model/network/sections.cpp src/model/network/markings.cpp src/model/network/rotation.cpp
-    src/model/network/routing.cpp)
+    src/model/network/routing.cpp src/model/network/routeless.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp src/eval/movement.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
     src/project/document.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp
-    src/project/evaluation.cpp)
+    src/project/evaluation.cpp src/project/demand_paths.cpp)
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
@@ -105,12 +105,12 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/routeless_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
     target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp)
-    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement)
+    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement routeless)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
     # Also run the registry without a filter: a newly registered group must never silently
