@@ -44,19 +44,15 @@ M1.12.3 was closed by M1.19. ROADMAP is the authority for each.
    still measures a second arrival at an already-cut station against
    `boundaries.back() + kMinSectionLength`, i.e. against itself, and marks the Connector
    unsectionable. Run is refused for a physically fine drawing.
-2. **New finding: no fixture or test anywhere builds a four-leg intersection.** `grep` over
-   `tests/` and `tools/` finds none. M1's done-condition geometry and M2's done-condition network
-   ("the M1 intersection, loaded with counted volumes, runs") have **never been compiled or run
-   by any automated check.** The only runnable scenario in `data/scenarios/` is the M0
-   `crossing.json`. Turn pockets fed from one approach, left and right turns arriving on the same
-   receiving lane, and simultaneous arrivals at one station are exactly the shapes that hit
-   defect 1 and `UNSUPPORTED_MERGE`. This is the largest unmeasured risk between M1 and M2.
+2. **No fixture built a four-leg intersection — now one does (below, M2.0 item 2).** Until then
+   M1's done-condition geometry and M2's done-condition network had never been compiled or run by
+   any automated check; `crossing.json` was the only runnable scenario.
 
 ### Verdict
 
 M1 is **implementation-complete for its done-condition and gate-open**. No merged code can close
-it; G1 can. Nothing engineering-side is missing to *attempt* G1, but defect 2 means nobody knows
-yet whether the drawing G1 produces will **run** — which is M2's first question, not M1's.
+it; G1 can. The four-leg fixture now shows such a drawing **runs** — but only drawn with its
+turns staggered along each exit (M2.0.1), which is M2's first real question.
 
 ---
 
@@ -126,10 +122,33 @@ M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not
 
 1. Fix the duplicate-station refusal in `runtimeSections` (NEXT item 0); the commented
    expectation in `tests/connector_tests.cpp` flips.
-2. Commit a **four-leg signalised fixture with turn pockets** — ideally the owner's own G1 save —
-   under `data/scenarios/` or `tests/reference/`, and a test that compiles it, runs it for a fixed
-   seed and asserts no `UNSUPPORTED_*` diagnostic and that every route delivers vehicles. Every
-   refusal it surfaces becomes its own numbered item, not a silent patch.
+2. **Done 2026-09-24:** `data/projects/four-leg-signalised.traffic.json`, built by
+   `tools/four_leg_network.hpp` through the editor's own commands and regenerated with
+   `trafficsim-four-leg-fixture`; `fourleg` in `trafficsim-tests` holds it. Left-hand traffic,
+   four legs of a 2-lane approach → taper → 3-lane right-turn pocket (44 m) → split-phase heads →
+   2-lane exit; 12 movements, 120 s cycle (30/30/20/20 green, 3 s amber, 2 s all-red), 2090 veh/h
+   for 900 s. It opens in the editor, reopens identically, raises **no** diagnostic, compiles to
+   16 runtime routes and 8 derived priority rules, delivers every movement (461 trips at seed 42,
+   none left pending) and replays exactly. Movement delays of roughly 35–56 s came out of a
+   throwaway probe, not the test, and are **unvalidated** — they include acceleration loss and are
+   not HCM control delay. What it surfaced, each its own item:
+
+   - **M2.0.1 — Turns meeting an exit at its start are refused (8 × `UNSUPPORTED_MERGE`).** That
+     is how an engineer draws this intersection, and `fourleg.natural_drawing_is_refused…`
+     pins it. The fixture runs only because its left and right turns join the exit 10 m and
+     20 m along the body, which derives M3.1 rules; on screen that is a short overlap of
+     Connector on Link. An engineer in the C1 study would not discover that without help, so
+     either C1 allows it, or a **minimal arbitration for end-arrivals** is pulled forward — the
+     M3.1 rule derived for a start-of-lane merge as it already is for a body merge. Under split
+     phasing no two of those movements are green together, so the rule rarely binds. Conflict
+     areas themselves stay M3. **Owner decision.**
+   - **M2.0.2 — An implied Link→Link step silently drops an ambiguous lane.** The inner upstream
+     lane reaches the pocket Link twice (through lane and pocket), so a route naming only the two
+     Links loses that lane without a diagnostic; the fixture names the taper or pocket entry
+     Connector instead. A route that shrinks without saying so should at least be reported.
+   - **M2.0.3 — 4 safety clamps in 900 s.** Numerical overlap prevention overrode deceleration
+     four times. Find where before M2.5 publishes a delay from this network.
+   - Not hit: the duplicate-station refusal (item 1) — every arrival here is at its own station.
 
 ### M2.2 — Time-varying volumes
 
@@ -183,5 +202,7 @@ start before this** (ROADMAP §M2).
 2. **Confirm the M2.1 → M2.3/M2.4 rescope**, or keep compositions and routing decisions in M2.1.
 3. **Seeds for the gate study:** run one seed (M2 scope) or pull a minimal multi-seed mean
    forward from M5 so C4 compares like with like. Averaging with CIs is still M5's either way.
-4. **Order relative to G1:** recommended — do G1 first; its saved drawing *is* M2.0's fixture and
+4. **M2.0.1:** accept staggered turn arrivals in the gate study, or pull start-of-lane merge
+   arbitration forward before it.
+5. **Order relative to G1:** recommended — do G1 first; its saved drawing *is* M2.0's fixture and
    M2's done-condition network, and it tests the editor on a network nobody has yet run.

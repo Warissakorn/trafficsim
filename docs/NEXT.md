@@ -19,11 +19,17 @@ holds a *draft* of M2's gate criteria (C0–C4) and slices M2.0–M2.6. **The dr
 pre-registration:** nothing past M2.0 starts until the owner edits it into `ROADMAP.md` §M2 and
 commits it.
 
-**What a session may do now without the owner:** M2.0 only — item 0 below (the duplicate-station
-refusal), then a committed four-leg signalised fixture with turn pockets and a test that compiles
-and runs it, filing every refusal it surfaces as its own numbered item. Both are M1 defects, not
-M2 implementation, so they do not touch the gate. Prefer the owner's own G1 save as the fixture if
-it exists by then.
+**The four-leg fixture exists and runs** (`data/projects/four-leg-signalised.traffic.json`,
+`fourleg` tests; M2_PLAN.md M2.0). It surfaced three items, each written up there: **M2.0.1**
+turns meeting an exit at its start are refused as `UNSUPPORTED_MERGE` — the fixture staggers them
+along the exit to run, and whether to pull start-of-lane arbitration forward is the owner's call;
+**M2.0.2** an implied Link→Link route step silently drops a lane that reaches the next Link twice;
+**M2.0.3** four safety clamps in 900 s, cause unknown.
+
+**What a session may do now without the owner:** item 0 below (the duplicate-station refusal),
+then M2.0.2 (report the dropped lane rather than lose it silently) and M2.0.3 (find the clamps).
+All are M1-side defects, not M2 implementation, so they do not touch the gate. M2.0.1 waits on
+the owner's decision.
 
 PR #54's compact UI refresh is merged; native Windows appearance and display scaling ride on the
 owner acceptance exercise below.

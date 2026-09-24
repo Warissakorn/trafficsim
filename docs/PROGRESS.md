@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-22-m1.27.2-slots.md`](archive/PROGRESS-2026-09-22-m1.27.2-slots.md) — 2026-09-22, M1.27.2, a vehicle carries scenario slots; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-23-compact-workspace.md`](archive/PROGRESS-2026-09-23-compact-workspace.md) — 2026-09-23, the compact desktop workspace; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.1-redraw.md`](archive/PROGRESS-2026-09-22-m1.27.1-redraw.md) — 2026-09-22, M1.27.1, the connector cache; its numbers corrected 2026-09-23; moved out 2026-09-23 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27-build-stage.md`](archive/PROGRESS-2026-09-22-m1.27-build-stage.md) — 2026-09-22, M1.27 build stage, the PCH and json_fwd work; moved out 2026-09-23 as the oldest live entry
@@ -30,6 +31,14 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-24 — The four-leg intersection, built and run (M2.0)
+
+`tools/four_leg_network.hpp` builds it through the editor's commands, so the committed
+`data/projects/four-leg-signalised.traffic.json` is a document an author could have drawn; the
+file is compared to the builder at 1e-9 (computed curves may round differently under MSVC).
+It runs with no diagnostic only because turns join each exit part way along — the natural drawing
+is 8 × `UNSUPPORTED_MERGE`, pinned by a test M3 or M2.0.1 flips. Findings: `M2_PLAN.md` M2.0.
 
 ## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
 
@@ -328,82 +337,6 @@ neither implemented nor booked. Inside a tick `occupiedSpans` is the largest sin
 9.8%; no milestone is booked for it and none is needed yet. **M1's timed owner exercise
 (`docs/M1_ACCEPTANCE.md`) is untouched by all of this** — a counted walkthrough is not a timed
 one, and M1.27.3 never claimed to close it.
-
----
-
-## 2026-09-22 — A vehicle stops carrying its names (M1.27.2)
-
-**Request:** continue M1.27 with the engine stage. This is the one item another session
-measured first: 2026-09-18 profiled the engine, found ~36% of instructions in `std::string` and
-11.8% in the per-tick vehicle sort, wrote the fix into its `Next` and left it, because it
-changes a core public type and every test that builds a `Vehicle`.
-
-**Its corridors were never committed, so its numbers could not be reproduced.** That came
-first: `tools/benchmark_network.hpp` now holds the generator both benchmarks use, and
-`tools/engine_benchmark.cpp` compiles a corridor through `compileDocument` and runs it — no Qt,
-so the engine stays measurable under the headless preset. Its one parameter is where the
-northbound approach joins: the editor keeps the end attachment M1.27.1's published numbers were
-measured on, and the engine passes a station, because a **mid-body arrival is what derives the
-M3.1 priority rule a merge needs to run at all** — without it the corridor will not compile.
-
-**The profile on that fixture reproduced 2026-09-18 exactly**, which is the useful part: string
-copy ctor 17.4%, `Vehicle` copy ctor 12.1%, the vehicle sort 11.4% (they measured 11.8%),
-`resolveRefs` 10.3% of which `lookup` 9.1%, `~string` 8.1%.
-
-**What changed.** A `Scenario` is immutable and canonically sorted from `createSimulation`
-onwards, so an index names exactly the object an id named — and unlike an id it costs nothing to
-copy, compare or sort. `PendingVehicle` holds `inputIndex`/`routeIndex`/`typeIndex`, resolved
-once per scenario in `ScenarioIndex`'s new `routeOfInput`/`typeOfInput`. `routeOfId`,
-`typeOfId`, `IdSlot` and the `lookup` they served are gone: that undoes part of 2026-09-18's own
-optimisation, which this subsumes, because there is no id left to look up. `InputState` loses
-its `id`, which duplicated `scenario.inputs[i].id` once the vector became index-addressed.
-
-**Resolving in `generateArrivals` was not enough, and the profile said so.** The first version
-looked the input's route and type up there instead — the same lookup in a new place, 11% of the
-run, once per input per tick whether or not a vehicle arrived. Hoisting it into the index is
-what took the second half of the win.
-
-Interleaved medians of five, alternating the two binaries, Debug, 300 simulated seconds:
-
-| intersections | segments | before | after | |
-|---|---|---|---|---|
-| 12 | 171 | 1560.8 ms | **792.6 ms** | −49.2% |
-| 24 | 351 | 2566.2 ms | **1331.0 ms** | −48.1% |
-
-**The trajectory is identical, not merely the summary.** The four seed fixtures and
-`trajectory-digest.json` pass unchanged — the digest pins per-tick position, speed, acceleration
-**and vehicle ordering**, so a reordering could not hide — `trafficsim-cli 42` still prints
-`29.249359418430977`, and the benchmark completes the same 475 trips with the same peak of 235
-vehicles. No fixture was regenerated. What protects this is that ids only ever became slots
-through `detail::byId`, whose first-occurrence rule is what every lookup they replaced returned.
-
-**Names did not disappear, they moved to the boundary.** `DepartedEvent` and `ArrivedEvent`
-still carry `routeId`, read from the scenario where the event is built, and `pendingJson` takes
-the `Scenario` and emits the same three strings — a slot means nothing outside one Scenario, and
-the fixtures are read by people. `checkpointJson` now throws rather than dereferencing a null
-scenario, because without one there is nothing to resolve against.
-
-**Tests.** `test::Placement` describes a vehicle by route and type id and `withVehicles`
-resolves it against the canonical scenario, so the two representations meet in one place instead
-of in three test files. `stepSimulation` asserts `state.inputs` is parallel to
-`scenario.inputs`, so a hand-built state mis-indexes loudly instead of reading past the end.
-
-### Next
-
-**M1.27.3, UX, is the last stage of M1.27 and is not started.** It carries two things already
-documented as High severity in `VISSIM_PARITY.md`: `Ctrl`+left-click extends the selection here
-and **duplicates** in Vissim, and link creation is a polyline of clicks where the Vissim reflex
-is `Ctrl`+right-drag. It also has to correct that table's stale rows — `Tab` cycling
-(`EditorCanvas::cycleOverlap`), `Ctrl+B`, the tool shortcuts and Connector lane ranges all exist
-now and the table says they do not. **Gate:** a counted walkthrough delta (clicks per task, dead
-ends before and after), which does **not** close M1's timed owner exercise. UX changes are
-behaviour changes, so each needs the owner's approval in user-facing words before it is made.
-
-Unchanged: **M1.26.1** adjustable per-lane shares (decide where the shares live first), then
-**M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**. M1.22,
-M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, and the shared-station
-`runtimeSections` refusal (§3.3, M3.2) remain open. Inside a tick `occupiedSpans` is now the
-largest single cost at 9.8%; there is no booked milestone for it and none is needed yet.
 
 ---
 

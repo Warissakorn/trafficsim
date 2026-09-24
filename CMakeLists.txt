@@ -85,6 +85,11 @@ target_link_libraries(trafficsim-engine-benchmark PRIVATE trafficsim_commands tr
 target_precompile_headers(trafficsim-engine-benchmark PRIVATE <nlohmann/json.hpp>)
 trafficsim_runtime_data(trafficsim-engine-benchmark)
 
+# Regenerates the committed four-leg fixture from its one source, tools/four_leg_network.hpp.
+add_executable(trafficsim-four-leg-fixture tools/four_leg_fixture.cpp)
+target_link_libraries(trafficsim-four-leg-fixture PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-four-leg-fixture PRIVATE <nlohmann/json.hpp>)
+
 add_executable(trafficsim-check-architecture tools/check_architecture.cpp)
 add_executable(trafficsim-check-file-sizes tools/check_file_sizes.cpp)
 target_link_libraries(trafficsim-check-architecture PRIVATE trafficsim_options)
@@ -99,12 +104,12 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
     target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp)
-    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history rotation)
+    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history rotation fourleg)
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
     # Also run the registry without a filter: a newly registered group must never silently
