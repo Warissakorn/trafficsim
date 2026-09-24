@@ -25,12 +25,19 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
 - **M2.4** static routing decisions (Routing decisions tab), relative flows over routes leaving
   one Link.
 
-**Next: M2.5 — movement delay and queue, one run.** No longer blocked (D38 withdrew C0).
-`M2_PLAN.md` §4 M2.5 is the specification: movement = entry/exit Link pair, simulated movement
-delay (not HCM control delay), queue counter with thresholds in `data/`, unserved demand and the
-clamp count shown beside every table, not-yet-validated marker, analytic fixtures as its gate.
-Code lives in `src/eval/`, fed by the event stream; `core/` stays unchanged. After it, M2.6 is the
-owner's gate study (`M2_GATE.md`).
+- **M2.5** delay per movement and queue per approach for one run: the editor's **Results** tab and
+  `trafficsim-cli --project FILE [--csv FILE]` (D39, D40; contract in `SIMULATION.md`).
+
+**M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
+([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank
+project to the Results table, timed against the owner's current tool (C1, C2), with C4 recorded.
+Nothing in M3 starts before it passes.
+
+**Engineering work that can proceed without the owner, if asked:**
+- An in-editor CSV export of the Results tab. The CLI has one; the editor only shows the table.
+- A Results-tab refresh that skips work while the tab is hidden. It is cheap today (16 rows), so
+  measure first.
+- Removing the entry-acceleration bias needs travel-time sections (M5), not a correction factor.
 
 **Open questions for the owner, none blocking:** motorcycles (not shipped; lane sharing is
 unmodelled — Thai counts are motorcycle-heavy); per-interval turning proportions (M2.1).

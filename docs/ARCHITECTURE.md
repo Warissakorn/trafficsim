@@ -19,11 +19,11 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 |---|---|---|---|
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
 | `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
-| `trafficsim_eval` | `src/eval/` | Core events | Completed-trip diagnostic only |
+| `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay and approach queues for one run (M2.5) |
 | `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-8 authoring codec, schema-1–7 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
-| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner and JSONL export |
+| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner, JSONL export, `--project` movement report and CSV |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
@@ -163,7 +163,7 @@ See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
 | Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 adds compositions and turning proportions |
-| Movement evaluation | `src/eval/` | Events to delay, LOS, queues and travel times |
+| Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); LOS, multi-seed means and travel-time sections remain |
 | Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
 | Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
 

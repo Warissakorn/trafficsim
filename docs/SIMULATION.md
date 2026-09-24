@@ -229,6 +229,41 @@ source wait minus route length divided by sampled desired speed. It includes acc
 loss; it is **not HCM control delay or LOS**. An empty run returns `null`, not NaN. Incomplete
 trips do not enter this mean and must be reported separately.
 
+### Movement evaluation (M2.5)
+
+`src/eval/movement.cpp` turns one run into a per-movement table and per-approach queues. It
+reads `SimState` snapshots and their events only (`MovementAccumulator::observe`, called once
+after `createSimulation` and once after every `stepSimulation`). `core/` does not know it exists.
+`src/project/evaluation.cpp` supplies what it measures (`evaluationSpec`).
+
+- **Movement:** an authored route's (first Link, last Link) pair, named from the Links' Names,
+  in authored route order. Two routes with the same pair are one movement. Every runtime route
+  (`id`, `id/lane-k`) maps through its authored id.
+- **Delay** per movement is the mean over completed trips of the run summary's own term:
+  `max(0, travelTime + departureDelay − freeFlowTime)` over the **whole route** (D39). The
+  movements' trips plus `notInMovement` equal the run's completed trips.
+  - The figure is labelled *simulated movement delay, one run* and is **not HCM control delay or
+    LOS**.
+  - **Known bias:** a vehicle enters the network from standstill, so an unimpeded trip already
+    carries about `v/(2a)` of acceleration delay (≈3 s for the car type). The analytic test pins
+    this rather than hiding it. Cross-section travel-time sections, which remove it, are M5's.
+- **Queue** per approach follows Vissim's queue counter at each signal head's stop line (D40).
+  - A vehicle enters queue state below `beginSpeed` and leaves it above `endSpeed`.
+  - Walking upstream from the line along each route that crosses it, the queue ends at the first
+    vehicle not in queue state or at a clear gap over `maxHeadway`. Its length runs to that last
+    vehicle's rear.
+  - An approach is the maximum over its lanes' heads at each step. The report gives the mean over
+    every observed step and the maximum, in metres.
+  - The conditions are content: `data/evaluation/queue-counter.json`, in km/h and m, with
+    Vissim's defaults of 5, 10 and 20.
+- **Unserved demand:** vehicles still in the network (`active`), vehicles waiting to enter
+  (`pending`) and safety clamps are reported beside every table. Incomplete trips are not in any
+  delay.
+
+The editor shows this in the **Results** tab, and `trafficsim-cli --project FILE [--csv FILE]`
+prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds,
+confidence intervals and LOS letters are M5.
+
 Catalog content lives under `data/vehicle-types`, `data/driver-behaviour` and
 `data/scenarios`. The compiled boundary allows editor/project work without importing its
 types into the engine. Runtime indexes and state-copy costs can be improved after profiling; the current

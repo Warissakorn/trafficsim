@@ -32,6 +32,22 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-24 — M2.5: delay per movement and queue per approach, one run
+
+`src/eval/movement.*` (core types only) and `src/project/evaluation.*` (movements from authored
+routes, counters from signal heads, queue conditions from `data/evaluation/`), shown in the
+editor's **Results** tab and printed by `trafficsim-cli --project FILE [--csv FILE]`. `core/`,
+every frozen fixture and `trafficsim-cli 42` are unchanged. The four-leg fixture, seed 42, gives
+12 movements with 6–134 trips, a mean delay of 35–56 s and approach queues up to 107 m. M2 runs one
+seed, so "plausible" is the only claim: a 120 s cycle with 20–30 s greens gives
+a uniform-delay term of 34–42 s before entry acceleration and queue spillback.
+**The analytic test found a bias worth knowing:** vehicles enter from standstill, so an
+unimpeded trip carries about `v/(2a)` ≈ 3 s of delay. It is pinned and documented, not hidden
+(D39). A run's first cut of the tab stacked the two tables and showed one row each, found from a
+screenshot; they are side by side now.
+
+---
+
 ## 2026-09-24 — Purpose restated; gate re-registered (D38)
 
 Owner ruling: the project is a traffic simulator usable in real engineering work, and the
@@ -467,3 +483,5 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D36 | 2026-09-24 | **Amber stays red until M4** | Every safety clamp in the four-leg run and six in the frozen TS baselines are vehicles caught at the line by amber; a stop-or-go decision would change frozen fixtures. The owner chose to keep it; M2.5 shows the clamp count beside its figures. | When M4 builds signal control, or a study's delays are visibly driven by it. |
 | D37 | 2026-09-24 | **Compositions and the static routing decision move from M2.1 to M2.3/M2.4** | M2's done-condition (counted volumes on the M1 intersection) needs both; M2.1's gate (validated distributions, behaviour parameters) does not. Both expand at compile time into the core's existing inputs, so `core/` and every frozen fixture are untouched. | If a positioned or per-interval decision is needed for the gate study — that remains M2.1. |
 | D38 | 2026-09-24 | **The project is a simulator usable in real engineering work; the M2 gate is re-registered as C1 + C2, with C4 recorded** | Owner ruling in session: every reference to comparing against another simulator is removed from the repository, every file and line (git history keeps it), and the purpose is stated positively — a traffic simulation program engineers can use for real work. C0 (portfolio audit) and C3 (the comparison question) existed only to answer that comparison, so both are withdrawn; C1, C2 and C4 keep their numbers. Changed **before any gate observation** — C0 was never answered and M2.5 had produced no figure — so this is a re-registration, not a criterion moved after the fact (D8). M2.5 is unblocked. The owner's supplied spec copies in `docs/specs/` were edited too, on the same instruction. | An observation made before this date that the change could have been tailored to — none exists. |
+| D39 | 2026-09-24 | **Movement delay is the run summary's whole-route term, grouped by (entry Link, exit Link)** | Smallest version that adds up: the movements' trips plus `notInMovement` equal the run's completed trips, and each movement's route starts on its approach and ends on its exit anyway. It includes source wait and the entry acceleration from standstill (≈3 s for a car), which is stated beside the table and pinned by a test. | When an engineer needs delay between two cross-sections (a travel-time section), or the entry bias matters to a figure. That is M5's measurement, and it removes the bias. |
+| D40 | 2026-09-24 | **A queue counter at every signal head; an approach reports the maximum over its lanes** | Vissim's queue counter at the stop line with its default conditions (5 km/h, 10 km/h, 20 m) as data. It is measured along each route that crosses the line, so a queue spilling back past the pocket into the upstream Link is counted. Mean over every step, and the maximum. | An unsignalised approach (M3) needs a counter with no head, so counters become authorable objects then. |

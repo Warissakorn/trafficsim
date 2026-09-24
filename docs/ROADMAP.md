@@ -297,8 +297,10 @@ remaining criteria keep their numbers so earlier records still resolve.)
 **M2.0.1** — Connectors meeting at a lane's start get M3.1's derived rule (D35; this extends M3.1,
 it does not start M3). **M2.2** time-varying volumes · **M2.3** vehicle compositions · **M2.4**
 static turning proportions (moved here from M2.1, D37) · **M2.5** movement delay and queue, one
-run · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
-**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3 and M2.4 implemented; M2.5 is next; the
+run (implemented 2026-09-24, D39/D40) · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
+**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3, M2.4 and M2.5 implemented. M2's done-condition
+(the M1 intersection with counted volumes runs and produces a delay table) is met in code. M2.6 is
+next; the
 gate itself is open and nothing here closes it.
 
 ### M2.1 — Link/lane/Connector behavior and demand extensions

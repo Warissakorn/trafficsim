@@ -46,8 +46,10 @@ were. **M2 is under way** — its gate criteria are registered (ROADMAP §M2, D3
 `intervals` (M2.2), `compositionId` from `data/compositions/` (M2.3) and static routing decisions
 (M2.4) are all expanded at compile/resolve time into ordinary core inputs, so `core/` and every
 frozen fixture are untouched. Connectors meeting at a lane start are ordered by M3.1's derived
-rule (M2.0.1, D35 — not M3). **M2.5 (movement delay and queue) is next; the gate is C1 + C2 with C4
-recorded (D38), in `docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
+rule (M2.0.1, D35 — not M3). **M2.5 is implemented** — per-movement delay and per-approach queues for one run in the
+editor's Results tab and `trafficsim-cli --project` (D39, D40). It is whole-route delay, including
+≈3 s of entry acceleration. **Next is M2.6, the owner's gate study: C1 + C2 with C4 recorded (D38),
+in `docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
 `<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test

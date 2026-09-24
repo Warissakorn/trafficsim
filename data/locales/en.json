@@ -335,5 +335,16 @@
   "editorShortcuts": "Keyboard and mouse shortcuts",
   "editorAppearance": "Network and appearance",
   "editorPaletteHint": "Ctrl + right-drag to create.\nF1 for all shortcuts.",
-  "editorSeedLabel": "Seed"
+  "editorSeedLabel": "Seed",
+  "editorResultsTable": "Results",
+  "editorResultsMovement": "Movement",
+  "editorResultsVehicles": "Vehicles",
+  "editorResultsDelay": "Mean delay (s)",
+  "editorResultsTravel": "Mean travel time (s)",
+  "editorResultsApproach": "Approach",
+  "editorResultsQueueMean": "Mean queue (m)",
+  "editorResultsQueueMax": "Max queue (m)",
+  "editorResultsEmpty": "Run the network to see delay per movement and queues per approach.",
+  "editorResultsNote": "Not yet validated. Simulated movement delay from one run — not HCM control delay or LOS. Delay counts completed trips only and includes source waiting and each vehicle's acceleration from standstill at its entry. Queues use the queue-counter conditions in data/evaluation. Still in the network: %1 · waiting to enter: %2 · completed outside any movement: %3 · safety clamps: %4.",
+  "editorResultsPartial": "Run in progress — figures so far, t = %1 s."
 }

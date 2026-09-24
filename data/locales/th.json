@@ -335,5 +335,16 @@
   "editorShortcuts": "ปุ่มลัดและการใช้เมาส์",
   "editorAppearance": "โครงข่ายและการแสดงผล",
   "editorPaletteHint": "Ctrl + ลากเมาส์ขวาเพื่อสร้าง\nF1 ดูปุ่มลัดทั้งหมด",
-  "editorSeedLabel": "ค่า seed"
+  "editorSeedLabel": "ค่า seed",
+  "editorResultsTable": "ผลลัพธ์",
+  "editorResultsMovement": "การเคลื่อนตัว",
+  "editorResultsVehicles": "จำนวนรถ",
+  "editorResultsDelay": "ความล่าช้าเฉลี่ย (วินาที)",
+  "editorResultsTravel": "เวลาเดินทางเฉลี่ย (วินาที)",
+  "editorResultsApproach": "ทางเข้า",
+  "editorResultsQueueMean": "ความยาวแถวคอยเฉลี่ย (ม.)",
+  "editorResultsQueueMax": "ความยาวแถวคอยสูงสุด (ม.)",
+  "editorResultsEmpty": "กด Run เพื่อดูความล่าช้าของแต่ละการเคลื่อนตัวและแถวคอยของแต่ละทางเข้า",
+  "editorResultsNote": "ยังไม่ผ่านการตรวจสอบความถูกต้อง (not yet validated) ความล่าช้าจำลองของการเคลื่อนตัวจากการรัน 1 ครั้ง ไม่ใช่ HCM control delay หรือ LOS นับเฉพาะรถที่เดินทางจบ และรวมเวลารอเข้าระบบกับการเร่งจากหยุดนิ่งที่จุดเข้า แถวคอยใช้เงื่อนไข queue counter ใน data/evaluation · ยังอยู่ในระบบ %1 · รอเข้า %2 · จบนอกการเคลื่อนตัวใด %3 · การหยุดป้องกัน %4",
+  "editorResultsPartial": "กำลังรัน — ตัวเลขถึงเวลา t = %1 วินาที"
 }

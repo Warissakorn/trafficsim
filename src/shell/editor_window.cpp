@@ -150,7 +150,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         else editHead();
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
-    buildDemandTables(); buildRouting(); buildRunControls(); buildRecovery(); buildPalette();
+    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildRecovery(); buildPalette();
     resize(1360,860);buildWorkspace();
     history_.reset(); translate(); refresh();canvas_->centerOn(0,0);
 }
@@ -172,7 +172,7 @@ void EditorWindow::translate() {
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables(); translateDemand(); translatePalette(); refreshToolHint();
+    retranslateTables(); translateDemand(); translateResults(); translatePalette(); refreshToolHint();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     language_->setAccessibleName(text("language"));
     texts_.at("editorScopeCompact")->setToolTip(text("editorScope"));

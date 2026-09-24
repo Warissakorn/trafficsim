@@ -180,7 +180,7 @@ It feeds the existing per-route inputs at compile time; it does **not** restore 
 routes (that is M2.1's positioned decision, D25). **Gate:** flows compile to the same core
 scenario as the equivalent hand-split inputs; tables and dialogs round-trip through save/reopen.
 
-### M2.5 — Movement evaluation, single run · **Next**
+### M2.5 — Movement evaluation, single run · **Implemented** (D39, D40; contract in `SIMULATION.md`)
 
 In `src/eval/`, fed only by the event stream (`core/` unchanged):
 
