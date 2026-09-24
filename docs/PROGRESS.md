@@ -32,6 +32,21 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-24 — M2 registered; M2.0.1 and M2.2–M2.4 implemented
+
+**Why everything expands before the core.** Intervals, compositions and routing decisions each
+split a Poisson stream — by period, by type share, by route share — and a split Poisson stream is
+exactly a set of independent Poisson streams. So each concept became an expansion into ordinary
+core inputs (decision → composition in `resolveCatalogs`, then period → lane in `buildScenario`),
+and one-way splits keep the plain id. The engine did not change, and neither did a fixture.
+**Why intervals are the source.** With `intervals` set, the scalar start/end/volume are derived
+(`deriveInputTotals`) on put and on read, so no file can hold two volumes. **Why M2.0.1 is not
+M3:** it applies M3.1's existing rule where it was skipped; drawing order decides, which is
+honest only because protected phasing rarely lets it bind (D35). Four tests that pinned the old
+refusal now pin the arbitrated merge and that removing the rule re-fires the guard.
+
+---
+
 ## 2026-09-24 — M2.0 closed except its decisions: same-station cut, dropped lanes, amber clamps
 
 **Same station:** the cut is reused rather than refused, and the later Connector also gives way to

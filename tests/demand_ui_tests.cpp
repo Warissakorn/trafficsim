@@ -13,6 +13,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QLineEdit>
 #include <QPlainTextEdit>
 #include <cmath>
 #include <iostream>
@@ -288,10 +289,45 @@ int main(int argc,char** argv) {
         });
         action(w,"editorEditInput");
 
+        // M2.4: a routing decision is authored in its own tab, and an input can follow it.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog,"Routing decision dialog did not open");
+            dialog->findChild<QLineEdit*>("editorDecisionNameField")->setText("West turns");
+            auto* flow=dialog->findChild<QDoubleSpinBox*>("editorDecisionFlow0");
+            require(flow && flow->value()==0,"A new decision did not list the route with no flow");
+            flow->setValue(3);dialog->accept();
+        });
+        action(w,"editorAddDecision");
+        require(w.history().document().definition->routingDecisions.size()==1,"The decision was not stored");
+        const auto decisionId=w.history().document().definition->routingDecisions.front().id;
+        require(w.history().document().definition->routingDecisions.front().routes==
+                std::vector<DecisionRoute>({{routeId,3}}),"The decision's flow was not stored");
+        item<QTableWidget>(w,"editorInputTable")->selectRow(0);QApplication::processEvents();
+        const auto chooseRoute=[&](const QString& data){
+            QTimer::singleShot(0,[&,data]{
+                auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+                require(dialog,"Input dialog did not open for a decision");
+                auto* route=dialog->findChild<QComboBox*>("editorInputRoute");
+                const int at=route->findData(data);require(at>=0,"Route list is missing an entry");
+                route->setCurrentIndex(at);dialog->accept();
+            });
+            action(w,"editorEditInput");
+        };
+        chooseRoute("decision:"+QString::fromStdString(decisionId));
+        require(w.history().document().definition->inputs.front().routingDecisionId==decisionId &&
+                w.history().document().definition->inputs.front().routeId.empty(),
+                "Choosing a decision did not store it in place of the route");
+        chooseRoute("route:"+QString::fromStdString(routeId));
+        require(w.history().document().definition->inputs.front().routeId==routeId &&
+                w.history().document().definition->inputs.front().routingDecisionId.empty(),
+                "Choosing a route again did not clear the decision");
+
         // Save and reopen: both objects are project data, not canvas state.
         w.saveFile(file);w.openFile(file);QApplication::processEvents();
         require(w.history().document().definition->routes.size()==1 &&
-                w.history().document().definition->inputs.size()==1,"Reopen lost the drawn demand");
+                w.history().document().definition->inputs.size()==1 &&
+                w.history().document().definition->routingDecisions.size()==1,"Reopen lost the drawn demand");
         require(drawn(w,"input-marker"),"Reopened input drew no marker");
 
         // Selecting the input row draws the route it feeds.

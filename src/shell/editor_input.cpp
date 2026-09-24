@@ -29,10 +29,19 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     QDialog dialog(this);dialog.setObjectName("editorInputDialog");dialog.setWindowTitle(text("editorEditInput"));
     auto* form=new QFormLayout(&dialog);
     auto* route=new QComboBox(&dialog);route->setObjectName("editorInputRoute");
-    for(const auto& r:catalog.routes)route->addItem(QString::fromStdString(r.id));
+    // Routes, then routing decisions (M2.4): an input follows one route, or is split across the
+    // routes of a decision by its turning proportions. Item data says which.
+    for(const auto& r:catalog.routes)route->addItem(QString::fromStdString(r.id),"route:"+QString::fromStdString(r.id));
+    if(history_.document().definition)for(const auto& x:history_.document().definition->routingDecisions)
+        route->addItem(text("editorInputDecisionItem").arg(QString::fromStdString(x.name.empty()?x.id:x.name)),
+                       "decision:"+QString::fromStdString(x.id));
     // A route placed by pointer names the route it was dropped on; the dialog opens on it.
     if(value.routeId.empty())value.routeId=preselectedRoute;
-    if(!value.routeId.empty())route->setCurrentText(QString::fromStdString(value.routeId));
+    {
+        const auto current=value.routingDecisionId.empty()?"route:"+QString::fromStdString(value.routeId)
+                                                          :"decision:"+QString::fromStdString(value.routingDecisionId);
+        if(const int at=route->findData(current);at>=0)route->setCurrentIndex(at);
+    }
     form->addRow(text("editorInputRoute"),route);
     auto* type=new QComboBox(&dialog);type->setObjectName("editorInputType");
     // One list for both (M2.3): a vehicle type, or a composition of types from data/compositions/.
@@ -129,7 +138,13 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     buttons->button(QDialogButtonBox::Ok)->setEnabled(route->count()>0 && type->count()>0);
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
     if(dialog.exec()!=QDialog::Accepted)return;
-    value.routeId=route->currentText().toStdString();
+    {
+        const auto chosen=route->currentData().toString();
+        const bool decision=chosen.startsWith("decision:");
+        const auto id=chosen.mid(chosen.indexOf(':')+1).toStdString();
+        value.routingDecisionId=decision?id:std::string{};
+        value.routeId=decision?std::string{}:id;
+    }
     {
         const auto chosen=type->currentData().toString();
         const bool composition=chosen.startsWith("composition:");

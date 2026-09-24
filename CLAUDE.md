@@ -42,8 +42,12 @@ file and compiled volumes are unchanged. The vehicle-input dialog (`src/shell/ed
 now shows one weight field per lane the selected route currently reaches, seeded from a stored
 value only when its size still matches; leaving the fields untouched leaves `laneShares`
 untouched too, which is what keeps an unedited input's save and compiled volumes exactly as they
-were. Compositions, per-interval volumes and a positioned routing decision are
-M2.1, behind M2's pre-registered gate, whose criteria are still unwritten and block all of M2.
+were. **M2 is under way** — its gate criteria are registered (ROADMAP §M2, D34). Counted
+`intervals` (M2.2), `compositionId` from `data/compositions/` (M2.3) and static routing decisions
+(M2.4) are all expanded at compile/resolve time into ordinary core inputs, so `core/` and every
+frozen fixture are untouched. Connectors meeting at a lane start are ordered by M3.1's derived
+rule (M2.0.1, D35 — not M3). **M2.5's first delay figure waits for the owner's C0 table in
+`docs/M2_GATE.md`.** A positioned or per-interval routing decision is still M2.1.
 
 **Build and redraw (M1.27, M1.27.1):** `src/project/json.hpp` declares `Json` through
 `<nlohmann/json_fwd.hpp>` and `trafficsim_shell` precompiles the Qt surface the UI test

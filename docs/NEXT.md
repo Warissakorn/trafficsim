@@ -11,36 +11,26 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-**2026-09-24: M1 reviewed and M2 planned — read [`M2_PLAN.md`](M2_PLAN.md) first.** M1 is
-implementation-complete for its done-condition and gate-open; 36/36 tests and `check` pass on
-Linux. The review found that **no fixture or test anywhere builds a four-leg intersection**, so
-the network M1's gate draws and M2's done-condition runs has never been compiled or run. The plan
-holds a *draft* of M2's gate criteria (C0–C4) and slices M2.0–M2.6. **The draft is not a
-pre-registration:** nothing past M2.0 starts until the owner edits it into `ROADMAP.md` §M2 and
-commits it.
+**M2 is under way (2026-09-24).** The owner ratified the gate (ROADMAP §M2, D34) and ruled on
+M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own commit with
+`core/`, the frozen fixtures and `trafficsim-cli 42` unchanged:
 
-**The four-leg fixture exists and runs** (`data/projects/four-leg-signalised.traffic.json`,
-`fourleg` tests; M2_PLAN.md M2.0), and **M2.0 is done except its one owner decision:**
+- **M2.0.1** Connectors meeting at a lane start are ordered by M3.1's derived rule in drawing
+  order; the four-leg fixture is now the natural drawing and runs with no diagnostic.
+- **M2.2** counted `intervals` on an input (paste a count column in the dialog), schema 10.
+- **M2.3** `compositionId` from `data/compositions/` (`urban-mixed`, `car-only`) and a
+  `heavy-vehicle` type — plausible, unvalidated.
+- **M2.4** static routing decisions (Routing decisions tab), relative flows over routes leaving
+  one Link.
 
-- **Item 0 (the duplicate-station refusal) is fixed.** A second arrival at a station already cut
-  reuses that cut, and the Connector drawn later gives way to each drawn earlier at that section
-  as well as to the lane. The defect-recording test is now the specification.
-- **M2.0.2 is fixed.** A lane dropped at an ambiguous implied Link→Link step is reported as the
-  advisory `AMBIGUOUS_ROUTE_STEP` (English and Thai), and Run is not blocked.
-- **M2.0.3 is diagnosed, not fixed, on purpose.** Every clamp is a vehicle within 2 m of its stop
-  line at speed when its head turns amber: the engine treats amber as red with no stop-or-go
-  decision. The frozen TS baselines for seeds 43 and 4294967295 hold six such clamps, so adding a
-  decision changes frozen fixtures, which a session may not regenerate. **Owner decision:** keep
-  amber-as-red until M4, or accept an amber decision now with a new, logged baseline. A test pins
-  that every clamp in the four-leg run is this case, so any other source fails it.
-- **M2.0.1 waits on the owner:** start-of-lane arbitration now, or staggered arrivals in C1.
+**Stop point — the next session does NOT start M2.5 until the owner fills in C0** in
+[`M2_GATE.md`](M2_GATE.md) (the last 10 studies against `PROBLEM.md` §2's walls). That is the
+ratified amendment: C0 must be answered blind to any delay figure this tool produces. When it is
+filled in, M2.5 is next: `M2_PLAN.md` §4 M2.5 is the specification (movement = entry/exit Link
+pair, simulated movement delay, queue counter with thresholds in `data/`, clamp count shown).
 
-**Next without the owner:** nothing in M2 — past M2.0 needs the criteria. The M1 side is still
-open: M1.22's keyboard-only demand gestures (item 0b) and M1.23 are engineering work a session can
-take.
-
-PR #54's compact UI refresh is merged; native Windows appearance and display scaling ride on the
-owner acceptance exercise below.
+**Open questions for the owner, none blocking:** motorcycles (not shipped; lane sharing is
+unmodelled — Thai counts are motorcycle-heavy); per-interval turning proportions (M2.1).
 
 **The measure-first optimization pass is finished.** Items 1–5 and 7 shipped; item 6 was built,
 measured and **reverted**. Do not re-try any of these without a new measurement:

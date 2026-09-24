@@ -102,6 +102,9 @@ Desired speeds belong to the vehicle-type distribution, not the link.
   type; resolving the catalog splits it into one input per type (`id/type-<type>`, volume ×
   normalised share), which is exact for Poisson arrivals. `heavy-vehicle` is a plausible,
   **unvalidated** type added for it. Motorcycles are not offered: lane sharing is not modelled.
+  **Since M2.4 an input may follow a static routing decision** — relative flows over routes that
+  leave one Link — and is split into one input per route (`id/route-<route>`) before everything
+  else. Turning proportions are then exact in expectation; lane choice is still fixed at entry.
 - A segment with multiple predecessors is rejected with `UNSUPPORTED_MERGE` **unless the merge is
   arbitrated** (M3.1): it is accepted only when at least *n*−1 of its *n* predecessors carry a
   `PriorityRule` naming another of them, so exactly one has priority and the rest have somewhere

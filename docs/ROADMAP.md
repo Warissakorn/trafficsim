@@ -307,6 +307,8 @@ free SUMO-based alternative would have been good enough for this job.
 it does not start M3). **M2.2** time-varying volumes · **M2.3** vehicle compositions · **M2.4**
 static turning proportions (moved here from M2.1, D37) · **M2.5** movement delay and queue, one
 run, after C0 · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
+**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3 and M2.4 implemented; M2.5 waits for C0; the
+gate itself is open and nothing here closes it.
 
 ### M2.1 — Link/lane/Connector behavior and demand extensions
 

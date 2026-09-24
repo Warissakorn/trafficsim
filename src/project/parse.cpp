@@ -189,6 +189,17 @@ Composition parseComposition(const Json& c) {
         composition.types.push_back({field<std::string>(t, "vehicleTypeId"), field<double>(t, "share")});
     return composition;
 }
+std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
+    std::vector<RoutingDecision> result;
+    for (const auto& x : array(definition, "routingDecisions")) {
+        RoutingDecision decision{field<std::string>(x, "id"),
+                                 present(x, "name") ? field<std::string>(x, "name") : std::string{}, {}};
+        for (const auto& r : array(x, "routes"))
+            decision.routes.push_back({field<std::string>(r, "routeId"), field<double>(r, "relativeFlow")});
+        result.push_back(std::move(decision));
+    }
+    return result;
+}
 ScenarioDefinition parseDefinition(const Json& value) {
     ScenarioDefinition definition;
     definition.duration = field<double>(value, "duration");
@@ -201,6 +212,7 @@ ScenarioDefinition parseDefinition(const Json& value) {
             field<double>(i, "startTime"), field<double>(i, "endTime")};
         if (i.contains("laneShares")) input.laneShares = doubles(i, "laneShares");
         if (i.contains("compositionId")) input.compositionId = field<std::string>(i, "compositionId");
+        if (i.contains("routingDecisionId")) input.routingDecisionId = field<std::string>(i, "routingDecisionId");
         if (i.contains("intervals")) {
             for (const auto& p : array(i, "intervals"))
                 input.intervals.push_back({field<double>(p, "startTime"), field<double>(p, "endTime"),

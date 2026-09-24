@@ -52,6 +52,9 @@ struct VehicleInput {
     // Authoring only (M2.3): a composition from data/compositions/ instead of one vehicle type.
     // Non-empty means vehicleTypeId is unused; resolveCatalogs expands it into one input per type.
     std::string compositionId;
+    // Authoring only (M2.4): a static routing decision instead of one route. Non-empty means
+    // routeId is unused; the decision's routes and relative flows split the volume.
+    std::string routingDecisionId;
     bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };

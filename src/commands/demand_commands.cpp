@@ -1,4 +1,5 @@
 #include "demand_commands.hpp"
+#include "detail.hpp"
 #include <algorithm>
 
 namespace trafficsim {
@@ -59,6 +60,27 @@ std::string putProgram(ProjectDocument& d, SignalProgram value) {
 void deleteRoute(ProjectDocument& d, const std::string& id) {
     auto& values=demand(d); remove(values.routes,id);
     std::erase_if(values.inputs,[&](const auto& i){return i.routeId==id;});
+    detail::pruneRoutingDecisions(values);
+}
+std::string putRoutingDecision(ProjectDocument& d, RoutingDecision value) {
+    if (value.id.empty()) value.id=allocateId(d,"decision");
+    const auto id=value.id; put(demand(d).routingDecisions,std::move(value)); return id;
+}
+void deleteRoutingDecision(ProjectDocument& d, const std::string& id) {
+    auto& values=demand(d); remove(values.routingDecisions,id);
+    std::erase_if(values.inputs,[&](const auto& i){return i.routingDecisionId==id;});
+}
+void detail::pruneRoutingDecisions(AuthoringDefinition& values) {
+    // A decision entry for a route that is gone goes with it, as the route's own inputs do; a
+    // decision left with no routes cannot split anything, so it and its inputs go too.
+    for (auto& decision : values.routingDecisions)
+        std::erase_if(decision.routes,[&](const auto& entry){
+            return std::none_of(values.routes.begin(),values.routes.end(),[&](const auto& r){return r.id==entry.routeId;});});
+    std::vector<std::string> emptied;
+    for (const auto& decision : values.routingDecisions) if (decision.routes.empty()) emptied.push_back(decision.id);
+    std::erase_if(values.routingDecisions,[](const auto& x){return x.routes.empty();});
+    std::erase_if(values.inputs,[&](const auto& i){
+        return std::find(emptied.begin(),emptied.end(),i.routingDecisionId)!=emptied.end();});
 }
 void deleteInput(ProjectDocument& d, const std::string& id) { remove(demand(d).inputs,id); }
 void deleteProgram(ProjectDocument& d, const std::string& id) {

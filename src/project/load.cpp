@@ -73,7 +73,9 @@ std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& author
     return issues;
 }
 ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
-    ScenarioDefinition definition=authored;
+    // Routing decisions first (M2.4): after this every input names one route, which is what the
+    // composition split below and buildScenario's period and lane splits all expect.
+    ScenarioDefinition definition=withRoutingDecisions(authored);
     try {
         if (authored.externalVehicleTypes) {
             definition.vehicleTypes.clear();

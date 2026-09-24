@@ -57,6 +57,9 @@ void EditorWindow::buildDemandTables() {
         [this](const auto& id){editInput(id);},"input");
     page(programTable_,"editorProgramTable","editorAddProgram","editorEditProgram","editorDeleteProgram",
         [this](const auto& id){editProgram(id);},"program");
+    // Last, so every earlier tab keeps the index the rest of the window already addresses it by.
+    page(decisionTable_,"editorDecisionTable","editorAddDecision","editorEditDecision","editorDeleteDecision",
+        [this](const auto& id){editDecision(id);},"decision");
     connect(routeTable_,&QTableWidget::itemSelectionChanged,this,[this]{syncHighlightedRoute();});
     connect(inputTable_,&QTableWidget::itemSelectionChanged,this,[this]{syncHighlightedRoute();});
     connect(routeTable_,&QTableWidget::itemSelectionChanged,this,[this]{
@@ -79,17 +82,19 @@ void EditorWindow::buildDemandTables() {
     connect(objects_,&QTabWidget::currentChanged,bar,[bar](int index){bar->setVisible(index==2);});
 }
 void EditorWindow::translateDemand() {
-    const char* tabs[]={"editorRouteTable","editorInputTable","editorProgramTable"};
-    for(int i=0;i<3;++i) objects_->setTabText(i+4,text(tabs[i]));
+    const char* tabs[]={"editorRouteTable","editorInputTable","editorProgramTable","editorDecisionTable"};
+    for(int i=0;i<4;++i) objects_->setTabText(i+4,text(tabs[i]));
+    decisionTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorDecisionName"),text("editorDecisionRoutes")});
     routeTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorRouteSegments"),text("editorColumnLength")});
     inputTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorInputRoute"),text("editorInputVolume")});
     programTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorProgramOffset"),text("editorProgramCycle")});
 }
 void EditorWindow::refreshDemand() {
     if (!routeTable_) return;
-    const QSignalBlocker a(routeTable_), b(inputTable_), c(programTable_);
+    const QSignalBlocker a(routeTable_), b(inputTable_), c(programTable_), e(decisionTable_);
     const auto routeId=selectedId(routeTable_),inputId=selectedId(inputTable_),programId=selectedId(programTable_);
-    routeTable_->setRowCount(0);inputTable_->setRowCount(0);programTable_->setRowCount(0);
+    const auto decisionId=selectedId(decisionTable_);
+    routeTable_->setRowCount(0);inputTable_->setRowCount(0);programTable_->setRowCount(0);decisionTable_->setRowCount(0);
     if(history_.document().definition) {
         const auto& def=*history_.document().definition;
         const auto scenario=buildScenario(history_.document().network,def);
@@ -127,22 +132,28 @@ void EditorWindow::refreshDemand() {
             if(!i.intervals.empty())period+=" · "+text("editorInputIntervalCount").arg(static_cast<int>(i.intervals.size()));
             row(inputTable_,n,{QString::fromStdString(i.id),QString::fromStdString(i.routeId),volume+period},i.id);
         }
+        for(const auto& x:def.routingDecisions) {
+            QStringList flows;
+            for(const auto& r:x.routes)flows<<QString::fromStdString(r.routeId)+" \u00d7 "+QString::number(r.relativeFlow);
+            const int n=decisionTable_->rowCount();decisionTable_->insertRow(n);
+            row(decisionTable_,n,{QString::fromStdString(x.id),QString::fromStdString(x.name),flows.join(", ")},x.id);
+        }
         for(const auto& p:def.signalPrograms) {
             double cycle=0;for(const auto& f:p.phases)cycle+=f.duration;
             const int n=programTable_->rowCount();programTable_->insertRow(n);
             row(programTable_,n,{QString::fromStdString(p.id),QString::number(p.offset),QString::number(cycle)},p.id);
         }
     }
-    for(const auto& entry:std::vector<std::pair<QTableWidget*,std::string>>{{routeTable_,routeId},{inputTable_,inputId},{programTable_,programId}}) {
+    for(const auto& entry:std::vector<std::pair<QTableWidget*,std::string>>{{routeTable_,routeId},{inputTable_,inputId},{programTable_,programId},{decisionTable_,decisionId}}) {
         auto* t=entry.first;
         for(int r=0;r<t->rowCount();++r)if(t->item(r,0)->data(Qt::UserRole).toString().toStdString()==entry.second)t->selectRow(r);
         t->resizeColumnsToContents();
     }
 }
 void EditorWindow::selectDemand(const std::string& id) {
-    for(auto* table:{routeTable_,inputTable_,programTable_})
+    for(auto* table:{routeTable_,inputTable_,programTable_,decisionTable_})
         for(int r=0;r<table->rowCount();++r)if(table->item(r,0)->data(Qt::UserRole).toString().toStdString()==id) {
-            objects_->setCurrentIndex(table==routeTable_?4:table==inputTable_?5:6);table->selectRow(r);return;
+            objects_->setCurrentIndex(table==routeTable_?4:table==inputTable_?5:table==programTable_?6:7);table->selectRow(r);return;
         }
 }
 void EditorWindow::deleteDemand(const std::string& kind,const std::string& id) {
@@ -152,7 +163,8 @@ void EditorWindow::deleteDemand(const std::string& kind,const std::string& id) {
     box.setDefaultButton(QMessageBox::No);if(box.exec()!=QMessageBox::Yes)return;
     execute("editorDeleteSelected",[&](auto& d){
         if(kind=="route")deleteRoute(d,id);else if(kind=="input")deleteInput(d,id);
-        else if(kind=="program")deleteProgram(d,id);else deleteSignalHead(d,id);
+        else if(kind=="program")deleteProgram(d,id);else if(kind=="decision")deleteRoutingDecision(d,id);
+        else deleteSignalHead(d,id);
     });
 }
 void EditorWindow::editRoute(const std::string& id,const std::vector<std::string>& initial) {

@@ -178,14 +178,19 @@ Compositions as content under `data/compositions/` (type + relative flow). An in
 unchanged); sampled shares converge to the configured ones over a long run within a stated
 binomial tolerance.
 
-### M2.4 — Static turning proportions
+### M2.4 — Static turning proportions · **Implemented 2026-09-24**
+
+Done as below: `routingDecisions` with `routingDecisionId` on an input, split into
+`id/route-<route>` before compositions, periods and lanes; a Routing decisions tab and dialog,
+and decisions in the input's route list. A multi-route decision drops `laneShares` (weights for
+one route's lanes mean nothing on another's). Still schema 10.
 
 A static routing decision on an origin Link: destination routes with relative flows, per interval.
 It feeds the existing per-route inputs at compile time; it does **not** restore lane-specific
 routes (that is M2.1's positioned decision, D25). **Gate:** flows compile to the same core
 scenario as the equivalent hand-split inputs; tables and dialogs round-trip through save/reopen.
 
-### M2.5 — Movement evaluation, single run
+### M2.5 — Movement evaluation, single run · **Waits for C0** (D34 amendment)
 
 In `src/eval/`, fed only by the event stream (`core/` unchanged):
 

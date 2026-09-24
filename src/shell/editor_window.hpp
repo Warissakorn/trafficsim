@@ -79,13 +79,14 @@ private:
     void startAutosave();
     void clearRecovery();
     void recoverDialog(bool startup = false);
-    QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{};
+    QTableWidget *routeTable_{}, *inputTable_{}, *programTable_{}, *decisionTable_{};
     void buildDemandTables();
     void refreshDemand();
     void translateDemand();
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
     void editInput(const std::string& id = {}, const std::string& preselectedRoute = {});
     void editProgram(const std::string& id = {});
+    void editDecision(const std::string& id = {}); // M2.4, src/shell/editor_decision.cpp
     void editHead(const std::string& id = {});
     void editRunSettings();
     void deleteDemand(const std::string& kind, const std::string& id);
