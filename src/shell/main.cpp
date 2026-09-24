@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
             trafficsim::findDataDirectory(trafficsim::nativePath(QCoreApplication::applicationFilePath()));
         if (parser.value("language") != "en" && parser.value("language") != "th") throw std::invalid_argument("Unknown language");
         trafficsim::EditorWindow editor(data, parser.value("language"));
-        editor.show();
+        editor.showMaximized();
         // Both file kinds land here. The editor reports its own failure in its own window, so a
         // file it cannot open never becomes a modal carrying an untranslated error code.
         if (parser.isSet("scenario")) editor.openFileOrReport(parser.value("scenario"));

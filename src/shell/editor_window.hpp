@@ -47,6 +47,7 @@ public:
     void saveFile(const QString& path); // Atomic replacement; failures preserve dirty state.
 protected:
     void closeEvent(QCloseEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
 private:
     History history_;
     std::filesystem::path data_;
@@ -143,6 +144,12 @@ private:
     QLabel *error_{}, *coordinates_{}, *selectionInfo_{};
     QString text(const std::string& key) const;
     void buildInspector();
+    void buildWorkspace();
+    void resetWorkspace();
+    void layoutToolbars();
+    void focusCanvas(bool enabled);
+    QByteArray workspaceBeforeFocus_;
+    bool changingWorkspace_{};
     QWidget* buildConnectorInspector();
     void refreshConnector();
     void refreshConnectorRanges();

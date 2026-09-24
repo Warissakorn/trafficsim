@@ -11,6 +11,11 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
+The compact UI refresh is implemented in PR #54, with the desktop `check` passing all 36 tests
+and English/Thai screenshots inspected at 1360×860 and 1024×768. Linux and Windows CI pass for
+the code change. Review the PR and include native Windows appearance and display scaling in
+the existing owner acceptance exercise; the M1 gate and engineering priorities below remain open.
+
 **The measure-first optimization pass is finished.** Items 1–5 and 7 shipped; item 6 was built,
 measured and **reverted**. Do not re-try any of these without a new measurement:
 

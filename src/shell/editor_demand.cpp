@@ -35,6 +35,7 @@ void EditorWindow::buildDemandTables() {
     const auto page=[&](QTableWidget*& view,const char* name,const char* add,const char* edit,const char* remove,
                         const std::function<void(const std::string&)>& open,const char* kind) {
         auto* body=new QWidget(objects_); auto* layout=new QVBoxLayout(body);
+        layout->setContentsMargins(0,0,0,0);layout->setSpacing(3);
         auto* bar=new QToolBar(body); layout->addWidget(bar);
         view=new QTableWidget(0,3,body); view->setObjectName(name);
         view->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -69,9 +70,11 @@ void EditorWindow::buildDemandTables() {
     bar->addAction(action("editorAddHead",{},[this]{editHead();}));
     bar->addAction(action("editorEditHead",{},[this]{auto id=selectedId(signalTable_);if(!id.empty())editHead(id);}));
     bar->addAction(action("editorDeleteHead",{},[this]{auto id=selectedId(signalTable_);if(!id.empty())deleteDemand("head",id);}));
-    bar->addAction(action("editorRunSettings",{},[this]{editRunSettings();}));
+    action("editorRunSettings",{},[this]{editRunSettings();});
     // The toolbar belongs to the containing dock layout, not the table viewport.
     qobject_cast<QVBoxLayout*>(objects_->parentWidget()->layout())->insertWidget(0,bar);
+    bar->setVisible(objects_->currentIndex()==2);
+    connect(objects_,&QTabWidget::currentChanged,bar,[bar](int index){bar->setVisible(index==2);});
 }
 void EditorWindow::translateDemand() {
     const char* tabs[]={"editorRouteTable","editorInputTable","editorProgramTable"};
