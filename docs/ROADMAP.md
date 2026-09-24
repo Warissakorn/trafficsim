@@ -316,8 +316,7 @@ close M1's timed owner exercise.**
 
 ## M2 — Demand, run, first numbers · **GATE**
 
-Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay
-and queue per movement.
+Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay and queue per movement.
 
 **Done when:** the M1 intersection, loaded with counted volumes, runs and produces a delay
 table.
@@ -334,7 +333,8 @@ free SUMO-based alternative would have been good enough for this job.
 > engineers later strengthens the gate and is never wasted effort.
 
 **Pre-registered criteria: TO BE WRITTEN before M2 implementation starts.** Leaving this
-line unfilled and starting M2 anyway voids the gate.
+line unfilled and starting M2 anyway voids the gate. A **draft** for the owner, not a
+pre-registration, is in [`M2_PLAN.md`](M2_PLAN.md) §3, with the proposed slices M2.0–M2.6.
 
 - If the answer is broadly *yes*, this project is the wrong answer to the problem —
   see `PROBLEM.md` §7.1 — and the honest move is to stop and reconsider, not to continue

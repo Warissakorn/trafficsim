@@ -11,10 +11,22 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-The compact UI refresh is implemented in PR #54, with the desktop `check` passing all 36 tests
-and English/Thai screenshots inspected at 1360×860 and 1024×768. Linux and Windows CI pass for
-the code change. Review the PR and include native Windows appearance and display scaling in
-the existing owner acceptance exercise; the M1 gate and engineering priorities below remain open.
+**2026-09-24: M1 reviewed and M2 planned — read [`M2_PLAN.md`](M2_PLAN.md) first.** M1 is
+implementation-complete for its done-condition and gate-open; 36/36 tests and `check` pass on
+Linux. The review found that **no fixture or test anywhere builds a four-leg intersection**, so
+the network M1's gate draws and M2's done-condition runs has never been compiled or run. The plan
+holds a *draft* of M2's gate criteria (C0–C4) and slices M2.0–M2.6. **The draft is not a
+pre-registration:** nothing past M2.0 starts until the owner edits it into `ROADMAP.md` §M2 and
+commits it.
+
+**What a session may do now without the owner:** M2.0 only — item 0 below (the duplicate-station
+refusal), then a committed four-leg signalised fixture with turn pockets and a test that compiles
+and runs it, filing every refusal it surfaces as its own numbered item. Both are M1 defects, not
+M2 implementation, so they do not touch the gate. Prefer the owner's own G1 save as the fixture if
+it exists by then.
+
+PR #54's compact UI refresh is merged; native Windows appearance and display scaling ride on the
+owner acceptance exercise below.
 
 **The measure-first optimization pass is finished.** Items 1–5 and 7 shipped; item 6 was built,
 measured and **reverted**. Do not re-try any of these without a new measurement:
@@ -116,7 +128,9 @@ findings in the D11 row. **This is the owner's decision, not a session's.**
 **Not started, and deliberately:** M2 implementation. Its gate is pre-registered and
 `ROADMAP.md`'s "Pre-registered criteria: TO BE WRITTEN before M2 implementation starts" is still
 unfilled. Starting M2 before writing them **voids the gate** (D8), and that gate is the honesty
-check on the whole project's premise. Write the criteria first.
+check on the whole project's premise. A draft to start from is `M2_PLAN.md` §3 — its C0, the audit
+of the owner's last studies against `PROBLEM.md` §2's walls, is best answered **now**, before any
+M2 output exists to colour it.
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
 not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an

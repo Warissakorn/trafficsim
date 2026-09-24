@@ -31,6 +31,18 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
+
+Owner request; everything is in [`M2_PLAN.md`](M2_PLAN.md), no code changed; `desktop` 36/36 and
+`check` green on Linux. **The criteria stay a draft** because D8 makes pre-registration the
+owner's own act; ROADMAP §M2 only points at it. **C3 is a rule over the owner's past studies
+(C0), not a verdict on the M2 study**, because M2 can only run protected phasing honestly — the
+case a SUMO wrapper handles best — so "would SUMO have done *this* study" answers itself.
+**No fixture builds a four-leg intersection anywhere**, so M2.0 (the duplicate-station fix plus
+a runnable four-leg fixture) goes first, allowed before the criteria as M1 defects.
+
+---
+
 ## 2026-09-24 — M1.26.1, storage and the dialog
 
 **M1.26.1's real question — decided (D32).** `VehicleInput` gains `laneShares`, optional relative

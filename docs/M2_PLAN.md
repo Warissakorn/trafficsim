@@ -1,0 +1,187 @@
+# M2 plan — and the M1 review it starts from
+
+Written 2026-09-24 at the owner's request ("ตรวจสอบ M1 และวางแผนพัฒนา M2"). **This file is a
+plan and a draft, not a pre-registration.** M2's gate criteria are pre-registered only when the
+owner writes them into `ROADMAP.md` §M2 and commits them (D8). Until then the line
+"Pre-registered criteria: TO BE WRITTEN" stays, and no M2 implementation may start.
+
+---
+
+## 1. M1 review — where it actually stands
+
+### Verified this session (Linux only)
+
+| Check | Result |
+|---|---|
+| `cmake --preset desktop` + build, clean container | Green, after installing `nlohmann-json3-dev`, `qt6-base-dev`, `qt6-tools-dev`, `ninja-build` (the container had none of them) |
+| `ctest --preset desktop` | **36/36 pass** (offscreen Qt) |
+| `cmake --build build/desktop --target check` | Pass |
+| `trafficsim-cli 42` | Runs, reports `"validation": "not-yet-validated"`, 0 safety clamps |
+| CI on `main` | Run 207 (PR #54) green on Linux and Windows; run 211 (PR #55) was in progress at review time |
+
+Windows was not exercised here. A green Linux run is not Windows evidence (CLAUDE.md).
+
+### What is closed
+
+Every numbered M1 sub-milestone except M1.22 and M1.23 is implemented: M1.1–M1.21.1, M1.24–M1.27,
+M1.26.1 and the carve-outs M1.3.1, M1.5.1, M1.11.1, M1.12.1; M1.12.2 was a measurement error and
+M1.12.3 was closed by M1.19. ROADMAP is the authority for each.
+
+### What keeps M1 open
+
+| # | Item | Owner | Blocks |
+|---|---|---|---|
+| G1 | The timed four-leg / aerial-image / reopen exercise (`M1_ACCEPTANCE.md`) — **every row is still "Pending"** | Owner | M1 closure |
+| G2 | M0 plausibility observation (accelerate, queue at red, discharge at green) | Owner | M0 closure |
+| G3 | Keyboard-only equivalent of the route and input gestures (M1.26 gate) | Engineering + owner | M1.26 gate |
+| G4 | M1.22 (spline/arc, snapping, layer locks, multi-property inspector …) and M1.23 (import/export, culling/LOD) | Engineering | Their own gates; not the M1 done-condition |
+| G5 | Windows-native appearance, display scaling and the M1.12 review checklist | Owner | Honest cross-platform claim |
+| G6 | Name (Q5, D11) — trigger is live | Owner | Nothing technical |
+
+### Engineering defects found or confirmed
+
+1. **Duplicate-station refusal still unfixed** (`NEXT.md` item 0). `src/model/network/sections.cpp`
+   still measures a second arrival at an already-cut station against
+   `boundaries.back() + kMinSectionLength`, i.e. against itself, and marks the Connector
+   unsectionable. Run is refused for a physically fine drawing.
+2. **New finding: no fixture or test anywhere builds a four-leg intersection.** `grep` over
+   `tests/` and `tools/` finds none. M1's done-condition geometry and M2's done-condition network
+   ("the M1 intersection, loaded with counted volumes, runs") have **never been compiled or run
+   by any automated check.** The only runnable scenario in `data/scenarios/` is the M0
+   `crossing.json`. Turn pockets fed from one approach, left and right turns arriving on the same
+   receiving lane, and simultaneous arrivals at one station are exactly the shapes that hit
+   defect 1 and `UNSUPPORTED_MERGE`. This is the largest unmeasured risk between M1 and M2.
+
+### Verdict
+
+M1 is **implementation-complete for its done-condition and gate-open**. No merged code can close
+it; G1 can. Nothing engineering-side is missing to *attempt* G1, but defect 2 means nobody knows
+yet whether the drawing G1 produces will **run** — which is M2's first question, not M1's.
+
+---
+
+## 2. What M2 has to deliver, and what the engine can already say
+
+ROADMAP M2: *vehicle inputs per interval, compositions, turning proportions; press Run, get average
+delay and queue per movement. Done when the M1 intersection, loaded with counted volumes, runs and
+produces a delay table.* Then the honesty gate.
+
+| Need | Today | Gap |
+|---|---|---|
+| Volumes per interval | `VehicleInput` = one route, one type, one rate over `[start, end)`. Several inputs can emulate intervals. | No interval list on one input; no 15-min table an engineer can paste counts into |
+| Compositions | One vehicle type per input | No composition object; emulation = one input per type, which multiplies inputs by types |
+| Turning proportions | One input per route = absolute volume per movement | No "relative flow per destination" object; the engineer must pre-multiply counts |
+| Lane choice at pockets | Emergent: `routeLaneChains` only expands to lanes whose Connectors reach the destination; inserted lane is fixed (no lane changing) | Unverified on a real four-leg drawing (defect 2) |
+| Crossing movements | Not modelled — paths pass through each other; signals keep them apart | **Only fully protected signal phasing is honest in M2.** Permissive turns, unsignalised legs, conflict areas are M3 |
+| Delay per movement | `SummaryAccumulator`: one completed-trip mean for the whole run | No movement definition, no per-movement table, no queue measurement |
+| Several seeds | CLI takes one seed | Averaging and confidence intervals are **M5**, not M2 |
+
+**Consequence for the gate:** the only study M2 can run honestly is a **signalised intersection
+with fully protected phasing**. That is also the case where a SUMO wrapper is *most* adequate
+(`PROBLEM.md` §7.1). The gate must therefore not rest on the one study alone — see C3 below.
+
+---
+
+## 3. Draft gate criteria — for the owner to accept, edit or reject
+
+Proposal only. Numbers in **[brackets]** are the owner's to set. Copy the accepted version into
+ROADMAP §M2 and commit it **before any M2.2+ code** — a criterion written after results exist is
+not a test (D8).
+
+- **C0 — Portfolio audit, recorded at pre-registration, before any M2 code.** For the owner's last
+  **[10]** real impact studies, list for each which `PROBLEM.md` §2 walls it actually needed:
+  authored conflict-area yielding, gap-time/headway priority rules, mid-block signal heads,
+  Wiedemann parameters carried from a calibrated model, vehicle-owned desired-speed
+  distributions. Node evaluation and multi-run averaging are **excluded** — both must be built
+  whichever engine is used, so they do not discriminate. Writing this now is the strongest
+  single mitigation of D8: it is answered before the owner has seen anything M2 produces.
+- **C1 — Completion.** One real study from the owner's practice (signalised, protected phasing,
+  counted 15-minute volumes, the owner's actual timing plan) is completed end to end in TrafficSim:
+  network over its aerial image, volumes, composition, timing, Run, per-movement delay and queue
+  table. Fail if it needs hand-edited JSON, a code change during the study, or outside help.
+- **C2 — Effort.** Wall time in TrafficSim ≤ **[2.0]×** the time in the owner's current tool for
+  the same study, both timed from a blank project. Record both regardless of outcome.
+- **C3 — The SUMO question, answered by rule rather than by feeling.** The answer is
+  "*a SUMO-based tool would have been good enough*" if fewer than **[3 of 10]** studies in C0
+  needed at least one wall. That answer **fails the gate** and triggers `PROBLEM.md` §7.1 — stop
+  and reconsider, not continue because effort was spent.
+- **C4 — Plausibility, recorded, not scored.** For each movement, the TrafficSim delay next to the
+  current tool's. Neither engine is validated against the other and bit-agreement is a non-goal
+  (`PROBLEM.md` §5), so C4 cannot pass or fail the gate; a movement more than **[two LOS
+  letters]** away opens a numbered investigation milestone, per ROADMAP rule 2.
+
+**Pass = C1 and C2 pass and C3 answers "not good enough".** Reported as *not disproven*, never
+*confirmed* (D8). Evidence goes in a new `docs/M2_GATE.md`, shaped like `M1_ACCEPTANCE.md`.
+
+---
+
+## 4. Slices, in order — each one system, each after the criteria are committed
+
+Numbering continues after the existing **M2.1**, which stays open and later (behaviour
+parameters, distributions, road classes, lane types, dynamic and positioned routing). **Proposed
+rescope, owner to confirm:** compositions and the static routing decision move from M2.1 into
+M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not.
+
+### M2.0 — Preconditions (engineering items allowed before the criteria, since they are M1 defects)
+
+1. Fix the duplicate-station refusal in `runtimeSections` (NEXT item 0); the commented
+   expectation in `tests/connector_tests.cpp` flips.
+2. Commit a **four-leg signalised fixture with turn pockets** — ideally the owner's own G1 save —
+   under `data/scenarios/` or `tests/reference/`, and a test that compiles it, runs it for a fixed
+   seed and asserts no `UNSUPPORTED_*` diagnostic and that every route delivers vehicles. Every
+   refusal it surfaces becomes its own numbered item, not a silent patch.
+
+### M2.2 — Time-varying volumes
+
+`VehicleInput` gains an ordered interval list (start, end, veh/h); a single-interval input is
+exactly today's input. Schema 10 with migration; Poisson per interval with the existing PRNG and
+draw order. **Gate:** the four frozen baselines and `trafficsim-cli 42` byte-identical; an interval
+table in the input dialog accepts pasted 15-minute counts.
+
+### M2.3 — Vehicle compositions
+
+Compositions as content under `data/compositions/` (type + relative flow). An input names a type
+**or** a composition. **Gate:** single-type inputs draw nothing extra from the PRNG (fixtures
+unchanged); sampled shares converge to the configured ones over a long run within a stated
+binomial tolerance.
+
+### M2.4 — Static turning proportions
+
+A static routing decision on an origin Link: destination routes with relative flows, per interval.
+It feeds the existing per-route inputs at compile time; it does **not** restore lane-specific
+routes (that is M2.1's positioned decision, D25). **Gate:** flows compile to the same core
+scenario as the equivalent hand-split inputs; tables and dialogs round-trip through save/reopen.
+
+### M2.5 — Movement evaluation, single run
+
+In `src/eval/`, fed only by the event stream (`core/` unchanged):
+
+- **Movement** = (entry Link, exit Link) pair derived from the compiled route, named by the Link
+  names the author gave.
+- **Delay** per movement = travel time between two cross-sections (approach and exit) minus the
+  free-flow time at each vehicle's desired speed, plus source wait. Labelled as *simulated
+  movement delay*, **not HCM control delay**, until M5/M6 say otherwise.
+- **Queue** per approach = Vissim-style queue counter at the stop line: queue start/end speed
+  and maximum gap as content in `data/`, reporting mean and maximum length in metres.
+- Unserved demand (pending, active at end) reported beside every table.
+
+Shown in the editor after Run and printed/exported by the CLI (CSV), always with the
+not-yet-validated marker (rule 4). Several seeds, means, confidence intervals and LOS stay
+**M5**. **Gate:** analytic fixtures — a single-lane approach under a fixed red with known arrivals,
+whose delay and queue can be computed by hand — plus exact replay per seed.
+
+### M2.6 — The gate study (owner)
+
+Run C1–C4 exactly as committed; fill in `docs/M2_GATE.md`; close M2 only on a pass. **M3 may not
+start before this** (ROADMAP §M2).
+
+---
+
+## 5. Owner decisions this plan needs
+
+1. **Accept, edit or reject C0–C4**, fill the bracketed numbers, commit them into ROADMAP §M2.
+2. **Confirm the M2.1 → M2.3/M2.4 rescope**, or keep compositions and routing decisions in M2.1.
+3. **Seeds for the gate study:** run one seed (M2 scope) or pull a minimal multi-seed mean
+   forward from M5 so C4 compares like with like. Averaging with CIs is still M5's either way.
+4. **Order relative to G1:** recommended — do G1 first; its saved drawing *is* M2.0's fixture and
+   M2's done-condition network, and it tests the editor on a network nobody has yet run.
