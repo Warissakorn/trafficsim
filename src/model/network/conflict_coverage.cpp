@@ -150,6 +150,15 @@ std::vector<Point> controlPathPolyline(const Network& n, const ControlPathRef& r
     const auto strip = stripOf(n, ref);
     return strip ? strip->base : std::vector<Point>{};
 }
+std::optional<ControlPoint> laneControlPoint(const Network& n, const LaneReference& lane, double laneStation) {
+    for (const auto& l : n.links) if (l.id == lane.linkId)
+        for (const auto& x : l.lanes) if (x.id == lane.laneId) {
+            const auto along = laneGeometry(l, x.id, n.drivingSide);
+            if (along.size() != l.geometry.size() || !std::isfinite(laneStation)) return std::nullopt;
+            return ControlPoint{{l.id, x.id, "", "", ""}, matchedStation(along, l.geometry, laneStation)};
+        }
+    return std::nullopt;
+}
 std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const ControlPoint& point) {
     try {
         const auto strip = stripOf(n, point.path);

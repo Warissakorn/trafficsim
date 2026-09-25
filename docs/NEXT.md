@@ -9,34 +9,40 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.6c, queue counters in the editor
+## Immediate — M3.2.7, the T-junction evidence (A26)
 
 **Done:**
-- M3.2.2a–M3.2.5b (D54–D63): authored right-of-way, the admission solver, Stop/Yield, and the
-  editor for all of them.
-- **M3.2.6a/b (D64):**
-  - A21 evidence (`signal_position.*`);
-  - `AuthoredQueueCounter` in schema 16, measured by place (`src/eval/movement.*`,
-    `src/project/evaluation.cpp`);
-  - an authored counter over a Link's heads replaces that Link's derived row.
-- The commands the editor calls exist: `putQueueCounter` and `deleteQueueCounter`
-  (`right_of_way_commands.hpp`). Lifecycle is `detail::pruneQueueCounters`.
+- M3.2.2a–M3.2.6c (D54–D65): authored right-of-way, the admission solver, Stop/Yield, place-based
+  queue counters, and the editor for all of them.
+- **Counters (D65):**
+  - The Queue counter tool is `Q`; the Queue counters tab is `src/shell/editor_counters.cpp`.
+  - A counter over an approach's heads replaces that approach's derived row. The one rule is
+    `replacedApproaches` (`project/evaluation.hpp`).
 
-**Next, M3.2.6c** (ROADMAP row):
-1. **Counter tool on the canvas**, one new palette tool; write its gesture first in
-   `VISSIM_PARITY.md` §2b.
-   - A click on a head or dashed waiting line adds a line referencing it.
-   - A click on a lane adds an explicit `ControlPoint` at the station, found the way the head tool
-     finds one (`nearestHeadSlot`, `canvas_heads.cpp`).
-   - Enter finishes the counter, making it one Undo step.
-2. **A Queue counters tab:** name, lines, and the row it produces. Deleting a counter restores the
-   derived row. Add en/th for both new codes' tab text; the codes already have text.
-3. **Draw counter lines** on the canvas, distinct from waiting lines and stop lines.
-4. **Tests:** a Qt suite in the `priority-canvas` style — create by pointer and by keyboard, Undo,
-   then Save and reopen (A24), with the Results tab showing the authored row in place of the
-   derived one.
+**Next, M3.2.7** (ROADMAP row; the spec is `docs/M3_ACCEPTANCE.md` §2 — do not re-plan it):
+1. **Fixture builder:** write `tools/t_junction_network.hpp` through the existing commands, in the
+   four-leg pattern (`tools/four_leg_network.hpp`), and generate
+   `data/projects/t-junction-priority.traffic.json` from it.
+   - Layout: a two-way major road and one minor approach, both driving sides.
+   - The minor left turn crosses the opposing stream (`addCrossingAreas`), then merges
+     downstream (`takeOverMergesOf`).
+   - Variants: Yield, Stop (`setAreaControl`) and a blocked receiving lane.
+   - A queue counter on the minor approach: `putQueueCounter` referencing its waiting line.
+2. **Controlled cases, before any sweep:**
+   - The gapTime 4/5/6 s and headway 7 m ± tolerance predicate cases from §2.
+   - A movement-level case whose tick bounds are stated **before** running it. Assert the
+     clearance margin first.
+   - Use test-owned initial states, following `tests/conflict_zone_tests.cpp`.
+3. **Diagnostic sweep:**
+   - Commit the metadata first.
+   - Seeds 0, 42, 43, 4294967295; paired gapTime 3/5/7 s and headway 3/7/12 m.
+   - Archive counts, delay, queue, active/pending and clamps.
+   - No monotonicity requirement per seed.
+4. **Owner exercise (§3):** it needs a Windows build and the owner, so it is recorded as
+   pending, never inferred.
 
-Then **M3.2.7**, the T-junction evidence (gap sweep and owner exercise, A26).
+A24 also still needs the Windows `native.yml` run of the Qt suites, `priority-canvas` and
+`queue-counter-ui` among them.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

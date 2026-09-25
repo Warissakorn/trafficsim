@@ -121,11 +121,16 @@ void EditorCanvas::drawHeads() {
     if (hoverHead_ && tool_ == Tool::head)
         bar(hoverHead_->slot.geometry, hoverHead_->station, hoverHead_->slot.width, hoverHead_->slot.level, QColor("#167b98"), true);
 }
+std::optional<std::pair<Point,Point>> EditorCanvas::headBar(const NetworkSignalHead& head) const {
+    const auto geometry = headGeometry(head);
+    if (!geometry || geometry->points.size() < 2) return std::nullopt;
+    return barEnds(geometry->points, head.position, geometry->width);
+}
 QPainterPath EditorCanvas::headShape(const NetworkSignalHead& head) const {
     QPainterPath shape;
-    const auto geometry = headGeometry(head);
-    if (!geometry || geometry->points.size() < 2) return shape;
-    const auto [a, b] = barEnds(geometry->points, head.position, geometry->width);
+    const auto bar = headBar(head);
+    if (!bar) return shape;
+    const auto [a, b] = *bar;
     // Wide enough to hit at any zoom: four pixels either side of the line.
     const double pad = 4 / std::abs(transform().m11());
     const double dx = b.x - a.x, dy = b.y - a.y, n = std::max(1e-9, std::hypot(dx, dy));

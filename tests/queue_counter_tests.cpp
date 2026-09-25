@@ -148,3 +148,43 @@ TEST(queue_counter, a_split_moves_an_explicit_point_onto_the_link_that_now_holds
     test::throws([&] { h.execute("x", [&](auto& m) { splitLink(m, downstream, point.station); }); }, "EDIT_SPLIT_CONTROL");
     (void)id;
 }
+TEST(queue_counter, a_click_on_a_lane_becomes_a_point_at_that_very_place) {
+    // M3.2.6c: the tool picks a station along the lane's own polyline; the counter stores the
+    // Link's reference station. On a curve the two differ, so the mapping is what is under test.
+    for (const auto side : {DrivingSide::left, DrivingSide::right}) {
+        Network n; n.drivingSide = side;
+        n.links = {{"a", {{0, 0}, {40, 0}, {90, 35}}, {{"a1", 3.5}, {"a2", 3.5}, {"a3", 3.5}}}};
+        const auto table = runtimeSections(n);
+        for (const auto* lane : {"a1", "a3"}) {
+            const auto along = laneGeometry(n.links[0], lane, side);
+            const double s = 55;
+            const auto point = laneControlPoint(n, {"a", lane}, s);
+            CHECK(point.has_value());
+            CHECK(std::abs(point->station - s) > 0.1); // the forcing: lane and reference stations differ here
+            const auto bar = waitingLineBar(n, *point);
+            CHECK(bar.has_value());
+            const auto clicked = pointAlong(along, s);
+            test::near((bar->first.x + bar->second.x) / 2, clicked.x, 1e-6);
+            test::near((bar->first.y + bar->second.y) / 2, clicked.y, 1e-6);
+            const auto at = locateControlPoint(n, table, *point);
+            CHECK(at.has_value() && at->segment == lane);
+        }
+        CHECK(!laneControlPoint(n, {"a", "gone"}, 10));
+    }
+}
+TEST(queue_counter, the_tab_reads_the_same_rules_the_report_applies) {
+    auto d = fourLeg();
+    const auto& h = d.network.signalHeads.front();
+    const auto link = h.lane.linkId;
+    const auto id = putQueueCounter(d, {"", "", {{h.id, std::nullopt}}});
+    const auto& c = d.network.queueCounters.front();
+    CHECK(queueRowName(c) == id); // unnamed: its id
+    CHECK(replacedApproaches(d.network, c) == std::vector<std::string>{link});
+    const auto r = report(d);
+    const auto& l = *std::find_if(d.network.links.begin(), d.network.links.end(), [&](const auto& x) { return x.id == link; });
+    CHECK(row(r, id) != nullptr);
+    CHECK(row(r, l.name.empty() ? l.id : l.name) == nullptr);
+    // An explicit point replaces nothing, whatever it sits beside.
+    const AuthoredQueueCounter point{"p", "", {{"", ControlPoint{{link, h.lane.laneId, "", "", ""}, 5}}}};
+    CHECK(replacedApproaches(d.network, point).empty());
+}

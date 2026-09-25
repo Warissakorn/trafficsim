@@ -462,5 +462,13 @@
   "INVALID_PRIORITY_RULE": "gapTime และ headway ต้องมากกว่าศูนย์",
   "UNKNOWN_CONFLICT_AREA": "กฎลำดับสิทธิ์อ้างถึงพื้นที่ขัดแย้งที่ไม่มีอยู่",
   "UNKNOWN_CONTROL_OWNER": "การควบคุมอ้างถึง Link หรือ Connector ที่ไม่มีอยู่",
-  "UNKNOWN_WAITING_LINE": "พื้นที่ขัดแย้งอ้างถึงเส้นรอหลีกทางที่ไม่มีอยู่"
+  "UNKNOWN_WAITING_LINE": "พื้นที่ขัดแย้งอ้างถึงเส้นรอหลีกทางที่ไม่มีอยู่",
+  "editorCounterTool": "ตัวนับคิว",
+  "editorCounterTable": "ตัวนับคิว (queue counter)",
+  "editorCounterLines": "เส้นวัด",
+  "editorCounterReplaces": "แทนแถวของทางเข้า",
+  "editorAddCounter": "เพิ่มตัวนับคิวจากหัวสัญญาณไฟที่เลือก",
+  "editorEditCounter": "แก้ไขตัวนับคิว",
+  "editorDeleteCounter": "ลบตัวนับคิว",
+  "editorCounterPlaceHelp": "คลิกเส้นหยุด เส้นรอ หรือจุดบนช่องจราจรของ Link แล้วกด Enter เพื่อสร้างตัวนับคิวหนึ่งตัว Backspace ลบเส้นล่าสุด Esc ยกเลิก"
 }

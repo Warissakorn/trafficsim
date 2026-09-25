@@ -44,6 +44,10 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const Cont
 // Connector's base polyline), so a drag commits the station waitingLineBar and the resolver read.
 // Empty when the reference does not resolve.
 std::vector<Point> controlPathPolyline(const Network&, const ControlPathRef&);
+// M3.2.6c: the ControlPoint at a place on a Link lane, from a station along that lane's own
+// polyline (what nearestHeadSlot picks) -- mapped cross-section for cross-section onto the Link's
+// reference polyline, where a ControlPoint's station is measured. Empty when the lane is gone.
+std::optional<ControlPoint> laneControlPoint(const Network&, const LaneReference&, double laneStation);
 
 // One merge: the incoming segments that arrive on one section, in drawing order -- the order
 // derivedPriorityRules ranks them in. `explicitControl` is set when an authored area covers two

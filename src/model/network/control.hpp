@@ -3,8 +3,8 @@
 // the project network and are persisted with it. Everything derived from them (runtime segments,
 // route incidence, the compiled core PriorityRule) is computed, never stored.
 //
-// Waiting lines, conflict areas, their priority rules and (M3.2.5) Stop/Yield controls. Queue
-// counters are M3.2.6 and are not here yet.
+// Waiting lines, conflict areas, their priority rules, (M3.2.5) Stop/Yield controls and (M3.2.6)
+// queue counters.
 #include <optional>
 #include <string>
 #include <vector>

@@ -144,6 +144,16 @@ private:
     void cyclePriority(const std::string& id);
     std::string selectedConflict() const;
     PriorityDefaults priorityDefaults() const; // data/priority-rules, as Run reads them
+    // M3.2.6c, src/shell/editor_counters.cpp: the Queue counters tab and the tool's commit.
+    QTableWidget* counterTable_{};
+    std::uint64_t counterRevision_{UINT64_MAX};
+    void buildCounters();
+    void translateCounters();
+    void refreshCounters();
+    void showCounters();
+    void editCounter(const std::string& id);
+    void addCounter(std::vector<MeasurementLine> lines);
+    std::string selectedCounter() const;
     QLineEdit* runSeed_{};
     QComboBox* runSpeed_{};
     QLabel* runInfo_{};

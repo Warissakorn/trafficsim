@@ -42,6 +42,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     if(demandPress(e))return;
     if(headPress(e))return;
     if(conflictPress(e))return;
+    if(counterPress(e))return;
     if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {startRotation(e->pos());return;}
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
@@ -298,10 +299,12 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     if(e->key()==Qt::Key_Escape) { if(stopRequested)stopRequested(); cancel(); return; }
     if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) {
         if(!routeDraft_.empty()) {commitRouteDraft();return;}
+        if(!counterDraft_.empty()) {commitCounterDraft();return;}
         finishDrawing(); return;
     }
     // Only while a route draft is open: Backspace belongs to the view otherwise.
     if(e->key()==Qt::Key_Backspace && !routeDraft_.empty()) { dropLastRouteSegment(); return; }
+    if(e->key()==Qt::Key_Backspace && !counterDraft_.empty()) { counterDraft_.pop_back(); redraw(); return; }
     if(e->key()==Qt::Key_Tab) {cycleOverlap();return;}
     if(e->key()==Qt::Key_Delete) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
     const bool arrow = e->key()==Qt::Key_Left || e->key()==Qt::Key_Right ||
@@ -331,7 +334,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     QGraphicsView::keyPressEvent(e);
 }
 bool EditorCanvas::mouseGestureActive() const {
-    return creating_ || headDrag_ || lineDrag_ || !routeDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
+    return creating_ || headDrag_ || lineDrag_ || !routeDraft_.empty() || !counterDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
            laneResize_ || panning_ || band_ || dragging_;
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {

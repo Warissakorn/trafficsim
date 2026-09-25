@@ -462,5 +462,13 @@
   "INVALID_PRIORITY_RULE": "gapTime and headway must be greater than zero.",
   "UNKNOWN_CONFLICT_AREA": "A priority rule names a conflict area that does not exist.",
   "UNKNOWN_CONTROL_OWNER": "A control names a Link or Connector that does not exist.",
-  "UNKNOWN_WAITING_LINE": "A conflict area names a waiting line that does not exist."
+  "UNKNOWN_WAITING_LINE": "A conflict area names a waiting line that does not exist.",
+  "editorCounterTool": "Queue counters",
+  "editorCounterTable": "Queue counters",
+  "editorCounterLines": "Lines",
+  "editorCounterReplaces": "Replaces approach",
+  "editorAddCounter": "Add queue counter over selected heads",
+  "editorEditCounter": "Edit queue counter",
+  "editorDeleteCounter": "Delete queue counter",
+  "editorCounterPlaceHelp": "Click stop lines, waiting lines or places on a Link lane, then press Enter to create one queue counter. Backspace removes the last line; Esc cancels."
 }

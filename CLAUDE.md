@@ -18,8 +18,8 @@ repository, or any package until the owner decides.
 
 - **Gates:** M1 usability accepted by owner ruling (D49; `docs/M1_ACCEPTANCE.md` keeps what the
   attempt did not show). M2's gate passed by the owner's judgment (D51–D53, `docs/M2_GATE.md`).
-  **M0 plausibility is still open.** M3.2.2a–c, M3.2.3a–c, M3.2.4a–b, M3.2.5a–b and M3.2.6a–b are done (D54–D64): authored crossings and merges run on
-  the admission solver with Stop/Yield, all authorable in the editor; queue counters are place-based; next is **M3.2.6c**, counter authoring — `docs/NEXT.md`.
+  **M0 plausibility is still open.** M3.2.2a–c, M3.2.3a–c, M3.2.4a–b, M3.2.5a–b and M3.2.6a–c are done (D54–D65): authored crossings and merges run on
+  the admission solver with Stop/Yield, all authorable in the editor; queue counters are place-based and authorable; next is **M3.2.7**, the T-junction evidence — `docs/NEXT.md`.
 - **Engine:** C++ core, reduced Wiedemann-inspired car-following (unvalidated), fixed-time signals,
   derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50),
   authored crossing and merge areas admitted by gap time/headway with whole-area reservation

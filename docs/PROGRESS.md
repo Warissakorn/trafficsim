@@ -5,6 +5,8 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-25-m3.2.3a.md`](archive/PROGRESS-2026-09-25-m3.2.3a.md) — 2026-09-25, M3.2.3a, one authored crossing runs (D57); moved out 2026-09-25 as the oldest live entry
+- [`archive/PROGRESS-2026-09-25-m3.2.2b-c.md`](archive/PROGRESS-2026-09-25-m3.2.2b-c.md) — 2026-09-25, M3.2.2b (controls follow their owners, D55) and M3.2.2c (waiting lines upstream, crossing coverage, D56); moved out 2026-09-25 as the oldest live entries
 - [`archive/PROGRESS-2026-09-25-m3.2.2a-scrutinised.md`](archive/PROGRESS-2026-09-25-m3.2.2a-scrutinised.md) — 2026-09-25, M3.2.2a scrutinised, four defects fixed (D55); moved out 2026-09-25 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.2a.md`](archive/PROGRESS-2026-09-25-m3.2.2a.md) — 2026-09-25, M3.2.2a, authored right-of-way controls at the file/model seam (D54); moved out 2026-09-25 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-docs-pass.md`](archive/PROGRESS-2026-09-25-docs-pass.md) — 2026-09-25, docs pass: stale instructions out, session-start reading cut; moved out 2026-09-25 as the oldest live entry
@@ -44,6 +46,59 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-25 — M3.2.6c: queue counters in the editor (D65)
+
+M3.2.6c closes M3.2.6. Counters are now authored, listed, drawn and deleted in the editor.
+- **Queue counter tool** (`Q`, `Tool::counter`). Each click adds one line to a draft:
+  - a click on a stop line adds a reference to that head;
+  - a click on a waiting line adds a reference to that line;
+  - anywhere else on a **Link** lane, it adds an explicit point, through the new
+    `laneControlPoint`. That function maps the lane-polyline station `nearestHeadSlot` picks onto
+    the reference station a `ControlPoint` stores.
+
+  Keys:
+  - Enter commits the draft as one counter, one Undo step.
+  - Backspace drops the last line; Esc drops the draft.
+  - A head clicked twice is one line.
+  - A Connector path, or empty ground, is refused.
+- **Queue counters tab** (`src/shell/editor_counters.cpp`, index 10), with columns Id, Name, Lines,
+  Replaces approach. Its actions:
+  - *Add queue counter* over the heads in the selection, which is the keyboard route: select heads
+    in the Signal heads table, then add;
+  - *Edit* (Name) from Enter or a double-click;
+  - *Delete*, which brings the derived row back.
+  All of them go through `execute`.
+- **Marks:** counter lines are violet dotted bars above stop and waiting lines, taken from the same
+  helpers that draw or resolve their objects (`headBar`, `waitingLineBar`).
+- **One source for the tab and the report:** `queueRowName` and `replacedApproaches`
+  (`project/evaluation.hpp`). `evaluationSpec` now suppresses a derived row through
+  `replacedApproaches`.
+  - The four-leg and M2.6 reports are **byte-identical** to the previous commit's CLI, and so is a
+    project that carries an authored counter.
+  - Disconnecting the suppression fails the UI suite.
+
+Tests:
+- Headless: the lane click lands on the clicked place on a curve (both sides; lane and reference
+  stations differ by more than 0.1 m there), and the tab's helpers agree with the report.
+- `queue-counter-ui` (offscreen) on the four-leg template:
+  - Esc and a refused click, then three stop lines and a lane place committed with Enter; Undo and
+    Redo.
+  - Rename through the dialog; the Results tab shows "Counted" in place of the pocket's row, with
+    the same row count.
+  - Keyboard add, Delete, then Undo of each.
+  - Deleting the counter restores the derived rows.
+  - Thai headers; Save and reopen.
+- Three mutations are caught by this suite: Enter not committing, stop lines not recognised, and
+  suppression disconnected.
+
+Other changes:
+- The suite's `require` prints before it throws. A failing assertion otherwise aborted in
+  `~EditorWindow` (`map::at` while a window with unsaved edits closes during unwind), which hid the
+  message. That behaviour is older than this change and is only seen on a failure path.
+- Oldest entries (M3.2.2b, M3.2.2c) moved to `docs/archive/` to keep this file under 500 lines.
+
+Test runs: Linux headless 28/28, desktop 45/45 offscreen. Seed 42 is unchanged. Not run on Windows.
 
 ## 2026-09-25 — M3.2.6a/b: signal positions and queue counters (D64)
 
@@ -295,82 +350,6 @@ stream, so the rule binds. No-zone cost is unchanged: `stepSimulation` measures 
 instructions, as at M3.2.3a. Test runs: Linux headless 28/28 and desktop 42/42 offscreen. Seed 42
 is unchanged.
 
-## 2026-09-25 — M3.2.3a: one authored crossing runs (D57)
-
-The core gained a `ConflictZone` (`src/core/types.hpp`) and an admission module
-(`src/core/conflicts.*`). An authored crossing area with nothing reported against it now
-compiles to a zone (`resolveRightOfWay(...).zones`) and runs. It no longer carries
-`UNSUPPORTED_CONFLICT_RUNTIME`.
-
-`stepSimulation` now runs in three phases:
-1. Compute every candidate move from the snapshot.
-2. Cap any minor request whose line crossing coincides with a major front reaching the area in the
-   same tick.
-3. Publish in vehicle order.
-
-Without zones the arithmetic and event order are the old ones: seed 42 is byte-identical and the
-four TS baselines pass.
-
-Named blockers for what this slice does not run:
-- `UNSUPPORTED_CONFLICT_SPAN`: an area over a section cut.
-- `UNSUPPORTED_CONFLICT_GROUP`: a segment in two areas.
-- Merge areas keep `UNSUPPORTED_CONFLICT_RUNTIME`.
-
-Core validation adds `CONFLICT_SINK_TOO_CLOSE` and `CONFLICT_ROUTE_STARTS_PAST_LINE`.
-
-Tests: `tests/conflict_zone_tests.cpp` (11) and `tests/right_of_way_runtime_tests.cpp` (3). With
-admission disabled (holds and swept caps stubbed out) six core tests and the gap-time response
-test fail. With only the swept check disabled, its own test fails. On the model crossing, the
-minor road's mean travel time rises with the rule's gap time, 1 s against 6 s. Test runs: Linux
-headless 28/28 and desktop 42/42 offscreen. Seed 42 is unchanged.
-
-Cost with no zones: callgrind on `trafficsim-engine-benchmark 12 60` (Release) puts
-`stepSimulation` at 51.29M instructions against 49.29M before, +4.1%. That is the three-phase
-split. Wall clock is 0.36–0.37 µs per vehicle-tick against 0.35–0.37, inside the clock's spread.
-Two measured attempts to win it back:
-- Skipping the zone call for routes with no zone recovered 2.7 points and was kept.
-- Publishing inline when there is no zone, through a lambda, cost more (52.05M) and was reverted.
-
-## 2026-09-25 — M3.2.2c: waiting lines upstream, crossing coverage measured (D56)
-
-The resolver now places a waiting line wherever it stands upstream of its side. It walks the
-runtime graph backwards from the side's entry segment, along single predecessors only, and
-compiles the line as metres along the yielding segment: negative when the line stands before that
-segment. A line some route can go round is `CONFLICT_WAITING_LINE_BYPASSED`; a line nowhere
-upstream of the side is `CONFLICT_WAITING_LINE_NOT_UPSTREAM`. Both replace
-`CONFLICT_WAITING_LINE_UNSUPPORTED`. The core accepts a negative `yieldPosition` down to the length
-of that same chain of single predecessors (`src/core/validate.cpp`), so the check lives in both
-places. The simulation already measured the stop line in route distance, so no engine code
-changed; a new core test shows a vehicle held at a line on the approach.
-
-A `crossing` area is checked against `surfaceOverlap` (`src/model/network/conflict_coverage.cpp`),
-which intersects the two lane surfaces quad by quad and reads the overlap back as authored stations.
-The codes are:
-- `CONFLICT_NO_OVERLAP`: nothing to protect, and a shared edge is not a crossing.
-- `CONFLICT_EXTENT_UNCOVERED`: an extent, named by side, falls short of the overlap.
-- `CONFLICT_GEOMETRY_UNSUPPORTED`: two separate overlaps, or a strip folded on a tight bend.
-
-Found and fixed on the way: a waiting line earlier on the side's own lane, in an earlier section,
-was compiled at the end of the yielding section without a word (0.6 m instead of −30 m in the test).
-
-New tests are in `tests/right_of_way_resolution_tests.cpp` (`rightofway_resolution.*`, 5) and
-`core.a_stop_line_may_stand_on_the_one_approach_before_the_yielding_segment`. Five of the six fail
-on the pre-M3.2.2c resolver and core validation. The sixth checks the new measurement against an
-independent ray-casting reading of the geometry, on a curved two-lane Link with both driving sides.
-Test runs: Linux headless 28/28 and desktop 42/42 offscreen. Seed 42 is byte-identical.
-
-## 2026-09-25 — M3.2.2b: controls follow their owners (D55)
-
-`src/commands/detail.hpp` gains `removeControlsOn`, `controlsNameLink`, `checkSplitControls`/
-`splitControls` and `copyControls`; `deleteLink`, `deleteConnector` (so every reanchor deletion
-too), `splitLink`, `duplicateObjects` and `reverseLink` call them. The tests are in
-`tests/right_of_way_lifecycle_tests.cpp` on a curved two-lane Link with a body merge, both driving
-sides; shared fixtures moved to `tests/right_of_way_fixture.hpp`. The interim pinning test
-`rightofway.until_m3_2_2b_*` is removed on purpose — M3.2.2b is the change it guarded. Six of the
-eight new tests fail on the pre-M3.2.2b commands; the other two lock behaviour that was already
-right (lane edits keep ids; a shorter Link reports, never clamps). Linux headless 28/28, desktop
-42/42 offscreen; seed 42 and both project fixtures unchanged.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -476,6 +455,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D54 | 2026-09-25 | **M3.2.2 is split: M3.2.2a ships the authored model, schema 14, commands and the resolver; the reference lifecycle is M3.2.2b** | One system per session. The file/model seam — types, strict codec, History commands and ONE effective-priority resolver used by both compile and diagnostics — is testable on its own (A01–A04, A06–A08). Lifecycle (split/copy/retarget/resize/delete remapping, A05) touches every geometry command and is its own slice; until it lands, deleting a Link or Connector a control names is refused whole (safe but blunt), and a lane change leaves a stale, Run-blocked draft; `rightofway.until_m3_2_2b_*` pins both. Every authored area is Run-blocked (`UNSUPPORTED_CONFLICT_RUNTIME`) until M3.2.3, even an explicit merge the M3.1 mechanism could already run, because the plan says new controls stay blocked until their runtime is implemented. A taken-over merge compiles to exactly the fallback's rule (same 1 m waiting line, D50), so reversing it is the only change an author makes. Stop controls and queue counters are left to M3.2.5/M3.2.6, where their runtime lands. | M3.2.2b, or the M3.2.3 admission solver changing what a compiled area needs. |
 | D55 | 2026-09-25 | **Authored controls follow their owners the way signal heads do; a split through one is refused; lane edits never retarget** | Deleting a Link or Connector (including a drag that detaches a Connector) cascades the areas on it, their rules, the lines on it and lines that served only those areas, in the same command, so Undo restores the whole relationship. A split moves stations by the same arithmetic as Connector ends and maps lane ids through the split's replacements; a Connector lane pair whose end moved downstream takes the new lane id. A control in or across the 0.2 m span is refused (`EDIT_SPLIT_CONTROL`) rather than guessed (contract §1, first slice). Copy takes a control only when every owner was copied — a Connector lane pair needs both end Links, because only then do its lane ids map. Lane-count and retarget edits are allowed and keep ids: a pair that no longer matches is a Run-blocked `CONFLICT_UNRESOLVED_PATH`, never an ordinal pick (§6). Reverse is refused like a head. The M3.2.2a scrutiny fixes ride under this number too. A waiting line on a preceding Link and crossing coverage are resolver work, carved to M3.2.2c. Recorded, not fixed: control ids are unique against network ids only. | An editor surface (M3.2.4) that lets an author select a control, which would need copy/delete of the control itself. |
 | D64 | 2026-09-25 | **A queue counter is a set of places on runtime segments; derived and authored counters share that one mechanism; an authored counter over a Link's heads replaces that Link's derived row; copying a Link does not copy counters** | Contract §1 asks for counters independent of heads with one source of truth for their location. Measuring by place rather than by head removes the only thing that tied evaluation to signals, and the head-derived counters kept byte-identical reports because a head's compiled place is exactly the line it was measured from. Suppressing the derived row is the simplest rule that meets "no duplicate approach rows". A copied counter would duplicate a row name, which is why demand is not copied either |
+| D65 | 2026-09-25 | **Queue counters are authored with their own tool: a stop-line click references the head, a waiting-line click references the line, a lane click is an explicit point on Link lanes only; the keyboard route is Add queue counter over the selected heads; the tab's Replaces column and the report's suppression read the one `replacedApproaches`** | A reference keeps the counter's line on the object when that object is moved, which a copied point would not. An approach queue is counted on the Link that carries it, so a point on a Connector path is refused rather than given a second station convention. Heads are already keyboard-selectable through the Signal heads table, so no second keyboard picker was needed. Sharing the rule is what keeps the tab from promising a replacement the report does not make |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |
