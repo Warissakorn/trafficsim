@@ -205,6 +205,35 @@ start before this** (ROADMAP §M2).
 
 ---
 
+### M2.7 — Signal heads placed by pointer; fixed-time Signal Controllers · **Implemented, gate open** (owner request)
+
+The owner reported that a Signal head could not be placed where it was wanted and that building
+a signal program was confusing. Both sit on M2.6's critical path (a signalised study with
+protected phasing), so they are carved here rather than waiting for M4.
+
+- **M2.7a — the head is its stop line · Implemented 2026-09-25** (D47). The head tool places a
+  head with a plain click at the exact station under the pointer, on a Link lane or a Connector
+  path, one head per lane as Vissim does; the dialog opens on that lane and station, bounded by
+  the lane's length. A selected head drags along its own lane (`moveSignalHead`, one Undo). The
+  canvas draws every head as a stop line across its lane. The runtime already held vehicles at
+  the head's station; nothing in `core/` changed.
+- **M2.7b — Signal Controllers with Signal Groups (fixed time) · Implemented 2026-09-25** (D48).
+  A controller has a name, a cycle and an offset; each signal group a green start, green end and
+  amber in seconds of the cycle (green may wrap past the cycle's end). The dialog
+  (`src/shell/editor_signal.cpp`) is a groups table with a timing-bar diagram drawn from the same
+  colour rule the run uses, flags a time that does not fit the cycle before OK, and starts from a
+  2-phase (60 s) or 4-phase one-approach-at-a-time (120 s) template. A head shows a group; the
+  head dialog offers "New signal controller..." and defaults to the group the last head took.
+  Schema 13; a schema 12 program shaped like a group migrates to one, colour for colour, and the
+  rest stay legacy programs. Expanded at compile time (`expandRouteless`) into ordinary core
+  `SignalProgram`s `<controller>#<group>`, so `core/`, the frozen fixtures, `trafficsim-cli 42` and
+  the four-leg's results are unchanged; the four-leg builder now authors one controller.
+
+**Done when:** the owner builds the M2.6 study's signal timing from its timing sheet with the
+controller dialog and places every head by pointer, with no hand-typed station or id.
+M4 stays open: actuated control, ring-barrier, detectors, intergreen matrices and conflict checks.
+
+
 ## 5. Owner decisions this plan needs
 
 1. **Accept, edit or reject the criteria** (done: D34, then D38), fill the bracketed numbers, commit them into ROADMAP §M2.

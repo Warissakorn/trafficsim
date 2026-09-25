@@ -34,6 +34,18 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
 - **M2.1.2** (owner choice) the decision dialog takes counted turning volumes per interval, one
   pasted row per destination, schema 12 (D45). The interval follows network entry time.
 
+- **M2.7** (owner report, 2026-09-25) a Signal head is placed by a click at the pointer's station
+  on a lane or Connector path, drags along its lane and is drawn as its stop line (D47); signal
+  control is authored as fixed-time **Signal Controllers with Signal Groups** — a groups table,
+  a timing-bar diagram, 2-/4-phase templates — compiled into ordinary core programs, schema 13,
+  with schema 12 programs migrated colour for colour (D48). Verified locally on Linux only
+  (offscreen UI tests and screenshots); `native.yml` runs the Windows UI suites.
+
+**For the owner, before or during M2.6:** place the study's heads by pointer and type its timing
+sheet into one controller. If a group needs something the dialog cannot say — a second green in
+the cycle, red-amber, an intergreen check, detectors — that is M4, and it should be written down
+in `M2_GATE.md` as friction, not worked around.
+
 **M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
 ([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank
 project to the Results table, timed against the owner's current tool (C1, C2), with C4 recorded.
@@ -96,8 +108,7 @@ on the same dialog and table, not a new design question.
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
 entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
 exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is closed (D32, top
-entry). Signal heads are the last object still placed only through a dialog;
-`objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
+entry). Signal heads are placed by pointer since M2.7a (D47).
 A routing decision as an object at a station along the link — what Vissim actually places, and
 what would bring back the lane-specific route M1.26 gave up — is **M2.1**.
 

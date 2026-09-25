@@ -24,10 +24,7 @@ QPainterPath EditorCanvas::objectShape(const std::string& id) const {
     for(const auto& c:document_->network.connectors)if(c.id==id) {
         const auto& boundaries=cachedBoundaries(c);return polygon(boundaries.front(),boundaries.back());
     }
-    for(const auto& h:document_->network.signalHeads)if(h.id==id)if(const auto at=headPosition(h)) {
-        const double r=4/std::abs(transform().m11());QPainterPath shape;
-        shape.addEllipse(QPointF(at->first.x,at->first.y),r,r);return shape;
-    }
+    for(const auto& h:document_->network.signalHeads)if(h.id==id)return headShape(h);
     return {};
 }
 void EditorCanvas::drawCopyPreview() {

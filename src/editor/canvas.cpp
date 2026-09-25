@@ -82,7 +82,7 @@ void EditorCanvas::resetGesture() {
     groupDrag_=groupDragging_=false;groupOffset_={};
     rotationPivot_.reset();rotationDegrees_=0;rotationDragging_=false;
     endpointDrag_.reset();endpointDraft_.reset();handleOffset_={};
-    creating_=false;gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
+    creating_=false;headDrag_.reset();hoverHead_.reset();gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
     clearRouteDraft();
@@ -168,18 +168,7 @@ void EditorCanvas::redraw() {
     drawConnectors();
     drawLaneHandles();
     drawCopyPreview();drawRotationPreview();drawDemandOverlay();
-    for(const auto& head:document_->network.signalHeads) {
-        std::vector<Point> geometry;int level=0;
-        if(head.connectorId.empty()) {
-            for(const auto& l:document_->network.links)if(l.id==head.lane.linkId) {
-                geometry=laneGeometry(l,head.lane.laneId,document_->network.drivingSide);level=l.level;
-            }
-        } else for(const auto& c:document_->network.connectors)for(const auto& p:cachedPaths(c))
-            if(p.id==head.connectorId){geometry=p.geometry;level=c.level;}
-        if(geometry.empty() || !levelVisible(level))continue;
-        const auto p=pointAlong(geometry,head.position);const double r=3/std::abs(transform().m11());
-        scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,QPen(Qt::darkGray),QBrush(isSelected(head.id)?QColor("#ffb454"):QColor(Qt::white)))->setZValue(level*100.+10);
-    }
+    drawHeads();
     if (band_) {
         QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);
         scene_.addRect(*band_,pen,QBrush(QColor(22,123,152,30)))->setZValue(200009);

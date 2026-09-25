@@ -20,11 +20,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
             // The same press on the left button does the same thing, through demandPress.
             demandPress(e);return;
         }
-        if(tool_==Tool::head) {
-            const auto lane=nearestLane(lastPick_);
-            if(lane && createDemandGesture)createDemandGesture(*lane,tool_);
-            return;
-        }
+        if(headPress(e))return;
         if(tool_!=Tool::select && tool_!=Tool::draw && tool_!=Tool::connect)return;
         cancel();creationStart_=e->pos();
         gestureFrom_=hitLanePosition(lastPick_,true);
@@ -44,7 +40,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         copyDragging_=false;copyOffset_={};return;
     }
     if(demandPress(e))return;
-    if(tool_==Tool::head)return;
+    if(headPress(e))return;
     if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {startRotation(e->pos());return;}
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
@@ -80,6 +76,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         groupDrag_=true; groupDragging_=false; groupOffset_={}; dragStart_=p; dragPress_=e->pos();
         redraw(); if(selectionChanged) selectionChanged(); return;
     }
+    if (selection_.size()==1 && startHeadDrag(picked.first,e->pos())) {redraw(); if(selectionChanged) selectionChanged(); return;}
     if (const auto* geometry=selectedGeometry()) {
         const auto handles=handleGeometry();
         const bool end=selectedConnector() && vertex_>=0 && (vertex_==0 || vertex_==static_cast<int>(geometry->size())-1);
@@ -141,7 +138,9 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         horizontalScrollBar()->setValue(horizontalScrollBar()->value()-delta.x());
         verticalScrollBar()->setValue(verticalScrollBar()->value()-delta.y()); return;
     }
+    if(headDrag_) {updateHeadDrag(e->pos());return;}
     if(demandHover(e))return;
+    if(headHover(e))return;
     if (tool_==Tool::connect && connectorFrom_) {
         const auto hovered=hitLanePosition(world(e->pos(),false),false);
         if (hovered!=connectorHover_) { connectorHover_=hovered; redraw(); }
@@ -191,6 +190,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         else {auto ids=selection_;if(!isSelected(picked))ids.push_back(picked);setSelection(std::move(ids));}
         redraw();return;
     }
+    if(e->button()==Qt::LeftButton && headDrag_) {finishHeadDrag(e->pos());return;}
     if(e->button()==Qt::LeftButton && groupDrag_) {
         // The release position is authoritative here too, and a click that never became a drag
         // leaves the selection exactly as it was.
@@ -328,7 +328,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     QGraphicsView::keyPressEvent(e);
 }
 bool EditorCanvas::mouseGestureActive() const {
-    return creating_ || !routeDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
+    return creating_ || headDrag_ || !routeDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
            laneResize_ || panning_ || band_ || dragging_;
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {

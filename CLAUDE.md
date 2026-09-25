@@ -35,7 +35,10 @@ a Connector's lane count cannot invalidate it, and no command refuses an edit be
 exists. Schema 12 (M2.2 adds counted `intervals`; M2.1.1 adds `linkId` on an input and a placed routing
 decision with destination Links, expanded at compile time into static routes, D42/D43; M2.1.2 adds
 per-interval turning flows on a decision, D45); older
-files and M0 scenarios migrate on load. A route whose objects do not
+files and M0 scenarios migrate on load. **M2.7 (schema 13):** a Signal head is its stop line, placed
+by click on a lane or Connector path (D47), and shows a signal group of a fixed-time Signal
+Controller, compiled into ordinary core programs `<controller>#<group>` (D48); schema 12 programs
+shaped like a group migrate colour for colour, others stay legacy. A route whose objects do not
 join up is kept and reported as `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does
 not. **M1.26.1:** `VehicleInput.laneShares` is optional relative weights, one per lane the route
 currently expands to, in `routeLaneChains` order (D32); empty means the M1.26 equal split, and a

@@ -1,5 +1,6 @@
 #include "demand_paths.hpp"
 #include "document.hpp"
+#include "../model/demand/signal_control.hpp"
 #include "../core/validate.hpp"
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,7 @@ AuthoringDefinition parseAuthoringDefinition(const Json& j) {
     d.externalVehicleTypes = !j.contains("vehicleTypes");
     d.externalBehaviours = !j.contains("behaviours");
     if (j.contains("routingDecisions")) d.routingDecisions = parseRoutingDecisions(j);
+    if (j.contains("signalControllers")) d.signalControllers = parseSignalControllers(j);
     return d;
 }
 Json definitionJson(const AuthoringDefinition& d) {
@@ -60,6 +62,19 @@ Json definitionJson(const AuthoringDefinition& d) {
         for (const auto& f : p.phases) phases.push_back({{"duration",f.duration},
             {"color",f.color==SignalColor::green?"green":f.color==SignalColor::amber?"amber":"red"}});
         j["signalPrograms"].push_back({{"id",p.id},{"offset",p.offset},{"phases",phases}});
+    }
+    if (!d.signalControllers.empty()) { // M2.7b, schema 13, absent unless authored
+        j["signalControllers"] = Json::array();
+        for (const auto& c : d.signalControllers) {
+            Json groups = Json::array();
+            for (const auto& g : c.groups) {
+                groups.push_back({{"number",g.number},{"greenStart",g.greenStart},{"greenEnd",g.greenEnd},{"amber",g.amber}});
+                if (!g.name.empty()) groups.back()["name"] = g.name;
+            }
+            Json controller = {{"id",c.id},{"cycle",c.cycle},{"offset",c.offset},{"groups",groups}};
+            if (!c.name.empty()) controller["name"] = c.name;
+            j["signalControllers"].push_back(std::move(controller));
+        }
     }
     if (!d.externalVehicleTypes) {
         j["vehicleTypes"] = Json::array();
@@ -220,6 +235,7 @@ void validateAuthoredDemand(const ProjectDocument& d) {
     // checked against the catalog on Run, exactly as external vehicle types are. For the checks
     // here it borrows an embedded type, if the document carries any.
     if (auto decisions = routingDecisionIssues(*d.definition); !decisions.empty()) throw ValidationError(std::move(decisions));
+    if (auto signals = signalControlIssues(d.network, *d.definition); !signals.empty()) throw ValidationError(std::move(signals));
     // Routeless inputs (M2.1.1) are walked here too; one whose walk fails is left out and named
     // by routelessIssues on Run, so an edit to the network is never refused because of it.
     auto checked = expandRouteless(d.network, *d.definition, withRoutingDecisions(*d.definition));

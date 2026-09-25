@@ -144,10 +144,9 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         const auto ids=canvas_->selection();
         execute("editorRotate",[&](auto& d){rotateObjects(d,ids,pivot,degrees);});
     };
-    canvas_->createDemandGesture=[this](const auto& lane,auto mode){
-        if(mode==EditorCanvas::Tool::route)editRoute({}, {lane.laneId});
-        else if(mode==EditorCanvas::Tool::input)editInput();
-        else editHead();
+    canvas_->headPlaced=[this](const HeadPlacement& placed){editHead({},placed);};
+    canvas_->headMoved=[this](const std::string& id,double station){
+        execute("editorMoveHead",[&](auto& d){moveSignalHead(d,id,station);});
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
     buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildRecovery(); buildPalette();

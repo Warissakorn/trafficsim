@@ -107,7 +107,7 @@ void EditorWindow::refreshTables(bool modelChanged) {
         for (int row=0; row<signalTable_->rowCount(); ++row) {
             const auto& head=network.signalHeads[static_cast<std::size_t>(row)];
             fill(signalTable_,row,{QString::fromStdString(head.id),QString::fromStdString(head.name),head.connectorId.empty()?laneOf(head.lane):QString::fromStdString(head.connectorId),metres(head.position),
-                QString::fromStdString(head.programId)},QString::fromStdString(head.id));
+                signalLabel(head.controllerId,head.groupNumber,head.programId)},QString::fromStdString(head.id));
         }
     }
     for (auto* view : {linkTable_,connectorTable_,signalTable_}) view->resizeColumnsToContents();

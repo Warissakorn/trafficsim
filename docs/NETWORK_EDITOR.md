@@ -350,7 +350,7 @@ Ctrl is released first. A click or small jitter adds selection without copying. 
 Internal Connectors and Signal heads copy with their Links, fresh IDs and level/style.
 Heads share their existing programs. A Connector can also be copied independently: both
 translated ends must drop onto existing lane ranges at their respective original levels.
-A Signal head can be selected and copied onto a lane or Connector at the same level.
+A Signal head is its stop line: placed by click at the pointer's station on a lane or Connector path, dragged along its lane, copied onto a lane or Connector at the same level (M2.7a, D47).
 Invalid drops leave the entire document and selection unchanged. Routes/inputs are not
 copied, because copying a drawing must not silently double arrivals. Delete selected
 objects cascades dependent connectors, heads, routes and inputs; one Undo restores all.

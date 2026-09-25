@@ -39,6 +39,11 @@ template<class T> T field(const Json& value, const char* name) {
     }
     return item.get<T>();
 }
+int integer(const Json& value, const char* name) {
+    const double n = field<double>(value, name);
+    if (n != static_cast<int>(n)) throw std::invalid_argument("DUPLICATE_SIGNAL_GROUP");
+    return static_cast<int>(n);
+}
 const Json& array(const Json& value, const char* name) {
     const auto& items = member(value, name);
     if (!items.is_array()) throw std::invalid_argument(std::string("Expected array: ") + name);
@@ -159,12 +164,16 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         }
     }
     for (const auto& h : array(value, "signalHeads")) {
-        knownFields(h,{"id","lane","position","programId","connectorId","name"},
+        knownFields(h,{"id","lane","position","programId","connectorId","name","controllerId","groupNumber"},
             "signalHeads["+std::to_string(network.signalHeads.size())+"]",schemaVersion);
         network.signalHeads.push_back({field<std::string>(h, "id"), reference(member(h, "lane"),schemaVersion),
                                       field<double>(h, "position"), field<std::string>(h, "programId"),
                                       present(h,"connectorId")?field<std::string>(h,"connectorId"):std::string{}});
         if(present(h,"name"))network.signalHeads.back().name=field<std::string>(h,"name");
+        if(present(h,"controllerId")) { // M2.7b, schema 13: the head shows a signal group
+            network.signalHeads.back().controllerId=field<std::string>(h,"controllerId");
+            network.signalHeads.back().groupNumber=integer(h,"groupNumber");
+        }
     }
     if(schemaVersion<5)migrateAttachments(network);
     return network;
@@ -188,6 +197,23 @@ Composition parseComposition(const Json& c) {
     for (const auto& t : array(c, "types"))
         composition.types.push_back({field<std::string>(t, "vehicleTypeId"), field<double>(t, "share")});
     return composition;
+}
+std::vector<SignalController> parseSignalControllers(const Json& definition) {
+    std::vector<SignalController> result;
+    for (const auto& x : array(definition, "signalControllers")) {
+        const auto path = "signalControllers[" + std::to_string(result.size()) + "]";
+        knownFields(x, {"id", "name", "cycle", "offset", "groups"}, path, 13);
+        SignalController c{field<std::string>(x, "id"), present(x, "name") ? field<std::string>(x, "name") : std::string{},
+                           field<double>(x, "cycle"), field<double>(x, "offset"), {}};
+        for (const auto& g : array(x, "groups")) {
+            knownFields(g, {"number", "name", "greenStart", "greenEnd", "amber"}, path + ".groups", 13);
+            c.groups.push_back({integer(g, "number"),
+                                present(g, "name") ? field<std::string>(g, "name") : std::string{},
+                                field<double>(g, "greenStart"), field<double>(g, "greenEnd"), field<double>(g, "amber")});
+        }
+        result.push_back(std::move(c));
+    }
+    return result;
 }
 std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
     std::vector<RoutingDecision> result;

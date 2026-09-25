@@ -59,6 +59,8 @@ struct NetworkSignalHead {
     std::string id; LaneReference lane; double position{};
     std::string programId, connectorId;
     std::string name; // Vissim's Name. See Link::name.
+    // M2.7b: the signal group the head shows, instead of `programId`. Exactly one of the two.
+    std::string controllerId; int groupNumber{};
     bool operator==(const NetworkSignalHead&) const = default;
 };
 enum class DrivingSide { left, right };
@@ -70,6 +72,17 @@ struct Network {
     std::vector<NetworkSignalHead> signalHeads;
     bool operator==(const Network&) const = default;
 };
+// A place a Signal head can stand -- a Link lane or a Connector path -- with its polyline and
+// the width its stop line spans. `nearestHeadSlot` is the pointer pick: the closest slot on
+// `level` within half its width of the point, and the station along it (head_slots.cpp).
+struct HeadSlot { LaneReference lane; std::string connectorId; std::vector<Point> geometry; double width{}; int level{}; };
+struct HeadPlacement { HeadSlot slot; double station{}; };
+std::optional<HeadSlot> headSlot(const Network&, const NetworkSignalHead&);
+// M2.7b. The runtime program id a signal group expands to. `#` never appears in an allocated id,
+// so it cannot collide with a legacy program. `headProgramId` is what a head runs against.
+std::string signalGroupProgramId(const std::string& controllerId, int groupNumber);
+std::string headProgramId(const NetworkSignalHead&);
+std::optional<HeadPlacement> nearestHeadSlot(const Network&, Point, int level);
 double polylineLength(const std::vector<Point>& points);
 double stationOfClosestPoint(const std::vector<Point>&, Point);
 std::string signalSegment(const NetworkSignalHead&);

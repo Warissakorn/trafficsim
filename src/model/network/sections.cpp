@@ -241,9 +241,9 @@ std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
 }
 SignalHead rebaseHead(const RuntimeSections& table, const NetworkSignalHead& head) {
     // A connector-mounted head names a path, which is never sectioned, so it passes through.
-    if (!head.connectorId.empty()) return {head.id, head.connectorId, head.position, head.programId};
+    if (!head.connectorId.empty()) return {head.id, head.connectorId, head.position, headProgramId(head)};
     const auto& section = sectionForStation(table, head.lane.laneId, head.position);
     // Both are metres along the same lane polyline, so this is a subtraction, not a conversion.
-    return {head.id, section.id, head.position - section.start, head.programId};
+    return {head.id, section.id, head.position - section.start, headProgramId(head)};
 }
 }
