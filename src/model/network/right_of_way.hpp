@@ -32,6 +32,11 @@ struct SurfaceOverlap {
     StationInterval first, second;
 };
 SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const ControlPathRef& second);
+// M3.2.4: what the editor draws, from the same lane strips. A side's area is the strip between
+// its entry and exit as a closed outline; a waiting line is a bar across its lane. Empty when the
+// reference does not resolve -- the editor draws nothing rather than a guess.
+std::vector<Point> conflictSideOutline(const Network&, const ConflictSide&);
+std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const ControlPoint&);
 
 // One merge: the incoming segments that arrive on one section, in drawing order -- the order
 // derivedPriorityRules ranks them in. `explicitControl` is set when an authored area covers two
@@ -42,6 +47,11 @@ struct MergeGroup {
     bool explicitControl{};
 };
 std::vector<MergeGroup> mergeGroups(const Network&, const RuntimeSections&);
+// M3.2.4, for the editor's two named actions. The merge sections any path of this Connector
+// arrives on ("Take over merge"), and the one an authored merge area covers ("Restore automatic
+// priority"); empty when there is none.
+std::vector<std::string> mergeSectionsOf(const Network&, const RuntimeSections&, const std::string& connectorId);
+std::string mergeSectionOfArea(const Network&, const RuntimeSections&, const ConflictArea&);
 
 // The one resolver the compiler and the diagnostics share. `issues` are runtime (Run-blocking)
 // issues; with none, `rules` and `zones` are what compiles. With no authored controls `rules` is

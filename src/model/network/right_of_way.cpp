@@ -165,6 +165,28 @@ std::vector<MergeGroup> mergeGroups(const Network& n, const RuntimeSections& tab
     }
     return groups;
 }
+std::vector<std::string> mergeSectionsOf(const Network& n, const RuntimeSections& table, const std::string& connectorId) {
+    std::vector<std::string> sections;
+    const auto* c = findConnector(n, connectorId);
+    if (!c) return sections;
+    for (const auto& g : mergeGroups(n, table))
+        for (int i = 0; i < std::max(c->fromLaneCount, c->toLaneCount); ++i)
+            if (std::find(g.incoming.begin(), g.incoming.end(), connectorPathId(*c, i)) != g.incoming.end()) {
+                sections.push_back(g.section);
+                break;
+            }
+    return sections;
+}
+std::string mergeSectionOfArea(const Network& n, const RuntimeSections& table, const ConflictArea& area) {
+    if (area.kind != ConflictKind::merge) return {};
+    const auto a = resolveControlPath(n, table, area.first.path, area.first.entryStation);
+    const auto b = resolveControlPath(n, table, area.second.path, area.second.entryStation);
+    for (const auto& g : mergeGroups(n, table)) {
+        const auto member = [&](const std::string& s) { return std::find(g.incoming.begin(), g.incoming.end(), s) != g.incoming.end(); };
+        if (!a.empty() && !b.empty() && member(a) && member(b)) return g.section;
+    }
+    return {};
+}
 namespace {
 bool cyclic(const std::vector<std::string>& nodes, const std::multimap<std::string, std::string>& edges) {
     std::map<std::string, int> state; // 0 unseen, 1 on stack, 2 done

@@ -149,7 +149,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         execute("editorMoveHead",[&](auto& d){moveSignalHead(d,id,station);});
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
-    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildRecovery(); buildPalette();
+    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildConflicts(); buildRecovery(); buildPalette();
     resize(1360,860);buildWorkspace();
     history_.reset(); translate(); refresh();canvas_->centerOn(0,0);
 }
@@ -171,7 +171,7 @@ void EditorWindow::translate() {
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables(); translateDemand(); translateResults(); translatePalette(); refreshToolHint();
+    retranslateTables(); translateDemand(); translateResults(); translateConflicts(); translatePalette(); refreshToolHint();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     language_->setAccessibleName(text("language"));
     texts_.at("editorScopeCompact")->setToolTip(text("editorScope"));
@@ -245,6 +245,6 @@ void EditorWindow::refresh(bool modelChanged) {
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
     actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
     actions_.at("editorRotate")->setEnabled(canvas_->rotationPivot().has_value());
-    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshDiagnostics();refreshRun();
+    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshConflicts();refreshDiagnostics();refreshRun();
 }
 }

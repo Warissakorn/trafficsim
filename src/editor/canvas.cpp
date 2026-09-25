@@ -168,6 +168,7 @@ void EditorCanvas::redraw() {
     drawConnectors();
     drawLaneHandles();
     drawCopyPreview();drawRotationPreview();drawDemandOverlay();
+    drawConflicts();
     drawHeads();
     if (band_) {
         QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);

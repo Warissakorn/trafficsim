@@ -27,4 +27,24 @@ std::vector<std::string> takeOverMerge(ProjectDocument&, const std::string& sect
 // The separate, named action that hands a merge back: removes every area covering two of its
 // incoming paths, their rules, and the waiting lines nothing else uses.
 void restoreAutomaticPriority(ProjectDocument&, const std::string& section);
+
+// M3.2.4, the editor's gestures (src/commands/conflict_authoring.cpp). Each is one document change
+// the caller runs inside History::execute.
+// One crossing area per lane pair of two objects (Links or Connectors) whose lane surfaces really
+// overlap (surfaceOverlap), extents exactly that overlap, each side's waiting line 1 m short of its
+// entry, and a rule with `defaults`' two numbers. `yielding` names the object that gives way.
+// Returns the area ids, in lane order. Throws EDIT_SAME_OBJECT, EDIT_UNKNOWN_OBJECT, EDIT_NO_CROSSING
+// (no lane pair overlaps) or EDIT_NO_PRIORITY_DEFAULTS.
+std::vector<std::string> addCrossingAreas(ProjectDocument&, const std::string& first, const std::string& second,
+                                          const std::string& yielding, const PriorityDefaults&);
+// The area's name, priority and its rule's two numbers in one step; creates the rule if missing.
+void setConflictControl(ProjectDocument&, const std::string& areaId, const std::string& name,
+                        ConflictPriority, double gapTime, double headway);
+// "Take over merge" on a Connector: every merge its paths arrive on that is still automatic.
+// Throws EDIT_NO_MERGE when there is none left to take over.
+std::vector<std::string> takeOverMergesOf(ProjectDocument&, const std::string& connectorId, const PriorityDefaults&);
+// "Restore automatic priority" from one of the group's areas. Throws EDIT_NO_MERGE for a crossing.
+void restoreAutomaticPriorityOf(ProjectDocument&, const std::string& areaId);
+// Deletes an area with its rule and the waiting lines no other area uses.
+void removeConflictArea(ProjectDocument&, const std::string& areaId);
 }

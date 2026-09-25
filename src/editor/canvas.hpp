@@ -72,6 +72,10 @@ public:
     std::pair<std::string,std::string> demandObjectAt(QPoint viewportPosition) const;
     std::function<void(QPoint)> contextMenuRequested;
     const std::string& highlightedRoute() const { return highlightedRoute_; }
+    // M3.2.4: the conflict area the shell's table has selected, drawn outlined. Areas are shown
+    // green where a side has priority, red where it gives way and amber while undetermined.
+    void setHighlightedConflict(std::string id);
+    const std::string& highlightedConflict() const { return highlightedConflict_; }
     // Paint state only, advanced by a timer. Tests set it directly: waiting on wall clock for
     // an animation is how a suite becomes flaky, and no measured number depends on it.
     void setAnimationPhase(int phase);
@@ -126,6 +130,8 @@ private:
     void updateRotation(QPoint, bool angleSnap);
     void drawRotationPreview();
     void drawDemandOverlay();
+    void drawConflicts();
+    std::string highlightedConflict_;
     void drawRouteArrows(const std::vector<Point>&, QColor);
     std::string objectAt(Point) const;
     bool isLink(const std::string& objectId) const;

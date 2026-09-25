@@ -1,6 +1,6 @@
 add_library(trafficsim_shell STATIC editor_style.cpp editor_workspace.cpp editor_window.cpp editor_signal.cpp signal_timing_view.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
     editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_input.cpp editor_decision.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_results.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
-    ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp ../editor/canvas_demand.cpp ../editor/canvas_cache.cpp ../editor/canvas_heads.cpp)
+    ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp ../editor/canvas_demand.cpp ../editor/canvas_cache.cpp ../editor/canvas_heads.cpp ../editor/canvas_conflicts.cpp editor_priority.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)
 # 26 sources, every one of them a Qt widgets translation unit: <QGraphicsView> alone costs
 # 2.46 s to parse here, so the target spent about a minute of CPU re-reading the same headers.
@@ -116,5 +116,11 @@ target_precompile_headers(trafficsim-gesture-tests REUSE_FROM trafficsim_shell)
     add_test(NAME editor-gestures COMMAND trafficsim-gesture-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(editor-gestures PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_dependencies(check trafficsim-gesture-tests)
+    add_executable(trafficsim-priority-ui-tests ../../tests/priority_ui_tests.cpp)
+    target_link_libraries(trafficsim-priority-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    target_precompile_headers(trafficsim-priority-ui-tests REUSE_FROM trafficsim_shell)
+    add_test(NAME priority-ui COMMAND trafficsim-priority-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(priority-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-priority-ui-tests)
     add_dependencies(check trafficsim-scenario-run-tests trafficsim-editor-tests trafficsim-connector-tests trafficsim-table-tests)
 endif()

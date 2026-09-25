@@ -421,8 +421,8 @@ view can be normal.
 
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run;
 the next Run compiles the current document. No simulation runs against a stale edit.
-This is the existing prototype core, with no lane changing, right-of-way or movement
-LOS added by the editor.
+**Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
+Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
 
 ## Background image
 

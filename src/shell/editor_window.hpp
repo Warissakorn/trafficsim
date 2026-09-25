@@ -129,6 +129,19 @@ private:
     void translateResults();
     void refreshResults();
     void observeRun();
+    // M3.2.4, src/shell/editor_priority.cpp: the Conflict areas tab, its dialogs and actions.
+    QTableWidget* conflictTable_{};
+    QLabel* runProtection_{};
+    std::uint64_t conflictRevision_{UINT64_MAX}; // the rows are rebuilt only when this goes stale
+    void buildConflicts();
+    void translateConflicts();
+    void refreshConflicts();
+    void editConflict(const std::string& id);
+    void addCrossings();
+    // Shows the area in the tab and on the canvas; a waiting line or rule id names its area.
+    bool selectConflict(const std::string& id);
+    std::string selectedConflict() const;
+    PriorityDefaults priorityDefaults() const; // data/priority-rules, as Run reads them
     QLineEdit* runSeed_{};
     QComboBox* runSpeed_{};
     QLabel* runInfo_{};

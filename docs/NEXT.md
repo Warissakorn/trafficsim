@@ -9,34 +9,27 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.4, the conflict-area and priority-rule editor
+## Immediate — M3.2.4b, conflict areas on the canvas
 
-**Done:** M3.2.2a–c (D54–D56) authored controls, lifecycle and resolution.
+**Done:** M3.2.2a–c (D54–D56) authored controls. M3.2.3a–c (D57–D59) is the admission solver,
+which runs authored crossings and merges. **M3.2.4a (D60)** is the Conflict areas tab
+(`src/shell/editor_priority.cpp`, objects tab 10):
+- add crossing areas, take over merge, restore, edit and delete, all by keyboard and dialog;
+- canvas display with highlight (`src/editor/canvas_conflicts.cpp`);
+- Problems rows jump to the area;
+- the Run protection note, en and th.
 
-**M3.2.3a–c (D57–D59)** is the admission solver in `src/core/conflicts.*`:
-- gap time and headway, grants held until the rear clears, the swept check, receiving space
-  (shared behind one standing leader);
-- sides over section cuts, atomic chains;
-- authored merges run on it, with the major waiting for an admitted minor.
+**Next, M3.2.4b** (ROADMAP row):
+1. Write the interaction first in `docs/VISSIM_PARITY.md` §2: how Vissim selects a conflict area
+   and cycles its status by clicking. Hit-testing must not steal Link selection at a crossing; an
+   explicit tool (like the head tool) is the likely answer.
+2. Click an area to select its row; a second click or a key cycles priority (`setConflictControl`).
+3. Drag a waiting line along its lane, one Undo step (`putWaitingLine`), the way a head drags
+   (`canvas_heads.cpp`).
+4. Draw overlapping sides so both stay readable.
+5. Save and reopen through the UI (A24).
 
-Refused by name:
-- `CONFLICT_ROUTE_JOINS_INSIDE`, `CONFLICT_HOLD_CYCLE`, `CONFLICT_SINK_TOO_CLOSE`,
-  `CONFLICT_ROUTE_STARTS_PAST_LINE`;
-- drafts in the resolver.
-
-Derived merges stay on M3.1 rules (D59), and queue gridlock is not prevented. Both are recorded.
-
-**Next, M3.2.4** ([M3_PLAN.md](M3_PLAN.md) §M3.2.4-6):
-1. Canvas selection of conflict areas and waiting lines.
-2. An inspector and table for gap time, headway and priority, through the existing
-   `src/commands/right_of_way_commands.hpp` (every edit one `History` step).
-3. "Take over merge" and "Restore automatic priority" as named actions.
-4. Problems rows linking to the authored object.
-5. English and Thai text in `data/locales/`.
-6. The Run UI stating that only authored areas are protected.
-
-Pointer and keyboard submit the same commands (A24). Read `docs/VISSIM_PARITY.md` §1a/§2 and
-M1.22 first.
+Then **M3.2.5**, Stop and Yield.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas
