@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-24-m2-slices.md`](archive/PROGRESS-2026-09-24-m2-slices.md) — 2026-09-24, M1.26.1 through the M3 contract, and the superseded `## Next` blocks; moved out 2026-09-25 as the oldest live entries
 - [`archive/PROGRESS-2026-09-23-editor-benchmark.md`](archive/PROGRESS-2026-09-23-editor-benchmark.md) — 2026-09-23, the editor benchmark was measuring itself (D31); moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.3-reflexes.md`](archive/PROGRESS-2026-09-22-m1.27.3-reflexes.md) — 2026-09-22, M1.27.3, the reflexes counted; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.2-slots.md`](archive/PROGRESS-2026-09-22-m1.27.2-slots.md) — 2026-09-22, M1.27.2, a vehicle carries scenario slots; moved out 2026-09-24 as the oldest live entry
@@ -33,6 +34,198 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-25 — M3.2.3a: one authored crossing runs (D57)
+
+The core gained a `ConflictZone` (`src/core/types.hpp`) and an admission module
+(`src/core/conflicts.*`). An authored crossing area with nothing reported against it now
+compiles to a zone (`resolveRightOfWay(...).zones`) and runs. It no longer carries
+`UNSUPPORTED_CONFLICT_RUNTIME`.
+
+`stepSimulation` now runs in three phases:
+1. Compute every candidate move from the snapshot.
+2. Cap any minor request whose line crossing coincides with a major front reaching the area in the
+   same tick.
+3. Publish in vehicle order.
+
+Without zones the arithmetic and event order are the old ones: seed 42 is byte-identical and the
+four TS baselines pass.
+
+Named blockers for what this slice does not run:
+- `UNSUPPORTED_CONFLICT_SPAN`: an area over a section cut.
+- `UNSUPPORTED_CONFLICT_GROUP`: a segment in two areas.
+- Merge areas keep `UNSUPPORTED_CONFLICT_RUNTIME`.
+
+Core validation adds `CONFLICT_SINK_TOO_CLOSE` and `CONFLICT_ROUTE_STARTS_PAST_LINE`.
+
+Tests: `tests/conflict_zone_tests.cpp` (11) and `tests/right_of_way_runtime_tests.cpp` (3). With
+admission disabled (holds and swept caps stubbed out) six core tests and the gap-time response
+test fail. With only the swept check disabled, its own test fails. On the model crossing, the
+minor road's mean travel time rises with the rule's gap time, 1 s against 6 s. Test runs: Linux
+headless 28/28 and desktop 42/42 offscreen. Seed 42 is unchanged.
+
+Cost with no zones: callgrind on `trafficsim-engine-benchmark 12 60` (Release) puts
+`stepSimulation` at 51.29M instructions against 49.29M before, +4.1%. That is the three-phase
+split. Wall clock is 0.36–0.37 µs per vehicle-tick against 0.35–0.37, inside the clock's spread.
+Two measured attempts to win it back:
+- Skipping the zone call for routes with no zone recovered 2.7 points and was kept.
+- Publishing inline when there is no zone, through a lambda, cost more (52.05M) and was reverted.
+
+## 2026-09-25 — M3.2.2c: waiting lines upstream, crossing coverage measured (D56)
+
+The resolver now places a waiting line wherever it stands upstream of its side. It walks the
+runtime graph backwards from the side's entry segment, along single predecessors only, and
+compiles the line as metres along the yielding segment: negative when the line stands before that
+segment. A line some route can go round is `CONFLICT_WAITING_LINE_BYPASSED`; a line nowhere
+upstream of the side is `CONFLICT_WAITING_LINE_NOT_UPSTREAM`. Both replace
+`CONFLICT_WAITING_LINE_UNSUPPORTED`. The core accepts a negative `yieldPosition` down to the length
+of that same chain of single predecessors (`src/core/validate.cpp`), so the check lives in both
+places. The simulation already measured the stop line in route distance, so no engine code
+changed; a new core test shows a vehicle held at a line on the approach.
+
+A `crossing` area is checked against `surfaceOverlap` (`src/model/network/conflict_coverage.cpp`),
+which intersects the two lane surfaces quad by quad and reads the overlap back as authored stations.
+The codes are:
+- `CONFLICT_NO_OVERLAP`: nothing to protect, and a shared edge is not a crossing.
+- `CONFLICT_EXTENT_UNCOVERED`: an extent, named by side, falls short of the overlap.
+- `CONFLICT_GEOMETRY_UNSUPPORTED`: two separate overlaps, or a strip folded on a tight bend.
+
+Found and fixed on the way: a waiting line earlier on the side's own lane, in an earlier section,
+was compiled at the end of the yielding section without a word (0.6 m instead of −30 m in the test).
+
+New tests are in `tests/right_of_way_resolution_tests.cpp` (`rightofway_resolution.*`, 5) and
+`core.a_stop_line_may_stand_on_the_one_approach_before_the_yielding_segment`. Five of the six fail
+on the pre-M3.2.2c resolver and core validation. The sixth checks the new measurement against an
+independent ray-casting reading of the geometry, on a curved two-lane Link with both driving sides.
+Test runs: Linux headless 28/28 and desktop 42/42 offscreen. Seed 42 is byte-identical.
+
+## 2026-09-25 — M3.2.2b: controls follow their owners (D55)
+
+`src/commands/detail.hpp` gains `removeControlsOn`, `controlsNameLink`, `checkSplitControls`/
+`splitControls` and `copyControls`; `deleteLink`, `deleteConnector` (so every reanchor deletion
+too), `splitLink`, `duplicateObjects` and `reverseLink` call them. The tests are in
+`tests/right_of_way_lifecycle_tests.cpp` on a curved two-lane Link with a body merge, both driving
+sides; shared fixtures moved to `tests/right_of_way_fixture.hpp`. The interim pinning test
+`rightofway.until_m3_2_2b_*` is removed on purpose — M3.2.2b is the change it guarded. Six of the
+eight new tests fail on the pre-M3.2.2b commands; the other two lock behaviour that was already
+right (lane edits keep ids; a shorter Link reports, never clamps). Linux headless 28/28, desktop
+42/42 offscreen; seed 42 and both project fixtures unchanged.
+
+## 2026-09-25 — M3.2.2a scrutinised: four defects fixed before M3.2.2b (D55)
+
+An outsider review of M3.2.2a found, and a test now forces each (all four fail on `44380b1`):
+1. A take-over placed its waiting line on the Connector's stored polyline, so lane 2 of a curved
+   range compiled 47.255 m instead of the fallback's 47.239 m — D54's "exactly the fallback"
+   held only for a path that IS that polyline. Stations are now chosen on the runtime segment
+   and converted to authored coordinates (`sideOf`).
+2. `resolveRightOfWay` could throw inside `buildScenario` (unchecked, must not throw):
+   `sectionForStation` threw `UNKNOWN_LANE`. `locate` now reports unresolved instead.
+3. A waiting line off its path's end was silently replaced by the segment end; it is now
+   `CONFLICT_UNRESOLVED_PATH` on the line, and its station is kept (no clamping).
+4. A side on an upstream section shorter than 1 m resolved into the previous section; the entry
+   is now at most half the segment back.
+Recorded, not fixed: id uniqueness is checked against network ids only, not route/input ids
+(`allocateId` already avoids clashes for commands).
+
+## 2026-09-25 — M3.2.2a: authored right-of-way controls at the file/model seam (D54)
+
+**What exists now.** `src/model/network/control.hpp` — `ControlPathRef` (a Link lane, or a
+Connector lane named by its source/target lane ids, never an ordinal), `WaitingLine`,
+`ConflictArea` (`crossing`/`merge`, `firstYields`/`secondYields`/`undetermined`) and
+`AuthoredPriorityRule`, held in `Network::rightOfWay`. `right_of_way.cpp` — structural
+checks (in `validateNetwork`, so a bad edit or file is refused whole), path resolution, merge
+groups and `resolveRightOfWay`, which `buildScenario`, `compileScenario`, `priorityDefaultsIssues`
+and `runtimeDiagnostics` all call. Schema 14 writes `network.rightOfWay` only when non-empty;
+older files load with it empty, and the key in a schema-13 file fails. Commands:
+`put`/`delete` for each object, `takeOverMerge` (materialise a merge's fallback as authored
+areas, one transaction) and `restoreAutomaticPriority` (the separate named hand-back).
+
+**Evidence.** `rightofway.*` covers A01, A03, A04, A06, A07, A08 and A02 in part (see
+`M3_ACCEPTANCE.md`). The four baselines and `trafficsim-cli 42` are unchanged; the two project
+fixtures differ only in `schemaVersion`. Linux headless 28/28, desktop 42/42 (offscreen);
+Windows is `native.yml`'s.
+
+**Not here:** reference lifecycle (M3.2.2b), any runtime for an authored area (M3.2.3), the
+editor surface (M3.2.4), Stop/Yield (M3.2.5), counters (M3.2.6). Structural checks do not yet
+prove that a crossing's extents cover the real overlap — every crossing is Run-blocked anyway.
+
+## 2026-09-25 — Docs pass: stale instructions out, session-start reading cut
+
+Owner-approved optimization pass, docs dimension, after a scrutiny of the first plan (which
+dropped a "broken links" item — every hit was a false positive — and required the D28/D31
+guardrails to move into Working rules before CLAUDE.md's history paragraphs were cut).
+Estimated tokens (`docs_audit.py`): CLAUDE.md 3,837 → 2,515; NEXT.md 2,890 → 1,116; PROGRESS.md
+18,344 → 16,242 — the decision log is two thirds of it and stays. The oldest 2026-09-24 entries and
+two superseded `## Next` blocks moved whole to `archive/PROGRESS-2026-09-24-m2-slices.md`. No
+code changed; engine speed was measured (0.78 s Release for the M2.6 template's hour) and left.
+
+## 2026-09-25 — M2 gate passed by the owner (D53)
+
+The owner reported M2.6 passed. Recorded in `M2_GATE.md` with the verdict as the owner's
+(D51) and every detail the owner did not supply marked "not stated". ROADMAP §M2, NEXT and
+CLAUDE.md now point at M3.2.2. No code changed.
+
+## 2026-09-25 — C2 and C4 withdrawn; the owner judges the gate (D51, D52)
+
+Then C4 too (D52): no delay comparison with Vissim in the gate. M6 validation is unaffected.
+
+Owner ruling: cancel the timing comparison with Vissim in every test; the owner decides pass or
+fail. ROADMAP §M2, `M2_GATE.md`, `M2_PLAN.md`, `M3_PLAN.md`, NEXT and CLAUDE.md now say so. The
+only timing-against-another-tool criterion anywhere was M2's C2; M3's acceptance has none. C1 (the
+study) and C4 (delay beside the other tool's, recorded) stand — the owner asked only about timing.
+No code changed.
+
+## 2026-09-25 — M1 accepted by owner ruling (D49); the M2.6 template; a merge deadlock fixed (D50)
+
+**M1.** The owner ruled M1 usability accepted on the evidence of the one attempt: an engineer who
+has used another simulator models an ordinary intersection here in well under 10 minutes (D49).
+ROADMAP and `M1_ACCEPTANCE.md` say "accepted by owner ruling" and keep the unshown items listed.
+M0 plausibility stays open. D11's naming trigger ("end of M1") is now live.
+
+**The M2.6 template** (owner request). `tools/m26_study_network.hpp` builds
+`data/projects/m2.6-study-template.traffic.json` from the four-leg fixture: right-turn pockets, a
+new `FourLegOptions::leftBypass` (6 m) so the left turn leaves the kerb lane before its head, the
+owner's timing windows (cycle 120 s), one routeless `urban-mixed` input per approach over four
+15-minute intervals, and a placed decision per entry Link with per-interval turning counts. **The
+volumes are placeholders** (the fixture's), and there is no aerial image. It cannot be C1/C2
+evidence — C1 is the owner building from blank. `m26study` pins file = builder. The default
+`leftBypass = 0` leaves the four-leg fixture byte-identical.
+
+**The deadlock (D50).** With the free left turn, the East and South kerb lanes locked within a
+minute: a left turn held exactly at the exit's start had its front on the exit lane, the through
+vehicle behind it stopped 2 m from the join, inside the 7 m headway, and each waited on the other.
+M2.0.1's note that the rule "rarely binds" under split phasing is true only while turns wait for
+their own green. Fix: the derived stop line is 1 m short of the join. `m26study` forces the old
+placement and asserts the deadlock returns, so the test can fail.
+
+**Found, not fixed:** the left turn still waits behind the through queue in the shared kerb lane —
+without lane changing (M3.2.8) the bypass only helps when the queue is shorter than 6 m. The
+template's left-turn delays (34–60 s) show it.
+
+## 2026-09-25 — M1 timed drawing: 9 min 40 s, recorded, gate still open
+
+Owner report (Thai, 2026-09-25): a signalised intersection built in "10 minutes", then made precise
+as **9 min 40 s, drawing only, no assistance**. A Windows `trafficsim-desktop.exe` was attached; its
+strings show the M2.7 signal-timing view, so the build is at or after `3c11afd`. It cannot run here
+and is not evidence of the network — the saved project is.
+
+Recorded in `M1_ACCEPTANCE.md` row by row: only what the owner stated is filled, the rest says
+"not stated". The < 10 min / no-assistance criterion is met by the report; the verdict stays
+**Open** because the four-leg-with-turn-pockets geometry, the aerial image, documentation use,
+first-attempt status and the exact save/reopen comparison are unobserved (rule 8, D8). It is not
+an M2.6 observation: C1 needs the run to the Results table and C2 a time in the current tool.
+No code changed.
+
+**Then the file (`network.traffic.json`, schema 13).** Round trip exact. Two crossing dual
+carriageways, 2 lanes each end to end, 8 turning Connectors, 4-group fixed-time controller
+(cycle 120 s, each approach alone — protected). No turn pockets, no background image, so the
+M1 geometry criterion is not met; recorded, not relaxed. It runs: 180 s, flat 1600 veh/h per
+approach, routeless inputs split by D42's equal share at each lane exit (so turning volumes are
+not counts), 126 completed, 138 never entered (queues fill the ≈50 m approaches), 6 clamps. Each
+short-turn Connector leaves 3–8 m upstream of its lane's head and so bypasses the signal — the owner
+confirmed it is the intended Thai left turn at all times. Not an M2.6 observation. The owner then
+asked for the network to be fixed to pass; declined for the gate — M1 times the engineer drawing,
+so a network edited by a session is not an observation (NEXT §2: it cannot be delegated).
 
 ## 2026-09-25 — M2.7b: fixed-time Signal Controllers with Signal Groups (D48)
 
@@ -132,149 +325,8 @@ destination entry, because their `routeId` is empty; it now also prunes by Link.
 
 ---
 
-## 2026-09-24 — M3 contract and acceptance preparation (D41)
-
-Owner requested the proposed sequence. `M3_PLAN.md`, `M3_CONTRACT.md` and `M3_ACCEPTANCE.md`
-record the source audit, interfaces, ordered slices and 26 evidence cases. The audit identifies
-missing authored priority persistence, insufficient merge-graph validation and signal-bound
-queue counters. No source, schema or fixture changed; M2.6 is still unperformed.
-Local file-size/architecture guards and the architecture negative self-test pass (standalone
-C++20 builds); `git diff --check` passes. CTest could not start: CMake/CTest/Ninja are absent.
-No local application, desktop or Windows verification is claimed. CI belongs to the draft PR.
-
----
-
-## 2026-09-24 — M2.5: delay per movement and queue per approach, one run
-
-`src/eval/movement.*` (core types only) and `src/project/evaluation.*` (movements from authored
-routes, counters from signal heads, queue conditions from `data/evaluation/`), shown in the
-editor's **Results** tab and printed by `trafficsim-cli --project FILE [--csv FILE]`. `core/`,
-every frozen fixture and `trafficsim-cli 42` are unchanged. The four-leg fixture, seed 42, gives
-12 movements with 6–134 trips, a mean delay of 35–56 s and approach queues up to 107 m. M2 runs one
-seed, so "plausible" is the only claim: a 120 s cycle with 20–30 s greens gives
-a uniform-delay term of 34–42 s before entry acceleration and queue spillback.
-**The analytic test found a bias worth knowing:** vehicles enter from standstill, so an
-unimpeded trip carries about `v/(2a)` ≈ 3 s of delay. It is pinned and documented, not hidden
-(D39). A run's first cut of the tab stacked the two tables and showed one row each, found from a
-screenshot; they are side by side now.
-
----
-
-## 2026-09-24 — Purpose restated; gate re-registered (D38)
-
-Owner ruling: the project is a traffic simulator usable in real engineering work, and the
-comparison with another simulator is removed from every file. `PROBLEM.md` §2 now lists the
-capabilities a study needs rather than what another tool lacks, §7.1 is "an engineer cannot
-complete a real study with it", and the M2 gate is C1 + C2 with C4 recorded. Docs only; no code,
-test or fixture mentioned it. **M2.5 is next.**
-
----
-
-## 2026-09-24 — M2 registered; M2.0.1 and M2.2–M2.4 implemented
-
-**Why everything expands before the core.** Intervals, compositions and routing decisions each
-split a Poisson stream — by period, by type share, by route share — and a split Poisson stream is
-exactly a set of independent Poisson streams. So each concept became an expansion into ordinary
-core inputs (decision → composition in `resolveCatalogs`, then period → lane in `buildScenario`),
-and one-way splits keep the plain id. The engine did not change, and neither did a fixture.
-**Why intervals are the source.** With `intervals` set, the scalar start/end/volume are derived
-(`deriveInputTotals`) on put and on read, so no file can hold two volumes. **Why M2.0.1 is not
-M3:** it applies M3.1's existing rule where it was skipped; drawing order decides, which is
-honest only because protected phasing rarely lets it bind (D35). Four tests that pinned the old
-refusal now pin the arbitrated merge and that removing the rule re-fires the guard.
-
----
-
-## 2026-09-24 — M2.0 closed except its decisions: same-station cut, dropped lanes, amber clamps
-
-**Same station:** the cut is reused rather than refused, and the later Connector also gives way to
-the earlier one — without that the §3.3 pair would enter together. **Dropped lanes:** still
-dropped, now reported (`AMBIGUOUS_ROUTE_STEP`, advisory). **Clamps:** all at amber onset, and the
-frozen baselines hold the same, so fixing them needs the owner; a test pins the diagnosis. CI on
-the four-leg commit passed all five jobs, Windows included.
-
-## 2026-09-24 — The four-leg intersection, built and run (M2.0)
-
-`tools/four_leg_network.hpp` builds it through the editor's commands, so the committed
-`data/projects/four-leg-signalised.traffic.json` is a document an author could have drawn; the
-file is compared to the builder at 1e-9 (computed curves may round differently under MSVC).
-It runs with no diagnostic only because turns join each exit part way along — the natural drawing
-is 8 × `UNSUPPORTED_MERGE`, pinned by a test M3 or M2.0.1 flips. Findings: `M2_PLAN.md` M2.0.
-
-## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
-
-Owner request; everything is in [`M2_PLAN.md`](M2_PLAN.md), no code changed; `desktop` 36/36 and
-`check` green on Linux. **The criteria stay a draft** because D8 makes pre-registration the
-owner's own act; ROADMAP §M2 only points at it. M2 can only run protected phasing
-honestly, so the gate study is a signalised intersection with protected phasing (D38 later
-narrowed the criteria to C1 + C2).
-**No fixture builds a four-leg intersection anywhere**, so M2.0 (the duplicate-station fix plus
-a runnable four-leg fixture) goes first, allowed before the criteria as M1 defects.
-
----
-
-## 2026-09-24 — M1.26.1, storage and the dialog
-
-**M1.26.1's real question — decided (D32).** `VehicleInput` gains `laneShares`, optional relative
-weights in `routeLaneChains` order; empty is the M1.26 equal split, and a stale size (the route's
-lane count changed since) degrades to it rather than misapplying a weight. `buildScenario`
-normalises by their sum and clears the field on each compiled per-lane input; `definitionJson`
-persists it only when set, so an unedited file and its compiled volumes are unchanged. Schema
-bumped to 9 for the new optional field; six tests asserting the exact prior schema number were
-updated to match, and two new tests hold the gate: round-trip plus the unedited-file omission
-(`project_tests.cpp`), and an uneven 1:2:3 split plus the stale-size degrade
-(`editor_model_tests.cpp`). `headless` preset: 23/23, 162 test-function checks all passing.
-
-**The editor surface, same session: M1.26.1 is closed.** The vehicle-input dialog
-(`src/shell/editor_demand.cpp`) now shows one `QDoubleSpinBox` per lane the *selected* route
-currently reaches, rebuilt whenever the route combo changes (the lane count is the route's, not
-the input's). Seeded from a stored `laneShares` only when its size still matches; a "dirty" flag
-set only by an actual `valueChanged` means leaving the fields alone leaves the input's
-`laneShares` exactly as it was — usually empty, which is what keeps the bit-identical default
-from the paragraph above true through the dialog too, not just through direct model edits.
-`demand-ui`'s existing two-lane fixture got three new checks: default fields read 1/1, a 2:1 edit
-round-trips through reopen, and cancelling a reopened dialog leaves the stored weights alone.
-Needed `qt6-base-dev` installed in this container (it was not present) to build and run the
-`desktop` preset at all; `desktop`: 36/36, `headless`: 23/23.
-
----
-
-
 **What comes next lives in [`NEXT.md`](NEXT.md)**, not here — one live to-do, not one
 per entry. Entries below this date keep the `Next` they shipped with, as history.
-
----
-
-## Next
-
-**M1.27 is closed.** Its four stages are done: clean build 86 s → 64 s, a 160-link corridor
-95.1 → 10.6 ms a frame and 57.2 → 10.0 ms a pick (corrected 2026-09-23), the engine run
-roughly halved, and the
-gesture surface counted with one deliberate dead end left in it. Three benchmarks are committed
-— `trafficsim-engine-benchmark`, `trafficsim-editor-benchmark`, `trafficsim-gesture-walkthrough`
-— and none of them is in `check`, so re-run them by hand before claiming any of those numbers
-again.
-
-**M1.26.1, adjustable per-lane shares, is next**, and the owner asked for it two sessions ago.
-Decide where the shares live before writing any UI — that is the whole task, because
-`VehicleInput` is a core type the scenario format shares, and an equal split must stay the
-compiled result of an unedited input, bit for bit.
-
-Then **M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**
-and need the owner. Still open: M1.22 (geometry/snapping tools, custom pivots, layer locks,
-bulk inspection), M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, the shared-station
-`runtimeSections` refusal (§3.3, M3.2), and scenario-JSON export from the editor, which is
-neither implemented nor booked. Inside a tick `occupiedSpans` is the largest single cost at
-9.8%; no milestone is booked for it and none is needed yet. **M1's timed owner exercise
-(`docs/M1_ACCEPTANCE.md`) is untouched by all of this** — a counted walkthrough is not a timed
-one, and M1.27.3 never claimed to close it.
-
----
-
-## Next
-
-Moved to [`NEXT.md`](NEXT.md) on 2026-09-23. A session read this whole file to find twenty
-lines of it; now it reads that one. The owner's standing items live there too.
 
 ---
 
@@ -304,7 +356,7 @@ Ask these before the milestone they block.
 | Q2 | Which lane-changing model? | M1 | MOBIL and Gipps are both defensible. Needs a short spike, not a debate. |
 | ~~Q3~~ | ~~Who are the three engineers for the M2 gate?~~ | M2 gate | **Answered 2026-09-10: the project owner performs the gate alone.** This materially weakens it — see D8 and the mitigation in `ROADMAP.md` M2. |
 | Q4 | Which published benchmarks define the M6 tolerance? | M6 | Decide before M5 so evaluation is built to be checkable against them. HCM is the likely baseline now that D7 makes the tool international. |
-| Q5 | Final product name | Nothing before M1 | **Deferred until the end of M1** by D11 — not a blocker on any current work. Candidates and collision findings are in the D11 row; reuse them. |
+| Q5 | Final product name | Nothing | Deferred until the end of M1 by D11; **M1 is accepted (D49), so it is now the owner's call** (NEXT item 2). Candidates and collision findings are in the D11 row; reuse them. |
 | ~~Q6~~ | ~~Register `velk` on npm and PyPI~~ | — | **Withdrawn 2026-09-11 as moot** — no settled name to register. The registration question returns with the name at M1. |
 
 ---
@@ -375,3 +427,12 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D46 | 2026-09-24 | **A decision's counts are proportions of the input's volume, and an uncounted interval uses the whole-period ones** | Owner request: turning counts and approach counts come from different sheets and rarely agree. The input's volume is the authority for how many vehicles enter; the turning counts say only where they go. Refusing an interval with no turn counted would block Run on ordinary data, and sending its vehicles nowhere would lose them. | If a study needs the input derived from the turning counts instead. |
 | D47 | 2026-09-25 | **A Signal head is placed at the clicked station, one per lane, and is drawn as its stop line** | Owner report and choice (Vissim: one head per lane). The runtime already stops traffic at the head's station, so the stop line is the head, not a second object; the editor had simply discarded the click. One pick (`nearestHeadSlot`) serves click, hover and Ctrl-drag copy. | If a separate stop-line object is needed (e.g. a stop line away from the head, or unsignalised stop control in M3). |
 | D48 | 2026-09-25 | **Signal control is authored as fixed-time controllers with signal groups and compiled into ordinary core programs; schema 12 programs shaped like a group migrate** | Owner report and choice (Vissim's model). A group is what a timing sheet lists; compiling it keeps `core/` and every fixture unchanged. Migration groups programs by cycle length into one controller with offset 0, because that is the only grouping the old file implies; colours are proved identical at every tick. Programs of any other shape stay legacy rather than being refused. | When M4 adds actuated control, intergreens or conflict checks, or if a file's programs of one cycle belong to different junctions and must be split. |
+| D49 | 2026-09-25 | **M1 usability accepted by owner ruling, not by the written exercise** | After one timed attempt (9 min 40 s, no assistance; save/reopen exact; no turn pockets, no aerial image), the owner ruled: an engineer who has used another traffic simulator can model an intersection of ordinary complexity in this program in well under 10 minutes. The owner holds the gate, so M1 usability is accepted on that ruling; the record keeps what the attempt did not show (pockets, aerial image, first-attempt and documentation status) so no one reads it as the written exercise passed. M0 plausibility is a separate observation and stays open. | A later attempt by someone new to the program, or one that fails the pocket/aerial task, reopens the question. |
+| D50 | 2026-09-25 | **A derived priority rule's stop line is 1 m short of the join, not on it** | Held exactly at the join, the waiting vehicle's front is on the shared lane; the major vehicle behind it stops within the headway and each waits for the other for ever. A Thai left turn at all times arrives at speed during the cross street's green and deadlocked the M2.6 template in its first minute (445 vehicles never entered). 1 m is geometry, not behaviour, so it is a constant (`kYieldClearance`, `sections.cpp`), not a `data/` value. The four-leg fixture's run and `trafficsim-cli 42` are byte-identical before and after. | An authored conflict area (M3.2) places its own stop line and supersedes this for authored rules. |
+| D51 | 2026-09-25 | **No test times TrafficSim against Vissim; the owner judges pass or fail** | Owner ruling: withdraw the timing comparison with Vissim from every test, and let the owner assess the result. Made before any M2 gate observation, so it is a re-registration (as D38 was), not a criterion changed after the fact (D8). C2 is withdrawn and keeps its number; C1 still defines the study and C4 is still recorded, since it compares delays, not time. The verdict line in `M2_GATE.md` is the owner's. M1's 10-minute limit was absolute, never against Vissim, and M1 is already accepted (D49). | A later owner ruling. A judgment by the builder alone is the weakness ROADMAP §M2 names; outside engineers still strengthen it. |
+| D52 | 2026-09-25 | **C4 withdrawn: no test compares delays with Vissim** | Owner ruling, following D51. Still before any M2 gate observation, so a re-registration, not a changed criterion (D8). C4 was never scored, only recorded; with it goes the "two LOS letters apart → investigation" trigger for the gate. What remains is C1 — the study completed end to end — and the owner's verdict. The Results table is still produced and recorded; it is simply not set beside another tool's. Plausibility against real-world data stays M6's (validation), untouched. | A later owner ruling. |
+| D53 | 2026-09-25 | **The M2 gate is passed on the owner's word** | Under D51 the verdict is the owner's, and the owner reported "M2.6 passed". Recorded as *not disproven* (D8). The study's site, counts, file and Results table were not supplied; the record says so rather than filling them in. M3 may start. | Evidence that the study did not meet C1, or a later owner ruling. |
+| D54 | 2026-09-25 | **M3.2.2 is split: M3.2.2a ships the authored model, schema 14, commands and the resolver; the reference lifecycle is M3.2.2b** | One system per session. The file/model seam — types, strict codec, History commands and ONE effective-priority resolver used by both compile and diagnostics — is testable on its own (A01–A04, A06–A08). Lifecycle (split/copy/retarget/resize/delete remapping, A05) touches every geometry command and is its own slice; until it lands, deleting a Link or Connector a control names is refused whole (safe but blunt), and a lane change leaves a stale, Run-blocked draft; `rightofway.until_m3_2_2b_*` pins both. Every authored area is Run-blocked (`UNSUPPORTED_CONFLICT_RUNTIME`) until M3.2.3, even an explicit merge the M3.1 mechanism could already run, because the plan says new controls stay blocked until their runtime is implemented. A taken-over merge compiles to exactly the fallback's rule (same 1 m waiting line, D50), so reversing it is the only change an author makes. Stop controls and queue counters are left to M3.2.5/M3.2.6, where their runtime lands. | M3.2.2b, or the M3.2.3 admission solver changing what a compiled area needs. |
+| D55 | 2026-09-25 | **Authored controls follow their owners the way signal heads do; a split through one is refused; lane edits never retarget** | Deleting a Link or Connector (including a drag that detaches a Connector) cascades the areas on it, their rules, the lines on it and lines that served only those areas, in the same command, so Undo restores the whole relationship. A split moves stations by the same arithmetic as Connector ends and maps lane ids through the split's replacements; a Connector lane pair whose end moved downstream takes the new lane id. A control in or across the 0.2 m span is refused (`EDIT_SPLIT_CONTROL`) rather than guessed (contract §1, first slice). Copy takes a control only when every owner was copied — a Connector lane pair needs both end Links, because only then do its lane ids map. Lane-count and retarget edits are allowed and keep ids: a pair that no longer matches is a Run-blocked `CONFLICT_UNRESOLVED_PATH`, never an ordinal pick (§6). Reverse is refused like a head. The M3.2.2a scrutiny fixes ride under this number too. A waiting line on a preceding Link and crossing coverage are resolver work, carved to M3.2.2c. Recorded, not fixed: control ids are unique against network ids only. | An editor surface (M3.2.4) that lets an author select a control, which would need copy/delete of the control itself. |
+| D57 | 2026-09-25 | **M3.2.3's first slice runs one isolated crossing; a grant is read off positions, not stored; the whole area is reserved** | A minor vehicle past its waiting line with its rear short of the exit holds the crossing. Routes are fixed and positions monotone, so this is the contract's "retain until the rear clears", never revoked, with nothing added to `SimState`: a copied state replays exactly (A25), and stop service arrives with M3.2.5. A major vehicle waits at entry while another vehicle holds. A minor vehicle waits at its line on the M3.1 threshold (inside, within headway, or sooner than gap time; equality passes). It also waits while a standing leader leaves no room past the exit, because an admitted vehicle stopping inside the area would block the major road. The swept check runs over all candidate moves before publishing, so the result does not depend on vehicle order. Reserving the whole area loses capacity and is disclosed. Merges, connected groups (A15), areas over a section cut and receiving space shared between zones are carved to M3.2.3b and refused by name rather than half-run. | Measured capacity loss on the T-junction (M3.2.7); a moving leader that stops after admission leaves the vehicle inside the area — admission reserving the receiving space, not only checking it. |
+| D56 | 2026-09-25 | **A waiting line is compiled as metres along the yielding segment, negative on the approach; it resolves only along single predecessors; crossing extents must contain the measured overlap** | "Upstream on every applicable route" (contract §1) is read off the runtime graph instead of the routes. Walking back from the side's entry, a segment with a second predecessor means some vehicle can reach the conflict without crossing the line. That is a named blocker, not a guess. A diverge is harmless: the core applies a rule only to routes through the yielding segment. Keeping the rule on the yielding segment, with a negative position, is what makes it apply to exactly those routes. Putting it on the line's segment would hold vehicles that turn away. The core's bound follows the same chain, so the two cannot disagree. Coverage uses the lane strips vertex for vertex with the authored polyline, so an overlap station is the cross-section `matchedStation` names. A larger extent is the author's choice; a smaller one, no overlap, two overlaps or a folded strip block Run. | Route-aware incidence (M3.2.3) that proves a bypassing route never reaches the area; a folded strip handled by `trimSelfIntersections`-style repair instead of refusal. |

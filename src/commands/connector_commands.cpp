@@ -139,6 +139,7 @@ void deleteConnector(ProjectDocument& d, const std::string& id) {
     for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)paths.insert(connectorPathId(c,i));
     std::erase_if(d.network.connectors, [&](const auto& item) { return item.id == id; });
     std::erase_if(d.network.signalHeads,[&](const auto& h){return paths.contains(h.connectorId);});
+    detail::removeControlsOn(d, {}, {id}); // M3.2.2b; also every reanchor deletion
     detail::removeRoutesUsingSegments(d, paths);
 }
 }

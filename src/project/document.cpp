@@ -22,6 +22,27 @@ Json points(const std::vector<Point>& ps) {
     for (const auto& p : ps) out.push_back({{"x", p.x}, {"y", p.y}});
     return out;
 }
+Json controlPath(const ControlPathRef& p) {
+    if(p.connectorId.empty())return {{"linkId",p.linkId},{"laneId",p.laneId}};
+    return {{"connectorId",p.connectorId},{"fromLaneId",p.fromLaneId},{"toLaneId",p.toLaneId}};
+}
+Json side(const ConflictSide& s) {
+    return {{"path",controlPath(s.path)},{"entryStation",s.entryStation},{"exitStation",s.exitStation},
+            {"waitingLineId",s.waitingLineId}};
+}
+// M3.2.2. Written only when there is something to write, so a project without controls saves
+// exactly the keys it always did.
+Json rightOfWayJson(const RightOfWay& row) {
+    Json lines=Json::array(),areas=Json::array(),rules=Json::array();
+    for(const auto& w:row.waitingLines)
+        lines.push_back({{"id",w.id},{"name",w.name},{"point",{{"path",controlPath(w.point.path)},{"station",w.point.station}}}});
+    for(const auto& a:row.conflictAreas)
+        areas.push_back({{"id",a.id},{"name",a.name},{"kind",conflictKindName(a.kind)},{"first",side(a.first)},
+                         {"second",side(a.second)},{"priority",conflictPriorityName(a.priority)}});
+    for(const auto& r:row.priorityRules)
+        rules.push_back({{"id",r.id},{"name",r.name},{"conflictAreaId",r.conflictAreaId},{"gapTime",r.gapTime},{"headway",r.headway}});
+    return {{"waitingLines",lines},{"conflictAreas",areas},{"priorityRules",rules}};
+}
 Json reference(const LaneReference& r) {
     Json result={{"linkId",r.linkId},{"laneId",r.laneId}};
     if(r.station)result["station"]=*r.station;
@@ -45,8 +66,9 @@ Json documentJson(const ProjectDocument& d) {
         network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}, {"name",h.name}});
         if (!h.controllerId.empty()) { network["signalHeads"].back()["controllerId"] = h.controllerId; network["signalHeads"].back()["groupNumber"] = h.groupNumber; }
     }
+    if (!d.network.rightOfWay.empty()) network["rightOfWay"] = rightOfWayJson(d.network.rightOfWay);
     const auto& b = d.background;
-    return {{"format", "TrafficSim"}, {"schemaVersion", 13}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
+    return {{"format", "TrafficSim"}, {"schemaVersion", 14}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
@@ -69,7 +91,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 13) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 14) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -105,6 +127,9 @@ std::string allocateId(ProjectDocument& d, const std::string& prefix) {
     for (const auto& c : d.network.connectors)
         for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)used.insert(connectorPathId(c,i));
     for (const auto& h : d.network.signalHeads) used.insert(h.id);
+    for (const auto& w : d.network.rightOfWay.waitingLines) used.insert(w.id);
+    for (const auto& a : d.network.rightOfWay.conflictAreas) used.insert(a.id);
+    for (const auto& r : d.network.rightOfWay.priorityRules) used.insert(r.id);
     if (d.definition) {
         for (const auto& r : d.definition->routes) used.insert(r.id);
         for (const auto& i : d.definition->inputs) used.insert(i.id);

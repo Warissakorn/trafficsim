@@ -68,8 +68,9 @@ junctions are not something the user places.
 and is not a defect) and **M1.12.3 is closed by M1.19**. The owner's requirement that a Connector's
 lanes meet the Link lanes they are assigned to ran M1.17 (reverted) → M1.18 (flush) → **M1.19**
 (each lane on the lane it feeds); **M1.20** gives the Connector its own position. M1.7's owner
-acceptance remains open, and M1 is not closed until its timed gate passes — no amount of merged
-code closes it.
+acceptance: **M1 usability accepted by owner ruling on 2026-09-25 (D49)** after one timed attempt
+(9 min 40 s, no assistance, save/reopen exact) that did not include turn pockets or an aerial
+image — see `M1_ACCEPTANCE.md` for what it did and did not show. M0 plausibility remains open.
 
 M1.1–M1.6 and M1.8–M1.10 are implemented and their full bodies are in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); each keeps its heading and
@@ -127,9 +128,8 @@ Run handoff implemented: compile one document revision with resolved catalogs in
 detached network/scenario snapshot. Unsupported features are exposed before Run;
 successful edits invalidate a run. The engine's existing capability guards remain.
 
-**Owner acceptance remains open.** Perform the four-leg/aerial-image/ten-minute/reopen
-exercise in [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). The M0 plausibility gate also remains
-open. No automated test or implementation status closes either gate.
+**Owner acceptance: accepted by owner ruling, 2026-09-25 (D49)** — recorded, with what the attempt
+did not show, in [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). The M0 plausibility gate remains open.
 
 ---
 
@@ -273,21 +273,21 @@ tool is usable for real engineering work.
 > engineers later strengthens the gate and is never wasted effort.
 
 **Pre-registered criteria — ratified by the owner on 2026-09-24, re-registered the same day
-before any gate observation (D38)** (record in [`M2_GATE.md`](M2_GATE.md)):
+before any gate observation (D38), and again on 2026-09-25, still before any gate observation,
+when the owner withdrew C2 (D51) and C4 (D52)** (record in [`M2_GATE.md`](M2_GATE.md)):
 
 - **C1 — Completion.** One real study (signalised, protected phasing, counted 15-minute volumes,
   the owner's timing plan) completed end to end: network over its aerial image, volumes,
   composition, timing, Run, per-movement delay and queue table. Fails on hand-edited JSON, a code
   change during the study, or outside help.
-- **C2 — Effort.** Time in TrafficSim ≤ **2.0×** the owner's current tool, both from blank.
-- **C4 — Plausibility, recorded, not scored.** Per movement, TrafficSim delay beside the current
-  tool's; a movement more than **two LOS letters** apart opens a numbered investigation.
+- **C2 — withdrawn (D51).** No test times TrafficSim against Vissim or any other tool.
+- **C4 — withdrawn (D52).** No test compares TrafficSim's delays with Vissim's or any other tool's.
 
-**Pass = C1 and C2 pass** — reported as *not disproven*. (C0 and C3 were withdrawn by D38; the
-remaining criteria keep their numbers so earlier records still resolve.)
+**Pass = the owner judges it passed (D51)**, on C1's study — reported as *not disproven*. (C0/C3
+withdrawn by D38, C2 by D51, C4 by D52; the rest keep their numbers so old records resolve.)
 
-- If C1 or C2 fails, the tool is not yet usable for the job it exists for — see `PROBLEM.md`
-  §7.1 — and M3 does not start until what failed is fixed and the gate re-run.
+- If the owner judges it failed, the tool is not yet usable for the job it exists for — see
+  `PROBLEM.md` §7.1 — and M3 does not start until what failed is fixed and the gate re-run.
 
 ---
 
@@ -299,9 +299,9 @@ it does not start M3). **M2.2** time-varying volumes · **M2.3** vehicle composi
 static turning proportions (moved here from M2.1, D37) · **M2.5** movement delay and queue, one
 run (implemented 2026-09-24, D39/D40) · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
 **Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3, M2.4 and M2.5 implemented. M2's done-condition
-(the M1 intersection with counted volumes runs and produces a delay table) is met in code. M2.6 is
-next; the
-gate itself is open and nothing here closes it.
+(the M1 intersection with counted volumes runs and produces a delay table) is met in code. **M2.6: the
+gate passed by the owner's judgment on 2026-09-25 (D51, D53)** — recorded in `M2_GATE.md` as *not
+disproven*. M2.1 stays open; M3 may start.
 
 ### M2.1 — Link/lane/Connector behavior and demand extensions
 
@@ -403,22 +403,22 @@ deterministic replay and the M3 owner exercise; scientific claims remain gated b
 
 #### M3.2.1-M3.2.8 — Ordered implementation slices
 
-All implementation below requires the M2 gate to pass. Dependencies and exact contracts
-are in [M3_PLAN.md](M3_PLAN.md); the live next action stays in `NEXT.md`.
+M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`.
 
 | Slice | Scope | Status / gate |
 |---|---|---|
 | M3.2.1 | Contracts and acceptance design | Prepared; documentation only, no runtime claim |
-| M3.2.2 | Authored controls, persistence, commands, compiler and effective-priority validation | Open; reference roundtrips, legacy compatibility, cycles/ties rejected |
-| M3.2.3 | Crossing occupancy, admission, rear clearance and downstream space | Open; no-overlap, congestion accounting and exact replay |
+| M3.2.2a | Waiting lines, conflict areas and priority rules: model, schema 14, commands, one effective-priority resolver (D54) | **Implemented 2026-09-25**; A01–A04, A06–A08 tested; every authored area Run-blocked until M3.2.3 |
+| M3.2.2b/c | Reference lifecycle (A05, D55); a waiting line on a preceding Link and crossing-coverage check (D56) | **Implemented 2026-09-25**; `rightofway_lifecycle.*`, `rightofway_resolution.*`, curved Link, both driving sides |
+| M3.2.3a | One isolated crossing: core `ConflictZone`, admission by gap time/headway, grants held until the rear clears, receiving space, swept check, sink clearance (D57) | **Implemented 2026-09-25**; A09–A14, A16, A17, A25 in `conflict_zone.*`; `rightofway_runtime.*` |
+| M3.2.3b | Merge areas on the same solver; connected groups admitted atomically (A15); areas spanning a section cut; receiving space shared by requests from different zones; the Run UI stating that only authored areas are protected | Open; carved from M3.2.3 (D57) |
 | M3.2.4 | Conflict-area and priority-rule editor | Open; supported runtime effects, bilingual mouse/keyboard workflows |
 | M3.2.5 | Stop/Yield with signal composition | Open; each vehicle serves Stop, Yield can pass, green retains physical safety |
 | M3.2.6 | Signal-position workflow and unsignalised queue counters | Open; interior/cut positions, counter fixtures and CLI/editor agreement |
 | M3.2.7 | T-junction fixture and owner evidence | Open; controlled gap response, completed/unserved reporting and owner exercise |
 | M3.2.8 | Lane changing, cooperation, visibility and remaining behavior | Open; separate contract, controlled changes/conflicts, congestion and replay; calibrated gap acceptance still requires M6 evidence |
 
-Passing M3.2.7 alone does not close M3.2 or its remaining booked scope. No gate result is
-inferred from the preparation above, and the not-yet-validated marker remains.
+Passing M3.2.7 alone does not close M3.2; no gate result is inferred; the not-yet-validated marker remains.
 
 ---
 

@@ -1,4 +1,5 @@
 #include "network.hpp"
+#include "right_of_way.hpp"
 #include "../../core/validate.hpp"
 #include <cmath>
 #include <map>
@@ -107,10 +108,13 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     scenario.routes = std::move(routes);
     scenario.inputs = std::move(inputs);
     for (const auto& head : network.signalHeads) scenario.signalHeads.push_back(rebaseHead(table, head));
-    // Appended, not assigned: an authored rule keeps its own two numbers, and a derived one is
-    // added for each merge the drawing creates. Order follows path order, so it is reproducible.
-    for (auto& rule : derivedPriorityRules(table, definition.priorityDefaults))
-        scenario.priorityRules.push_back(std::move(rule));
+    // Appended, not assigned: a C++-supplied rule keeps its own two numbers. Then the resolver's
+    // rules: each derived merge nobody overrode, in path order, and the authored ones (M3.2.2).
+    // With no authored control this is exactly derivedPriorityRules, rule for rule.
+    auto rightOfWay = resolveRightOfWay(network, table, definition.priorityDefaults);
+    for (auto& rule : rightOfWay.rules) scenario.priorityRules.push_back(std::move(rule));
+    // M3.2.3a: each runnable authored crossing, after any C++-supplied zone.
+    for (auto& zone : rightOfWay.zones) scenario.conflictZones.push_back(std::move(zone));
     return scenario; // All fields are owned values, independent of the editor model.
 }
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {
@@ -199,7 +203,10 @@ std::vector<ValidationIssue> priorityDefaultsIssues(const Network& network,
     // M2.0.1 every Connector after the first meeting at one lane start. Asking the rules
     // themselves keeps this from drifting from derivedPriorityRules (hard rule 3).
     std::vector<ValidationIssue> issues;
-    const auto rules=derivedPriorityRules(runtimeSections(network),{1,1});
+    // M3.2.2: only the derived rules the resolver keeps -- a merge the author overrode carries
+    // its own numbers, so a saved explicit group runs without the catalog (A08).
+    auto rules=resolveRightOfWay(network,runtimeSections(network),{1,1}).rules;
+    std::erase_if(rules,[](const auto& r){return r.id.rfind("give-way/",0)!=0;});
     for(std::size_t i=0;i<network.connectors.size();++i) {
         std::vector<ConnectorPath> paths;
         try { paths=connectorPaths(network,network.connectors[i]); } catch(const std::exception&) { continue; }
@@ -247,6 +254,8 @@ Scenario compileScenario(const Network& network, const ScenarioDefinition& defin
     for(auto& issue:routeRuntimeIssues(network,definition))
         issues.push_back(std::move(issue));
     for(auto& issue:priorityDefaultsIssues(network,definition.priorityDefaults))
+        issues.push_back(std::move(issue));
+    for(auto& issue:resolveRightOfWay(network,runtimeSections(network),definition.priorityDefaults).issues)
         issues.push_back(std::move(issue));
     if(!issues.empty())throw ValidationError(std::move(issues));
     auto scenario = buildScenario(network, definition);

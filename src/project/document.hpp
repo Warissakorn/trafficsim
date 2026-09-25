@@ -16,7 +16,7 @@ struct BackgroundImage {
     }
 };
 struct ProjectDocument {
-    Network network{"network", DrivingSide::left, {}, {}, {}};
+    Network network{"network", DrivingSide::left, {}, {}, {}, {}};
     std::optional<AuthoringDefinition> definition; // Typed authoring values, never a compiled scenario.
     BackgroundImage background;
     std::uint64_t nextId{1};

@@ -1,4 +1,5 @@
 #include "appearance_commands.hpp"
+#include "detail.hpp"
 #include "connector_commands.hpp"
 #include "network_commands.hpp"
 #include "../model/network/rotation.hpp"
@@ -94,7 +95,7 @@ void rotateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point 
 }
 std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point offset) {
     if(!std::isfinite(offset.x) || !std::isfinite(offset.y))throw std::invalid_argument("INVALID_GEOMETRY");
-    const auto source=d.network;std::map<std::string,std::string> links,lanes,paths;std::vector<std::string> created;
+    const auto source=d.network;std::map<std::string,std::string> links,lanes,paths,connectors;std::vector<std::string> created;
     const std::set<std::string> chosen(ids.begin(),ids.end());
     for(const auto& id:chosen) {
         bool found=false;
@@ -110,7 +111,7 @@ std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<s
         created.push_back(l.id);d.network.links.push_back(std::move(l));
     }
     for(auto c:source.connectors)if(chosen.contains(c.id) || (links.contains(c.from.linkId) && links.contains(c.to.linkId))) {
-        const auto original=c;c.id=allocateId(d,"connector");
+        const auto original=c;c.id=allocateId(d,"connector");connectors[original.id]=c.id;
         for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)paths[connectorPathId(original,i)]=connectorPathId(c,i);
         const auto remap=[&](LaneReference ref,int count,bool outgoing) {
             // A duplicated link has the same geometry, so its stations transfer unchanged.
@@ -144,6 +145,7 @@ std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<s
         } else continue;
         h.id=allocateId(d,"head");if(selected)created.push_back(h.id);d.network.signalHeads.push_back(std::move(h));
     }
+    detail::copyControls(d,source,links,lanes,connectors); // M3.2.2b: controls travel with their owners
     return created; // Demand is deliberately not copied; it would double vehicle arrivals.
 }
 }

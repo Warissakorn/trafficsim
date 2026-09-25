@@ -81,10 +81,13 @@ void resizeLinkLanes(ProjectDocument& d,const std::string& id,int count,bool lea
 
 void deleteLink(ProjectDocument& d, const std::string& id) {
     const auto l = editableLink(d, id);
-    std::set<std::string> removed;
+    std::set<std::string> removed, attached;
     for (const auto& lane : l.lanes) removed.insert(lane.id);
-    for (const auto& c : d.network.connectors) if (c.from.linkId == id || c.to.linkId == id)
+    for (const auto& c : d.network.connectors) if (c.from.linkId == id || c.to.linkId == id) {
+        attached.insert(c.id);
         for(int i=0;i<std::max(c.fromLaneCount,c.toLaneCount);++i)removed.insert(connectorPathId(c,i));
+    }
+    detail::removeControlsOn(d, {id}, attached); // M3.2.2b: controls cascade like heads
     std::erase_if(d.network.connectors, [&](const auto& c) { return removed.contains(c.id); });
     std::erase_if(d.network.signalHeads, [&](const auto& h) { return h.lane.linkId == id || removed.contains(h.connectorId); });
     std::erase_if(d.network.links, [&](const auto& link) { return link.id == id; });

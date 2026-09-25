@@ -163,6 +163,9 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   **not** block: a queue that is not moving is a gap, and treating it as a block would deadlock
   the minor approach. **This is a threshold test, not gap acceptance as the literature defines
   it** — no distribution, no driver variation, nothing calibrated. Rule 4 applies.
+  `yieldPosition` is metres along `yieldSegmentId`; since M3.2.2c it may be **negative**, a stop
+  line on the approach before that segment, but no further back than its chain of single
+  predecessors, so every route that reaches the yielding segment crosses the line (D56).
 - Rules for a Connector arriving inside a lane body are **derived from the drawing**, never
   persisted, with their two numbers read from `data/priority-rules/`. Run refuses such a network
   with `EDIT_NO_PRIORITY_DEFAULTS` if those cannot be read, rather than defaulting to a zero gap
@@ -173,13 +176,29 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   — every turn into an intersection exit. The order is the drawing order, which is arbitrary;
   authoring who has priority is M3. With protected (split) phasing those movements are never green
   together, so the rule rarely binds; with permissive phasing it would decide, unvalidated.
+  A turn that does not wait for green — the Thai left turn at all times — makes it bind every
+  cycle. **A derived rule's stop line is 1 m short of the join** (D50): held on the join itself,
+  the waiting vehicle's front is on the shared lane and the major vehicle behind it deadlocks.
 - Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
   turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
   in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).
 - Geometric crossings do not create conflicts automatically. Separate movement paths
-  can intersect spatially; their interaction is **not** modelled. The demo uses separate
-  fixed-time greens and clearance intervals, not a conflict-area solver. Arbitrary
-  overlapping green plans have no crossing-collision protection.
+  can intersect spatially; their interaction is modelled **only where an author placed a
+  crossing conflict area** (M3.2.3a, D57). The demo uses separate fixed-time greens and
+  clearance intervals. Overlapping green plans with no authored area have no crossing protection.
+- A `ConflictZone` (M3.2.3a) is one crossing: a major and a minor side, each an `[entry, exit)`
+  interval on one segment, a minor waiting line (`waitPosition`, may be negative as for
+  `yieldPosition`), a gap time and a headway. A minor vehicle waits at its line while any major
+  vehicle on a route through the major side is inside the area, within the headway of entry,
+  or would reach entry sooner than the gap time. Equality passes, and a standing vehicle beyond
+  the headway is a gap. It also waits while a standing leader leaves less than its length plus
+  standstill distance past the exit. Past the line it **holds** the crossing until its rear clears
+  the exit, and a major vehicle waits at entry meanwhile. The grant is read off positions and never
+  revoked. A request crossing the line in a tick in which a major front reaches the area is capped
+  before anything is published (the swept check). Validation refuses a route that ends within the
+  longest vehicle of an exit (`CONFLICT_SINK_TOO_CLOSE`), and one that starts past the line
+  (`CONFLICT_ROUTE_STARTS_PAST_LINE`). The whole area is reserved, so capacity is conservative.
+  Rule 4 applies: a deterministic threshold, not calibrated gap acceptance.
 - Signal phases and offsets must align to the fixed timestep. Phases are half-open;
   amber is conservatively treated as stop, without a dilemma-zone decision.
 - The timestep is in `(0, 0.5]` seconds and duration must be an integer number of ticks.

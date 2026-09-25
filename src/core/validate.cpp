@@ -66,14 +66,32 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
             predecessors[next].push_back(item.id);
         }
     }
+    // M3.2.2c: a minor approach may wait before the segment that yields -- a waiting line on the
+    // Link before a Connector -- but only as far back as EVERY route onto that segment must come:
+    // along its chain of single predecessors. Past a second predecessor, a route could reach the
+    // conflict without ever crossing the line. Shared by priority rules and conflict zones.
+    const auto singleApproach = [&](const std::string& segment) {
+        double upstream = 0;
+        std::set<std::string> chain{segment};
+        for (auto at = segment;;) {
+            const auto feeding = predecessors.find(at);
+            if (feeding == predecessors.end() || feeding->second.size() != 1) break;
+            const auto before = segments.find(feeding->second.front());
+            if (before == segments.end() || !chain.insert(before->first).second) break;
+            upstream += before->second->length;
+            at = before->first;
+        }
+        return upstream;
+    };
     const auto rules = index(s.priorityRules, "priorityRules", issues);
     for (std::size_t i = 0; i < s.priorityRules.size(); ++i) {
         const auto& rule = s.priorityRules[i];
         const auto p = "priorityRules[" + std::to_string(i) + "]";
         number(rule.gapTime, p + ".gapTime", true); number(rule.headway, p + ".headway", true);
         const auto yieldOn = segments.find(rule.yieldSegmentId), conflictOn = segments.find(rule.conflictSegmentId);
+        const double upstream = singleApproach(rule.yieldSegmentId);
         if (yieldOn == segments.end()) add("UNKNOWN_SEGMENT", p + ".yieldSegmentId");
-        else if (!std::isfinite(rule.yieldPosition) || rule.yieldPosition < 0 ||
+        else if (!std::isfinite(rule.yieldPosition) || rule.yieldPosition < -upstream ||
                  rule.yieldPosition > yieldOn->second->length) add("INVALID_POSITION", p + ".yieldPosition");
         if (conflictOn == segments.end()) add("UNKNOWN_SEGMENT", p + ".conflictSegmentId");
         else if (!std::isfinite(rule.conflictPosition) || rule.conflictPosition < 0 ||
@@ -83,6 +101,41 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         if (rule.yieldSegmentId == rule.conflictSegmentId) add("INVALID_RANGE", p + ".conflictSegmentId");
     }
     (void)rules;
+    // M3.2.3a. A conflict zone: two different segments, an area inside each, a waiting line on
+    // the minor approach no later than its entry, and the two threshold numbers.
+    index(s.conflictZones, "conflictZones", issues);
+    double longest = 0;
+    for (const auto& type : s.vehicleTypes) if (std::isfinite(type.length)) longest = std::max(longest, type.length);
+    for (std::size_t i = 0; i < s.conflictZones.size(); ++i) {
+        const auto& zone = s.conflictZones[i];
+        const auto p = "conflictZones[" + std::to_string(i) + "]";
+        number(zone.gapTime, p + ".gapTime"); number(zone.headway, p + ".headway", true);
+        for (const auto& [side, name] : {std::pair{&zone.major, ".major"}, std::pair{&zone.minor, ".minor"}}) {
+            const auto on = segments.find(side->segmentId);
+            if (on == segments.end()) { add("UNKNOWN_SEGMENT", p + name + ".segmentId"); continue; }
+            if (!std::isfinite(side->entry) || !std::isfinite(side->exit) || side->entry < 0 ||
+                side->entry >= side->exit || side->exit > on->second->length) add("INVALID_RANGE", p + name);
+            // The route must run on past the area far enough to carry the longest vehicle's rear
+            // out of it, or removal at the route's end would drop a tail still inside (A12).
+            for (std::size_t r = 0; r < s.routes.size(); ++r) {
+                double start = 0, total = 0, at = -1;
+                for (const auto& id : s.routes[r].segmentIds) {
+                    const auto seg = segments.find(id);
+                    if (seg == segments.end()) break;
+                    if (id == side->segmentId && at < 0) at = start;
+                    start += seg->second->length; total = start;
+                }
+                if (at >= 0 && total - (at + side->exit) < longest)
+                    add("CONFLICT_SINK_TOO_CLOSE", p + name + " routes[" + std::to_string(r) + "]");
+                // A route that begins past the waiting line would enter holding the crossing.
+                if (name == std::string(".minor") && at >= 0 && at + zone.waitPosition < 0)
+                    add("CONFLICT_ROUTE_STARTS_PAST_LINE", p + " routes[" + std::to_string(r) + "]");
+            }
+        }
+        if (zone.major.segmentId == zone.minor.segmentId) add("INVALID_RANGE", p + ".minor.segmentId");
+        if (!std::isfinite(zone.waitPosition) || zone.waitPosition > zone.minor.entry ||
+            zone.waitPosition < -singleApproach(zone.minor.segmentId)) add("INVALID_POSITION", p + ".waitPosition");
+    }
     // The one guard M3.1 loosens, and it is loosened BY CONSTRUCTION, never by removal: a place
     // fed by n segments is runnable only when at least n-1 of them give way to another of them,
     // so exactly one has priority and the rest have somewhere to wait. A network that has not

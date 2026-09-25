@@ -32,7 +32,7 @@ validator must keep their accepted cases while refusing contradictory authored c
 ## 2. Preconditions and boundaries
 
 Before implementation, the owner completes the unchanged M2.6 study and records evidence
-in [M2_GATE.md](M2_GATE.md): C1 and C2 pass, with C4 recorded. Fix and repeat a failed gate
+in [M2_GATE.md](M2_GATE.md): the owner judges C1's study a pass (D51; C2 and C4 withdrawn, D52). Fix and repeat a failed gate
 under ROADMAP's rules; never infer success from an automated test, this plan or a merge.
 
 After that, run the existing desktop build/tests and `check` on the implementation checkout.

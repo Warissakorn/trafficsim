@@ -82,11 +82,28 @@ struct PriorityDefaults {
 };
 struct PriorityRule {
     std::string id;
-    std::string yieldSegmentId; double yieldPosition{};      // where the minor approach waits
+    std::string yieldSegmentId; double yieldPosition{};      // where the minor approach waits; <0 is before the segment
     std::string conflictSegmentId; double conflictPosition{}; // the point on the major approach
     double gapTime{};   // seconds: a major vehicle arriving sooner than this is not yielded to
     double headway{};   // metres: a major vehicle closer than this to the point blocks regardless
     bool operator==(const PriorityRule&) const = default;
+};
+// M3.2.3a. One crossing: the minor side gives way to the major side, and the two never occupy
+// their areas at once. Positions are metres along each side's segment; `waitPosition` is on the
+// minor segment and may be negative -- on the single-predecessor approach before it (D56).
+// A minor vehicle holds the crossing from passing its waiting line until its rear clears
+// minor.exit; that grant is read off positions, so it needs no state of its own (D57).
+struct ZoneSide {
+    std::string segmentId; double entry{}, exit{};
+    bool operator==(const ZoneSide&) const = default;
+};
+struct ConflictZone {
+    std::string id;
+    ZoneSide major, minor;
+    double waitPosition{}; // on minor.segmentId: where a minor vehicle waits for admission
+    double gapTime{};      // seconds, as PriorityRule
+    double headway{};      // metres, as PriorityRule
+    bool operator==(const ConflictZone&) const = default;
 };
 struct ScenarioDefinition {
     double duration{}, timeStep{};
@@ -103,6 +120,9 @@ struct ScenarioDefinition {
     // gap time is an uncontrolled merge, so deriving a rule without loading these is refused
     // rather than silently allowed.
     PriorityDefaults priorityDefaults;
+    // Last again, for the same reason. Empty for every scenario without an authored crossing,
+    // which then runs exactly the code path it always did.
+    std::vector<ConflictZone> conflictZones;
     // Value equality, so callers can tell "this edit changed nothing" without serialising.
     bool operator==(const ScenarioDefinition&) const = default;
 };
@@ -120,8 +140,13 @@ struct RouteHead { std::size_t headIndex{}; double partStart{}; };
 // The same idea for a priority rule: a rule whose yield segment lies on this route, with the start
 // station of the first route part carrying it, so the stop line is a route coordinate.
 struct RouteRule { std::size_t ruleIndex{}; double partStart{}; };
+// A conflict zone one of whose sides lies on this route: which side, and where on the route the
+// FIRST part carrying that side's segment starts, so every position is a route coordinate.
+enum class ZoneRole : std::uint8_t { major, minor };
+struct RouteZone { std::size_t zoneIndex{}; ZoneRole role{}; double partStart{}; };
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
+    std::vector<std::vector<RouteZone>> routeZones;  // parallel to Scenario::routes, in conflictZones order
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
     std::vector<std::vector<RouteHead>> routeHeads;  // parallel to Scenario::routes, in signalHeads order
     std::vector<std::vector<RouteRule>> routeRules;  // parallel to Scenario::routes, in priorityRules order

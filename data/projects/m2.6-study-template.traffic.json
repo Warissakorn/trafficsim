@@ -8,224 +8,369 @@
     "y": 0.0
   },
   "definition": {
-    "duration": 900.0,
+    "duration": 3600.0,
     "inputs": [
       {
-        "endTime": 900.0,
-        "id": "input-78",
-        "routeId": "route-77",
+        "compositionId": "urban-mixed",
+        "endTime": 3600.0,
+        "id": "input-102",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0,
+            "vehiclesPerHour": 720.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0,
+            "vehiclesPerHour": 720.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0,
+            "vehiclesPerHour": 720.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0,
+            "vehiclesPerHour": 720.0
+          }
+        ],
+        "linkId": "link-1",
+        "routeId": "",
         "startTime": 0.0,
         "vehicleTypeId": "car",
-        "vehiclesPerHour": 500.0
+        "vehiclesPerHour": 720.0
       },
       {
-        "endTime": 900.0,
-        "id": "input-80",
-        "routeId": "route-79",
+        "compositionId": "urban-mixed",
+        "endTime": 3600.0,
+        "id": "input-104",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0,
+            "vehiclesPerHour": 650.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0,
+            "vehiclesPerHour": 650.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0,
+            "vehiclesPerHour": 650.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0,
+            "vehiclesPerHour": 650.0
+          }
+        ],
+        "linkId": "link-13",
+        "routeId": "",
         "startTime": 0.0,
         "vehicleTypeId": "car",
-        "vehiclesPerHour": 120.0
+        "vehiclesPerHour": 650.0
       },
       {
-        "endTime": 900.0,
-        "id": "input-82",
-        "routeId": "route-81",
+        "compositionId": "urban-mixed",
+        "endTime": 3600.0,
+        "id": "input-106",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0,
+            "vehiclesPerHour": 360.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0,
+            "vehiclesPerHour": 360.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0,
+            "vehiclesPerHour": 360.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0,
+            "vehiclesPerHour": 360.0
+          }
+        ],
+        "linkId": "link-25",
+        "routeId": "",
         "startTime": 0.0,
         "vehicleTypeId": "car",
-        "vehiclesPerHour": 100.0
+        "vehiclesPerHour": 360.0
       },
       {
-        "endTime": 900.0,
-        "id": "input-84",
-        "routeId": "route-83",
+        "compositionId": "urban-mixed",
+        "endTime": 3600.0,
+        "id": "input-108",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0,
+            "vehiclesPerHour": 310.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0,
+            "vehiclesPerHour": 310.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0,
+            "vehiclesPerHour": 310.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0,
+            "vehiclesPerHour": 310.0
+          }
+        ],
+        "linkId": "link-37",
+        "routeId": "",
         "startTime": 0.0,
         "vehicleTypeId": "car",
-        "vehiclesPerHour": 450.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-86",
-        "routeId": "route-85",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 110.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-88",
-        "routeId": "route-87",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 90.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-90",
-        "routeId": "route-89",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 250.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-92",
-        "routeId": "route-91",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 60.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-94",
-        "routeId": "route-93",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 50.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-96",
-        "routeId": "route-95",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 220.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-98",
-        "routeId": "route-97",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 50.0
-      },
-      {
-        "endTime": 900.0,
-        "id": "input-100",
-        "routeId": "route-99",
-        "startTime": 0.0,
-        "vehicleTypeId": "car",
-        "vehiclesPerHour": 40.0
+        "vehiclesPerHour": 310.0
       }
     ],
-    "routes": [
+    "routes": [],
+    "routingDecisions": [
       {
-        "id": "route-77",
-        "segmentIds": [
-          "link-1",
-          "connector-11",
-          "link-4",
-          "connector-49",
-          "link-20"
+        "id": "decision-101",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0
+          }
+        ],
+        "linkId": "link-1",
+        "name": "West turning counts (PLACEHOLDER)",
+        "routes": [
+          {
+            "destinationLinkId": "link-20",
+            "intervalFlows": [
+              500.0,
+              500.0,
+              500.0,
+              500.0
+            ],
+            "relativeFlow": 500.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-44",
+            "intervalFlows": [
+              120.0,
+              120.0,
+              120.0,
+              120.0
+            ],
+            "relativeFlow": 120.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-32",
+            "intervalFlows": [
+              100.0,
+              100.0,
+              100.0,
+              100.0
+            ],
+            "relativeFlow": 100.0,
+            "routeId": ""
+          }
         ]
       },
       {
-        "id": "route-79",
-        "segmentIds": [
-          "link-1",
-          "connector-11",
-          "link-4",
-          "connector-50",
-          "link-44"
+        "id": "decision-103",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0
+          }
+        ],
+        "linkId": "link-13",
+        "name": "East turning counts (PLACEHOLDER)",
+        "routes": [
+          {
+            "destinationLinkId": "link-8",
+            "intervalFlows": [
+              450.0,
+              450.0,
+              450.0,
+              450.0
+            ],
+            "relativeFlow": 450.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-32",
+            "intervalFlows": [
+              110.0,
+              110.0,
+              110.0,
+              110.0
+            ],
+            "relativeFlow": 110.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-44",
+            "intervalFlows": [
+              90.0,
+              90.0,
+              90.0,
+              90.0
+            ],
+            "relativeFlow": 90.0,
+            "routeId": ""
+          }
         ]
       },
       {
-        "id": "route-81",
-        "segmentIds": [
-          "link-1",
-          "connector-12",
-          "link-4",
-          "connector-51",
-          "link-32"
+        "id": "decision-105",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0
+          }
+        ],
+        "linkId": "link-25",
+        "name": "South turning counts (PLACEHOLDER)",
+        "routes": [
+          {
+            "destinationLinkId": "link-44",
+            "intervalFlows": [
+              250.0,
+              250.0,
+              250.0,
+              250.0
+            ],
+            "relativeFlow": 250.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-8",
+            "intervalFlows": [
+              60.0,
+              60.0,
+              60.0,
+              60.0
+            ],
+            "relativeFlow": 60.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-20",
+            "intervalFlows": [
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ],
+            "relativeFlow": 50.0,
+            "routeId": ""
+          }
         ]
       },
       {
-        "id": "route-83",
-        "segmentIds": [
-          "link-13",
-          "connector-23",
-          "link-16",
-          "connector-52",
-          "link-8"
-        ]
-      },
-      {
-        "id": "route-85",
-        "segmentIds": [
-          "link-13",
-          "connector-23",
-          "link-16",
-          "connector-53",
-          "link-32"
-        ]
-      },
-      {
-        "id": "route-87",
-        "segmentIds": [
-          "link-13",
-          "connector-24",
-          "link-16",
-          "connector-54",
-          "link-44"
-        ]
-      },
-      {
-        "id": "route-89",
-        "segmentIds": [
-          "link-25",
-          "connector-35",
-          "link-28",
-          "connector-55",
-          "link-44"
-        ]
-      },
-      {
-        "id": "route-91",
-        "segmentIds": [
-          "link-25",
-          "connector-35",
-          "link-28",
-          "connector-56",
-          "link-8"
-        ]
-      },
-      {
-        "id": "route-93",
-        "segmentIds": [
-          "link-25",
-          "connector-36",
-          "link-28",
-          "connector-57",
-          "link-20"
-        ]
-      },
-      {
-        "id": "route-95",
-        "segmentIds": [
-          "link-37",
-          "connector-47",
-          "link-40",
-          "connector-58",
-          "link-32"
-        ]
-      },
-      {
-        "id": "route-97",
-        "segmentIds": [
-          "link-37",
-          "connector-47",
-          "link-40",
-          "connector-59",
-          "link-20"
-        ]
-      },
-      {
-        "id": "route-99",
-        "segmentIds": [
-          "link-37",
-          "connector-48",
-          "link-40",
-          "connector-60",
-          "link-8"
+        "id": "decision-107",
+        "intervals": [
+          {
+            "endTime": 900.0,
+            "startTime": 0.0
+          },
+          {
+            "endTime": 1800.0,
+            "startTime": 900.0
+          },
+          {
+            "endTime": 2700.0,
+            "startTime": 1800.0
+          },
+          {
+            "endTime": 3600.0,
+            "startTime": 2700.0
+          }
+        ],
+        "linkId": "link-37",
+        "name": "North turning counts (PLACEHOLDER)",
+        "routes": [
+          {
+            "destinationLinkId": "link-32",
+            "intervalFlows": [
+              220.0,
+              220.0,
+              220.0,
+              220.0
+            ],
+            "relativeFlow": 220.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-20",
+            "intervalFlows": [
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ],
+            "relativeFlow": 50.0,
+            "routeId": ""
+          },
+          {
+            "destinationLinkId": "link-8",
+            "intervalFlows": [
+              40.0,
+              40.0,
+              40.0,
+              40.0
+            ],
+            "relativeFlow": 40.0,
+            "routeId": ""
+          }
         ]
       }
     ],
@@ -235,35 +380,35 @@
         "groups": [
           {
             "amber": 3.0,
-            "greenEnd": 30.0,
-            "greenStart": 0.0,
+            "greenEnd": 116.0,
+            "greenStart": 83.0,
             "name": "West",
             "number": 1
           },
           {
             "amber": 3.0,
-            "greenEnd": 65.0,
-            "greenStart": 35.0,
+            "greenEnd": 54.0,
+            "greenStart": 28.0,
             "name": "East",
             "number": 2
           },
           {
             "amber": 3.0,
-            "greenEnd": 90.0,
-            "greenStart": 70.0,
+            "greenEnd": 24.0,
+            "greenStart": 0.0,
             "name": "South",
             "number": 3
           },
           {
             "amber": 3.0,
-            "greenEnd": 115.0,
-            "greenStart": 95.0,
+            "greenEnd": 79.0,
+            "greenStart": 58.0,
             "name": "North",
             "number": 4
           }
         ],
         "id": "controller-61",
-        "name": "Four-leg",
+        "name": "Owner timing plan (2026-09-25)",
         "offset": 0.0
       }
     ],
@@ -646,25 +791,26 @@
         "displayType": "default",
         "from": {
           "laneId": "lane-5",
-          "linkId": "link-4"
+          "linkId": "link-4",
+          "station": 37.0
         },
         "fromLaneCount": 1,
         "geometry": [
           {
-            "x": -16.0,
+            "x": -23.0,
             "y": 9.0
           },
           {
-            "x": -12.422084005449191,
-            "y": 9.33278559339988
+            "x": -17.51681209908305,
+            "y": 8.80527164528443
           },
           {
-            "x": -9.02796356039928,
-            "y": 10.47076158239968
+            "x": -11.80661075474049,
+            "y": 9.064057720758479
           },
           {
-            "x": -6.49486133514973,
-            "y": 12.62335678019964
+            "x": -7.318104033027684,
+            "y": 11.04081493585329
           },
           {
             "x": -5.5,
@@ -769,25 +915,26 @@
         "displayType": "default",
         "from": {
           "laneId": "lane-17",
-          "linkId": "link-16"
+          "linkId": "link-16",
+          "station": 37.0
         },
         "fromLaneCount": 1,
         "geometry": [
           {
-            "x": 16.0,
+            "x": 23.0,
             "y": -9.0
           },
           {
-            "x": 12.422084005449191,
-            "y": -9.33278559339988
+            "x": 17.51681209908305,
+            "y": -8.80527164528443
           },
           {
-            "x": 9.02796356039928,
-            "y": -10.47076158239968
+            "x": 11.80661075474049,
+            "y": -9.064057720758479
           },
           {
-            "x": 6.49486133514973,
-            "y": -12.62335678019964
+            "x": 7.318104033027684,
+            "y": -11.04081493585329
           },
           {
             "x": 5.5,
@@ -892,25 +1039,26 @@
         "displayType": "default",
         "from": {
           "laneId": "lane-29",
-          "linkId": "link-28"
+          "linkId": "link-28",
+          "station": 37.0
         },
         "fromLaneCount": 1,
         "geometry": [
           {
             "x": -9.0,
-            "y": -16.0
+            "y": -23.0
           },
           {
-            "x": -9.33278559339988,
-            "y": -12.422084005449191
+            "x": -8.80527164528443,
+            "y": -17.51681209908305
           },
           {
-            "x": -10.47076158239968,
-            "y": -9.02796356039928
+            "x": -9.064057720758479,
+            "y": -11.80661075474049
           },
           {
-            "x": -12.62335678019964,
-            "y": -6.49486133514973
+            "x": -11.04081493585329,
+            "y": -7.318104033027684
           },
           {
             "x": -16.0,
@@ -1015,25 +1163,26 @@
         "displayType": "default",
         "from": {
           "laneId": "lane-41",
-          "linkId": "link-40"
+          "linkId": "link-40",
+          "station": 37.0
         },
         "fromLaneCount": 1,
         "geometry": [
           {
             "x": 9.0,
-            "y": 16.0
+            "y": 23.0
           },
           {
-            "x": 9.33278559339988,
-            "y": 12.422084005449191
+            "x": 8.80527164528443,
+            "y": 17.51681209908305
           },
           {
-            "x": 10.47076158239968,
-            "y": 9.02796356039928
+            "x": 9.064057720758479,
+            "y": 11.80661075474049
           },
           {
-            "x": 12.62335678019964,
-            "y": 6.49486133514973
+            "x": 11.04081493585329,
+            "y": 7.318104033027684
           },
           {
             "x": 16.0,
@@ -1095,7 +1244,7 @@
       }
     ],
     "drivingSide": "left",
-    "id": "four-leg-signalised",
+    "id": "m2.6-study-template",
     "links": [
       {
         "boundaryMarkings": [],
@@ -1609,7 +1758,7 @@
       }
     ]
   },
-  "nextId": 101,
+  "nextId": 109,
   "revision": 0,
   "schemaVersion": 14
 }

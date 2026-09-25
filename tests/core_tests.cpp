@@ -286,3 +286,39 @@ TEST(core, the_same_seed_produces_the_same_merge) {
     auto tighter = s; tighter.priorityRules[0].gapTime = 12;
     CHECK(events(tighter, 42) != reference);
 }
+// M3.2.2c. A stop line may stand on the approach before the segment that gives way -- a waiting
+// line on the Link before a Connector -- as far back as every route onto that segment must come.
+TEST(core, a_stop_line_may_stand_on_the_one_approach_before_the_yielding_segment) {
+    auto s = mergeScenario(30, 10);
+    s.segments = {{"major", 150, {"merged"}}, {"approach", 80, {"minor"}}, {"minor", 100, {"merged"}}, {"merged", 150, {}}};
+    s.routes = {{"majorRoute", {"major", "merged"}}, {"minorRoute", {"approach", "minor", "merged"}}};
+    s.priorityRules[0].yieldPosition = -30; // approach station 50: route distance 50
+    CHECK(validateScenario(s).empty());
+    const auto refusesPosition = [](const Scenario& x) {
+        const auto issues = validateScenario(x);
+        return std::any_of(issues.begin(), issues.end(), [](const auto& i) { return i.code == "INVALID_POSITION"; });
+    };
+    auto past = s; past.priorityRules[0].yieldPosition = -80.5; // beyond the start of the approach
+    CHECK(refusesPosition(past));
+    // A second way onto the yielding segment: a vehicle arriving by it never crosses the line.
+    auto bypass = s; bypass.segments.push_back({"side", 40, {"minor"}});
+    CHECK(refusesPosition(bypass));
+    auto onSegment = bypass; onSegment.priorityRules[0].yieldPosition = 0;
+    CHECK(!refusesPosition(onSegment)); // the forcing: it is the position that is refused, not the network
+    // It holds: the minor vehicle stays short of the line while the major one approaches...
+    auto held = test::withVehicles(s, {on(1, "minorRoute", 30, 0), on(2, "majorRoute", 60, 10)});
+    // ...where the same vehicle with the line at the old place, the yielding segment's end, is
+    // already past it in the same time -- so the check below had something to catch.
+    auto late = s; late.priorityRules[0].yieldPosition = 100;
+    auto free = test::withVehicles(late, {on(1, "minorRoute", 30, 0), on(2, "majorRoute", 60, 10)});
+    bool majorWasApproaching = false;
+    for (int i = 0; i < 60; ++i) {
+        held = stepSimulation(held); free = stepSimulation(free);
+        if (distanceOf(held, 2) > 0 && distanceOf(held, 2) < 150) {
+            majorWasApproaching = true;
+            CHECK(distanceOf(held, 1) <= 50 + 1e-9);
+        }
+    }
+    CHECK(majorWasApproaching);
+    CHECK(distanceOf(free, 1) > 50);
+}
