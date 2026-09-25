@@ -54,8 +54,10 @@ carriageways, 2 lanes each end to end, 8 turning Connectors, 4-group fixed-time 
 M1 geometry criterion is not met; recorded, not relaxed. It runs: 180 s, flat 1600 veh/h per
 approach, routeless inputs split by D42's equal share at each lane exit (so turning volumes are
 not counts), 126 completed, 138 never entered (queues fill the ≈50 m approaches), 6 clamps. Each
-short-turn Connector leaves 3–8 m upstream of its lane's head and so bypasses the signal — asked
-of the owner (Thai left-turn-on-red, or a slip). Not an M2.6 observation.
+short-turn Connector leaves 3–8 m upstream of its lane's head and so bypasses the signal — the owner
+confirmed it is the intended Thai left turn at all times. Not an M2.6 observation. The owner then
+asked for the network to be fixed to pass; declined for the gate — M1 times the engineer drawing,
+so a network edited by a session is not an observation (NEXT §2: it cannot be delegated).
 
 ## 2026-09-25 — M2.7b: fixed-time Signal Controllers with Signal Groups (D48)
 

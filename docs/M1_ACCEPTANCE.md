@@ -67,7 +67,7 @@ These are separate from the ten-minute drawing task.
 | Exact parsed-JSON save/reopen comparison | **Pass** — `parseDocument` → `documentJson` on the supplied file (schema 13, revision 45) gives JSON equal to the file and an equal document, checked 2026-09-25 against `c1e3ce9` |
 | Run / recovery / level checks | Run: the file compiles and runs (`trafficsim-cli --project`, seed 42, 180 s, 6 safety clamps). Recovery and levels not observed |
 | M0 plausibility observation | Pending |
-| Friction, defects and evidence paths | The short turn (`connector-14/16/18/20`) leaves each approach's first lane 3–8 m **upstream** of that lane's head, so it bypasses the signal — Thai left-turn-on-red if intended, a stop-line slip if not; owner to say. Evidence: owner's `network.traffic.json`, not committed |
+| Friction, defects and evidence paths | The short turn (`connector-14/16/18/20`) leaves each approach's first lane 3–8 m **upstream** of that lane's head, so it bypasses the signal — **the owner confirmed this is intended** (Thai left turn at all times, 2026-09-25), so it is not a defect. Evidence: owner's `network.traffic.json`, not committed |
 | M1 gate verdict | **Open** — this attempt meets the time (< 10 min, no assistance) and the save/reopen comparison, but **not the requested geometry** (turn pockets, drawn over an aerial image). Documentation use and first-attempt status not stated |
 
 Commit the completed record and any authorized evidence references. A failing exercise
