@@ -111,8 +111,10 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     // Appended, not assigned: a C++-supplied rule keeps its own two numbers. Then the resolver's
     // rules: each derived merge nobody overrode, in path order, and the authored ones (M3.2.2).
     // With no authored control this is exactly derivedPriorityRules, rule for rule.
-    for (auto& rule : resolveRightOfWay(network, table, definition.priorityDefaults).rules)
-        scenario.priorityRules.push_back(std::move(rule));
+    auto rightOfWay = resolveRightOfWay(network, table, definition.priorityDefaults);
+    for (auto& rule : rightOfWay.rules) scenario.priorityRules.push_back(std::move(rule));
+    // M3.2.3a: each runnable authored crossing, after any C++-supplied zone.
+    for (auto& zone : rightOfWay.zones) scenario.conflictZones.push_back(std::move(zone));
     return scenario; // All fields are owned values, independent of the editor model.
 }
 std::vector<ValidationIssue> connectorRuntimeIssues(const Network& network) {

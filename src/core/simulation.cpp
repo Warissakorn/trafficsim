@@ -1,4 +1,5 @@
 #include "simulation.hpp"
+#include "conflicts.hpp"
 #include "detail.hpp"
 #include "following.hpp"
 #include "routes.hpp"
@@ -18,6 +19,7 @@ Scenario canonicalScenario(Scenario scenario) {
     for (auto& segment : scenario.segments) std::sort(segment.next.begin(), segment.next.end());
     sort(scenario.routes); sort(scenario.vehicleTypes); sort(scenario.behaviours);
     sort(scenario.inputs); sort(scenario.signalPrograms); sort(scenario.signalHeads);
+    sort(scenario.conflictZones);
     return scenario;
 }
 // Spans grouped by segment, flat (CSR) so grouping costs three allocations, not one per segment.
@@ -168,14 +170,19 @@ SimState stepSimulation(const SimState& state, double dt) {
     headColors.reserve(scenario.signalHeads.size());
     for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h)
         headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], state.time));
-    next.vehicles.clear();
-    next.vehicles.reserve(vehicles.size()); // At most one survivor per vehicle; arrivals already in.
+    // Conflict zones (M3.2.3a), read from the same snapshot. Empty -- and free -- without one.
+    const auto zones = summarizeZones(scenario, index, vehicles, refs);
+    // Phase 1: every vehicle's candidate move, from the snapshot alone. Nothing is published
+    // until phase 2 has seen them all (contract §4, steps 1-3 and 6).
+    struct Move { double distance{}, speed{}, acceleration{}; FollowingMode mode{}; bool clamped{}; };
+    std::vector<Move> moves(vehicles.size());
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto& vehicle = vehicles[v];
         const auto& type = scenario.vehicleTypes[refs[v].type];
         const auto& behaviour = scenario.behaviours[refs[v].behaviour];
         const auto& parts = index.parts[refs[v].route];
         auto leader = closestVehicle(vehicle, parts, spans, buckets);
+        const auto vehicleLeader = leader; // receiving space is about vehicles, not stop lines
         double allowedDistance = leader ? std::max(0.0, leader->gap - behaviour.standstillDistance) :
                                           std::numeric_limits<double>::infinity();
         for (const auto& routeHead : index.routeHeads[refs[v].route]) {
@@ -219,19 +226,44 @@ SimState stepSimulation(const SimState& state, double dt) {
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
             if (!leader || gap < leader->gap) leader = Leader{gap, 0};
         }
+        // Conflict zones hold a vehicle by the same stop-line mechanism once more.
+        if (const auto hold = index.routeZones[refs[v].route].empty() ? std::nullopt
+                              : zoneHold(scenario, index, zones, vehicle, refs[v], vehicleLeader)) {
+            allowedDistance = std::min(allowedDistance, *hold);
+            if (!leader || *hold < leader->gap) leader = Leader{*hold, 0};
+        }
         const auto following = followingAcceleration(vehicle.speed, vehicle.desiredSpeed,
                                                        vehicle.driverFactor, type, behaviour, leader);
         const auto motion = integrate(vehicle.speed, following.acceleration, dt);
-        double speed = std::min(vehicle.desiredSpeed, motion.speed);
-        double distance = motion.distance;
-        double acceleration = following.acceleration;
-        if (distance > allowedDistance) {
-            distance = allowedDistance; speed = 0; acceleration = -vehicle.speed / dt;
-            events.emplace_back(SafetyClampEvent{time, vehicle.id});
+        auto& move = moves[v];
+        move = {motion.distance, std::min(vehicle.desiredSpeed, motion.speed), following.acceleration, following.mode, false};
+        if (move.distance > allowedDistance) {
+            move.distance = allowedDistance; move.speed = 0; move.acceleration = -vehicle.speed / dt;
+            move.clamped = true;
         }
+    }
+    // Phase 2: the swept check across all candidates at once. A cap only ever shortens a move.
+    if (!zones.empty()) {
+        std::vector<double> distances(moves.size());
+        for (std::size_t v = 0; v < moves.size(); ++v) distances[v] = moves[v].distance;
+        for (const auto& cap : sweptConflicts(scenario, index, vehicles, refs, distances)) {
+            auto& move = moves[cap.vehicle];
+            if (move.distance <= cap.distance) continue;
+            move.distance = cap.distance; move.speed = 0;
+            move.acceleration = -vehicles[cap.vehicle].speed / dt; move.clamped = true;
+        }
+    }
+    // Phase 3: publish, in vehicle order, exactly the events one pass always emitted.
+    next.vehicles.clear();
+    next.vehicles.reserve(vehicles.size()); // At most one survivor per vehicle; arrivals already in.
+    for (std::size_t v = 0; v < vehicles.size(); ++v) {
+        const auto& vehicle = vehicles[v];
+        const auto& parts = index.parts[refs[v].route];
+        const auto& move = moves[v];
+        if (move.clamped) events.emplace_back(SafetyClampEvent{time, vehicle.id});
         auto moved = vehicle;
-        moved.distance += distance; moved.speed = speed;
-        moved.acceleration = acceleration; moved.mode = following.mode;
+        moved.distance += move.distance; moved.speed = move.speed;
+        moved.acceleration = move.acceleration; moved.mode = move.mode;
         for (std::size_t i = 1; i < parts.size(); ++i)
             if (vehicle.distance < parts[i].start && moved.distance >= parts[i].start)
                 events.emplace_back(SegmentEnteredEvent{time, vehicle.id, parts[i].segmentId});
@@ -244,7 +276,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         } else {
             next.vehicles.push_back(moved);
             const auto location = locateOnParts(parts, moved);
-            events.emplace_back(MovedEvent{time, vehicle.id, location.segmentId, location.position, speed, acceleration});
+            events.emplace_back(MovedEvent{time, vehicle.id, location.segmentId, location.position, move.speed, move.acceleration});
         }
     }
     for (const auto& head : scenario.signalHeads) {

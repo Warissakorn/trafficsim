@@ -48,8 +48,11 @@ std::vector<MergeGroup> mergeGroups(const Network&, const RuntimeSections&);
 // order, then one rule per authored area of a complete, acyclic group. `issues` are runtime
 // (Run-blocking) issues; with none, `rules` is what compiles. With no authored controls the
 // result is exactly derivedPriorityRules -- the frozen fixtures and seed 42 depend on it.
+// `zones` (M3.2.3a) is one core ConflictZone per crossing area with nothing reported against it:
+// isolated, each side on one segment, decided, ruled, waiting line resolved, coverage met.
 struct RightOfWayResolution {
     std::vector<PriorityRule> rules;
+    std::vector<ConflictZone> zones;
     std::vector<ValidationIssue> issues;
 };
 RightOfWayResolution resolveRightOfWay(const Network&, const RuntimeSections&, const PriorityDefaults&);

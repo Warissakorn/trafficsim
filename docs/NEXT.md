@@ -9,28 +9,28 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.3, the admission runtime
+## Immediate — M3.2.3b, then M3.2.4
 
-**Done:** M3.2.2a (D54) — waiting lines, conflict areas and priority rules in the model, schema
-14, commands (`src/commands/right_of_way_commands.hpp`) and one resolver (`resolveRightOfWay`)
-shared by compile and diagnostics. M3.2.2b (D55) — controls follow their owners through delete,
-split, copy, lane edits and reverse. M3.2.2c (D56) — a waiting line may stand on a preceding
-Link: it compiles as a **negative** `yieldPosition` on the yielding segment, resolved along single
-predecessors only, and the core accepts it within that same chain. A `crossing` area's extents must
-contain `surfaceOverlap` (`src/model/network/conflict_coverage.cpp`). Every authored area is still
-Run-blocked with `UNSUPPORTED_CONFLICT_RUNTIME`.
+**Done:** M3.2.2a–c (D54–D56) — authored waiting lines, conflict areas and priority rules
+(schema 14), their lifecycle, preceding-Link waiting lines and crossing coverage. **M3.2.3a
+(D57)** — one isolated crossing runs:
+- `resolveRightOfWay` emits a core `ConflictZone` (`src/core/types.hpp`).
+- `src/core/conflicts.*` admits by gap time and headway, holds the grant until the rear clears,
+  checks receiving space, and caps same-tick requests (the swept check).
+- `stepSimulation` runs compute → swept check → publish.
+- Areas it cannot run are refused by name: `UNSUPPORTED_CONFLICT_SPAN`,
+  `UNSUPPORTED_CONFLICT_GROUP`, and `UNSUPPORTED_CONFLICT_RUNTIME` for merges.
 
-**Next, M3.2.3** ([M3_CONTRACT.md](M3_CONTRACT.md) §4, [M3_PLAN.md](M3_PLAN.md) §M3.2.3, rows
-A09–A17 of [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md)). Start with the interface:
-- The compiled form of a **crossing** area: segment intervals plus route-relative waiting, entry
-  and exit distances, built from the resolver's located sides.
-- Then owned grant state in `SimState`, rear-clearance release, and swept-interval checks.
+**Next, M3.2.3b** (ROADMAP row; contract §4; A15):
+1. Merge areas on the zone solver. A merge's two sides share the downstream segment, so the
+   minor side's "area" is the join; keep the M3.1 derived rules for untouched merges (A01).
+2. Connected groups admitted atomically: two areas with no vehicle-length waiting space between
+   them reserve together; lift `UNSUPPORTED_CONFLICT_GROUP` only for what that handles.
+3. Sides spanning a section cut: route-relative intervals instead of one segment each.
+4. Receiving space reserved for competing requests from different zones in the same tick.
+5. The Run UI's statement that only authored areas are protected (M3_PLAN §2).
 
-Lift `UNSUPPORTED_CONFLICT_RUNTIME` only for the topologies the runtime really handles, and keep a
-named blocker for the rest. Two inputs from M3.2.2c:
-- `surfaceOverlap` is the area's geometric extent.
-- A bypassable waiting line (`CONFLICT_WAITING_LINE_BYPASSED`) could be accepted once incidence is
-  route-aware (D56 "revisit").
+Then **M3.2.4**, the conflict-area and priority-rule editor.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas
@@ -58,6 +58,8 @@ through traffic in a shared kerb lane, because there is no lane changing until M
 - **`redraw()` copying only the primary Link** (item 6 of the 2026-09-23 pass): −1.2% of
   `redraw()`, inside the clock's spread; a frame is dominated by `QGraphicsItem` construction.
   What is left in a frame is M1.23's culling and LOD.
+- **Publishing inline when a scenario has no zone** (M3.2.3a): measured at 52.05M instructions
+  against 51.29M for the three-phase loop; reverted. The split costs +4.1% of `stepSimulation`.
 - **Not booked:** `compileDocument` (paid once per Run, not per tick) and the `push_back` work
   left in `occupiedSpans`. The per-tick fleet sort is already a merge.
 - **Measure the engine with callgrind, not the clock,** when resolving a few percent: wall time

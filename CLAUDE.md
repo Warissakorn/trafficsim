@@ -18,9 +18,11 @@ repository, or any package until the owner decides.
 
 - **Gates:** M1 usability accepted by owner ruling (D49; `docs/M1_ACCEPTANCE.md` keeps what the
   attempt did not show). M2's gate passed by the owner's judgment (D51–D53, `docs/M2_GATE.md`).
-  **M0 plausibility is still open.** M3.2.2a–c are done (D54–D56); next is **M3.2.3**, the admission runtime — `docs/NEXT.md`.
+  **M0 plausibility is still open.** M3.2.2a–c and M3.2.3a are done (D54–D57): one isolated authored crossing runs; next is
+  **M3.2.3b** — `docs/NEXT.md`.
 - **Engine:** C++ core, reduced Wiedemann-inspired car-following (unvalidated), fixed-time signals,
-  derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50).
+  derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50),
+  authored crossing areas admitted by gap time/headway with whole-area reservation (M3.2.3a, D57).
   Contracts: `docs/SIMULATION.md`.
 - **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md`. Project files are
   schema 14 (authored right-of-way controls, M3.2.2a, D54); unsupported network-object fields
