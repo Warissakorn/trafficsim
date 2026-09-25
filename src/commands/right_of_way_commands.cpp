@@ -13,27 +13,39 @@ template<class T> void put(std::vector<T>& values, T value) {
 template<class T> void remove(std::vector<T>& values, const std::string& id) {
     if (!std::erase_if(values, [&](const auto& v) { return v.id == id; })) throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
 }
-// How far upstream of the join a taken-over merge's side begins, and where its waiting line
-// stands. The same 1 m the derived rule waits short of the join (D50), so a take-over compiles
-// to what the fallback already ran.
+// How far upstream of the join a taken-over merge's waiting line stands: the same 1 m the derived
+// rule waits short of the join (D50), so a take-over compiles to what the fallback already ran.
 constexpr double kMergeSideLength = 1.0;
-struct Side { ControlPathRef path; double join{}; };
-// The authored coordinates of an incoming runtime segment, at the point it joins the merge.
+// A taken-over side in authored coordinates: its waiting line, entry and exit (the join).
+struct Side { ControlPathRef path; double wait{}, entry{}, exit{}; };
+// Every station is chosen on the runtime segment itself, then converted to the authored polyline.
+// Choosing it on the authored polyline was only exact for a path that IS that polyline: lane 2
+// of a curved range is a translated copy with other segment lengths (connector_paths.cpp).
+// The entry is at most half the segment back, so it cannot fall into the previous section.
 Side sideOf(const Network& n, const RuntimeSections& table, const std::string& segment) {
     for (const auto& path : table.paths) {
         if (path.id != segment) continue;
         for (const auto& c : n.connectors)
             for (int i = 0; i < std::max(c.fromLaneCount, c.toLaneCount); ++i)
-                if (connectorPathId(c, i) == segment)
+                if (connectorPathId(c, i) == segment) {
+                    const double length = polylineLength(path.geometry);
+                    const auto base = [&](double s) { return matchedStation(path.geometry, c.geometry, s); };
                     return {{"", "", c.id, path.from.laneId, path.to.laneId},
-                            matchedStation(path.geometry, c.geometry, polylineLength(path.geometry))};
+                            base(std::max(0.0, length - kMergeSideLength)),
+                            base(length - std::min(kMergeSideLength, length / 2)), base(length)};
+                }
     }
     for (const auto& section : table.sections) {
         if (section.id != segment) continue;
         for (const auto& link : n.links)
-            if (link.id == section.linkId)
-                return {{link.id, section.laneId, "", "", ""},
-                        matchedStation(laneGeometry(link, section.laneId, n.drivingSide), link.geometry, section.end)};
+            if (link.id == section.linkId) {
+                const auto lane = laneGeometry(link, section.laneId, n.drivingSide);
+                const auto reference = [&](double s) { return matchedStation(lane, link.geometry, s); };
+                // A station exactly on a cut resolves upstream (sectionForStation), so the waiting
+                // line never goes further back than the entry does.
+                const double entry = section.end - std::min(kMergeSideLength, (section.end - section.start) / 2);
+                return {{link.id, section.laneId, "", "", ""}, reference(entry), reference(entry), reference(section.end)};
+            }
     }
     throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
 }
@@ -74,11 +86,8 @@ std::vector<std::string> takeOverMerge(ProjectDocument& d, const std::string& se
     std::vector<Side> sides;
     for (const auto& segment : group->incoming) sides.push_back(sideOf(d.network, table, segment));
     std::vector<std::string> lines;
-    for (const auto& side : sides)
-        lines.push_back(putWaitingLine(d, {"", "", {side.path, std::max(0.0, side.join - kMergeSideLength)}}));
-    const auto sideAt = [&](std::size_t k) {
-        return ConflictSide{sides[k].path, std::max(0.0, sides[k].join - kMergeSideLength), sides[k].join, lines[k]};
-    };
+    for (const auto& side : sides) lines.push_back(putWaitingLine(d, {"", "", {side.path, side.wait}}));
+    const auto sideAt = [&](std::size_t k) { return ConflictSide{sides[k].path, sides[k].entry, sides[k].exit, lines[k]}; };
     std::vector<std::string> created;
     // The fallback's order: each later incoming path gives way to every earlier one.
     for (std::size_t j = 1; j < sides.size(); ++j)

@@ -35,6 +35,22 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M3.2.2a scrutinised: four defects fixed before M3.2.2b (D55)
+
+An outsider review of M3.2.2a found, and a test now forces each (all four fail on `44380b1`):
+1. A take-over placed its waiting line on the Connector's stored polyline, so lane 2 of a curved
+   range compiled 47.255 m instead of the fallback's 47.239 m — D54's "exactly the fallback"
+   held only for a path that IS that polyline. Stations are now chosen on the runtime segment
+   and converted to authored coordinates (`sideOf`).
+2. `resolveRightOfWay` could throw inside `buildScenario` (unchecked, must not throw):
+   `sectionForStation` threw `UNKNOWN_LANE`. `locate` now reports unresolved instead.
+3. A waiting line off its path's end was silently replaced by the segment end; it is now
+   `CONFLICT_UNRESOLVED_PATH` on the line, and its station is kept (no clamping).
+4. A side on an upstream section shorter than 1 m resolved into the previous section; the entry
+   is now at most half the segment back.
+Recorded, not fixed: id uniqueness is checked against network ids only, not route/input ids
+(`allocateId` already avoids clashes for commands).
+
 ## 2026-09-25 — M3.2.2a: authored right-of-way controls at the file/model seam (D54)
 
 **What exists now.** `src/model/network/control.hpp` — `ControlPathRef` (a Link lane, or a

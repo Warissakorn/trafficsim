@@ -226,3 +226,81 @@ TEST(rightofway, until_m3_2_2b_owner_deletes_are_refused_and_lane_changes_leave_
     validateDocument(stale);
     CHECK(has(resolve(stale).issues, "CONFLICT_UNRESOLVED_PATH"));
 }
+TEST(rightofway, a_taken_over_lane_two_of_a_curved_range_compiles_to_the_fallback) {
+    // Scrutiny finding 1 (D55): the waiting line was placed on the Connector's stored polyline,
+    // which is exact only for the path that IS that polyline.
+    ProjectDocument d;
+    const auto x = addLink(d, {{0, 0}, {100, 0}}, 2, 3.5);
+    const auto p = addLink(d, {{-100, 60}, {-20, 40}}, 1, 3.5);
+    const auto r = addLink(d, {{-100, -60}, {-20, -40}}, 2, 3.5);
+    const auto lane = [&](const std::string& link, int k) { return editableLink(d, link).lanes[k].id; };
+    addConnector(d, {p, lane(p, 0)}, {x, lane(x, 1)});                    // drawn first: priority
+    const auto range = addConnectorRange(d, {r, lane(r, 0)}, {x, lane(x, 0)}, 2, 2);
+    const auto table = runtimeSections(d.network);
+    const auto derived = derivedPriorityRules(table, kDefaults);
+    const auto yielding = connectorPathId(d.network.connectors.back(), 1);
+    CHECK(d.network.connectors.back().id == range);
+    const auto fallback = std::find_if(derived.begin(), derived.end(), [&](const auto& x) { return x.yieldSegmentId == yielding; });
+    CHECK(fallback != derived.end());
+    // The forcing: on this path the old base-polyline placement really is off.
+    const auto& base = d.network.connectors.back().geometry;
+    const auto path = std::find_if(table.paths.begin(), table.paths.end(), [&](const auto& x) { return x.id == yielding; });
+    const double old = matchedStation(base, path->geometry, polylineLength(base) - 1);
+    CHECK(std::abs(old - fallback->yieldPosition) > 1e-6);
+    // The consequence: the take-over now compiles to the fallback's rule.
+    std::string section;
+    for (const auto& g : mergeGroups(d.network, table))
+        if (std::find(g.incoming.begin(), g.incoming.end(), yielding) != g.incoming.end()) section = g.section;
+    takeOverMerge(d, section, kDefaults);
+    const auto res = resolve(d);
+    const auto taken = std::find_if(res.rules.begin(), res.rules.end(), [&](const auto& x) { return x.yieldSegmentId == yielding; });
+    CHECK(taken != res.rules.end()); CHECK(taken->id.rfind("right-of-way/", 0) == 0);
+    test::near(taken->yieldPosition, fallback->yieldPosition, 1e-9);
+    test::near(taken->conflictPosition, fallback->conflictPosition, 1e-9);
+}
+TEST(rightofway, the_resolver_never_throws_on_a_reference_it_cannot_locate) {
+    // Scrutiny finding 2: buildScenario must not throw, and locate calls geometry that can.
+    auto d = fixture::fourLegIntersection().document;
+    takeOverMerge(d, mergeAt(d, 2), kDefaults);
+    const RuntimeSections empty;
+    const auto& somePath = d.network.links.front();
+    // The forcing: this table really does make the geometry helper throw.
+    test::throws([&] { sectionForStation(empty, somePath.lanes.front().id, 0); }, "UNKNOWN_LANE");
+    auto probe = d; // a side on a Link lane is what reaches sectionForStation
+    probe.network.rightOfWay.conflictAreas.front().first.path = {somePath.id, somePath.lanes.front().id, "", "", ""};
+    probe.network.rightOfWay.conflictAreas.front().first.entryStation = 1;
+    probe.network.rightOfWay.conflictAreas.front().first.exitStation = 2;
+    const auto r = resolveRightOfWay(probe.network, empty, kDefaults); // must not throw
+    CHECK(has(r.issues, "CONFLICT_UNRESOLVED_PATH"));
+}
+TEST(rightofway, a_waiting_line_past_its_path_end_is_reported_not_clamped) {
+    auto d = fixture::fourLegIntersection().document;
+    takeOverMerge(d, mergeAt(d, 2), kDefaults);
+    CHECK(!has(resolve(d).issues, "CONFLICT_UNRESOLVED_PATH"));
+    d.network.rightOfWay.waitingLines.front().point.station = 1e4;
+    validateDocument(d);
+    CHECK(has(resolve(d).issues, "CONFLICT_UNRESOLVED_PATH"));
+    CHECK(d.network.rightOfWay.waitingLines.front().point.station == 1e4);
+}
+TEST(rightofway, a_short_upstream_section_is_taken_over_into_its_own_group) {
+    // Scrutiny finding 4: a section shorter than 1 m put the entry into the previous section.
+    ProjectDocument d;
+    const auto x = addLink(d, {{0, 0}, {100, 0}}, 1, 3.5);
+    const auto y = addLink(d, {{60, 30}, {100, 30}}, 1, 3.5);
+    const auto z = addLink(d, {{0, 40}, {40, 20}}, 1, 3.5);
+    const auto lane = [&](const std::string& link) { return editableLink(d, link).lanes[0].id; };
+    addConnector(d, {x, lane(x), 50.0}, {y, lane(y)});
+    addConnector(d, {z, lane(z)}, {x, lane(x), 50.6});
+    const auto table = runtimeSections(d.network);
+    std::string section;
+    for (const auto& g : mergeGroups(d.network, table))
+        if (g.incoming.size() == 2) section = g.section;
+    CHECK(!section.empty());
+    const auto upstream = std::find_if(table.sections.begin(), table.sections.end(),
+        [&](const auto& s) { return s.laneId == lane(x) && s.end > 50 && s.end < 51; });
+    CHECK(upstream != table.sections.end()); CHECK(upstream->end - upstream->start < 1); // the forcing
+    takeOverMerge(d, section, kDefaults);
+    const auto r = resolve(d);
+    CHECK(!has(r.issues, "CONFLICT_MERGE_TOPOLOGY")); CHECK(!has(r.issues, "CONFLICT_UNRESOLVED_PATH"));
+    CHECK(rulesWithPrefix(r, "right-of-way/") == 1);
+}

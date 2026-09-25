@@ -46,8 +46,8 @@ bool connectorKind(const ControlPathRef& p) {
 // A point on the runtime: the segment and the metres along it. Empty when the reference no longer
 // resolves to exactly one path, or the station lies off the object it names.
 struct Located { std::string segment; double position{}; double length{}; };
-std::optional<Located> locate(const Network& n, const RuntimeSections& table, const ControlPathRef& ref,
-                              double station) {
+std::optional<Located> locateChecked(const Network& n, const RuntimeSections& table, const ControlPathRef& ref,
+                                     double station) {
     if (!std::isfinite(station) || station < 0) return std::nullopt;
     if (linkKind(ref)) {
         const auto* link = findLink(n, ref.linkId);
@@ -74,6 +74,12 @@ std::optional<Located> locate(const Network& n, const RuntimeSections& table, co
     const auto& path = *matches.front();
     const double length = polylineLength(path.geometry);
     return Located{path.id, matchedStation(connector->geometry, path.geometry, station), length};
+}
+// buildScenario is unchecked assembly that must not throw (network.hpp), and the geometry helpers
+// throw on degenerate input. A reference that cannot be located is unresolved, never an exception.
+std::optional<Located> locate(const Network& n, const RuntimeSections& table, const ControlPathRef& ref,
+                              double station) {
+    try { return locateChecked(n, table, ref, station); } catch (const std::exception&) { return std::nullopt; }
 }
 }
 std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
@@ -194,6 +200,10 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
         result.rules.push_back(rule);
     }
     const auto add = [&](const char* code, const std::string& path) { result.issues.push_back({code, path}); };
+    // A line off the end of its path after a reshape is reported, never clamped onto it (§1).
+    for (std::size_t i = 0; i < row.waitingLines.size(); ++i)
+        if (!locate(n, table, row.waitingLines[i].point.path, row.waitingLines[i].point.station))
+            add("CONFLICT_UNRESOLVED_PATH", "rightOfWay.waitingLines[" + std::to_string(i) + "]");
     struct Resolved { const ConflictArea* area; std::string path; std::optional<Located> first, second; };
     std::vector<Resolved> resolved;
     for (std::size_t i = 0; i < row.conflictAreas.size(); ++i) {
