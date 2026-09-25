@@ -410,7 +410,7 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`.
 | M3.2.1 | Contracts and acceptance design | Prepared; documentation only, no runtime claim |
 | M3.2.2a | Waiting lines, conflict areas and priority rules: model, schema 14, commands, one effective-priority resolver (D54) | **Implemented 2026-09-25**; A01–A04, A06–A08 tested; every authored area Run-blocked until M3.2.3 |
 | M3.2.2b | Reference lifecycle (A05): delete cascade, split remap (straddle refused), copy with every owner, lane/retarget edits keep identity, reverse refused (D55) | **Implemented 2026-09-25**; `rightofway_lifecycle.*`, both driving sides, curved Link, Undo/Redo |
-| M3.2.2c | A waiting line on a preceding Link; crossing-coverage check (extents meet the real overlap) | Open; carved from M3.2.2b — resolver features, not lifecycle |
+| M3.2.2c | A waiting line on a preceding Link; crossing-coverage check (extents contain the real overlap) (D56) | **Implemented 2026-09-25**; `rightofway_resolution.*`, curved Link, both driving sides |
 | M3.2.3 | Crossing occupancy, admission, rear clearance and downstream space | Open; no-overlap, congestion accounting and exact replay |
 | M3.2.4 | Conflict-area and priority-rule editor | Open; supported runtime effects, bilingual mouse/keyboard workflows |
 | M3.2.5 | Stop/Yield with signal composition | Open; each vehicle serves Stop, Yield can pass, green retains physical safety |

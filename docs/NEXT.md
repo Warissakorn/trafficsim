@@ -9,22 +9,28 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.2c, then M3.2.3
+## Immediate — M3.2.3, the admission runtime
 
 **Done:** M3.2.2a (D54) — waiting lines, conflict areas and priority rules in the model, schema
 14, commands (`src/commands/right_of_way_commands.hpp`) and one resolver (`resolveRightOfWay`)
-shared by compile and diagnostics; scrutinised and four defects fixed (D55). M3.2.2b (D55) —
-controls follow their owners through delete, split, copy, lane edits and reverse
-(`detail::removeControlsOn`/`splitControls`/`copyControls`, `src/commands/detail.hpp`).
-Every authored area is still Run-blocked with `UNSUPPORTED_CONFLICT_RUNTIME`.
+shared by compile and diagnostics. M3.2.2b (D55) — controls follow their owners through delete,
+split, copy, lane edits and reverse. M3.2.2c (D56) — a waiting line may stand on a preceding
+Link: it compiles as a **negative** `yieldPosition` on the yielding segment, resolved along single
+predecessors only, and the core accepts it within that same chain. A `crossing` area's extents must
+contain `surfaceOverlap` (`src/model/network/conflict_coverage.cpp`). Every authored area is still
+Run-blocked with `UNSUPPORTED_CONFLICT_RUNTIME`.
 
-**Next, M3.2.2c:** (1) a waiting line on a *preceding* Link — today the resolver requires it on
-the side's own path (`CONFLICT_WAITING_LINE_UNSUPPORTED`); resolve it along the routes that
-reach the side, and convert to the yielding segment's coordinates. (2) A crossing-coverage check:
-a `crossing` area's two extents must cover the real overlap of the two lane surfaces
-(`laneBoundaryGeometry` / `connectorBoundaries`), else a named Run blocker — never a guessed
-area. Then **M3.2.3**, the admission runtime ([M3_PLAN.md](M3_PLAN.md) §M3.2.3), which lifts
-`UNSUPPORTED_CONFLICT_RUNTIME`.
+**Next, M3.2.3** ([M3_CONTRACT.md](M3_CONTRACT.md) §4, [M3_PLAN.md](M3_PLAN.md) §M3.2.3, rows
+A09–A17 of [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md)). Start with the interface:
+- The compiled form of a **crossing** area: segment intervals plus route-relative waiting, entry
+  and exit distances, built from the resolver's located sides.
+- Then owned grant state in `SimState`, rear-clearance release, and swept-interval checks.
+
+Lift `UNSUPPORTED_CONFLICT_RUNTIME` only for the topologies the runtime really handles, and keep a
+named blocker for the rest. Two inputs from M3.2.2c:
+- `surfaceOverlap` is the area's geometric extent.
+- A bypassable waiting line (`CONFLICT_WAITING_LINE_BYPASSED`) could be accepted once incidence is
+  route-aware (D56 "revisit").
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

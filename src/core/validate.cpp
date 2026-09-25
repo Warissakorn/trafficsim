@@ -72,8 +72,22 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         const auto p = "priorityRules[" + std::to_string(i) + "]";
         number(rule.gapTime, p + ".gapTime", true); number(rule.headway, p + ".headway", true);
         const auto yieldOn = segments.find(rule.yieldSegmentId), conflictOn = segments.find(rule.conflictSegmentId);
+        // M3.2.2c: the minor approach may wait before the segment that yields -- a waiting line on
+        // the Link before a Connector -- but only as far back as EVERY route onto that segment
+        // must come: along its chain of single predecessors. Past a second predecessor, a route
+        // could reach the conflict without ever crossing the line.
+        double upstream = 0;
+        std::set<std::string> chain{rule.yieldSegmentId};
+        for (auto at = rule.yieldSegmentId;;) {
+            const auto feeding = predecessors.find(at);
+            if (feeding == predecessors.end() || feeding->second.size() != 1) break;
+            const auto before = segments.find(feeding->second.front());
+            if (before == segments.end() || !chain.insert(before->first).second) break;
+            upstream += before->second->length;
+            at = before->first;
+        }
         if (yieldOn == segments.end()) add("UNKNOWN_SEGMENT", p + ".yieldSegmentId");
-        else if (!std::isfinite(rule.yieldPosition) || rule.yieldPosition < 0 ||
+        else if (!std::isfinite(rule.yieldPosition) || rule.yieldPosition < -upstream ||
                  rule.yieldPosition > yieldOn->second->length) add("INVALID_POSITION", p + ".yieldPosition");
         if (conflictOn == segments.end()) add("UNKNOWN_SEGMENT", p + ".conflictSegmentId");
         else if (!std::isfinite(rule.conflictPosition) || rule.conflictPosition < 0 ||

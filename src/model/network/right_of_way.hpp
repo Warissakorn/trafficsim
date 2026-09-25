@@ -18,6 +18,21 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network&);
 std::string resolveControlPath(const Network&, const RuntimeSections&, const ControlPathRef&,
                                double station);
 
+// M3.2.2c. Where two lane surfaces really overlap, as an interval of authored stations on each
+// path's own polyline (a Link's reference polyline, a Connector's base polyline) -- the numbers a
+// crossing area's extents must contain. A surface is the quad strip between the lane's two
+// boundaries, vertex for vertex with that polyline, so a station names the same cross-section
+// matchedStation does. `none` is no overlap of positive area (a shared edge is not a crossing);
+// `unsupported` names what this resolver cannot measure honestly -- two overlaps (the paths
+// cross twice), a strip folded on a tight bend, boundaries that do not correspond -- and
+// `unresolved` a path that does not name exactly one lane or Connector path.
+struct StationInterval { double from{}, to{}; };
+struct SurfaceOverlap {
+    enum class Status { overlap, none, unsupported, unresolved } status{Status::unresolved};
+    StationInterval first, second;
+};
+SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const ControlPathRef& second);
+
 // One merge: the incoming segments that arrive on one section, in drawing order -- the order
 // derivedPriorityRules ranks them in. `explicitControl` is set when an authored area covers two
 // of them; the authored areas then own the whole group (§3, policy 2).

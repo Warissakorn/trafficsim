@@ -35,6 +35,34 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M3.2.2c: waiting lines upstream, crossing coverage measured (D56)
+
+The resolver now places a waiting line wherever it stands upstream of its side. It walks the
+runtime graph backwards from the side's entry segment, along single predecessors only, and
+compiles the line as metres along the yielding segment: negative when the line stands before that
+segment. A line some route can go round is `CONFLICT_WAITING_LINE_BYPASSED`; a line nowhere
+upstream of the side is `CONFLICT_WAITING_LINE_NOT_UPSTREAM`. Both replace
+`CONFLICT_WAITING_LINE_UNSUPPORTED`. The core accepts a negative `yieldPosition` down to the length
+of that same chain of single predecessors (`src/core/validate.cpp`), so the check lives in both
+places. The simulation already measured the stop line in route distance, so no engine code
+changed; a new core test shows a vehicle held at a line on the approach.
+
+A `crossing` area is checked against `surfaceOverlap` (`src/model/network/conflict_coverage.cpp`),
+which intersects the two lane surfaces quad by quad and reads the overlap back as authored stations.
+The codes are:
+- `CONFLICT_NO_OVERLAP`: nothing to protect, and a shared edge is not a crossing.
+- `CONFLICT_EXTENT_UNCOVERED`: an extent, named by side, falls short of the overlap.
+- `CONFLICT_GEOMETRY_UNSUPPORTED`: two separate overlaps, or a strip folded on a tight bend.
+
+Found and fixed on the way: a waiting line earlier on the side's own lane, in an earlier section,
+was compiled at the end of the yielding section without a word (0.6 m instead of −30 m in the test).
+
+New tests are in `tests/right_of_way_resolution_tests.cpp` (`rightofway_resolution.*`, 5) and
+`core.a_stop_line_may_stand_on_the_one_approach_before_the_yielding_segment`. Five of the six fail
+on the pre-M3.2.2c resolver and core validation. The sixth checks the new measurement against an
+independent ray-casting reading of the geometry, on a curved two-lane Link with both driving sides.
+Test runs: Linux headless 28/28 and desktop 42/42 offscreen. Seed 42 is byte-identical.
+
 ## 2026-09-25 — M3.2.2b: controls follow their owners (D55)
 
 `src/commands/detail.hpp` gains `removeControlsOn`, `controlsNameLink`, `checkSplitControls`/
@@ -370,3 +398,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D53 | 2026-09-25 | **The M2 gate is passed on the owner's word** | Under D51 the verdict is the owner's, and the owner reported "M2.6 passed". Recorded as *not disproven* (D8). The study's site, counts, file and Results table were not supplied; the record says so rather than filling them in. M3 may start. | Evidence that the study did not meet C1, or a later owner ruling. |
 | D54 | 2026-09-25 | **M3.2.2 is split: M3.2.2a ships the authored model, schema 14, commands and the resolver; the reference lifecycle is M3.2.2b** | One system per session. The file/model seam — types, strict codec, History commands and ONE effective-priority resolver used by both compile and diagnostics — is testable on its own (A01–A04, A06–A08). Lifecycle (split/copy/retarget/resize/delete remapping, A05) touches every geometry command and is its own slice; until it lands, deleting a Link or Connector a control names is refused whole (safe but blunt), and a lane change leaves a stale, Run-blocked draft; `rightofway.until_m3_2_2b_*` pins both. Every authored area is Run-blocked (`UNSUPPORTED_CONFLICT_RUNTIME`) until M3.2.3, even an explicit merge the M3.1 mechanism could already run, because the plan says new controls stay blocked until their runtime is implemented. A taken-over merge compiles to exactly the fallback's rule (same 1 m waiting line, D50), so reversing it is the only change an author makes. Stop controls and queue counters are left to M3.2.5/M3.2.6, where their runtime lands. | M3.2.2b, or the M3.2.3 admission solver changing what a compiled area needs. |
 | D55 | 2026-09-25 | **Authored controls follow their owners the way signal heads do; a split through one is refused; lane edits never retarget** | Deleting a Link or Connector (including a drag that detaches a Connector) cascades the areas on it, their rules, the lines on it and lines that served only those areas, in the same command, so Undo restores the whole relationship. A split moves stations by the same arithmetic as Connector ends and maps lane ids through the split's replacements; a Connector lane pair whose end moved downstream takes the new lane id. A control in or across the 0.2 m span is refused (`EDIT_SPLIT_CONTROL`) rather than guessed (contract §1, first slice). Copy takes a control only when every owner was copied — a Connector lane pair needs both end Links, because only then do its lane ids map. Lane-count and retarget edits are allowed and keep ids: a pair that no longer matches is a Run-blocked `CONFLICT_UNRESOLVED_PATH`, never an ordinal pick (§6). Reverse is refused like a head. The M3.2.2a scrutiny fixes ride under this number too. A waiting line on a preceding Link and crossing coverage are resolver work, carved to M3.2.2c. Recorded, not fixed: control ids are unique against network ids only. | An editor surface (M3.2.4) that lets an author select a control, which would need copy/delete of the control itself. |
+| D56 | 2026-09-25 | **A waiting line is compiled as metres along the yielding segment, negative on the approach; it resolves only along single predecessors; crossing extents must contain the measured overlap** | "Upstream on every applicable route" (contract §1) is read off the runtime graph instead of the routes. Walking back from the side's entry, a segment with a second predecessor means some vehicle can reach the conflict without crossing the line. That is a named blocker, not a guess. A diverge is harmless: the core applies a rule only to routes through the yielding segment. Keeping the rule on the yielding segment, with a negative position, is what makes it apply to exactly those routes. Putting it on the line's segment would hold vehicles that turn away. The core's bound follows the same chain, so the two cannot disagree. Coverage uses the lane strips vertex for vertex with the authored polyline, so an overlap station is the cross-section `matchedStation` names. A larger extent is the author's choice; a smaller one, no overlap, two overlaps or a folded strip block Run. | Route-aware incidence (M3.2.3) that proves a bypassing route never reaches the area; a folded strip handled by `trimSelfIntersections`-style repair instead of refusal. |

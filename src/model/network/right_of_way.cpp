@@ -6,6 +6,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 
 namespace trafficsim {
 const char* conflictKindName(ConflictKind kind) { return kind == ConflictKind::crossing ? "crossing" : "merge"; }
@@ -179,6 +180,51 @@ bool cyclic(const std::vector<std::string>& nodes, const std::multimap<std::stri
     for (const auto& v : nodes) if (state[v] == 0 && visit(v)) return true;
     return false;
 }
+// The runtime graph read backwards: what feeds each segment, and each segment's length.
+struct Upstream { std::map<std::string, std::vector<std::string>> feeding; std::map<std::string, double> length; };
+Upstream upstreamOf(const RuntimeSections& table) {
+    Upstream u;
+    for (const auto& s : table.sections) {
+        u.length[s.id] = s.end - s.start;
+        for (const auto& next : s.next) u.feeding[next].push_back(s.id);
+    }
+    for (std::size_t p = 0; p < table.paths.size(); ++p) {
+        u.length[table.paths[p].id] = polylineLength(table.paths[p].geometry);
+        u.feeding[table.pathNext[p]].push_back(table.paths[p].id);
+    }
+    return u;
+}
+// Where a side's waiting line holds a vehicle, in metres along the side's entry segment --
+// negative on the approach before it (M3.2.2c). The walk follows single predecessors only: the
+// line must be upstream of entry on EVERY route (contract §1), so a line some route can go
+// round is a named blocker, never a guess. `problem` is set exactly when `at` is empty.
+struct Wait { std::optional<double> at; const char* problem{}; };
+Wait waitOn(const Upstream& u, const Located& line, const Located& entry) {
+    const auto reaches = [&](const std::string& from) { // is the line anywhere upstream?
+        std::set<std::string> seen;
+        std::vector<std::string> open{from};
+        while (!open.empty()) {
+            const auto at = open.back(); open.pop_back();
+            if (at == line.segment) return true;
+            if (!seen.insert(at).second) continue;
+            if (const auto f = u.feeding.find(at); f != u.feeding.end())
+                open.insert(open.end(), f->second.begin(), f->second.end());
+        }
+        return false;
+    };
+    double before = 0;
+    std::set<std::string> seen;
+    for (std::string at = entry.segment;;) {
+        if (at == line.segment) return {before + line.position, nullptr};
+        const auto f = u.feeding.find(at);
+        if (f == u.feeding.end() || f->second.empty() || !seen.insert(at).second)
+            return {std::nullopt, "CONFLICT_WAITING_LINE_NOT_UPSTREAM"};
+        if (f->second.size() > 1)
+            return {std::nullopt, reaches(at) ? "CONFLICT_WAITING_LINE_BYPASSED" : "CONFLICT_WAITING_LINE_NOT_UPSTREAM"};
+        at = f->second.front();
+        before -= u.length.at(at);
+    }
+}
 }
 RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& table,
                                        const PriorityDefaults& defaults) {
@@ -204,29 +250,50 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
     for (std::size_t i = 0; i < row.waitingLines.size(); ++i)
         if (!locate(n, table, row.waitingLines[i].point.path, row.waitingLines[i].point.station))
             add("CONFLICT_UNRESOLVED_PATH", "rightOfWay.waitingLines[" + std::to_string(i) + "]");
-    struct Resolved { const ConflictArea* area; std::string path; std::optional<Located> first, second; };
+    struct Resolved {
+        const ConflictArea* area; std::string path; std::optional<Located> first, second;
+        std::optional<double> waitFirst, waitSecond;
+    };
     std::vector<Resolved> resolved;
+    const auto upstream = upstreamOf(table);
     for (std::size_t i = 0; i < row.conflictAreas.size(); ++i) {
         const auto& a = row.conflictAreas[i];
         const auto path = "rightOfWay.conflictAreas[" + std::to_string(i) + "]";
         // Nothing authored here runs before M3.2.3 implements the crossing/merge admission solver.
         add("UNSUPPORTED_CONFLICT_RUNTIME", path);
         Resolved r{&a, path, locate(n, table, a.first.path, a.first.entryStation),
-                   locate(n, table, a.second.path, a.second.entryStation)};
+                   locate(n, table, a.second.path, a.second.entryStation), {}, {}};
         if (!r.first) add("CONFLICT_UNRESOLVED_PATH", path + ".first");
         if (!r.second) add("CONFLICT_UNRESOLVED_PATH", path + ".second");
         if (a.priority == ConflictPriority::undetermined) add("CONFLICT_UNDETERMINED", path);
         else if (std::none_of(row.priorityRules.begin(), row.priorityRules.end(),
                               [&](const auto& rule) { return rule.conflictAreaId == a.id; }))
             add("CONFLICT_RULE_MISSING", path);
-        for (const auto& [side, name] : {std::pair{&a.first, ".first"}, std::pair{&a.second, ".second"}}) {
+        for (const auto& [side, entry, wait, name] :
+             {std::tuple{&a.first, &r.first, &r.waitFirst, ".first"}, std::tuple{&a.second, &r.second, &r.waitSecond, ".second"}}) {
             const auto line = std::find_if(row.waitingLines.begin(), row.waitingLines.end(),
                                            [&](const auto& w) { return w.id == side->waitingLineId; });
-            // The first slice waits on the side's own path, upstream of entry. A line on a
-            // preceding Link is in the contract but not resolved yet, so it blocks Run.
-            if (line == row.waitingLines.end() || !(line->point.path == side->path))
-                add("CONFLICT_WAITING_LINE_UNSUPPORTED", path + name);
-            else if (line->point.station > side->entryStation) add("CONFLICT_WAITING_LINE_AFTER_ENTRY", path + name);
+            // A line or an entry that does not locate was reported above; nothing to measure.
+            const auto at = line == row.waitingLines.end() ? std::nullopt
+                                                           : locate(n, table, line->point.path, line->point.station);
+            if (!at || !*entry) continue;
+            const auto held = waitOn(upstream, *at, **entry);
+            if (!held.at) add(held.problem, path + name);
+            else if (*held.at > (*entry)->position) add("CONFLICT_WAITING_LINE_AFTER_ENTRY", path + name);
+            else *wait = held.at;
+        }
+        if (a.kind == ConflictKind::crossing && r.first && r.second) {
+            const auto overlap = surfaceOverlap(n, a.first.path, a.second.path);
+            if (overlap.status == SurfaceOverlap::Status::none) add("CONFLICT_NO_OVERLAP", path);
+            else if (overlap.status != SurfaceOverlap::Status::overlap) add("CONFLICT_GEOMETRY_UNSUPPORTED", path);
+            else {
+                // The authored extents must contain the real overlap; a larger area is allowed,
+                // a smaller one would admit a vehicle into space another already occupies.
+                if (a.first.entryStation > overlap.first.from || a.first.exitStation < overlap.first.to)
+                    add("CONFLICT_EXTENT_UNCOVERED", path + ".first");
+                if (a.second.entryStation > overlap.second.from || a.second.exitStation < overlap.second.to)
+                    add("CONFLICT_EXTENT_UNCOVERED", path + ".second");
+            }
         }
         if (a.kind == ConflictKind::merge && r.first && r.second &&
             (r.first->segment == r.second->segment || !groupOf(r.first->segment) ||
@@ -241,7 +308,7 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
         std::vector<const Resolved*> members;
         std::multimap<std::string, std::string> edges;
         std::string first;
-        bool complete = true;
+        bool complete = true, held = true;
         for (std::size_t i = 0; i < g.incoming.size(); ++i)
             for (std::size_t j = i + 1; j < g.incoming.size(); ++j) {
                 int covering = 0;
@@ -251,8 +318,8 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
                     if (!((s1 == g.incoming[i] && s2 == g.incoming[j]) || (s1 == g.incoming[j] && s2 == g.incoming[i]))) continue;
                     ++covering; members.push_back(&r);
                     if (first.empty()) first = r.path;
-                    if (r.area->priority == ConflictPriority::firstYields) edges.insert({s1, s2});
-                    else if (r.area->priority == ConflictPriority::secondYields) edges.insert({s2, s1});
+                    if (r.area->priority == ConflictPriority::firstYields) { edges.insert({s1, s2}); held &= r.waitFirst.has_value(); }
+                    else if (r.area->priority == ConflictPriority::secondYields) { edges.insert({s2, s1}); held &= r.waitSecond.has_value(); }
                     else complete = false;
                     if (std::none_of(row.priorityRules.begin(), row.priorityRules.end(),
                                      [&](const auto& rule) { return rule.conflictAreaId == r.area->id; }))
@@ -264,21 +331,16 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
         const bool loops = cyclic(g.incoming, edges);
         if (loops) for (const auto* r : members) add("CONFLICT_PRIORITY_CYCLE", r->path);
         if (!complete && !loops) add("CONFLICT_GROUP_INCOMPLETE", first);
-        if (!complete || loops) continue;
+        // A yielding side with no place to wait was reported by name above; compile nothing for it.
+        if (!complete || loops || !held) continue;
         for (const auto* r : members) {
             const auto& a = *r->area;
             const bool firstYields = a.priority == ConflictPriority::firstYields;
-            const auto& yieldSide = firstYields ? a.first : a.second;
             const auto& major = firstYields ? *r->second : *r->first;
             const auto& minor = firstYields ? *r->first : *r->second;
-            const auto line = std::find_if(row.waitingLines.begin(), row.waitingLines.end(),
-                                           [&](const auto& w) { return w.id == yieldSide.waitingLineId; });
-            const auto wait = line == row.waitingLines.end() ? std::nullopt
-                                                              : locate(n, table, line->point.path, line->point.station);
+            const double yieldAt = firstYields ? *r->waitFirst : *r->waitSecond; // <0: on the approach
             const auto rule = std::find_if(row.priorityRules.begin(), row.priorityRules.end(),
                                            [&](const auto& x) { return x.conflictAreaId == a.id; });
-            // A waiting line that did not land on the yielding segment was reported above.
-            const double yieldAt = wait && wait->segment == minor.segment ? wait->position : minor.length;
             result.rules.push_back({"right-of-way/" + a.id, minor.segment, yieldAt, major.segment, major.length,
                                     rule->gapTime, rule->headway});
         }

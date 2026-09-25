@@ -82,7 +82,7 @@ struct PriorityDefaults {
 };
 struct PriorityRule {
     std::string id;
-    std::string yieldSegmentId; double yieldPosition{};      // where the minor approach waits
+    std::string yieldSegmentId; double yieldPosition{};      // where the minor approach waits; <0 is before the segment
     std::string conflictSegmentId; double conflictPosition{}; // the point on the major approach
     double gapTime{};   // seconds: a major vehicle arriving sooner than this is not yielded to
     double headway{};   // metres: a major vehicle closer than this to the point blocks regardless

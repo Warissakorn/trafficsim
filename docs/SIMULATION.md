@@ -163,6 +163,9 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   **not** block: a queue that is not moving is a gap, and treating it as a block would deadlock
   the minor approach. **This is a threshold test, not gap acceptance as the literature defines
   it** — no distribution, no driver variation, nothing calibrated. Rule 4 applies.
+  `yieldPosition` is metres along `yieldSegmentId`; since M3.2.2c it may be **negative**, a stop
+  line on the approach before that segment, but no further back than its chain of single
+  predecessors, so every route that reaches the yielding segment crosses the line (D56).
 - Rules for a Connector arriving inside a lane body are **derived from the drawing**, never
   persisted, with their two numbers read from `data/priority-rules/`. Run refuses such a network
   with `EDIT_NO_PRIORITY_DEFAULTS` if those cannot be read, rather than defaulting to a zero gap

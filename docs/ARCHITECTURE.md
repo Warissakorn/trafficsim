@@ -45,6 +45,8 @@ std::vector<ValidationIssue> validateNetwork(const Network&);
 
 // model/network/right_of_way.hpp (M3.2.2a): the one resolver compile and diagnostics share
 RightOfWayResolution resolveRightOfWay(const Network&, const RuntimeSections&, const PriorityDefaults&);
+// ... and what a crossing area's extents are checked against (M3.2.2c, conflict_coverage.cpp)
+SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef&, const ControlPathRef&);
 
 // project/load.hpp
 LoadedScenario loadScenario(const std::filesystem::path& file,
