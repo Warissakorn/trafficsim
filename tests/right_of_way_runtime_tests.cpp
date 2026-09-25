@@ -3,6 +3,7 @@
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include "../src/project/run.hpp"
+#include "../src/core/conflicts.hpp"
 using namespace trafficsim;
 using namespace rowfixture;
 // M3.2.3a: an authored crossing compiles to a core ConflictZone and runs; what the first slice
@@ -162,4 +163,39 @@ TEST(rightofway_runtime, a_taken_over_three_way_merge_runs_without_a_hold_cycle)
     // The three streams keep moving: all demand served, nobody left stuck at the join.
     CHECK(fallback.completed > 100); CHECK(fallback.vehicles.empty()); // the forcing: it all clears
     CHECK(end.completed == fallback.completed); CHECK(end.vehicles.empty());
+}
+// M3.2.5a: Stop and Yield at the minor waiting line, through the document (A18/A19 at the seam).
+TEST(rightofway_runtime, a_yield_control_runs_exactly_as_no_control_and_a_stop_makes_every_minor_vehicle_stop) {
+    auto c = crossing(3);
+    const auto data = test::root() / "data";
+    const auto stream = [&](const Scenario& s) {
+        std::vector<SimEvent> out;
+        runSimulation(s, 42, [&](const SimEvent& e) { out.push_back(e); });
+        return out;
+    };
+    const auto plain = stream(compileDocument(c.d, data).scenario);
+    setAreaControl(c.d, c.area, StopMode::yield); validateDocument(c.d);
+    const auto yielding = compileDocument(c.d, data).scenario;
+    CHECK(yielding.conflictZones.front().control == ZoneControl::yield);
+    CHECK(stream(yielding) == plain); // Yield is the gap test the area already runs
+    setAreaControl(c.d, c.area, StopMode::stop); validateDocument(c.d);
+    const auto stopping = compileDocument(c.d, data).scenario;
+    CHECK(stopping.conflictZones.front().control == ZoneControl::stop);
+    // Every minor vehicle that crosses the line stood still at it first.
+    const auto& zone = stopping.conflictZones.front();
+    std::map<std::uint64_t, bool> stood, crossed;
+    int minorVehicles = 0;
+    auto state = createSimulation(stopping, 42);
+    while (state.tick < totalTicks(stopping)) {
+        for (const auto& v : state.vehicles) {
+            // Slots index the canonical scenario the state holds, not `stopping`'s order.
+            if (state.scenario->routes[v.routeIndex].segmentIds.front() != zone.minor.segmentIds.front()) continue;
+            if (v.distance > zone.waitPosition + 1e-9) { if (!crossed[v.id]) { crossed[v.id] = true; ++minorVehicles; } continue; }
+            if (v.speed == 0 && zone.waitPosition - v.distance <= stopLineReach(stopping.behaviours.front(), v.driverFactor)) stood[v.id] = true;
+        }
+        state = stepSimulation(state);
+    }
+    CHECK(minorVehicles > 20); // the forcing: the Stop is exercised by real demand
+    for (const auto& [id, went] : crossed) if (went) CHECK(stood[id]);
+    CHECK(stream(stopping) != plain);
 }

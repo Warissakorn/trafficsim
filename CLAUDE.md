@@ -18,15 +18,15 @@ repository, or any package until the owner decides.
 
 - **Gates:** M1 usability accepted by owner ruling (D49; `docs/M1_ACCEPTANCE.md` keeps what the
   attempt did not show). M2's gate passed by the owner's judgment (D51–D53, `docs/M2_GATE.md`).
-  **M0 plausibility is still open.** M3.2.2a–c, M3.2.3a–c and M3.2.4a–b are done (D54–D61): authored crossings and merges run on
-  the admission solver and have an editor tab and canvas tool; next is **M3.2.5**, Stop and Yield — `docs/NEXT.md`.
+  **M0 plausibility is still open.** M3.2.2a–c, M3.2.3a–c, M3.2.4a–b and M3.2.5a are done (D54–D62): authored crossings and merges run on
+  the admission solver with Stop/Yield, and have an editor tab and canvas tool; next is **M3.2.5b**, Stop/Yield in the editor — `docs/NEXT.md`.
 - **Engine:** C++ core, reduced Wiedemann-inspired car-following (unvalidated), fixed-time signals,
   derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50),
   authored crossing and merge areas admitted by gap time/headway with whole-area reservation
   (M3.2.3a–c, D57–D59).
   Contracts: `docs/SIMULATION.md`.
 - **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md`. Project files are
-  schema 14 (authored right-of-way controls, M3.2.2a, D54); unsupported network-object fields
+  schema 15 (authored right-of-way controls, M3.2.2a, D54; Stop/Yield controls, M3.2.5a, D62); unsupported network-object fields
   fail on load rather than vanish on save.
   Scenario JSON and editor `*.traffic.json` are **two formats on purpose** — read
   `NETWORK_EDITOR.md` §"Two file kinds" and D19a before touching either loader.

@@ -25,7 +25,7 @@ TEST(rightofway, a02_taken_over_merge_round_trips_with_no_derived_state) {
     CHECK(areas.size() == 1);
     validateDocument(d);
     const auto file = documentJson(d);
-    CHECK(file["schemaVersion"] == 14);
+    CHECK(file["schemaVersion"] == 15);
     const auto back = parseDocument(Json::parse(file.dump()));
     CHECK(back.network.rightOfWay == d.network.rightOfWay);
     CHECK(documentJson(back) == file);
@@ -67,7 +67,7 @@ TEST(rightofway, a03_bad_controls_are_refused_and_change_nothing) {
     test::throws([&] { parseDocument(badEnum); }, "INVALID_ENUM");
     auto older = file; older["schemaVersion"] = 13;
     test::throws([&] { parseDocument(older); }, "");
-    auto future = file; future["schemaVersion"] = 15;
+    auto future = file; future["schemaVersion"] = 16;
     test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
     CHECK(parseDocument(file).network.rightOfWay == area);
 }

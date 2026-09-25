@@ -98,12 +98,17 @@ struct ZoneSide {
     std::vector<std::string> segmentIds; double entry{}, exit{};
     bool operator==(const ZoneSide&) const = default;
 };
+// M3.2.5 (contract §5). `yield` is admission by gap alone: a minor vehicle with a clear gap never
+// has to stop. `stop` also requires each minor vehicle to serve the waiting line first -- stand at
+// it for one complete tick -- before it may cross, gap or no gap.
+enum class ZoneControl { yield, stop };
 struct ConflictZone {
     std::string id;
     ZoneSide major, minor;
     double waitPosition{}; // on minor.segmentId: where a minor vehicle waits for admission
     double gapTime{};      // seconds, as PriorityRule
     double headway{};      // metres, as PriorityRule
+    ZoneControl control{ZoneControl::yield};
     bool operator==(const ConflictZone&) const = default;
 };
 struct ScenarioDefinition {
@@ -155,6 +160,7 @@ struct RouteZone {
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
     std::vector<std::vector<RouteZone>> routeZones;  // parallel to Scenario::routes, in conflictZones order
+    bool stopZones{};                                // any zone is a Stop: only then is service tracked
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
     std::vector<std::vector<RouteHead>> routeHeads;  // parallel to Scenario::routes, in signalHeads order
     std::vector<std::vector<RouteRule>> routeRules;  // parallel to Scenario::routes, in priorityRules order
@@ -231,6 +237,14 @@ struct ArrivedEvent {
 };
 using SimEvent = std::variant<SignalEvent, DepartedEvent, MovedEvent,
                               SegmentEnteredEvent, SafetyClampEvent, ArrivedEvent>;
+// M3.2.5: one vehicle's service at a Stop line (contract §5). `line` is the route distance of the
+// next Stop line it has not passed; `since` the tick whose start first found it standing there.
+// It has served the line once a whole tick has run since then. Kept only while the line is ahead
+// of or under the vehicle, so passing a line clears it; a new run starts with none.
+struct StopService {
+    std::uint64_t vehicleId{}; double line{}; std::uint64_t since{};
+    bool operator==(const StopService&) const = default;
+};
 struct SimState {
     // Detached at createSimulation; copies share only this immutable scenario.
     std::shared_ptr<const Scenario> scenario;
@@ -242,6 +256,7 @@ struct SimState {
     std::vector<InputState> inputs;
     std::vector<Vehicle> vehicles;
     std::vector<SimEvent> events; // Latest step only.
+    std::vector<StopService> stopService; // sorted by vehicle id; empty without a Stop zone
 };
 struct ValidationIssue {
     std::string code, path;

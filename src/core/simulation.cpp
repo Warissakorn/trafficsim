@@ -177,6 +177,16 @@ SimState stepSimulation(const SimState& state, double dt) {
         headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], state.time));
     // Conflict zones (M3.2.3a), read from the same snapshot. Empty -- and free -- without one.
     const auto zones = summarizeZones(scenario, index, vehicles, refs);
+    // Stop service (M3.2.5), from the same snapshot and only when some zone is a Stop.
+    // Kept out of the per-vehicle loop entirely when no zone is a Stop: that loop is the engine's
+    // hot path, and a branch per vehicle there measured +1% of stepSimulation.
+    auto service = index.stopZones ? refreshStops(scenario, index, vehicles, refs, state.stopService, state.tick)
+                                   : std::vector<StopService>{};
+    std::vector<const StopService*> stopOf(service.empty() ? 0 : vehicles.size(), nullptr);
+    for (std::size_t v = 0, s = 0; v < stopOf.size() && s < service.size(); ++v) {
+        while (s < service.size() && service[s].vehicleId < vehicles[v].id) ++s;
+        if (s < service.size() && service[s].vehicleId == vehicles[v].id) stopOf[v] = &service[s];
+    }
     // Phase 1: every vehicle's candidate move, from the snapshot alone. Nothing is published
     // until phase 2 has seen them all (contract §4, steps 1-3 and 6).
     struct Move { double distance{}, speed{}, acceleration{}; FollowingMode mode{}; bool clamped{}; };
@@ -236,7 +246,8 @@ SimState stepSimulation(const SimState& state, double dt) {
         }
         // Conflict zones hold a vehicle by the same stop-line mechanism once more.
         if (const auto hold = index.routeZones[refs[v].route].empty() ? std::nullopt
-                              : zoneHold(scenario, index, zones, vehicle, refs[v], vehicleLeader)) {
+                              : zoneHold(scenario, index, zones, vehicle, refs[v], vehicleLeader,
+                                         stopOf.empty() ? nullptr : stopOf[v], state.tick)) {
             allowedDistance = std::min(allowedDistance, *hold);
             if (!leader || *hold < leader->gap) leader = Leader{*hold, 0};
         }
@@ -250,6 +261,10 @@ SimState stepSimulation(const SimState& state, double dt) {
             move.clamped = true;
         }
     }
+    // A Stop finishes the stop the model only approaches (M3.2.5): from below walking pace, so at
+    // most kStoppedSpeed/dt of ordinary braking -- not an emergency clamp.
+    for (std::size_t v = 0; v < stopOf.size(); ++v)
+        if (restsAtStop(stopOf[v], state.tick)) moves[v] = {0, 0, -vehicles[v].speed / dt, FollowingMode::braking, false};
     // Phase 2: requests resolved across all candidates at once -- the swept check and shared
     // receiving space. A cap only ever shortens a move.
     if (!zones.empty()) {
@@ -283,7 +298,7 @@ SimState stepSimulation(const SimState& state, double dt) {
                 time - vehicle.enteredTime,
                 vehicle.enteredTime - vehicle.scheduledTime, routeLength / vehicle.desiredSpeed});
         } else {
-            next.vehicles.push_back(moved);
+            next.vehicles.push_back(std::move(moved));
             const auto location = locateOnParts(parts, moved);
             events.emplace_back(MovedEvent{time, vehicle.id, location.segmentId, location.position, move.speed, move.acceleration});
         }
@@ -294,6 +309,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         if (color != signalColorAt(program, state.time)) events.emplace_back(SignalEvent{time, head.id, color});
     }
     next.tick = tick; next.time = time;
+    next.stopService = std::move(service);
     // Retain demand due in the last subinterval, even though it cannot enter this run.
     if (tick == totalTicks(scenario)) detail::generateArrivals(next);
     return next;

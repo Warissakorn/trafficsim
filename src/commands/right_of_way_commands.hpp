@@ -3,13 +3,17 @@
 // runs it inside History::execute, which validates the whole document and makes it one undoable
 // step. A failed edit therefore changes nothing (docs/M3_CONTRACT.md §6).
 #include "../project/document.hpp"
+#include <optional>
 
 namespace trafficsim {
 // Empty id allocates; the same id replaces. Structural checks run when the edit commits.
 std::string putWaitingLine(ProjectDocument&, WaitingLine);
 std::string putConflictArea(ProjectDocument&, ConflictArea);
 std::string putPriorityRule(ProjectDocument&, AuthoredPriorityRule);
-// Refused (EDIT_REFERENCED) while a conflict side still waits at it.
+// M3.2.5. Empty id allocates ("stop-N"); the same id replaces.
+std::string putStopControl(ProjectDocument&, StopControl);
+void deleteStopControl(ProjectDocument&, const std::string& id);
+// Refused (EDIT_REFERENCED) while a conflict side still waits at it or a Stop/Yield control names it.
 void deleteWaitingLine(ProjectDocument&, const std::string& id);
 // Removes the area's rule with it: a rule means nothing without its area.
 void deleteConflictArea(ProjectDocument&, const std::string& id);
@@ -52,6 +56,11 @@ ConflictPriority cycleConflictPriority(ProjectDocument&, const std::string& area
 // Slides a waiting line along its own path. A station past the area's entry is kept, not
 // refused: the resolver reports it (CONFLICT_WAITING_LINE_AFTER_ENTRY) and Run refuses it.
 void moveWaitingLine(ProjectDocument&, const std::string& lineId, double station);
+// M3.2.5, the editor's control gesture: what a driver must do at the line where this area gives
+// way -- Stop, Yield, or nothing (std::nullopt). The mode belongs to the line, so it applies to
+// every area the line's control already names; a control left with no area goes. Throws
+// EDIT_UNKNOWN_OBJECT, or EDIT_UNDETERMINED_PRIORITY while no side of the area gives way.
+void setAreaControl(ProjectDocument&, const std::string& areaId, std::optional<StopMode>);
 // Deletes an area with its rule and the waiting lines no other area uses.
 void removeConflictArea(ProjectDocument&, const std::string& areaId);
 }

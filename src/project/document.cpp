@@ -41,7 +41,16 @@ Json rightOfWayJson(const RightOfWay& row) {
                          {"second",side(a.second)},{"priority",conflictPriorityName(a.priority)}});
     for(const auto& r:row.priorityRules)
         rules.push_back({{"id",r.id},{"name",r.name},{"conflictAreaId",r.conflictAreaId},{"gapTime",r.gapTime},{"headway",r.headway}});
-    return {{"waitingLines",lines},{"conflictAreas",areas},{"priorityRules",rules}};
+    Json result={{"waitingLines",lines},{"conflictAreas",areas},{"priorityRules",rules}};
+    // M3.2.5, schema 15: only when there is one, so a file without controls keeps its keys.
+    if(!row.stopControls.empty()) {
+        Json controls=Json::array();
+        for(const auto& c:row.stopControls)
+            controls.push_back({{"id",c.id},{"name",c.name},{"waitingLineId",c.waitingLineId},
+                                {"mode",stopModeName(c.mode)},{"conflictAreaIds",c.conflictAreaIds}});
+        result["stopControls"]=controls;
+    }
+    return result;
 }
 Json reference(const LaneReference& r) {
     Json result={{"linkId",r.linkId},{"laneId",r.laneId}};
@@ -68,7 +77,7 @@ Json documentJson(const ProjectDocument& d) {
     }
     if (!d.network.rightOfWay.empty()) network["rightOfWay"] = rightOfWayJson(d.network.rightOfWay);
     const auto& b = d.background;
-    return {{"format", "TrafficSim"}, {"schemaVersion", 14}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
+    return {{"format", "TrafficSim"}, {"schemaVersion", 15}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
@@ -91,7 +100,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 14) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 15) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -130,6 +139,7 @@ std::string allocateId(ProjectDocument& d, const std::string& prefix) {
     for (const auto& w : d.network.rightOfWay.waitingLines) used.insert(w.id);
     for (const auto& a : d.network.rightOfWay.conflictAreas) used.insert(a.id);
     for (const auto& r : d.network.rightOfWay.priorityRules) used.insert(r.id);
+    for (const auto& c : d.network.rightOfWay.stopControls) used.insert(c.id);
     if (d.definition) {
         for (const auto& r : d.definition->routes) used.insert(r.id);
         for (const auto& i : d.definition->inputs) used.insert(i.id);

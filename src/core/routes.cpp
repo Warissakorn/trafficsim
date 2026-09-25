@@ -96,6 +96,8 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
     // major vehicle is seen on its whole approach and a chain is followed across section cuts.
     index.routeZones.reserve(scenario.routes.size());
     for (std::size_t r = 0; r < scenario.routes.size(); ++r) index.routeZones.push_back(zoneIncidence(scenario, index.parts[r]));
+    index.stopZones = std::any_of(scenario.conflictZones.begin(), scenario.conflictZones.end(),
+                                  [](const auto& z) { return z.control == ZoneControl::stop; });
     return index;
 }
 const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenario& scenario, const Route& route) {

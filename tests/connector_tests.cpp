@@ -47,7 +47,7 @@ TEST(connectors, create_turn_straight_and_uturn_on_both_driving_sides) {
         anchored(d);validateDocument(d);
         const auto json=documentJson(d);
         CHECK(documentJson(parseDocument(Json::parse(json.dump())))==json);
-        CHECK(json["schemaVersion"]==14);
+        CHECK(json["schemaVersion"]==15);
     }
 }
 TEST(connectors, invalid_creation_preserves_ids_revision_savepoint_and_redo) {

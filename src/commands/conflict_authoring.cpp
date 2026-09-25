@@ -58,6 +58,9 @@ std::vector<std::string> addCrossingAreas(ProjectDocument& d, const std::string&
 void setConflictControl(ProjectDocument& d, const std::string& areaId, const std::string& name,
                         ConflictPriority priority, double gapTime, double headway) {
     auto changed = area(d, areaId);
+    // Another side giving way waits at another line, so the Stop/Yield the old line set no longer
+    // applies to this area (M3.2.5); it is cleared rather than left naming the wrong line.
+    if (changed.priority != priority && changed.priority != ConflictPriority::undetermined) setAreaControl(d, areaId, std::nullopt);
     changed.name = name; changed.priority = priority;
     putConflictArea(d, changed);
     auto& rules = d.network.rightOfWay.priorityRules;
@@ -102,6 +105,19 @@ void restoreAutomaticPriorityOf(ProjectDocument& d, const std::string& areaId) {
     const auto section = mergeSectionOfArea(d.network, runtimeSections(d.network), area(d, areaId));
     if (section.empty()) throw std::invalid_argument("EDIT_NO_MERGE");
     restoreAutomaticPriority(d, section);
+}
+void setAreaControl(ProjectDocument& d, const std::string& areaId, std::optional<StopMode> mode) {
+    const auto a = area(d, areaId);
+    if (a.priority == ConflictPriority::undetermined) throw std::invalid_argument("EDIT_UNDETERMINED_PRIORITY");
+    const auto line = (a.priority == ConflictPriority::firstYields ? a.first : a.second).waitingLineId;
+    auto& controls = d.network.rightOfWay.stopControls;
+    for (auto& c : controls) std::erase(c.conflictAreaIds, areaId);
+    std::erase_if(controls, [](const auto& c) { return c.conflictAreaIds.empty(); });
+    if (!mode) return;
+    const auto at = std::find_if(controls.begin(), controls.end(), [&](const auto& c) { return c.waitingLineId == line; });
+    if (at == controls.end()) { putStopControl(d, {"", "", line, *mode, {areaId}}); return; }
+    at->mode = *mode; // one line, one control: the mode is the line's
+    at->conflictAreaIds.push_back(areaId);
 }
 void removeConflictArea(ProjectDocument& d, const std::string& areaId) {
     const auto removed = area(d, areaId);

@@ -132,7 +132,9 @@ ConflictSide conflictSide(const Json& value, const std::string& path, int versio
             field<double>(value,"exitStation"),field<std::string>(value,"waitingLineId")};
 }
 RightOfWay rightOfWay(const Json& value, int version) {
-    knownFields(value,{"waitingLines","conflictAreas","priorityRules"},"network.rightOfWay",version);
+    // `stopControls` exists from schema 15 (M3.2.5); an older file naming it fails to load.
+    if(version>=15)knownFields(value,{"waitingLines","conflictAreas","priorityRules","stopControls"},"network.rightOfWay",version);
+    else knownFields(value,{"waitingLines","conflictAreas","priorityRules"},"network.rightOfWay",version);
     RightOfWay row;
     if(present(value,"waitingLines"))for(const auto& w:array(value,"waitingLines")) {
         const auto path="rightOfWay.waitingLines["+std::to_string(row.waitingLines.size())+"]";
@@ -155,6 +157,17 @@ RightOfWay rightOfWay(const Json& value, int version) {
         knownFields(r,{"id","name","conflictAreaId","gapTime","headway"},path,version);
         row.priorityRules.push_back({field<std::string>(r,"id"),present(r,"name")?field<std::string>(r,"name"):"",
             field<std::string>(r,"conflictAreaId"),field<double>(r,"gapTime"),field<double>(r,"headway")});
+    }
+    if(version>=15 && present(value,"stopControls"))for(const auto& c:array(value,"stopControls")) {
+        const auto path="rightOfWay.stopControls["+std::to_string(row.stopControls.size())+"]";
+        knownFields(c,{"id","name","waitingLineId","mode","conflictAreaIds"},path,version);
+        StopControl control{field<std::string>(c,"id"),present(c,"name")?field<std::string>(c,"name"):"",
+            field<std::string>(c,"waitingLineId"),stopModeFromName(field<std::string>(c,"mode")),{}};
+        for(const auto& area:array(c,"conflictAreaIds")) {
+            if(!area.is_string())throw std::invalid_argument("Expected text: conflictAreaIds");
+            control.conflictAreaIds.push_back(area.get<std::string>());
+        }
+        row.stopControls.push_back(std::move(control));
     }
     return row;
 }

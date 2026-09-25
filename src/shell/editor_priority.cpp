@@ -148,6 +148,7 @@ bool EditorWindow::selectConflict(const std::string& id) {
     const auto& row = history_.document().network.rightOfWay;
     std::string area = id;
     for (const auto& r : row.priorityRules) if (r.id == id) area = r.conflictAreaId;
+    for (const auto& c : row.stopControls) if (c.id == id && !c.conflictAreaIds.empty()) area = c.conflictAreaIds.front();
     for (const auto& a : row.conflictAreas)
         if (a.first.waitingLineId == id || a.second.waitingLineId == id) { area = a.id; break; }
     for (int r = 0; r < conflictTable_->rowCount(); ++r)

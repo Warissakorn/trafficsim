@@ -3,8 +3,8 @@
 // the project network and are persisted with it. Everything derived from them (runtime segments,
 // route incidence, the compiled core PriorityRule) is computed, never stored.
 //
-// This first slice carries waiting lines, conflict areas and their priority rules. Stop/Yield
-// controls and queue counters are M3.2.5/M3.2.6 and are not here yet.
+// Waiting lines, conflict areas, their priority rules and (M3.2.5) Stop/Yield controls. Queue
+// counters are M3.2.6 and are not here yet.
 #include <string>
 #include <vector>
 
@@ -43,11 +43,21 @@ struct AuthoredPriorityRule {
     std::string id, name, conflictAreaId; double gapTime{}, headway{};
     bool operator==(const AuthoredPriorityRule&) const = default;
 };
+// M3.2.5 (contract §1, §5): what a driver must do at one waiting line before crossing the areas
+// it controls. `yield` is the gap test alone; `stop` also means a full stop at the line. At most
+// one control per line, and every area it names gives way at exactly that line.
+enum class StopMode { stop, yield };
+struct StopControl {
+    std::string id, name, waitingLineId; StopMode mode{StopMode::stop};
+    std::vector<std::string> conflictAreaIds;
+    bool operator==(const StopControl&) const = default;
+};
 struct RightOfWay {
     std::vector<WaitingLine> waitingLines;
     std::vector<ConflictArea> conflictAreas;
     std::vector<AuthoredPriorityRule> priorityRules;
-    bool empty() const { return waitingLines.empty() && conflictAreas.empty() && priorityRules.empty(); }
+    std::vector<StopControl> stopControls; // schema 15
+    bool empty() const { return waitingLines.empty() && conflictAreas.empty() && priorityRules.empty() && stopControls.empty(); }
     bool operator==(const RightOfWay&) const = default;
 };
 const char* conflictKindName(ConflictKind);
@@ -55,4 +65,6 @@ const char* conflictPriorityName(ConflictPriority);
 // Throw std::invalid_argument("INVALID_ENUM") on anything else, so a bad file fails to load.
 ConflictKind conflictKindFromName(const std::string&);
 ConflictPriority conflictPriorityFromName(const std::string&);
+const char* stopModeName(StopMode);
+StopMode stopModeFromName(const std::string&);
 }

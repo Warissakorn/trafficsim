@@ -115,7 +115,7 @@ TEST(signals, schema_13_round_trips_and_schema_12_programs_migrate_colour_for_co
         putSignalHead(d, head);
     }
     const auto before = d;
-    auto file = documentJson(d); CHECK(file["schemaVersion"] == 14);
+    auto file = documentJson(d); CHECK(file["schemaVersion"] == 15);
     // Schema 13 keeps whatever it was given: a legacy program written today is not rewritten.
     CHECK(parseDocument(file) == d);
     file["schemaVersion"] = 12;

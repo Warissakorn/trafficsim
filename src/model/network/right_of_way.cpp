@@ -29,6 +29,12 @@ ConflictPriority conflictPriorityFromName(const std::string& name) {
     if (name == "undetermined") return ConflictPriority::undetermined;
     throw std::invalid_argument("INVALID_ENUM");
 }
+const char* stopModeName(StopMode mode) { return mode == StopMode::stop ? "stop" : "yield"; }
+StopMode stopModeFromName(const std::string& name) {
+    if (name == "stop") return StopMode::stop;
+    if (name == "yield") return StopMode::yield;
+    throw std::invalid_argument("INVALID_ENUM");
+}
 namespace {
 const Link* findLink(const Network& n, const std::string& id) {
     for (const auto& l : n.links) if (l.id == id) return &l;
@@ -132,6 +138,20 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
         else if (!ruled.insert(r.conflictAreaId).second) add("DUPLICATE_PRIORITY_RULE", path + ".conflictAreaId");
         if (!std::isfinite(r.gapTime) || r.gapTime <= 0 || !std::isfinite(r.headway) || r.headway <= 0)
             add("INVALID_PRIORITY_RULE", path);
+    }
+    std::set<std::string> controlledLines, controlledAreas;
+    for (std::size_t i = 0; i < row.stopControls.size(); ++i) {
+        const auto& c = row.stopControls[i];
+        const auto path = "rightOfWay.stopControls[" + std::to_string(i) + "]";
+        id(c.id, path);
+        if (!lines.contains(c.waitingLineId)) add("UNKNOWN_WAITING_LINE", path + ".waitingLineId");
+        else if (!controlledLines.insert(c.waitingLineId).second) add("DUPLICATE_STOP_CONTROL", path + ".waitingLineId");
+        if (c.conflictAreaIds.empty()) add("INVALID_STOP_CONTROL", path + ".conflictAreaIds");
+        for (std::size_t k = 0; k < c.conflictAreaIds.size(); ++k) {
+            const auto at = path + ".conflictAreaIds[" + std::to_string(k) + "]";
+            if (!areas.contains(c.conflictAreaIds[k])) add("UNKNOWN_CONFLICT_AREA", at);
+            else if (!controlledAreas.insert(c.conflictAreaIds[k]).second) add("DUPLICATE_STOP_CONTROL", at);
+        }
     }
     return issues;
 }
@@ -405,6 +425,22 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
             result.zones.push_back({"right-of-way/" + a.id, firstYields ? *r->chainSecond : *r->chainFirst,
                                     firstYields ? *r->chainFirst : *r->chainSecond,
                                     firstYields ? *r->waitFirst : *r->waitSecond, rule->gapTime, rule->headway});
+        }
+    }
+    // Stop/Yield (M3.2.5). A control names the line its areas give way at; a Stop makes each of
+    // their zones a Stop. Yield is the admission test the zone already runs, so it changes nothing.
+    for (std::size_t i = 0; i < row.stopControls.size(); ++i) {
+        const auto& c = row.stopControls[i];
+        const auto path = "rightOfWay.stopControls[" + std::to_string(i) + "]";
+        for (const auto& id : c.conflictAreaIds) {
+            const auto a = std::find_if(row.conflictAreas.begin(), row.conflictAreas.end(), [&](const auto& x) { return x.id == id; });
+            if (a == row.conflictAreas.end()) continue; // structural, reported elsewhere
+            // Undetermined areas report themselves; a decided one must give way at this line.
+            if (a->priority == ConflictPriority::undetermined) continue;
+            const auto& yielding = a->priority == ConflictPriority::firstYields ? a->first : a->second;
+            if (yielding.waitingLineId != c.waitingLineId) { add("CONFLICT_STOP_LINE_MISMATCH", path); continue; }
+            if (c.mode != StopMode::stop) continue;
+            for (auto& zone : result.zones) if (zone.id == "right-of-way/" + id) zone.control = ZoneControl::stop;
         }
     }
     return result;

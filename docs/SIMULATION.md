@@ -223,6 +223,24 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
 
   Gridlock through queues is not prevented: an admitted vehicle can still stop inside an area
   behind a leader that stopped after admission. The run then records the vehicles as unserved.
+
+  **Stop and Yield (M3.2.5a, D62).** A zone's `control` is `yield` or `stop`:
+  - **Yield** is exactly the admission test above. A vehicle with a clear gap never stops.
+  - **Stop** also requires each minor vehicle to serve the line before it may cross.
+
+  Serving works like this:
+  - The vehicle has come to the line when it is below walking pace (`kStoppedSpeed`, 0.1 m/s) with
+    its front within `stopLineReach`. That is the gap car-following keeps behind a standing obstacle
+    at that pace, plus 0.1 m.
+  - The reduced model only approaches zero behind a line, ever slower. So the Stop finishes the
+    stop: the vehicle rests at zero speed for the tick it came to the line and one whole tick more.
+    This is ordinary braking of at most 1 m/s², not a safety clamp.
+  - Service is kept per vehicle in `SimState::stopService`. It survives waiting for a gap or a red
+    head, is cleared once the vehicle passes the line, and a new run starts with none.
+  - A queued vehicle stands a vehicle length back, so it has not come to the line.
+
+  A signal head at the same line composes with the Stop: green removes only the head's hold. A
+  scenario without a Stop zone runs none of this, and the seed-42 output is unchanged.
 - Signal phases and offsets must align to the fixed timestep. Phases are half-open;
   amber is conservatively treated as stop, without a dilemma-zone decision.
 - The timestep is in `(0, 0.5]` seconds and duration must be an integer number of ticks.

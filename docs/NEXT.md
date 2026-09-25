@@ -9,34 +9,35 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.5, Stop and Yield
+## Immediate — M3.2.5b, Stop/Yield in the editor
 
-**Done:** M3.2.2a–c (D54–D56), authored controls. M3.2.3a–c (D57–D59), the admission solver,
-which runs authored crossings and merges. M3.2.4a–b (D60–D61), the conflict-area editor:
-- the Conflict areas tab (`src/shell/editor_priority.cpp`);
-- the Conflict area tool, `A` (`src/editor/canvas_conflicts.cpp`): click picks, a second click
-  or `P` cycles priority, a waiting line drags along its lane, the yielding side is hatched;
-- save and reopen through the UI.
+**Done:**
+- M3.2.2a–c (D54–D56), authored controls.
+- M3.2.3a–c (D57–D59), the admission solver.
+- M3.2.4a–b (D60–D61), the conflict-area editor: the tab and the canvas tool (`A`).
+- **M3.2.5a (D62)**, Stop and Yield at the waiting line:
+  - `StopControl` in schema 15;
+  - `ZoneControl` with per-vehicle stop service in `SimState`;
+  - A18–A20 covered by `stop_control.*`.
+  - The command the editor calls already exists: `setAreaControl(d, areaId, stop | yield |
+    nullopt)` (`src/commands/conflict_authoring.cpp`). It throws `EDIT_UNDETERMINED_PRIORITY` while
+    no side gives way.
 
-A24 stays *partial* until the Windows CI run and the owner's attempt.
-
-**Next, M3.2.5** (ROADMAP row; `M3_PLAN.md` §M3.2.4-6; acceptance A18–A20):
-1. Write the contract first: what a Stop or Yield control references (a waiting line of an
-   authored conflict side, not a free position), and how it composes with a signal head at the
-   same place. A green head is permission from that head only (A20).
-2. Stop: every queued vehicle comes to a full stop at the line, once. Track the served state
-   per vehicle, so a vehicle already served does not stop again, and reset clears it (A19).
-   Yield: no mandatory zero-speed dwell (A18).
-3. Core state lives with the vehicle's zone requests (`src/core/conflicts.*`). Check replay and
-   the seed-42 md5 (`1243e5361a7174d1ecc56b67d7c92b12`); callgrind the no-control
-   `stepSimulation` (about 51.2M instructions).
-4. Editor: a Stop/Yield field on the conflict dialog or the waiting line, en and th.
+**Next, M3.2.5b** (ROADMAP row):
+1. Conflict dialog (`editConflict`, `src/shell/editor_priority.cpp`): a "Control at the waiting
+   line" field — None / Yield / Stop — submitted in the same `execute` as `setConflictControl`, so
+   it stays one Undo step. Disable it while the priority field is Undetermined.
+2. Table: a Control column. The Problems jump from a `stopControls[i]` row already opens the area.
+3. Canvas (`src/editor/canvas_conflicts.cpp`): mark a Stop line differently from a Yield line,
+   for example a solid bar with a label; keep the dashed bar for no control.
+4. en/th keys (`mode` values stay `stop`/`yield` in the file). Extend `priority-canvas` or
+   `priority-ui` to cover setting Stop by keyboard, Undo, then Save and reopen.
 5. **Open question from M3.2.4b:** on a two-lane crossing, the minor side's line for the far
-   lane's area stands inside the near lane's area. Each area's line is 1 m short of its own
-   entry. The resolver chains them (A15), so they run. A Stop line should stand before the first
-   area; decide whether `addCrossingAreas` puts every minor line there.
+   lane's area stands inside the near lane's area. A Stop there makes the vehicle stop inside the
+   first area. Decide whether `addCrossingAreas` should put every minor line before the first area
+   of its approach.
 
-Then **M3.2.6**, the signal-position workflow and queue counters.
+Then **M3.2.6**: the signal-position workflow and queue counters (A21–A23).
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

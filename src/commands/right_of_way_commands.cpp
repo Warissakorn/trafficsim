@@ -63,10 +63,17 @@ std::string putPriorityRule(ProjectDocument& d, AuthoredPriorityRule value) {
     if (value.id.empty()) value.id = allocateId(d, "rule");
     const auto id = value.id; put(d.network.rightOfWay.priorityRules, std::move(value)); return id;
 }
+std::string putStopControl(ProjectDocument& d, StopControl value) {
+    if (value.id.empty()) value.id = allocateId(d, "stop");
+    const auto id = value.id; put(d.network.rightOfWay.stopControls, std::move(value)); return id;
+}
+void deleteStopControl(ProjectDocument& d, const std::string& id) { remove(d.network.rightOfWay.stopControls, id); }
 void deleteWaitingLine(ProjectDocument& d, const std::string& id) {
     const auto& areas = d.network.rightOfWay.conflictAreas;
+    const auto& controls = d.network.rightOfWay.stopControls;
     if (std::any_of(areas.begin(), areas.end(), [&](const auto& a) {
-            return a.first.waitingLineId == id || a.second.waitingLineId == id; }))
+            return a.first.waitingLineId == id || a.second.waitingLineId == id; }) ||
+        std::any_of(controls.begin(), controls.end(), [&](const auto& c) { return c.waitingLineId == id; }))
         throw std::invalid_argument("EDIT_REFERENCED");
     remove(d.network.rightOfWay.waitingLines, id);
 }
@@ -74,6 +81,7 @@ void deleteConflictArea(ProjectDocument& d, const std::string& id) {
     auto& row = d.network.rightOfWay;
     remove(row.conflictAreas, id);
     std::erase_if(row.priorityRules, [&](const auto& r) { return r.conflictAreaId == id; });
+    detail::pruneStopControls(row);
 }
 void deletePriorityRule(ProjectDocument& d, const std::string& id) { remove(d.network.rightOfWay.priorityRules, id); }
 std::vector<std::string> takeOverMerge(ProjectDocument& d, const std::string& section, const PriorityDefaults& defaults) {
@@ -151,6 +159,15 @@ void removeControlsOn(ProjectDocument& d, const std::set<std::string>& links, co
     std::erase_if(row.conflictAreas, [&](const auto& a) { return gone.contains(a.id); });
     std::erase_if(row.priorityRules, [&](const auto& r) { return gone.contains(r.conflictAreaId); });
     std::erase_if(row.waitingLines, [&](const auto& w) { return lost.contains(w.id); });
+    pruneStopControls(row);
+}
+void pruneStopControls(RightOfWay& row) {
+    const auto hasArea = [&](const std::string& id) {
+        return std::any_of(row.conflictAreas.begin(), row.conflictAreas.end(), [&](const auto& a) { return a.id == id; }); };
+    const auto hasLine = [&](const std::string& id) {
+        return std::any_of(row.waitingLines.begin(), row.waitingLines.end(), [&](const auto& w) { return w.id == id; }); };
+    for (auto& c : row.stopControls) std::erase_if(c.conflictAreaIds, [&](const auto& id) { return !hasArea(id); });
+    std::erase_if(row.stopControls, [&](const auto& c) { return c.conflictAreaIds.empty() || !hasLine(c.waitingLineId); });
 }
 bool controlsNameLink(const Network& n, const std::string& link) {
     bool named = false;
@@ -219,6 +236,15 @@ void copyControls(ProjectDocument& d, const Network& source, const std::map<std:
         if (!areas.contains(r.conflictAreaId)) continue;
         r.id = allocateId(d, "rule"); r.conflictAreaId = areas.at(r.conflictAreaId);
         d.network.rightOfWay.priorityRules.push_back(std::move(r));
+    }
+    // A control goes with its line and keeps the areas that were copied with it.
+    for (auto c : row.stopControls) {
+        if (!lines.contains(c.waitingLineId)) continue;
+        std::erase_if(c.conflictAreaIds, [&](const auto& id) { return !areas.contains(id); });
+        if (c.conflictAreaIds.empty()) continue;
+        for (auto& id : c.conflictAreaIds) id = areas.at(id);
+        c.id = allocateId(d, "stop"); c.waitingLineId = lines.at(c.waitingLineId);
+        d.network.rightOfWay.stopControls.push_back(std::move(c));
     }
     // A line that only served areas left behind (one owner missing) would be an orphan copy.
     // One nothing referenced in the source is kept: it was a standalone line and still is.

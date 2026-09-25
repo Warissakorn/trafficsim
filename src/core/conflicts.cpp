@@ -7,6 +7,7 @@ namespace {
 // Named numerical constants, not calibration (contract §1).
 constexpr double kPast = 1e-9;          // m: a front this far beyond a line has crossed it
 constexpr double kStoppedSpeed = 0.1;   // m/s: a leader slower than this is taken as standing
+constexpr double kLineReach = 0.1;      // m: beyond the standstill distance, still "at" a Stop line
 const ZoneSide& sideOf(const ConflictZone& z, ZoneRole role) { return role == ZoneRole::major ? z.major : z.minor; }
 }
 double waitingRoom(const Scenario& scenario) {
@@ -80,7 +81,8 @@ std::vector<ZoneState> summarizeZones(const Scenario& scenario, const ScenarioIn
 }
 std::optional<double> zoneHold(const Scenario& scenario, const ScenarioIndex& index,
                                const std::vector<ZoneState>& zones, const Vehicle& vehicle,
-                               const VehicleRefs& refs, const std::optional<Leader>& leader) {
+                               const VehicleRefs& refs, const std::optional<Leader>& leader,
+                               const StopService* service, std::uint64_t tick) {
     std::optional<double> hold;
     const auto& type = scenario.vehicleTypes[refs.type];
     const auto& behaviour = scenario.behaviours[refs.behaviour];
@@ -90,11 +92,14 @@ std::optional<double> zoneHold(const Scenario& scenario, const ScenarioIndex& in
         if (rz.role == ZoneRole::minor) {
             gap = rz.waitAt - vehicle.distance;
             if (gap < -kPast) continue; // past the line: it holds the crossing, never revoked
+            // A Stop is served once, and the service survives waiting for a gap (contract §5).
+            const bool unserved = scenario.conflictZones[rz.zoneIndex].control == ZoneControl::stop &&
+                !(service && service->line == rz.waitAt && !restsAtStop(service, tick));
             // Receiving space: a standing leader must leave room for the whole vehicle past the
             // exit -- the chain's last exit -- or it would be admitted only to stop inside.
             const bool exitTaken = leader && leader->speed < kStoppedSpeed &&
                 vehicle.distance + leader->gap - rz.clearAt < type.length + behaviour.standstillDistance;
-            if (!state.majorBlocks && !exitTaken) continue;
+            if (!unserved && !state.majorBlocks && !exitTaken) continue;
         } else {
             gap = rz.entryAt - vehicle.distance;
             if (gap < -kPast) continue;
@@ -105,6 +110,30 @@ std::optional<double> zoneHold(const Scenario& scenario, const ScenarioIndex& in
         if (!hold || gap < *hold) hold = gap;
     }
     return hold;
+}
+double stopLineReach(const DriverBehaviour& b, double driverFactor) {
+    return b.standstillDistance + (b.additiveSafetyDistance + b.multiplicativeSafetyDistance * driverFactor) *
+           std::sqrt(kStoppedSpeed) + kLineReach;
+}
+std::vector<StopService> refreshStops(const Scenario& scenario, const ScenarioIndex& index,
+                                      const std::vector<Vehicle>& vehicles, const std::vector<VehicleRefs>& refs,
+                                      const std::vector<StopService>& previous, std::uint64_t tick) {
+    std::vector<StopService> next;
+    auto old = previous.begin();
+    for (std::size_t v = 0; v < vehicles.size(); ++v) {
+        const auto& vehicle = vehicles[v];
+        while (old != previous.end() && old->vehicleId < vehicle.id) ++old;
+        std::optional<double> line;
+        for (const auto& rz : index.routeZones[refs[v].route])
+            if (rz.role == ZoneRole::minor && scenario.conflictZones[rz.zoneIndex].control == ZoneControl::stop &&
+                rz.waitAt - vehicle.distance >= -kPast && (!line || rz.waitAt < *line)) line = rz.waitAt;
+        if (!line) continue; // no Stop ahead: passing the last line cleared its service
+        if (old != previous.end() && old->vehicleId == vehicle.id && old->line == *line) { next.push_back(*old); continue; }
+        if (vehicle.speed < kStoppedSpeed &&
+            *line - vehicle.distance <= stopLineReach(scenario.behaviours[refs[v].behaviour], vehicle.driverFactor))
+            next.push_back({vehicle.id, *line, tick});
+    }
+    return next;
 }
 std::vector<ZoneCap> resolveRequests(const Scenario& scenario, const ScenarioIndex& index,
                                      const std::vector<Vehicle>& vehicles, const std::vector<VehicleRefs>& refs,
