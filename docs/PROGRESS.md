@@ -34,6 +34,20 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M1 timed drawing: 9 min 40 s, recorded, gate still open
+
+Owner report (Thai, 2026-09-25): a signalised intersection built in "10 minutes", then made precise
+as **9 min 40 s, drawing only, no assistance**. A Windows `trafficsim-desktop.exe` was attached; its
+strings show the M2.7 signal-timing view, so the build is at or after `3c11afd`. It cannot run here
+and is not evidence of the network — the saved project is.
+
+Recorded in `M1_ACCEPTANCE.md` row by row: only what the owner stated is filled, the rest says
+"not stated". The < 10 min / no-assistance criterion is met by the report; the verdict stays
+**Open** because the four-leg-with-turn-pockets geometry, the aerial image, documentation use,
+first-attempt status and the exact save/reopen comparison are unobserved (rule 8, D8). It is not
+an M2.6 observation: C1 needs the run to the Results table and C2 a time in the current tool.
+No code changed.
+
 ## 2026-09-25 — M2.7b: fixed-time Signal Controllers with Signal Groups (D48)
 
 Owner report: making a signal program was confusing. It was: a program was one light's colour

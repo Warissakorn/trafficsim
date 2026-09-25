@@ -1,8 +1,9 @@
 # M1 owner acceptance record
 
-**Status: not performed.** M1 implementation and automated checks do not close the
-owner's M0 plausibility gate or M1 usability gate. Record a real observation before
-changing ROADMAP to accepted.
+**Status: drawing timed once (2026-09-25), gate still open.** The owner reported a
+signalised intersection drawn in 9 min 40 s without assistance; the rows below say which
+criteria that observation covers and which are still unobserved. M1 implementation and
+automated checks do not close the owner's M0 plausibility gate or M1 usability gate.
 
 ## Timed M1 exercise
 
@@ -55,19 +56,19 @@ These are separate from the ten-minute drawing task.
 
 | Field | Observation |
 |---|---|
-| Commit / build | Pending |
-| Engineer / observer / date | Pending |
-| Platform / screen / language / driving side | Pending |
-| Prior familiarity / earlier attempts | Pending |
-| Aerial image / distance reference | Pending |
-| Elapsed time | Pending |
-| Documentation or assistance used | Pending |
-| Four-leg geometry and turn pockets complete | Pending |
-| Exact parsed-JSON save/reopen comparison | Pending |
+| Commit / build | Windows `trafficsim-desktop.exe` supplied by the owner (2026-09-25); it contains the M2.7 signal-timing UI (`SignalTimingView`), so it is at or after `3c11afd`. Exact commit not stated |
+| Engineer / observer / date | Owner, self-timed, reported 2026-09-25. Observer not stated |
+| Platform / screen / language / driving side | Windows (from the build supplied). Screen, language, driving side not stated |
+| Prior familiarity / earlier attempts | Not stated — whether this was the first attempt is unknown |
+| Aerial image / distance reference | Not stated |
+| Elapsed time | **9 min 40 s, drawing only** (owner report). Signal control, demand and Run were not in the timed portion |
+| Documentation or assistance used | No assistance (owner report). Documentation use not stated |
+| Four-leg geometry and turn pockets complete | A signalised intersection was drawn; four legs and turn pockets not stated, saved file not supplied |
+| Exact parsed-JSON save/reopen comparison | Pending — needs the saved `*.traffic.json` |
 | Run / recovery / level checks | Pending |
 | M0 plausibility observation | Pending |
 | Friction, defects and evidence paths | Pending |
-| M1 gate verdict | **Open** |
+| M1 gate verdict | **Open** — time criterion (< 10 min, no assistance) met by the report; geometry, documentation, first-attempt and save/reopen rows still unobserved |
 
 Commit the completed record and any authorized evidence references. A failing exercise
 creates concrete follow-up work; keep the gate open until its original criteria pass.
