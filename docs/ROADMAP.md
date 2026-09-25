@@ -274,18 +274,17 @@ tool is usable for real engineering work.
 
 **Pre-registered criteria — ratified by the owner on 2026-09-24, re-registered the same day
 before any gate observation (D38), and again on 2026-09-25, still before any gate observation,
-when the owner withdrew C2 (D51)** (record in [`M2_GATE.md`](M2_GATE.md)):
+when the owner withdrew C2 (D51) and C4 (D52)** (record in [`M2_GATE.md`](M2_GATE.md)):
 
 - **C1 — Completion.** One real study (signalised, protected phasing, counted 15-minute volumes,
   the owner's timing plan) completed end to end: network over its aerial image, volumes,
   composition, timing, Run, per-movement delay and queue table. Fails on hand-edited JSON, a code
   change during the study, or outside help.
 - **C2 — withdrawn (D51).** No test times TrafficSim against Vissim or any other tool.
-- **C4 — Plausibility, recorded, not scored.** Per movement, TrafficSim delay beside the current
-  tool's; a movement more than **two LOS letters** apart opens a numbered investigation.
+- **C4 — withdrawn (D52).** No test compares TrafficSim's delays with Vissim's or any other tool's.
 
-**Pass = the owner judges it passed (D51)**, on C1's study with C4 recorded — reported as *not
-disproven*. (C0 and C3 were withdrawn by D38, C2 by D51; the remaining criteria keep their
+**Pass = the owner judges it passed (D51)**, on C1's study — reported as *not disproven*. (C0 and
+C3 were withdrawn by D38, C2 by D51, C4 by D52; the remaining criteria keep their
 numbers so earlier records still resolve.)
 
 - If the owner judges it failed, the tool is not yet usable for the job it exists for — see

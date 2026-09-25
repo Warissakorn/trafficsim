@@ -4,7 +4,7 @@ Written 2026-09-24 at the owner's request ("ตรวจสอบ M1 และ�
 the owner ratified it as drafted the same day and it is now registered in `ROADMAP.md` §M2
 (D34).** The same day, before any observation, the owner withdrew C0 and C3 and re-registered
 the gate as C1 + C2 with C4 recorded (D38); §3 below is the registered version. **2026-09-25 (D51):**
-C2 is withdrawn and the pass is the owner's judgment — ROADMAP §M2 is current where they differ.
+C2 is withdrawn and the pass is the owner's judgment; C4 is withdrawn too (D52) — ROADMAP §M2 is current where they differ.
 
 ---
 
