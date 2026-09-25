@@ -1,8 +1,8 @@
 # M1 owner acceptance record
 
-**Status: drawing timed once (2026-09-25), gate still open.** The owner reported a
-signalised intersection drawn in 9 min 40 s without assistance; the rows below say which
-criteria that observation covers and which are still unobserved. M1 implementation and
+**Status: one attempt recorded (2026-09-25), gate still open.** The owner drew a signalised
+intersection in 9 min 40 s without assistance and supplied the saved file. The time and the
+save/reopen comparison pass; the requested geometry does not — no turn pockets, no aerial image. M1 implementation and
 automated checks do not close the owner's M0 plausibility gate or M1 usability gate.
 
 ## Timed M1 exercise
@@ -60,15 +60,15 @@ These are separate from the ten-minute drawing task.
 | Engineer / observer / date | Owner, self-timed, reported 2026-09-25. Observer not stated |
 | Platform / screen / language / driving side | Windows (from the build supplied). Screen, language, driving side not stated |
 | Prior familiarity / earlier attempts | Not stated — whether this was the first attempt is unknown |
-| Aerial image / distance reference | Not stated |
+| Aerial image / distance reference | **None** — the saved file's `background.pngBase64` is empty |
 | Elapsed time | **9 min 40 s, drawing only** (owner report). Signal control, demand and Run were not in the timed portion |
 | Documentation or assistance used | No assistance (owner report). Documentation use not stated |
-| Four-leg geometry and turn pockets complete | A signalised intersection was drawn; four legs and turn pockets not stated, saved file not supplied |
-| Exact parsed-JSON save/reopen comparison | Pending — needs the saved `*.traffic.json` |
-| Run / recovery / level checks | Pending |
+| Four-leg geometry and turn pockets complete | Four legs: yes — two crossing dual carriageways (`link-2`/`link-11`, `link-5`/`link-8`), each Link 2 × 3.5 m lanes end to end, 8 turning Connectors (a short and a long turn per approach), through movements on the Links. **Turn pockets: none** — no Link gains a lane before the stop line. Stop lines (8 heads, 4 groups) all sit upstream of the first crossing carriageway |
+| Exact parsed-JSON save/reopen comparison | **Pass** — `parseDocument` → `documentJson` on the supplied file (schema 13, revision 45) gives JSON equal to the file and an equal document, checked 2026-09-25 against `c1e3ce9` |
+| Run / recovery / level checks | Run: the file compiles and runs (`trafficsim-cli --project`, seed 42, 180 s, 6 safety clamps). Recovery and levels not observed |
 | M0 plausibility observation | Pending |
-| Friction, defects and evidence paths | Pending |
-| M1 gate verdict | **Open** — time criterion (< 10 min, no assistance) met by the report; geometry, documentation, first-attempt and save/reopen rows still unobserved |
+| Friction, defects and evidence paths | The short turn (`connector-14/16/18/20`) leaves each approach's first lane 3–8 m **upstream** of that lane's head, so it bypasses the signal — Thai left-turn-on-red if intended, a stop-line slip if not; owner to say. Evidence: owner's `network.traffic.json`, not committed |
+| M1 gate verdict | **Open** — this attempt meets the time (< 10 min, no assistance) and the save/reopen comparison, but **not the requested geometry** (turn pockets, drawn over an aerial image). Documentation use and first-attempt status not stated |
 
 Commit the completed record and any authorized evidence references. A failing exercise
 creates concrete follow-up work; keep the gate open until its original criteria pass.

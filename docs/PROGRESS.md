@@ -48,6 +48,15 @@ first-attempt status and the exact save/reopen comparison are unobserved (rule 8
 an M2.6 observation: C1 needs the run to the Results table and C2 a time in the current tool.
 No code changed.
 
+**Then the file (`network.traffic.json`, schema 13).** Round trip exact. Two crossing dual
+carriageways, 2 lanes each end to end, 8 turning Connectors, 4-group fixed-time controller
+(cycle 120 s, each approach alone — protected). No turn pockets, no background image, so the
+M1 geometry criterion is not met; recorded, not relaxed. It runs: 180 s, flat 1600 veh/h per
+approach, routeless inputs split by D42's equal share at each lane exit (so turning volumes are
+not counts), 126 completed, 138 never entered (queues fill the ≈50 m approaches), 6 clamps. Each
+short-turn Connector leaves 3–8 m upstream of its lane's head and so bypasses the signal — asked
+of the owner (Thai left-turn-on-red, or a slip). Not an M2.6 observation.
+
 ## 2026-09-25 — M2.7b: fixed-time Signal Controllers with Signal Groups (D48)
 
 Owner report: making a signal program was confusing. It was: a program was one light's colour

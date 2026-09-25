@@ -137,11 +137,10 @@ the authority on each; the bodies of the long-implemented ones live in
 **2. Run the timed acceptance exercise** in [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). It is the only
 thing that closes M1 and it cannot be delegated: an engineer draws a four-leg intersection with
 turn pockets over an aerial image, from a blank editor, **under 10 minutes, without documentation
-or assistance**, then the file is reopened and compared field for field. **2026-09-25:** the owner
-reported the drawing done in **9 min 40 s, no assistance**, on a Windows build with M2.7 — recorded
-in the table. Still needed from the owner before a verdict: the saved `*.traffic.json` (for the
-four-leg/turn-pocket check and the parsed-JSON reopen comparison), whether an aerial image was used,
-whether documentation was consulted, and whether this was the first attempt. Merged code does not close it (rule 1), and a rehearsed retry is not the first
+or assistance**, then the file is reopened and compared field for field. **2026-09-25:** the owner drew a
+signalised four-leg in **9 min 40 s, no assistance**, and supplied the file: time and save/reopen
+pass, but it has **no turn pockets and no aerial image**, so it is not the exercise as written. The
+next attempt needs both; the owner still owes documentation use and first-attempt status. Merged code does not close it (rule 1), and a rehearsed retry is not the first
 observation.
 
 **Do this on Windows.** Everything in these sessions was verified on Linux only. `native.yml` runs
