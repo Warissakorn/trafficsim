@@ -1,6 +1,9 @@
 #include "test.hpp"
 #include "right_of_way_fixture.hpp"
 #include "../src/commands/appearance_commands.hpp"
+#include "../src/commands/demand_commands.hpp"
+#include "../src/core/conflicts.hpp"
+#include "../src/project/run.hpp"
 using namespace trafficsim;
 using namespace rowfixture;
 // M3.2.5a: the Stop/Yield control at the file/model seam -- the gesture, schema 15, validation and
@@ -56,6 +59,11 @@ TEST(stop_control_model, one_line_has_one_mode_for_every_area_it_controls) {
     CHECK(t.d.network.rightOfWay.stopControls.size() == 1);
     CHECK(controlOf(t.d, sharing[0]) == controlOf(t.d, sharing[1]) && controlOf(t.d, sharing[0])->mode == StopMode::yield);
     validateDocument(t.d);
+    // Turning one area round takes only that area off the line's control.
+    const auto& a = *std::find_if(areas.begin(), areas.end(), [&](const auto& x) { return x.id == sharing[0]; });
+    setConflictControl(t.d, sharing[0], "", a.priority == ConflictPriority::firstYields ? ConflictPriority::secondYields
+                                                                                          : ConflictPriority::firstYields, 3, 7);
+    CHECK(!controlOf(t.d, sharing[0]) && controlOf(t.d, sharing[1]));
 }
 TEST(stop_control_model, schema_15_round_trips_and_an_older_or_malformed_file_is_refused) {
     auto p = crossingLinks();
@@ -107,4 +115,38 @@ TEST(stop_control_model, a_control_goes_with_its_areas_and_is_copied_with_them) 
     CHECK(controlOf(copied, copy.conflictAreaIds.front()) == &copy);
     validateDocument(copied);
     CHECK(resolve(copied).issues.empty());
+}
+TEST(stop_control_model, a_stop_on_a_two_lane_crossing_halts_every_minor_vehicle_before_the_first_area) {
+    // D63: the minor lane's one line stands before the FIRST area it meets, so a Stop there never
+    // halts a vehicle inside the near lane's area.
+    ProjectDocument d;
+    const auto major = addLink(d, {{0, 0}, {200, 0}}, 2, 3.5);
+    const auto minor = addLink(d, {{100, -100}, {100, 100}}, 1, 3.5);
+    const auto areas = addCrossingAreas(d, major, minor, minor, kDefaults);
+    CHECK(areas.size() == 2);
+    setAreaControl(d, areas.front(), StopMode::stop);
+    CHECK(d.network.rightOfWay.stopControls.size() == 1 && d.network.rightOfWay.stopControls.front().conflictAreaIds.size() == 2);
+    putInput(d, {"", putRoute(d, {"", {major}}), "car", 900, 0, 540, {}});
+    putInput(d, {"", putRoute(d, {"", {minor}}), "car", 300, 0, 540, {}});
+    changeRunSettings(d, 600, 0.1);
+    validateDocument(d);
+    const auto s = compileDocument(d, test::root() / "data").scenario;
+    CHECK(s.conflictZones.size() == 2);
+    for (const auto& z : s.conflictZones) CHECK(z.control == ZoneControl::stop);
+    const auto& near = *std::min_element(s.conflictZones.begin(), s.conflictZones.end(),
+                                         [](const auto& a, const auto& b) { return a.minor.entry < b.minor.entry; });
+    CHECK(near.waitPosition < near.minor.entry); // the forcing: the shared line is short of both areas
+    std::map<std::uint64_t, bool> stood, crossed;
+    auto state = createSimulation(s, 42);
+    while (state.tick < totalTicks(s)) {
+        for (const auto& v : state.vehicles) {
+            // Slots index the canonical scenario the state holds.
+            if (state.scenario->routes[v.routeIndex].segmentIds.front() != near.minor.segmentIds.front()) continue;
+            if (v.distance > near.waitPosition + 1e-9) { crossed[v.id] = true; continue; }
+            if (v.speed == 0 && near.waitPosition - v.distance <= stopLineReach(s.behaviours.front(), v.driverFactor)) stood[v.id] = true;
+        }
+        state = stepSimulation(state);
+    }
+    CHECK(crossed.size() > 20);
+    for (const auto& [id, went] : crossed) CHECK(stood[id]);
 }

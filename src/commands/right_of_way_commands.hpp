@@ -35,8 +35,8 @@ void restoreAutomaticPriority(ProjectDocument&, const std::string& section);
 // M3.2.4, the editor's gestures (src/commands/conflict_authoring.cpp). Each is one document change
 // the caller runs inside History::execute.
 // One crossing area per lane pair of two objects (Links or Connectors) whose lane surfaces really
-// overlap (surfaceOverlap), extents exactly that overlap, each side's waiting line 1 m short of its
-// entry, and a rule with `defaults`' two numbers. `yielding` names the object that gives way.
+// overlap (surfaceOverlap), extents exactly that overlap, one waiting line per lane 1 m short of the
+// first area that lane meets and shared by all its areas (D63), and a rule with `defaults`' two numbers. `yielding` names the object that gives way.
 // Returns the area ids, in lane order. Throws EDIT_SAME_OBJECT, EDIT_UNKNOWN_OBJECT, EDIT_NO_CROSSING
 // (no lane pair overlaps) or EDIT_NO_PRIORITY_DEFAULTS.
 std::vector<std::string> addCrossingAreas(ProjectDocument&, const std::string& first, const std::string& second,
@@ -57,9 +57,9 @@ ConflictPriority cycleConflictPriority(ProjectDocument&, const std::string& area
 // refused: the resolver reports it (CONFLICT_WAITING_LINE_AFTER_ENTRY) and Run refuses it.
 void moveWaitingLine(ProjectDocument&, const std::string& lineId, double station);
 // M3.2.5, the editor's control gesture: what a driver must do at the line where this area gives
-// way -- Stop, Yield, or nothing (std::nullopt). The mode belongs to the line, so it applies to
-// every area the line's control already names; a control left with no area goes. Throws
-// EDIT_UNKNOWN_OBJECT, or EDIT_UNDETERMINED_PRIORITY while no side of the area gives way.
+// way -- Stop, Yield, or nothing (std::nullopt). The control belongs to the line, so it covers
+// every decided area that gives way at that line (M3.2.5b: a lane's crossing areas share one line,
+// D63). Throws EDIT_UNKNOWN_OBJECT, or EDIT_UNDETERMINED_PRIORITY while no side gives way.
 void setAreaControl(ProjectDocument&, const std::string& areaId, std::optional<StopMode>);
 // Deletes an area with its rule and the waiting lines no other area uses.
 void removeConflictArea(ProjectDocument&, const std::string& areaId);

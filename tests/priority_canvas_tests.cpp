@@ -5,6 +5,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
+#include <QDialog>
 #include <QFile>
 #include <QGraphicsPathItem>
 #include <QListWidget>
@@ -60,6 +61,19 @@ std::vector<QGraphicsPathItem*> sides(EditorWindow& w, const std::string& id) {
         if (i->data(0).toString() == "conflict-area" && i->data(1).toString().toStdString() == id)
             if (auto* path = dynamic_cast<QGraphicsPathItem*>(i)) found.push_back(path);
     return found;
+}
+// Runs `answer` on the next modal dialog, which must be `name`.
+void onDialog(const char* name, std::function<void(QDialog*)> answer, bool& ran) {
+    QTimer::singleShot(0, [=, &ran] {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        require(dialog && dialog->objectName() == name, name);
+        answer(dialog); ran = true;
+    });
+}
+std::string lineMark(EditorWindow& w, const std::string& line) {
+    for (auto* i : w.canvas()->scene()->items())
+        if (i->data(0).toString() == "waiting-line" && i->data(1).toString().toStdString() == line) return i->data(2).toString().toStdString();
+    throw std::runtime_error("line not drawn");
 }
 int drawn(EditorWindow& w) {
     int n = 0;
@@ -144,6 +158,37 @@ int main(int argc, char** argv) {
         act(w, "editorRedo")->trigger(); QApplication::processEvents();
         require(w.history().document() == dragged, "Redo did not restore the drag");
 
+        // M3.2.5b: Stop at the line, from the dialog, one Undo step; drawn and listed.
+        require(lineMark(w, line.id).empty() && network().rightOfWay.stopControls.empty(), "A control existed before one was set");
+        bool ran = false;
+        onDialog("editorConflictDialog", [&](QDialog* dialog) {
+            auto* control = dialog->findChild<QComboBox*>("editorConflictControl");
+            require(control && control->isEnabled(), "No enabled control field for a decided area");
+            control->setCurrentIndex(control->findData(static_cast<int>(StopMode::stop)));
+            dialog->accept();
+        }, ran);
+        act(w, "editorEditConflict")->trigger(); QApplication::processEvents();
+        require(ran, "The conflict dialog did not open");
+        require(network().rightOfWay.stopControls.size() == 1 && network().rightOfWay.stopControls.front().mode == StopMode::stop &&
+                network().rightOfWay.stopControls.front().waitingLineId == line.id, "Stop was not set on the area's line");
+        require(lineMark(w, line.id) == "stop", "The canvas does not mark the Stop line");
+        require(table->item(table->currentRow(), 7)->text() == "Stop", "The table does not list the Stop");
+        act(w, "editorUndo")->trigger(); QApplication::processEvents();
+        require(network().rightOfWay.stopControls.empty() && lineMark(w, line.id).empty(), "Setting Stop was not one Undo step");
+        act(w, "editorRedo")->trigger(); QApplication::processEvents();
+        // Nothing to stop at while no side gives way: the field follows the priority field.
+        ran = false;
+        onDialog("editorConflictDialog", [&](QDialog* dialog) {
+            auto* priority = dialog->findChild<QComboBox*>("editorConflictPriority");
+            auto* control = dialog->findChild<QComboBox*>("editorConflictControl");
+            require(control->isEnabled(), "The control field started disabled");
+            priority->setCurrentIndex(priority->findData(static_cast<int>(ConflictPriority::undetermined)));
+            require(!control->isEnabled(), "The control field stayed enabled for an undetermined area");
+            dialog->reject();
+        }, ran);
+        act(w, "editorEditConflict")->trigger(); QApplication::processEvents();
+        require(ran, "The conflict dialog did not open again");
+
         // Save through the UI -- no dialog for a file already named -- and reopen it.
         bool asked = false;
         QTimer::singleShot(0, [&] { if (auto* m = QApplication::activeModalWidget()) { asked = true; m->close(); } });
@@ -155,6 +200,7 @@ int main(int argc, char** argv) {
         require(network().rightOfWay == saved, "Reopening lost a conflict edit");
         require(table->rowCount() == 2 && drawn(w) == shown, "Reopening did not show the same areas");
         for (int r = 0; r < table->rowCount(); ++r) require(table->item(r, 6)->text() == "Runs", "A reopened area does not run");
+        require(network().rightOfWay.stopControls.size() == 1 && lineMark(w, line.id) == "stop", "Reopening lost the Stop");
         std::cout << "priority canvas tests passed\n";
         return 0;
     } catch (const std::exception& e) {

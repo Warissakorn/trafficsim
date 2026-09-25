@@ -2,6 +2,7 @@
 #include "../model/network/right_of_way.hpp"
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <set>
 #include <stdexcept>
 
@@ -39,20 +40,36 @@ std::vector<std::string> addCrossingAreas(ProjectDocument& d, const std::string&
     if (yielding != first && yielding != second) throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
     requireDefaults(defaults);
     const auto a = lanesOf(d.network, first), b = lanesOf(d.network, second);
-    std::vector<std::string> created;
-    for (const auto& pa : a)
-        for (const auto& pb : b) {
-            const auto o = surfaceOverlap(d.network, pa, pb);
-            if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
-            const auto la = putWaitingLine(d, {"", "", {pa, std::max(0.0, o.first.from - kCrossingSetback)}});
-            const auto lb = putWaitingLine(d, {"", "", {pb, std::max(0.0, o.second.from - kCrossingSetback)}});
-            const auto id = putConflictArea(d, {"", "", ConflictKind::crossing, {pa, o.first.from, o.first.to, la},
-                                                {pb, o.second.from, o.second.to, lb},
-                                                yielding == first ? ConflictPriority::firstYields : ConflictPriority::secondYields});
-            putPriorityRule(d, {"", "", id, defaults.gapTime, defaults.headway});
-            created.push_back(id);
+    struct Found { std::size_t i, j; SurfaceOverlap o; };
+    std::vector<Found> found;
+    for (std::size_t i = 0; i < a.size(); ++i)
+        for (std::size_t j = 0; j < b.size(); ++j) {
+            const auto o = surfaceOverlap(d.network, a[i], b[j]);
+            if (o.status == SurfaceOverlap::Status::overlap) found.push_back({i, j, o}); // no guessed area (§1)
         }
-    if (created.empty()) throw std::invalid_argument("EDIT_NO_CROSSING");
+    if (found.empty()) throw std::invalid_argument("EDIT_NO_CROSSING");
+    // One line per lane, before the FIRST area that lane meets (D63): a line per area put the far
+    // lane's line inside the near lane's area, where a Stop would halt a vehicle mid-crossing.
+    // The areas behind one line are admitted together (A15), exactly as before.
+    const auto lineFor = [&](const std::vector<ControlPathRef>& lanes, std::size_t k, bool onFirst) {
+        double from = INFINITY;
+        for (const auto& f : found)
+            if ((onFirst ? f.i : f.j) == k) from = std::min(from, onFirst ? f.o.first.from : f.o.second.from);
+        return putWaitingLine(d, {"", "", {lanes[k], std::max(0.0, from - kCrossingSetback)}});
+    };
+    std::map<std::size_t, std::string> linesA, linesB;
+    for (const auto& f : found) {
+        if (!linesA.contains(f.i)) linesA[f.i] = lineFor(a, f.i, true);
+        if (!linesB.contains(f.j)) linesB[f.j] = lineFor(b, f.j, false);
+    }
+    std::vector<std::string> created;
+    for (const auto& f : found) {
+        const auto id = putConflictArea(d, {"", "", ConflictKind::crossing, {a[f.i], f.o.first.from, f.o.first.to, linesA[f.i]},
+                                            {b[f.j], f.o.second.from, f.o.second.to, linesB[f.j]},
+                                            yielding == first ? ConflictPriority::firstYields : ConflictPriority::secondYields});
+        putPriorityRule(d, {"", "", id, defaults.gapTime, defaults.headway});
+        created.push_back(id);
+    }
     return created;
 }
 void setConflictControl(ProjectDocument& d, const std::string& areaId, const std::string& name,
@@ -60,7 +77,12 @@ void setConflictControl(ProjectDocument& d, const std::string& areaId, const std
     auto changed = area(d, areaId);
     // Another side giving way waits at another line, so the Stop/Yield the old line set no longer
     // applies to this area (M3.2.5); it is cleared rather than left naming the wrong line.
-    if (changed.priority != priority && changed.priority != ConflictPriority::undetermined) setAreaControl(d, areaId, std::nullopt);
+    // Only this area leaves the old line's control; the others still giving way there keep it.
+    if (changed.priority != priority) {
+        auto& controls = d.network.rightOfWay.stopControls;
+        for (auto& c : controls) std::erase(c.conflictAreaIds, areaId);
+        std::erase_if(controls, [](const auto& c) { return c.conflictAreaIds.empty(); });
+    }
     changed.name = name; changed.priority = priority;
     putConflictArea(d, changed);
     auto& rules = d.network.rightOfWay.priorityRules;
@@ -109,15 +131,19 @@ void restoreAutomaticPriorityOf(ProjectDocument& d, const std::string& areaId) {
 void setAreaControl(ProjectDocument& d, const std::string& areaId, std::optional<StopMode> mode) {
     const auto a = area(d, areaId);
     if (a.priority == ConflictPriority::undetermined) throw std::invalid_argument("EDIT_UNDETERMINED_PRIORITY");
-    const auto line = (a.priority == ConflictPriority::firstYields ? a.first : a.second).waitingLineId;
-    auto& controls = d.network.rightOfWay.stopControls;
-    for (auto& c : controls) std::erase(c.conflictAreaIds, areaId);
+    const auto yieldingLine = [](const ConflictArea& x) {
+        return x.priority == ConflictPriority::undetermined ? std::string{}
+             : (x.priority == ConflictPriority::firstYields ? x.first : x.second).waitingLineId; };
+    const auto line = yieldingLine(a);
+    auto& row = d.network.rightOfWay;
+    // The control is the line's (D62): every decided area giving way at it, never one of them.
+    std::vector<std::string> behind;
+    for (const auto& x : row.conflictAreas) if (yieldingLine(x) == line) behind.push_back(x.id);
+    auto& controls = row.stopControls;
+    for (auto& c : controls) std::erase_if(c.conflictAreaIds, [&](const auto& id) {
+        return c.waitingLineId == line || std::find(behind.begin(), behind.end(), id) != behind.end(); });
     std::erase_if(controls, [](const auto& c) { return c.conflictAreaIds.empty(); });
-    if (!mode) return;
-    const auto at = std::find_if(controls.begin(), controls.end(), [&](const auto& c) { return c.waitingLineId == line; });
-    if (at == controls.end()) { putStopControl(d, {"", "", line, *mode, {areaId}}); return; }
-    at->mode = *mode; // one line, one control: the mode is the line's
-    at->conflictAreaIds.push_back(areaId);
+    if (mode) putStopControl(d, {"", "", line, *mode, behind});
 }
 void removeConflictArea(ProjectDocument& d, const std::string& areaId) {
     const auto removed = area(d, areaId);

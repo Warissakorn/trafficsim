@@ -9,35 +9,37 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.5b, Stop/Yield in the editor
+## Immediate — M3.2.6, signal positions and queue counters
 
 **Done:**
 - M3.2.2a–c (D54–D56), authored controls.
 - M3.2.3a–c (D57–D59), the admission solver.
-- M3.2.4a–b (D60–D61), the conflict-area editor: the tab and the canvas tool (`A`).
-- **M3.2.5a (D62)**, Stop and Yield at the waiting line:
+- M3.2.4a–b (D60–D61), the conflict-area editor.
+- **M3.2.5a–b (D62–D63)**, Stop and Yield:
+  - core stop service;
   - `StopControl` in schema 15;
-  - `ZoneControl` with per-vehicle stop service in `SimState`;
-  - A18–A20 covered by `stop_control.*`.
-  - The command the editor calls already exists: `setAreaControl(d, areaId, stop | yield |
-    nullopt)` (`src/commands/conflict_authoring.cpp`). It throws `EDIT_UNDETERMINED_PRIORITY` while
-    no side gives way.
+  - the dialog's Control field and the canvas line marks;
+  - one waiting line per lane for new crossings.
 
-**Next, M3.2.5b** (ROADMAP row):
-1. Conflict dialog (`editConflict`, `src/shell/editor_priority.cpp`): a "Control at the waiting
-   line" field — None / Yield / Stop — submitted in the same `execute` as `setConflictControl`, so
-   it stays one Undo step. Disable it while the priority field is Undetermined.
-2. Table: a Control column. The Problems jump from a `stopControls[i]` row already opens the area.
-3. Canvas (`src/editor/canvas_conflicts.cpp`): mark a Stop line differently from a Yield line,
-   for example a solid bar with a label; keep the dashed bar for no control.
-4. en/th keys (`mode` values stay `stop`/`yield` in the file). Extend `priority-canvas` or
-   `priority-ui` to cover setting Stop by keyboard, Undo, then Save and reopen.
-5. **Open question from M3.2.4b:** on a two-lane crossing, the minor side's line for the far
-   lane's area stands inside the near lane's area. A Stop there makes the vehicle stop inside the
-   first area. Decide whether `addCrossingAreas` should put every minor line before the first area
-   of its approach.
+A24 stays *partial* until the Windows CI run and the owner's attempt.
 
-Then **M3.2.6**: the signal-position workflow and queue counters (A21–A23).
+**Next, M3.2.6** (ROADMAP row; `M3_PLAN.md` §M3.2.4-6; acceptance A21–A23):
+1. **Signal positions (A21):**
+   - Test a head before, exactly on and after a section cut. The existing interior-head mechanism
+     stays the one source (contract §5: "a head exactly on a cut belongs upstream").
+   - Then stretch, split and copy the Link, on both driving sides.
+   - Fill the pointer/keyboard gaps the tests expose. No second signal model.
+2. **Queue counters (A22, A23):**
+   - Add `AuthoredQueueCounter` (contract §1): measurement lines that each either reference an
+     existing head, control or wait line, or give an explicit `ControlPoint`, never both.
+   - Its location has one source of truth.
+   - Thresholds stay in the evaluation catalog.
+   - Existing signal-derived counters keep their results.
+   - CLI and editor reports must agree; there must be no duplicate approach rows.
+3. **Schema 16** if the counter is persisted. Regenerate the two project fixtures with their tools,
+   exactly as schema 15 did.
+
+Then **M3.2.7**, the T-junction evidence (gap sweep and owner exercise, A26).
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

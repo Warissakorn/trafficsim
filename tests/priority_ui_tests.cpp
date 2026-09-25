@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
         require(ran, "Crossing dialog never opened");
         require(table->rowCount() == 2, "Two lane pairs did not make two rows");
         require(tabs->currentIndex() == 9, "The Conflict areas tab was not shown");
-        require(items(w, "conflict-area") == 4 && items(w, "waiting-line") == 4, "Areas and waiting lines were not drawn");
+        require(items(w, "conflict-area") == 4 && items(w, "waiting-line") == 3, "Areas and waiting lines were not drawn"); // one line per lane (D63)
         require(table->item(0, 6)->text() == "Runs", "A complete crossing did not report that it runs");
         const auto revision = w.history().revision();
 

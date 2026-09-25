@@ -129,10 +129,19 @@ void EditorCanvas::drawConflicts() {
         if (dragged) point.station = lineDrag_->station;
         const auto bar = waitingLineBar(n, point);
         if (!bar) continue;
-        QPen pen(dragged ? QColor("#ffb454") : QColor("#f59e0b"), dragged ? 3 : 2, Qt::DashLine); pen.setCosmetic(true); pen.setCapStyle(Qt::FlatCap);
+        // M3.2.5b: the line's control shows in the bar -- dashed for none, solid amber for Yield,
+        // solid red and heavier for Stop. No text: the canvas has no locale.
+        const auto control = std::find_if(n.rightOfWay.stopControls.begin(), n.rightOfWay.stopControls.end(),
+                                          [&](const auto& c) { return c.waitingLineId == line.id; });
+        const bool controlled = control != n.rightOfWay.stopControls.end();
+        const bool stop = controlled && control->mode == StopMode::stop;
+        QPen pen(dragged ? QColor("#ffb454") : stop ? QColor("#dc2626") : QColor("#f59e0b"), dragged || stop ? 3 : 2,
+                 controlled ? Qt::SolidLine : Qt::DashLine);
+        pen.setCosmetic(true); pen.setCapStyle(Qt::FlatCap);
         auto* item = scene_.addLine(bar->first.x, bar->first.y, bar->second.x, bar->second.y, pen);
         item->setZValue(level * 100. + 7);
         item->setData(0, QStringLiteral("waiting-line")); item->setData(1, QString::fromStdString(line.id));
+        item->setData(2, QString::fromLatin1(!controlled ? "" : stop ? "stop" : "yield"));
     }
 }
 }

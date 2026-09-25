@@ -18,6 +18,7 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <optional>
 
 // M3.2.4: the Conflict areas tab. Every edit goes through the M3.2.2 commands inside
 // execute(), so it is one Undo step and a refused edit changes nothing; keyboard (table, Enter,
@@ -26,6 +27,12 @@ namespace trafficsim {
 namespace {
 constexpr int kConflictTab = 9; // after Results, so every earlier tab keeps its index
 QString owner(const ControlPathRef& p) { return QString::fromStdString(p.connectorId.empty() ? p.linkId : p.connectorId); }
+// The Stop/Yield control on the line where this area gives way (M3.2.5b), if any.
+std::optional<StopMode> controlOf(const RightOfWay& row, const std::string& area) {
+    for (const auto& c : row.stopControls)
+        if (std::find(c.conflictAreaIds.begin(), c.conflictAreaIds.end(), area) != c.conflictAreaIds.end()) return c.mode;
+    return std::nullopt;
+}
 }
 PriorityDefaults EditorWindow::priorityDefaults() const {
     const auto& def = history_.document().definition;
@@ -35,7 +42,7 @@ void EditorWindow::buildConflicts() {
     auto* body = new QWidget(objects_); auto* layout = new QVBoxLayout(body);
     layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(3);
     auto* bar = new QToolBar(body); layout->addWidget(bar);
-    conflictTable_ = new QTableWidget(0, 7, body); conflictTable_->setObjectName("editorConflictTable");
+    conflictTable_ = new QTableWidget(0, 8, body); conflictTable_->setObjectName("editorConflictTable");
     conflictTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     conflictTable_->setSelectionBehavior(QAbstractItemView::SelectRows);
     conflictTable_->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -82,7 +89,8 @@ void EditorWindow::buildConflicts() {
 void EditorWindow::translateConflicts() {
     objects_->setTabText(kConflictTab, text("editorConflictTable"));
     conflictTable_->setHorizontalHeaderLabels({text("editorColumnId"), text("editorColumnName"), text("editorConflictKind"),
-        text("editorConflictPriority"), text("editorConflictGap"), text("editorConflictHeadway"), text("editorConflictStatus")});
+        text("editorConflictPriority"), text("editorConflictGap"), text("editorConflictHeadway"), text("editorConflictStatus"),
+        text("editorConflictControl")});
     if (runProtection_) runProtection_->setText(text("editorRunProtection"));
     conflictRevision_ = UINT64_MAX; // translated cells are rebuilt on the next refresh
 }
@@ -113,10 +121,12 @@ void EditorWindow::refreshConflicts() {
             const auto rule = std::find_if(row.priorityRules.begin(), row.priorityRules.end(), [&](const auto& x) { return x.conflictAreaId == a.id; });
             const QString priority = a.priority == ConflictPriority::undetermined ? text("editorConflictUndetermined")
                 : text("editorConflictGivesWay").arg(owner(a.priority == ConflictPriority::firstYields ? a.first.path : a.second.path));
+            const auto control = controlOf(row, a.id);
             const QStringList values{QString::fromStdString(a.id), QString::fromStdString(a.name),
                 text(a.kind == ConflictKind::crossing ? "editorConflictCrossing" : "editorConflictMerge"), priority,
                 rule == row.priorityRules.end() ? QString() : QString::number(rule->gapTime, 'f', 1),
-                rule == row.priorityRules.end() ? QString() : QString::number(rule->headway, 'f', 1), status};
+                rule == row.priorityRules.end() ? QString() : QString::number(rule->headway, 'f', 1), status,
+                !control ? QString() : text(*control == StopMode::stop ? "editorControlStop" : "editorControlYield")};
             for (int c = 0; c < values.size(); ++c) {
                 auto* cell = new QTableWidgetItem(values[c]); cell->setData(Qt::UserRole, QString::fromStdString(a.id));
                 conflictTable_->setItem(r, c, cell);
@@ -182,6 +192,20 @@ void EditorWindow::editConflict(const std::string& id) {
     form->addRow(text("editorConflictPriority"), priority);
     form->addRow("gapTime", gap);
     form->addRow("headway", headway);
+    // What a driver does at the line where the area gives way (M3.2.5b). The mode belongs to the
+    // line, so it also applies to the other areas behind that line. Nothing to set while no side
+    // gives way.
+    auto* control = new QComboBox(&dialog); control->setObjectName("editorConflictControl");
+    control->addItem(text("editorControlNone"), -1);
+    control->addItem(text("editorControlYield"), static_cast<int>(StopMode::yield));
+    control->addItem(text("editorControlStop"), static_cast<int>(StopMode::stop));
+    const auto current = controlOf(row, id);
+    control->setCurrentIndex(control->findData(current ? static_cast<int>(*current) : -1));
+    const auto decided = [priority] {
+        return static_cast<ConflictPriority>(priority->currentData().toInt()) != ConflictPriority::undetermined; };
+    control->setEnabled(decided());
+    connect(priority, &QComboBox::currentIndexChanged, control, [control, decided] { control->setEnabled(decided()); });
+    form->addRow(text("editorConflictControl"), control);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));
     buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
@@ -190,8 +214,12 @@ void EditorWindow::editConflict(const std::string& id) {
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     if (dialog.exec() != QDialog::Accepted) return;
     const auto chosen = static_cast<ConflictPriority>(priority->currentData().toInt());
+    const int mode = control->currentData().toInt();
     execute("editorEditConflict", [&](auto& d) {
-        setConflictControl(d, id, name->text().toStdString(), chosen, gap->value(), headway->value()); });
+        setConflictControl(d, id, name->text().toStdString(), chosen, gap->value(), headway->value());
+        if (chosen != ConflictPriority::undetermined)
+            setAreaControl(d, id, mode < 0 ? std::nullopt : std::optional{static_cast<StopMode>(mode)});
+    });
 }
 void EditorWindow::addCrossings() {
     const auto sel = canvas_->selection();
