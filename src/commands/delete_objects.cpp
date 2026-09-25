@@ -1,4 +1,5 @@
 #include "network_commands.hpp"
+#include "detail.hpp"
 #include "connector_commands.hpp"
 #include <algorithm>
 
@@ -21,5 +22,6 @@ void deleteObjects(ProjectDocument& d, const std::vector<std::string>& ids) {
     for (const auto& id : ids) if (isLink(d, id)) deleteLink(d, id);
     for (const auto& id : ids) if (isConnector(d, id)) deleteConnector(d, id);
     std::erase_if(d.network.signalHeads,[&](const auto& h){return std::find(ids.begin(),ids.end(),h.id)!=ids.end();});
+    detail::pruneQueueCounters(d);
 }
 }

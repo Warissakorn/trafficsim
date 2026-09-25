@@ -420,6 +420,8 @@
   "editorCrossingYields": "Gives way",
   "editorCrossingPairs": "Creates one area for each of %1 crossing lane pairs.",
   "editorRunProtection": "Only conflict areas you author are protected. Other paths that cross on the drawing pass through each other in the run.",
+  "INVALID_MEASUREMENT_LINE": "A queue counter line must name a signal head or waiting line, or give a point on a lane — exactly one of the two.",
+  "UNKNOWN_MEASUREMENT_REFERENCE": "A queue counter line names a signal head or waiting line that does not exist.",
   "editorConflictControl": "Control at the waiting line",
   "editorControlNone": "None",
   "editorControlYield": "Yield",

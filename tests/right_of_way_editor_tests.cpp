@@ -142,7 +142,7 @@ TEST(rightofway_editor, every_right_of_way_code_has_english_and_thai_text) {
     std::set<std::string> codes;
     const std::regex code("\"((?:CONFLICT|EDIT_NO_CROSSING|EDIT_NO_MERGE|EDIT_SAME_OBJECT|EDIT_ALREADY_EXPLICIT|EDIT_SPLIT_CONTROL|"
                           "UNKNOWN_CONTROL|INVALID_CONTROL|UNKNOWN_WAITING|UNKNOWN_CONFLICT|DUPLICATE_PRIORITY|INVALID_PRIORITY|"
-                          "INVALID_CONFLICT|DUPLICATE_STOP|INVALID_STOP|EDIT_UNDETERMINED)[A-Z_]*)\"");
+                          "INVALID_CONFLICT|DUPLICATE_STOP|INVALID_STOP|EDIT_UNDETERMINED|INVALID_MEASUREMENT|UNKNOWN_MEASUREMENT)[A-Z_]*)\"");
     for (const auto* source : {"src/model/network/right_of_way.cpp", "src/core/validate.cpp", "src/core/conflicts.cpp",
                                "src/commands/conflict_authoring.cpp", "src/commands/right_of_way_commands.cpp"}) {
         std::ifstream file(test::root() / source);

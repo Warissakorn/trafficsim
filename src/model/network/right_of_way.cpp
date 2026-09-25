@@ -92,7 +92,7 @@ std::optional<Located> locate(const Network& n, const RuntimeSections& table, co
 std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
     std::vector<ValidationIssue> issues;
     const auto& row = n.rightOfWay;
-    if (row.empty()) return issues;
+    if (row.empty() && n.queueCounters.empty()) return issues;
     const auto add = [&](const char* code, const std::string& path) { issues.push_back({code, path}); };
     std::set<std::string> ids{n.id};
     for (const auto& l : n.links) { ids.insert(l.id); for (const auto& lane : l.lanes) ids.insert(lane.id); }
@@ -139,6 +139,25 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
         if (!std::isfinite(r.gapTime) || r.gapTime <= 0 || !std::isfinite(r.headway) || r.headway <= 0)
             add("INVALID_PRIORITY_RULE", path);
     }
+    // Queue counters (M3.2.6b): each line names a head or waiting line, or is a point, never both.
+    std::set<std::string> heads;
+    for (const auto& h : n.signalHeads) heads.insert(h.id);
+    for (std::size_t i = 0; i < n.queueCounters.size(); ++i) {
+        const auto& c = n.queueCounters[i];
+        const auto path = "queueCounters[" + std::to_string(i) + "]";
+        id(c.id, path);
+        if (c.lines.empty()) add("INVALID_MEASUREMENT_LINE", path + ".lines");
+        for (std::size_t k = 0; k < c.lines.size(); ++k) {
+            const auto& line = c.lines[k];
+            const auto at = path + ".lines[" + std::to_string(k) + "]";
+            if (line.referenceId.empty() == !line.point.has_value()) { add("INVALID_MEASUREMENT_LINE", at); continue; }
+            if (line.point) {
+                pathRef(line.point->path, at + ".point.path");
+                if (!finite(line.point->station)) add("INVALID_POSITION", at + ".point.station");
+            } else if (!heads.contains(line.referenceId) && !lines.contains(line.referenceId))
+                add("UNKNOWN_MEASUREMENT_REFERENCE", at + ".referenceId");
+        }
+    }
     std::set<std::string> controlledLines, controlledAreas;
     for (std::size_t i = 0; i < row.stopControls.size(); ++i) {
         const auto& c = row.stopControls[i];
@@ -154,6 +173,11 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
         }
     }
     return issues;
+}
+std::optional<ControlLocation> locateControlPoint(const Network& n, const RuntimeSections& table, const ControlPoint& p) {
+    const auto at = locate(n, table, p.path, p.station);
+    if (!at) return std::nullopt;
+    return ControlLocation{at->segment, at->position};
 }
 std::string resolveControlPath(const Network& n, const RuntimeSections& table, const ControlPathRef& ref,
                                double station) {

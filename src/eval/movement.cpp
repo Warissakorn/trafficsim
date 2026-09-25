@@ -1,5 +1,6 @@
 #include "movement.hpp"
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace trafficsim {
@@ -33,11 +34,16 @@ void MovementAccumulator::bind(const SimState& state) {
     for (std::size_t r = 0; r < s.routes.size(); ++r)
         if (const auto it = spec_.movementOfRoute.find(s.routes[r].id); it != spec_.movementOfRoute.end())
             movementOfSlot_[r] = it->second;
-    counterOfHead_.assign(s.signalHeads.size(), npos);
+    // The first part of each route on the line's segment, exactly as the index finds a head's.
+    lines_.clear();
     for (std::size_t c = 0; c < spec_.counters.size(); ++c)
-        for (const auto& id : spec_.counters[c].headIds)
-            for (std::size_t h = 0; h < s.signalHeads.size(); ++h)
-                if (s.signalHeads[h].id == id) counterOfHead_[h] = c;
+        for (const auto& line : spec_.counters[c].lines) {
+            BoundLine bound{c, std::vector<double>(s.routes.size(), std::nan(""))};
+            for (std::size_t r = 0; r < s.routes.size(); ++r)
+                for (const auto& part : state.index->parts[r])
+                    if (part.segmentId == line.segmentId) { bound.atRoute[r] = part.start + line.position; break; }
+            lines_.push_back(std::move(bound));
+        }
 }
 void MovementAccumulator::observe(const SimState& state) {
     bind(state);
@@ -62,18 +68,17 @@ void MovementAccumulator::observe(const SimState& state) {
         queued[v.id] = was ? v.speed <= spec_.queue.endSpeed : v.speed < spec_.queue.beginSpeed;
     }
     queued_ = std::move(queued);
-    // Per head, the vehicles whose route crosses its stop line; an approach is the max over lanes.
-    std::vector<std::vector<QueuedVehicle>> atHead(s.signalHeads.size());
-    for (const auto& v : state.vehicles)
-        for (const auto& rh : state.index->routeHeads[v.routeIndex]) {
-            if (counterOfHead_[rh.headIndex] == npos) continue;
-            const double line = rh.partStart + s.signalHeads[rh.headIndex].position;
-            atHead[rh.headIndex].push_back({line - v.distance, s.vehicleTypes[v.typeIndex].length, queued_[v.id]});
-        }
+    // Per line, the vehicles whose route crosses it; an approach is the max over its lines.
     std::vector<double> length(spec_.counters.size());
-    for (std::size_t h = 0; h < atHead.size(); ++h)
-        if (counterOfHead_[h] != npos)
-            length[counterOfHead_[h]] = std::max(length[counterOfHead_[h]], queueLength(atHead[h], spec_.queue.maxGap));
+    for (const auto& line : lines_) {
+        std::vector<QueuedVehicle> behind;
+        for (const auto& v : state.vehicles) {
+            const double at = line.atRoute[v.routeIndex];
+            if (std::isnan(at)) continue;
+            behind.push_back({at - v.distance, s.vehicleTypes[v.typeIndex].length, queued_[v.id]});
+        }
+        length[line.counter] = std::max(length[line.counter], queueLength(std::move(behind), spec_.queue.maxGap));
+    }
     for (std::size_t c = 0; c < length.size(); ++c) {
         queueSum_[c] += length[c]; queueMax_[c] = std::max(queueMax_[c], length[c]);
     }

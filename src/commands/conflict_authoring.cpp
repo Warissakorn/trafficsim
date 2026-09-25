@@ -1,5 +1,6 @@
 #include "right_of_way_commands.hpp"
 #include "../model/network/right_of_way.hpp"
+#include "detail.hpp"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -154,5 +155,6 @@ void removeConflictArea(ProjectDocument& d, const std::string& areaId) {
             return a.first.waitingLineId == side->waitingLineId || a.second.waitingLineId == side->waitingLineId; });
         if (!used) std::erase_if(row.waitingLines, [&](const auto& w) { return w.id == side->waitingLineId; });
     }
+    detail::pruneQueueCounters(d);
 }
 }

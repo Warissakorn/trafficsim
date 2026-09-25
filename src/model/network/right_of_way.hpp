@@ -17,6 +17,9 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network&);
 // Resolution is by id, never by ordinal, so a lane-count change cannot retarget a control.
 std::string resolveControlPath(const Network&, const RuntimeSections&, const ControlPathRef&,
                                double station);
+// M3.2.6b: the same resolution with the metres along that segment, for a queue counter's line.
+struct ControlLocation { std::string segment; double position{}; };
+std::optional<ControlLocation> locateControlPoint(const Network&, const RuntimeSections&, const ControlPoint&);
 
 // M3.2.2c. Where two lane surfaces really overlap, as an interval of authored stations on each
 // path's own polyline (a Link's reference polyline, a Connector's base polyline) -- the numbers a

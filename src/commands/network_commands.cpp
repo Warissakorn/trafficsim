@@ -47,6 +47,10 @@ void checkRemovedLanes(const ProjectDocument& d,const std::set<std::string>& rem
     }
     for (const auto& h : d.network.signalHeads)
         if (removed.contains(h.lane.laneId)) throw std::invalid_argument("EDIT_REFERENCED_LANE");
+    for (const auto& c : d.network.queueCounters) // M3.2.6b: a measurement point holds its lane as a head does
+        for (const auto& l : c.lines)
+            if (l.point && removed.contains(l.point->path.connectorId.empty() ? l.point->path.laneId : std::string{}))
+                throw std::invalid_argument("EDIT_REFERENCED_LANE");
     // No route arm here since M1.26: a route names the Link, so removing one of its lanes leaves
     // the route valid and simply one lane narrower when it expands.
 }
@@ -90,6 +94,7 @@ void deleteLink(ProjectDocument& d, const std::string& id) {
     detail::removeControlsOn(d, {id}, attached); // M3.2.2b: controls cascade like heads
     std::erase_if(d.network.connectors, [&](const auto& c) { return removed.contains(c.id); });
     std::erase_if(d.network.signalHeads, [&](const auto& h) { return h.lane.linkId == id || removed.contains(h.connectorId); });
+    detail::pruneQueueCounters(d); // M3.2.6b: a counter measuring at a removed head loses that line
     std::erase_if(d.network.links, [&](const auto& link) { return link.id == id; });
     detail::removeRoutesUsingSegments(d, removed);
 }

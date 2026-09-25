@@ -9,35 +9,32 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.6, signal positions and queue counters
+## Immediate — M3.2.6c, queue counters in the editor
 
 **Done:**
-- M3.2.2a–c (D54–D56), authored controls.
-- M3.2.3a–c (D57–D59), the admission solver.
-- M3.2.4a–b (D60–D61), the conflict-area editor.
-- **M3.2.5a–b (D62–D63)**, Stop and Yield:
-  - core stop service;
-  - `StopControl` in schema 15;
-  - the dialog's Control field and the canvas line marks;
-  - one waiting line per lane for new crossings.
+- M3.2.2a–M3.2.5b (D54–D63): authored right-of-way, the admission solver, Stop/Yield, and the
+  editor for all of them.
+- **M3.2.6a/b (D64):**
+  - A21 evidence (`signal_position.*`);
+  - `AuthoredQueueCounter` in schema 16, measured by place (`src/eval/movement.*`,
+    `src/project/evaluation.cpp`);
+  - an authored counter over a Link's heads replaces that Link's derived row.
+- The commands the editor calls exist: `putQueueCounter` and `deleteQueueCounter`
+  (`right_of_way_commands.hpp`). Lifecycle is `detail::pruneQueueCounters`.
 
-A24 stays *partial* until the Windows CI run and the owner's attempt.
-
-**Next, M3.2.6** (ROADMAP row; `M3_PLAN.md` §M3.2.4-6; acceptance A21–A23):
-1. **Signal positions (A21):**
-   - Test a head before, exactly on and after a section cut. The existing interior-head mechanism
-     stays the one source (contract §5: "a head exactly on a cut belongs upstream").
-   - Then stretch, split and copy the Link, on both driving sides.
-   - Fill the pointer/keyboard gaps the tests expose. No second signal model.
-2. **Queue counters (A22, A23):**
-   - Add `AuthoredQueueCounter` (contract §1): measurement lines that each either reference an
-     existing head, control or wait line, or give an explicit `ControlPoint`, never both.
-   - Its location has one source of truth.
-   - Thresholds stay in the evaluation catalog.
-   - Existing signal-derived counters keep their results.
-   - CLI and editor reports must agree; there must be no duplicate approach rows.
-3. **Schema 16** if the counter is persisted. Regenerate the two project fixtures with their tools,
-   exactly as schema 15 did.
+**Next, M3.2.6c** (ROADMAP row):
+1. **Counter tool on the canvas**, one new palette tool; write its gesture first in
+   `VISSIM_PARITY.md` §2b.
+   - A click on a head or dashed waiting line adds a line referencing it.
+   - A click on a lane adds an explicit `ControlPoint` at the station, found the way the head tool
+     finds one (`nearestHeadSlot`, `canvas_heads.cpp`).
+   - Enter finishes the counter, making it one Undo step.
+2. **A Queue counters tab:** name, lines, and the row it produces. Deleting a counter restores the
+   derived row. Add en/th for both new codes' tab text; the codes already have text.
+3. **Draw counter lines** on the canvas, distinct from waiting lines and stop lines.
+4. **Tests:** a Qt suite in the `priority-canvas` style — create by pointer and by keyboard, Undo,
+   then Save and reopen (A24), with the Results tab showing the authored row in place of the
+   derived one.
 
 Then **M3.2.7**, the T-junction evidence (gap sweep and owner exercise, A26).
 

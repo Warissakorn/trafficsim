@@ -5,6 +5,7 @@
 //
 // Waiting lines, conflict areas, their priority rules and (M3.2.5) Stop/Yield controls. Queue
 // counters are M3.2.6 and are not here yet.
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -59,6 +60,19 @@ struct RightOfWay {
     std::vector<StopControl> stopControls; // schema 15
     bool empty() const { return waitingLines.empty() && conflictAreas.empty() && priorityRules.empty() && stopControls.empty(); }
     bool operator==(const RightOfWay&) const = default;
+};
+// M3.2.6b (contract §1). Where a queue is measured from: an existing Signal head or waiting line
+// (`referenceId`), or an explicit ControlPoint -- exactly one of the two. The place is then stored
+// once, by whatever owns it, so moving the head moves the counter's line with it.
+struct MeasurementLine {
+    std::string referenceId; std::optional<ControlPoint> point;
+    bool operator==(const MeasurementLine&) const = default;
+};
+// A queue counter the author placed, independent of signal heads. Its row replaces the counter
+// derived from a Link's heads when it measures any of them (no duplicate approach rows, A23).
+struct AuthoredQueueCounter {
+    std::string id, name; std::vector<MeasurementLine> lines;
+    bool operator==(const AuthoredQueueCounter&) const = default;
 };
 const char* conflictKindName(ConflictKind);
 const char* conflictPriorityName(ConflictPriority);

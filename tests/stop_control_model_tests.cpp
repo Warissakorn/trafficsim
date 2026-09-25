@@ -65,11 +65,11 @@ TEST(stop_control_model, one_line_has_one_mode_for_every_area_it_controls) {
                                                                                           : ConflictPriority::firstYields, 3, 7);
     CHECK(!controlOf(t.d, sharing[0]) && controlOf(t.d, sharing[1]));
 }
-TEST(stop_control_model, schema_15_round_trips_and_an_older_or_malformed_file_is_refused) {
+TEST(stop_control_model, stop_controls_round_trip_and_an_older_or_malformed_file_is_refused) {
     auto p = crossingLinks();
     setAreaControl(p.d, p.area, StopMode::stop);
     auto file = documentJson(p.d);
-    CHECK(file["schemaVersion"] == 15);
+    CHECK(file["schemaVersion"] == 16);
     CHECK(file["network"]["rightOfWay"]["stopControls"][0]["mode"] == "stop");
     CHECK(parseDocument(file).network == p.d.network);
     auto older = file; older["schemaVersion"] = 14;

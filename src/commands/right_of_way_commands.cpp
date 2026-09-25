@@ -68,6 +68,11 @@ std::string putStopControl(ProjectDocument& d, StopControl value) {
     const auto id = value.id; put(d.network.rightOfWay.stopControls, std::move(value)); return id;
 }
 void deleteStopControl(ProjectDocument& d, const std::string& id) { remove(d.network.rightOfWay.stopControls, id); }
+std::string putQueueCounter(ProjectDocument& d, AuthoredQueueCounter value) {
+    if (value.id.empty()) value.id = allocateId(d, "counter");
+    const auto id = value.id; put(d.network.queueCounters, std::move(value)); return id;
+}
+void deleteQueueCounter(ProjectDocument& d, const std::string& id) { remove(d.network.queueCounters, id); }
 void deleteWaitingLine(ProjectDocument& d, const std::string& id) {
     const auto& areas = d.network.rightOfWay.conflictAreas;
     const auto& controls = d.network.rightOfWay.stopControls;
@@ -76,6 +81,7 @@ void deleteWaitingLine(ProjectDocument& d, const std::string& id) {
         std::any_of(controls.begin(), controls.end(), [&](const auto& c) { return c.waitingLineId == id; }))
         throw std::invalid_argument("EDIT_REFERENCED");
     remove(d.network.rightOfWay.waitingLines, id);
+    detail::pruneQueueCounters(d); // a counter measuring at the line loses that line
 }
 void deleteConflictArea(ProjectDocument& d, const std::string& id) {
     auto& row = d.network.rightOfWay;
@@ -125,6 +131,7 @@ void restoreAutomaticPriority(ProjectDocument& d, const std::string& section) {
         return std::none_of(row.conflictAreas.begin(), row.conflictAreas.end(), [&](const auto& a) {
             return a.first.waitingLineId == w.id || a.second.waitingLineId == w.id; });
     });
+    detail::pruneQueueCounters(d);
 }
 }
 namespace trafficsim::detail {
@@ -133,15 +140,19 @@ bool on(const ControlPathRef& p, const std::set<std::string>& links, const std::
     return p.connectorId.empty() ? links.contains(p.linkId) : connectors.contains(p.connectorId);
 }
 // Every path reference a control holds, with the stations measured along it.
-template<class F> void eachPath(RightOfWay& row, F visit) {
+template<class F> void eachPath(Network& n, F visit) {
+    auto& row = n.rightOfWay;
     for (auto& w : row.waitingLines) visit(w.point.path, std::vector<double*>{&w.point.station});
     for (auto& a : row.conflictAreas)
         for (auto* s : {&a.first, &a.second}) visit(s->path, std::vector<double*>{&s->entryStation, &s->exitStation});
+    // M3.2.6b: a queue counter's explicit measurement point is a place on a road like any other.
+    for (auto& c : n.queueCounters)
+        for (auto& l : c.lines) if (l.point) visit(l.point->path, std::vector<double*>{&l.point->station});
 }
 }
 void removeControlsOn(ProjectDocument& d, const std::set<std::string>& links, const std::set<std::string>& connectors) {
     auto& row = d.network.rightOfWay;
-    if (row.empty()) return;
+    if (row.empty()) { pruneQueueCounters(d, links, connectors); return; }
     std::set<std::string> lost;
     for (const auto& w : row.waitingLines) if (on(w.point.path, links, connectors)) lost.insert(w.id);
     std::set<std::string> gone;
@@ -160,6 +171,18 @@ void removeControlsOn(ProjectDocument& d, const std::set<std::string>& links, co
     std::erase_if(row.priorityRules, [&](const auto& r) { return gone.contains(r.conflictAreaId); });
     std::erase_if(row.waitingLines, [&](const auto& w) { return lost.contains(w.id); });
     pruneStopControls(row);
+    pruneQueueCounters(d, links, connectors);
+}
+void pruneQueueCounters(ProjectDocument& d, const std::set<std::string>& links, const std::set<std::string>& connectors) {
+    auto& n = d.network;
+    if (n.queueCounters.empty()) return;
+    std::set<std::string> targets;
+    for (const auto& h : n.signalHeads) targets.insert(h.id);
+    for (const auto& w : n.rightOfWay.waitingLines) targets.insert(w.id);
+    for (auto& c : n.queueCounters)
+        std::erase_if(c.lines, [&](const auto& l) {
+            return l.point ? on(l.point->path, links, connectors) : !targets.contains(l.referenceId); });
+    std::erase_if(n.queueCounters, [](const auto& c) { return c.lines.empty(); });
 }
 void pruneStopControls(RightOfWay& row) {
     const auto hasArea = [&](const std::string& id) {
@@ -171,8 +194,8 @@ void pruneStopControls(RightOfWay& row) {
 }
 bool controlsNameLink(const Network& n, const std::string& link) {
     bool named = false;
-    auto row = n.rightOfWay;
-    eachPath(row, [&](const ControlPathRef& p, const auto&) { named = named || (p.connectorId.empty() && p.linkId == link); });
+    auto copy = n;
+    eachPath(copy, [&](const ControlPathRef& p, const auto&) { named = named || (p.connectorId.empty() && p.linkId == link); });
     return named;
 }
 void checkSplitControls(const Network& n, const std::string& link, double distance) {
@@ -184,13 +207,17 @@ void checkSplitControls(const Network& n, const std::string& link, double distan
         for (const auto* s : {&a.first, &a.second})
             if (s->path.connectorId.empty() && s->path.linkId == link && !(s->exitStation <= near || s->entryStation >= far))
                 throw std::invalid_argument("EDIT_SPLIT_CONTROL");
+    for (const auto& c : n.queueCounters)
+        for (const auto& l : c.lines)
+            if (l.point && l.point->path.connectorId.empty() && l.point->path.linkId == link && l.point->station > near && l.point->station < far)
+                throw std::invalid_argument("EDIT_SPLIT_CONTROL");
 }
 void splitControls(ProjectDocument& d, const std::string& link, const std::string& downstream, double distance,
                    const std::map<std::string, std::string>& lanes) {
     const double far = distance + 0.1;
     std::map<std::string, const Connector*> connectors;
     for (const auto& c : d.network.connectors) connectors[c.id] = &c;
-    eachPath(d.network.rightOfWay, [&](ControlPathRef& p, const std::vector<double*>& stations) {
+    eachPath(d.network, [&](ControlPathRef& p, const std::vector<double*>& stations) {
         if (p.connectorId.empty()) {
             // checkSplitControls already refused anything in or across the span.
             if (p.linkId != link || *stations.front() < far) return;

@@ -1,7 +1,10 @@
 #include "evaluation.hpp"
 #include "json.hpp"
+#include "../model/network/right_of_way.hpp"
 #include <nlohmann/json.hpp>
 #include <cmath>
+#include <optional>
+#include <set>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -69,12 +72,46 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
                                          linkLabel(document.network, key.second));
         spec.movementOfRoute[route.id] = it->second;
     }
-    for (const auto& link : snapshot.network.links) {
-        QueueCounter counter{link.name.empty() ? link.id : link.name, {}};
-        for (const auto& head : snapshot.network.signalHeads)
-            if (head.connectorId.empty() && head.lane.linkId == link.id) counter.headIds.push_back(head.id);
-        if (!counter.headIds.empty()) spec.counters.push_back(std::move(counter));
+    // Counter lines are places on runtime segments (M3.2.6b). A head's is where the core stops
+    // traffic for it, read from the compiled scenario, so a head-derived counter measures exactly
+    // the line it always did.
+    const auto& network = snapshot.network;
+    const auto headLine = [&](const std::string& id) -> std::optional<CounterLine> {
+        for (const auto& h : snapshot.scenario.signalHeads) if (h.id == id) return CounterLine{h.segmentId, h.position};
+        return std::nullopt;
+    };
+    std::set<std::string> measured; // heads an authored counter measures: their Link's derived row goes
+    std::vector<QueueCounter> authored;
+    for (const auto& c : network.queueCounters) {
+        QueueCounter counter{c.name.empty() ? c.id : c.name, {}};
+        for (const auto& l : c.lines) {
+            std::optional<CounterLine> line;
+            if (l.point) {
+                if (const auto at = locateControlPoint(network, table, *l.point)) line = CounterLine{at->segment, at->position};
+            } else if ((line = headLine(l.referenceId))) {
+                measured.insert(l.referenceId);
+            } else {
+                for (const auto& w : network.rightOfWay.waitingLines)
+                    if (w.id == l.referenceId)
+                        if (const auto at = locateControlPoint(network, table, w.point)) line = CounterLine{at->segment, at->position};
+            }
+            if (line) counter.lines.push_back(*line);
+        }
+        // A line that no longer resolves measures nothing; a counter with none is not a row.
+        if (!counter.lines.empty()) authored.push_back(std::move(counter));
     }
+    for (const auto& link : network.links) {
+        QueueCounter counter{link.name.empty() ? link.id : link.name, {}};
+        bool replaced = false;
+        for (const auto& head : network.signalHeads)
+            if (head.connectorId.empty() && head.lane.linkId == link.id) {
+                replaced = replaced || measured.contains(head.id);
+                if (const auto line = headLine(head.id)) counter.lines.push_back(*line);
+            }
+        // One row per approach (A23): an authored counter over any of these heads replaces it.
+        if (!counter.lines.empty() && !replaced) spec.counters.push_back(std::move(counter));
+    }
+    for (auto& c : authored) spec.counters.push_back(std::move(c));
     return spec;
 }
 namespace {

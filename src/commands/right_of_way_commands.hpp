@@ -13,7 +13,11 @@ std::string putPriorityRule(ProjectDocument&, AuthoredPriorityRule);
 // M3.2.5. Empty id allocates ("stop-N"); the same id replaces.
 std::string putStopControl(ProjectDocument&, StopControl);
 void deleteStopControl(ProjectDocument&, const std::string& id);
-// Refused (EDIT_REFERENCED) while a conflict side still waits at it or a Stop/Yield control names it.
+// M3.2.6b. Empty id allocates ("counter-N"); the same id replaces.
+std::string putQueueCounter(ProjectDocument&, AuthoredQueueCounter);
+void deleteQueueCounter(ProjectDocument&, const std::string& id);
+// Refused (EDIT_REFERENCED) while a conflict side still waits at it or a Stop/Yield control names it;
+// a queue counter measuring there loses that line.
 void deleteWaitingLine(ProjectDocument&, const std::string& id);
 // Removes the area's rule with it: a rule means nothing without its area.
 void deleteConflictArea(ProjectDocument&, const std::string& id);

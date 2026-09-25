@@ -112,7 +112,7 @@ std::string putSignalHead(ProjectDocument& d, NetworkSignalHead value) {
     if (value.id.empty()) value.id=allocateId(d,"head");
     const auto id=value.id; put(d.network.signalHeads,std::move(value)); return id;
 }
-void deleteSignalHead(ProjectDocument& d, const std::string& id) { remove(d.network.signalHeads,id); }
+void deleteSignalHead(ProjectDocument& d, const std::string& id) { remove(d.network.signalHeads,id); detail::pruneQueueCounters(d); }
 void moveSignalHead(ProjectDocument& d, const std::string& id, double position) {
     if (!std::isfinite(position)) throw std::invalid_argument("INVALID_POSITION");
     for (auto& h:d.network.signalHeads) if (h.id==id) { h.position=position; return; }
