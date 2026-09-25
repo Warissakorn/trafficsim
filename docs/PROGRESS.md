@@ -34,6 +34,12 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M2 gate passed by the owner (D53)
+
+The owner reported M2.6 passed. Recorded in `M2_GATE.md` with the verdict as the owner's
+(D51) and every detail the owner did not supply marked "not stated". ROADMAP §M2, NEXT and
+CLAUDE.md now point at M3.2.2. No code changed.
+
 ## 2026-09-25 — C2 and C4 withdrawn; the owner judges the gate (D51, D52)
 
 Then C4 too (D52): no delay comparison with Vissim in the gate. M6 validation is unaffected.
@@ -441,3 +447,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D50 | 2026-09-25 | **A derived priority rule's stop line is 1 m short of the join, not on it** | Held exactly at the join, the waiting vehicle's front is on the shared lane; the major vehicle behind it stops within the headway and each waits for the other for ever. A Thai left turn at all times arrives at speed during the cross street's green and deadlocked the M2.6 template in its first minute (445 vehicles never entered). 1 m is geometry, not behaviour, so it is a constant (`kYieldClearance`, `sections.cpp`), not a `data/` value. The four-leg fixture's run and `trafficsim-cli 42` are byte-identical before and after. | An authored conflict area (M3.2) places its own stop line and supersedes this for authored rules. |
 | D51 | 2026-09-25 | **No test times TrafficSim against Vissim; the owner judges pass or fail** | Owner ruling: withdraw the timing comparison with Vissim from every test, and let the owner assess the result. Made before any M2 gate observation, so it is a re-registration (as D38 was), not a criterion changed after the fact (D8). C2 is withdrawn and keeps its number; C1 still defines the study and C4 is still recorded, since it compares delays, not time. The verdict line in `M2_GATE.md` is the owner's. M1's 10-minute limit was absolute, never against Vissim, and M1 is already accepted (D49). | A later owner ruling. A judgment by the builder alone is the weakness ROADMAP §M2 names; outside engineers still strengthen it. |
 | D52 | 2026-09-25 | **C4 withdrawn: no test compares delays with Vissim** | Owner ruling, following D51. Still before any M2 gate observation, so a re-registration, not a changed criterion (D8). C4 was never scored, only recorded; with it goes the "two LOS letters apart → investigation" trigger for the gate. What remains is C1 — the study completed end to end — and the owner's verdict. The Results table is still produced and recorded; it is simply not set beside another tool's. Plausibility against real-world data stays M6's (validation), untouched. | A later owner ruling. |
+| D53 | 2026-09-25 | **The M2 gate is passed on the owner's word** | Under D51 the verdict is the owner's, and the owner reported "M2.6 passed". Recorded as *not disproven* (D8). The study's site, counts, file and Results table were not supplied; the record says so rather than filling them in. M3 may start. | Evidence that the study did not meet C1, or a later owner ruling. |

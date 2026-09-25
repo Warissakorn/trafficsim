@@ -54,20 +54,16 @@ sheet into one controller. If a group needs something the dialog cannot say — 
 the cycle, red-amber, an intergreen check, detectors — that is M4, and it should be written down
 in `M2_GATE.md` as friction, not worked around.
 
-**M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
-([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank
-project to the Results table (C1); **the owner judges pass or fail (D51)** — no timing or delay
-comparison against Vissim (D52).
-Nothing in M3 starts before it passes.
+**M2's gate passed — the owner's judgment, 2026-09-25 (D53, recorded in [`M2_GATE.md`](M2_GATE.md)).**
+The record says what was not supplied (site, counts, file, Results table); ask the owner for them
+only if a later decision needs them. M2.1 remains open as its own milestone.
 
 **M3 preparation is recorded (2026-09-24, D41).** The owner asked to carry out the proposed
 sequence. [M3_PLAN.md](M3_PLAN.md), [M3_CONTRACT.md](M3_CONTRACT.md) and
 [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) now hold its contract and evidence design; no runtime
-or schema change has started. The immediate action remains the owner's M2.6 observation,
-not a request to approve the plan again. After the owner records a pass in `M2_GATE.md`,
-start M3.2.2: authored references/model, codec, commands and effective-priority resolver,
-in that order, with A01-A08 evidence. Keep new controls Run-blocked until M3.2.3 implements
-their runtime. Do not infer a gate pass from the instruction to follow the sequence.
+or schema change has started. **The M2 gate has passed, so start M3.2.2 now: authored references/model, codec, commands and effective-priority resolver,
+in that order, with A01-A08 evidence.** Keep new controls Run-blocked until M3.2.3 implements
+their runtime.
 
 **Engineering work that can proceed without the owner, if asked:**
 - Deriving an input's interval volumes from its entry decision's turning counts, so a count sheet
