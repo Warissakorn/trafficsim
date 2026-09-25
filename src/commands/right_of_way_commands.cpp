@@ -1,5 +1,6 @@
 #include "right_of_way_commands.hpp"
 #include "../model/network/right_of_way.hpp"
+#include "detail.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -116,5 +117,117 @@ void restoreAutomaticPriority(ProjectDocument& d, const std::string& section) {
         return std::none_of(row.conflictAreas.begin(), row.conflictAreas.end(), [&](const auto& a) {
             return a.first.waitingLineId == w.id || a.second.waitingLineId == w.id; });
     });
+}
+}
+namespace trafficsim::detail {
+namespace {
+bool on(const ControlPathRef& p, const std::set<std::string>& links, const std::set<std::string>& connectors) {
+    return p.connectorId.empty() ? links.contains(p.linkId) : connectors.contains(p.connectorId);
+}
+// Every path reference a control holds, with the stations measured along it.
+template<class F> void eachPath(RightOfWay& row, F visit) {
+    for (auto& w : row.waitingLines) visit(w.point.path, std::vector<double*>{&w.point.station});
+    for (auto& a : row.conflictAreas)
+        for (auto* s : {&a.first, &a.second}) visit(s->path, std::vector<double*>{&s->entryStation, &s->exitStation});
+}
+}
+void removeControlsOn(ProjectDocument& d, const std::set<std::string>& links, const std::set<std::string>& connectors) {
+    auto& row = d.network.rightOfWay;
+    if (row.empty()) return;
+    std::set<std::string> lost;
+    for (const auto& w : row.waitingLines) if (on(w.point.path, links, connectors)) lost.insert(w.id);
+    std::set<std::string> gone;
+    for (const auto& a : row.conflictAreas)
+        for (const auto* s : {&a.first, &a.second})
+            if (on(s->path, links, connectors) || lost.contains(s->waitingLineId)) gone.insert(a.id);
+    // A line on a surviving road that served only removed areas goes with them: it was that
+    // area's line, not a standalone one, and would otherwise be left behind as debris.
+    const auto serves = [](const ConflictArea& a, const std::string& id) { return a.first.waitingLineId == id || a.second.waitingLineId == id; };
+    for (const auto& w : row.waitingLines) {
+        bool servedGone = false, servedKept = false;
+        for (const auto& a : row.conflictAreas) if (serves(a, w.id)) (gone.contains(a.id) ? servedGone : servedKept) = true;
+        if (servedGone && !servedKept) lost.insert(w.id);
+    }
+    std::erase_if(row.conflictAreas, [&](const auto& a) { return gone.contains(a.id); });
+    std::erase_if(row.priorityRules, [&](const auto& r) { return gone.contains(r.conflictAreaId); });
+    std::erase_if(row.waitingLines, [&](const auto& w) { return lost.contains(w.id); });
+}
+bool controlsNameLink(const Network& n, const std::string& link) {
+    bool named = false;
+    auto row = n.rightOfWay;
+    eachPath(row, [&](const ControlPathRef& p, const auto&) { named = named || (p.connectorId.empty() && p.linkId == link); });
+    return named;
+}
+void checkSplitControls(const Network& n, const std::string& link, double distance) {
+    const double near = distance - 0.1, far = distance + 0.1;
+    for (const auto& w : n.rightOfWay.waitingLines)
+        if (w.point.path.connectorId.empty() && w.point.path.linkId == link && w.point.station > near && w.point.station < far)
+            throw std::invalid_argument("EDIT_SPLIT_CONTROL");
+    for (const auto& a : n.rightOfWay.conflictAreas)
+        for (const auto* s : {&a.first, &a.second})
+            if (s->path.connectorId.empty() && s->path.linkId == link && !(s->exitStation <= near || s->entryStation >= far))
+                throw std::invalid_argument("EDIT_SPLIT_CONTROL");
+}
+void splitControls(ProjectDocument& d, const std::string& link, const std::string& downstream, double distance,
+                   const std::map<std::string, std::string>& lanes) {
+    const double far = distance + 0.1;
+    std::map<std::string, const Connector*> connectors;
+    for (const auto& c : d.network.connectors) connectors[c.id] = &c;
+    eachPath(d.network.rightOfWay, [&](ControlPathRef& p, const std::vector<double*>& stations) {
+        if (p.connectorId.empty()) {
+            // checkSplitControls already refused anything in or across the span.
+            if (p.linkId != link || *stations.front() < far) return;
+            p.linkId = downstream; p.laneId = lanes.at(p.laneId);
+            for (auto* s : stations) *s -= far;
+            return;
+        }
+        const auto it = connectors.find(p.connectorId);
+        if (it == connectors.end()) return;
+        if (it->second->from.linkId == downstream && lanes.contains(p.fromLaneId)) p.fromLaneId = lanes.at(p.fromLaneId);
+        if (it->second->to.linkId == downstream && lanes.contains(p.toLaneId)) p.toLaneId = lanes.at(p.toLaneId);
+    });
+}
+void copyControls(ProjectDocument& d, const Network& source, const std::map<std::string, std::string>& links,
+                  const std::map<std::string, std::string>& lanes, const std::map<std::string, std::string>& connectors) {
+    const auto copied = [&](const ControlPathRef& p) {
+        return p.connectorId.empty() ? links.contains(p.linkId) && lanes.contains(p.laneId)
+                                     : connectors.contains(p.connectorId) && lanes.contains(p.fromLaneId) && lanes.contains(p.toLaneId);
+    };
+    const auto remap = [&](ControlPathRef p) {
+        if (p.connectorId.empty()) { p.linkId = links.at(p.linkId); p.laneId = lanes.at(p.laneId); }
+        else { p.connectorId = connectors.at(p.connectorId); p.fromLaneId = lanes.at(p.fromLaneId); p.toLaneId = lanes.at(p.toLaneId); }
+        return p;
+    };
+    const auto& row = source.rightOfWay;
+    std::map<std::string, std::string> lines, areas;
+    for (auto w : row.waitingLines) {
+        if (!copied(w.point.path)) continue;
+        const auto old = w.id;
+        w.id = allocateId(d, "wait"); w.point.path = remap(w.point.path);
+        lines[old] = w.id; d.network.rightOfWay.waitingLines.push_back(std::move(w));
+    }
+    for (auto a : row.conflictAreas) {
+        const bool whole = copied(a.first.path) && copied(a.second.path) &&
+                           lines.contains(a.first.waitingLineId) && lines.contains(a.second.waitingLineId);
+        if (!whole) continue;
+        const auto old = a.id;
+        a.id = allocateId(d, "conflict");
+        for (auto* s : {&a.first, &a.second}) { s->path = remap(s->path); s->waitingLineId = lines.at(s->waitingLineId); }
+        areas[old] = a.id; d.network.rightOfWay.conflictAreas.push_back(std::move(a));
+    }
+    for (auto r : row.priorityRules) {
+        if (!areas.contains(r.conflictAreaId)) continue;
+        r.id = allocateId(d, "rule"); r.conflictAreaId = areas.at(r.conflictAreaId);
+        d.network.rightOfWay.priorityRules.push_back(std::move(r));
+    }
+    // A line that only served areas left behind (one owner missing) would be an orphan copy.
+    // One nothing referenced in the source is kept: it was a standalone line and still is.
+    for (const auto& [old, fresh] : lines) {
+        const auto serves = [&](const auto& a, const std::string& id) { return a.first.waitingLineId == id || a.second.waitingLineId == id; };
+        const bool servedBefore = std::any_of(row.conflictAreas.begin(), row.conflictAreas.end(), [&](const auto& a) { return serves(a, old); });
+        const auto& now = d.network.rightOfWay.conflictAreas;
+        if (servedBefore && std::none_of(now.begin(), now.end(), [&](const auto& a) { return serves(a, fresh); }))
+            std::erase_if(d.network.rightOfWay.waitingLines, [&](const auto& w) { return w.id == fresh; });
+    }
 }
 }

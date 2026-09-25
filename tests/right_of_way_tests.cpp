@@ -3,43 +3,12 @@
 #include "../src/commands/right_of_way_commands.hpp"
 #include "../src/model/network/right_of_way.hpp"
 #include "../src/model/network/diagnostics.hpp"
+#include "right_of_way_fixture.hpp"
 #include <algorithm>
 using namespace trafficsim;
+using namespace rowfixture;
 // M3.2.2: authored right-of-way controls at the file/model seam (docs/M3_ACCEPTANCE.md A01-A08).
 // Nothing here runs a new control: every authored area is Run-blocked until M3.2.3.
-namespace {
-const PriorityDefaults kDefaults{3, 7};
-bool has(const std::vector<ValidationIssue>& issues, const std::string& code) {
-    return std::any_of(issues.begin(), issues.end(), [&](const auto& i) { return i.code == code; });
-}
-int count(const std::vector<ValidationIssue>& issues, const std::string& code) {
-    return static_cast<int>(std::count_if(issues.begin(), issues.end(), [&](const auto& i) { return i.code == code; }));
-}
-RightOfWayResolution resolve(const ProjectDocument& d, PriorityDefaults defaults = kDefaults) {
-    return resolveRightOfWay(d.network, runtimeSections(d.network), defaults);
-}
-int rulesWithPrefix(const RightOfWayResolution& r, const std::string& prefix) {
-    return static_cast<int>(std::count_if(r.rules.begin(), r.rules.end(),
-                                          [&](const auto& x) { return x.id.rfind(prefix, 0) == 0; }));
-}
-// Three single-lane Links ending short of X, each joined to X's lane start: one merge of three.
-struct Three { ProjectDocument d; std::string x; };
-Three threeWayMerge() {
-    Three t;
-    t.x = addLink(t.d, {{0, 0}, {100, 0}}, 1, 3.5);
-    const auto xLane = editableLink(t.d, t.x).lanes[0].id;
-    for (const double y : {0.0, 40.0, -40.0}) {
-        const auto a = addLink(t.d, {{-100, y}, {-20, y * 0.25}}, 1, 3.5);
-        addConnector(t.d, {a, editableLink(t.d, a).lanes[0].id}, {t.x, xLane});
-    }
-    return t;
-}
-std::string mergeAt(const ProjectDocument& d, std::size_t members) {
-    for (const auto& g : mergeGroups(d.network, runtimeSections(d.network)))
-        if (g.incoming.size() == members) return g.section;
-    throw std::runtime_error("no merge of that size");
-}
-}
 TEST(rightofway, a01_no_controls_compile_exactly_as_before) {
     const auto d = fixture::fourLegIntersection().document;
     CHECK(d.network.rightOfWay.empty());
@@ -209,22 +178,6 @@ TEST(rightofway, commands_are_one_undoable_step) {
     CHECK(h.document() == after);
     h.undo(); CHECK(h.document() == before);
     h.redo(); CHECK(h.document() == after);
-}
-TEST(rightofway, until_m3_2_2b_owner_deletes_are_refused_and_lane_changes_leave_a_draft) {
-    // Pins the interim behaviour D54 documents, so M3.2.2b changes it on purpose, not by accident.
-    History h; h.reset(threeWayMerge().d);
-    const auto section = mergeAt(h.document(), 3);
-    h.execute("takeOver", [&](ProjectDocument& d) { takeOverMerge(d, section, kDefaults); });
-    const auto& area = h.document().network.rightOfWay.conflictAreas.front();
-    const auto connector = area.first.path.connectorId;
-    CHECK(!connector.empty()); // the forcing: the area really names a Connector
-    const auto before = h.document();
-    test::throws([&] { h.execute("delete", [&](ProjectDocument& d) { deleteObjects(d, {connector}); }); }, "UNKNOWN_CONTROL_OWNER");
-    CHECK(h.document() == before);
-    // A lane id the pair no longer matches is kept, reported, and blocks Run -- never retargeted.
-    auto stale = before; stale.network.rightOfWay.conflictAreas.front().first.path.toLaneId = "renamed";
-    validateDocument(stale);
-    CHECK(has(resolve(stale).issues, "CONFLICT_UNRESOLVED_PATH"));
 }
 TEST(rightofway, a_taken_over_lane_two_of_a_curved_range_compiles_to_the_fallback) {
     // Scrutiny finding 1 (D55): the waiting line was placed on the Connector's stored polyline,

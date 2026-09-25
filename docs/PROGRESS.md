@@ -35,6 +35,18 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M3.2.2b: controls follow their owners (D55)
+
+`src/commands/detail.hpp` gains `removeControlsOn`, `controlsNameLink`, `checkSplitControls`/
+`splitControls` and `copyControls`; `deleteLink`, `deleteConnector` (so every reanchor deletion
+too), `splitLink`, `duplicateObjects` and `reverseLink` call them. The tests are in
+`tests/right_of_way_lifecycle_tests.cpp` on a curved two-lane Link with a body merge, both driving
+sides; shared fixtures moved to `tests/right_of_way_fixture.hpp`. The interim pinning test
+`rightofway.until_m3_2_2b_*` is removed on purpose — M3.2.2b is the change it guarded. Six of the
+eight new tests fail on the pre-M3.2.2b commands; the other two lock behaviour that was already
+right (lane edits keep ids; a shorter Link reports, never clamps). Linux headless 28/28, desktop
+42/42 offscreen; seed 42 and both project fixtures unchanged.
+
 ## 2026-09-25 — M3.2.2a scrutinised: four defects fixed before M3.2.2b (D55)
 
 An outsider review of M3.2.2a found, and a test now forces each (all four fail on `44380b1`):
@@ -357,3 +369,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D52 | 2026-09-25 | **C4 withdrawn: no test compares delays with Vissim** | Owner ruling, following D51. Still before any M2 gate observation, so a re-registration, not a changed criterion (D8). C4 was never scored, only recorded; with it goes the "two LOS letters apart → investigation" trigger for the gate. What remains is C1 — the study completed end to end — and the owner's verdict. The Results table is still produced and recorded; it is simply not set beside another tool's. Plausibility against real-world data stays M6's (validation), untouched. | A later owner ruling. |
 | D53 | 2026-09-25 | **The M2 gate is passed on the owner's word** | Under D51 the verdict is the owner's, and the owner reported "M2.6 passed". Recorded as *not disproven* (D8). The study's site, counts, file and Results table were not supplied; the record says so rather than filling them in. M3 may start. | Evidence that the study did not meet C1, or a later owner ruling. |
 | D54 | 2026-09-25 | **M3.2.2 is split: M3.2.2a ships the authored model, schema 14, commands and the resolver; the reference lifecycle is M3.2.2b** | One system per session. The file/model seam — types, strict codec, History commands and ONE effective-priority resolver used by both compile and diagnostics — is testable on its own (A01–A04, A06–A08). Lifecycle (split/copy/retarget/resize/delete remapping, A05) touches every geometry command and is its own slice; until it lands, deleting a Link or Connector a control names is refused whole (safe but blunt), and a lane change leaves a stale, Run-blocked draft; `rightofway.until_m3_2_2b_*` pins both. Every authored area is Run-blocked (`UNSUPPORTED_CONFLICT_RUNTIME`) until M3.2.3, even an explicit merge the M3.1 mechanism could already run, because the plan says new controls stay blocked until their runtime is implemented. A taken-over merge compiles to exactly the fallback's rule (same 1 m waiting line, D50), so reversing it is the only change an author makes. Stop controls and queue counters are left to M3.2.5/M3.2.6, where their runtime lands. | M3.2.2b, or the M3.2.3 admission solver changing what a compiled area needs. |
+| D55 | 2026-09-25 | **Authored controls follow their owners the way signal heads do; a split through one is refused; lane edits never retarget** | Deleting a Link or Connector (including a drag that detaches a Connector) cascades the areas on it, their rules, the lines on it and lines that served only those areas, in the same command, so Undo restores the whole relationship. A split moves stations by the same arithmetic as Connector ends and maps lane ids through the split's replacements; a Connector lane pair whose end moved downstream takes the new lane id. A control in or across the 0.2 m span is refused (`EDIT_SPLIT_CONTROL`) rather than guessed (contract §1, first slice). Copy takes a control only when every owner was copied — a Connector lane pair needs both end Links, because only then do its lane ids map. Lane-count and retarget edits are allowed and keep ids: a pair that no longer matches is a Run-blocked `CONFLICT_UNRESOLVED_PATH`, never an ordinal pick (§6). Reverse is refused like a head. The M3.2.2a scrutiny fixes ride under this number too. A waiting line on a preceding Link and crossing coverage are resolver work, carved to M3.2.2c. Recorded, not fixed: control ids are unique against network ids only. | An editor surface (M3.2.4) that lets an author select a control, which would need copy/delete of the control itself. |
