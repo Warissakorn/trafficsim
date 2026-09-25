@@ -34,6 +34,33 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M1 accepted by owner ruling (D49); the M2.6 template; a merge deadlock fixed (D50)
+
+**M1.** The owner ruled M1 usability accepted on the evidence of the one attempt: an engineer who
+has used another simulator models an ordinary intersection here in well under 10 minutes (D49).
+ROADMAP and `M1_ACCEPTANCE.md` say "accepted by owner ruling" and keep the unshown items listed.
+M0 plausibility stays open. D11's naming trigger ("end of M1") is now live.
+
+**The M2.6 template** (owner request). `tools/m26_study_network.hpp` builds
+`data/projects/m2.6-study-template.traffic.json` from the four-leg fixture: right-turn pockets, a
+new `FourLegOptions::leftBypass` (6 m) so the left turn leaves the kerb lane before its head, the
+owner's timing windows (cycle 120 s), one routeless `urban-mixed` input per approach over four
+15-minute intervals, and a placed decision per entry Link with per-interval turning counts. **The
+volumes are placeholders** (the fixture's), and there is no aerial image. It cannot be C1/C2
+evidence — C1 is the owner building from blank. `m26study` pins file = builder. The default
+`leftBypass = 0` leaves the four-leg fixture byte-identical.
+
+**The deadlock (D50).** With the free left turn, the East and South kerb lanes locked within a
+minute: a left turn held exactly at the exit's start had its front on the exit lane, the through
+vehicle behind it stopped 2 m from the join, inside the 7 m headway, and each waited on the other.
+M2.0.1's note that the rule "rarely binds" under split phasing is true only while turns wait for
+their own green. Fix: the derived stop line is 1 m short of the join. `m26study` forces the old
+placement and asserts the deadlock returns, so the test can fail.
+
+**Found, not fixed:** the left turn still waits behind the through queue in the shared kerb lane —
+without lane changing (M3.2.8) the bypass only helps when the queue is shorter than 6 m. The
+template's left-turn delays (34–60 s) show it.
+
 ## 2026-09-25 — M1 timed drawing: 9 min 40 s, recorded, gate still open
 
 Owner report (Thai, 2026-09-25): a signalised intersection built in "10 minutes", then made precise
@@ -400,3 +427,5 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D46 | 2026-09-24 | **A decision's counts are proportions of the input's volume, and an uncounted interval uses the whole-period ones** | Owner request: turning counts and approach counts come from different sheets and rarely agree. The input's volume is the authority for how many vehicles enter; the turning counts say only where they go. Refusing an interval with no turn counted would block Run on ordinary data, and sending its vehicles nowhere would lose them. | If a study needs the input derived from the turning counts instead. |
 | D47 | 2026-09-25 | **A Signal head is placed at the clicked station, one per lane, and is drawn as its stop line** | Owner report and choice (Vissim: one head per lane). The runtime already stops traffic at the head's station, so the stop line is the head, not a second object; the editor had simply discarded the click. One pick (`nearestHeadSlot`) serves click, hover and Ctrl-drag copy. | If a separate stop-line object is needed (e.g. a stop line away from the head, or unsignalised stop control in M3). |
 | D48 | 2026-09-25 | **Signal control is authored as fixed-time controllers with signal groups and compiled into ordinary core programs; schema 12 programs shaped like a group migrate** | Owner report and choice (Vissim's model). A group is what a timing sheet lists; compiling it keeps `core/` and every fixture unchanged. Migration groups programs by cycle length into one controller with offset 0, because that is the only grouping the old file implies; colours are proved identical at every tick. Programs of any other shape stay legacy rather than being refused. | When M4 adds actuated control, intergreens or conflict checks, or if a file's programs of one cycle belong to different junctions and must be split. |
+| D49 | 2026-09-25 | **M1 usability accepted by owner ruling, not by the written exercise** | After one timed attempt (9 min 40 s, no assistance; save/reopen exact; no turn pockets, no aerial image), the owner ruled: an engineer who has used another traffic simulator can model an intersection of ordinary complexity in this program in well under 10 minutes. The owner holds the gate, so M1 usability is accepted on that ruling; the record keeps what the attempt did not show (pockets, aerial image, first-attempt and documentation status) so no one reads it as the written exercise passed. M0 plausibility is a separate observation and stays open. | A later attempt by someone new to the program, or one that fails the pocket/aerial task, reopens the question. |
+| D50 | 2026-09-25 | **A derived priority rule's stop line is 1 m short of the join, not on it** | Held exactly at the join, the waiting vehicle's front is on the shared lane; the major vehicle behind it stops within the headway and each waits for the other for ever. A Thai left turn at all times arrives at speed during the cross street's green and deadlocked the M2.6 template in its first minute (445 vehicles never entered). 1 m is geometry, not behaviour, so it is a constant (`kYieldClearance`, `sections.cpp`), not a `data/` value. The four-leg fixture's run and `trafficsim-cli 42` are byte-identical before and after. | An authored conflict area (M3.2) places its own stop line and supersedes this for authored rules. |

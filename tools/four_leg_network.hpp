@@ -25,6 +25,10 @@ struct FourLegOptions {
     // A positive value joins part way along the body instead: the staggered drawing that was
     // needed before M2.0.1, kept as a variant so both shapes stay runnable.
     double leftArrival = 0, rightArrival = 0;
+    // Metres upstream of the kerb lane's head at which the LEFT turn leaves it. Zero -- the
+    // default -- leaves at the stop line, so the left turn waits for green. A positive value is
+    // the Thai left turn at all times: the Connector leaves before the head and never sees it.
+    double leftBypass = 0;
 };
 struct FourLeg {
     ProjectDocument document;
@@ -104,7 +108,9 @@ inline FourLeg fourLegIntersection(const FourLegOptions& options = {}) {
         };
         movement[k][0] = addConnectorRange(d, {pocket[k], lane(d, pocket[k], 0)},
                                            to(through[k], 0, std::nullopt), 2, 2);
-        movement[k][1] = addConnector(d, {pocket[k], lane(d, pocket[k], 0)},
+        std::optional<double> leftFrom;
+        if (options.leftBypass > 0) leftFrom = pocketStart - stopLine - 1 - options.leftBypass;
+        movement[k][1] = addConnector(d, {pocket[k], lane(d, pocket[k], 0), leftFrom},
                                       to(left[k], 0, arrival(options.leftArrival)));
         movement[k][2] = addConnector(d, {pocket[k], lane(d, pocket[k], 2)},
                                       to(right[k], 1, arrival(options.rightArrival)));

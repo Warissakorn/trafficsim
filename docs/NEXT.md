@@ -41,7 +41,15 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
   with schema 12 programs migrated colour for colour (D48). Verified locally on Linux only
   (offscreen UI tests and screenshots); `native.yml` runs the Windows UI suites.
 
-**For the owner, before or during M2.6:** place the study's heads by pointer and type its timing
+- **M2.6 template** (owner request, 2026-09-25): `data/projects/m2.6-study-template.traffic.json`
+  — pockets, the Thai left turn at all times (`leftBypass`), the owner's timing windows, one hour
+  of interval demand split by per-interval turning counts. **Placeholder volumes; no aerial image.**
+  Building it found and fixed a merge deadlock (D50). Not C1/C2 evidence.
+
+**For the owner, before or during M2.6:** replace the template's placeholder counts (input and
+decision dialogs, one pasted column/row per interval), check which timing window serves which
+approach, and import the aerial image — or build the study from blank for C1/C2, which the
+template cannot stand in for. From blank: place the study's heads by pointer and type its timing
 sheet into one controller. If a group needs something the dialog cannot say — a second green in
 the cycle, red-amber, an intergreen check, detectors — that is M4, and it should be written down
 in `M2_GATE.md` as friction, not worked around.
@@ -134,20 +142,9 @@ of it.** `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
-**2. Run the timed acceptance exercise** in [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md). It is the only
-thing that closes M1 and it cannot be delegated: an engineer draws a four-leg intersection with
-turn pockets over an aerial image, from a blank editor, **under 10 minutes, without documentation
-or assistance**, then the file is reopened and compared field for field. **2026-09-25:** the owner drew a
-signalised four-leg in **9 min 40 s, no assistance**, and supplied the file: time and save/reopen
-pass, but it has **no turn pockets and no aerial image**, so it is not the exercise as written. The
-next attempt needs both; the owner still owes documentation use and first-attempt status. Merged code does not close it (rule 1), and a rehearsed retry is not the first
-observation.
-
-**Do this on Windows.** Everything in these sessions was verified on Linux only. `native.yml` runs
-the Qt suites on Windows too, and CI run 105 previously failed in `windows-core` on a vcpkg
-`z-applocal` race before any test ran — so a green Linux run is not evidence about the platform the
-owner actually draws on. The M1.12 review checklist from the 2026-09-16 sessions is the list to
-work through first.
+**2. M1 usability is accepted by owner ruling (D49, 2026-09-25)** — one timed attempt, 9 min 40 s,
+no assistance, save/reopen exact, without pockets or an aerial image; `M1_ACCEPTANCE.md` keeps
+what it did not show. Nothing to do here unless a later attempt contradicts the ruling.
 
 **3. Record the M0 plausibility observation** separately — acceleration, queue at red, discharge at
 green. Owner observation, not calibration, and not M6 validation. The not-yet-validated marker

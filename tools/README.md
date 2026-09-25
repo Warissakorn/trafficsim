@@ -128,3 +128,7 @@ entry exercises lane-end gestures, curve-point editing, ID/Properties controls,
 reference-safe deletion/Undo, persistence and English/Thai feedback. Both UI entries
 require a desktop build; headless results do not verify them.
 See [NETWORK_EDITOR.md](../docs/NETWORK_EDITOR.md) for the editing workflow and limits.
+
+`trafficsim-m26-study <output>` regenerates `data/projects/m2.6-study-template.traffic.json` from
+`m26_study_network.hpp` — the M2.6 study template with placeholder volumes. `m26study` in
+`trafficsim-tests` fails when the two differ.

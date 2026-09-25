@@ -68,8 +68,9 @@ junctions are not something the user places.
 and is not a defect) and **M1.12.3 is closed by M1.19**. The owner's requirement that a Connector's
 lanes meet the Link lanes they are assigned to ran M1.17 (reverted) → M1.18 (flush) → **M1.19**
 (each lane on the lane it feeds); **M1.20** gives the Connector its own position. M1.7's owner
-acceptance remains open, and M1 is not closed until its timed gate passes — no amount of merged
-code closes it.
+acceptance: **M1 usability accepted by owner ruling on 2026-09-25 (D49)** after one timed attempt
+(9 min 40 s, no assistance, save/reopen exact) that did not include turn pockets or an aerial
+image — see `M1_ACCEPTANCE.md` for what it did and did not show. M0 plausibility remains open.
 
 M1.1–M1.6 and M1.8–M1.10 are implemented and their full bodies are in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md); each keeps its heading and
@@ -127,9 +128,8 @@ Run handoff implemented: compile one document revision with resolved catalogs in
 detached network/scenario snapshot. Unsupported features are exposed before Run;
 successful edits invalidate a run. The engine's existing capability guards remain.
 
-**Owner acceptance remains open.** Perform the four-leg/aerial-image/ten-minute/reopen
-exercise in [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). The M0 plausibility gate also remains
-open. No automated test or implementation status closes either gate.
+**Owner acceptance: accepted by owner ruling, 2026-09-25 (D49)** — recorded, with what the attempt
+did not show, in [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). The M0 plausibility gate remains open.
 
 ---
 

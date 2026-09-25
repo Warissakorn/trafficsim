@@ -5,6 +5,11 @@ owner 2026-09-24 (D34) and re-registered the same day, before any observation, a
 recorded (D38). Fill this in as the observations are made; never change a criterion after the
 fact (D8). A pass means *not disproven*, never *confirmed*.
 
+**Template (2026-09-25):** `data/projects/m2.6-study-template.traffic.json` holds pockets, the
+Thai left turn at all times, the owner's timing windows and interval demand with **placeholder
+volumes**. It is not C1/C2 evidence — C1 is built from blank by the owner — but it can be the C4
+network once the owner's counts, timing-to-approach mapping and aerial image are in.
+
 ## C1, C2, C4 — The gate study
 
 | Field | Observation |

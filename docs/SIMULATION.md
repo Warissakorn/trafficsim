@@ -173,6 +173,9 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   — every turn into an intersection exit. The order is the drawing order, which is arbitrary;
   authoring who has priority is M3. With protected (split) phasing those movements are never green
   together, so the rule rarely binds; with permissive phasing it would decide, unvalidated.
+  A turn that does not wait for green — the Thai left turn at all times — makes it bind every
+  cycle. **A derived rule's stop line is 1 m short of the join** (D50): held on the join itself,
+  the waiting vehicle's front is on the shared lane and the major vehicle behind it deadlocks.
 - Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
   turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
   in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).

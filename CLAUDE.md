@@ -88,8 +88,9 @@ measured along the cross-section, where a mitered corner's diagonal is `width/co
 construction. Square to the road the carriageway is exact, so `offsetGeometry` was not changed —
 removing the miter would reinstate the pinch it exists to fix. **M1.12.3 is closed by M1.19:**
 the Link wins at the mouth and authored Connector widths take over through the body.
-**Remaining gate:** the owner performs the timed four-leg/aerial-image/reopen exercise in
-`docs/M1_ACCEPTANCE.md`. M0 plausibility and M1 usability are not closed by automated tests.
+**M1 usability is accepted by owner ruling (2026-09-25, D49)** after one timed attempt that did not
+include pockets or an aerial image — `docs/M1_ACCEPTANCE.md` keeps what it did not show. M0
+plausibility is still open. **D50:** a derived priority rule's stop line is 1 m short of the join.
 
 **Status: M0 C++ core and network model implemented; acceptance gate still open.** The Qt
 Widgets network editor and the native CLI exercise both systems; **M1.24 retired the separate

@@ -90,6 +90,10 @@ trafficsim_runtime_data(trafficsim-engine-benchmark)
 add_executable(trafficsim-four-leg-fixture tools/four_leg_fixture.cpp)
 target_link_libraries(trafficsim-four-leg-fixture PRIVATE trafficsim_commands trafficsim_options)
 target_precompile_headers(trafficsim-four-leg-fixture PRIVATE <nlohmann/json.hpp>)
+# Regenerates the M2.6 study template from its one source, tools/m26_study_network.hpp.
+add_executable(trafficsim-m26-study tools/m26_study.cpp)
+target_link_libraries(trafficsim-m26-study PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-m26-study REUSE_FROM trafficsim-four-leg-fixture)
 
 add_executable(trafficsim-check-architecture tools/check_architecture.cpp)
 add_executable(trafficsim-check-file-sizes tools/check_file_sizes.cpp)
@@ -105,7 +109,7 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/routeless_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/routeless_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
