@@ -43,13 +43,13 @@ struct MergeGroup {
 };
 std::vector<MergeGroup> mergeGroups(const Network&, const RuntimeSections&);
 
-// The one resolver the compiler and the diagnostics share. `rules` is every core rule the
-// scenario needs: the derived rule of each merge nobody overrode, in derivedPriorityRules'
-// order, then one rule per authored area of a complete, acyclic group. `issues` are runtime
-// (Run-blocking) issues; with none, `rules` is what compiles. With no authored controls the
-// result is exactly derivedPriorityRules -- the frozen fixtures and seed 42 depend on it.
-// `zones` (M3.2.3a) is one core ConflictZone per crossing area with nothing reported against it:
-// isolated, each side on one segment, decided, ruled, waiting line resolved, coverage met.
+// The one resolver the compiler and the diagnostics share. `issues` are runtime (Run-blocking)
+// issues; with none, `rules` and `zones` are what compiles. With no authored controls `rules` is
+// exactly derivedPriorityRules -- the frozen fixtures and seed 42 depend on it.
+// `rules` are the derived rules of every merge nobody overrode. `zones` are the authored areas the
+// admission solver runs: each crossing with nothing reported against it (M3.2.3a/b), and each
+// area of a complete, acyclic merge group (M3.2.3c) -- an authored merge no longer compiles to a
+// rule, because the solver also holds the major side for an admitted minor vehicle.
 struct RightOfWayResolution {
     std::vector<PriorityRule> rules;
     std::vector<ConflictZone> zones;

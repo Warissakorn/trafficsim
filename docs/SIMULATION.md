@@ -206,10 +206,23 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   **chain**: they share the first line and the last exit, so a vehicle is admitted to all of them
   or to none, and waits for receiving space past the last (A15). Refused by name:
   - a route that meets a minor chain part way (`CONFLICT_ROUTE_JOINS_INSIDE`);
-  - a route minor at one zone and major at another (`CONFLICT_MIXED_ROLES`). It could hold one
-    zone while waiting at another whose holder waits on it; M3.2.3c.
+  - **since M3.2.3c (D59)**, zones whose holds form a cycle (`CONFLICT_HOLD_CYCLE`).
 
-  Authored merge areas run on their compiled `PriorityRule`s, the M3.1 mechanism.
+  Holds are the edge in question. A route can hold zone M while waiting as a major vehicle at
+  zone J's entry, when J's entry comes before it has room to stand clear of M. A cycle of such
+  holds is a deadlock waiting to happen. An acyclic mix runs: priority falls along it, so the last
+  holder in any chain of waits never waits itself.
+
+  Since M3.2.3c, requests crossing their lines in one tick behind the **same standing leader**
+  share its room. Lower vehicle ids are served first, and a request that would not fit is capped at
+  its line.
+
+  **Authored merge areas run on the zone solver**, the areas being the last metre of each incoming
+  path, so the major side also waits at its entry for an admitted minor. Merges derived from the
+  drawing stay on the M3.1 `PriorityRule`.
+
+  Gridlock through queues is not prevented: an admitted vehicle can still stop inside an area
+  behind a leader that stopped after admission. The run then records the vehicles as unserved.
 - Signal phases and offsets must align to the fixed timestep. Phases are half-open;
   amber is conservatively treated as stop, without a dilemma-zone decision.
 - The timestep is in `(0, 0.5]` seconds and duration must be an integer number of ticks.

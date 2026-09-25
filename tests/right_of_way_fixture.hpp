@@ -22,6 +22,11 @@ inline int rulesWithPrefix(const RightOfWayResolution& r, const std::string& pre
     return static_cast<int>(std::count_if(r.rules.begin(), r.rules.end(),
                                           [&](const auto& x) { return x.id.rfind(prefix, 0) == 0; }));
 }
+// Authored areas compile to core zones (M3.2.3a-c): the one whose minor side starts on `segment`.
+inline const ConflictZone* zoneYielding(const RightOfWayResolution& r, const std::string& segment) {
+    for (const auto& z : r.zones) if (z.minor.segmentIds.front() == segment) return &z;
+    return nullptr;
+}
 // Three single-lane Links ending short of X, each joined to X's lane start: one merge of three.
 struct Three { ProjectDocument d; std::string x; };
 inline Three threeWayMerge() {

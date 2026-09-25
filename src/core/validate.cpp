@@ -2,6 +2,7 @@
 #include "conflicts.hpp"
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <map>
 #include <set>
 
@@ -133,6 +134,11 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
             zone.waitPosition < -singleApproach(zone.minor.segmentIds.front())) add("INVALID_POSITION", p + ".waitPosition");
     }
     // Per route, through the same incidence the run uses (conflicts.hpp).
+    // `holds` is the waits-for graph between zones: a route that can hold zone M while waiting as
+    // a major vehicle at zone J -- J's entry comes before it has room to stand clear of M -- makes
+    // M's holder wait for J's. A cycle there is a deadlock waiting to happen (M3.2.3c).
+    std::multimap<std::size_t, std::size_t> holds;
+    const double room = waitingRoom(s);
     double longest = 0;
     for (const auto& type : s.vehicleTypes) if (std::isfinite(type.length)) longest = std::max(longest, type.length);
     for (std::size_t r = 0; zonesValid && !s.conflictZones.empty() && r < s.routes.size(); ++r) {
@@ -146,10 +152,13 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         }
         if (parts.empty()) continue;
         const auto p = "routes[" + std::to_string(r) + "]";
-        bool major = false, minor = false;
-        for (const auto& rz : zoneIncidence(s, parts)) {
+        const auto incidence = zoneIncidence(s, parts);
+        for (const auto& m : incidence)
+            for (const auto& j : incidence)
+                if (m.role == ZoneRole::minor && j.role == ZoneRole::major &&
+                    j.entryAt >= m.waitAt - 1e-9 && j.entryAt < m.clearAt + room) holds.insert({m.zoneIndex, j.zoneIndex});
+        for (const auto& rz : incidence) {
             const auto zone = "conflictZones[" + std::to_string(rz.zoneIndex) + "] " + p;
-            (rz.role == ZoneRole::major ? major : minor) = true;
             // The route must run on past the area far enough to carry the longest vehicle's rear
             // out of it, or removal at the route's end would drop a tail still inside (A12).
             if (start - rz.exitAt < longest) add("CONFLICT_SINK_TOO_CLOSE", zone);
@@ -158,10 +167,23 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
             if (rz.joinsInside) add("CONFLICT_ROUTE_JOINS_INSIDE", zone);
             else if (rz.waitAt < 0) add("CONFLICT_ROUTE_STARTS_PAST_LINE", zone);
         }
-        // Minor at one zone and major at another: it could hold one while waiting at the other,
-        // whose holder waits on it. Refused until an arbitration exists for it (M3.2.3c).
-        if (major && minor) add("CONFLICT_MIXED_ROLES", p);
     }
+    // Every zone on a cycle is named. Acyclic holds are safe: priority strictly decreases along
+    // them, so the last holder in any chain of waits never waits itself.
+    std::map<std::size_t, int> state; // 0 unseen, 1 on the path, 2 done
+    std::vector<std::size_t> path;
+    std::set<std::size_t> cyclic;
+    std::function<void(std::size_t)> visit = [&](std::size_t z) {
+        state[z] = 1; path.push_back(z);
+        for (auto [it, end] = holds.equal_range(z); it != end; ++it) {
+            if (state[it->second] == 1)
+                for (auto k = std::find(path.begin(), path.end(), it->second); k != path.end(); ++k) cyclic.insert(*k);
+            else if (state[it->second] == 0) visit(it->second);
+        }
+        path.pop_back(); state[z] = 2;
+    };
+    for (const auto& [from, to] : holds) if (state[from] == 0) visit(from);
+    for (const auto z : cyclic) add("CONFLICT_HOLD_CYCLE", "conflictZones[" + std::to_string(z) + "]");
     // The one guard M3.1 loosens, and it is loosened BY CONSTRUCTION, never by removal: a place
     // fed by n segments is runnable only when at least n-1 of them give way to another of them,
     // so exactly one has priority and the rest have somewhere to wait. A network that has not
@@ -170,12 +192,16 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         if (feeding.size() <= 1) continue;
         std::size_t yielding = 0;
         for (const auto& minor : feeding) {
+            const auto other = [&](const std::string& major) {
+                return major != minor && std::find(feeding.begin(), feeding.end(), major) != feeding.end();
+            };
+            // A rule arbitrates it (M3.1), or a zone whose two chains end on two of the feeding
+            // segments -- an authored merge on the admission solver (M3.2.3c).
             const bool gives = std::any_of(s.priorityRules.begin(), s.priorityRules.end(),
-                [&](const auto& rule) {
-                    return rule.yieldSegmentId == minor &&
-                           std::any_of(feeding.begin(), feeding.end(), [&](const auto& major) {
-                               return major != minor && rule.conflictSegmentId == major; });
-                });
+                [&](const auto& rule) { return rule.yieldSegmentId == minor && other(rule.conflictSegmentId); }) ||
+                std::any_of(s.conflictZones.begin(), s.conflictZones.end(), [&](const auto& zone) {
+                    return !zone.minor.segmentIds.empty() && !zone.major.segmentIds.empty() &&
+                           zone.minor.segmentIds.back() == minor && other(zone.major.segmentIds.back()); });
             if (gives) ++yielding;
         }
         if (yielding + 1 < feeding.size()) add("UNSUPPORTED_MERGE", "segments." + id);

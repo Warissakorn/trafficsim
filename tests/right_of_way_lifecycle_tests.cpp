@@ -38,7 +38,7 @@ const Link& link(const ProjectDocument& d, const std::string& id) {
 bool clean(const ProjectDocument& d) {
     const auto r = resolve(d);
     return r.issues.empty() &&
-           rulesWithPrefix(r, "right-of-way/") == static_cast<int>(d.network.rightOfWay.conflictAreas.size());
+           r.zones.size() == d.network.rightOfWay.conflictAreas.size();
 }
 }
 TEST(rightofway_lifecycle, deleting_an_owner_cascades_in_one_undoable_step) {

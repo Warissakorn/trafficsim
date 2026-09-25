@@ -96,12 +96,12 @@ TEST(rightofway, a06_the_effective_order_must_be_total_and_acyclic) {
     auto r = resolve(t.d);
     // A valid total order runs (M3.2.3b): no issue, and the group's own three rules.
     CHECK(r.issues.empty());
-    CHECK(rulesWithPrefix(r, "right-of-way/") == 3); CHECK(rulesWithPrefix(r, "give-way/") == 0);
+    CHECK(r.zones.size() == 3); CHECK(rulesWithPrefix(r, "give-way/") == 0);
     // A three-way cycle: areas are (1 yields 0), (2 yields 0), (2 yields 1). Reverse the second.
     auto cycle = t.d;
     cycle.network.rightOfWay.conflictAreas[1].priority = ConflictPriority::secondYields;
     r = resolve(cycle);
-    CHECK(count(r.issues, "CONFLICT_PRIORITY_CYCLE") == 3); CHECK(rulesWithPrefix(r, "right-of-way/") == 0);
+    CHECK(count(r.issues, "CONFLICT_PRIORITY_CYCLE") == 3); CHECK(r.zones.empty());
     // A two-way cycle: a second area on one pair, reversed.
     auto twoWay = t.d;
     auto copy = twoWay.network.rightOfWay.conflictAreas[0];
@@ -114,7 +114,7 @@ TEST(rightofway, a06_the_effective_order_must_be_total_and_acyclic) {
     auto missing = t.d;
     deleteConflictArea(missing, missing.network.rightOfWay.conflictAreas[2].id);
     r = resolve(missing);
-    CHECK(has(r.issues, "CONFLICT_GROUP_INCOMPLETE")); CHECK(rulesWithPrefix(r, "right-of-way/") == 0);
+    CHECK(has(r.issues, "CONFLICT_GROUP_INCOMPLETE")); CHECK(r.zones.empty());
     CHECK(rulesWithPrefix(r, "give-way/") == 0);
 }
 TEST(rightofway, a07_reversing_a_merge_replaces_its_whole_fallback) {
@@ -125,27 +125,30 @@ TEST(rightofway, a07_reversing_a_merge_replaces_its_whole_fallback) {
     takeOverMerge(d, section, kDefaults);
     auto r = resolve(d);
     CHECK(rulesWithPrefix(r, "give-way/") == static_cast<int>(derived.size()) - 1);
-    const auto taken = std::find_if(r.rules.begin(), r.rules.end(), [](const auto& x) { return x.id.rfind("right-of-way/", 0) == 0; });
-    CHECK(taken != r.rules.end());
-    // Until the author changes it, the take-over compiles to what the fallback ran.
+    CHECK(r.zones.size() == 1);
+    const auto taken = r.zones.front();
+    // Until the author changes it, the take-over carries the fallback's order and numbers; since
+    // M3.2.3c it runs on the admission solver instead of the rule (D59).
     const auto fallback = std::find_if(derived.begin(), derived.end(), [&](const auto& x) {
-        return x.yieldSegmentId == taken->yieldSegmentId && x.conflictSegmentId == taken->conflictSegmentId; });
+        return x.yieldSegmentId == taken.minor.segmentIds.front() && x.conflictSegmentId == taken.major.segmentIds.back(); });
     CHECK(fallback != derived.end());
-    test::near(taken->yieldPosition, fallback->yieldPosition, 1e-9);
-    test::near(taken->conflictPosition, fallback->conflictPosition, 1e-9);
-    // Reverse it: exactly one rule for the pair, pointing the other way; no hidden reciprocal.
-    d.network.rightOfWay.conflictAreas[0].priority = ConflictPriority::secondYields;
-    r = resolve(d);
+    test::near(taken.waitPosition, fallback->yieldPosition, 1e-9);
+    test::near(taken.major.exit, fallback->conflictPosition, 1e-9);
     const auto pair = [&](const PriorityRule& x) {
         return (x.yieldSegmentId == fallback->yieldSegmentId && x.conflictSegmentId == fallback->conflictSegmentId) ||
                (x.yieldSegmentId == fallback->conflictSegmentId && x.conflictSegmentId == fallback->yieldSegmentId); };
-    CHECK(std::count_if(r.rules.begin(), r.rules.end(), pair) == 1);
-    CHECK(std::any_of(r.rules.begin(), r.rules.end(), [&](const auto& x) {
-        return x.yieldSegmentId == fallback->conflictSegmentId && x.conflictSegmentId == fallback->yieldSegmentId; }));
+    CHECK(std::count_if(r.rules.begin(), r.rules.end(), pair) == 0); // no fallback rule beside it
+    // Reverse it: exactly one zone for the pair, pointing the other way; no hidden reciprocal.
+    d.network.rightOfWay.conflictAreas[0].priority = ConflictPriority::secondYields;
+    r = resolve(d);
+    CHECK(r.zones.size() == 1); CHECK(std::count_if(r.rules.begin(), r.rules.end(), pair) == 0);
+    CHECK(r.zones.front().minor.segmentIds.front() == fallback->conflictSegmentId);
+    CHECK(r.zones.front().major.segmentIds.back() == fallback->yieldSegmentId);
     // Deleting the rule blocks the group; it does not hand it back to the fallback.
     deletePriorityRule(d, d.network.rightOfWay.priorityRules[0].id);
     r = resolve(d);
     CHECK(has(r.issues, "CONFLICT_RULE_MISSING")); CHECK(std::count_if(r.rules.begin(), r.rules.end(), pair) == 0);
+    CHECK(r.zones.empty());
     // Handing it back is its own action, and restores the fallback exactly.
     restoreAutomaticPriority(d, section);
     CHECK(d.network.rightOfWay.empty());
@@ -205,10 +208,10 @@ TEST(rightofway, a_taken_over_lane_two_of_a_curved_range_compiles_to_the_fallbac
         if (std::find(g.incoming.begin(), g.incoming.end(), yielding) != g.incoming.end()) section = g.section;
     takeOverMerge(d, section, kDefaults);
     const auto res = resolve(d);
-    const auto taken = std::find_if(res.rules.begin(), res.rules.end(), [&](const auto& x) { return x.yieldSegmentId == yielding; });
-    CHECK(taken != res.rules.end()); CHECK(taken->id.rfind("right-of-way/", 0) == 0);
-    test::near(taken->yieldPosition, fallback->yieldPosition, 1e-9);
-    test::near(taken->conflictPosition, fallback->conflictPosition, 1e-9);
+    const auto* taken = zoneYielding(res, yielding);
+    CHECK(taken != nullptr);
+    test::near(taken->waitPosition, fallback->yieldPosition, 1e-9);
+    test::near(taken->major.exit, fallback->conflictPosition, 1e-9);
 }
 TEST(rightofway, the_resolver_never_throws_on_a_reference_it_cannot_locate) {
     // Scrutiny finding 2: buildScenario must not throw, and locate calls geometry that can.
@@ -254,5 +257,5 @@ TEST(rightofway, a_short_upstream_section_is_taken_over_into_its_own_group) {
     takeOverMerge(d, section, kDefaults);
     const auto r = resolve(d);
     CHECK(!has(r.issues, "CONFLICT_MERGE_TOPOLOGY")); CHECK(!has(r.issues, "CONFLICT_UNRESOLVED_PATH"));
-    CHECK(rulesWithPrefix(r, "right-of-way/") == 1);
+    CHECK(r.zones.size() == 1);
 }

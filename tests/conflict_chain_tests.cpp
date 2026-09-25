@@ -100,13 +100,68 @@ TEST(conflict_chain, routes_the_solver_cannot_serve_are_refused_by_name) {
     joins.segments.push_back({"side", 50, {"n2"}});
     joins.routes.push_back({"sideRoute", {"side", "n2"}});
     CHECK(refuses(joins, "CONFLICT_ROUTE_JOINS_INSIDE"));
-    // A route minor at one zone and major at another could deadlock with its mirror image.
-    auto mixed = s;
-    mixed.segments.push_back({"c", 200, {}});
-    mixed.conflictZones.push_back({"y", {{"n2"}, 150, 154}, {{"c"}, 98, 102}, 90, 3, 10});
-    mixed.routes.push_back({"cRoute", {"c"}});
-    CHECK(refuses(mixed, "CONFLICT_MIXED_ROLES"));
     // A chain whose segments do not follow one another is not a side.
     auto broken = s; broken.conflictZones[0].minor.segmentIds = {"n2", "n1"};
     CHECK(refuses(broken, "INVALID_RANGE"));
+}
+TEST(conflict_chain, a_hold_cycle_is_refused_and_an_acyclic_mix_runs) {
+    // Route x is minor at A and meets B's major entry 2 m after A's exit; route y is the mirror.
+    // Each could hold one zone while waiting at the other for the other's holder.
+    const auto zones = [](double bOnX, double aOnY) {
+        auto s = base();
+        s.segments = {{"x", 200, {}}, {"y", 200, {}}};
+        s.routes = {{"xRoute", {"x"}}, {"yRoute", {"y"}}};
+        s.conflictZones = {{"A", {{"y"}, aOnY, aOnY + 4}, {{"x"}, 50, 54}, 45, 3, 10},
+                           {"B", {{"x"}, bOnX, bOnX + 4}, {{"y"}, 94, 98}, 89, 3, 10}};
+        return s;
+    };
+    CHECK(validateScenario(zones(80, 120)).empty()); // the forcing: with room to stand clear, it is valid
+    CHECK(refuses(zones(56, 100), "CONFLICT_HOLD_CYCLE"));
+    // One way only (x minor at A then major at B, y not major at A) is not a cycle.
+    auto oneWay = zones(56, 100);
+    oneWay.conflictZones[0].major.segmentIds = {"z"}; oneWay.segments.push_back({"z", 200, {}});
+    oneWay.routes.push_back({"zRoute", {"z"}});
+    CHECK(!refuses(oneWay, "CONFLICT_HOLD_CYCLE"));
+}
+TEST(conflict_chain, at_a_merge_the_major_waits_for_an_admitted_minor) {
+    auto s = base();
+    s.segments = {{"majorIn", 100, {"S"}}, {"minorIn", 100, {"S"}}, {"S", 200, {}}};
+    s.routes = {{"majorRoute", {"majorIn", "S"}}, {"minorRoute", {"minorIn", "S"}}};
+    CHECK(refuses(s, "UNSUPPORTED_MERGE")); // the forcing: an unarbitrated merge
+    auto rule = s; rule.priorityRules = {{"r", "minorIn", 99, "majorIn", 100, 3, 10}};
+    auto zone = s; zone.conflictZones = {{"z", {{"majorIn"}, 99, 100}, {{"minorIn"}, 99, 100}, 99, 3, 10}};
+    CHECK(validateScenario(zone).empty()); // a zone arbitrates the merge as a rule does
+    // The minor vehicle is across its line but not yet on S, where the major one could see it.
+    const auto run = [](const Scenario& sc) {
+        auto st = test::withVehicles(sc, {on(1, "minorRoute", 99.2, 0), on(2, "majorRoute", 95, 10)});
+        bool overran = false;
+        for (int i = 0; i < 60; ++i) {
+            st = stepSimulation(st);
+            if (at(st, 1) - 4.5 < 100 && at(st, 2) > 99 + 1e-9) overran = true;
+        }
+        return overran;
+    };
+    CHECK(run(rule));  // the forcing: the M3.1 rule lets the major run onto the join beside it
+    CHECK(!run(zone)); // the zone holds it at its entry until the minor's rear is clear
+}
+TEST(conflict_chain, requests_behind_one_standing_leader_share_its_room) {
+    // Two minor roads feed D, each crossing its own major road; a vehicle stands on D.
+    const auto layout = [](double leaderAt) {
+        auto s = base();
+        s.segments = {{"m1", 100, {"D"}}, {"m2", 100, {"D"}}, {"D", 200, {}}, {"a", 200, {}}, {"b", 200, {}}};
+        s.routes = {{"r1", {"m1", "D"}}, {"r2", {"m2", "D"}}, {"aRoute", {"a"}}, {"bRoute", {"b"}}};
+        s.priorityRules = {{"join", "m2", 99.9, "m1", 100, 3, 10}};
+        s.conflictZones = {{"za", {{"a"}, 98, 102}, {{"m1"}, 94, 98}, 90, 3, 10},
+                           {"zb", {{"b"}, 98, 102}, {{"m2"}, 94, 98}, 90, 3, 10}};
+        s.signalPrograms = {{"p", 0, {{120, SignalColor::red}}}};
+        s.signalHeads = {{"h", "D", leaderAt + 0.5, "p"}};
+        return test::withVehicles(s, {on(1, "r1", 100 + leaderAt, 0), on(2, "r1", 89.95, 3), on(3, "r2", 89.95, 3)});
+    };
+    // Room past the exits: 107.5 - 98 = 9.5 m, enough for one car (4.5 + 2) but not for two.
+    const auto tight = stepSimulation(layout(12));
+    CHECK(at(tight, 2) > 90);        // the lower id is admitted
+    CHECK(at(tight, 3) <= 90 + 1e-9); // the other waits: both would have fitted alone
+    // The forcing: with the leader further off both requests go in the same tick.
+    const auto roomy = stepSimulation(layout(40));
+    CHECK(at(roomy, 2) > 90); CHECK(at(roomy, 3) > 90);
 }

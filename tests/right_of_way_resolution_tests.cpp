@@ -47,10 +47,10 @@ TEST(rightofway_resolution, a_waiting_line_on_the_preceding_link_compiles_before
     CHECK(u.t.d.network.rightOfWay.conflictAreas.back().first.path.connectorId != "");
     const auto r = resolve(u.t.d);
     CHECK(noIssues(r)); // M3.2.2b reported CONFLICT_WAITING_LINE_UNSUPPORTED here
-    const auto rules = std::count_if(r.rules.begin(), r.rules.end(), [&](const auto& x) {
+    const auto zones = std::count_if(r.zones.begin(), r.zones.end(), [&](const auto& z) {
         // A straight one-lane approach: its lane stations are its reference stations.
-        return x.yieldSegmentId == u.yielding && std::abs(x.yieldPosition + 10) < 1e-9; });
-    CHECK(rules == 2); // it yields to both earlier paths, and waits at the same line for each
+        return z.minor.segmentIds.front() == u.yielding && std::abs(z.waitPosition + 10) < 1e-9; });
+    CHECK(zones == 2); // it yields to both earlier paths, and waits at the same line for each
     CHECK(!coreRefuses(u.t.d, "INVALID_POSITION")); CHECK(!coreRefuses(u.t.d, "UNSUPPORTED_MERGE"));
 }
 TEST(rightofway_resolution, a_line_a_route_can_go_round_is_refused_by_name) {
@@ -67,7 +67,7 @@ TEST(rightofway_resolution, a_line_a_route_can_go_round_is_refused_by_name) {
                                     [&](const auto& x) { return x.id == u.line; });
     CHECK(line.point.station < u.length - 45); // the forcing: the line is upstream of both
     CHECK(has(resolve(d).issues, "CONFLICT_WAITING_LINE_BYPASSED"));
-    CHECK(rulesWithPrefix(resolve(d), "right-of-way/") == 0); // nothing is compiled for the group
+    CHECK(resolve(d).zones.empty()); // nothing is compiled for the group
     // Past the join the line is on every route again.
     auto after = d;
     auto moved = line; moved.point.station = u.length - 10; putWaitingLine(after, moved);
@@ -77,8 +77,8 @@ TEST(rightofway_resolution, a_line_a_route_can_go_round_is_refused_by_name) {
     validateDocument(d);
     const auto r = resolve(d);
     CHECK(noIssues(r));
-    CHECK(std::any_of(r.rules.begin(), r.rules.end(), [&](const auto& x) {
-        return x.yieldSegmentId == u.yielding && std::abs(x.yieldPosition + 60) < 1e-9; }));
+    CHECK(std::any_of(r.zones.begin(), r.zones.end(), [&](const auto& z) {
+        return z.minor.segmentIds.front() == u.yielding && std::abs(z.waitPosition + 60) < 1e-9; }));
     CHECK(!coreRefuses(d, "INVALID_POSITION"));
     // A line nowhere upstream of the side is named as such.
     auto elsewhere = d;
@@ -109,10 +109,10 @@ TEST(rightofway_resolution, a_line_earlier_on_the_same_lane_compiles_back_along_
     CHECK(minor.start == 50); // the forcing: the line lies in an earlier section than the side
     const auto r = resolve(d);
     CHECK(noIssues(r));
-    const auto rule = std::find_if(r.rules.begin(), r.rules.end(), [&](const auto& k) { return k.yieldSegmentId == minor.id; });
-    CHECK(rule != r.rules.end());
+    const auto* zone = zoneYielding(r, minor.id);
+    CHECK(zone != nullptr);
     // M3.2.2b compiled this to the end of the short section, 0.6 m, without a word.
-    test::near(rule->yieldPosition, -30, 1e-9);
+    test::near(zone->waitPosition, -30, 1e-9);
 }
 namespace {
 // Link A (optionally curved, several lanes) crossed by a straight one-lane Link B; one crossing

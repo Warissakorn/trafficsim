@@ -38,8 +38,10 @@ SpanBuckets bucketSpans(const std::vector<OccupiedSpan>& spans, std::size_t segm
     for (std::uint32_t i = 0; i < spans.size(); ++i) buckets.items[cursor[spans[i].segmentIndex]++] = i;
     return buckets;
 }
+// `id`, when asked for, receives the leader's vehicle id -- only admission needs it (M3.2.3c).
 std::optional<Leader> closestVehicle(const Vehicle& vehicle, const std::vector<RoutePart>& parts,
-                                     const std::vector<OccupiedSpan>& spans, const SpanBuckets& buckets) {
+                                     const std::vector<OccupiedSpan>& spans, const SpanBuckets& buckets,
+                                     std::uint64_t* id = nullptr) {
     std::optional<Leader> nearest;
     for (const auto& part : parts) {
         if (part.start + part.length < vehicle.distance) continue;
@@ -49,7 +51,10 @@ std::optional<Leader> closestVehicle(const Vehicle& vehicle, const std::vector<R
             if (span.vehicleId == vehicle.id ||
                 part.start + span.front < vehicle.distance - 1e-9) continue;
             const double gap = part.start + span.rear - vehicle.distance;
-            if (!nearest || gap < nearest->gap) nearest = Leader{gap, span.speed};
+            if (!nearest || gap < nearest->gap) {
+                nearest = Leader{gap, span.speed};
+                if (id) *id = span.vehicleId;
+            }
         }
     }
     return nearest;
@@ -176,13 +181,16 @@ SimState stepSimulation(const SimState& state, double dt) {
     // until phase 2 has seen them all (contract §4, steps 1-3 and 6).
     struct Move { double distance{}, speed{}, acceleration{}; FollowingMode mode{}; bool clamped{}; };
     std::vector<Move> moves(vehicles.size());
+    std::vector<std::optional<VehicleLeader>> leaders(zones.empty() ? 0 : vehicles.size()); // phase 2 only
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto& vehicle = vehicles[v];
         const auto& type = scenario.vehicleTypes[refs[v].type];
         const auto& behaviour = scenario.behaviours[refs[v].behaviour];
         const auto& parts = index.parts[refs[v].route];
-        auto leader = closestVehicle(vehicle, parts, spans, buckets);
+        std::uint64_t leaderId = 0;
+        auto leader = closestVehicle(vehicle, parts, spans, buckets, zones.empty() ? nullptr : &leaderId);
         const auto vehicleLeader = leader; // receiving space is about vehicles, not stop lines
+        if (leader && !zones.empty()) leaders[v] = VehicleLeader{leader->gap, leader->speed, leaderId};
         double allowedDistance = leader ? std::max(0.0, leader->gap - behaviour.standstillDistance) :
                                           std::numeric_limits<double>::infinity();
         for (const auto& routeHead : index.routeHeads[refs[v].route]) {
@@ -242,11 +250,12 @@ SimState stepSimulation(const SimState& state, double dt) {
             move.clamped = true;
         }
     }
-    // Phase 2: the swept check across all candidates at once. A cap only ever shortens a move.
+    // Phase 2: requests resolved across all candidates at once -- the swept check and shared
+    // receiving space. A cap only ever shortens a move.
     if (!zones.empty()) {
         std::vector<double> distances(moves.size());
         for (std::size_t v = 0; v < moves.size(); ++v) distances[v] = moves[v].distance;
-        for (const auto& cap : sweptConflicts(scenario, index, vehicles, refs, distances)) {
+        for (const auto& cap : resolveRequests(scenario, index, vehicles, refs, distances, leaders)) {
             auto& move = moves[cap.vehicle];
             if (move.distance <= cap.distance) continue;
             move.distance = cap.distance; move.speed = 0;

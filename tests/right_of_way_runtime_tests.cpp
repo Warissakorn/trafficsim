@@ -106,8 +106,8 @@ TEST(rightofway_runtime, two_areas_on_one_link_both_run) {
     open.d.network.rightOfWay.conflictAreas[0].priority = ConflictPriority::undetermined;
     CHECK(has(resolve(open.d).issues, "CONFLICT_UNDETERMINED")); CHECK(resolve(open.d).zones.empty());
 }
-TEST(rightofway_runtime, a_taken_over_merge_runs_exactly_as_its_fallback_until_changed) {
-    // A body merge loaded on both roads, so the rule binds (the reversal below is the forcing).
+TEST(rightofway_runtime, a_taken_over_merge_runs_on_the_solver_with_the_fallbacks_numbers) {
+    // A body merge loaded on both roads, so priority binds (the reversal below is the forcing).
     const auto data = test::root() / "data";
     ProjectDocument d;
     const auto x = addLink(d, {{0, 0}, {300, 0}}, 1, 3.5);
@@ -118,19 +118,48 @@ TEST(rightofway_runtime, a_taken_over_merge_runs_exactly_as_its_fallback_until_c
     changeRunSettings(d, 600, 0.1);
     validateDocument(d);
     const auto fallback = compileDocument(d, data).scenario;
+    CHECK(fallback.priorityRules.size() == 1); CHECK(fallback.conflictZones.empty());
+    const auto& derived = fallback.priorityRules.front();
     const auto events = [](const Scenario& s) {
         std::vector<SimEvent> out;
         runSimulation(s, 42, [&](const SimEvent& e) { out.push_back(e); });
         return out;
     };
-    const auto reference = events(fallback);
-    // Taken over with the catalog's own two numbers, so "unchanged" really means unchanged.
+    // Taken over with the catalog's own two numbers: the same order, line and thresholds...
     takeOverMerge(d, mergeAt(d, 2), fallback.priorityDefaults);
     validateDocument(d);
-    const auto taken = compileDocument(d, data).scenario; // M3.2.3a refused this (UNSUPPORTED_CONFLICT_RUNTIME)
-    CHECK(taken.priorityRules != fallback.priorityRules); // the forcing: the rule really is authored now
-    CHECK(events(taken) == reference);
-    // Reversing it is observable.
+    const auto taken = compileDocument(d, data).scenario;
+    CHECK(taken.priorityRules.empty()); CHECK(taken.conflictZones.size() == 1);
+    const auto& zone = taken.conflictZones.front();
+    CHECK(zone.minor.segmentIds.front() == derived.yieldSegmentId);
+    CHECK(zone.major.segmentIds.back() == derived.conflictSegmentId);
+    test::near(zone.waitPosition, derived.yieldPosition, 1e-9);
+    test::near(zone.gapTime, derived.gapTime, 0); test::near(zone.headway, derived.headway, 0);
+    // ...run on the admission solver (D59), which also holds the major side for an admitted minor.
+    const auto run = runSimulation(taken, 42);
+    CHECK(run.completed > 100);
+    const auto reference = events(taken);
     d.network.rightOfWay.conflictAreas[0].priority = ConflictPriority::secondYields;
-    CHECK(events(compileDocument(d, data).scenario) != reference);
+    CHECK(events(compileDocument(d, data).scenario) != reference); // reversing it is observable
+}
+TEST(rightofway_runtime, a_taken_over_three_way_merge_runs_without_a_hold_cycle) {
+    // Each middle path is minor at one zone and major at another; the order is total, so the
+    // waits-for graph between zones is acyclic and the group runs (D59).
+    auto t = threeWayMerge();
+    std::vector<std::string> connectors;
+    for (const auto& c : t.d.network.connectors) connectors.push_back(c.id);
+    for (const auto& id : connectors) {
+        const auto& c = *std::find_if(t.d.network.connectors.begin(), t.d.network.connectors.end(), [&](const auto& k) { return k.id == id; });
+        putInput(t.d, {"", putRoute(t.d, {"", {c.from.linkId, c.id, t.x}}), "car", 300, 0, 540, {}});
+    }
+    changeRunSettings(t.d, 600, 0.1);
+    const auto fallback = runSimulation(compileDocument(t.d, test::root() / "data").scenario, 42);
+    takeOverMerge(t.d, mergeAt(t.d, 3), kDefaults);
+    validateDocument(t.d);
+    const auto s = compileDocument(t.d, test::root() / "data").scenario; // no CONFLICT_HOLD_CYCLE
+    CHECK(s.conflictZones.size() == 3);
+    const auto end = runSimulation(s, 42);
+    // The three streams keep moving: all demand served, nobody left stuck at the join.
+    CHECK(fallback.completed > 100); CHECK(fallback.vehicles.empty()); // the forcing: it all clears
+    CHECK(end.completed == fallback.completed); CHECK(end.vehicles.empty());
 }

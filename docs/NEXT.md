@@ -9,31 +9,34 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — the owner's choice: M3.2.3c or M3.2.4
+## Immediate — M3.2.4, the conflict-area and priority-rule editor
 
 **Done:** M3.2.2a–c (D54–D56) authored controls, lifecycle and resolution.
 
-**M3.2.3a/b (D57, D58)** — authored crossings run on `src/core/conflicts.*`:
-- gap time and headway, grants held until the rear clears, receiving space, the swept check;
-- sides over section cuts;
-- chained zones admitted atomically.
+**M3.2.3a–c (D57–D59)** is the admission solver in `src/core/conflicts.*`:
+- gap time and headway, grants held until the rear clears, the swept check, receiving space
+  (shared behind one standing leader);
+- sides over section cuts, atomic chains;
+- authored merges run on it, with the major waiting for an admitted minor.
 
-Complete authored merge groups run on their compiled rules. Refused by name:
-- `CONFLICT_ROUTE_JOINS_INSIDE`, `CONFLICT_MIXED_ROLES` and `CONFLICT_SINK_TOO_CLOSE` in core
-  validation;
+Refused by name:
+- `CONFLICT_ROUTE_JOINS_INSIDE`, `CONFLICT_HOLD_CYCLE`, `CONFLICT_SINK_TOO_CLOSE`,
+  `CONFLICT_ROUTE_STARTS_PAST_LINE`;
 - drafts in the resolver.
 
-**Either next slice is ready, and neither depends on the other:**
-- **M3.2.3c** — runtime completeness:
-  1. Receiving space reserved across zones for same-tick requests.
-  2. Merges on the zone solver, so the major waits for an admitted minor. Keep the D54 equality
-     test: an untouched take-over must still replay the fallback, or state why it cannot.
-  3. Arbitration for `CONFLICT_MIXED_ROLES`: break mutual holds deterministically.
-- **M3.2.4** — the conflict-area and priority-rule editor ([M3_PLAN.md](M3_PLAN.md) §M3.2.4-6):
-  - canvas selection, inspector, gap and headway editing, Problems links, English and Thai text;
-  - the Run UI's statement that only authored areas are protected.
+Derived merges stay on M3.1 rules (D59), and queue gridlock is not prevented. Both are recorded.
 
-  Everything it would create now runs.
+**Next, M3.2.4** ([M3_PLAN.md](M3_PLAN.md) §M3.2.4-6):
+1. Canvas selection of conflict areas and waiting lines.
+2. An inspector and table for gap time, headway and priority, through the existing
+   `src/commands/right_of_way_commands.hpp` (every edit one `History` step).
+3. "Take over merge" and "Restore automatic priority" as named actions.
+4. Problems rows linking to the authored object.
+5. English and Thai text in `data/locales/`.
+6. The Run UI stating that only authored areas are protected.
+
+Pointer and keyboard submit the same commands (A24). Read `docs/VISSIM_PARITY.md` §1a/§2 and
+M1.22 first.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

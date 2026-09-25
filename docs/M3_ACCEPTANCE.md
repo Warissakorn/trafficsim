@@ -121,12 +121,23 @@ Keep any failure in the record; fixes receive separate attempts rather than over
 | A01-A26: test names, results, artifacts, uncovered rows | M3.2.2a, `tests/right_of_way_tests.cpp` (`rightofway.*`), all passing on Linux headless and desktop: A01, A03, A04, A06, A07, A08. **A02 partial** — merge areas, waiting lines and rules round-trip; Stop controls and counters do not exist until M3.2.5/M3.2.6. **A05** (M3.2.2b): `tests/right_of_way_lifecycle_tests.cpp` (`rightofway_lifecycle.*`) — delete/drag cascade with Undo/Redo, split remap to the same world point (1e-9) and straddle refused, copy only with every owner, lane/retarget edits keep ids and report unresolved, reverse refused; curved Link, both driving sides; six of eight fail on the pre-M3.2.2b commands. **A04 extended** (M3.2.2c): `tests/right_of_way_resolution_tests.cpp` (`rightofway_resolution.*`) — a waiting line on the preceding Link compiles before the Connector; a bypassable or non-upstream line and an uncovered, non-overlapping or doubly-crossing extent are named Run blockers; five of six fail on the pre-M3.2.2c code. **M3.2.3a** (D57): `tests/conflict_zone_tests.cpp` (`conflict_zone.*`) — A09 exact thresholds, A10 major seen before a section cut, A11 identical events for shuffled inputs, A12 sink clearance refused, A13 whole-area jump in one tick and a same-tick request capped by the swept check, A14 standing queue past the exit, A16 grant kept while the major waits, A17 same-side following, A25 copied state replays; a congested sweep with no swept overlap. Six fail with admission disabled; the rest check thresholds, replay, validation and non-over-restriction. `tests/right_of_way_runtime_tests.cpp`: an authored crossing compiles to one zone and runs; minor-road travel time rises with gap time; span, group and undetermined areas refused by name. **M3.2.3b** (D58): `tests/conflict_chain_tests.cpp` (`conflict_chain.*`):
 - A15: chained zones admit together, and nothing overlaps under demand.
 - A side over a section cut, with a route turning off inside it.
-- `CONFLICT_ROUTE_JOINS_INSIDE`, `CONFLICT_MIXED_ROLES` and broken chains refused.
+- `CONFLICT_ROUTE_JOINS_INSIDE` and broken chains refused.
 - Disabling chaining or chain-following each fails its own test.
 
 `rightofway_runtime.*`:
 - Span and two-area cases compile and run.
 - A taken-over merge replays the fallback's seed-42 events exactly, and its reversal changes them.
+
+**M3.2.3c** (D59), in `conflict_chain.*`:
+- A14: requests behind one standing leader share its room.
+- At a merge zone, the major side waits for an admitted minor, where the M3.1 rule let it onto the
+  join.
+- A hold cycle is refused and an acyclic mix is valid.
+- Disabling the room reservation or the cycle check each fails its own test.
+
+In `rightofway_runtime.*`:
+- A taken-over merge compiles to a zone carrying the fallback's line and numbers.
+- A taken-over three-way merge runs with every vehicle served, as the fallback does.
 
 A18–A26 need M3.2.5+ |
 | Linux headless/desktop and Windows native CI | Pending |
