@@ -283,9 +283,8 @@ when the owner withdrew C2 (D51) and C4 (D52)** (record in [`M2_GATE.md`](M2_GAT
 - **C2 — withdrawn (D51).** No test times TrafficSim against Vissim or any other tool.
 - **C4 — withdrawn (D52).** No test compares TrafficSim's delays with Vissim's or any other tool's.
 
-**Pass = the owner judges it passed (D51)**, on C1's study — reported as *not disproven*. (C0 and
-C3 were withdrawn by D38, C2 by D51, C4 by D52; the remaining criteria keep their
-numbers so earlier records still resolve.)
+**Pass = the owner judges it passed (D51)**, on C1's study — reported as *not disproven*. (C0/C3
+withdrawn by D38, C2 by D51, C4 by D52; the rest keep their numbers so old records resolve.)
 
 - If the owner judges it failed, the tool is not yet usable for the job it exists for — see
   `PROBLEM.md` §7.1 — and M3 does not start until what failed is fixed and the gate re-run.
