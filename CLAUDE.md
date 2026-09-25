@@ -10,8 +10,9 @@ A **traffic microsimulator with its own simulation engine, usable in real engine
 movement-level delay and LOS output that traffic impact studies require. See
 [`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for the capabilities a study needs from the engine.
 
-`TrafficSim` is a working name. **Naming is deliberately deferred until the end of M1** —
-see D11. Do not rename the project, the repository, or any package before then.
+`TrafficSim` is a working name. Naming was deferred until the end of M1 (D11); M1 is now accepted
+(D49), so **the name is the owner's decision** (NEXT item 4). Do not rename the project, the
+repository, or any package until the owner decides.
 
 **Latest correctness work:** the 2026-09-21 Network lifecycle audit fixes wrong-side endpoint
 retargets, pathological steep mouths, physical range picking and coalesced-release gestures.
@@ -48,7 +49,7 @@ file and compiled volumes are unchanged. The vehicle-input dialog (`src/shell/ed
 now shows one weight field per lane the selected route currently reaches, seeded from a stored
 value only when its size still matches; leaving the fields untouched leaves `laneShares`
 untouched too, which is what keeps an unedited input's save and compiled volumes exactly as they
-were. **M2 is under way** — its gate criteria are registered (ROADMAP §M2, D34). Counted
+were. **M2** (gate registered D34, passed D53): counted
 `intervals` (M2.2), `compositionId` from `data/compositions/` (M2.3) and static routing decisions
 (M2.4) are all expanded at compile/resolve time into ordinary core inputs, so `core/` and every
 frozen fixture are untouched. Connectors meeting at a lane start are ordered by M3.1's derived

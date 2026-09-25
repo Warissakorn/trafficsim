@@ -100,7 +100,7 @@ fields, and the `demand-ui` test covering set/reopen/cancel are all in; see `doc
 M1.26.1 entry. Not done by it: no gesture places a share from the canvas the way a route or an
 input itself is placed by pointer, and the input table row (`refreshDemand`,
 `src/shell/editor_demand.cpp`) still shows only the compiled equal-split figure even when shares
-are set. If either turns out to matter before M1's acceptance exercise, they are small follow-ups
+are set. If either turns out to matter, they are small follow-ups
 on the same dialog and table, not a new design question.
 
 ---
@@ -111,8 +111,8 @@ on the same dialog and table, not a new design question.
 
 **0b. The demand authoring gate, and what is still missing.** Routes and vehicle inputs are
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
-entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
-exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is closed (D32, top
+entry). What is still open is the keyboard-only equivalent of both gestures; the timed exercise
+was accepted by owner ruling (D49). **M1.26.1** (adjustable per-lane shares) is closed (D32, top
 entry). Signal heads are placed by pointer since M2.7a (D47).
 A routing decision as an object at a station along the link — what Vissim actually places, and
 what would bring back the lane-specific route M1.26 gave up — is **M2.1**.
@@ -123,7 +123,7 @@ screen. Watch for a Connector deleted by a Link drag the author did not expect t
 Undo is there; the surprise is the thing to judge), and for whether half a lane width is the right
 distance for "off the Link" — one constant, in `laneContains`.
 
-> **Carry into the acceptance exercise:** the mouth is the shape an author sees at every merge, and
+> **When checking a mouth by eye:** the mouth is the shape an author sees at every merge, and
 > both times it has been wrong it was found from a render, not from a test. When a Connector is
 > drawn onto a Link's body at a sharp angle, check the joint by eye: every lane of the Connector
 > should meet the lane of the Link it feeds, middle on middle, and the mouth should span the Link's
@@ -133,9 +133,8 @@ distance for "off the Link" — one constant, in `laneContains`.
 
 Every M1 sub-milestone and carve-out is implemented: M1.1–M1.20, plus M1.3.1, M1.5.1, M1.11.1,
 M1.12.1, M1.21–M1.21.1, M1.24–M1.27 and M1.26.1, with M1.12.2 closed as a measurement error rather
-than a defect and M1.12.3 closed by M1.19. M1.22 and M1.23 remain open. **M1.27.3 counted the
-authoring gestures; a counted walkthrough is not the timed exercise in item 2 and closes nothing
-of it.** `docs/ROADMAP.md` is
+than a defect and M1.12.3 closed by M1.19. M1.22 and M1.23 remain open. M1 usability is accepted by owner
+ruling (item 2). `docs/ROADMAP.md` is
 the authority on each; the bodies of the long-implemented ones live in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md).
 
@@ -154,7 +153,7 @@ candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Vey
 findings in the D11 row. **This is the owner's decision, not a session's.**
 
 **M2's gate is registered** (ROADMAP §M2, D34, re-registered by D38 as C1 + C2 with C4 recorded; C2 and C4 withdrawn by D51, D52).
-M2.5 may proceed; the gate study itself (M2.6) is the owner's.
+The gate passed by the owner's judgment (D53, `M2_GATE.md`).
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
 not a calibrated critical-gap model. Conflict areas as editable input, priority rules as an
