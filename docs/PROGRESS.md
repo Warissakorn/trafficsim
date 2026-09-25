@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-24-m2-slices.md`](archive/PROGRESS-2026-09-24-m2-slices.md) — 2026-09-24, M1.26.1 through the M3 contract, and the superseded `## Next` blocks; moved out 2026-09-25 as the oldest live entries
 - [`archive/PROGRESS-2026-09-23-editor-benchmark.md`](archive/PROGRESS-2026-09-23-editor-benchmark.md) — 2026-09-23, the editor benchmark was measuring itself (D31); moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.3-reflexes.md`](archive/PROGRESS-2026-09-22-m1.27.3-reflexes.md) — 2026-09-22, M1.27.3, the reflexes counted; moved out 2026-09-24 as the oldest live entry
 - [`archive/PROGRESS-2026-09-22-m1.27.2-slots.md`](archive/PROGRESS-2026-09-22-m1.27.2-slots.md) — 2026-09-22, M1.27.2, a vehicle carries scenario slots; moved out 2026-09-24 as the oldest live entry
@@ -33,6 +34,16 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-25 — Docs pass: stale instructions out, session-start reading cut
+
+Owner-approved optimization pass, docs dimension, after a scrutiny of the first plan (which
+dropped a "broken links" item — every hit was a false positive — and required the D28/D31
+guardrails to move into Working rules before CLAUDE.md's history paragraphs were cut).
+Estimated tokens (`docs_audit.py`): CLAUDE.md 3,837 → 2,515; NEXT.md 2,890 → 1,116; PROGRESS.md
+18,344 → 16,242 — the decision log is two thirds of it and stays. The oldest 2026-09-24 entries and
+two superseded `## Next` blocks moved whole to `archive/PROGRESS-2026-09-24-m2-slices.md`. No
+code changed; engine speed was measured (0.78 s Release for the M2.6 template's hour) and left.
 
 ## 2026-09-25 — M2 gate passed by the owner (D53)
 
@@ -200,149 +211,8 @@ destination entry, because their `routeId` is empty; it now also prunes by Link.
 
 ---
 
-## 2026-09-24 — M3 contract and acceptance preparation (D41)
-
-Owner requested the proposed sequence. `M3_PLAN.md`, `M3_CONTRACT.md` and `M3_ACCEPTANCE.md`
-record the source audit, interfaces, ordered slices and 26 evidence cases. The audit identifies
-missing authored priority persistence, insufficient merge-graph validation and signal-bound
-queue counters. No source, schema or fixture changed; M2.6 is still unperformed.
-Local file-size/architecture guards and the architecture negative self-test pass (standalone
-C++20 builds); `git diff --check` passes. CTest could not start: CMake/CTest/Ninja are absent.
-No local application, desktop or Windows verification is claimed. CI belongs to the draft PR.
-
----
-
-## 2026-09-24 — M2.5: delay per movement and queue per approach, one run
-
-`src/eval/movement.*` (core types only) and `src/project/evaluation.*` (movements from authored
-routes, counters from signal heads, queue conditions from `data/evaluation/`), shown in the
-editor's **Results** tab and printed by `trafficsim-cli --project FILE [--csv FILE]`. `core/`,
-every frozen fixture and `trafficsim-cli 42` are unchanged. The four-leg fixture, seed 42, gives
-12 movements with 6–134 trips, a mean delay of 35–56 s and approach queues up to 107 m. M2 runs one
-seed, so "plausible" is the only claim: a 120 s cycle with 20–30 s greens gives
-a uniform-delay term of 34–42 s before entry acceleration and queue spillback.
-**The analytic test found a bias worth knowing:** vehicles enter from standstill, so an
-unimpeded trip carries about `v/(2a)` ≈ 3 s of delay. It is pinned and documented, not hidden
-(D39). A run's first cut of the tab stacked the two tables and showed one row each, found from a
-screenshot; they are side by side now.
-
----
-
-## 2026-09-24 — Purpose restated; gate re-registered (D38)
-
-Owner ruling: the project is a traffic simulator usable in real engineering work, and the
-comparison with another simulator is removed from every file. `PROBLEM.md` §2 now lists the
-capabilities a study needs rather than what another tool lacks, §7.1 is "an engineer cannot
-complete a real study with it", and the M2 gate is C1 + C2 with C4 recorded. Docs only; no code,
-test or fixture mentioned it. **M2.5 is next.**
-
----
-
-## 2026-09-24 — M2 registered; M2.0.1 and M2.2–M2.4 implemented
-
-**Why everything expands before the core.** Intervals, compositions and routing decisions each
-split a Poisson stream — by period, by type share, by route share — and a split Poisson stream is
-exactly a set of independent Poisson streams. So each concept became an expansion into ordinary
-core inputs (decision → composition in `resolveCatalogs`, then period → lane in `buildScenario`),
-and one-way splits keep the plain id. The engine did not change, and neither did a fixture.
-**Why intervals are the source.** With `intervals` set, the scalar start/end/volume are derived
-(`deriveInputTotals`) on put and on read, so no file can hold two volumes. **Why M2.0.1 is not
-M3:** it applies M3.1's existing rule where it was skipped; drawing order decides, which is
-honest only because protected phasing rarely lets it bind (D35). Four tests that pinned the old
-refusal now pin the arbitrated merge and that removing the rule re-fires the guard.
-
----
-
-## 2026-09-24 — M2.0 closed except its decisions: same-station cut, dropped lanes, amber clamps
-
-**Same station:** the cut is reused rather than refused, and the later Connector also gives way to
-the earlier one — without that the §3.3 pair would enter together. **Dropped lanes:** still
-dropped, now reported (`AMBIGUOUS_ROUTE_STEP`, advisory). **Clamps:** all at amber onset, and the
-frozen baselines hold the same, so fixing them needs the owner; a test pins the diagnosis. CI on
-the four-leg commit passed all five jobs, Windows included.
-
-## 2026-09-24 — The four-leg intersection, built and run (M2.0)
-
-`tools/four_leg_network.hpp` builds it through the editor's commands, so the committed
-`data/projects/four-leg-signalised.traffic.json` is a document an author could have drawn; the
-file is compared to the builder at 1e-9 (computed curves may round differently under MSVC).
-It runs with no diagnostic only because turns join each exit part way along — the natural drawing
-is 8 × `UNSUPPORTED_MERGE`, pinned by a test M3 or M2.0.1 flips. Findings: `M2_PLAN.md` M2.0.
-
-## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
-
-Owner request; everything is in [`M2_PLAN.md`](M2_PLAN.md), no code changed; `desktop` 36/36 and
-`check` green on Linux. **The criteria stay a draft** because D8 makes pre-registration the
-owner's own act; ROADMAP §M2 only points at it. M2 can only run protected phasing
-honestly, so the gate study is a signalised intersection with protected phasing (D38 later
-narrowed the criteria to C1 + C2).
-**No fixture builds a four-leg intersection anywhere**, so M2.0 (the duplicate-station fix plus
-a runnable four-leg fixture) goes first, allowed before the criteria as M1 defects.
-
----
-
-## 2026-09-24 — M1.26.1, storage and the dialog
-
-**M1.26.1's real question — decided (D32).** `VehicleInput` gains `laneShares`, optional relative
-weights in `routeLaneChains` order; empty is the M1.26 equal split, and a stale size (the route's
-lane count changed since) degrades to it rather than misapplying a weight. `buildScenario`
-normalises by their sum and clears the field on each compiled per-lane input; `definitionJson`
-persists it only when set, so an unedited file and its compiled volumes are unchanged. Schema
-bumped to 9 for the new optional field; six tests asserting the exact prior schema number were
-updated to match, and two new tests hold the gate: round-trip plus the unedited-file omission
-(`project_tests.cpp`), and an uneven 1:2:3 split plus the stale-size degrade
-(`editor_model_tests.cpp`). `headless` preset: 23/23, 162 test-function checks all passing.
-
-**The editor surface, same session: M1.26.1 is closed.** The vehicle-input dialog
-(`src/shell/editor_demand.cpp`) now shows one `QDoubleSpinBox` per lane the *selected* route
-currently reaches, rebuilt whenever the route combo changes (the lane count is the route's, not
-the input's). Seeded from a stored `laneShares` only when its size still matches; a "dirty" flag
-set only by an actual `valueChanged` means leaving the fields alone leaves the input's
-`laneShares` exactly as it was — usually empty, which is what keeps the bit-identical default
-from the paragraph above true through the dialog too, not just through direct model edits.
-`demand-ui`'s existing two-lane fixture got three new checks: default fields read 1/1, a 2:1 edit
-round-trips through reopen, and cancelling a reopened dialog leaves the stored weights alone.
-Needed `qt6-base-dev` installed in this container (it was not present) to build and run the
-`desktop` preset at all; `desktop`: 36/36, `headless`: 23/23.
-
----
-
-
 **What comes next lives in [`NEXT.md`](NEXT.md)**, not here — one live to-do, not one
 per entry. Entries below this date keep the `Next` they shipped with, as history.
-
----
-
-## Next
-
-**M1.27 is closed.** Its four stages are done: clean build 86 s → 64 s, a 160-link corridor
-95.1 → 10.6 ms a frame and 57.2 → 10.0 ms a pick (corrected 2026-09-23), the engine run
-roughly halved, and the
-gesture surface counted with one deliberate dead end left in it. Three benchmarks are committed
-— `trafficsim-engine-benchmark`, `trafficsim-editor-benchmark`, `trafficsim-gesture-walkthrough`
-— and none of them is in `check`, so re-run them by hand before claiming any of those numbers
-again.
-
-**M1.26.1, adjustable per-lane shares, is next**, and the owner asked for it two sessions ago.
-Decide where the shares live before writing any UI — that is the whole task, because
-`VehicleInput` is a core type the scenario format shares, and an equal split must stay the
-compiled result of an unedited input, bit for bit.
-
-Then **M2.1** behind **M2's pre-registered criteria, still unwritten, which block all of M2**
-and need the owner. Still open: M1.22 (geometry/snapping tools, custom pivots, layer locks,
-bulk inspection), M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, the shared-station
-`runtimeSections` refusal (§3.3, M3.2), and scenario-JSON export from the editor, which is
-neither implemented nor booked. Inside a tick `occupiedSpans` is the largest single cost at
-9.8%; no milestone is booked for it and none is needed yet. **M1's timed owner exercise
-(`docs/M1_ACCEPTANCE.md`) is untouched by all of this** — a counted walkthrough is not a timed
-one, and M1.27.3 never claimed to close it.
-
----
-
-## Next
-
-Moved to [`NEXT.md`](NEXT.md) on 2026-09-23. A session read this whole file to find twenty
-lines of it; now it reads that one. The owner's standing items live there too.
 
 ---
 
@@ -372,7 +242,7 @@ Ask these before the milestone they block.
 | Q2 | Which lane-changing model? | M1 | MOBIL and Gipps are both defensible. Needs a short spike, not a debate. |
 | ~~Q3~~ | ~~Who are the three engineers for the M2 gate?~~ | M2 gate | **Answered 2026-09-10: the project owner performs the gate alone.** This materially weakens it — see D8 and the mitigation in `ROADMAP.md` M2. |
 | Q4 | Which published benchmarks define the M6 tolerance? | M6 | Decide before M5 so evaluation is built to be checkable against them. HCM is the likely baseline now that D7 makes the tool international. |
-| Q5 | Final product name | Nothing before M1 | **Deferred until the end of M1** by D11 — not a blocker on any current work. Candidates and collision findings are in the D11 row; reuse them. |
+| Q5 | Final product name | Nothing | Deferred until the end of M1 by D11; **M1 is accepted (D49), so it is now the owner's call** (NEXT item 2). Candidates and collision findings are in the D11 row; reuse them. |
 | ~~Q6~~ | ~~Register `velk` on npm and PyPI~~ | — | **Withdrawn 2026-09-11 as moot** — no settled name to register. The registration question returns with the name at M1. |
 
 ---
