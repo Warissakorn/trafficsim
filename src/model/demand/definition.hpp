@@ -61,9 +61,24 @@ inline std::vector<double> decisionBreakpoints(const std::vector<const RoutingDe
     points.erase(std::unique(points.begin(), points.end()), points.end());
     return points;
 }
+// M2.7b. Vissim's fixed-time signal controller: one cycle and offset, and signal groups that each
+// turn green at `greenStart` and end green at `greenEnd` -- seconds of the controller's cycle,
+// the green wrapping past the cycle's end when greenEnd < greenStart -- followed by `amber`, red
+// for the rest. A controller's cycle second at simulation time t is (t + offset) mod cycle, the
+// same convention a core SignalProgram uses. Expanded at compile time into one core
+// SignalProgram per group (signal_control.hpp), so core never sees a controller.
+struct SignalGroup {
+    int number{}; std::string name; double greenStart{}, greenEnd{}, amber{3};
+    bool operator==(const SignalGroup&) const = default;
+};
+struct SignalController {
+    std::string id, name; double cycle{90}, offset{}; std::vector<SignalGroup> groups;
+    bool operator==(const SignalController&) const = default;
+};
 struct AuthoringDefinition : ScenarioDefinition {
     bool externalVehicleTypes{true}, externalBehaviours{true};
     std::vector<RoutingDecision> routingDecisions; // M2.4
+    std::vector<SignalController> signalControllers; // M2.7b; `signalPrograms` keeps only legacy ones
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
     bool operator==(const AuthoringDefinition&) const = default;
 };

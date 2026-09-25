@@ -22,6 +22,7 @@ PriorityDefaults parsePriorityDefaults(const Json& value);
 VehicleType parseVehicleType(const Json& value);
 Composition parseComposition(const Json& value);
 std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition); // M2.4
+std::vector<SignalController> parseSignalControllers(const Json& definition); // M2.7b
 Json eventJson(const SimEvent& event);
 Json checkpointJson(const SimState& state);
 Json summaryJson(const RunSummary& summary);

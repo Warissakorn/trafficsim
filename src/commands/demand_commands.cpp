@@ -96,6 +96,15 @@ void deleteProgram(ProjectDocument& d, const std::string& id) {
         throw std::invalid_argument("EDIT_REFERENCED_PROGRAM");
     remove(demand(d).signalPrograms,id);
 }
+std::string putSignalController(ProjectDocument& d, SignalController value) {
+    if (value.id.empty()) value.id=allocateId(d,"controller");
+    const auto id=value.id; put(demand(d).signalControllers,std::move(value)); return id;
+}
+void deleteSignalController(ProjectDocument& d, const std::string& id) {
+    for (const auto& h:d.network.signalHeads) if (h.controllerId==id)
+        throw std::invalid_argument("EDIT_REFERENCED_CONTROLLER");
+    remove(demand(d).signalControllers,id);
+}
 void changeRunSettings(ProjectDocument& d, double duration, double timeStep) {
     auto& def=demand(d); def.duration=duration; def.timeStep=timeStep;
 }

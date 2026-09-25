@@ -28,6 +28,9 @@ AuthoringDefinition parseAuthoringDefinition(const Json&);
 // path ids from older files map to their owner; ids that already name an object are left alone,
 // so running this on an already-migrated definition changes nothing.
 void migrateRoutesToObjects(const Network&, AuthoringDefinition&);
+// Schema 12 and earlier: a legacy program shaped like a signal group becomes one (M2.7b, D48),
+// its heads re-pointed; the colours every head shows are unchanged. Others stay legacy.
+void migrateSignalPrograms(ProjectDocument&);
 Json definitionJson(const AuthoringDefinition&);
 void validateAuthoredDemand(const ProjectDocument&);
 // M2.4. A decision's routes must exist, share one origin Link and carry positive finite flows;

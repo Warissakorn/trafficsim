@@ -60,7 +60,7 @@ is not production project persistence; save/versioning remains M1.
 | `Link` | Road centreline as an ordered polyline; ordered lanes; no authored junction |
 | `Lane` | Globally unique ID and positive width; ordered from driving-side curb inward |
 | `Connector` | Explicit lane-to-lane connection with its own polyline and runtime length |
-| `NetworkSignalHead` | Lane reference, stop-line position and signal-program ID |
+| `NetworkSignalHead` | Lane reference, stop-line position, and a signal group (`controllerId` + `groupNumber`, M2.7b) or a legacy signal-program ID |
 
 Coordinates are planar Cartesian metres with positive Y upwards. Geographic projection
 and coordinate-system metadata belong to the future project layer. Runtime segment
@@ -71,7 +71,12 @@ approximation, not a production road-surface or junction-construction algorithm.
 Driving side changes lane ordering and offsets. Connector endpoints must match their
 referenced lane endpoints within 0.01 m. Changing side on an authored multilane network
 requires rebuilding its connector geometry; stale endpoints fail validation.
-Signal heads can be located anywhere along a lane, including its endpoints.
+Signal heads can be located anywhere along a lane, including its endpoints. The head's station
+is the stop line: a vehicle is held there while the head is not green. A signal group of a
+fixed-time controller (M2.7b, D48) is compiled into one ordinary `SignalProgram` with id
+`<controllerId>#<groupNumber>` — green from green start to green end in cycle seconds
+`(t + offset) mod cycle`, then amber, red for the rest — so the engine runs exactly the programs
+it always did.
 
 IDs must be nonempty and unique across network objects. Validation reports duplicate
 IDs, invalid geometry/widths, empty links, unknown lanes, duplicate connections,

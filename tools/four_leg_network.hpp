@@ -114,28 +114,31 @@ inline FourLeg fourLegIntersection(const FourLegOptions& options = {}) {
     }
     // Split phasing, one approach at a time, 120 s cycle: green, 3 s amber, 2 s all-red. With
     // no crossing-conflict model before M3, this is the only phasing the engine can run honestly:
-    // no two conflicting movements ever have green together.
+    // no two conflicting movements ever have green together. One controller, one signal group
+    // per approach (M2.7b), exactly as the timing sheet reads.
     const std::array<double, 4> green{30, 30, 20, 20};
+    SignalController controller{"", "Four-leg", 120, 0, {}};
     double start = 0;
     for (std::size_t k = 0; k < 4; ++k) {
-        std::vector<SignalPhase> phases;
-        if (start > 0) phases.push_back({start, SignalColor::red});
-        phases.push_back({green[k], SignalColor::green});
-        phases.push_back({3, SignalColor::amber});
-        const double rest = 120 - start - green[k] - 3;
-        phases.push_back({rest, SignalColor::red});
-        const auto program = putProgram(d, {"", 0, phases});
+        controller.groups.push_back({static_cast<int>(k) + 1, names[k], start, start + green[k], 3});
         start += green[k] + 5;
+    }
+    const auto controllerId = putSignalController(d, controller);
+    for (std::size_t k = 0; k < 4; ++k) {
         for (std::size_t index = 0; index < 3; ++index) {
             NetworkSignalHead head;
             head.lane = {pocket[k], lane(d, pocket[k], index)};
             head.position = polylineLength(laneGeometry(link(d, pocket[k]), head.lane.laneId,
                                                         d.network.drivingSide)) - 1;
-            head.programId = program;
+            head.controllerId = controllerId; head.groupNumber = static_cast<int>(k) + 1;
             head.name = std::string(names[k]) + " signal, lane " + std::to_string(index + 1);
             putSignalHead(d, head);
         }
     }
+    // Four programs took four ids here before M2.7b; one controller takes one. Skipping the other
+    // three keeps every later id -- and so the order vehicles are drawn in, and every four-leg
+    // number already published (M2.5, D39) -- exactly as it was. The signal colours are identical.
+    d.nextId += 3;
     // Link-total volumes per movement, veh/h: a busier east-west main road, a quieter side road.
     const std::array<std::array<double, 3>, 4> volume{{{500, 120, 100}, {450, 110, 90},
                                                       {250, 60, 50}, {220, 50, 40}}};

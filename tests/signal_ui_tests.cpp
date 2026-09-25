@@ -1,8 +1,13 @@
 #include "../src/shell/editor_window.hpp"
+#include "../src/project/run.hpp"
 #include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QAction>
 #include <QGraphicsItem>
+#include <QDialogButtonBox>
+#include <QLabel>
+#include <QPushButton>
+#include <QTableWidget>
 #include <QComboBox>
 #include <QDialog>
 #include <QDoubleSpinBox>
@@ -42,6 +47,7 @@ int main(int argc,char** argv) {
         const auto east=addLink(d,{{10,0},{100,0}},2,3.5);
         addConnectorRange(d,{west,d.network.links[0].lanes.front().id},{east,d.network.links[1].lanes.front().id},2,2);
         putProgram(d,{"",0,{{30,SignalColor::green},{3,SignalColor::amber},{30,SignalColor::red}}});
+        putInput(d,{"",putRoute(d,{"",{west}}),"car",600,0,60}); // something to run
         const auto file=temp.filePath("signal.traffic.json");write(file,d);
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(30);
         w.openFile(file);QApplication::processEvents();
@@ -109,6 +115,61 @@ int main(int argc,char** argv) {
         require(std::abs(moved.position-30)<1.,"Dragging did not slide the stop line");
         w.findChild<QAction*>("editorUndo")->trigger();QApplication::processEvents();
         require(std::abs(w.history().document().network.signalHeads.front().position-60)<1.,"Undo did not restore the head");
+
+        // M2.7b: a controller from the 4-phase template, in one dialog. The table is the input,
+        // the bars are drawn from it, and a time that does not fit the cycle disables OK.
+        auto* add=w.findChild<QAction*>("editorAddController");require(add && add->isEnabled(),"No Add signal controller action");
+        bool checked=false;
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog && dialog->objectName()=="editorControllerDialog","Controller dialog did not open");
+            auto* templates=dialog->findChild<QComboBox*>("editorControllerTemplate");
+            auto* groups=dialog->findChild<QTableWidget*>("editorSignalGroups");
+            auto* ok=dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok);
+            auto* status=dialog->findChild<QLabel*>("editorControllerStatus");
+            require(templates && groups && ok && status && dialog->findChild<QWidget*>("editorSignalTiming"),"Controller dialog lost a control");
+            templates->setCurrentIndex(1);QApplication::processEvents();
+            require(groups->rowCount()==4,"The 4-phase template did not make four groups");
+            require(dialog->findChild<QDoubleSpinBox*>("editorControllerCycle")->value()==120,"The 4-phase template's cycle is not 120 s");
+            require(ok->isEnabled(),"A template's own timing was refused");
+            auto* amber=qobject_cast<QDoubleSpinBox*>(groups->cellWidget(3,4));
+            amber->setValue(200);QApplication::processEvents();
+            require(!ok->isEnabled() && !status->text().isEmpty(),"A group overflowing the cycle was not flagged before OK");
+            amber->setValue(3);QApplication::processEvents();
+            require(ok->isEnabled(),"Fixing the time did not re-enable OK");
+            checked=true;dialog->accept();
+        });
+        add->trigger();QApplication::processEvents();
+        require(checked,"The controller dialog never ran");
+        const auto& controllers=w.history().document().definition->signalControllers;
+        require(controllers.size()==1 && controllers[0].groups.size()==4 && controllers[0].cycle==120,"The controller was not committed");
+        const auto controllerId=controllers[0].id;
+
+        // Placing heads for it: choose group 2 once, and the next click defaults to group 2.
+        tool->setCurrentIndex(8);QApplication::processEvents();
+        const auto first=lane(w,1,0),other=lane(w,1,1);
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            auto* signal=dialog->findChild<QComboBox*>("editorHeadSignal");
+            const int at=signal->findData(QString::fromStdString("c:"+controllerId+"#2"));
+            require(at>=0,"Group 2 is not offered for a head");
+            signal->setCurrentIndex(at);dialog->accept();
+        });
+        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,first,20));QApplication::processEvents();
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog->findChild<QComboBox*>("editorHeadSignal")->currentData().toString().toStdString()=="c:"+controllerId+"#2",
+                "The next head did not default to the group just used");
+            dialog->accept();
+        });
+        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,other,20));QApplication::processEvents();
+        const auto& heads=w.history().document().network.signalHeads;
+        require(heads.size()==4,"Two more heads were not placed");
+        for(std::size_t k=2;k<4;++k)
+            require(heads[k].controllerId==controllerId && heads[k].groupNumber==2 && heads[k].programId.empty(),"A head does not show group 2");
+        // And the run compiles every head against its group's program, with nothing to fix first.
+        const auto snapshot=compileDocument(w.history().document(),argv[1]);
+        require(snapshot.scenario.signalHeads[2].programId==controllerId+"#2","A head does not run against its group");
         std::cout<<"Signal UI tests passed\n";
         return 0;
     } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

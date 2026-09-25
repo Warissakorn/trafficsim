@@ -1,4 +1,5 @@
 #include "demand_paths.hpp"
+#include "../model/demand/signal_control.hpp"
 #include <algorithm>
 #include <map>
 
@@ -128,6 +129,9 @@ RoutelessIssues routelessIssues(const Network& network, const AuthoringDefinitio
 }
 ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefinition& authored,
                                    ScenarioDefinition resolved) {
+    // M2.7b: every signal group becomes an ordinary core program here, the one compile step
+    // every Run, diagnostic and validation already goes through, so core never sees a controller.
+    for (auto& program : signalGroupPrograms(authored.signalControllers)) resolved.signalPrograms.push_back(std::move(program));
     if (std::none_of(resolved.inputs.begin(), resolved.inputs.end(), [](const auto& i) { return !i.linkId.empty(); }))
         return resolved; // nothing to do, and nothing to compute: every existing project
     const auto cut = slices(authored);

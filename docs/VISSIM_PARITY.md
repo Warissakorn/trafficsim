@@ -155,7 +155,7 @@ gesture at the same time as the model is far cheaper than retrofitting it.
 |---|---|---|
 | **Vehicle routes (static)** | `Ctrl`+right-click on the link/connector at the routing decision, then left-click the destination section | Typed since **M1.5.1**; the gesture is **M1.25**; **M1.26** makes the route name Links and Connectors, so it covers every lane of the carriageway the way Vissim's does, and narrowing a Connector no longer invalidates it. Still absent: the decision as a positioned object, relative flows, per-interval volumes and a lane-specific route — all M2.1 |
 | **Nodes** | Right-click-drag a polygon over the junction, double-click the first point to close | Absent entirely. Nodes are how Vissim aggregates delay and queue per junction — the output a traffic impact study needs. Belongs with **M5 evaluation**, not the editor |
-| **Signal controllers** | `Signal Control > Signal Controllers` table, right-click → **Add…**, then **Edit signal groups** | We have `NetworkSignalHead { programId }` and a flat `SignalProgram` — no controller, no signal groups, no head-to-group mapping. **M4** |
+| **Signal controllers** | `Signal Control > Signal Controllers` table, right-click → **Add…**, then **Edit signal groups** | **Fixed time since M2.7b:** Signal control tab → Add signal controller, a groups table with green start/end and amber, a timing-bar diagram, 2-/4-phase templates; a head shows a signal group. No actuated control, intergreen matrix or conflict check — **M4** |
 | **Parking lots** | **Car Park Creator** generates bays and their connectors from a drawn area | Absent. Not booked (§4) |
 
 The pattern worth extracting: in Vissim **one chord creates everything**, and the object type

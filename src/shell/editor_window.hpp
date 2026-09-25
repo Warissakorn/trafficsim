@@ -86,7 +86,10 @@ private:
     void translateDemand();
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
     void editInput(const std::string& id = {}, const std::string& preselectedRoute = {}, const std::string& preselectedLink = {});
-    void editProgram(const std::string& id = {});
+    void editProgram(const std::string& id = {}); // legacy programs only (M2.7b)
+    // M2.7b, src/shell/editor_signal.cpp. Returns the id committed, empty on cancel.
+    std::string editController(const std::string& id = {});
+    QString signalLabel(const std::string& controllerId, int groupNumber, const std::string& programId) const;
     void editDecision(const std::string& id = {}); // M2.4, src/shell/editor_decision.cpp
     // `placed` is the canvas click: the dialog opens on that lane and station.
     void editHead(const std::string& id = {}, const std::optional<HeadPlacement>& placed = {});
@@ -179,7 +182,7 @@ private:
     void refresh(bool modelChanged = true);
     void translate();
     bool execute(const std::string& name, const std::function<void(ProjectDocument&)>& action);
-    std::string lastHeadProgram_; // the program the last placed head took: the next one defaults to it
+    std::string lastHeadSignal_; // "c:<controller>#<group>" or "p:<program>" the last head took; the next defaults to it
     void showError(const std::exception& error);
     bool confirmDiscard();
     bool saveDialog(bool as = false);

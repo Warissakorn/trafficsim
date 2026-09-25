@@ -55,8 +55,14 @@ void EditorWindow::buildDemandTables() {
         [this](const auto& id){editRoute(id);},"route");
     page(inputTable_,"editorInputTable","editorAddInput","editorEditInput","editorDeleteInput",
         [this](const auto& id){editInput(id);},"input");
-    page(programTable_,"editorProgramTable","editorAddProgram","editorEditProgram","editorDeleteProgram",
-        [this](const auto& id){editProgram(id);},"program");
+    // M2.7b: signal controllers, and below them any legacy program an older file still carries.
+    page(programTable_,"editorProgramTable","editorAddController","editorEditController","editorDeleteController",
+        [this](const auto& id){
+            const auto& def=history_.document().definition;
+            if(!id.empty() && def && std::any_of(def->signalPrograms.begin(),def->signalPrograms.end(),[&](const auto& p){return p.id==id;}))
+                editProgram(id);
+            else editController(id);
+        },"signal");
     // Last, so every earlier tab keeps the index the rest of the window already addresses it by.
     page(decisionTable_,"editorDecisionTable","editorAddDecision","editorEditDecision","editorDeleteDecision",
         [this](const auto& id){editDecision(id);},"decision");
@@ -87,7 +93,7 @@ void EditorWindow::translateDemand() {
     decisionTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorDecisionName"),text("editorDecisionRoutes")});
     routeTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorRouteSegments"),text("editorColumnLength")});
     inputTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorInputRoute"),text("editorInputVolume")});
-    programTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorProgramOffset"),text("editorProgramCycle")});
+    programTable_->setHorizontalHeaderLabels({text("editorColumnId"),text("editorColumnName"),text("editorControllerTiming")});
 }
 void EditorWindow::refreshDemand() {
     if (!routeTable_) return;
@@ -150,10 +156,16 @@ void EditorWindow::refreshDemand() {
             const int n=decisionTable_->rowCount();decisionTable_->insertRow(n);
             row(decisionTable_,n,{QString::fromStdString(x.id),QString::fromStdString(x.name),flows.join(", ")},x.id);
         }
+        for(const auto& c:def.signalControllers) {
+            const int n=programTable_->rowCount();programTable_->insertRow(n);
+            row(programTable_,n,{QString::fromStdString(c.id),QString::fromStdString(c.name),
+                text("editorControllerSummary").arg(c.cycle).arg(c.offset).arg(static_cast<int>(c.groups.size()))},c.id);
+        }
         for(const auto& p:def.signalPrograms) {
             double cycle=0;for(const auto& f:p.phases)cycle+=f.duration;
             const int n=programTable_->rowCount();programTable_->insertRow(n);
-            row(programTable_,n,{QString::fromStdString(p.id),QString::number(p.offset),QString::number(cycle)},p.id);
+            row(programTable_,n,{QString::fromStdString(p.id),text("editorLegacyProgram").arg(QString::fromStdString(p.id)),
+                text("editorControllerSummary").arg(cycle).arg(p.offset).arg(1)},p.id);
         }
     }
     for(const auto& entry:std::vector<std::pair<QTableWidget*,std::string>>{{routeTable_,routeId},{inputTable_,inputId},{programTable_,programId},{decisionTable_,decisionId}}) {
@@ -175,7 +187,11 @@ void EditorWindow::deleteDemand(const std::string& kind,const std::string& id) {
     box.setDefaultButton(QMessageBox::No);if(box.exec()!=QMessageBox::Yes)return;
     execute("editorDeleteSelected",[&](auto& d){
         if(kind=="route")deleteRoute(d,id);else if(kind=="input")deleteInput(d,id);
-        else if(kind=="program")deleteProgram(d,id);else if(kind=="decision")deleteRoutingDecision(d,id);
+        else if(kind=="signal") {
+            const auto& controllers=demand(d).signalControllers;
+            if(std::any_of(controllers.begin(),controllers.end(),[&](const auto& c){return c.id==id;}))deleteSignalController(d,id);
+            else deleteProgram(d,id);
+        }else if(kind=="decision")deleteRoutingDecision(d,id);
         else deleteSignalHead(d,id);
     });
 }

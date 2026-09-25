@@ -1,4 +1,4 @@
-add_library(trafficsim_shell STATIC editor_style.cpp editor_workspace.cpp editor_window.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
+add_library(trafficsim_shell STATIC editor_style.cpp editor_workspace.cpp editor_window.cpp editor_signal.cpp signal_timing_view.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
     editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_input.cpp editor_decision.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_results.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
     ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/canvas_display.cpp ../editor/canvas_demand.cpp ../editor/canvas_cache.cpp ../editor/canvas_heads.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_options)

@@ -229,92 +229,45 @@
         ]
       }
     ],
-    "signalPrograms": [
+    "signalControllers": [
       {
-        "id": "program-61",
-        "offset": 0.0,
-        "phases": [
+        "cycle": 120.0,
+        "groups": [
           {
-            "color": "green",
-            "duration": 30.0
+            "amber": 3.0,
+            "greenEnd": 30.0,
+            "greenStart": 0.0,
+            "name": "West",
+            "number": 1
           },
           {
-            "color": "amber",
-            "duration": 3.0
+            "amber": 3.0,
+            "greenEnd": 65.0,
+            "greenStart": 35.0,
+            "name": "East",
+            "number": 2
           },
           {
-            "color": "red",
-            "duration": 87.0
+            "amber": 3.0,
+            "greenEnd": 90.0,
+            "greenStart": 70.0,
+            "name": "South",
+            "number": 3
+          },
+          {
+            "amber": 3.0,
+            "greenEnd": 115.0,
+            "greenStart": 95.0,
+            "name": "North",
+            "number": 4
           }
-        ]
-      },
-      {
-        "id": "program-65",
-        "offset": 0.0,
-        "phases": [
-          {
-            "color": "red",
-            "duration": 35.0
-          },
-          {
-            "color": "green",
-            "duration": 30.0
-          },
-          {
-            "color": "amber",
-            "duration": 3.0
-          },
-          {
-            "color": "red",
-            "duration": 52.0
-          }
-        ]
-      },
-      {
-        "id": "program-69",
-        "offset": 0.0,
-        "phases": [
-          {
-            "color": "red",
-            "duration": 70.0
-          },
-          {
-            "color": "green",
-            "duration": 20.0
-          },
-          {
-            "color": "amber",
-            "duration": 3.0
-          },
-          {
-            "color": "red",
-            "duration": 27.0
-          }
-        ]
-      },
-      {
-        "id": "program-73",
-        "offset": 0.0,
-        "phases": [
-          {
-            "color": "red",
-            "duration": 95.0
-          },
-          {
-            "color": "green",
-            "duration": 20.0
-          },
-          {
-            "color": "amber",
-            "duration": 3.0
-          },
-          {
-            "color": "red",
-            "duration": 2.0
-          }
-        ]
+        ],
+        "id": "controller-61",
+        "name": "Four-leg",
+        "offset": 0.0
       }
     ],
+    "signalPrograms": [],
     "timeStep": 0.1
   },
   "format": "TrafficSim",
@@ -1500,6 +1453,8 @@
     "signalHeads": [
       {
         "connectorId": "",
+        "controllerId": "controller-61",
+        "groupNumber": 1,
         "id": "head-62",
         "lane": {
           "laneId": "lane-5",
@@ -1507,10 +1462,12 @@
         },
         "name": "West signal, lane 1",
         "position": 43.0,
-        "programId": "program-61"
+        "programId": ""
       },
       {
         "connectorId": "",
+        "controllerId": "controller-61",
+        "groupNumber": 1,
         "id": "head-63",
         "lane": {
           "laneId": "lane-6",
@@ -1518,10 +1475,12 @@
         },
         "name": "West signal, lane 2",
         "position": 43.0,
-        "programId": "program-61"
+        "programId": ""
       },
       {
         "connectorId": "",
+        "controllerId": "controller-61",
+        "groupNumber": 1,
         "id": "head-64",
         "lane": {
           "laneId": "lane-7",
@@ -1529,110 +1488,128 @@
         },
         "name": "West signal, lane 3",
         "position": 43.0,
-        "programId": "program-61"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-66",
+        "controllerId": "controller-61",
+        "groupNumber": 2,
+        "id": "head-65",
         "lane": {
           "laneId": "lane-17",
           "linkId": "link-16"
         },
         "name": "East signal, lane 1",
         "position": 43.0,
-        "programId": "program-65"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-67",
+        "controllerId": "controller-61",
+        "groupNumber": 2,
+        "id": "head-66",
         "lane": {
           "laneId": "lane-18",
           "linkId": "link-16"
         },
         "name": "East signal, lane 2",
         "position": 43.0,
-        "programId": "program-65"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-68",
+        "controllerId": "controller-61",
+        "groupNumber": 2,
+        "id": "head-67",
         "lane": {
           "laneId": "lane-19",
           "linkId": "link-16"
         },
         "name": "East signal, lane 3",
         "position": 43.0,
-        "programId": "program-65"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-70",
+        "controllerId": "controller-61",
+        "groupNumber": 3,
+        "id": "head-68",
         "lane": {
           "laneId": "lane-29",
           "linkId": "link-28"
         },
         "name": "South signal, lane 1",
         "position": 43.0,
-        "programId": "program-69"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-71",
+        "controllerId": "controller-61",
+        "groupNumber": 3,
+        "id": "head-69",
         "lane": {
           "laneId": "lane-30",
           "linkId": "link-28"
         },
         "name": "South signal, lane 2",
         "position": 43.0,
-        "programId": "program-69"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-72",
+        "controllerId": "controller-61",
+        "groupNumber": 3,
+        "id": "head-70",
         "lane": {
           "laneId": "lane-31",
           "linkId": "link-28"
         },
         "name": "South signal, lane 3",
         "position": 43.0,
-        "programId": "program-69"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-74",
+        "controllerId": "controller-61",
+        "groupNumber": 4,
+        "id": "head-71",
         "lane": {
           "laneId": "lane-41",
           "linkId": "link-40"
         },
         "name": "North signal, lane 1",
         "position": 43.0,
-        "programId": "program-73"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-75",
+        "controllerId": "controller-61",
+        "groupNumber": 4,
+        "id": "head-72",
         "lane": {
           "laneId": "lane-42",
           "linkId": "link-40"
         },
         "name": "North signal, lane 2",
         "position": 43.0,
-        "programId": "program-73"
+        "programId": ""
       },
       {
         "connectorId": "",
-        "id": "head-76",
+        "controllerId": "controller-61",
+        "groupNumber": 4,
+        "id": "head-73",
         "lane": {
           "laneId": "lane-43",
           "linkId": "link-40"
         },
         "name": "North signal, lane 3",
         "position": 43.0,
-        "programId": "program-73"
+        "programId": ""
       }
     ]
   },
   "nextId": 101,
   "revision": 0,
-  "schemaVersion": 12
+  "schemaVersion": 13
 }

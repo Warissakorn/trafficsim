@@ -123,7 +123,9 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             if(length<0) add("UNKNOWN_SEGMENT",p+".connectorId");
             if(!head.lane.linkId.empty() || !head.lane.laneId.empty())add("EDIT_HEAD_REFERENCE",p+".lane");
         }
-        if (head.programId.find_first_not_of(" \t\r\n") == std::string::npos) add("INVALID_ID", p + ".programId");
+        // A head shows a legacy program or a signal group (M2.7b), exactly one of them.
+        if (!head.controllerId.empty()) { if (!head.programId.empty()) add("EDIT_HEAD_REFERENCE", p + ".programId"); }
+        else if (head.programId.find_first_not_of(" \t\r\n") == std::string::npos) add("INVALID_ID", p + ".programId");
         if (!std::isfinite(head.position) || head.position < 0 || (length>=0 && head.position > length))
             add("INVALID_POSITION", p + ".position");
     }

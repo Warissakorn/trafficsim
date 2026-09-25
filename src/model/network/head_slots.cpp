@@ -2,6 +2,12 @@
 #include <cmath>
 
 namespace trafficsim {
+std::string signalGroupProgramId(const std::string& controllerId, int groupNumber) {
+    return controllerId + "#" + std::to_string(groupNumber);
+}
+std::string headProgramId(const NetworkSignalHead& head) {
+    return head.controllerId.empty() ? head.programId : signalGroupProgramId(head.controllerId, head.groupNumber);
+}
 // Where a Signal head can stand: a Link lane or a Connector path, the width being the lane's so
 // the stop line spans exactly the carriageway it holds. One routine serves the canvas pick, the
 // drawn bar and the Ctrl-drag copy, so a head placed by any of them lands on the same station.
