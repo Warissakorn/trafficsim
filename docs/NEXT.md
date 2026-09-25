@@ -11,7 +11,7 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 ## Immediate — the thread of work in progress
 
-**M2 is under way (2026-09-24).** The owner ratified the gate (ROADMAP §M2, D34), then restated
+**M2 gate passed (2026-09-25, D53); M2 work below is history for M3.** The owner ratified the gate (ROADMAP §M2, D34), then restated
 the purpose — a simulator usable in real engineering work — and re-registered it as C1 + C2 with C4
 recorded (D38); on 2026-09-25 the owner withdrew C2 and C4 and made the verdict their own judgment (D51, D52). The owner also ruled on
 M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own commit with
