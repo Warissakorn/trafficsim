@@ -151,3 +151,55 @@ TEST(rightofway_editor, every_right_of_way_code_has_english_and_thai_text) {
         }
     }
 }
+TEST(rightofway_editor, a_click_cycles_priority_through_three_states_in_one_step_each) {
+    auto p = crossingLinks();
+    const auto id = addCrossingAreas(p.d, p.a, p.b, p.b, kDefaults).front();
+    setConflictControl(p.d, id, "school", ConflictPriority::secondYields, 4.5, 12);
+    History h; h.reset(p.d);
+    const auto& row = h.document().network.rightOfWay;
+    std::vector<ConflictPriority> seen;
+    for (int i = 0; i < 3; ++i) {
+        CHECK(h.execute("cycle", [&](ProjectDocument& d) { seen.push_back(cycleConflictPriority(d, id, kDefaults)); }));
+        CHECK(row.conflictAreas.front().priority == seen.back());
+        CHECK(row.conflictAreas.front().name == "school"); // the rest of the control is kept
+        CHECK(row.priorityRules.front().gapTime == 4.5); CHECK(row.priorityRules.front().headway == 12);
+    }
+    CHECK(seen == (std::vector{ConflictPriority::undetermined, ConflictPriority::firstYields, ConflictPriority::secondYields}));
+    h.undo(); CHECK(h.document().network.rightOfWay.conflictAreas.front().priority == ConflictPriority::firstYields); // one step each
+    const auto before = h.document();
+    test::throws([&] { h.execute("x", [&](ProjectDocument& d) { cycleConflictPriority(d, "nothing", kDefaults); }); }, "EDIT_UNKNOWN_OBJECT");
+    CHECK(h.document() == before);
+}
+TEST(rightofway_editor, a_waiting_line_moves_along_the_polyline_its_bar_is_drawn_on) {
+    auto p = crossingLinks();
+    addCrossingAreas(p.d, p.a, p.b, p.b, kDefaults);
+    // A Connector path too: a line on one is measured on the Connector's base polyline.
+    const auto c = addLink(p.d, {{130, 0}, {200, 0}}, 1, 3.5);
+    addConnector(p.d, {p.a, lane(p.d, p.a, 0)}, {c, lane(p.d, c)});
+    const auto& connector = p.d.network.connectors.front();
+    const auto paths = connectorPaths(p.d.network, connector);
+    CHECK(!paths.empty());
+    const ControlPathRef onConnector{"", "", connector.id, paths.front().from.laneId, paths.front().to.laneId};
+    const auto line = p.d.network.rightOfWay.waitingLines.front(); // on A's first lane, offset from A's reference polyline
+    for (const auto& point : {line.point, ControlPoint{onConnector, 10}}) {
+        const auto polyline = controlPathPolyline(p.d.network, point.path);
+        CHECK(polyline.size() >= 2);
+        const auto bar = waitingLineBar(p.d.network, point);
+        CHECK(bar.has_value());
+        const auto mid = Point{(bar->first.x + bar->second.x) / 2, (bar->first.y + bar->second.y) / 2};
+        const auto on = pointAlong(polyline, point.station);
+        // The bar crosses the polyline's normal at that station: the offset is purely lateral.
+        const auto ahead = pointAlong(polyline, point.station + .5);
+        const double along = ((mid.x - on.x) * (ahead.x - on.x) + (mid.y - on.y) * (ahead.y - on.y)) / .5;
+        test::near(along, 0, 1e-6);
+    }
+    CHECK(controlPathPolyline(p.d.network, {p.a, "gone", "", "", ""}).empty());
+    History h; h.reset(p.d);
+    CHECK(h.execute("move", [&](ProjectDocument& d) { moveWaitingLine(d, line.id, line.point.station - 5); }));
+    test::near(h.document().network.rightOfWay.waitingLines.front().point.station, line.point.station - 5, 1e-12);
+    // Past its area's entry: kept, and reported by the resolver rather than refused.
+    CHECK(h.execute("past", [&](ProjectDocument& d) { moveWaitingLine(d, line.id, 70); }));
+    const auto r = resolve(h.document());
+    CHECK(std::any_of(r.issues.begin(), r.issues.end(), [](const auto& i) { return i.code == "CONFLICT_WAITING_LINE_AFTER_ENTRY"; }));
+    test::throws([&] { h.execute("x", [&](ProjectDocument& d) { moveWaitingLine(d, "nothing", 1); }); }, "EDIT_UNKNOWN_OBJECT");
+}

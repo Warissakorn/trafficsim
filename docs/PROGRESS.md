@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-25-m2.7a-heads.md`](archive/PROGRESS-2026-09-25-m2.7a-heads.md) — 2026-09-25, M2.7a, a Signal head placed where clicked (D47); moved out 2026-09-25 as the oldest live entry
 - [`archive/PROGRESS-2026-09-24-m2.1-demand.md`](archive/PROGRESS-2026-09-24-m2.1-demand.md) — 2026-09-24, M2.1.1 and M2.1.2 (routeless inputs, counted turning proportions); moved out 2026-09-25 as the oldest live entries
 - [`archive/PROGRESS-2026-09-24-m2-slices.md`](archive/PROGRESS-2026-09-24-m2-slices.md) — 2026-09-24, M1.26.1 through the M3 contract, and the superseded `## Next` blocks; moved out 2026-09-25 as the oldest live entries
 - [`archive/PROGRESS-2026-09-23-editor-benchmark.md`](archive/PROGRESS-2026-09-23-editor-benchmark.md) — 2026-09-23, the editor benchmark was measuring itself (D31); moved out 2026-09-24 as the oldest live entry
@@ -35,6 +36,53 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-25 — M3.2.4b: conflict areas on the canvas (D61)
+
+The interaction was written first (`VISSIM_PARITY.md` §2b). Vissim picks conflict areas only
+while *Conflict Areas* is the active object type; here the **Conflict area tool** (`A`) is that
+type. Only this tool hit-tests areas, so a click at a junction under Select still picks the Link.
+With the tool:
+- a click selects the area's row;
+- a click on the highlighted area, or `P`, cycles its priority: firstYields → secondYields →
+  undetermined;
+- a drag on a waiting line slides it along its own path;
+- `Tab` picks the next area under the last click.
+
+New code:
+- Commands (`src/commands/conflict_authoring.cpp`): `cycleConflictPriority`, which keeps the
+  name and the rule's numbers, and `moveWaitingLine`.
+- Model: `controlPathPolyline`, the polyline a station is measured on. A drag projects onto
+  exactly what `waitingLineBar` and the resolver read.
+- Canvas (`src/editor/canvas_conflicts.cpp`): `conflictsAt`, `waitingLineAt`, the press and the
+  drag, following the head drag. A line wins over an area.
+- Readability: the side that gives way (the second while undetermined) is hatched and drawn
+  above the solid side, so both show where a crossing's two sides cover the same square.
+
+Evidence: `rightofway_editor.*` (2 new tests) and a new `priority-canvas` suite. It covers:
+- Select still picks the Link, with the forcing that the point is inside an area;
+- pick, click-cycle and `P`, each one Undo step, and a click on empty space;
+- hatch and z order;
+- a 5 m line drag along its lane with sideways drift, one step, and a jitter that moves nothing;
+- Save with no dialog, then reopen: the same `rightOfWay`, rows, drawn items and "Runs".
+
+Four mutations each fail their own assertion:
+- Select hitting areas;
+- no hatch;
+- an area winning over the line;
+- no commit on release.
+
+`Tab` among overlapping areas has no test. Crossing areas never overlap, so it needs a taken-over
+merge.
+
+**Seen, not changed:** on a two-lane crossing, the minor side's waiting line for the far lane's
+area stands inside the near lane's area. `kCrossingSetback` is measured from each area's own
+entry. The resolver chains the two (A15) and the areas run, as the reopen check shows. Whether
+the gesture should set the line before the first area is a question for M3.2.5's Stop/Yield
+work.
+
+Test runs: Linux headless 28/28, desktop 44/44 offscreen. Windows is CI's. Seed 42 is unchanged
+(`1243e5361a7174d1ecc56b67d7c92b12`).
 
 ## 2026-09-25 — M3.2.4a: the Conflict areas tab (D60)
 
@@ -327,23 +375,6 @@ file, migrated on load, gives byte-identical CLI results. M0 scenarios are not m
 changed at first -- traced to three fewer allocated ids reordering random draws, not to signal
 timing -- so the builder skips those three ids and every published four-leg number stands.
 
-## 2026-09-25 — M2.7a: a Signal head is placed where it is clicked, and is drawn as its stop line (D47)
-
-Owner report: a head could not be placed where it was wanted, and a head should define the stop
-line. The runtime already did that -- `core/simulation.cpp` holds a vehicle at the head's
-station -- but the editor never let an author say where. The head tool fired only on
-Ctrl+right-click; `nearestLane` skipped Connectors; and the shell threw away both the lane and
-the station it had picked, opening a dialog on the first lane at station 0.
-
-Now a plain click places the head at the pointer's exact station on a Link lane or Connector path
-(owner choice: one head per lane, as Vissim), the dialog opens there with the station bounded by
-the lane's length and lanes named "Link · lane 2" rather than by id, and a selected head drags
-along its lane (`moveSignalHead`). Heads draw as a stop line across the lane. The pick is
-`nearestHeadSlot` in the model, lifted out of the Ctrl-drag copy's `dropHead`, so the click, the
-hover preview and the copy cannot disagree about where a head lands (hard rule 3). `core/`,
-`trafficsim-cli 42` (md5 unchanged) and every fixture are untouched. Signal Controllers are the
-second half, M2.7b.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -448,6 +479,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D53 | 2026-09-25 | **The M2 gate is passed on the owner's word** | Under D51 the verdict is the owner's, and the owner reported "M2.6 passed". Recorded as *not disproven* (D8). The study's site, counts, file and Results table were not supplied; the record says so rather than filling them in. M3 may start. | Evidence that the study did not meet C1, or a later owner ruling. |
 | D54 | 2026-09-25 | **M3.2.2 is split: M3.2.2a ships the authored model, schema 14, commands and the resolver; the reference lifecycle is M3.2.2b** | One system per session. The file/model seam — types, strict codec, History commands and ONE effective-priority resolver used by both compile and diagnostics — is testable on its own (A01–A04, A06–A08). Lifecycle (split/copy/retarget/resize/delete remapping, A05) touches every geometry command and is its own slice; until it lands, deleting a Link or Connector a control names is refused whole (safe but blunt), and a lane change leaves a stale, Run-blocked draft; `rightofway.until_m3_2_2b_*` pins both. Every authored area is Run-blocked (`UNSUPPORTED_CONFLICT_RUNTIME`) until M3.2.3, even an explicit merge the M3.1 mechanism could already run, because the plan says new controls stay blocked until their runtime is implemented. A taken-over merge compiles to exactly the fallback's rule (same 1 m waiting line, D50), so reversing it is the only change an author makes. Stop controls and queue counters are left to M3.2.5/M3.2.6, where their runtime lands. | M3.2.2b, or the M3.2.3 admission solver changing what a compiled area needs. |
 | D55 | 2026-09-25 | **Authored controls follow their owners the way signal heads do; a split through one is refused; lane edits never retarget** | Deleting a Link or Connector (including a drag that detaches a Connector) cascades the areas on it, their rules, the lines on it and lines that served only those areas, in the same command, so Undo restores the whole relationship. A split moves stations by the same arithmetic as Connector ends and maps lane ids through the split's replacements; a Connector lane pair whose end moved downstream takes the new lane id. A control in or across the 0.2 m span is refused (`EDIT_SPLIT_CONTROL`) rather than guessed (contract §1, first slice). Copy takes a control only when every owner was copied — a Connector lane pair needs both end Links, because only then do its lane ids map. Lane-count and retarget edits are allowed and keep ids: a pair that no longer matches is a Run-blocked `CONFLICT_UNRESOLVED_PATH`, never an ordinal pick (§6). Reverse is refused like a head. The M3.2.2a scrutiny fixes ride under this number too. A waiting line on a preceding Link and crossing coverage are resolver work, carved to M3.2.2c. Recorded, not fixed: control ids are unique against network ids only. | An editor surface (M3.2.4) that lets an author select a control, which would need copy/delete of the control itself. |
+| D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |
 | D60 | 2026-09-25 | **The conflict-area editor ships table-and-dialog first; canvas gestures follow as M3.2.4b** | Every authored control is reachable by keyboard: the table, Enter, and a dialog whose fields keep the file's parameter names. That route reaches the same commands the pointer does, so A24's "pointer and keyboard submit the same commands" holds for what exists. Add-crossing expands to every overlapping lane pair and says how many before committing (contract §1). Its waiting lines stand 1 m short of entry, the D50 setback, so the result runs without further editing. The canvas draws areas and lines from the resolver's own geometry, so a picture cannot disagree with what runs. Clicking areas, cycling priority and dragging lines need hit-testing that competes with Link selection at every crossing: a separate interaction design, carved to M3.2.4b. | Canvas gestures once the Vissim conflict-area interaction is written up (VISSIM_PARITY §2); drawing two overlapping sides so both stay readable. |
 | D59 | 2026-09-25 | **Authored merges run on the zone solver while derived merges stay on M3.1 rules; only hold cycles are refused; requests behind one standing leader share its room** | Contract §4 asks the major side to wait for an admitted minor, which the M3.1 rule cannot express. The solver does, with the same line and thresholds, so an authored merge moves to it. The D58 replay-equality test therefore no longer holds, and the take-over keeps the fallback's numbers rather than its trajectory. Derived merges stay on the rule, because moving them would change the published four-leg and M2.6 numbers (D39); that needs its own decision. A route minor at one zone and major at another deadlocks only if the holds close a loop, and a total priority order cannot close one. So the static waits-for graph replaces the blanket refusal, and a taken-over three-way merge runs. When requests share one standing leader, serving them in vehicle-id order is the contract's stable last tie-break; each takes its length plus standstill. | Queue gridlock, where an admitted vehicle stops inside an area behind a leader that stopped later: admission would have to reserve the downstream space, not only check it. Derived merges on the solver, with the owner's agreement to re-publish the four-leg numbers. |
 | D58 | 2026-09-25 | **Zones are resolved per route in route distances; a chain of zones shares one line; authored merges run on their rules; mixed roles are refused** | Route distances make a section cut invisible to admission, as contract §4 asks. A route that turns off frees the area where it leaves, and a major route joining part way is seen from the join. A vehicle has nowhere to wait between two zones when there is less than the longest vehicle plus its standstill between them. Giving both the first line and the last exit makes admission atomic with no new state: it waits until every zone admits, then holds them all. This is conservative, because the later zone's majors wait from the first line. Authored merges already compiled to `PriorityRule`s (D54), the mechanism derived merges run on, so blocking them only withheld a runtime that exists. The evidence is an exactly equal event stream after take-over. A route minor at one zone and major at another can deadlock by mutual hold, and a minor route joining its chain part way never passes the line. Both are refused rather than half-run. | Arbitration that breaks mutual holds (M3.2.3c); merges moved to the zone solver so the major waits for an admitted minor. |

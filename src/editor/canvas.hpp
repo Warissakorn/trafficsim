@@ -12,7 +12,7 @@ class QTimer;
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
 public:
-    enum class Tool { select, draw, split, measure, calibrate, connect, route, input, head };
+    enum class Tool { select, draw, split, measure, calibrate, connect, route, input, head, conflict };
     explicit EditorCanvas(QWidget* parent = nullptr);
     void setDisplayCatalog(DisplayCatalog catalog) { display_=std::move(catalog); redraw(); }
     void setVisibleLevel(std::optional<int> level);
@@ -76,6 +76,13 @@ public:
     // green where a side has priority, red where it gives way and amber while undetermined.
     void setHighlightedConflict(std::string id);
     const std::string& highlightedConflict() const { return highlightedConflict_; }
+    // M3.2.4b, the Conflict area tool (docs/VISSIM_PARITY.md §2b). Only that tool hit-tests areas,
+    // so a click at a junction under Select still selects the Link. A click picks an area; a click
+    // on the highlighted one asks to cycle its priority; a drag on a waiting line slides it along
+    // its own path. The canvas never writes to the document itself.
+    std::function<void(const std::string&)> conflictPicked, conflictCycled;
+    std::function<void(const std::string&, double)> waitingLineMoved;
+    std::vector<std::string> conflictsAt(Point) const;   // areas whose drawn side contains it, by id
     // Paint state only, advanced by a timer. Tests set it directly: waiting on wall clock for
     // an animation is how a suite becomes flaky, and no measured number depends on it.
     void setAnimationPhase(int phase);
@@ -132,6 +139,12 @@ private:
     void drawDemandOverlay();
     void drawConflicts();
     std::string highlightedConflict_;
+    std::string waitingLineAt(Point) const;
+    bool conflictPress(QMouseEvent*);
+    void updateLineDrag(QPoint);
+    void finishLineDrag(QPoint);
+    struct LineDrag { std::string id; std::vector<Point> polyline; double original{}, station{}; bool moved{}; };
+    std::optional<LineDrag> lineDrag_;
     void drawRouteArrows(const std::vector<Point>&, QColor);
     std::string objectAt(Point) const;
     bool isLink(const std::string& objectId) const;

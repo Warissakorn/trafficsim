@@ -37,6 +37,10 @@ SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const
 // reference does not resolve -- the editor draws nothing rather than a guess.
 std::vector<Point> conflictSideOutline(const Network&, const ConflictSide&);
 std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const ControlPoint&);
+// M3.2.4b: the polyline a ControlPoint's station is measured on (a Link's reference polyline, a
+// Connector's base polyline), so a drag commits the station waitingLineBar and the resolver read.
+// Empty when the reference does not resolve.
+std::vector<Point> controlPathPolyline(const Network&, const ControlPathRef&);
 
 // One merge: the incoming segments that arrive on one section, in drawing order -- the order
 // derivedPriorityRules ranks them in. `explicitControl` is set when an authored area covers two

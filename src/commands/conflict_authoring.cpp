@@ -66,6 +66,25 @@ void setConflictControl(ProjectDocument& d, const std::string& areaId, const std
     updated.gapTime = gapTime; updated.headway = headway;
     putPriorityRule(d, updated); // the numbers are checked when the edit commits
 }
+ConflictPriority cycleConflictPriority(ProjectDocument& d, const std::string& areaId, const PriorityDefaults& defaults) {
+    const auto a = area(d, areaId); // a copy: setConflictControl replaces the element
+    const auto next = a.priority == ConflictPriority::firstYields ? ConflictPriority::secondYields
+                    : a.priority == ConflictPriority::secondYields ? ConflictPriority::undetermined : ConflictPriority::firstYields;
+    const auto& rules = d.network.rightOfWay.priorityRules;
+    const auto rule = std::find_if(rules.begin(), rules.end(), [&](const auto& r) { return r.conflictAreaId == areaId; });
+    if (rule == rules.end()) requireDefaults(defaults);
+    const double gap = rule == rules.end() ? defaults.gapTime : rule->gapTime;
+    const double headway = rule == rules.end() ? defaults.headway : rule->headway;
+    setConflictControl(d, areaId, a.name, next, gap, headway);
+    return next;
+}
+void moveWaitingLine(ProjectDocument& d, const std::string& lineId, double station) {
+    const auto& lines = d.network.rightOfWay.waitingLines;
+    const auto line = std::find_if(lines.begin(), lines.end(), [&](const auto& w) { return w.id == lineId; });
+    if (line == lines.end()) throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+    auto moved = *line; moved.point.station = station;
+    putWaitingLine(d, moved);
+}
 std::vector<std::string> takeOverMergesOf(ProjectDocument& d, const std::string& connectorId, const PriorityDefaults& defaults) {
     requireDefaults(defaults);
     std::vector<std::string> created;

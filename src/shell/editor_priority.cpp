@@ -55,6 +55,10 @@ void EditorWindow::buildConflicts() {
             objects_->setCurrentIndex(kConflictTab);
     }));
     bar->addAction(action("editorEditConflict", {}, [this] { const auto id = selectedConflict(); if (!id.empty()) editConflict(id); }));
+    // P cycles the selected area's priority from the keyboard, as a second click does on the canvas.
+    auto* cycle = action("editorCyclePriority", QKeySequence(Qt::Key_P), [this] { cyclePriority(selectedConflict()); });
+    cycle->setShortcutContext(Qt::WidgetWithChildrenShortcut); canvas_->addAction(cycle); conflictTable_->addAction(cycle);
+    bar->addAction(cycle);
     bar->addAction(action("editorRestorePriority", {}, [this] {
         const auto id = selectedConflict(); if (id.empty()) return;
         execute("editorRestorePriority", [&](auto& d) { restoreAutomaticPriorityOf(d, id); });
@@ -63,6 +67,11 @@ void EditorWindow::buildConflicts() {
         const auto id = selectedConflict(); if (id.empty()) return;
         execute("editorDeleteConflict", [&](auto& d) { removeConflictArea(d, id); });
     }));
+    // The Conflict area tool's gestures (M3.2.4b) submit the same commands as the tab.
+    canvas_->conflictPicked = [this](const std::string& id) { selectConflict(id); };
+    canvas_->conflictCycled = [this](const std::string& id) { cyclePriority(id); };
+    canvas_->waitingLineMoved = [this](const std::string& id, double station) {
+        execute("editorMoveWaitingLine", [&](auto& d) { moveWaitingLine(d, id, station); }); };
     connect(conflictTable_, &QTableWidget::cellDoubleClicked, this, [this](int, int) {
         const auto id = selectedConflict(); if (!id.empty()) editConflict(id); });
     connect(conflictTable_, &QTableWidget::activated, this, [this](const QModelIndex&) { // Enter
@@ -126,7 +135,13 @@ void EditorWindow::refreshConflicts() {
     actions_.at("editorAddCrossing")->setEnabled(sel.size() == 2 && road(sel[0]) && road(sel[1]));
     actions_.at("editorTakeOverMerge")->setEnabled(canvas_->selectedConnector() != nullptr);
     const bool chosen = !selectedConflict().empty();
-    for (const auto* key : {"editorEditConflict", "editorRestorePriority", "editorDeleteConflict"}) actions_.at(key)->setEnabled(chosen);
+    for (const auto* key : {"editorEditConflict", "editorCyclePriority", "editorRestorePriority", "editorDeleteConflict"}) actions_.at(key)->setEnabled(chosen);
+}
+void EditorWindow::showConflicts() { objects_->setCurrentIndex(kConflictTab); }
+void EditorWindow::cyclePriority(const std::string& id) {
+    if (id.empty()) return;
+    const auto defaults = priorityDefaults();
+    execute("editorCyclePriority", [&](auto& d) { cycleConflictPriority(d, id, defaults); });
 }
 bool EditorWindow::selectConflict(const std::string& id) {
     if (id.empty() || !conflictTable_) return false;

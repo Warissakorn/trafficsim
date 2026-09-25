@@ -412,17 +412,17 @@ changing the document or losing its previous save point or Redo history.
 A clean check means the current core accepts the scenario. It does not certify traffic
 engineering correctness. The permanent not-yet-validated marker remains visible.
 
-Run (F5) compiles one revision into a detached snapshot, initializes the selected
-32-bit seed and plays fixed simulation steps on the editor canvas. Pause keeps the
-state; Step advances one timeStep; Reset recreates the initial state for the same seed.
-Playback speed changes scheduling only. Status shows revision, seed, time and
-active/pending/completed counts. Seeded arrivals are stochastic, so an initially empty
-view can be normal.
+Run (F5) compiles one revision into a detached snapshot, initializes the selected 32-bit seed and
+plays fixed steps on the canvas. Pause keeps the state; Step advances one timeStep; Reset recreates
+the initial state for the same seed. Playback speed changes scheduling only. Status shows revision,
+seed, time and active/pending/completed counts; seeded arrivals may leave the view empty at first.
 
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run;
 the next Run compiles the current document. No simulation runs against a stale edit.
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
+**Conflict area tool** (`A`, M3.2.4b, D61): click an area to select it, click it again or press `P` to
+cycle its priority, drag a dashed waiting line along its lane. The side that gives way is hatched.
 
 ## Background image
 

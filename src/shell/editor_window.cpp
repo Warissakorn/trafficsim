@@ -61,7 +61,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     buildHistory();
     auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
-    for(int i=0;i<9;++i) tool_->addItem("",i);
+    for(int i=0;i<10;++i) tool_->addItem("",i);
     tool_->hide();
     tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
@@ -86,6 +86,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         if (index==5) properties_->setCurrentIndex(1);
         else if (index==4) properties_->setCurrentIndex(2);
         else if (index==1 || index==2) properties_->setCurrentIndex(0);
+        else if (index==9) showConflicts(); // the tool edits what that tab lists
     });
     connect(grid_,&QDoubleSpinBox::valueChanged,this,[this](double n){canvas_->grid=n;canvas_->redraw();});
     canvas_->selectionChanged=[this]{
@@ -166,8 +167,8 @@ void EditorWindow::translate() {
         else if(auto* bar=qobject_cast<QToolBar*>(w)) bar->setWindowTitle(text(key));
         else if(auto* menu=qobject_cast<QMenu*>(w)) menu->setTitle(text(key));
     }
-    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable"};
-    for(int i=0;i<9;++i) tool_->setItemText(i,text(modes[i]));
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool"};
+    for(int i=0;i<10;++i) tool_->setItemText(i,text(modes[i]));
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));

@@ -45,6 +45,13 @@ void setConflictControl(ProjectDocument&, const std::string& areaId, const std::
 std::vector<std::string> takeOverMergesOf(ProjectDocument&, const std::string& connectorId, const PriorityDefaults&);
 // "Restore automatic priority" from one of the group's areas. Throws EDIT_NO_MERGE for a crossing.
 void restoreAutomaticPriorityOf(ProjectDocument&, const std::string& areaId);
+// M3.2.4b, the canvas gestures. The next priority in firstYields -> secondYields -> undetermined
+// -> firstYields, keeping the name and the rule's numbers (`defaults` when the area has none);
+// returns the new priority. There is no "passive" state: an unauthored crossing is not an area.
+ConflictPriority cycleConflictPriority(ProjectDocument&, const std::string& areaId, const PriorityDefaults&);
+// Slides a waiting line along its own path. A station past the area's entry is kept, not
+// refused: the resolver reports it (CONFLICT_WAITING_LINE_AFTER_ENTRY) and Run refuses it.
+void moveWaitingLine(ProjectDocument&, const std::string& lineId, double station);
 // Deletes an area with its rule and the waiting lines no other area uses.
 void removeConflictArea(ProjectDocument&, const std::string& areaId);
 }

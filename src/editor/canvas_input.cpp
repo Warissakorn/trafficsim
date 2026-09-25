@@ -41,6 +41,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     }
     if(demandPress(e))return;
     if(headPress(e))return;
+    if(conflictPress(e))return;
     if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {startRotation(e->pos());return;}
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
@@ -139,6 +140,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         verticalScrollBar()->setValue(verticalScrollBar()->value()-delta.y()); return;
     }
     if(headDrag_) {updateHeadDrag(e->pos());return;}
+    if(lineDrag_) {updateLineDrag(e->pos());return;}
     if(demandHover(e))return;
     if(headHover(e))return;
     if (tool_==Tool::connect && connectorFrom_) {
@@ -191,6 +193,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         redraw();return;
     }
     if(e->button()==Qt::LeftButton && headDrag_) {finishHeadDrag(e->pos());return;}
+    if(e->button()==Qt::LeftButton && lineDrag_) {finishLineDrag(e->pos());return;}
     if(e->button()==Qt::LeftButton && groupDrag_) {
         // The release position is authoritative here too, and a click that never became a drag
         // leaves the selection exactly as it was.
@@ -328,7 +331,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     QGraphicsView::keyPressEvent(e);
 }
 bool EditorCanvas::mouseGestureActive() const {
-    return creating_ || headDrag_ || !routeDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
+    return creating_ || headDrag_ || lineDrag_ || !routeDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
            laneResize_ || panning_ || band_ || dragging_;
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {

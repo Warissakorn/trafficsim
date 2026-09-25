@@ -54,6 +54,7 @@ QIcon editorIcon(EditorIcon icon) {
         case EditorIcon::pause: line(7,3,7,17);line(13,3,13,17);break;
         case EditorIcon::inspector: box(2,3,16,14);line(12,3,12,17);line(14,7,16,7);line(14,11,16,11);break;
         case EditorIcon::objects: box(2,3,16,14);line(2,8,18,8);line(2,12,18,12);line(8,3,8,17);break;
+        case EditorIcon::conflict: line(2,7,18,7);line(2,13,18,13);line(7,2,7,18);line(13,2,13,18);box(7,7,6,6);break;
         case EditorIcon::grid: for(int v:{4,10,16}){line(v,2,v,18);line(2,v,18,v);}break;
         }
         p.end();result.addPixmap(pixmap);

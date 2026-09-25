@@ -146,6 +146,10 @@ std::vector<Point> conflictSideOutline(const Network& n, const ConflictSide& sid
         return outline;
     } catch (const std::exception&) { return {}; }
 }
+std::vector<Point> controlPathPolyline(const Network& n, const ControlPathRef& ref) {
+    const auto strip = stripOf(n, ref);
+    return strip ? strip->base : std::vector<Point>{};
+}
 std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const ControlPoint& point) {
     try {
         const auto strip = stripOf(n, point.path);

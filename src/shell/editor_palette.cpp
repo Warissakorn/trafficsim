@@ -19,11 +19,12 @@ void EditorWindow::buildPalette() {
     palette_->setIconSize(QSize(20,20));palette_->setSpacing(2);
     palette_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     palette_->setTextElideMode(Qt::ElideRight);palette_->setMinimumWidth(0);
-    const int modes[]={0,1,5,6,7,8,2,3,4};
-    const char* shortcuts[]={"S","L","C","R","V","H","X","M","K"};
+    // Conflict areas (A) sit with the other control objects, after signal heads.
+    const int modes[]={0,1,5,6,7,8,9,2,3,4};
+    const char* shortcuts[]={"S","L","C","R","V","H","A","X","M","K"};
     const EditorIcon icons[]={EditorIcon::select,EditorIcon::link,EditorIcon::connector,EditorIcon::route,
-        EditorIcon::input,EditorIcon::signal,EditorIcon::split,EditorIcon::measure,EditorIcon::image};
-    for(int row=0;row<9;++row){
+        EditorIcon::input,EditorIcon::signal,EditorIcon::conflict,EditorIcon::split,EditorIcon::measure,EditorIcon::image};
+    for(int row=0;row<10;++row){
         auto* entry=new QListWidgetItem(palette_);entry->setData(Qt::UserRole,modes[row]);entry->setIcon(editorIcon(icons[row]));
         auto* key=action("editorTool"+std::to_string(modes[row]),QKeySequence(shortcuts[row]),[this,row]{palette_->setCurrentRow(row);canvas_->setFocus();});
         key->setShortcutContext(Qt::WidgetWithChildrenShortcut);canvas_->addAction(key);
@@ -65,8 +66,8 @@ void EditorWindow::translatePalette() {
     palette_->setAccessibleName(text("editorNetworkObjects"));
     visibleLevel_->setAccessibleName(text("editorVisibleLevel"));
     canvas_->setAccessibleDescription(text("editorKeyboardHelp"));
-    const char* keys[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable"};
-    const char* shortcuts[]={"S","L","X","M","K","C","R","V","H"};
+    const char* keys[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool"};
+    const char* shortcuts[]={"S","L","X","M","K","C","R","V","H","A"};
     for(int row=0;row<palette_->count();++row){
         const int mode=palette_->item(row)->data(Qt::UserRole).toInt();
         palette_->item(row)->setText(text(keys[mode])+" ("+shortcuts[mode]+")");

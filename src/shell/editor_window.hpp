@@ -140,6 +140,8 @@ private:
     void addCrossings();
     // Shows the area in the tab and on the canvas; a waiting line or rule id names its area.
     bool selectConflict(const std::string& id);
+    void showConflicts();
+    void cyclePriority(const std::string& id);
     std::string selectedConflict() const;
     PriorityDefaults priorityDefaults() const; // data/priority-rules, as Run reads them
     QLineEdit* runSeed_{};
