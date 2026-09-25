@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-25-m3.2.4a.md`](archive/PROGRESS-2026-09-25-m3.2.4a.md) — 2026-09-25 — M3.2.4a: the Conflict areas tab (D60); moved out 2026-09-25 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.3c.md`](archive/PROGRESS-2026-09-25-m3.2.3c.md) — 2026-09-25, M3.2.3c, shared receiving space, merges on the solver, hold cycles (D59); moved out 2026-09-25 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.3b.md`](archive/PROGRESS-2026-09-25-m3.2.3b.md) — 2026-09-25, M3.2.3b, spans, atomic chains, authored merges run (D58); moved out 2026-09-25 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.3a.md`](archive/PROGRESS-2026-09-25-m3.2.3a.md) — 2026-09-25, M3.2.3a, one authored crossing runs (D57); moved out 2026-09-25 as the oldest live entry
@@ -121,6 +122,16 @@ about 10 m/s, 0.2 m short of the line. There is no commitment or amber rule for 
 It was committed as `docs/evidence/m3.2.7-sweep-metadata.json` **before** the sweep ran.
 `tjunction.the_archived_sweep_metadata_still_describes_the_fixture` fails if the fixture or a
 catalog changes under it.
+
+**Sweep** (b, `docs/evidence/m3.2.7-sweep.*`, 20 runs, run after the metadata commit `b66313b`):
+- Every run drained.
+- Minor delay and queue rose with gapTime 3 → 5 → 7 s for every seed; the spread between seeds is
+  wide.
+- **headway 3/7/12 m gave identical rows.** Investigated: no major vehicle within 12 m of an entry
+  was ever slower than 10 m/s, so the gap-time window always covered the headway and headway never
+  decided a block. The arm exercises nothing at this demand, and a congested variant is left to
+  M3.2.7c.
+- All 60 clamps in the gap arm were minor vehicles at a waiting line: the carved mechanism.
 
 ## 2026-09-25 — M3.2.6c: queue counters in the editor (D65)
 
@@ -351,31 +362,6 @@ work.
 
 Test runs: Linux headless 28/28, desktop 44/44 offscreen. Windows is CI's. Seed 42 is unchanged
 (`1243e5361a7174d1ecc56b67d7c92b12`).
-
-## 2026-09-25 — M3.2.4a: the Conflict areas tab (D60)
-
-New commands in `src/commands/conflict_authoring.cpp`:
-- `addCrossingAreas`: one area per crossing lane pair, extents from `surfaceOverlap`, lines 1 m
-  short of entry, rule from the catalog.
-- `setConflictControl`, `takeOverMergesOf`, `restoreAutomaticPriorityOf`, `removeConflictArea`.
-
-Model helpers:
-- `conflictSideOutline` and `waitingLineBar` draw from the resolver's own strips.
-- `mergeSectionsOf` and `mergeSectionOfArea` name a merge by its section.
-
-Shell (`src/shell/editor_priority.cpp`), the tenth objects tab:
-- toolbar actions; Enter or double-click opens the dialog;
-- a "Run status" column from the resolver;
-- row selection highlights the area on the canvas (`src/editor/canvas_conflicts.cpp`);
-- Problems rows for right-of-way objects open the tab;
-- an `editorRunProtection` note shows with every run.
-
-The validation banner no longer says "no conflict resolution", which stopped being true at
-M3.2.3a. It now says conflicts are resolved only where authored, and the not-yet-validated marker
-stays. All 49 right-of-way codes have en and th text; a test scrapes them from the sources.
-
-Test runs: Linux headless 28/28, desktop 43/43 offscreen (new `priority-ui` suite). Seed 42 is
-unchanged. A screenshot checked the drawing.
 
 ## Backlog (M0, in order)
 

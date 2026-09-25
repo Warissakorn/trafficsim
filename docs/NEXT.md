@@ -9,40 +9,34 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.7, the T-junction evidence (A26)
+## Immediate — M3.2.7c, then M3.2.8
 
 **Done:**
-- M3.2.2a–M3.2.6c (D54–D65): authored right-of-way, the admission solver, Stop/Yield, place-based
-  queue counters, and the editor for all of them.
-- **Counters (D65):**
-  - The Queue counter tool is `Q`; the Queue counters tab is `src/shell/editor_counters.cpp`.
-  - A counter over an approach's heads replaces that approach's derived row. The one rule is
-    `replacedApproaches` (`project/evaluation.hpp`).
+- M3.2.2a–M3.2.7b (D54–D66): authored right-of-way, the admission solver, Stop/Yield, queue
+  counters, the editor for all of them, and the T-junction evidence.
+- **The T-junction (D66):** `tools/t_junction_network.hpp`, with
+  `data/projects/t-junction-priority.traffic.json`, controlled cases (`tjunction_controlled.*`) and
+  the sweep (`docs/evidence/m3.2.7-sweep.*`).
 
-**Next, M3.2.7** (ROADMAP row; the spec is `docs/M3_ACCEPTANCE.md` §2 — do not re-plan it):
-1. **Fixture builder:** write `tools/t_junction_network.hpp` through the existing commands, in the
-   four-leg pattern (`tools/four_leg_network.hpp`), and generate
-   `data/projects/t-junction-priority.traffic.json` from it.
-   - Layout: a two-way major road and one minor approach, both driving sides.
-   - The minor left turn crosses the opposing stream (`addCrossingAreas`), then merges
-     downstream (`takeOverMergesOf`).
-   - Variants: Yield, Stop (`setAreaControl`) and a blocked receiving lane.
-   - A queue counter on the minor approach: `putQueueCounter` referencing its waiting line.
-2. **Controlled cases, before any sweep:**
-   - The gapTime 4/5/6 s and headway 7 m ± tolerance predicate cases from §2.
-   - A movement-level case whose tick bounds are stated **before** running it. Assert the
-     clearance margin first.
-   - Use test-owned initial states, following `tests/conflict_zone_tests.cpp`.
-3. **Diagnostic sweep:**
-   - Commit the metadata first.
-   - Seeds 0, 42, 43, 4294967295; paired gapTime 3/5/7 s and headway 3/7/12 m.
-   - Archive counts, delay, queue, active/pending and clamps.
-   - No monotonicity requirement per seed.
-4. **Owner exercise (§3):** it needs a Windows build and the owner, so it is recorded as
-   pending, never inferred.
+**Next, M3.2.7c** (ROADMAP row):
+1. **Signal-composition variant.** Add a `TJunctionOptions` flag that puts a head on the minor
+   approach upstream of its waiting line. Test that a green head neither serves the Stop nor
+   erases occupancy on the fixture, as `stop_control.a20` does on its own network.
+2. **A congested major-road variant**, so headway decides some blocks.
+   - Assert the forcing first: some tick has a major vehicle within `headway` but outside the
+     gap-time window.
+   - Then re-run the headway arm with new metadata, committed first. The M3.2.7b rows showed that
+     headway never binds at free flow.
+3. **Owner exercise (§3 of `docs/M3_ACCEPTANCE.md`)**, on Windows with the owner. Record it as
+   pending until the owner reports it; never infer it. Everything the owner needs is in the file:
+   open it, inspect the two areas, change gap and headway, Stop/Yield, save and reopen, repeat the
+   seed.
 
-A24 also still needs the Windows `native.yml` run of the Qt suites, `priority-canvas` and
-`queue-counter-ui` among them.
+**Then M3.2.8** (ROADMAP): lane changing, cooperation, visibility, and a **commitment rule at a
+waiting line**. M3.2.7 found minor vehicles clamped when the gap closes as they reach the line:
+3–10 per sweep run, none on the major road.
+
+A24 still needs the Windows `native.yml` run of the Qt suites.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas
