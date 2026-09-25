@@ -34,6 +34,14 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — C2 withdrawn; the owner judges the gate (D51)
+
+Owner ruling: cancel the timing comparison with Vissim in every test; the owner decides pass or
+fail. ROADMAP §M2, `M2_GATE.md`, `M2_PLAN.md`, `M3_PLAN.md`, NEXT and CLAUDE.md now say so. The
+only timing-against-another-tool criterion anywhere was M2's C2; M3's acceptance has none. C1 (the
+study) and C4 (delay beside the other tool's, recorded) stand — the owner asked only about timing.
+No code changed.
+
 ## 2026-09-25 — M1 accepted by owner ruling (D49); the M2.6 template; a merge deadlock fixed (D50)
 
 **M1.** The owner ruled M1 usability accepted on the evidence of the one attempt: an engineer who
@@ -429,3 +437,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D48 | 2026-09-25 | **Signal control is authored as fixed-time controllers with signal groups and compiled into ordinary core programs; schema 12 programs shaped like a group migrate** | Owner report and choice (Vissim's model). A group is what a timing sheet lists; compiling it keeps `core/` and every fixture unchanged. Migration groups programs by cycle length into one controller with offset 0, because that is the only grouping the old file implies; colours are proved identical at every tick. Programs of any other shape stay legacy rather than being refused. | When M4 adds actuated control, intergreens or conflict checks, or if a file's programs of one cycle belong to different junctions and must be split. |
 | D49 | 2026-09-25 | **M1 usability accepted by owner ruling, not by the written exercise** | After one timed attempt (9 min 40 s, no assistance; save/reopen exact; no turn pockets, no aerial image), the owner ruled: an engineer who has used another traffic simulator can model an intersection of ordinary complexity in this program in well under 10 minutes. The owner holds the gate, so M1 usability is accepted on that ruling; the record keeps what the attempt did not show (pockets, aerial image, first-attempt and documentation status) so no one reads it as the written exercise passed. M0 plausibility is a separate observation and stays open. | A later attempt by someone new to the program, or one that fails the pocket/aerial task, reopens the question. |
 | D50 | 2026-09-25 | **A derived priority rule's stop line is 1 m short of the join, not on it** | Held exactly at the join, the waiting vehicle's front is on the shared lane; the major vehicle behind it stops within the headway and each waits for the other for ever. A Thai left turn at all times arrives at speed during the cross street's green and deadlocked the M2.6 template in its first minute (445 vehicles never entered). 1 m is geometry, not behaviour, so it is a constant (`kYieldClearance`, `sections.cpp`), not a `data/` value. The four-leg fixture's run and `trafficsim-cli 42` are byte-identical before and after. | An authored conflict area (M3.2) places its own stop line and supersedes this for authored rules. |
+| D51 | 2026-09-25 | **No test times TrafficSim against Vissim; the owner judges pass or fail** | Owner ruling: withdraw the timing comparison with Vissim from every test, and let the owner assess the result. Made before any M2 gate observation, so it is a re-registration (as D38 was), not a criterion changed after the fact (D8). C2 is withdrawn and keeps its number; C1 still defines the study and C4 is still recorded, since it compares delays, not time. The verdict line in `M2_GATE.md` is the owner's. M1's 10-minute limit was absolute, never against Vissim, and M1 is already accepted (D49). | A later owner ruling. A judgment by the builder alone is the weakness ROADMAP §M2 names; outside engineers still strengthen it. |

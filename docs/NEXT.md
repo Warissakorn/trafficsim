@@ -13,7 +13,7 @@ the log. Entries written before 2026-09-23 keep the `Next` they shipped with, as
 
 **M2 is under way (2026-09-24).** The owner ratified the gate (ROADMAP §M2, D34), then restated
 the purpose — a simulator usable in real engineering work — and re-registered it as C1 + C2 with C4
-recorded (D38). The owner also ruled on
+recorded (D38); on 2026-09-25 the owner withdrew C2 and made the verdict their own judgment (D51). The owner also ruled on
 M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own commit with
 `core/`, the frozen fixtures and `trafficsim-cli 42` unchanged:
 
@@ -44,11 +44,11 @@ M2.0.1 (D35), amber (D36) and the M2.1 rescope (D37). Implemented, each its own 
 - **M2.6 template** (owner request, 2026-09-25): `data/projects/m2.6-study-template.traffic.json`
   — pockets, the Thai left turn at all times (`leftBypass`), the owner's timing windows, one hour
   of interval demand split by per-interval turning counts. **Placeholder volumes; no aerial image.**
-  Building it found and fixed a merge deadlock (D50). Not C1/C2 evidence.
+  Building it found and fixed a merge deadlock (D50). Not C1 evidence.
 
 **For the owner, before or during M2.6:** replace the template's placeholder counts (input and
 decision dialogs, one pasted column/row per interval), check which timing window serves which
-approach, and import the aerial image — or build the study from blank for C1/C2, which the
+approach, and import the aerial image — or build the study from blank for C1, which the
 template cannot stand in for. From blank: place the study's heads by pointer and type its timing
 sheet into one controller. If a group needs something the dialog cannot say — a second green in
 the cycle, red-amber, an intergreen check, detectors — that is M4, and it should be written down
@@ -56,14 +56,15 @@ in `M2_GATE.md` as friction, not worked around.
 
 **M2's done-condition is met in code; the gate is not.** Next is **M2.6, the owner's gate study**
 ([`M2_GATE.md`](M2_GATE.md)): one real signalised study with protected phasing, from a blank
-project to the Results table, timed against the owner's current tool (C1, C2), with C4 recorded.
+project to the Results table (C1), with C4 recorded; **the owner judges pass or fail (D51)** — no
+timing against Vissim.
 Nothing in M3 starts before it passes.
 
 **M3 preparation is recorded (2026-09-24, D41).** The owner asked to carry out the proposed
 sequence. [M3_PLAN.md](M3_PLAN.md), [M3_CONTRACT.md](M3_CONTRACT.md) and
 [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) now hold its contract and evidence design; no runtime
 or schema change has started. The immediate action remains the owner's M2.6 observation,
-not a request to approve the plan again. After C1/C2 pass and C4 is recorded in `M2_GATE.md`,
+not a request to approve the plan again. After the owner records a pass (C1, C4 recorded) in `M2_GATE.md`,
 start M3.2.2: authored references/model, codec, commands and effective-priority resolver,
 in that order, with A01-A08 evidence. Keep new controls Run-blocked until M3.2.3 implements
 their runtime. Do not infer a gate pass from the instruction to follow the sequence.
@@ -156,7 +157,7 @@ stays either way.
 candidates that were already rejected: `Headway`, `MicroFlow Simulator` and `Veytrix` all have
 findings in the D11 row. **This is the owner's decision, not a session's.**
 
-**M2's gate is registered** (ROADMAP §M2, D34, re-registered by D38 as C1 + C2 with C4 recorded).
+**M2's gate is registered** (ROADMAP §M2, D34, re-registered by D38 as C1 + C2 with C4 recorded; C2 withdrawn by D51).
 M2.5 may proceed; the gate study itself (M2.6) is the owner's.
 
 **M3 is open.** M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold,
