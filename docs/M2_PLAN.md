@@ -205,6 +205,28 @@ start before this** (ROADMAP §M2).
 
 ---
 
+### M2.7 — Signal heads placed by pointer; fixed-time Signal Controllers · **Open** (owner request)
+
+The owner reported that a Signal head could not be placed where it was wanted and that building
+a signal program was confusing. Both sit on M2.6's critical path (a signalised study with
+protected phasing), so they are carved here rather than waiting for M4.
+
+- **M2.7a — the head is its stop line · Implemented 2026-09-25** (D47). The head tool places a
+  head with a plain click at the exact station under the pointer, on a Link lane or a Connector
+  path, one head per lane as Vissim does; the dialog opens on that lane and station, bounded by
+  the lane's length. A selected head drags along its own lane (`moveSignalHead`, one Undo). The
+  canvas draws every head as a stop line across its lane. The runtime already held vehicles at
+  the head's station; nothing in `core/` changed.
+- **M2.7b — Signal Controllers with Signal Groups (fixed time).** A controller has a cycle and an
+  offset; each group a green start, green end and amber, shown as a timing-bar diagram, with
+  2-phase and 4-phase templates. Heads reference a group. Expanded at compile time into ordinary
+  core `SignalProgram`s, so `core/` and every frozen fixture are untouched.
+
+**Done when:** the owner builds the M2.6 study's signal timing from its timing sheet with the
+controller dialog and places every head by pointer, with no hand-typed station or id.
+M4 stays open: actuated control, ring-barrier, detectors, intergreen matrices and conflict checks.
+
+
 ## 5. Owner decisions this plan needs
 
 1. **Accept, edit or reject the criteria** (done: D34, then D38), fill the bracketed numbers, commit them into ROADMAP §M2.

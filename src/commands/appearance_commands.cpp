@@ -38,22 +38,9 @@ int linkLevel(const Network& n,const std::string& id) {
     throw std::invalid_argument("UNKNOWN_LANE");
 }
 void dropHead(const Network& n,NetworkSignalHead& head,Point target,int level) {
-    double best=1e300;bool found=false;
-    const auto consider=[&](const std::vector<Point>& g,double width,LaneReference lane,const std::string& connector) {
-        const double station=stationOfClosestPoint(g,target);const auto at=pointAlong(g,station);
-        const double distance=std::hypot(at.x-target.x,at.y-target.y);
-        if(distance<=width/2+.01 && distance<best) {
-            found=true;best=distance;head.lane=std::move(lane);head.connectorId=connector;head.position=station;
-        }
-    };
-    for(const auto& l:n.links)if(l.level==level)for(const auto& lane:l.lanes)
-        consider(laneGeometry(l,lane.id,n.drivingSide),lane.width,{l.id,lane.id},{});
-    for(const auto& c:n.connectors)if(c.level==level)for(const auto& path:connectorPaths(n,c)) {
-        double width=0;
-        for(const auto& l:n.links)for(const auto& lane:l.lanes)if(lane.id==path.from.laneId)width=lane.width;
-        consider(path.geometry,width,{},path.id);
-    }
-    if(!found)throw std::invalid_argument("EDIT_COPY_TARGET");
+    const auto placed=nearestHeadSlot(n,target,level);
+    if(!placed)throw std::invalid_argument("EDIT_COPY_TARGET");
+    head.lane=placed->slot.lane;head.connectorId=placed->slot.connectorId;head.position=placed->station;
 }
 }
 void translateObjects(ProjectDocument& d,const std::vector<std::string>& ids,Point offset) {

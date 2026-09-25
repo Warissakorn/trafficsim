@@ -327,6 +327,8 @@ interval (pasted per row in its dialog), schema 12; expanded at compile time per
 The interval is chosen by network entry time, not the time at the decision. Still open in M2.1:
 a decision's station along the Link, and partial/dynamic decisions.
 
+### M2.7 — Signal heads by pointer; fixed-time Signal Controllers · **Open** (owner request, before M2.6)
+M2.7a (head = stop line, placed by click) implemented, D47; M2.7b (controllers, groups) open. Detail and done-condition: [`M2_PLAN.md`](M2_PLAN.md) §4.
 ---
 
 ## M3 — Right-of-way: conflict areas and priority rules

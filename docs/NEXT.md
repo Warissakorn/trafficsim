@@ -96,8 +96,7 @@ on the same dialog and table, not a new design question.
 authored by clicking and a route now names Links and Connectors (M1.25, M1.26 — see the top
 entry), but the gate is the keyboard-only equivalent of both gestures plus the owner's timed
 exercise below, and neither is done. **M1.26.1** (adjustable per-lane shares) is closed (D32, top
-entry). Signal heads are the last object still placed only through a dialog;
-`objectAt`/`inputPlaced` in `src/editor/canvas_demand.cpp` are the shape to copy, inside M1.22.
+entry). Signal heads are placed by pointer since M2.7a (D47).
 A routing decision as an object at a station along the link — what Vissim actually places, and
 what would bring back the lane-specific route M1.26 gave up — is **M2.1**.
 

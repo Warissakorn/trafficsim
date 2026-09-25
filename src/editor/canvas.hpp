@@ -51,7 +51,10 @@ public:
     double grid{1};
     std::function<void(const std::vector<Point>&)> createLinkGesture;
     std::function<void(LaneReference,LaneReference,const std::vector<Point>&)> createRangeGesture;
-    std::function<void(LaneReference,Tool)> createDemandGesture;
+    // The head tool's click: the lane or Connector path under the pointer and the station on
+    // it, which is where the stop line goes. A drag of a selected head slides it along its lane.
+    std::function<void(const HeadPlacement&)> headPlaced;
+    std::function<void(const std::string&, double)> headMoved;
     // A route drawn by pointer: the segments, in travel order, exactly as the dialog would
     // have stored them. The canvas never writes to the document itself.
     std::function<void(std::vector<std::string>)> routeDraftCommitted;
@@ -160,6 +163,19 @@ private:
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;
+    struct HeadGeometry { std::vector<Point> points; double width{}; int level{}; };
+    std::optional<HeadGeometry> headGeometry(const NetworkSignalHead&) const;
+    std::optional<HeadPlacement> headAt(Point) const;
+    QPainterPath headShape(const NetworkSignalHead&) const;
+    bool headPress(QMouseEvent*);
+    bool headHover(QMouseEvent*);
+    bool startHeadDrag(const std::string& id, QPoint press);
+    void updateHeadDrag(QPoint);
+    void finishHeadDrag(QPoint);
+    void drawHeads();
+    struct HeadDrag { std::string id; std::vector<Point> geometry; double original{}, station{}; bool moved{}; };
+    std::optional<HeadDrag> headDrag_;
+    std::optional<HeadPlacement> hoverHead_;
     std::optional<LaneReference> gestureFrom_;
     int rangeCorner_{}, previewFromCount_{1}, previewToCount_{1};
     Point lastPick_{};

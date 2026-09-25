@@ -59,24 +59,45 @@ void EditorWindow::editProgram(const std::string& id) {
         static_cast<SignalColor>(qobject_cast<QComboBox*>(phases->cellWidget(row,1))->currentData().toInt())});
     std::string created;if(execute("editorEditProgram",[&](auto& d){created=putProgram(d,value);}))selectDemand(created);
 }
-void EditorWindow::editHead(const std::string& id) {
+void EditorWindow::editHead(const std::string& id,const std::optional<HeadPlacement>& placed) {
+    const auto& network=history_.document().network;
     NetworkSignalHead value{id,{},0,{}};
-    for(const auto& h:history_.document().network.signalHeads)if(h.id==id)value=h;
+    for(const auto& h:network.signalHeads)if(h.id==id)value=h;
+    if(placed){value.lane=placed->slot.lane;value.connectorId=placed->slot.connectorId;value.position=placed->station;}
+    if(value.programId.empty())value.programId=lastHeadProgram_;
     QDialog dialog(this);dialog.setObjectName("editorHeadDialog");dialog.setWindowTitle(text("editorEditHead"));
     auto* form=new QFormLayout(&dialog);auto* lane=new QComboBox(&dialog);lane->setObjectName("editorHeadLane");
-    for(const auto& link:history_.document().network.links)for(const auto& l:link.lanes) {
-        lane->addItem(QString::fromStdString(link.id+" / "+l.id),QString::fromStdString(l.id));
-        lane->setItemData(lane->count()-1,QString::fromStdString(link.id),Qt::UserRole+1);
+    // Names first, the way the canvas shows them: "Main St · lane 2", never "link-4 / lane-9".
+    // The station's upper bound is the chosen lane's own length, so a stop line cannot be typed
+    // off the end of the road it holds.
+    const auto addSlot=[&](const QString& label,const std::string& key,const std::string& linkId,const NetworkSignalHead& probe){
+        const auto slot=headSlot(network,probe);
+        lane->addItem(label,QString::fromStdString(key));
+        lane->setItemData(lane->count()-1,QString::fromStdString(linkId),Qt::UserRole+1);
+        lane->setItemData(lane->count()-1,slot?polylineLength(slot->geometry):0.,Qt::UserRole+2);
+    };
+    for(const auto& link:network.links)for(std::size_t i=0;i<link.lanes.size();++i) {
+        NetworkSignalHead probe;probe.lane={link.id,link.lanes[i].id};
+        addSlot(QString::fromStdString(link.name.empty()?link.id:link.name)+" · "+text("editorLaneNumber").arg(i+1),link.lanes[i].id,link.id,probe);
     }
-    for(const auto& c:history_.document().network.connectors)for(const auto& p:connectorPaths(history_.document().network,c))lane->addItem(QString::fromStdString(p.id),QString::fromStdString(p.id));
+    for(const auto& c:network.connectors){const auto paths=connectorPaths(network,c);for(std::size_t i=0;i<paths.size();++i) {
+        NetworkSignalHead probe;probe.connectorId=paths[i].id;
+        addSlot(QString::fromStdString(c.name.empty()?c.id:c.name)+" · "+text("editorPathNumber").arg(i+1),paths[i].id,{},probe);
+    }}
     if(!value.connectorId.empty())lane->setCurrentIndex(lane->findData(QString::fromStdString(value.connectorId)));
     if(!value.lane.laneId.empty())lane->setCurrentIndex(lane->findData(QString::fromStdString(value.lane.laneId)));
     auto* program=new QComboBox(&dialog);program->setObjectName("editorHeadProgram");
     if(history_.document().definition)for(const auto& p:history_.document().definition->signalPrograms)program->addItem(QString::fromStdString(p.id));
     if(!value.programId.empty())program->setCurrentText(QString::fromStdString(value.programId));
     auto* station=number(dialog,0,10000000,value.position,"editorHeadPosition");
+    const auto bound=[&]{
+        const double length=lane->currentData(Qt::UserRole+2).toDouble();
+        station->setMaximum(length>0?length:10000000);
+    };
+    bound();station->setValue(value.position);
+    connect(lane,qOverload<int>(&QComboBox::currentIndexChanged),&dialog,bound);
     form->addRow(text("editorColumnLane"),lane);form->addRow(text("editorColumnProgram"),program);
-    form->addRow(text("editorColumnPosition"),station);
+    form->addRow(text("editorStopLine"),station);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
     buttons->button(QDialogButtonBox::Ok)->setEnabled(lane->count()>0 && program->count()>0);
@@ -86,6 +107,6 @@ void EditorWindow::editHead(const std::string& id) {
     value.connectorId.clear();
     if(value.lane.linkId.empty()){value.connectorId=value.lane.laneId;value.lane={};}
     value.position=station->value();value.programId=program->currentText().toStdString();
-    execute("editorEditHead",[&](auto& d){putSignalHead(d,value);});
+    if(execute("editorEditHead",[&](auto& d){putSignalHead(d,value);}))lastHeadProgram_=value.programId;
 }
 }

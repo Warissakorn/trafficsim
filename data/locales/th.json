@@ -365,5 +365,10 @@
   "ROUTING_DECISION_INTERVALS": "แถวนี้ต้องมีค่าหนึ่งค่าต่อหนึ่งช่วงเวลาของ Routing decision ใส่ปริมาณนับใหม่ให้ทุกแถวครอบคลุมช่วงเวลาเดียวกัน",
   "ROUTING_DECISION_LANE_UNSERVED": "มีเลนบน Link ของ decision นี้ที่ไปไม่ถึงปลายทางใดเลย และเพราะยังไม่มีการเปลี่ยนเลน รถในเลนนั้นจะวิ่งต่อแบบไม่มีเส้นทาง เพิ่มปลายทางที่เลนนั้นไปถึงได้ถ้าไม่ได้ตั้งใจ",
   "ROUTING_DECISION_NEEDS_LINK": "ปลายทางนับจากตำแหน่งที่วาง decision ให้วาง decision บน Link หรือใช้เส้นทางแทน",
-  "INPUT_TARGET_CONFLICT": "ระบุทั้งเส้นทางและปลายทาง (หรือ Link) ให้เลือกอย่างเดียว"
+  "INPUT_TARGET_CONFLICT": "ระบุทั้งเส้นทางและปลายทาง (หรือ Link) ให้เลือกอย่างเดียว",
+  "editorLaneNumber": "ช่องจราจร %1",
+  "editorPathNumber": "เส้นทาง %1",
+  "editorStopLine": "เส้นหยุด (ม. จากต้นช่องจราจร)",
+  "editorMoveHead": "ย้าย Signal head",
+  "editorHeadPlaceHelp": "คลิกบนช่องจราจรตรงที่รถต้องหยุด: Signal head คือเส้นหยุด ลาก head ที่เลือกเพื่อเลื่อนไปตามช่องจราจร"
 }

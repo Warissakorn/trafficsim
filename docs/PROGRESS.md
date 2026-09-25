@@ -34,6 +34,23 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M2.7a: a Signal head is placed where it is clicked, and is drawn as its stop line (D47)
+
+Owner report: a head could not be placed where it was wanted, and a head should define the stop
+line. The runtime already did that -- `core/simulation.cpp` holds a vehicle at the head's
+station -- but the editor never let an author say where. The head tool fired only on
+Ctrl+right-click; `nearestLane` skipped Connectors; and the shell threw away both the lane and
+the station it had picked, opening a dialog on the first lane at station 0.
+
+Now a plain click places the head at the pointer's exact station on a Link lane or Connector path
+(owner choice: one head per lane, as Vissim), the dialog opens there with the station bounded by
+the lane's length and lanes named "Link · lane 2" rather than by id, and a selected head drags
+along its lane (`moveSignalHead`). Heads draw as a stop line across the lane. The pick is
+`nearestHeadSlot` in the model, lifted out of the Ctrl-drag copy's `dropHead`, so the click, the
+hover preview and the copy cannot disagree about where a head lands (hard rule 3). `core/`,
+`trafficsim-cli 42` (md5 unchanged) and every fixture are untouched. Signal Controllers are the
+second half, M2.7b.
+
 ## 2026-09-24 — M2.1.2 follow-up: counts that do not match the input (D46)
 
 Owner request: use each approach's decision counts as proportions to split the Vehicle input, so
@@ -330,3 +347,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D44 | 2026-09-24 | **A lane remainder shorter than 4.5 m after the last way out is not a network exit** | The owner's network had Connectors clicked 0.35–2.58 m short of Link ends, and the equal-split walk sent a third of the traffic out through the stub. 4.5 m is the shortest shipped vehicle (car), so no vehicle can be meant to drive into less. The owner chose this compile-time rule over snapping in the editor, which would restrict where a Connector can be drawn. A constant in `routeless.hpp`, not data: it is not a vehicle parameter a study tunes. | When a station on a decision is modelled, or a real exit this short turns up. |
 | D45 | 2026-09-24 | **A per-interval turning proportion is chosen by the time a vehicle enters the network** | The engine carries one static route per vehicle, so the choice must be made at compile time, where only the entry time is known. The error is the travel time from entry to decision -- seconds against 15-minute counts. Outside every counted interval the whole-period flow applies, so a count table shorter than the run is not refused. A choice at the decision itself needs route choice in `core/`. | When `core/` gets runtime route choice, or a study's decision sits minutes downstream of its entry. |
 | D46 | 2026-09-24 | **A decision's counts are proportions of the input's volume, and an uncounted interval uses the whole-period ones** | Owner request: turning counts and approach counts come from different sheets and rarely agree. The input's volume is the authority for how many vehicles enter; the turning counts say only where they go. Refusing an interval with no turn counted would block Run on ordinary data, and sending its vehicles nowhere would lose them. | If a study needs the input derived from the turning counts instead. |
+| D47 | 2026-09-25 | **A Signal head is placed at the clicked station, one per lane, and is drawn as its stop line** | Owner report and choice (Vissim: one head per lane). The runtime already stops traffic at the head's station, so the stop line is the head, not a second object; the editor had simply discarded the click. One pick (`nearestHeadSlot`) serves click, hover and Ctrl-drag copy. | If a separate stop-line object is needed (e.g. a stop line away from the head, or unsignalised stop control in M3). |

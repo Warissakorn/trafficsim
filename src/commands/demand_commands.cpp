@@ -1,6 +1,7 @@
 #include "demand_commands.hpp"
 #include "detail.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace trafficsim {
 AuthoringDefinition& demand(ProjectDocument& d) {
@@ -103,4 +104,9 @@ std::string putSignalHead(ProjectDocument& d, NetworkSignalHead value) {
     const auto id=value.id; put(d.network.signalHeads,std::move(value)); return id;
 }
 void deleteSignalHead(ProjectDocument& d, const std::string& id) { remove(d.network.signalHeads,id); }
+void moveSignalHead(ProjectDocument& d, const std::string& id, double position) {
+    if (!std::isfinite(position)) throw std::invalid_argument("INVALID_POSITION");
+    for (auto& h:d.network.signalHeads) if (h.id==id) { h.position=position; return; }
+    throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
+}
 }

@@ -88,7 +88,8 @@ private:
     void editInput(const std::string& id = {}, const std::string& preselectedRoute = {}, const std::string& preselectedLink = {});
     void editProgram(const std::string& id = {});
     void editDecision(const std::string& id = {}); // M2.4, src/shell/editor_decision.cpp
-    void editHead(const std::string& id = {});
+    // `placed` is the canvas click: the dialog opens on that lane and station.
+    void editHead(const std::string& id = {}, const std::optional<HeadPlacement>& placed = {});
     void editRunSettings();
     void deleteDemand(const std::string& kind, const std::string& id);
     void selectDemand(const std::string& id);
@@ -178,6 +179,7 @@ private:
     void refresh(bool modelChanged = true);
     void translate();
     bool execute(const std::string& name, const std::function<void(ProjectDocument&)>& action);
+    std::string lastHeadProgram_; // the program the last placed head took: the next one defaults to it
     void showError(const std::exception& error);
     bool confirmDiscard();
     bool saveDialog(bool as = false);

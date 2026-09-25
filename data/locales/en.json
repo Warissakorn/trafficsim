@@ -365,5 +365,10 @@
   "ROUTING_DECISION_INTERVALS": "This row needs one flow per interval of its routing decision. Re-enter the counts so every row covers the same intervals.",
   "ROUTING_DECISION_LANE_UNSERVED": "A lane of this decision's link reaches none of its destinations; with no lane changing, its vehicles carry on without a route. Add a destination that lane can reach if that is not intended.",
   "ROUTING_DECISION_NEEDS_LINK": "A destination is reached from where the decision is placed. Place the decision on a link, or use routes instead.",
-  "INPUT_TARGET_CONFLICT": "This names both a route and a destination (or a link). Choose one."
+  "INPUT_TARGET_CONFLICT": "This names both a route and a destination (or a link). Choose one.",
+  "editorLaneNumber": "lane %1",
+  "editorPathNumber": "path %1",
+  "editorStopLine": "Stop line (m from lane start)",
+  "editorMoveHead": "Move signal head",
+  "editorHeadPlaceHelp": "Click a lane where vehicles must stop: the signal head is the stop line. Drag a selected head to slide it along its lane."
 }

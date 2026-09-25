@@ -14,4 +14,7 @@ void deleteProgram(ProjectDocument&, const std::string&); // Reject referenced p
 void changeRunSettings(ProjectDocument&, double duration, double timeStep);
 std::string putSignalHead(ProjectDocument&, NetworkSignalHead);
 void deleteSignalHead(ProjectDocument&, const std::string&);
+// Slides a head -- its stop line -- along the lane or path it stands on. The station is
+// validated with the network on commit (INVALID_POSITION), never clamped here.
+void moveSignalHead(ProjectDocument&, const std::string& id, double position);
 }
