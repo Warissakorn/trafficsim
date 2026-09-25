@@ -35,6 +35,28 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-25 — M3.2.2a: authored right-of-way controls at the file/model seam (D54)
+
+**What exists now.** `src/model/network/control.hpp` — `ControlPathRef` (a Link lane, or a
+Connector lane named by its source/target lane ids, never an ordinal), `WaitingLine`,
+`ConflictArea` (`crossing`/`merge`, `firstYields`/`secondYields`/`undetermined`) and
+`AuthoredPriorityRule`, held in `Network::rightOfWay`. `right_of_way.cpp` — structural
+checks (in `validateNetwork`, so a bad edit or file is refused whole), path resolution, merge
+groups and `resolveRightOfWay`, which `buildScenario`, `compileScenario`, `priorityDefaultsIssues`
+and `runtimeDiagnostics` all call. Schema 14 writes `network.rightOfWay` only when non-empty;
+older files load with it empty, and the key in a schema-13 file fails. Commands:
+`put`/`delete` for each object, `takeOverMerge` (materialise a merge's fallback as authored
+areas, one transaction) and `restoreAutomaticPriority` (the separate named hand-back).
+
+**Evidence.** `rightofway.*` covers A01, A03, A04, A06, A07, A08 and A02 in part (see
+`M3_ACCEPTANCE.md`). The four baselines and `trafficsim-cli 42` are unchanged; the two project
+fixtures differ only in `schemaVersion`. Linux headless 28/28, desktop 42/42 (offscreen);
+Windows is `native.yml`'s.
+
+**Not here:** reference lifecycle (M3.2.2b), any runtime for an authored area (M3.2.3), the
+editor surface (M3.2.4), Stop/Yield (M3.2.5), counters (M3.2.6). Structural checks do not yet
+prove that a crossing's extents cover the real overlap — every crossing is Run-blocked anyway.
+
 ## 2026-09-25 — Docs pass: stale instructions out, session-start reading cut
 
 Owner-approved optimization pass, docs dimension, after a scrutiny of the first plan (which
@@ -318,3 +340,4 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D51 | 2026-09-25 | **No test times TrafficSim against Vissim; the owner judges pass or fail** | Owner ruling: withdraw the timing comparison with Vissim from every test, and let the owner assess the result. Made before any M2 gate observation, so it is a re-registration (as D38 was), not a criterion changed after the fact (D8). C2 is withdrawn and keeps its number; C1 still defines the study and C4 is still recorded, since it compares delays, not time. The verdict line in `M2_GATE.md` is the owner's. M1's 10-minute limit was absolute, never against Vissim, and M1 is already accepted (D49). | A later owner ruling. A judgment by the builder alone is the weakness ROADMAP §M2 names; outside engineers still strengthen it. |
 | D52 | 2026-09-25 | **C4 withdrawn: no test compares delays with Vissim** | Owner ruling, following D51. Still before any M2 gate observation, so a re-registration, not a changed criterion (D8). C4 was never scored, only recorded; with it goes the "two LOS letters apart → investigation" trigger for the gate. What remains is C1 — the study completed end to end — and the owner's verdict. The Results table is still produced and recorded; it is simply not set beside another tool's. Plausibility against real-world data stays M6's (validation), untouched. | A later owner ruling. |
 | D53 | 2026-09-25 | **The M2 gate is passed on the owner's word** | Under D51 the verdict is the owner's, and the owner reported "M2.6 passed". Recorded as *not disproven* (D8). The study's site, counts, file and Results table were not supplied; the record says so rather than filling them in. M3 may start. | Evidence that the study did not meet C1, or a later owner ruling. |
+| D54 | 2026-09-25 | **M3.2.2 is split: M3.2.2a ships the authored model, schema 14, commands and the resolver; the reference lifecycle is M3.2.2b** | One system per session. The file/model seam — types, strict codec, History commands and ONE effective-priority resolver used by both compile and diagnostics — is testable on its own (A01–A04, A06–A08). Lifecycle (split/copy/retarget/resize/delete remapping, A05) touches every geometry command and is its own slice; until it lands, deleting a Link or Connector a control names is refused whole (safe but blunt), and a lane change leaves a stale, Run-blocked draft; `rightofway.until_m3_2_2b_*` pins both. Every authored area is Run-blocked (`UNSUPPORTED_CONFLICT_RUNTIME`) until M3.2.3, even an explicit merge the M3.1 mechanism could already run, because the plan says new controls stay blocked until their runtime is implemented. A taken-over merge compiles to exactly the fallback's rule (same 1 m waiting line, D50), so reversing it is the only change an author makes. Stop controls and queue counters are left to M3.2.5/M3.2.6, where their runtime lands. | M3.2.2b, or the M3.2.3 admission solver changing what a compiled area needs. |

@@ -24,7 +24,7 @@ TEST(network, driving_side_offsets) {
     const Link link{"link", {{0, 0}, {10, 0}}, {{"curb", 4}, {"inner", 4}}};
     CHECK(laneGeometry(link, "curb", DrivingSide::left) == std::vector<Point>({{0, 2}, {10, 2}}));
     CHECK(laneGeometry(link, "curb", DrivingSide::right) == std::vector<Point>({{0, -2}, {10, -2}}));
-    Network network{"two-lane", DrivingSide::right, {link}, {}, {}};
+    Network network{"two-lane", DrivingSide::right, {link}, {}, {}, {}};
     auto definition = test::straight(); definition.inputs.clear(); definition.routes = {{"r", {"curb"}}};
     const auto compiled = compileScenario(network, definition);
     CHECK(compiled.segments[0].length == 10); CHECK(compiled.segments[1].length == 10);

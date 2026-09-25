@@ -1,5 +1,6 @@
 #pragma once
 #include "../../core/types.hpp"
+#include "control.hpp"
 
 namespace trafficsim {
 struct Point { double x{}, y{}; bool operator==(const Point&) const = default; };
@@ -70,6 +71,7 @@ struct Network {
     std::vector<Link> links;
     std::vector<Connector> connectors;
     std::vector<NetworkSignalHead> signalHeads;
+    RightOfWay rightOfWay; // M3.2.2, schema 14: authored controls (control.hpp)
     bool operator==(const Network&) const = default;
 };
 // A place a Signal head can stand -- a Link lane or a Connector path -- with its polyline and

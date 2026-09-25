@@ -403,13 +403,13 @@ deterministic replay and the M3 owner exercise; scientific claims remain gated b
 
 #### M3.2.1-M3.2.8 — Ordered implementation slices
 
-All implementation below requires the M2 gate to pass. Dependencies and exact contracts
-are in [M3_PLAN.md](M3_PLAN.md); the live next action stays in `NEXT.md`.
+The M2 gate has passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next action: `NEXT.md`.
 
 | Slice | Scope | Status / gate |
 |---|---|---|
 | M3.2.1 | Contracts and acceptance design | Prepared; documentation only, no runtime claim |
-| M3.2.2 | Authored controls, persistence, commands, compiler and effective-priority validation | Open; reference roundtrips, legacy compatibility, cycles/ties rejected |
+| M3.2.2a | Waiting lines, conflict areas and priority rules: model, schema 14, commands, one effective-priority resolver (D54) | **Implemented 2026-09-25**; A01–A04, A06–A08 tested; every authored area Run-blocked until M3.2.3 |
+| M3.2.2b | Reference lifecycle: split, copy, retarget, lane resize, delete cascade (A05); waiting line on a preceding Link; crossing coverage check | Open; carved from M3.2.2 — until it lands, deleting a control's owner is refused whole |
 | M3.2.3 | Crossing occupancy, admission, rear clearance and downstream space | Open; no-overlap, congestion accounting and exact replay |
 | M3.2.4 | Conflict-area and priority-rule editor | Open; supported runtime effects, bilingual mouse/keyboard workflows |
 | M3.2.5 | Stop/Yield with signal composition | Open; each vehicle serves Stop, Yield can pass, green retains physical safety |

@@ -1,0 +1,278 @@
+#include "right_of_way.hpp"
+#include <algorithm>
+#include <cmath>
+#include <functional>
+#include <map>
+#include <optional>
+#include <set>
+#include <stdexcept>
+
+namespace trafficsim {
+const char* conflictKindName(ConflictKind kind) { return kind == ConflictKind::crossing ? "crossing" : "merge"; }
+const char* conflictPriorityName(ConflictPriority priority) {
+    switch (priority) {
+    case ConflictPriority::firstYields: return "firstYields";
+    case ConflictPriority::secondYields: return "secondYields";
+    case ConflictPriority::undetermined: return "undetermined";
+    }
+    return "undetermined";
+}
+ConflictKind conflictKindFromName(const std::string& name) {
+    if (name == "crossing") return ConflictKind::crossing;
+    if (name == "merge") return ConflictKind::merge;
+    throw std::invalid_argument("INVALID_ENUM");
+}
+ConflictPriority conflictPriorityFromName(const std::string& name) {
+    if (name == "firstYields") return ConflictPriority::firstYields;
+    if (name == "secondYields") return ConflictPriority::secondYields;
+    if (name == "undetermined") return ConflictPriority::undetermined;
+    throw std::invalid_argument("INVALID_ENUM");
+}
+namespace {
+const Link* findLink(const Network& n, const std::string& id) {
+    for (const auto& l : n.links) if (l.id == id) return &l;
+    return nullptr;
+}
+const Connector* findConnector(const Network& n, const std::string& id) {
+    for (const auto& c : n.connectors) if (c.id == id) return &c;
+    return nullptr;
+}
+bool linkKind(const ControlPathRef& p) {
+    return !p.linkId.empty() && !p.laneId.empty() && p.connectorId.empty() && p.fromLaneId.empty() && p.toLaneId.empty();
+}
+bool connectorKind(const ControlPathRef& p) {
+    return p.linkId.empty() && p.laneId.empty() && !p.connectorId.empty() && !p.fromLaneId.empty() && !p.toLaneId.empty();
+}
+// A point on the runtime: the segment and the metres along it. Empty when the reference no longer
+// resolves to exactly one path, or the station lies off the object it names.
+struct Located { std::string segment; double position{}; double length{}; };
+std::optional<Located> locate(const Network& n, const RuntimeSections& table, const ControlPathRef& ref,
+                              double station) {
+    if (!std::isfinite(station) || station < 0) return std::nullopt;
+    if (linkKind(ref)) {
+        const auto* link = findLink(n, ref.linkId);
+        if (!link || std::none_of(link->lanes.begin(), link->lanes.end(),
+                                  [&](const auto& l) { return l.id == ref.laneId; })) return std::nullopt;
+        if (station > polylineLength(link->geometry)) return std::nullopt;
+        // Link stations are on the reference polyline; the runtime runs on the lane polyline.
+        const auto lane = laneGeometry(*link, ref.laneId, n.drivingSide);
+        const double onLane = matchedStation(link->geometry, lane, station);
+        const auto& section = sectionForStation(table, ref.laneId, onLane);
+        return Located{section.id, onLane - section.start, section.end - section.start};
+    }
+    if (!connectorKind(ref)) return std::nullopt;
+    const auto* connector = findConnector(n, ref.connectorId);
+    if (!connector || station > polylineLength(connector->geometry)) return std::nullopt;
+    std::vector<const ConnectorPath*> matches;
+    for (int i = 0; i < std::max(connector->fromLaneCount, connector->toLaneCount); ++i) {
+        const auto id = connectorPathId(*connector, i);
+        for (const auto& path : table.paths)
+            if (path.id == id && path.from.laneId == ref.fromLaneId && path.to.laneId == ref.toLaneId)
+                matches.push_back(&path);
+    }
+    if (matches.size() != 1) return std::nullopt; // never pick one by ordinal
+    const auto& path = *matches.front();
+    const double length = polylineLength(path.geometry);
+    return Located{path.id, matchedStation(connector->geometry, path.geometry, station), length};
+}
+}
+std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
+    std::vector<ValidationIssue> issues;
+    const auto& row = n.rightOfWay;
+    if (row.empty()) return issues;
+    const auto add = [&](const char* code, const std::string& path) { issues.push_back({code, path}); };
+    std::set<std::string> ids{n.id};
+    for (const auto& l : n.links) { ids.insert(l.id); for (const auto& lane : l.lanes) ids.insert(lane.id); }
+    for (const auto& c : n.connectors) {
+        ids.insert(c.id);
+        for (int i = 0; i < std::max(c.fromLaneCount, c.toLaneCount); ++i) ids.insert(connectorPathId(c, i));
+    }
+    for (const auto& h : n.signalHeads) ids.insert(h.id);
+    const auto id = [&](const std::string& value, const std::string& path) {
+        if (value.find_first_not_of(" \t\n\r") == std::string::npos) add("INVALID_ID", path + ".id");
+        else if (!ids.insert(value).second) add("DUPLICATE_ID", path + ".id");
+    };
+    const auto pathRef = [&](const ControlPathRef& ref, const std::string& path) {
+        if (linkKind(ref)) { if (!findLink(n, ref.linkId)) add("UNKNOWN_CONTROL_OWNER", path); }
+        else if (connectorKind(ref)) { if (!findConnector(n, ref.connectorId)) add("UNKNOWN_CONTROL_OWNER", path); }
+        else add("INVALID_CONTROL_PATH", path);
+    };
+    const auto finite = [](double v) { return std::isfinite(v) && v >= 0; };
+    std::set<std::string> lines, areas, ruled;
+    for (std::size_t i = 0; i < row.waitingLines.size(); ++i) {
+        const auto& w = row.waitingLines[i];
+        const auto path = "rightOfWay.waitingLines[" + std::to_string(i) + "]";
+        id(w.id, path); lines.insert(w.id);
+        pathRef(w.point.path, path + ".point.path");
+        if (!finite(w.point.station)) add("INVALID_POSITION", path + ".point.station");
+    }
+    for (std::size_t i = 0; i < row.conflictAreas.size(); ++i) {
+        const auto& a = row.conflictAreas[i];
+        const auto path = "rightOfWay.conflictAreas[" + std::to_string(i) + "]";
+        id(a.id, path); areas.insert(a.id);
+        for (const auto& [side, name] : {std::pair{&a.first, ".first"}, std::pair{&a.second, ".second"}}) {
+            pathRef(side->path, path + name + ".path");
+            if (!finite(side->entryStation) || !finite(side->exitStation) || side->entryStation >= side->exitStation)
+                add("INVALID_CONFLICT_EXTENT", path + name);
+            if (!lines.contains(side->waitingLineId)) add("UNKNOWN_WAITING_LINE", path + name + ".waitingLineId");
+        }
+    }
+    for (std::size_t i = 0; i < row.priorityRules.size(); ++i) {
+        const auto& r = row.priorityRules[i];
+        const auto path = "rightOfWay.priorityRules[" + std::to_string(i) + "]";
+        id(r.id, path);
+        if (!areas.contains(r.conflictAreaId)) add("UNKNOWN_CONFLICT_AREA", path + ".conflictAreaId");
+        else if (!ruled.insert(r.conflictAreaId).second) add("DUPLICATE_PRIORITY_RULE", path + ".conflictAreaId");
+        if (!std::isfinite(r.gapTime) || r.gapTime <= 0 || !std::isfinite(r.headway) || r.headway <= 0)
+            add("INVALID_PRIORITY_RULE", path);
+    }
+    return issues;
+}
+std::string resolveControlPath(const Network& n, const RuntimeSections& table, const ControlPathRef& ref,
+                               double station) {
+    const auto at = locate(n, table, ref, station);
+    return at ? at->segment : std::string{};
+}
+std::vector<MergeGroup> mergeGroups(const Network& n, const RuntimeSections& table) {
+    std::vector<MergeGroup> groups;
+    for (const auto& section : table.sections) {
+        MergeGroup group{section.id, {}, false};
+        // The ranking derivedPriorityRules applies: the lane already carrying traffic first, then
+        // arriving paths in drawing order. Each later member gives way to every earlier one.
+        if (section.start > 0)
+            for (const auto& up : table.sections)
+                if (up.laneId == section.laneId && up.end == section.start) group.incoming.push_back(up.id);
+        for (std::size_t p = 0; p < table.paths.size(); ++p)
+            if (table.pathNext[p] == section.id) group.incoming.push_back(table.paths[p].id);
+        if (group.incoming.size() < 2) continue;
+        for (const auto& area : n.rightOfWay.conflictAreas) {
+            if (area.kind != ConflictKind::merge) continue;
+            const auto a = resolveControlPath(n, table, area.first.path, area.first.entryStation);
+            const auto b = resolveControlPath(n, table, area.second.path, area.second.entryStation);
+            const auto member = [&](const std::string& s) {
+                return std::find(group.incoming.begin(), group.incoming.end(), s) != group.incoming.end();
+            };
+            if (!a.empty() && !b.empty() && a != b && member(a) && member(b)) group.explicitControl = true;
+        }
+        groups.push_back(std::move(group));
+    }
+    return groups;
+}
+namespace {
+bool cyclic(const std::vector<std::string>& nodes, const std::multimap<std::string, std::string>& edges) {
+    std::map<std::string, int> state; // 0 unseen, 1 on stack, 2 done
+    std::function<bool(const std::string&)> visit = [&](const std::string& v) {
+        state[v] = 1;
+        for (auto [it, end] = edges.equal_range(v); it != end; ++it) {
+            if (state[it->second] == 1) return true;
+            if (state[it->second] == 0 && visit(it->second)) return true;
+        }
+        state[v] = 2;
+        return false;
+    };
+    for (const auto& v : nodes) if (state[v] == 0 && visit(v)) return true;
+    return false;
+}
+}
+RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& table,
+                                       const PriorityDefaults& defaults) {
+    RightOfWayResolution result;
+    const auto derived = derivedPriorityRules(table, defaults);
+    const auto& row = n.rightOfWay;
+    if (row.conflictAreas.empty()) { result.rules = derived; return result; }
+    const auto groups = mergeGroups(n, table);
+    const auto groupOf = [&](const std::string& segment) -> const MergeGroup* {
+        for (const auto& g : groups)
+            if (std::find(g.incoming.begin(), g.incoming.end(), segment) != g.incoming.end()) return &g;
+        return nullptr;
+    };
+    // Policy 1 and 2: a merge nobody overrode keeps its derived rules exactly; an overridden one
+    // loses ALL of them, so no reciprocal of an authored decision survives beside it.
+    for (const auto& rule : derived) {
+        const auto* g = groupOf(rule.yieldSegmentId);
+        if (g && g->explicitControl && groupOf(rule.conflictSegmentId) == g) continue;
+        result.rules.push_back(rule);
+    }
+    const auto add = [&](const char* code, const std::string& path) { result.issues.push_back({code, path}); };
+    struct Resolved { const ConflictArea* area; std::string path; std::optional<Located> first, second; };
+    std::vector<Resolved> resolved;
+    for (std::size_t i = 0; i < row.conflictAreas.size(); ++i) {
+        const auto& a = row.conflictAreas[i];
+        const auto path = "rightOfWay.conflictAreas[" + std::to_string(i) + "]";
+        // Nothing authored here runs before M3.2.3 implements the crossing/merge admission solver.
+        add("UNSUPPORTED_CONFLICT_RUNTIME", path);
+        Resolved r{&a, path, locate(n, table, a.first.path, a.first.entryStation),
+                   locate(n, table, a.second.path, a.second.entryStation)};
+        if (!r.first) add("CONFLICT_UNRESOLVED_PATH", path + ".first");
+        if (!r.second) add("CONFLICT_UNRESOLVED_PATH", path + ".second");
+        if (a.priority == ConflictPriority::undetermined) add("CONFLICT_UNDETERMINED", path);
+        else if (std::none_of(row.priorityRules.begin(), row.priorityRules.end(),
+                              [&](const auto& rule) { return rule.conflictAreaId == a.id; }))
+            add("CONFLICT_RULE_MISSING", path);
+        for (const auto& [side, name] : {std::pair{&a.first, ".first"}, std::pair{&a.second, ".second"}}) {
+            const auto line = std::find_if(row.waitingLines.begin(), row.waitingLines.end(),
+                                           [&](const auto& w) { return w.id == side->waitingLineId; });
+            // The first slice waits on the side's own path, upstream of entry. A line on a
+            // preceding Link is in the contract but not resolved yet, so it blocks Run.
+            if (line == row.waitingLines.end() || !(line->point.path == side->path))
+                add("CONFLICT_WAITING_LINE_UNSUPPORTED", path + name);
+            else if (line->point.station > side->entryStation) add("CONFLICT_WAITING_LINE_AFTER_ENTRY", path + name);
+        }
+        if (a.kind == ConflictKind::merge && r.first && r.second &&
+            (r.first->segment == r.second->segment || !groupOf(r.first->segment) ||
+             groupOf(r.first->segment) != groupOf(r.second->segment)))
+            add("CONFLICT_MERGE_TOPOLOGY", path);
+        resolved.push_back(std::move(r));
+    }
+    // Every overridden group must be totally ordered by its authored areas: every pair covered
+    // once, every area decided and ruled, and no cycle. Otherwise the whole group is a draft.
+    for (const auto& g : groups) {
+        if (!g.explicitControl) continue;
+        std::vector<const Resolved*> members;
+        std::multimap<std::string, std::string> edges;
+        std::string first;
+        bool complete = true;
+        for (std::size_t i = 0; i < g.incoming.size(); ++i)
+            for (std::size_t j = i + 1; j < g.incoming.size(); ++j) {
+                int covering = 0;
+                for (const auto& r : resolved) {
+                    if (r.area->kind != ConflictKind::merge || !r.first || !r.second) continue;
+                    const auto& s1 = r.first->segment; const auto& s2 = r.second->segment;
+                    if (!((s1 == g.incoming[i] && s2 == g.incoming[j]) || (s1 == g.incoming[j] && s2 == g.incoming[i]))) continue;
+                    ++covering; members.push_back(&r);
+                    if (first.empty()) first = r.path;
+                    if (r.area->priority == ConflictPriority::firstYields) edges.insert({s1, s2});
+                    else if (r.area->priority == ConflictPriority::secondYields) edges.insert({s2, s1});
+                    else complete = false;
+                    if (std::none_of(row.priorityRules.begin(), row.priorityRules.end(),
+                                     [&](const auto& rule) { return rule.conflictAreaId == r.area->id; }))
+                        complete = false;
+                }
+                if (covering != 1) complete = false;
+                if (covering > 1) add("CONFLICT_DUPLICATE_PAIR", first);
+            }
+        const bool loops = cyclic(g.incoming, edges);
+        if (loops) for (const auto* r : members) add("CONFLICT_PRIORITY_CYCLE", r->path);
+        if (!complete && !loops) add("CONFLICT_GROUP_INCOMPLETE", first);
+        if (!complete || loops) continue;
+        for (const auto* r : members) {
+            const auto& a = *r->area;
+            const bool firstYields = a.priority == ConflictPriority::firstYields;
+            const auto& yieldSide = firstYields ? a.first : a.second;
+            const auto& major = firstYields ? *r->second : *r->first;
+            const auto& minor = firstYields ? *r->first : *r->second;
+            const auto line = std::find_if(row.waitingLines.begin(), row.waitingLines.end(),
+                                           [&](const auto& w) { return w.id == yieldSide.waitingLineId; });
+            const auto wait = line == row.waitingLines.end() ? std::nullopt
+                                                              : locate(n, table, line->point.path, line->point.station);
+            const auto rule = std::find_if(row.priorityRules.begin(), row.priorityRules.end(),
+                                           [&](const auto& x) { return x.conflictAreaId == a.id; });
+            // A waiting line that did not land on the yielding segment was reported above.
+            const double yieldAt = wait && wait->segment == minor.segment ? wait->position : minor.length;
+            result.rules.push_back({"right-of-way/" + a.id, minor.segment, yieldAt, major.segment, major.length,
+                                    rule->gapTime, rule->headway});
+        }
+    }
+    return result;
+}
+}

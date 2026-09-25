@@ -115,8 +115,54 @@ SignalColor color(const std::string& text) {
     throw std::invalid_argument("INVALID_SIGNAL_COLOR");
 }
 }
+namespace {
+// M3.2.2, schema 14. Strict: every key known, every enum spelled out, so a control this build
+// cannot represent fails the load rather than disappearing on the next save.
+ControlPathRef controlPath(const Json& value, const std::string& path, int version) {
+    knownFields(value,{"linkId","laneId","connectorId","fromLaneId","toLaneId"},path,version);
+    ControlPathRef ref;
+    const auto text=[&](const char* key){return present(value,key)?field<std::string>(value,key):std::string{};};
+    ref.linkId=text("linkId"); ref.laneId=text("laneId");
+    ref.connectorId=text("connectorId"); ref.fromLaneId=text("fromLaneId"); ref.toLaneId=text("toLaneId");
+    return ref;
+}
+ConflictSide conflictSide(const Json& value, const std::string& path, int version) {
+    knownFields(value,{"path","entryStation","exitStation","waitingLineId"},path,version);
+    return {controlPath(member(value,"path"),path+".path",version),field<double>(value,"entryStation"),
+            field<double>(value,"exitStation"),field<std::string>(value,"waitingLineId")};
+}
+RightOfWay rightOfWay(const Json& value, int version) {
+    knownFields(value,{"waitingLines","conflictAreas","priorityRules"},"network.rightOfWay",version);
+    RightOfWay row;
+    if(present(value,"waitingLines"))for(const auto& w:array(value,"waitingLines")) {
+        const auto path="rightOfWay.waitingLines["+std::to_string(row.waitingLines.size())+"]";
+        knownFields(w,{"id","name","point"},path,version);
+        const auto& point=member(w,"point");
+        knownFields(point,{"path","station"},path+".point",version);
+        row.waitingLines.push_back({field<std::string>(w,"id"),present(w,"name")?field<std::string>(w,"name"):"",
+            {controlPath(member(point,"path"),path+".point.path",version),field<double>(point,"station")}});
+    }
+    if(present(value,"conflictAreas"))for(const auto& a:array(value,"conflictAreas")) {
+        const auto path="rightOfWay.conflictAreas["+std::to_string(row.conflictAreas.size())+"]";
+        knownFields(a,{"id","name","kind","first","second","priority"},path,version);
+        row.conflictAreas.push_back({field<std::string>(a,"id"),present(a,"name")?field<std::string>(a,"name"):"",
+            conflictKindFromName(field<std::string>(a,"kind")),conflictSide(member(a,"first"),path+".first",version),
+            conflictSide(member(a,"second"),path+".second",version),
+            conflictPriorityFromName(field<std::string>(a,"priority"))});
+    }
+    if(present(value,"priorityRules"))for(const auto& r:array(value,"priorityRules")) {
+        const auto path="rightOfWay.priorityRules["+std::to_string(row.priorityRules.size())+"]";
+        knownFields(r,{"id","name","conflictAreaId","gapTime","headway"},path,version);
+        row.priorityRules.push_back({field<std::string>(r,"id"),present(r,"name")?field<std::string>(r,"name"):"",
+            field<std::string>(r,"conflictAreaId"),field<double>(r,"gapTime"),field<double>(r,"headway")});
+    }
+    return row;
+}
+}
 Network parseNetwork(const Json& value, int schemaVersion) {
-    knownFields(value,{"id","drivingSide","links","connectors","signalHeads"},"network",schemaVersion);
+    // `rightOfWay` exists from schema 14; knownFields rejects it in an older file (from 7 on).
+    if(schemaVersion>=14)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay"},"network",schemaVersion);
+    else knownFields(value,{"id","drivingSide","links","connectors","signalHeads"},"network",schemaVersion);
     Network network;
     network.id = field<std::string>(value, "id");
     const auto side = field<std::string>(value, "drivingSide");
@@ -176,6 +222,7 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         }
     }
     if(schemaVersion<5)migrateAttachments(network);
+    if(schemaVersion>=14 && present(value,"rightOfWay"))network.rightOfWay=rightOfWay(value.at("rightOfWay"),schemaVersion);
     return network;
 }
 PriorityDefaults parsePriorityDefaults(const Json& value) {

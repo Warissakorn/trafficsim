@@ -1,4 +1,5 @@
 #include "diagnostics.hpp"
+#include "right_of_way.hpp"
 #include "../../core/validate.hpp"
 #include <algorithm>
 
@@ -40,6 +41,11 @@ std::string objectIdForPath(const Network& network, const std::string& path) {
     }
     if (name == "connectors") return index < network.connectors.size() ? network.connectors[index].id : std::string{};
     if (name == "signalHeads") return index < network.signalHeads.size() ? network.signalHeads[index].id : std::string{};
+    const auto& row = network.rightOfWay; // M3.2.2: not canvas-selectable yet, but named
+    const auto pick = [&](const auto& items) { return index < items.size() ? items[index].id : std::string{}; };
+    if (name == "rightOfWay.waitingLines") return pick(row.waitingLines);
+    if (name == "rightOfWay.conflictAreas") return pick(row.conflictAreas);
+    if (name == "rightOfWay.priorityRules") return pick(row.priorityRules);
     return {};
 }
 std::string selectableFor(const Network& network, const std::string& objectId) {
@@ -100,6 +106,9 @@ std::vector<Diagnostic> runtimeDiagnostics(const Network& network, const Scenari
     for(const auto& issue:routeRuntimeIssues(network,definition))
         result.push_back({issue.code,issue.path,{},{},DiagnosticSeverity::runtime});
     for(const auto& issue:priorityDefaultsIssues(network,definition.priorityDefaults))
+        result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
+    // M3.2.2: the same resolver the compiler uses, so the panel and Run cannot disagree.
+    for(const auto& issue:resolveRightOfWay(network,runtimeSections(network),definition.priorityDefaults).issues)
         result.push_back(resolve(network,issue,DiagnosticSeverity::runtime));
     // Shape advisories sit beside the runtime rows: visible and selectable, but they never
     // reach compileScenario, so neither Run nor saving is blocked by one.

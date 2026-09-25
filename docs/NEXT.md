@@ -9,14 +9,23 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.2
+## Immediate — M3.2.2b, then M3.2.3
 
-M1 usability is accepted by owner ruling (D49) and M2's gate passed by the owner's judgment (D53,
-[`M2_GATE.md`](M2_GATE.md)). **Start M3.2.2:** authored references/model, codec, commands and the
-effective-priority resolver, in that order, with A01–A08 evidence — the contract and evidence
-design are in [M3_PLAN.md](M3_PLAN.md), [M3_CONTRACT.md](M3_CONTRACT.md) and
-[M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) (D41). Keep the new controls Run-blocked until M3.2.3
-implements their runtime.
+**M3.2.2a is done (D54):** waiting lines, conflict areas and priority rules exist in the model,
+schema 14, commands (`src/commands/right_of_way_commands.hpp`) and one resolver
+(`resolveRightOfWay`, `src/model/network/right_of_way.hpp`) that compile and diagnostics share.
+Every authored area is Run-blocked with `UNSUPPORTED_CONFLICT_RUNTIME`.
+
+**Next, M3.2.2b — the reference lifecycle (A05):** make `splitLink`, copy, `retargetConnector`,
+lane resize (`resizeLinkLanes`, `resizeConnectorEdges`) and `deleteObjects` carry controls:
+remap stations on a split (or reject a span crossing it atomically), cascade on delete in the
+same transaction, and leave a changed lane pair as a stale draft (`CONFLICT_UNRESOLVED_PATH`),
+never an ordinal retarget. Today deleting a Link or Connector a control names is refused whole
+(`UNKNOWN_CONTROL_OWNER`) — safe but blunt — and a lane change leaves a stale draft; the test
+`rightofway.until_m3_2_2b_*` pins both so M3.2.2b changes them on purpose. Also: a waiting line on a preceding Link, and a coverage check that a
+crossing's extents meet the real overlap. Test on curved roads, both driving sides, Undo/Redo.
+Then **M3.2.3**, the admission runtime, per [M3_PLAN.md](M3_PLAN.md) §M3.2.3 — that is what
+lifts `UNSUPPORTED_CONFLICT_RUNTIME`.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

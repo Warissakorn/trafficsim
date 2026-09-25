@@ -18,7 +18,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | CMake target | Location | Dependencies | Status |
 |---|---|---|---|
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented |
-| `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented |
+| `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented; authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay and approach queues for one run (M2.5) |
 | `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-8 authoring codec, schema-1–7 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
@@ -42,6 +42,9 @@ SimState runSimulation(const Scenario&, std::uint32_t seed,
 // model/network/network.hpp
 Scenario compileScenario(const Network&, const ScenarioDefinition&);
 std::vector<ValidationIssue> validateNetwork(const Network&);
+
+// model/network/right_of_way.hpp (M3.2.2a): the one resolver compile and diagnostics share
+RightOfWayResolution resolveRightOfWay(const Network&, const RuntimeSections&, const PriorityDefaults&);
 
 // project/load.hpp
 LoadedScenario loadScenario(const std::filesystem::path& file,

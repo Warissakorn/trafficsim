@@ -18,12 +18,13 @@ repository, or any package until the owner decides.
 
 - **Gates:** M1 usability accepted by owner ruling (D49; `docs/M1_ACCEPTANCE.md` keeps what the
   attempt did not show). M2's gate passed by the owner's judgment (D51–D53, `docs/M2_GATE.md`).
-  **M0 plausibility is still open.** Next is **M3.2.2** — `docs/NEXT.md` has the plan.
+  **M0 plausibility is still open.** M3.2.2a is done (D54); next is **M3.2.2b** — `docs/NEXT.md`.
 - **Engine:** C++ core, reduced Wiedemann-inspired car-following (unvalidated), fixed-time signals,
   derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50).
   Contracts: `docs/SIMULATION.md`.
 - **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md`. Project files are
-  schema 13; unsupported network-object fields fail on load rather than vanish on save.
+  schema 14 (authored right-of-way controls, M3.2.2a, D54); unsupported network-object fields
+  fail on load rather than vanish on save.
   Scenario JSON and editor `*.traffic.json` are **two formats on purpose** — read
   `NETWORK_EDITOR.md` §"Two file kinds" and D19a before touching either loader.
 - **Demand:** an authored route names Links and Connectors, **never a lane**; `buildScenario`

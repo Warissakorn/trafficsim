@@ -1,4 +1,5 @@
 #include "network.hpp"
+#include "right_of_way.hpp"
 #include "../../core/validate.hpp"
 #include <algorithm>
 #include <cmath>
@@ -129,6 +130,8 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
         if (!std::isfinite(head.position) || head.position < 0 || (length>=0 && head.position > length))
             add("INVALID_POSITION", p + ".position");
     }
+    // M3.2.2: authored controls. Structural only; what cannot run yet is a runtime issue.
+    for (auto& issue : rightOfWayStructuralIssues(network)) issues.push_back(std::move(issue));
     return issues;
 }
 void assertValidNetwork(const Network& network) {
