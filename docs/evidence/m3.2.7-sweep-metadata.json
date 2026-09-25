@@ -1,0 +1,72 @@
+{
+  "fixture": "data/projects/t-junction-priority.traffic.json",
+  "projectHash": "ebdc765842f6519a",
+  "duration": 1500.0,
+  "timeStep": 0.1,
+  "inputs": [
+    {
+      "route": "route-24",
+      "vehicleTypeId": "car",
+      "vehiclesPerHour": 450.0,
+      "startTime": 0.0,
+      "endTime": 900.0
+    },
+    {
+      "route": "route-25",
+      "vehicleTypeId": "car",
+      "vehiclesPerHour": 450.0,
+      "startTime": 0.0,
+      "endTime": 900.0
+    },
+    {
+      "route": "route-26",
+      "vehicleTypeId": "car",
+      "vehiclesPerHour": 100.0,
+      "startTime": 0.0,
+      "endTime": 900.0
+    },
+    {
+      "route": "route-27",
+      "vehicleTypeId": "car",
+      "vehiclesPerHour": 100.0,
+      "startTime": 0.0,
+      "endTime": 900.0
+    }
+  ],
+  "catalogs": {
+    "vehicle-types/car.json": "d57759a2b62d8a5c",
+    "vehicle-types/heavy-vehicle.json": "14cae7ae48c3e57",
+    "driver-behaviour/default.json": "d569363c3efa8102",
+    "priority-rules/default.json": "8aa89c3e936417eb",
+    "evaluation/queue-counter.json": "f1122eb904f231eb"
+  },
+  "seeds": [
+    0,
+    42,
+    43,
+    4294967295
+  ],
+  "rules": [
+    {
+      "gapTime": 3.0,
+      "headway": 7.0
+    },
+    {
+      "gapTime": 5.0,
+      "headway": 7.0
+    },
+    {
+      "gapTime": 7.0,
+      "headway": 7.0
+    },
+    {
+      "gapTime": 5.0,
+      "headway": 3.0
+    },
+    {
+      "gapTime": 5.0,
+      "headway": 12.0
+    }
+  ],
+  "build": "GCC 13.3.0, assertions on"
+}
