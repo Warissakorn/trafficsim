@@ -9,28 +9,31 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.3b, then M3.2.4
+## Immediate — the owner's choice: M3.2.3c or M3.2.4
 
-**Done:** M3.2.2a–c (D54–D56) — authored waiting lines, conflict areas and priority rules
-(schema 14), their lifecycle, preceding-Link waiting lines and crossing coverage. **M3.2.3a
-(D57)** — one isolated crossing runs:
-- `resolveRightOfWay` emits a core `ConflictZone` (`src/core/types.hpp`).
-- `src/core/conflicts.*` admits by gap time and headway, holds the grant until the rear clears,
-  checks receiving space, and caps same-tick requests (the swept check).
-- `stepSimulation` runs compute → swept check → publish.
-- Areas it cannot run are refused by name: `UNSUPPORTED_CONFLICT_SPAN`,
-  `UNSUPPORTED_CONFLICT_GROUP`, and `UNSUPPORTED_CONFLICT_RUNTIME` for merges.
+**Done:** M3.2.2a–c (D54–D56) authored controls, lifecycle and resolution.
 
-**Next, M3.2.3b** (ROADMAP row; contract §4; A15):
-1. Merge areas on the zone solver. A merge's two sides share the downstream segment, so the
-   minor side's "area" is the join; keep the M3.1 derived rules for untouched merges (A01).
-2. Connected groups admitted atomically: two areas with no vehicle-length waiting space between
-   them reserve together; lift `UNSUPPORTED_CONFLICT_GROUP` only for what that handles.
-3. Sides spanning a section cut: route-relative intervals instead of one segment each.
-4. Receiving space reserved for competing requests from different zones in the same tick.
-5. The Run UI's statement that only authored areas are protected (M3_PLAN §2).
+**M3.2.3a/b (D57, D58)** — authored crossings run on `src/core/conflicts.*`:
+- gap time and headway, grants held until the rear clears, receiving space, the swept check;
+- sides over section cuts;
+- chained zones admitted atomically.
 
-Then **M3.2.4**, the conflict-area and priority-rule editor.
+Complete authored merge groups run on their compiled rules. Refused by name:
+- `CONFLICT_ROUTE_JOINS_INSIDE`, `CONFLICT_MIXED_ROLES` and `CONFLICT_SINK_TOO_CLOSE` in core
+  validation;
+- drafts in the resolver.
+
+**Either next slice is ready, and neither depends on the other:**
+- **M3.2.3c** — runtime completeness:
+  1. Receiving space reserved across zones for same-tick requests.
+  2. Merges on the zone solver, so the major waits for an admitted minor. Keep the D54 equality
+     test: an untouched take-over must still replay the fallback, or state why it cannot.
+  3. Arbitration for `CONFLICT_MIXED_ROLES`: break mutual holds deterministically.
+- **M3.2.4** — the conflict-area and priority-rule editor ([M3_PLAN.md](M3_PLAN.md) §M3.2.4-6):
+  - canvas selection, inspector, gap and headway editing, Problems links, English and Thai text;
+  - the Run UI's statement that only authored areas are protected.
+
+  Everything it would create now runs.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

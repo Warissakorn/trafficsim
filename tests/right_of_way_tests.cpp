@@ -8,7 +8,7 @@
 using namespace trafficsim;
 using namespace rowfixture;
 // M3.2.2: authored right-of-way controls at the file/model seam (docs/M3_ACCEPTANCE.md A01-A08).
-// Nothing here runs a new control: every authored area is Run-blocked until M3.2.3.
+// Since M3.2.3b a complete authored merge group runs on its compiled rules (D58).
 TEST(rightofway, a01_no_controls_compile_exactly_as_before) {
     const auto d = fixture::fourLegIntersection().document;
     CHECK(d.network.rightOfWay.empty());
@@ -82,7 +82,6 @@ TEST(rightofway, a04_drafts_save_but_run_is_refused_by_name) {
     CHECK(back.network.rightOfWay == d.network.rightOfWay);
     const auto r = resolve(d);
     CHECK(has(r.issues, "CONFLICT_UNDETERMINED")); CHECK(has(r.issues, "CONFLICT_UNRESOLVED_PATH"));
-    CHECK(has(r.issues, "UNSUPPORTED_CONFLICT_RUNTIME"));
     test::throws([&] { compileScenario(d.network, ScenarioDefinition{.priorityDefaults = kDefaults}); }, "");
     const auto rows = runtimeDiagnostics(d.network, ScenarioDefinition{.priorityDefaults = kDefaults});
     CHECK(std::any_of(rows.begin(), rows.end(), [&](const auto& row) {
@@ -95,8 +94,8 @@ TEST(rightofway, a06_the_effective_order_must_be_total_and_acyclic) {
     const auto areas = takeOverMerge(t.d, section, kDefaults);
     CHECK(areas.size() == 3);
     auto r = resolve(t.d);
-    // A valid total order: only the not-yet-runnable marker, and the group's own three rules.
-    CHECK(count(r.issues, "UNSUPPORTED_CONFLICT_RUNTIME") == 3); CHECK(r.issues.size() == 3);
+    // A valid total order runs (M3.2.3b): no issue, and the group's own three rules.
+    CHECK(r.issues.empty());
     CHECK(rulesWithPrefix(r, "right-of-way/") == 3); CHECK(rulesWithPrefix(r, "give-way/") == 0);
     // A three-way cycle: areas are (1 yields 0), (2 yields 0), (2 yields 1). Reverse the second.
     auto cycle = t.d;

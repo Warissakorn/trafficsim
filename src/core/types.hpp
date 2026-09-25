@@ -89,12 +89,13 @@ struct PriorityRule {
     bool operator==(const PriorityRule&) const = default;
 };
 // M3.2.3a. One crossing: the minor side gives way to the major side, and the two never occupy
-// their areas at once. Positions are metres along each side's segment; `waitPosition` is on the
-// minor segment and may be negative -- on the single-predecessor approach before it (D56).
-// A minor vehicle holds the crossing from passing its waiting line until its rear clears
-// minor.exit; that grant is read off positions, so it needs no state of its own (D57).
+// their areas at once. A side is a chain of consecutive segments (M3.2.3b): `entry` is metres
+// along the first, `exit` along the last, so an area may run over a section cut. `waitPosition`
+// is on the minor chain's first segment and may be negative -- on the single-predecessor
+// approach before it (D56). A minor vehicle holds the crossing from passing its waiting line
+// until its rear clears the exit; that grant is read off positions, so it needs no state (D57).
 struct ZoneSide {
-    std::string segmentId; double entry{}, exit{};
+    std::vector<std::string> segmentIds; double entry{}, exit{};
     bool operator==(const ZoneSide&) const = default;
 };
 struct ConflictZone {
@@ -140,10 +141,17 @@ struct RouteHead { std::size_t headIndex{}; double partStart{}; };
 // The same idea for a priority rule: a rule whose yield segment lies on this route, with the start
 // station of the first route part carrying it, so the stop line is a route coordinate.
 struct RouteRule { std::size_t ruleIndex{}; double partStart{}; };
-// A conflict zone one of whose sides lies on this route: which side, and where on the route the
-// FIRST part carrying that side's segment starts, so every position is a route coordinate.
+// A conflict zone one of whose sides lies on this route, in route distances resolved once.
+// `entryAt`/`exitAt` bound the area along this route: a route joining the chain part way is in
+// the area from where it joins, one leaving part way is out where it leaves. For a minor role,
+// `waitAt` is where it waits and `clearAt` the exit its receiving space is measured past; a chain
+// of zones with no room to wait between them shares the first line and the last exit (A15).
 enum class ZoneRole : std::uint8_t { major, minor };
-struct RouteZone { std::size_t zoneIndex{}; ZoneRole role{}; double partStart{}; };
+struct RouteZone {
+    std::size_t zoneIndex{}; ZoneRole role{};
+    double entryAt{}, exitAt{}, waitAt{}, clearAt{};
+    bool joinsInside{}; // met the chain after its first segment
+};
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
     std::vector<std::vector<RouteZone>> routeZones;  // parallel to Scenario::routes, in conflictZones order

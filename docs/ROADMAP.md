@@ -410,9 +410,9 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`.
 | M3.2.1 | Contracts and acceptance design | Prepared; documentation only, no runtime claim |
 | M3.2.2a | Waiting lines, conflict areas and priority rules: model, schema 14, commands, one effective-priority resolver (D54) | **Implemented 2026-09-25**; A01–A04, A06–A08 tested; every authored area Run-blocked until M3.2.3 |
 | M3.2.2b/c | Reference lifecycle (A05, D55); a waiting line on a preceding Link and crossing-coverage check (D56) | **Implemented 2026-09-25**; `rightofway_lifecycle.*`, `rightofway_resolution.*`, curved Link, both driving sides |
-| M3.2.3a | One isolated crossing: core `ConflictZone`, admission by gap time/headway, grants held until the rear clears, receiving space, swept check, sink clearance (D57) | **Implemented 2026-09-25**; A09–A14, A16, A17, A25 in `conflict_zone.*`; `rightofway_runtime.*` |
-| M3.2.3b | Merge areas on the same solver; connected groups admitted atomically (A15); areas spanning a section cut; receiving space shared by requests from different zones; the Run UI stating that only authored areas are protected | Open; carved from M3.2.3 (D57) |
-| M3.2.4 | Conflict-area and priority-rule editor | Open; supported runtime effects, bilingual mouse/keyboard workflows |
+| M3.2.3a/b | Crossing admission runtime (D57): gap time/headway, grants held until the rear clears, receiving space, swept check, sink clearance; sides over section cuts, chained zones admitted atomically (A15), authored merges run on their compiled rules (D58) | **Implemented 2026-09-25**; A09–A17, A25 in `conflict_zone.*`, `conflict_chain.*`; `rightofway_runtime.*` |
+| M3.2.3c | Receiving space shared by same-tick requests from different zones; merges on the zone solver (the major waits for an admitted minor); arbitration for a route minor at one zone and major at another (`CONFLICT_MIXED_ROLES`) | Open; carved from M3.2.3b (D58) |
+| M3.2.4 | Conflict-area and priority-rule editor; the Run UI states that only authored areas are protected (M3_PLAN §2) | Open; supported runtime effects, bilingual mouse/keyboard workflows |
 | M3.2.5 | Stop/Yield with signal composition | Open; each vehicle serves Stop, Yield can pass, green retains physical safety |
 | M3.2.6 | Signal-position workflow and unsignalised queue counters | Open; interior/cut positions, counter fixtures and CLI/editor agreement |
 | M3.2.7 | T-junction fixture and owner evidence | Open; controlled gap response, completed/unserved reporting and owner exercise |

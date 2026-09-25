@@ -34,10 +34,10 @@ const Link& link(const ProjectDocument& d, const std::string& id) {
     for (const auto& l : d.network.links) if (l.id == id) return l;
     throw std::runtime_error("no link");
 }
-// Clean means: the area resolves, compiles its rule, and only waits for M3.2.3's runtime.
+// Clean means: the area resolves with nothing reported and compiles its rule.
 bool clean(const ProjectDocument& d) {
     const auto r = resolve(d);
-    return count(r.issues, "UNSUPPORTED_CONFLICT_RUNTIME") == static_cast<int>(r.issues.size()) &&
+    return r.issues.empty() &&
            rulesWithPrefix(r, "right-of-way/") == static_cast<int>(d.network.rightOfWay.conflictAreas.size());
 }
 }

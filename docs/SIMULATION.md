@@ -199,6 +199,17 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   longest vehicle of an exit (`CONFLICT_SINK_TOO_CLOSE`), and one that starts past the line
   (`CONFLICT_ROUTE_STARTS_PAST_LINE`). The whole area is reserved, so capacity is conservative.
   Rule 4 applies: a deterministic threshold, not calibrated gap acceptance.
+  **Since M3.2.3b (D58)** a side is a chain of consecutive segments, so an area may lie over a
+  section cut. A route turning off inside the area leaves it where it turns off. A major route
+  joining the chain part way is in the area from the join. Minor zones along one route with less
+  than one vehicle (longest type plus its standstill) between an exit and the next line form a
+  **chain**: they share the first line and the last exit, so a vehicle is admitted to all of them
+  or to none, and waits for receiving space past the last (A15). Refused by name:
+  - a route that meets a minor chain part way (`CONFLICT_ROUTE_JOINS_INSIDE`);
+  - a route minor at one zone and major at another (`CONFLICT_MIXED_ROLES`). It could hold one
+    zone while waiting at another whose holder waits on it; M3.2.3c.
+
+  Authored merge areas run on their compiled `PriorityRule`s, the M3.1 mechanism.
 - Signal phases and offsets must align to the fixed timestep. Phases are half-open;
   amber is conservatively treated as stop, without a dilemma-zone decision.
 - The timestep is in `(0, 0.5]` seconds and duration must be an integer number of ticks.

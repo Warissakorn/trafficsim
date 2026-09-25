@@ -4,6 +4,12 @@
 #include "following.hpp"
 
 namespace trafficsim {
+// Every zone this route meets, in route distances (M3.2.3b). Shared by the run index and by
+// validation, so the two cannot disagree about where a route meets a chain. Minor zones with
+// less than one vehicle (the longest type plus its standstill distance) between one's exit and
+// the next one's line are chained: they share the first line and the last exit, so a vehicle is
+// admitted to all of them at once or to none (A15).
+std::vector<RouteZone> zoneIncidence(const Scenario&, const std::vector<RoutePart>& parts);
 // One zone as the snapshot sees it at the start of a tick.
 struct ZoneState {
     bool majorBlocks{};                  // a major vehicle is inside, within headway, or within gapTime

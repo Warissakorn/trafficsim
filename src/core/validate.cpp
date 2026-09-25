@@ -1,4 +1,5 @@
 #include "validate.hpp"
+#include "conflicts.hpp"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -101,40 +102,65 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         if (rule.yieldSegmentId == rule.conflictSegmentId) add("INVALID_RANGE", p + ".conflictSegmentId");
     }
     (void)rules;
-    // M3.2.3a. A conflict zone: two different segments, an area inside each, a waiting line on
-    // the minor approach no later than its entry, and the two threshold numbers.
+    // M3.2.3a/b. A conflict zone: two chains of consecutive segments, an area from entry on the
+    // first to exit on the last, a waiting line on the minor approach no later than its entry,
+    // and the two threshold numbers.
     index(s.conflictZones, "conflictZones", issues);
-    double longest = 0;
-    for (const auto& type : s.vehicleTypes) if (std::isfinite(type.length)) longest = std::max(longest, type.length);
+    bool zonesValid = true;
     for (std::size_t i = 0; i < s.conflictZones.size(); ++i) {
         const auto& zone = s.conflictZones[i];
         const auto p = "conflictZones[" + std::to_string(i) + "]";
         number(zone.gapTime, p + ".gapTime"); number(zone.headway, p + ".headway", true);
         for (const auto& [side, name] : {std::pair{&zone.major, ".major"}, std::pair{&zone.minor, ".minor"}}) {
-            const auto on = segments.find(side->segmentId);
-            if (on == segments.end()) { add("UNKNOWN_SEGMENT", p + name + ".segmentId"); continue; }
-            if (!std::isfinite(side->entry) || !std::isfinite(side->exit) || side->entry < 0 ||
-                side->entry >= side->exit || side->exit > on->second->length) add("INVALID_RANGE", p + name);
+            const auto& chain = side->segmentIds;
+            bool known = !chain.empty();
+            for (std::size_t k = 0; k < chain.size(); ++k) {
+                const auto on = segments.find(chain[k]);
+                if (on == segments.end()) { add("UNKNOWN_SEGMENT", p + name + ".segmentIds"); known = false; break; }
+                if (k + 1 < chain.size() && !has(on->second->next, chain[k + 1])) {
+                    add("INVALID_RANGE", p + name + ".segmentIds"); known = false; break;
+                }
+            }
+            if (!known) { zonesValid = false; continue; }
+            const double first = segments.at(chain.front())->length, last = segments.at(chain.back())->length;
+            if (!std::isfinite(side->entry) || !std::isfinite(side->exit) || side->entry < 0 || side->entry >= first ||
+                side->exit <= 0 || side->exit > last || (chain.size() == 1 && side->entry >= side->exit))
+                add("INVALID_RANGE", p + name);
+        }
+        for (const auto& id : zone.major.segmentIds)
+            if (has(zone.minor.segmentIds, id)) add("INVALID_RANGE", p + ".minor.segmentIds");
+        if (!std::isfinite(zone.waitPosition) || zone.waitPosition > zone.minor.entry || zone.minor.segmentIds.empty() ||
+            zone.waitPosition < -singleApproach(zone.minor.segmentIds.front())) add("INVALID_POSITION", p + ".waitPosition");
+    }
+    // Per route, through the same incidence the run uses (conflicts.hpp).
+    double longest = 0;
+    for (const auto& type : s.vehicleTypes) if (std::isfinite(type.length)) longest = std::max(longest, type.length);
+    for (std::size_t r = 0; zonesValid && !s.conflictZones.empty() && r < s.routes.size(); ++r) {
+        std::vector<RoutePart> parts;
+        double start = 0;
+        for (const auto& id : s.routes[r].segmentIds) {
+            const auto seg = segments.find(id);
+            if (seg == segments.end()) { parts.clear(); break; }
+            parts.push_back({id, 0, start, seg->second->length});
+            start += seg->second->length;
+        }
+        if (parts.empty()) continue;
+        const auto p = "routes[" + std::to_string(r) + "]";
+        bool major = false, minor = false;
+        for (const auto& rz : zoneIncidence(s, parts)) {
+            const auto zone = "conflictZones[" + std::to_string(rz.zoneIndex) + "] " + p;
+            (rz.role == ZoneRole::major ? major : minor) = true;
             // The route must run on past the area far enough to carry the longest vehicle's rear
             // out of it, or removal at the route's end would drop a tail still inside (A12).
-            for (std::size_t r = 0; r < s.routes.size(); ++r) {
-                double start = 0, total = 0, at = -1;
-                for (const auto& id : s.routes[r].segmentIds) {
-                    const auto seg = segments.find(id);
-                    if (seg == segments.end()) break;
-                    if (id == side->segmentId && at < 0) at = start;
-                    start += seg->second->length; total = start;
-                }
-                if (at >= 0 && total - (at + side->exit) < longest)
-                    add("CONFLICT_SINK_TOO_CLOSE", p + name + " routes[" + std::to_string(r) + "]");
-                // A route that begins past the waiting line would enter holding the crossing.
-                if (name == std::string(".minor") && at >= 0 && at + zone.waitPosition < 0)
-                    add("CONFLICT_ROUTE_STARTS_PAST_LINE", p + " routes[" + std::to_string(r) + "]");
-            }
+            if (start - rz.exitAt < longest) add("CONFLICT_SINK_TOO_CLOSE", zone);
+            if (rz.role != ZoneRole::minor) continue;
+            // Meeting a minor chain part way, or starting past its line, enters without asking.
+            if (rz.joinsInside) add("CONFLICT_ROUTE_JOINS_INSIDE", zone);
+            else if (rz.waitAt < 0) add("CONFLICT_ROUTE_STARTS_PAST_LINE", zone);
         }
-        if (zone.major.segmentId == zone.minor.segmentId) add("INVALID_RANGE", p + ".minor.segmentId");
-        if (!std::isfinite(zone.waitPosition) || zone.waitPosition > zone.minor.entry ||
-            zone.waitPosition < -singleApproach(zone.minor.segmentId)) add("INVALID_POSITION", p + ".waitPosition");
+        // Minor at one zone and major at another: it could hold one while waiting at the other,
+        // whose holder waits on it. Refused until an arbitration exists for it (M3.2.3c).
+        if (major && minor) add("CONFLICT_MIXED_ROLES", p);
     }
     // The one guard M3.1 loosens, and it is loosened BY CONSTRUCTION, never by removal: a place
     // fed by n segments is runnable only when at least n-1 of them give way to another of them,
