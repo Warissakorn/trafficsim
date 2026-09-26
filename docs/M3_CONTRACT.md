@@ -132,7 +132,7 @@ For each tick:
    receiving space for the whole vehicle plus standstill distance. Reserve the receiving
    space for competing same-tick requests as well. An existing grant cannot be revoked
    inside an area to admit newly arriving priority traffic.
-   *M3.2.8a:* a vehicle that cannot stop comfortably before its line is committed and needs
+   *M3.2.8a:* a vehicle that cannot stop before its line is committed and needs
    no acceptable gap/headway; every other condition here still applies
    ([`M3_8_CONTRACT.md`](M3_8_CONTRACT.md) §1).
 5. Cap denied movement at its waiting line using the existing leader/stop-line mechanism.

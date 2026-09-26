@@ -223,6 +223,8 @@ SimState stepSimulation(const SimState& state, double dt) {
             if (gap < -1e-9) continue; // Already across the stop line; the decision was taken.
             const auto conflict = index.conflictSegmentOfRule[routeRule.ruleIndex];
             if (conflict == SIZE_MAX) continue; // Rejected by validation; never read out of bounds.
+            // M3.2.8a: a driver who cannot stop at the line goes unless the point is occupied.
+            const bool goes = committed(vehicle.speed, std::max(0.0, gap), type);
             bool giveWay = false;
             for (auto i = buckets.start[conflict]; i < buckets.start[conflict + 1]; ++i) {
                 const auto& span = spans[buckets.items[i]];
@@ -233,7 +235,9 @@ SimState stepSimulation(const SimState& state, double dt) {
                 if (reach < 0) {
                     // Its front is past the point; it still blocks while its rear is not.
                     if (span.rear <= rule.conflictPosition) giveWay = true;
-                } else if (reach <= rule.headway) giveWay = true;
+                } else if (goes) continue; // only occupancy holds it; a front clipped at a join
+                // reads reach 0 here, but it is then on the minor's next segment, a car-following leader
+                else if (reach <= rule.headway) giveWay = true;
                 // Arriving too soon. A stopped major vehicle further off than the headway does
                 // NOT block, which is what stops a standing queue from deadlocking the minor
                 // approach forever rather than releasing it into a gap that genuinely exists.

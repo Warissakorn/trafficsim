@@ -25,11 +25,12 @@ bool same(const Json& a, const Json& b) { // numbers to 1e-9, as fourleg: MSVC m
     }
     return a == b;
 }
-struct Outcome { std::size_t pending{}; std::map<std::string, int> arrived; };
+struct Outcome { std::size_t pending{}, clamps{}; std::map<std::string, int> arrived; };
 Outcome run(const Scenario& scenario) {
     Outcome out;
     const auto end = runSimulation(scenario, 42, [&](const SimEvent& e) {
         if (const auto* a = std::get_if<ArrivedEvent>(&e)) out.arrived[a->routeId]++;
+        out.clamps += std::holds_alternative<SafetyClampEvent>(e);
     }, false);
     out.pending = pendingCount(end);
     return out;
@@ -60,10 +61,11 @@ TEST(m26study, runs_an_hour_with_every_movement_delivering) {
     for (const auto& [route, count] : out.arrived) if (count > 0) movements[route]++;
     CHECK(movements.size() >= 12);
 }
-TEST(m26study, a_minor_vehicle_held_at_the_join_itself_deadlocks_the_merge) {
+TEST(m26study, a_minor_vehicle_held_at_the_join_itself_blocks_the_merge) {
     // Why a derived rule's stop line sits short of the join (sections.cpp, kYieldClearance). The
     // forcing: put every derived stop line back ON the join, and check it moved.
-    auto scenario = compileDocument(parseDocument(committed()), test::root() / "data").scenario;
+    const auto committedFile = compileDocument(parseDocument(committed()), test::root() / "data").scenario;
+    auto scenario = committedFile;
     CHECK(!scenario.priorityRules.empty());
     int moved = 0;
     for (auto& rule : scenario.priorityRules)
@@ -72,7 +74,9 @@ TEST(m26study, a_minor_vehicle_held_at_the_join_itself_deadlocks_the_merge) {
                 rule.yieldPosition = segment.length; ++moved;
             }
     CHECK(moved == static_cast<int>(scenario.priorityRules.size()));
-    // The consequence: a waiting left turn's front is on the shared lane, the through vehicle
-    // behind it stops inside the headway, and demand backs up off the network.
-    CHECK(run(scenario).pending > 0);
+    // The consequence: a waiting left turn's front is on the shared lane, and the through vehicle
+    // behind it is caught there. Before M3.2.8a that deadlocked seed 42 outright (D50). A driver
+    // who can no longer stop now goes (D69), so fewer turns wait on the join and the deadlock
+    // needs an unlucky seed; the vehicles that do wait there still clamp the through stream.
+    CHECK(run(scenario).clamps > run(committedFile).clamps);
 }

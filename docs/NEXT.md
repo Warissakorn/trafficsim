@@ -9,37 +9,45 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.8, and the owner's M3.2.7d
+## Immediate — M3.2.8b, and the owner's M3.2.7d
 
 **Done:**
-- **Conflict areas are automatic now (M3.2.4c, D68, the owner's ruling).** Every at-grade overlap is a passive area and every merge shows its derived priority; a click authors one. Any new right-of-way work must keep them derived, never stored.
-- M3.2.2a–M3.2.7c (D54–D67): authored right-of-way, the admission solver, Stop/Yield, queue
-  counters, the editor for all of them, and the T-junction evidence (fixture, controlled cases,
-  sweeps, signal composition, the congested headway arm).
-- Everything is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
+- **M3.2.8a, commitment (D69, `docs/M3_8_CONTRACT.md` §1).** A driver who cannot stop at its line
+  at `maxDeceleration` goes. The T-junction's right-of-way clamps are gone. No major vehicle is
+  clamped at an area. The four-leg report is unchanged, and M2.6 moved by at most 0.13 s per
+  movement (`docs/evidence/m3.2.8a-commitment.md`). The owner's first choice,
+  `comfortableDeceleration`, clamped the major road and was replaced: **do not retry it without a
+  new measurement.**
+- Conflict areas are automatic (M3.2.4c, D68); any new right-of-way work must keep them derived,
+  never stored.
+- M3.2.2a–M3.2.7c (D54–D67); everything is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
-**M3.2.7d — the owner's, not a session's.** Carry out the exercise with the recording sheet in
+**M3.2.7d is the owner's, not a session's.** Carry out the exercise with the recording sheet in
 `docs/M3_ACCEPTANCE.md` §3, on Windows. Until the owner reports it, the row stays pending.
 
-**Next session: M3.2.8** (ROADMAP row). It is a new system with its own contract, so write the
-contract first, as `docs/M3_CONTRACT.md` did for M3.2.2. Start with the smallest piece the
-evidence asks for:
-1. **A commitment rule at a waiting line.**
-   - The T-junction sweeps show 3–10 minor-road safety clamps per run, all minor vehicles within
-     1.5 m of a line when the gap closed.
-   - Measure the fix against those runs: `trafficsim-t-junction-sweep --run`, then compare the
-     clamp column. Commit new metadata first if the fixture changes.
-   - The major road must stay at zero clamps, and `tjunction_controlled.*` must keep passing: the
-     gap and headway predicates are not what changes.
-2. Then lane changing and cooperation, which are needed for the known four-leg limit below.
+**Next session: M3.2.8b** (ROADMAP row): lane changing, cooperation and visibility. It is a new
+system, so write its contract first, as `docs/M3_8_CONTRACT.md` §2 (the placeholder is there).
+1. **Start from the known limit below.** A Thai left turn at all times queues behind through
+   traffic in a shared kerb lane, because a vehicle keeps the lane it entered on. The smallest
+   useful piece is a mandatory lane change toward the lane a route's next Connector leaves from.
+   Measure it on the M2.6 template: its left turns, and whether the through movements' delay
+   moves.
+2. Then cooperation (a vehicle opening a gap for a merging one) and visibility at areas.
+3. The contract must say how a lane change keeps replay exact (no new RNG draw without a seeded
+   contract) and what a vehicle between two lanes occupies, for zones and car-following alike.
+
+**Open item from M3.2.8a:** five minor vehicles standing or at walking pace within 1 m of the
+T-junction's merge line are still clamped in the congested headway arm (seeds 42 and 43). They
+are not the commitment case, since their stopping distance is about zero, and they are not
+diagnosed. Diagnose them before claiming the minor road clamp-free.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
-calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas
-as editable input, authorable priority rules, stop/yield control and crossing conflicts are
-M3's; its done-condition (minor-road delay responds to gap time) is not met.
+calibrated critical-gap model. Derived stop lines sit 1 m short of the join (D50). M3's
+done-condition (minor-road delay responds to gap time) is shown on development evidence only;
+no gate result is inferred.
 
 **Known limit, surfaced by the M2.6 template:** a Thai left turn at all times still queues behind
-through traffic in a shared kerb lane, because there is no lane changing until M3.2.8.
+through traffic in a shared kerb lane, because there is no lane changing until M3.2.8b.
 
 ## Engineering work that can proceed without the owner, if asked
 

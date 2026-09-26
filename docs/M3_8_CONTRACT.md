@@ -20,18 +20,21 @@ halted by the emergency clamp (D66). A real driver in that position does not sto
 
 A vehicle short of a line it must give way at is **committed** to that line when
 
-    v² > 2 · comfortableDeceleration · gap
+    v² > 2 · maxDeceleration · gap
 
 - `v` is its speed and `gap` the distance from its front to the line, both from the tick's
   pre-step snapshot.
-- `comfortableDeceleration` is its vehicle type's (car 2 m/s², heavy vehicle 1.5 m/s² in the
-  shipped catalog). The owner chose comfortable over maximum deceleration: a driver who would
-  have to brake harder than comfortably proceeds.
+- `maxDeceleration` is its vehicle type's (car 8 m/s², heavy vehicle 6 m/s² in the shipped
+  catalog): the vehicle physically cannot stop before the line.
 - Equality can stop, so it is not committed.
+- **The owner first chose `comfortableDeceleration`.** Measured, it committed drivers up to
+  about 2 s ahead of a major vehicle. It clamped the major road at the T-junction and at an M2.6
+  merge, which breaks this section's gate. The owner then chose `maxDeceleration`
+  (`docs/evidence/m3.2.8a-commitment.md`).
 
 Commitment is read off positions and speeds and is **never stored**. `SimState` does not change,
 so a copied state replays exactly (A25). A committed vehicle that a leader slows until it can stop
-comfortably again is not committed any more, and is held as before.
+again is not committed any more, and is held as before.
 
 ### What it overrides, and what it never does
 
@@ -57,8 +60,13 @@ hide a physical conflict.
 
 - **Authored crossing and merge zones** (the M3.2.3 solver, the minor side's waiting line).
 - **Derived M3.1 merge rules** (`PriorityRule`, the stop line 1 m short of the join). This is
-  the owner's ruling. It re-publishes the four-leg and M2.6 numbers that D59 kept fixed (D39); the
-  before and after figures are in `docs/evidence/m3.2.8a-commitment.md`.
+  the owner's ruling. It re-publishes the four-leg and M2.6 numbers that D59 kept fixed (D39):
+  - the four-leg report did not move;
+  - the M2.6 report moved by at most 0.13 s per movement.
+
+  Both are in `docs/evidence/m3.2.8a-commitment.md`. A derived conflict point is the join
+  itself, so a major vehicle occupying it is also the committed driver's car-following leader,
+  and occupancy is guarded twice there.
 - It does **not** apply to signal heads: amber stays red until M4 (D36).
 
 One predicate (`committed`, `src/core/conflicts.hpp`) serves both runtime paths.
@@ -66,8 +74,8 @@ One predicate (`committed`, `src/core/conflicts.hpp`) serves both runtime paths.
 ### Consequences to measure, not assume
 
 - A committed driver accepts a shorter effective gap than `gapTime`: up to the time it takes to
-  cover its comfortable stopping distance. Minor delay therefore falls and the major road may
-  wait more for a minor vehicle already across its line. Both are reported, not tuned.
+  cover its stopping distance, under a second at urban speeds. Minor delay therefore falls. This
+  is reported, not tuned.
 - The major road must stay at zero clamps. If it does not, the rule goes back to the owner
   rather than being adjusted.
 - The existing threshold predicates (`tjunction_controlled.*`) are unchanged: a standing or
