@@ -61,21 +61,29 @@ void MovementAccumulator::observe(const SimState& state) {
         ++count_[m]; delay_[m] += tripDelay(*arrived); travel_[m] += arrived->travelTime;
     }
     // Queue state with hysteresis, keyed by vehicle id; vehicles that left are dropped.
-    std::map<std::uint64_t, bool> queued;
-    for (const auto& v : state.vehicles) {
-        const auto before = queued_.find(v.id);
-        const bool was = before != queued_.end() && before->second;
-        queued[v.id] = was ? v.speed <= spec_.queue.endSpeed : v.speed < spec_.queue.beginSpeed;
+    const auto byId = [](const auto& a, const auto& b) { return a.first < b.first; };
+    std::vector<bool> queuedNow(state.vehicles.size());
+    std::vector<std::pair<std::uint64_t, bool>> queued;
+    queued.reserve(state.vehicles.size());
+    for (std::size_t i = 0; i < state.vehicles.size(); ++i) {
+        const auto& v = state.vehicles[i];
+        const auto before = std::lower_bound(queued_.begin(), queued_.end(), std::pair{v.id, false}, byId);
+        const bool was = before != queued_.end() && before->first == v.id && before->second;
+        queuedNow[i] = was ? v.speed <= spec_.queue.endSpeed : v.speed < spec_.queue.beginSpeed;
+        queued.emplace_back(v.id, queuedNow[i]);
     }
+    // The engine keeps its fleet in id order; a hand-built state need not.
+    if (!std::is_sorted(queued.begin(), queued.end(), byId)) std::sort(queued.begin(), queued.end(), byId);
     queued_ = std::move(queued);
     // Per line, the vehicles whose route crosses it; an approach is the max over its lines.
     std::vector<double> length(spec_.counters.size());
     for (const auto& line : lines_) {
         std::vector<QueuedVehicle> behind;
-        for (const auto& v : state.vehicles) {
+        for (std::size_t i = 0; i < state.vehicles.size(); ++i) {
+            const auto& v = state.vehicles[i];
             const double at = line.atRoute[v.routeIndex];
             if (std::isnan(at)) continue;
-            behind.push_back({at - v.distance, s.vehicleTypes[v.typeIndex].length, queued_[v.id]});
+            behind.push_back({at - v.distance, s.vehicleTypes[v.typeIndex].length, queuedNow[i]});
         }
         length[line.counter] = std::max(length[line.counter], queueLength(std::move(behind), spec_.queue.maxGap));
     }
