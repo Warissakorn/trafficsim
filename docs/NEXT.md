@@ -72,8 +72,12 @@ through traffic in a shared kerb lane, because there is no lane changing until M
 - **Not booked:** `compileDocument` (paid once per Run, not per tick) and the `push_back` work
   left in `occupiedSpans`. The per-tick fleet sort is already a merge.
 - **Measure the engine with callgrind, not the clock,** when resolving a few percent: wall time
-  swung ±7% on 2026-09-23. The editor's timings are steadier (±2%). 2026-09-25 baseline, Release
-  headless: the M2.6 template's one-hour run takes 0.78 s (0.77–0.86 s, five runs).
+  swung ±7% on 2026-09-23. The editor's timings are steadier (±2%). 2026-09-26 baseline, Release,
+  after the D70 pass: the M2.6 template's one-hour run is 4.35G instructions, median 0.45 s wall
+  (0.44–0.66 s, five runs; one outlier). What is left there: `stepSimulation` 66%, `observe` 26% (mostly the
+  per-line queue walk itself), `compileDocument` 4%.
+- **`ctest -j` wall time is `m26study` (≈17 s Debug)**: split that group before chasing any other
+  test, and add every new test group to `TRAFFICSIM_TEST_GROUPS` or `all-model-tests` fails (D70).
 
 ## Standing — the owner's items
 

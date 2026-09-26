@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-25-m3.2.6c-counters-editor.md`](archive/PROGRESS-2026-09-25-m3.2.6c-counters-editor.md) — 2026-09-25 — M3.2.6c: queue counters in the editor (D65); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.6a-b.md`](archive/PROGRESS-2026-09-25-m3.2.6a-b.md) — 2026-09-25 — M3.2.6a/b: signal positions and queue counters (D64); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.5b.md`](archive/PROGRESS-2026-09-25-m3.2.5b.md) — 2026-09-25 — M3.2.5b: Stop/Yield in the editor; one waiting line per lane (D63); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.5a.md`](archive/PROGRESS-2026-09-25-m3.2.5a.md) — 2026-09-25 — M3.2.5a: Stop and Yield at the waiting line (D62); moved out 2026-09-26 as the oldest live entry
@@ -53,6 +54,30 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-26 — Measured optimization pass: tests, evaluator, routing, leader search (D70)
+
+Behaviour-preserving; every change was checked byte for byte (M2.6 report, crossing event
+streams for seeds 7/42/43, corridor trip counts) and the full suite (63 tests) passed after each.
+Linux only, this container, Release unless noted.
+
+| Item | Before | After |
+|---|---|---|
+| `ctest --preset desktop -j4` (Debug) | 64.1 s | 21.3 s |
+| M2.6 template, one hour, `trafficsim-cli 42 --project …` | 668 ms (661–707), 5.74G instr | median 454 ms (436–661, one outlier), 4.35G instr |
+| `stepSimulation` instr, corridor 96 × 300 s / 12 × 300 s / M2.6 | 4.26G / 761M / 2.99G | 3.48G / 655M / 2.88G |
+
+1. **One ctest test per model-test group (D70).** `all-model-tests` ran the registry serially
+   and repeated every named group; it is now `--check-groups`, which fails on an unlisted group.
+2. **`MovementAccumulator::observe`** kept queue state in a per-tick `std::map` (31% of the M2.6
+   run, 4.7M allocations an hour); it is a vector sorted by id.
+3. **`routeShortestChains`** (moved from `demand_paths.cpp` into `routing.cpp`) builds the route
+   object graph once per search; `routeContinuations` rebuilt it 3,300 times per Run.
+4. **`closestVehicle` stops** once a part starts beyond the nearest gap: parts ascend and span
+   rears are ≥ 0, so the strict tie-break keeps the same leader.
+
+Not done, measured: editor frames are 1.3–5.5 ms at 40 intersections (no work needed);
+`allocateId`/`putRoute` are O(n²) over a scripted build-up but under 1 ms per click.
 
 ## 2026-09-26 — M3.2.8a: commitment at a waiting line (D69)
 
@@ -303,59 +328,6 @@ catalog changes under it.
   M3.2.7c.
 - All 60 clamps in the gap arm were minor vehicles at a waiting line: the carved mechanism.
 
-## 2026-09-25 — M3.2.6c: queue counters in the editor (D65)
-
-M3.2.6c closes M3.2.6. Counters are now authored, listed, drawn and deleted in the editor.
-- **Queue counter tool** (`Q`, `Tool::counter`). Each click adds one line to a draft:
-  - a click on a stop line adds a reference to that head;
-  - a click on a waiting line adds a reference to that line;
-  - anywhere else on a **Link** lane, it adds an explicit point, through the new
-    `laneControlPoint`. That function maps the lane-polyline station `nearestHeadSlot` picks onto
-    the reference station a `ControlPoint` stores.
-
-  Keys:
-  - Enter commits the draft as one counter, one Undo step.
-  - Backspace drops the last line; Esc drops the draft.
-  - A head clicked twice is one line.
-  - A Connector path, or empty ground, is refused.
-- **Queue counters tab** (`src/shell/editor_counters.cpp`, index 10), with columns Id, Name, Lines,
-  Replaces approach. Its actions:
-  - *Add queue counter* over the heads in the selection, which is the keyboard route: select heads
-    in the Signal heads table, then add;
-  - *Edit* (Name) from Enter or a double-click;
-  - *Delete*, which brings the derived row back.
-  All of them go through `execute`.
-- **Marks:** counter lines are violet dotted bars above stop and waiting lines, taken from the same
-  helpers that draw or resolve their objects (`headBar`, `waitingLineBar`).
-- **One source for the tab and the report:** `queueRowName` and `replacedApproaches`
-  (`project/evaluation.hpp`). `evaluationSpec` now suppresses a derived row through
-  `replacedApproaches`.
-  - The four-leg and M2.6 reports are **byte-identical** to the previous commit's CLI, and so is a
-    project that carries an authored counter.
-  - Disconnecting the suppression fails the UI suite.
-
-Tests:
-- Headless: the lane click lands on the clicked place on a curve (both sides; lane and reference
-  stations differ by more than 0.1 m there), and the tab's helpers agree with the report.
-- `queue-counter-ui` (offscreen) on the four-leg template:
-  - Esc and a refused click, then three stop lines and a lane place committed with Enter; Undo and
-    Redo.
-  - Rename through the dialog; the Results tab shows "Counted" in place of the pocket's row, with
-    the same row count.
-  - Keyboard add, Delete, then Undo of each.
-  - Deleting the counter restores the derived rows.
-  - Thai headers; Save and reopen.
-- Three mutations are caught by this suite: Enter not committing, stop lines not recognised, and
-  suppression disconnected.
-
-Other changes:
-- The suite's `require` prints before it throws. A failing assertion otherwise aborted in
-  `~EditorWindow` (`map::at` while a window with unsaved edits closes during unwind), which hid the
-  message. That behaviour is older than this change and is only seen on a failure path.
-- Oldest entries (M3.2.2b, M3.2.2c) moved to `docs/archive/` to keep this file under 500 lines.
-
-Test runs: Linux headless 28/28, desktop 45/45 offscreen. Seed 42 is unchanged. Not run on Windows.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -466,6 +438,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D67 | 2026-09-26 | **The T-junction's signal variant puts the minor head upstream of both waiting lines; the headway exercise is a congested major road (a fixed-time head 16 m past the crossing), with the metadata recording the added head exactly instead of a geometry hash; the owner exercise is carved to M3.2.7d** | Upstream of the lines is where a signalised minor arm stands, and it composes the head with Stop/Yield rather than replacing them. Headway only decides for slow major vehicles near the entry, which free flow never produced (M3.2.7b). Hashing computed geometry would fail on another compiler for a last-bit difference the fixture tests already tolerate. A session cannot supply the owner |
 | D68 | 2026-09-26 | **Conflict areas are automatic (the owner's ruling, superseding D61's no-passive rule): every at-grade overlap of two roads is a passive area and every merge shows its derived priority; they are derived from the drawing, never stored, and a click authors one** | Vissim's modelling surface generates them and the owner asked for it. Deriving instead of storing keeps one source of truth and needs no lifecycle: an edit to the drawing simply derives again. Passive keeps today's runtime exactly, so no study result moves until the author sets a priority |
 | D69 | 2026-09-26 | **A driver who cannot stop at its line at `maxDeceleration` is committed: it ignores headway and gap time there, never occupancy, an unserved Stop, receiving space or the swept check; it applies to authored zones and derived merges; read off the snapshot, never stored** | The M3.2.7 sweeps' clamps were all drivers too close to stop when the gap closed; going is what a driver does, and the clamp was the model failing to. The owner ruled on derived merges (re-publishing the four-leg and M2.6 numbers; the four-leg did not move) and first on comfortable deceleration, which measured major-road clamps at the T-junction and an M2.6 merge and was replaced by the owner with maximum deceleration. Stateless keeps replay exact | The 5 residual minor clamps at walking pace near a merge line (not diagnosed); a stop-or-go decision at amber (D36, M4) |
+| D70 | 2026-09-26 | **Every model-test group is its own ctest test; `all-model-tests` is a registry check (`--check-groups`) that runs nothing and fails on a group the CMake list omits** | The unfiltered run was 60 s of serial wall time that `ctest -j` could not spread, and it re-ran every named group. The check keeps what that run was for (no group silently unregistered, as `points` once was) without the cost | — |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |
