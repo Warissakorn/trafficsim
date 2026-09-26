@@ -15,6 +15,12 @@ void pruneRoutingDecisions(AuthoringDefinition&, const Network&);
 // Deletes every area with a side, or a side's waiting line, on a removed Link or Connector, the
 // areas' rules, the waiting lines on removed owners, and lines that served only those areas.
 void removeControlsOn(ProjectDocument&, const std::set<std::string>& links, const std::set<std::string>& connectors);
+// M3.2.5: drops the area ids that no longer exist from every Stop/Yield control, then any control
+// left with no area or no line -- a control means nothing without both.
+void pruneStopControls(RightOfWay&);
+// M3.2.6b: drops each queue-counter line whose head or waiting line is gone, or whose explicit point
+// lies on one of the removed Links/Connectors, then any counter left with no line.
+void pruneQueueCounters(ProjectDocument&, const std::set<std::string>& links = {}, const std::set<std::string>& connectors = {});
 // True when a control names this Link: reversing it would turn every station around.
 bool controlsNameLink(const Network&, const std::string& link);
 // After splitLink cut `link` at `distance` and moved Connector ends: stations at or past the far

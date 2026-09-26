@@ -12,7 +12,7 @@ EvaluationSpec oneLane() {
     EvaluationSpec spec;
     spec.movementNames = {"in → out"};
     spec.movementOfRoute = {{"route", 0}};
-    spec.counters = {{"approach", {"h"}}};
+    spec.counters = {{"approach", {{"road", 100}}}}; // the head "h" stop line
     spec.queue = {5 * kmh, 10 * kmh, 20};
     return spec;
 }
@@ -127,7 +127,7 @@ TEST(movement, four_leg_movement_table) {
     CHECK(spec.movementNames.size() == 12); CHECK(spec.counters.size() == 4);
     CHECK(spec.movementNames.front() == "West approach → East exit");
     CHECK(spec.counters.front().name == "West approach, right-turn pocket");
-    CHECK(spec.counters.front().headIds.size() == 3);
+    CHECK(spec.counters.front().lines.size() == 3);
     CHECK(spec.movementOfRoute.size() == snapshot.scenario.routes.size()); // every lane route mapped
     const auto r = observeRun(createSimulation(snapshot.scenario, 42), spec);
     for (const auto& m : r.movements) { CHECK(m.vehicles > 0); CHECK(*m.meanDelay > 0); }

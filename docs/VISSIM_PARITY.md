@@ -106,12 +106,13 @@ Vissim users work with one hand on the keyboard. **Rewritten 2026-09-22 (M1.27.3
 |---|---|---|
 | New / Open / Save / Save As | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | `editor_window.cpp` |
 | Undo / Redo | `Ctrl+Z` / platform default **and `Ctrl+Y`** on every platform | `editor_palette.cpp` |
-| Choose a tool | `S` select · `L` link · `C` connector · `R` route · `V` input · `H` head · `X` split · `M` measure · `K` calibrate | `editor_palette.cpp` |
+| Choose a tool | `S` select · `L` link · `C` connector · `R` route · `V` input · `H` head · `A` conflict area · `X` split · `M` measure · `K` calibrate | `editor_palette.cpp` |
 | Run · step · stop | `F5` · `F6` or `Space` · `Esc` | `editor_run.cpp` |
 | Background image | `Ctrl+B` | `editor_palette.cpp` |
 | Properties · Objects and problems · History docks | `Ctrl+I` · `Ctrl+Shift+O` · `Ctrl+Shift+H` | `editor_inspector.cpp`, `editor_tables.cpp`, `editor_history.cpp` |
 | Fit network | `F` | `editor_window.cpp` |
-| Cycle the objects under the pointer | `Tab` | `canvas_display.cpp` |
+| Cycle the objects under the pointer (with the Conflict area tool: the areas) | `Tab` | `canvas_display.cpp` |
+| Conflict area tool · cycle the selected area's priority | `A` · `P` | `editor_palette.cpp`, `editor_priority.cpp` |
 | Delete the selection · delete a geometry point | `Delete` · `Ctrl+Delete` | `canvas_input.cpp` |
 | Nudge the selection by one grid step (`Shift` ×10) | arrow keys | `canvas_input.cpp` |
 | Finish the Link or route being drawn · drop its last segment | `Enter` · `Backspace` | `canvas_input.cpp` |
@@ -156,6 +157,8 @@ gesture at the same time as the model is far cheaper than retrofitting it.
 | **Vehicle routes (static)** | `Ctrl`+right-click on the link/connector at the routing decision, then left-click the destination section | Typed since **M1.5.1**; the gesture is **M1.25**; **M1.26** makes the route name Links and Connectors, so it covers every lane of the carriageway the way Vissim's does, and narrowing a Connector no longer invalidates it. Still absent: the decision as a positioned object, relative flows, per-interval volumes and a lane-specific route — all M2.1 |
 | **Nodes** | Right-click-drag a polygon over the junction, double-click the first point to close | Absent entirely. Nodes are how Vissim aggregates delay and queue per junction — the output a traffic impact study needs. Belongs with **M5 evaluation**, not the editor |
 | **Signal controllers** | `Signal Control > Signal Controllers` table, right-click → **Add…**, then **Edit signal groups** | **Fixed time since M2.7b:** Signal control tab → Add signal controller, a groups table with green start/end and amber, a timing-bar diagram, 2-/4-phase templates; a head shows a signal group. No actuated control, intergreen matrix or conflict check — **M4** |
+| **Conflict areas** | Picked only while *Conflict Areas* is the active object type (from the manual, not measured here); a click selects, clicking again or the context menu sets the status | **M3.2.4b (D61):** the Conflict area tool (`A`) is that object type, so Select still picks the Link at a junction. A click selects the row; a click on the selected area or `P` cycles firstYields → secondYields → undetermined (no *passive*: an unauthored crossing is not an area); a waiting line drags along its lane. Areas are created from two selected roads in the Conflict areas tab |
+| **Queue counters** | Placed as their own object type with a click on a link (from the manual, not measured here) | **M3.2.6c (D65):** the Queue counter tool (`Q`). Each click adds a line to one counter: a stop line references its head, a waiting line references itself, anywhere else on a Link lane is a point; Enter creates it, Backspace drops a line, Esc cancels. Keyboard: *Add queue counter* over heads selected in the Signal heads table. A counter over an approach's heads replaces that approach's derived row. No point on a Connector path |
 | **Parking lots** | **Car Park Creator** generates bays and their connectors from a drawn area | Absent. Not booked (§4) |
 
 The pattern worth extracting: in Vissim **one chord creates everything**, and the object type
@@ -321,19 +324,10 @@ not by blurring the formats.
 
 ## 2026-09-15 follow-up — Reported Network Editor failures
 
-The earlier M1.9 endpoint-only behavior did not satisfy body-to-body authoring. The
-Ctrl+right-drag preview in Select mode also had no Link commit branch, and release used
-stale move state. M1.11 addresses these with release-position commits, body attachment
-fractions, source/target/middle range handles and a Link lane-count handle.
-
-Review also covered cancellation, hidden-level picking, inspector range bounds, shape-handle
-z-order, duplicate connections at distinct positions, schema migration, duplication,
-reanchoring, splits and runtime diagnostics. A split through an attachment is rejected;
-other attachments are remapped onto the proper child Link. The current whole-lane runtime
-cannot honor body attachments and explicitly blocks Run (M1.11.1). First-lane selection
-remains in Properties/the creation dialog. The middle handle changes both ranges together;
-there is no independent arbitrary Connector lane topology. Group transforms, editable
-tables and additional object types retain their earlier status. Owner acceptance remains open.
+M1.9's endpoint-only Connectors failed body-to-body authoring, and Ctrl+right-drag in Select had no
+Link commit and used stale move state. M1.11 fixed both: release-position commits, body attachment
+fractions, source/target/middle range handles, a Link lane-count handle. A split through an
+attachment is rejected; others are remapped onto the right child Link. Owner acceptance remains open.
 
 > Earlier 2026-09-16 follow-ups are in
 > [`archive/VISSIM_PARITY-2026-09-16.md`](archive/VISSIM_PARITY-2026-09-16.md).

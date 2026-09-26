@@ -17,6 +17,9 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network&);
 // Resolution is by id, never by ordinal, so a lane-count change cannot retarget a control.
 std::string resolveControlPath(const Network&, const RuntimeSections&, const ControlPathRef&,
                                double station);
+// M3.2.6b: the same resolution with the metres along that segment, for a queue counter's line.
+struct ControlLocation { std::string segment; double position{}; };
+std::optional<ControlLocation> locateControlPoint(const Network&, const RuntimeSections&, const ControlPoint&);
 
 // M3.2.2c. Where two lane surfaces really overlap, as an interval of authored stations on each
 // path's own polyline (a Link's reference polyline, a Connector's base polyline) -- the numbers a
@@ -32,6 +35,19 @@ struct SurfaceOverlap {
     StationInterval first, second;
 };
 SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const ControlPathRef& second);
+// M3.2.4: what the editor draws, from the same lane strips. A side's area is the strip between
+// its entry and exit as a closed outline; a waiting line is a bar across its lane. Empty when the
+// reference does not resolve -- the editor draws nothing rather than a guess.
+std::vector<Point> conflictSideOutline(const Network&, const ConflictSide&);
+std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const ControlPoint&);
+// M3.2.4b: the polyline a ControlPoint's station is measured on (a Link's reference polyline, a
+// Connector's base polyline), so a drag commits the station waitingLineBar and the resolver read.
+// Empty when the reference does not resolve.
+std::vector<Point> controlPathPolyline(const Network&, const ControlPathRef&);
+// M3.2.6c: the ControlPoint at a place on a Link lane, from a station along that lane's own
+// polyline (what nearestHeadSlot picks) -- mapped cross-section for cross-section onto the Link's
+// reference polyline, where a ControlPoint's station is measured. Empty when the lane is gone.
+std::optional<ControlPoint> laneControlPoint(const Network&, const LaneReference&, double laneStation);
 
 // One merge: the incoming segments that arrive on one section, in drawing order -- the order
 // derivedPriorityRules ranks them in. `explicitControl` is set when an authored area covers two
@@ -42,14 +58,19 @@ struct MergeGroup {
     bool explicitControl{};
 };
 std::vector<MergeGroup> mergeGroups(const Network&, const RuntimeSections&);
+// M3.2.4, for the editor's two named actions. The merge sections any path of this Connector
+// arrives on ("Take over merge"), and the one an authored merge area covers ("Restore automatic
+// priority"); empty when there is none.
+std::vector<std::string> mergeSectionsOf(const Network&, const RuntimeSections&, const std::string& connectorId);
+std::string mergeSectionOfArea(const Network&, const RuntimeSections&, const ConflictArea&);
 
-// The one resolver the compiler and the diagnostics share. `rules` is every core rule the
-// scenario needs: the derived rule of each merge nobody overrode, in derivedPriorityRules'
-// order, then one rule per authored area of a complete, acyclic group. `issues` are runtime
-// (Run-blocking) issues; with none, `rules` is what compiles. With no authored controls the
-// result is exactly derivedPriorityRules -- the frozen fixtures and seed 42 depend on it.
-// `zones` (M3.2.3a) is one core ConflictZone per crossing area with nothing reported against it:
-// isolated, each side on one segment, decided, ruled, waiting line resolved, coverage met.
+// The one resolver the compiler and the diagnostics share. `issues` are runtime (Run-blocking)
+// issues; with none, `rules` and `zones` are what compiles. With no authored controls `rules` is
+// exactly derivedPriorityRules -- the frozen fixtures and seed 42 depend on it.
+// `rules` are the derived rules of every merge nobody overrode. `zones` are the authored areas the
+// admission solver runs: each crossing with nothing reported against it (M3.2.3a/b), and each
+// area of a complete, acyclic merge group (M3.2.3c) -- an authored merge no longer compiles to a
+// rule, because the solver also holds the major side for an admitted minor vehicle.
 struct RightOfWayResolution {
     std::vector<PriorityRule> rules;
     std::vector<ConflictZone> zones;

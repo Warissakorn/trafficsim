@@ -132,6 +132,42 @@ std::optional<StationInterval> joined(std::vector<StationInterval> pieces) {
     return all;
 }
 }
+std::vector<Point> conflictSideOutline(const Network& n, const ConflictSide& side) {
+    try {
+        const auto strip = stripOf(n, side.path);
+        if (!strip || strip->left.size() != strip->base.size() || strip->right.size() != strip->base.size()) return {};
+        const auto span = [&](const std::vector<Point>& edge) {
+            return polylineSpan(edge, matchedStation(strip->base, edge, side.entryStation),
+                                matchedStation(strip->base, edge, side.exitStation));
+        };
+        auto outline = span(strip->left);
+        const auto right = span(strip->right);
+        outline.insert(outline.end(), right.rbegin(), right.rend());
+        return outline;
+    } catch (const std::exception&) { return {}; }
+}
+std::vector<Point> controlPathPolyline(const Network& n, const ControlPathRef& ref) {
+    const auto strip = stripOf(n, ref);
+    return strip ? strip->base : std::vector<Point>{};
+}
+std::optional<ControlPoint> laneControlPoint(const Network& n, const LaneReference& lane, double laneStation) {
+    for (const auto& l : n.links) if (l.id == lane.linkId)
+        for (const auto& x : l.lanes) if (x.id == lane.laneId) {
+            const auto along = laneGeometry(l, x.id, n.drivingSide);
+            if (along.size() != l.geometry.size() || !std::isfinite(laneStation)) return std::nullopt;
+            return ControlPoint{{l.id, x.id, "", "", ""}, matchedStation(along, l.geometry, laneStation)};
+        }
+    return std::nullopt;
+}
+std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const ControlPoint& point) {
+    try {
+        const auto strip = stripOf(n, point.path);
+        if (!strip || strip->left.size() != strip->base.size() || strip->right.size() != strip->base.size()) return std::nullopt;
+        if (point.station < 0 || point.station > polylineLength(strip->base)) return std::nullopt;
+        return std::pair{pointAlong(strip->left, matchedStation(strip->base, strip->left, point.station)),
+                         pointAlong(strip->right, matchedStation(strip->base, strip->right, point.station))};
+    } catch (const std::exception&) { return std::nullopt; }
+}
 SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
     SurfaceOverlap result;
     const auto a = stripOf(n, first), b = stripOf(n, second);

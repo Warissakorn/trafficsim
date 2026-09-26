@@ -33,7 +33,7 @@ void EditorWindow::buildRouting() {
 void EditorWindow::refreshToolHint() {
     if(!toolHint_)return;
     const int index=tool_->currentIndex();
-    toolHint_->setText(index==6?text("editorRouteClickHelp"):index==7?text("editorInputPlaceHelp"):index==8?text("editorHeadPlaceHelp"):QString{});
+    toolHint_->setText(index==6?text("editorRouteClickHelp"):index==7?text("editorInputPlaceHelp"):index==8?text("editorHeadPlaceHelp"):index==10?text("editorCounterPlaceHelp"):QString{});
     toolHint_->setToolTip(toolHint_->text());
 }
 void EditorWindow::commitDrawnRoute(const std::vector<std::string>& segmentIds) {

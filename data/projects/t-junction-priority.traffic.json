@@ -1,0 +1,455 @@
+{
+  "background": {
+    "metresPerPixel": 1.0,
+    "opacity": 0.5,
+    "pngBase64": "",
+    "rotation": 0.0,
+    "x": 0.0,
+    "y": 0.0
+  },
+  "definition": {
+    "duration": 1500.0,
+    "inputs": [
+      {
+        "endTime": 900.0,
+        "id": "input-28",
+        "routeId": "route-24",
+        "startTime": 0.0,
+        "vehicleTypeId": "car",
+        "vehiclesPerHour": 450.0
+      },
+      {
+        "endTime": 900.0,
+        "id": "input-29",
+        "routeId": "route-25",
+        "startTime": 0.0,
+        "vehicleTypeId": "car",
+        "vehiclesPerHour": 450.0
+      },
+      {
+        "endTime": 900.0,
+        "id": "input-30",
+        "routeId": "route-26",
+        "startTime": 0.0,
+        "vehicleTypeId": "car",
+        "vehiclesPerHour": 100.0
+      },
+      {
+        "endTime": 900.0,
+        "id": "input-31",
+        "routeId": "route-27",
+        "startTime": 0.0,
+        "vehicleTypeId": "car",
+        "vehiclesPerHour": 100.0
+      }
+    ],
+    "routes": [
+      {
+        "id": "route-24",
+        "segmentIds": [
+          "link-1"
+        ]
+      },
+      {
+        "id": "route-25",
+        "segmentIds": [
+          "link-3"
+        ]
+      },
+      {
+        "id": "route-26",
+        "segmentIds": [
+          "link-5",
+          "connector-7",
+          "link-3"
+        ]
+      },
+      {
+        "id": "route-27",
+        "segmentIds": [
+          "link-5",
+          "connector-8",
+          "link-1"
+        ]
+      }
+    ],
+    "signalPrograms": [],
+    "timeStep": 0.1
+  },
+  "format": "TrafficSim",
+  "network": {
+    "connectors": [
+      {
+        "displayType": "default",
+        "from": {
+          "laneId": "lane-6",
+          "linkId": "link-5"
+        },
+        "fromLaneCount": 1,
+        "geometry": [
+          {
+            "x": 0.0,
+            "y": -12.0
+          },
+          {
+            "x": -1.8561378788382417,
+            "y": -5.4028372996150535
+          },
+          {
+            "x": -6.6163676769019775,
+            "y": -0.99002204410227
+          },
+          {
+            "x": -13.068413636514725,
+            "y": 1.480304233461649
+          },
+          {
+            "x": -20.0,
+            "y": 2.25
+          }
+        ],
+        "id": "connector-7",
+        "laneBlend": [],
+        "laneMarkings": [],
+        "laneWidths": [],
+        "level": 0,
+        "name": "Minor crossing turn",
+        "to": {
+          "laneId": "lane-4",
+          "linkId": "link-3",
+          "station": 170.0
+        },
+        "toLaneCount": 1
+      },
+      {
+        "displayType": "default",
+        "from": {
+          "laneId": "lane-6",
+          "linkId": "link-5"
+        },
+        "fromLaneCount": 1,
+        "geometry": [
+          {
+            "x": 0.0,
+            "y": -12.0
+          },
+          {
+            "x": 2.0264885355029585,
+            "y": -6.12542724609375
+          },
+          {
+            "x": 7.070636094674557,
+            "y": -3.2573242187500004
+          },
+          {
+            "x": 13.579465606508876,
+            "y": -2.32305908203125
+          },
+          {
+            "x": 20.0,
+            "y": -2.25
+          }
+        ],
+        "id": "connector-8",
+        "laneBlend": [],
+        "laneMarkings": [],
+        "laneWidths": [],
+        "level": 0,
+        "name": "Minor near turn",
+        "to": {
+          "laneId": "lane-2",
+          "linkId": "link-1",
+          "station": 170.0
+        },
+        "toLaneCount": 1
+      }
+    ],
+    "drivingSide": "right",
+    "id": "t-junction-priority",
+    "links": [
+      {
+        "boundaryMarkings": [],
+        "displayType": "default",
+        "geometry": [
+          {
+            "x": -150.0,
+            "y": -2.25
+          },
+          {
+            "x": 150.0,
+            "y": -2.25
+          }
+        ],
+        "id": "link-1",
+        "laneOffset": 0.0,
+        "lanes": [
+          {
+            "id": "lane-2",
+            "width": 3.5
+          }
+        ],
+        "level": 0,
+        "name": "Major eastbound"
+      },
+      {
+        "boundaryMarkings": [],
+        "displayType": "default",
+        "geometry": [
+          {
+            "x": 150.0,
+            "y": 2.25
+          },
+          {
+            "x": -150.0,
+            "y": 2.25
+          }
+        ],
+        "id": "link-3",
+        "laneOffset": 0.0,
+        "lanes": [
+          {
+            "id": "lane-4",
+            "width": 3.5
+          }
+        ],
+        "level": 0,
+        "name": "Major westbound"
+      },
+      {
+        "boundaryMarkings": [],
+        "displayType": "default",
+        "geometry": [
+          {
+            "x": 0.0,
+            "y": -150.0
+          },
+          {
+            "x": 0.0,
+            "y": -12.0
+          }
+        ],
+        "id": "link-5",
+        "laneOffset": 0.0,
+        "lanes": [
+          {
+            "id": "lane-6",
+            "width": 3.5
+          }
+        ],
+        "level": 0,
+        "name": "Minor approach"
+      }
+    ],
+    "queueCounters": [
+      {
+        "id": "counter-23",
+        "lines": [
+          {
+            "referenceId": "wait-9"
+          },
+          {
+            "referenceId": "wait-18"
+          }
+        ],
+        "name": "Minor approach queue"
+      }
+    ],
+    "rightOfWay": {
+      "conflictAreas": [
+        {
+          "first": {
+            "entryStation": 7.4459431919011365,
+            "exitStation": 19.443915558151026,
+            "path": {
+              "connectorId": "connector-7",
+              "fromLaneId": "lane-6",
+              "toLaneId": "lane-4"
+            },
+            "waitingLineId": "wait-9"
+          },
+          "id": "conflict-11",
+          "kind": "crossing",
+          "name": "Minor crosses eastbound",
+          "priority": "firstYields",
+          "second": {
+            "entryStation": 137.20953655601417,
+            "exitStation": 149.2047210030578,
+            "path": {
+              "laneId": "lane-2",
+              "linkId": "link-1"
+            },
+            "waitingLineId": "wait-10"
+          }
+        },
+        {
+          "first": {
+            "entryStation": 26.2272604864502,
+            "exitStation": 27.2272604864502,
+            "path": {
+              "connectorId": "connector-7",
+              "fromLaneId": "lane-6",
+              "toLaneId": "lane-4"
+            },
+            "waitingLineId": "wait-14"
+          },
+          "id": "conflict-15",
+          "kind": "merge",
+          "name": "Minor joins westbound",
+          "priority": "firstYields",
+          "second": {
+            "entryStation": 169.0,
+            "exitStation": 170.0,
+            "path": {
+              "laneId": "lane-4",
+              "linkId": "link-3"
+            },
+            "waitingLineId": "wait-13"
+          }
+        },
+        {
+          "first": {
+            "entryStation": 24.013305159865943,
+            "exitStation": 25.013305159865943,
+            "path": {
+              "connectorId": "connector-8",
+              "fromLaneId": "lane-6",
+              "toLaneId": "lane-2"
+            },
+            "waitingLineId": "wait-18"
+          },
+          "id": "conflict-19",
+          "kind": "merge",
+          "name": "Minor joins eastbound",
+          "priority": "firstYields",
+          "second": {
+            "entryStation": 169.0,
+            "exitStation": 170.0,
+            "path": {
+              "laneId": "lane-2",
+              "linkId": "link-1"
+            },
+            "waitingLineId": "wait-17"
+          }
+        }
+      ],
+      "priorityRules": [
+        {
+          "conflictAreaId": "conflict-11",
+          "gapTime": 5.0,
+          "headway": 7.0,
+          "id": "rule-12",
+          "name": ""
+        },
+        {
+          "conflictAreaId": "conflict-15",
+          "gapTime": 5.0,
+          "headway": 7.0,
+          "id": "rule-16",
+          "name": ""
+        },
+        {
+          "conflictAreaId": "conflict-19",
+          "gapTime": 5.0,
+          "headway": 7.0,
+          "id": "rule-20",
+          "name": ""
+        }
+      ],
+      "stopControls": [
+        {
+          "conflictAreaIds": [
+            "conflict-11"
+          ],
+          "id": "stop-21",
+          "mode": "yield",
+          "name": "",
+          "waitingLineId": "wait-9"
+        },
+        {
+          "conflictAreaIds": [
+            "conflict-19"
+          ],
+          "id": "stop-22",
+          "mode": "yield",
+          "name": "",
+          "waitingLineId": "wait-18"
+        }
+      ],
+      "waitingLines": [
+        {
+          "id": "wait-9",
+          "name": "",
+          "point": {
+            "path": {
+              "connectorId": "connector-7",
+              "fromLaneId": "lane-6",
+              "toLaneId": "lane-4"
+            },
+            "station": 6.4459431919011365
+          }
+        },
+        {
+          "id": "wait-10",
+          "name": "",
+          "point": {
+            "path": {
+              "laneId": "lane-2",
+              "linkId": "link-1"
+            },
+            "station": 136.20953655601417
+          }
+        },
+        {
+          "id": "wait-13",
+          "name": "",
+          "point": {
+            "path": {
+              "laneId": "lane-4",
+              "linkId": "link-3"
+            },
+            "station": 169.0
+          }
+        },
+        {
+          "id": "wait-14",
+          "name": "",
+          "point": {
+            "path": {
+              "connectorId": "connector-7",
+              "fromLaneId": "lane-6",
+              "toLaneId": "lane-4"
+            },
+            "station": 26.2272604864502
+          }
+        },
+        {
+          "id": "wait-17",
+          "name": "",
+          "point": {
+            "path": {
+              "laneId": "lane-2",
+              "linkId": "link-1"
+            },
+            "station": 169.0
+          }
+        },
+        {
+          "id": "wait-18",
+          "name": "",
+          "point": {
+            "path": {
+              "connectorId": "connector-8",
+              "fromLaneId": "lane-6",
+              "toLaneId": "lane-2"
+            },
+            "station": 24.013305159865943
+          }
+        }
+      ]
+    },
+    "signalHeads": []
+  },
+  "nextId": 32,
+  "revision": 0,
+  "schemaVersion": 16
+}

@@ -5,7 +5,7 @@
 using namespace trafficsim;
 using namespace rowfixture;
 // M3.2.2c: a waiting line on a preceding Link, and crossing coverage (docs/M3_CONTRACT.md §1).
-// Every authored area is still Run-blocked by UNSUPPORTED_CONFLICT_RUNTIME until M3.2.3.
+// "No issue" below means the area would run (M3.2.3a/b).
 namespace {
 const Link& link(const ProjectDocument& d, const std::string& id) {
     for (const auto& l : d.network.links) if (l.id == id) return l;
@@ -13,8 +13,8 @@ const Link& link(const ProjectDocument& d, const std::string& id) {
 }
 std::string lane(const ProjectDocument& d, const std::string& id, std::size_t k = 0) { return link(d, id).lanes[k].id; }
 ControlPathRef onLane(const ProjectDocument& d, const std::string& id, std::size_t k = 0) { return {id, lane(d, id, k), "", "", ""}; }
-bool onlyRuntimeMarker(const RightOfWayResolution& r) {
-    return count(r.issues, "UNSUPPORTED_CONFLICT_RUNTIME") == static_cast<int>(r.issues.size());
+bool noIssues(const RightOfWayResolution& r) {
+    return r.issues.empty();
 }
 bool coreRefuses(const ProjectDocument& d, const std::string& code) {
     return has(validateScenario(buildScenario(d.network, ScenarioDefinition{.priorityDefaults = kDefaults})), code);
@@ -46,11 +46,11 @@ TEST(rightofway_resolution, a_waiting_line_on_the_preceding_link_compiles_before
     // The forcing: the line really is on another object than the side it serves.
     CHECK(u.t.d.network.rightOfWay.conflictAreas.back().first.path.connectorId != "");
     const auto r = resolve(u.t.d);
-    CHECK(onlyRuntimeMarker(r)); // M3.2.2b reported CONFLICT_WAITING_LINE_UNSUPPORTED here
-    const auto rules = std::count_if(r.rules.begin(), r.rules.end(), [&](const auto& x) {
+    CHECK(noIssues(r)); // M3.2.2b reported CONFLICT_WAITING_LINE_UNSUPPORTED here
+    const auto zones = std::count_if(r.zones.begin(), r.zones.end(), [&](const auto& z) {
         // A straight one-lane approach: its lane stations are its reference stations.
-        return x.yieldSegmentId == u.yielding && std::abs(x.yieldPosition + 10) < 1e-9; });
-    CHECK(rules == 2); // it yields to both earlier paths, and waits at the same line for each
+        return z.minor.segmentIds.front() == u.yielding && std::abs(z.waitPosition + 10) < 1e-9; });
+    CHECK(zones == 2); // it yields to both earlier paths, and waits at the same line for each
     CHECK(!coreRefuses(u.t.d, "INVALID_POSITION")); CHECK(!coreRefuses(u.t.d, "UNSUPPORTED_MERGE"));
 }
 TEST(rightofway_resolution, a_line_a_route_can_go_round_is_refused_by_name) {
@@ -67,18 +67,18 @@ TEST(rightofway_resolution, a_line_a_route_can_go_round_is_refused_by_name) {
                                     [&](const auto& x) { return x.id == u.line; });
     CHECK(line.point.station < u.length - 45); // the forcing: the line is upstream of both
     CHECK(has(resolve(d).issues, "CONFLICT_WAITING_LINE_BYPASSED"));
-    CHECK(rulesWithPrefix(resolve(d), "right-of-way/") == 0); // nothing is compiled for the group
+    CHECK(resolve(d).zones.empty()); // nothing is compiled for the group
     // Past the join the line is on every route again.
     auto after = d;
     auto moved = line; moved.point.station = u.length - 10; putWaitingLine(after, moved);
-    CHECK(onlyRuntimeMarker(resolve(after)));
+    CHECK(noIssues(resolve(after)));
     // Without the join, the diverge alone does not stop the original line resolving.
     deleteObjects(d, {join});
     validateDocument(d);
     const auto r = resolve(d);
-    CHECK(onlyRuntimeMarker(r));
-    CHECK(std::any_of(r.rules.begin(), r.rules.end(), [&](const auto& x) {
-        return x.yieldSegmentId == u.yielding && std::abs(x.yieldPosition + 60) < 1e-9; }));
+    CHECK(noIssues(r));
+    CHECK(std::any_of(r.zones.begin(), r.zones.end(), [&](const auto& z) {
+        return z.minor.segmentIds.front() == u.yielding && std::abs(z.waitPosition + 60) < 1e-9; }));
     CHECK(!coreRefuses(d, "INVALID_POSITION"));
     // A line nowhere upstream of the side is named as such.
     auto elsewhere = d;
@@ -108,11 +108,11 @@ TEST(rightofway_resolution, a_line_earlier_on_the_same_lane_compiles_back_along_
     const auto& minor = sectionForStation(table, lane(d, x), 50.3);
     CHECK(minor.start == 50); // the forcing: the line lies in an earlier section than the side
     const auto r = resolve(d);
-    CHECK(onlyRuntimeMarker(r));
-    const auto rule = std::find_if(r.rules.begin(), r.rules.end(), [&](const auto& k) { return k.yieldSegmentId == minor.id; });
-    CHECK(rule != r.rules.end());
+    CHECK(noIssues(r));
+    const auto* zone = zoneYielding(r, minor.id);
+    CHECK(zone != nullptr);
     // M3.2.2b compiled this to the end of the short section, 0.6 m, without a word.
-    test::near(rule->yieldPosition, -30, 1e-9);
+    test::near(zone->waitPosition, -30, 1e-9);
 }
 namespace {
 // Link A (optionally curved, several lanes) crossed by a straight one-lane Link B; one crossing
@@ -163,7 +163,7 @@ TEST(rightofway_resolution, a_crossing_area_must_cover_the_real_overlap) {
     const auto o = surfaceOverlap(c.d.network, c.pa, c.pb);
     test::near(o.first.from, 48.25, 1e-9); test::near(o.first.to, 51.75, 1e-9);
     test::near(o.second.from, 58.25, 1e-9); test::near(o.second.to, 61.75, 1e-9);
-    CHECK(onlyRuntimeMarker(resolve(c.d)));
+    CHECK(noIssues(resolve(c.d)));
     // An extent that stops short of the overlap is named, on the side that is short.
     auto shortExit = c.d;
     shortExit.network.rightOfWay.conflictAreas[0].first.exitStation = 51;
@@ -175,7 +175,7 @@ TEST(rightofway_resolution, a_crossing_area_must_cover_the_real_overlap) {
     // A larger area than the overlap is the author's choice, not an error.
     auto larger = c.d;
     larger.network.rightOfWay.conflictAreas[0].second.exitStation = 70;
-    CHECK(onlyRuntimeMarker(resolve(larger)));
+    CHECK(noIssues(resolve(larger)));
     // Move B off A: the stored numbers stay, and the area no longer protects anything.
     auto apart = c.d;
     changeGeometry(apart, c.b, {{150, -60}, {150, 60}});
@@ -198,6 +198,6 @@ TEST(rightofway_resolution, the_overlap_is_measured_on_curved_lanes_for_both_dri
         CHECK(o.first.to - o.first.from > 1); // the forcing: a real crossing, not a touch
         CHECK(!meets(c.d, c, o.first.from - 0.05)); CHECK(meets(c.d, c, o.first.from + 0.05));
         CHECK(meets(c.d, c, o.first.to - 0.05)); CHECK(!meets(c.d, c, o.first.to + 0.05));
-        CHECK(onlyRuntimeMarker(resolve(c.d)));
+        CHECK(noIssues(resolve(c.d)));
     }
 }

@@ -69,7 +69,11 @@ void EditorWindow::jumpTo(int row) {
     const auto* cell=problemTable_->item(row,0);
     if (!cell) return;
     const auto id=cell->data(Qt::UserRole).toString().toStdString();
-    if (id.empty()) {selectDemand(cell->data(Qt::UserRole+1).toString().toStdString());return;}
+    if (id.empty()) {
+        const auto object=cell->data(Qt::UserRole+1).toString().toStdString();
+        if (!selectConflict(object)) selectDemand(object); // M3.2.4: authored controls have a tab
+        return;
+    }
     canvas_->select(id);
     canvas_->frame(id);
 }

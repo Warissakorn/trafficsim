@@ -1,7 +1,11 @@
 #include "evaluation.hpp"
 #include "json.hpp"
+#include "../model/network/right_of_way.hpp"
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include <cmath>
+#include <optional>
+#include <set>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -27,6 +31,18 @@ std::string linkLabel(const Network& network, const std::string& id) {
         if (link.id == id) return link.name.empty() ? id : link.name;
     return id;
 }
+}
+std::string queueRowName(const AuthoredQueueCounter& c) { return c.name.empty() ? c.id : c.name; }
+std::vector<std::string> replacedApproaches(const Network& network, const AuthoredQueueCounter& c) {
+    std::vector<std::string> links;
+    for (const auto& link : network.links) {
+        const bool measured = std::any_of(c.lines.begin(), c.lines.end(), [&](const auto& l) {
+            return !l.point && std::any_of(network.signalHeads.begin(), network.signalHeads.end(), [&](const auto& h) {
+                return h.id == l.referenceId && h.connectorId.empty() && h.lane.linkId == link.id; });
+        });
+        if (measured) links.push_back(link.id);
+    }
+    return links;
 }
 EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot& snapshot,
                               const std::filesystem::path& dataDirectory) {
@@ -69,12 +85,44 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
                                          linkLabel(document.network, key.second));
         spec.movementOfRoute[route.id] = it->second;
     }
-    for (const auto& link : snapshot.network.links) {
-        QueueCounter counter{link.name.empty() ? link.id : link.name, {}};
-        for (const auto& head : snapshot.network.signalHeads)
-            if (head.connectorId.empty() && head.lane.linkId == link.id) counter.headIds.push_back(head.id);
-        if (!counter.headIds.empty()) spec.counters.push_back(std::move(counter));
+    // Counter lines are places on runtime segments (M3.2.6b). A head's is where the core stops
+    // traffic for it, read from the compiled scenario, so a head-derived counter measures exactly
+    // the line it always did.
+    const auto& network = snapshot.network;
+    const auto headLine = [&](const std::string& id) -> std::optional<CounterLine> {
+        for (const auto& h : snapshot.scenario.signalHeads) if (h.id == id) return CounterLine{h.segmentId, h.position};
+        return std::nullopt;
+    };
+    std::set<std::string> replaced; // Links an authored counter measures heads on: their derived row goes
+    std::vector<QueueCounter> authored;
+    for (const auto& c : network.queueCounters) {
+        QueueCounter counter{queueRowName(c), {}};
+        for (const auto& l : c.lines) {
+            std::optional<CounterLine> line;
+            if (l.point) {
+                if (const auto at = locateControlPoint(network, table, *l.point)) line = CounterLine{at->segment, at->position};
+            } else if (!(line = headLine(l.referenceId))) {
+                for (const auto& w : network.rightOfWay.waitingLines)
+                    if (w.id == l.referenceId)
+                        if (const auto at = locateControlPoint(network, table, w.point)) line = CounterLine{at->segment, at->position};
+            }
+            if (line) counter.lines.push_back(*line);
+        }
+        // A line that no longer resolves measures nothing; a counter with none is not a row.
+        if (counter.lines.empty()) continue;
+        for (auto& link : replacedApproaches(network, c)) replaced.insert(std::move(link));
+        authored.push_back(std::move(counter));
     }
+    for (const auto& link : network.links) {
+        // One row per approach (A23): an authored counter over any of its heads replaces it.
+        if (replaced.contains(link.id)) continue;
+        QueueCounter counter{link.name.empty() ? link.id : link.name, {}};
+        for (const auto& head : network.signalHeads)
+            if (head.connectorId.empty() && head.lane.linkId == link.id)
+                if (const auto line = headLine(head.id)) counter.lines.push_back(*line);
+        if (!counter.lines.empty()) spec.counters.push_back(std::move(counter));
+    }
+    for (auto& c : authored) spec.counters.push_back(std::move(c));
     return spec;
 }
 namespace {

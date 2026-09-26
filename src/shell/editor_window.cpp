@@ -61,7 +61,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     buildHistory();
     auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
-    for(int i=0;i<9;++i) tool_->addItem("",i);
+    for(int i=0;i<11;++i) tool_->addItem("",i);
     tool_->hide();
     tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
@@ -86,6 +86,8 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         if (index==5) properties_->setCurrentIndex(1);
         else if (index==4) properties_->setCurrentIndex(2);
         else if (index==1 || index==2) properties_->setCurrentIndex(0);
+        else if (index==9) showConflicts(); // the tool edits what that tab lists
+        else if (index==10) showCounters();
     });
     connect(grid_,&QDoubleSpinBox::valueChanged,this,[this](double n){canvas_->grid=n;canvas_->redraw();});
     canvas_->selectionChanged=[this]{
@@ -149,7 +151,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         execute("editorMoveHead",[&](auto& d){moveSignalHead(d,id,station);});
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
-    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildRecovery(); buildPalette();
+    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildConflicts(); buildCounters(); buildRecovery(); buildPalette();
     resize(1360,860);buildWorkspace();
     history_.reset(); translate(); refresh();canvas_->centerOn(0,0);
 }
@@ -166,12 +168,12 @@ void EditorWindow::translate() {
         else if(auto* bar=qobject_cast<QToolBar*>(w)) bar->setWindowTitle(text(key));
         else if(auto* menu=qobject_cast<QMenu*>(w)) menu->setTitle(text(key));
     }
-    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable"};
-    for(int i=0;i<9;++i) tool_->setItemText(i,text(modes[i]));
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool"};
+    for(int i=0;i<11;++i) tool_->setItemText(i,text(modes[i]));
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables(); translateDemand(); translateResults(); translatePalette(); refreshToolHint();
+    retranslateTables(); translateDemand(); translateResults(); translateConflicts(); translateCounters(); translatePalette(); refreshToolHint();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     language_->setAccessibleName(text("language"));
     texts_.at("editorScopeCompact")->setToolTip(text("editorScope"));
@@ -245,6 +247,6 @@ void EditorWindow::refresh(bool modelChanged) {
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
     actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
     actions_.at("editorRotate")->setEnabled(canvas_->rotationPivot().has_value());
-    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshDiagnostics();refreshRun();
+    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshConflicts();refreshCounters();refreshDiagnostics();refreshRun();
 }
 }

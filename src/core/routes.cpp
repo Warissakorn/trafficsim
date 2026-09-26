@@ -1,4 +1,5 @@
 #include "routes.hpp"
+#include "conflicts.hpp"
 #include "detail.hpp"
 #include <cstdint>
 
@@ -91,18 +92,12 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
                 [&](const auto& item) { return item.segmentId == scenario.priorityRules[k].yieldSegmentId; });
             if (part != parts.end()) index.routeRules[r].push_back({k, part->start});
         }
-    // Zone incidence (M3.2.3a): every route through either side, so a major vehicle is seen on
-    // its whole approach, not only once it is on the segment carrying the area.
-    index.routeZones.resize(scenario.routes.size());
-    for (std::size_t r = 0; r < scenario.routes.size(); ++r)
-        for (std::size_t z = 0; z < scenario.conflictZones.size(); ++z)
-            for (const auto role : {ZoneRole::major, ZoneRole::minor}) {
-                const auto& side = role == ZoneRole::major ? scenario.conflictZones[z].major : scenario.conflictZones[z].minor;
-                const auto& parts = index.parts[r];
-                const auto part = std::find_if(parts.begin(), parts.end(),
-                    [&](const auto& item) { return item.segmentId == side.segmentId; });
-                if (part != parts.end()) index.routeZones[r].push_back({z, role, part->start});
-            }
+    // Zone incidence (M3.2.3a/b): every route through either side, in route distances, so a
+    // major vehicle is seen on its whole approach and a chain is followed across section cuts.
+    index.routeZones.reserve(scenario.routes.size());
+    for (std::size_t r = 0; r < scenario.routes.size(); ++r) index.routeZones.push_back(zoneIncidence(scenario, index.parts[r]));
+    index.stopZones = std::any_of(scenario.conflictZones.begin(), scenario.conflictZones.end(),
+                                  [](const auto& z) { return z.control == ZoneControl::stop; });
     return index;
 }
 const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenario& scenario, const Route& route) {

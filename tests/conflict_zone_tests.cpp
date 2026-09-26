@@ -15,7 +15,7 @@ Scenario crossing(double gapTime = 3, double headway = 10) {
     s.segments = {{"eastUp", 50, {"east"}}, {"east", 200, {}}, {"north", 200, {}}};
     s.routes = {{"majorRoute", {"eastUp", "east"}}, {"minorRoute", {"north"}}};
     s.vehicleTypes = source.vehicleTypes; s.behaviours = source.behaviours;
-    s.conflictZones = {{"zone", {"east", 98, 102}, {"north", 98, 102}, 90, gapTime, headway}};
+    s.conflictZones = {{"zone", {{"east"}, 98, 102}, {{"north"}, 98, 102}, 90, gapTime, headway}};
     return s;
 }
 test::Placement on(std::uint64_t id, const char* route, double distance, double speed) { return {id, route, distance, speed}; }
@@ -80,8 +80,8 @@ TEST(conflict_zone, a11_same_tick_requests_replay_identically_in_any_input_order
     std::reverse(shuffled.segments.begin(), shuffled.segments.end());
     std::reverse(shuffled.routes.begin(), shuffled.routes.end());
     std::reverse(shuffled.inputs.begin(), shuffled.inputs.end());
-    shuffled.conflictZones.insert(shuffled.conflictZones.begin(), {"another", {"eastUp", 1, 2}, {"north", 1, 2}, 0, 3, 10});
-    auto one = s; one.conflictZones.push_back({"another", {"eastUp", 1, 2}, {"north", 1, 2}, 0, 3, 10});
+    shuffled.conflictZones.insert(shuffled.conflictZones.begin(), {"another", {{"eastUp"}, 1, 2}, {{"north"}, 1, 2}, 0, 3, 10});
+    auto one = s; one.conflictZones.push_back({"another", {{"eastUp"}, 1, 2}, {{"north"}, 1, 2}, 0, 3, 10});
     CHECK(events(shuffled, 7) == events(one, 7));
     CHECK(events(s, 7) == reference);
     CHECK(runSimulation(s, 7).completed > 0); // the forcing: traffic really met at the area

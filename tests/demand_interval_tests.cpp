@@ -67,7 +67,7 @@ TEST(demand, intervals_round_trip_and_stay_absent_when_unset) {
     putInput(b.document, counted(b.route));
     putInput(b.document, {"", b.route, "car", 300, 0, 600, {}, {}});
     const auto saved = documentJson(b.document);
-    CHECK(saved["schemaVersion"] == 14);
+    CHECK(saved["schemaVersion"] == 16);
     CHECK(saved["definition"]["inputs"][0].contains("intervals"));
     CHECK(!saved["definition"]["inputs"][1].contains("intervals"));
     const auto reopened = parseDocument(Json::parse(saved.dump()));

@@ -9,28 +9,28 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.3b, then M3.2.4
+## Immediate — M3.2.8, and the owner's M3.2.7d
 
-**Done:** M3.2.2a–c (D54–D56) — authored waiting lines, conflict areas and priority rules
-(schema 14), their lifecycle, preceding-Link waiting lines and crossing coverage. **M3.2.3a
-(D57)** — one isolated crossing runs:
-- `resolveRightOfWay` emits a core `ConflictZone` (`src/core/types.hpp`).
-- `src/core/conflicts.*` admits by gap time and headway, holds the grant until the rear clears,
-  checks receiving space, and caps same-tick requests (the swept check).
-- `stepSimulation` runs compute → swept check → publish.
-- Areas it cannot run are refused by name: `UNSUPPORTED_CONFLICT_SPAN`,
-  `UNSUPPORTED_CONFLICT_GROUP`, and `UNSUPPORTED_CONFLICT_RUNTIME` for merges.
+**Done:**
+- M3.2.2a–M3.2.7c (D54–D67): authored right-of-way, the admission solver, Stop/Yield, queue
+  counters, the editor for all of them, and the T-junction evidence (fixture, controlled cases,
+  sweeps, signal composition, the congested headway arm).
+- Everything is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
-**Next, M3.2.3b** (ROADMAP row; contract §4; A15):
-1. Merge areas on the zone solver. A merge's two sides share the downstream segment, so the
-   minor side's "area" is the join; keep the M3.1 derived rules for untouched merges (A01).
-2. Connected groups admitted atomically: two areas with no vehicle-length waiting space between
-   them reserve together; lift `UNSUPPORTED_CONFLICT_GROUP` only for what that handles.
-3. Sides spanning a section cut: route-relative intervals instead of one segment each.
-4. Receiving space reserved for competing requests from different zones in the same tick.
-5. The Run UI's statement that only authored areas are protected (M3_PLAN §2).
+**M3.2.7d — the owner's, not a session's.** Carry out the exercise with the recording sheet in
+`docs/M3_ACCEPTANCE.md` §3, on Windows. Until the owner reports it, the row stays pending.
 
-Then **M3.2.4**, the conflict-area and priority-rule editor.
+**Next session: M3.2.8** (ROADMAP row). It is a new system with its own contract, so write the
+contract first, as `docs/M3_CONTRACT.md` did for M3.2.2. Start with the smallest piece the
+evidence asks for:
+1. **A commitment rule at a waiting line.**
+   - The T-junction sweeps show 3–10 minor-road safety clamps per run, all minor vehicles within
+     1.5 m of a line when the gap closed.
+   - Measure the fix against those runs: `trafficsim-t-junction-sweep --run`, then compare the
+     clamp column. Commit new metadata first if the fixture changes.
+   - The major road must stay at zero clamps, and `tjunction_controlled.*` must keep passing: the
+     gap and headway predicates are not what changes.
+2. Then lane changing and cooperation, which are needed for the known four-leg limit below.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

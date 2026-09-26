@@ -132,7 +132,9 @@ ConflictSide conflictSide(const Json& value, const std::string& path, int versio
             field<double>(value,"exitStation"),field<std::string>(value,"waitingLineId")};
 }
 RightOfWay rightOfWay(const Json& value, int version) {
-    knownFields(value,{"waitingLines","conflictAreas","priorityRules"},"network.rightOfWay",version);
+    // `stopControls` exists from schema 15 (M3.2.5); an older file naming it fails to load.
+    if(version>=15)knownFields(value,{"waitingLines","conflictAreas","priorityRules","stopControls"},"network.rightOfWay",version);
+    else knownFields(value,{"waitingLines","conflictAreas","priorityRules"},"network.rightOfWay",version);
     RightOfWay row;
     if(present(value,"waitingLines"))for(const auto& w:array(value,"waitingLines")) {
         const auto path="rightOfWay.waitingLines["+std::to_string(row.waitingLines.size())+"]";
@@ -156,12 +158,25 @@ RightOfWay rightOfWay(const Json& value, int version) {
         row.priorityRules.push_back({field<std::string>(r,"id"),present(r,"name")?field<std::string>(r,"name"):"",
             field<std::string>(r,"conflictAreaId"),field<double>(r,"gapTime"),field<double>(r,"headway")});
     }
+    if(version>=15 && present(value,"stopControls"))for(const auto& c:array(value,"stopControls")) {
+        const auto path="rightOfWay.stopControls["+std::to_string(row.stopControls.size())+"]";
+        knownFields(c,{"id","name","waitingLineId","mode","conflictAreaIds"},path,version);
+        StopControl control{field<std::string>(c,"id"),present(c,"name")?field<std::string>(c,"name"):"",
+            field<std::string>(c,"waitingLineId"),stopModeFromName(field<std::string>(c,"mode")),{}};
+        for(const auto& area:array(c,"conflictAreaIds")) {
+            if(!area.is_string())throw std::invalid_argument("Expected text: conflictAreaIds");
+            control.conflictAreaIds.push_back(area.get<std::string>());
+        }
+        row.stopControls.push_back(std::move(control));
+    }
     return row;
 }
 }
 Network parseNetwork(const Json& value, int schemaVersion) {
     // `rightOfWay` exists from schema 14; knownFields rejects it in an older file (from 7 on).
-    if(schemaVersion>=14)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay"},"network",schemaVersion);
+    // `queueCounters` exists from schema 16 (M3.2.6b).
+    if(schemaVersion>=16)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay","queueCounters"},"network",schemaVersion);
+    else if(schemaVersion>=14)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay"},"network",schemaVersion);
     else knownFields(value,{"id","drivingSide","links","connectors","signalHeads"},"network",schemaVersion);
     Network network;
     network.id = field<std::string>(value, "id");
@@ -223,6 +238,24 @@ Network parseNetwork(const Json& value, int schemaVersion) {
     }
     if(schemaVersion<5)migrateAttachments(network);
     if(schemaVersion>=14 && present(value,"rightOfWay"))network.rightOfWay=rightOfWay(value.at("rightOfWay"),schemaVersion);
+    if(schemaVersion>=16 && present(value,"queueCounters"))for(const auto& c:array(value,"queueCounters")) {
+        const auto path="queueCounters["+std::to_string(network.queueCounters.size())+"]";
+        knownFields(c,{"id","name","lines"},path,schemaVersion);
+        AuthoredQueueCounter counter{field<std::string>(c,"id"),present(c,"name")?field<std::string>(c,"name"):"",{}};
+        for(const auto& l:array(c,"lines")) {
+            const auto at=path+".lines["+std::to_string(counter.lines.size())+"]";
+            knownFields(l,{"referenceId","point"},at,schemaVersion);
+            MeasurementLine line;
+            if(present(l,"referenceId"))line.referenceId=field<std::string>(l,"referenceId");
+            if(present(l,"point")) {
+                const auto& point=member(l,"point");
+                knownFields(point,{"path","station"},at+".point",schemaVersion);
+                line.point=ControlPoint{controlPath(member(point,"path"),at+".point.path",schemaVersion),field<double>(point,"station")};
+            }
+            counter.lines.push_back(std::move(line));
+        }
+        network.queueCounters.push_back(std::move(counter));
+    }
     return network;
 }
 PriorityDefaults parsePriorityDefaults(const Json& value) {

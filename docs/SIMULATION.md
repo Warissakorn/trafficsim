@@ -199,6 +199,48 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   longest vehicle of an exit (`CONFLICT_SINK_TOO_CLOSE`), and one that starts past the line
   (`CONFLICT_ROUTE_STARTS_PAST_LINE`). The whole area is reserved, so capacity is conservative.
   Rule 4 applies: a deterministic threshold, not calibrated gap acceptance.
+  **Since M3.2.3b (D58)** a side is a chain of consecutive segments, so an area may lie over a
+  section cut. A route turning off inside the area leaves it where it turns off. A major route
+  joining the chain part way is in the area from the join. Minor zones along one route with less
+  than one vehicle (longest type plus its standstill) between an exit and the next line form a
+  **chain**: they share the first line and the last exit, so a vehicle is admitted to all of them
+  or to none, and waits for receiving space past the last (A15). Refused by name:
+  - a route that meets a minor chain part way (`CONFLICT_ROUTE_JOINS_INSIDE`);
+  - **since M3.2.3c (D59)**, zones whose holds form a cycle (`CONFLICT_HOLD_CYCLE`).
+
+  Holds are the edge in question. A route can hold zone M while waiting as a major vehicle at
+  zone J's entry, when J's entry comes before it has room to stand clear of M. A cycle of such
+  holds is a deadlock waiting to happen. An acyclic mix runs: priority falls along it, so the last
+  holder in any chain of waits never waits itself.
+
+  Since M3.2.3c, requests crossing their lines in one tick behind the **same standing leader**
+  share its room. Lower vehicle ids are served first, and a request that would not fit is capped at
+  its line.
+
+  **Authored merge areas run on the zone solver**, the areas being the last metre of each incoming
+  path, so the major side also waits at its entry for an admitted minor. Merges derived from the
+  drawing stay on the M3.1 `PriorityRule`.
+
+  Gridlock through queues is not prevented: an admitted vehicle can still stop inside an area
+  behind a leader that stopped after admission. The run then records the vehicles as unserved.
+
+  **Stop and Yield (M3.2.5a, D62).** A zone's `control` is `yield` or `stop`:
+  - **Yield** is exactly the admission test above. A vehicle with a clear gap never stops.
+  - **Stop** also requires each minor vehicle to serve the line before it may cross.
+
+  Serving works like this:
+  - The vehicle has come to the line when it is below walking pace (`kStoppedSpeed`, 0.1 m/s) with
+    its front within `stopLineReach`. That is the gap car-following keeps behind a standing obstacle
+    at that pace, plus 0.1 m.
+  - The reduced model only approaches zero behind a line, ever slower. So the Stop finishes the
+    stop: the vehicle rests at zero speed for the tick it came to the line and one whole tick more.
+    This is ordinary braking of at most 1 m/s², not a safety clamp.
+  - Service is kept per vehicle in `SimState::stopService`. It survives waiting for a gap or a red
+    head, is cleared once the vehicle passes the line, and a new run starts with none.
+  - A queued vehicle stands a vehicle length back, so it has not come to the line.
+
+  A signal head at the same line composes with the Stop: green removes only the head's hold. A
+  scenario without a Stop zone runs none of this, and the seed-42 output is unchanged.
 - Signal phases and offsets must align to the fixed timestep. Phases are half-open;
   amber is conservatively treated as stop, without a dilemma-zone decision.
 - The timestep is in `(0, 0.5]` seconds and duration must be an integer number of ticks.

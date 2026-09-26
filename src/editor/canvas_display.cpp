@@ -59,6 +59,14 @@ std::optional<LaneReference> EditorCanvas::nearestLane(Point p) const {
     return {};
 }
 void EditorCanvas::cycleOverlap() {
+    if(tool_==Tool::conflict) {
+        // The next area under the last click, the way Tab cycles objects under Select.
+        const auto areas=conflictsAt(lastPick_);if(areas.empty())return;
+        const auto at=std::find(areas.begin(),areas.end(),highlightedConflict_);
+        const auto& next=areas[at==areas.end()?0:(static_cast<std::size_t>(at-areas.begin())+1)%areas.size()];
+        if(conflictPicked)conflictPicked(next);
+        return;
+    }
     const auto hits=hitObjects(lastPick_);if(hits.empty())return;
     const auto at=std::find_if(hits.begin(),hits.end(),[&](const auto& hit){return hit.first==selected();});
     const auto i=at==hits.end()?0:(static_cast<std::size_t>(std::distance(hits.begin(),at))+1)%hits.size();

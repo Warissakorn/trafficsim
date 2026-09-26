@@ -72,6 +72,7 @@ struct Network {
     std::vector<Connector> connectors;
     std::vector<NetworkSignalHead> signalHeads;
     RightOfWay rightOfWay; // M3.2.2, schema 14: authored controls (control.hpp)
+    std::vector<AuthoredQueueCounter> queueCounters; // M3.2.6b, schema 16
     bool operator==(const Network&) const = default;
 };
 // A place a Signal head can stand -- a Link lane or a Connector path -- with its polyline and

@@ -89,20 +89,26 @@ struct PriorityRule {
     bool operator==(const PriorityRule&) const = default;
 };
 // M3.2.3a. One crossing: the minor side gives way to the major side, and the two never occupy
-// their areas at once. Positions are metres along each side's segment; `waitPosition` is on the
-// minor segment and may be negative -- on the single-predecessor approach before it (D56).
-// A minor vehicle holds the crossing from passing its waiting line until its rear clears
-// minor.exit; that grant is read off positions, so it needs no state of its own (D57).
+// their areas at once. A side is a chain of consecutive segments (M3.2.3b): `entry` is metres
+// along the first, `exit` along the last, so an area may run over a section cut. `waitPosition`
+// is on the minor chain's first segment and may be negative -- on the single-predecessor
+// approach before it (D56). A minor vehicle holds the crossing from passing its waiting line
+// until its rear clears the exit; that grant is read off positions, so it needs no state (D57).
 struct ZoneSide {
-    std::string segmentId; double entry{}, exit{};
+    std::vector<std::string> segmentIds; double entry{}, exit{};
     bool operator==(const ZoneSide&) const = default;
 };
+// M3.2.5 (contract §5). `yield` is admission by gap alone: a minor vehicle with a clear gap never
+// has to stop. `stop` also requires each minor vehicle to serve the waiting line first -- stand at
+// it for one complete tick -- before it may cross, gap or no gap.
+enum class ZoneControl { yield, stop };
 struct ConflictZone {
     std::string id;
     ZoneSide major, minor;
     double waitPosition{}; // on minor.segmentId: where a minor vehicle waits for admission
     double gapTime{};      // seconds, as PriorityRule
     double headway{};      // metres, as PriorityRule
+    ZoneControl control{ZoneControl::yield};
     bool operator==(const ConflictZone&) const = default;
 };
 struct ScenarioDefinition {
@@ -140,13 +146,21 @@ struct RouteHead { std::size_t headIndex{}; double partStart{}; };
 // The same idea for a priority rule: a rule whose yield segment lies on this route, with the start
 // station of the first route part carrying it, so the stop line is a route coordinate.
 struct RouteRule { std::size_t ruleIndex{}; double partStart{}; };
-// A conflict zone one of whose sides lies on this route: which side, and where on the route the
-// FIRST part carrying that side's segment starts, so every position is a route coordinate.
+// A conflict zone one of whose sides lies on this route, in route distances resolved once.
+// `entryAt`/`exitAt` bound the area along this route: a route joining the chain part way is in
+// the area from where it joins, one leaving part way is out where it leaves. For a minor role,
+// `waitAt` is where it waits and `clearAt` the exit its receiving space is measured past; a chain
+// of zones with no room to wait between them shares the first line and the last exit (A15).
 enum class ZoneRole : std::uint8_t { major, minor };
-struct RouteZone { std::size_t zoneIndex{}; ZoneRole role{}; double partStart{}; };
+struct RouteZone {
+    std::size_t zoneIndex{}; ZoneRole role{};
+    double entryAt{}, exitAt{}, waitAt{}, clearAt{};
+    bool joinsInside{}; // met the chain after its first segment
+};
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
     std::vector<std::vector<RouteZone>> routeZones;  // parallel to Scenario::routes, in conflictZones order
+    bool stopZones{};                                // any zone is a Stop: only then is service tracked
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
     std::vector<std::vector<RouteHead>> routeHeads;  // parallel to Scenario::routes, in signalHeads order
     std::vector<std::vector<RouteRule>> routeRules;  // parallel to Scenario::routes, in priorityRules order
@@ -223,6 +237,14 @@ struct ArrivedEvent {
 };
 using SimEvent = std::variant<SignalEvent, DepartedEvent, MovedEvent,
                               SegmentEnteredEvent, SafetyClampEvent, ArrivedEvent>;
+// M3.2.5: one vehicle's service at a Stop line (contract §5). `line` is the route distance of the
+// next Stop line it has not passed; `since` the tick whose start first found it standing there.
+// It has served the line once a whole tick has run since then. Kept only while the line is ahead
+// of or under the vehicle, so passing a line clears it; a new run starts with none.
+struct StopService {
+    std::uint64_t vehicleId{}; double line{}; std::uint64_t since{};
+    bool operator==(const StopService&) const = default;
+};
 struct SimState {
     // Detached at createSimulation; copies share only this immutable scenario.
     std::shared_ptr<const Scenario> scenario;
@@ -234,6 +256,7 @@ struct SimState {
     std::vector<InputState> inputs;
     std::vector<Vehicle> vehicles;
     std::vector<SimEvent> events; // Latest step only.
+    std::vector<StopService> stopService; // sorted by vehicle id; empty without a Stop zone
 };
 struct ValidationIssue {
     std::string code, path;
