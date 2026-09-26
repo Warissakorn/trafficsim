@@ -2,8 +2,9 @@
 
 M3.2.8 adds driver behaviour on top of the M3.2 right-of-way runtime
 ([`M3_CONTRACT.md`](M3_CONTRACT.md)). It is two systems, each with its own section here:
-**M3.2.8a**, a commitment rule at waiting lines (§1), and **M3.2.8b**, lane changing,
-cooperation and visibility (§2, not yet written). Nothing here is calibration: the
+**M3.2.8a**, a commitment rule at waiting lines (§1), and **M3.2.8b**, mandatory lane
+changing (§2). Cooperation, visibility and discretionary changes are **M3.2.8c**, not yet
+written. Nothing here is calibration: the
 not-yet-validated marker stays, and gap acceptance remains a deterministic threshold until M6
 evidence exists.
 
@@ -81,6 +82,100 @@ One predicate (`committed`, `src/core/conflicts.hpp`) serves both runtime paths.
 - The existing threshold predicates (`tjunction_controlled.*`) are unchanged: a standing or
   slow minor vehicle is never committed.
 
-## 2. Lane changing, cooperation and visibility (M3.2.8b)
+## 2. Mandatory lane changing (M3.2.8b)
 
-Not yet written. It is written before M3.2.8b's code, as §1 was for M3.2.8a.
+The owner's ruling (D71): **Vissim's way**. A movement's volume enters on every lane of its
+entry Link, and a vehicle on a lane that cannot reach its destination changes lanes before it
+has to. Cooperation, visibility, discretionary changes and `laneChangeDistance` are M3.2.8c.
+
+### Why
+
+Before M3.2.8b a movement entered only on the lanes that reach it (`routeLaneChains`), and a
+vehicle kept its lane for the whole trip. Lane choice was an insertion artefact, not behaviour:
+every left-turner of an M2.6 approach appeared in the kerb lane at the network edge.
+
+### Families, stubs and spans — compiled, never authored
+
+- **A family** is one authored route, or one destination of a routing decision on the entry
+  Link. It compiles into **one chain per lane of its entry Link**.
+  - A chain that reaches the end of the family is **full**, exactly as before.
+  - A chain that cannot is a **stub**. It follows its own lane through the family's objects as
+    far as they lead, and stops on the lane where the next object leaves from another lane.
+- **A lateral span** joins a stub to another chain of its family on an **adjacent lane of the
+  same Link** (by the Link's lane order), over the stretch both chains travel. It carries both
+  chains' route distances at each end and maps between them linearly. Stations are matched
+  across lanes by `matchedStation`, so the ends are square on a curve; between the ends a curved
+  Link is approximated.
+- **A dead end** is the stub's last span end: the last metre at which a change is still possible
+  (the adjacent chain leaves the lane there, or the lane ends).
+- A stub from which no chain of changes reaches a full chain is not emitted. Its lane then gets
+  no share of that family, which is the pre-M3.2.8b behaviour.
+- The core gets spans and dead ends as data (`Scenario::laneChanges`, `Scenario::routeDeadEnds`).
+  It never sees geometry, lanes or Links. Neither is in the project file.
+
+Routeless free walk and routing decisions placed downstream of the entry Link stay lane-fixed
+(M3.2.8c). When a full chain branches after its destination, a stub vehicle joins the
+lowest-slot chain, which shifts those downstream proportions. This is recorded, not modelled.
+
+### The rule
+
+A vehicle on a stub route tries, every tick and as soon as it can, to change to the adjacent
+chain with the fewest changes still to make (`remaining`, derived by the index from the spans).
+Ties go to the lower route slot. It changes when all of these hold in the tick's pre-step
+snapshot:
+
+1. **It is wholly inside a span.** Its rear is at or past the span start and its front is at or
+   short of the span end.
+2. **It is not inside a conflict area** on its current route or its target route (between a
+   zone's waiting line and its exit), and it holds no Stop service.
+3. **Forward safety.** At the mapped position, the nearest vehicle ahead on the target route
+   leaves at least the vehicle's own `standstillDistance`. The vehicle's own
+   `followingAcceleration` behind that leader is at least `−comfortableDeceleration`.
+4. **Rearward safety.** The nearest vehicle behind it on the target route leaves at least that
+   vehicle's `standstillDistance`. That vehicle's `followingAcceleration` behind the changer is
+   at least `−comfortableDeceleration` of its type.
+5. **Nothing overlaps it.** No vehicle on the target route lies alongside the mapped position.
+
+Both safety tests reuse the car-following model; nothing new is calibrated. `comfortableDeceleration`
+is the vehicle type's (car 2 m/s²), the conservative choice: §1's measurement showed what
+accepting `maxDeceleration` for other drivers costs.
+
+**Same tick.** Candidates are decided in vehicle-id order. A later candidate is also tested
+against the new positions of those already accepted this tick. A vehicle that changed away
+still counts at its old place, which is conservative.
+
+**Instantaneous.** The change happens at the start of the tick, before car-following. A vehicle
+occupies exactly one lane in every snapshot. There is no between-lanes state, so a change takes
+no time and blocks nothing behind it on the lane it left. That is a documented limit, not a
+claim. Car-following, priority rules, zones and the phase-2 checks then run on the post-change
+snapshot, which every vehicle shares.
+
+**Dead end.** A stub vehicle is held at its dead end by the stop-line mechanism, exactly as a red
+head holds one, and waits there for a gap. It never arrives on a stub. With no cooperation, a
+dense target lane can hold it for a long time; M3.2.8c addresses that.
+
+### Replay
+
+There is no RNG draw and nothing new in `SimState`. A change rewrites the vehicle's
+`routeIndex` and `distance`, both already in the state, and emits a `LaneChangeEvent`. A copied
+state therefore replays exactly (A25). A scenario with no spans runs exactly the code it ran
+before.
+
+### Demand
+
+- **An input's volume is split over every lane of its entry Link.** It is split equally, or by
+  `laneShares`, which now carry one weight per lane of that Link. A stored size that no longer
+  matches falls back to the equal split, as before.
+- **A routing decision on the entry Link** (D43) now spreads each destination's flow over every
+  lane in the same way. The typed proportions still hold exactly at entry.
+- **Movements** are reported from full chains only. A stub is never its own row.
+
+### Consequences to measure, not assume
+
+- Every published multi-lane movement whose lanes do not all reach it moves: the four-leg and
+  M2.6 reports are re-published (`docs/evidence/m3.2.8b-mandatory.md`).
+- Left-turn delay is not expected to fall. A through vehicle in the shared kerb lane still blocks
+  a Thai left turn; this rule changes where a turning vehicle enters, not who is ahead of it.
+- A turning vehicle held at a dead end blocks its own lane. That is real, and it is reported
+  (lane changes and vehicles waiting at a dead end).
+- The single-lane frozen baselines must stay byte-identical.

@@ -41,9 +41,22 @@ same-build event replay exact. Do not weaken the frozen reference comparisons.
 | A25 | .3-.7 | Branch a copied state, same seed/toolchain; congested finite demand | Independent snapshots, exact replay, no lost vehicles; completed/active/pending/clamps reported |
 | A26 | .7 | T-junction gap/headway sweep described below | Controlled boundaries and admission times match; stochastic differences reported without invented monotonic guarantees |
 
-Extend the matrix for M3.2.8 before implementing lane changing. It must cover forward and
-rearward safety, required lane-change distance, cooperation, visibility, conflict reservations,
-emergency stopping, congestion accounting and replay. Passing A01-A26 alone does not close it.
+M3.2.8b rows (mandatory lane changing, [`M3_8_CONTRACT.md`](M3_8_CONTRACT.md) §2), written
+before its code:
+
+| ID | Slice | Case | Must show |
+|---|---|---|---|
+| A27 | .8b | Two-lane Link, a movement leaving from one lane, inserted on the other, empty road | The stub vehicle changes once, completes on the full chain; no clamp; a stub never arrives |
+| A28 | .8b | A leader alongside or just ahead in the target lane | Refused while the forward gap or own braking fails; changes once it clears |
+| A29 | .8b | A fast follower close behind in the target lane | Refused (the forcing is asserted first: the follower would brake harder than `comfortableDeceleration`); changes once safe |
+| A30 | .8b | Target lane blocked for a long time | Held at its dead end by the stop-line mechanism, zero clamps, then changes and completes |
+| A31 | .8b | Two stub vehicles aiming at one gap in the same tick | Only the lower id changes that tick; no overlap |
+| A32 | .8b | A span over a conflict area | No change between a waiting line and the area's exit, on either route |
+| A33 | .8b | Branch a copied state during changes; congested finite demand | Exact replay; completed + active + pending conserved; changes and dead-end waits reported |
+| A34 | .8b | The four-leg drawing compiled | Each turn has one chain per entry lane; the stubs, spans and dead ends are as drawn; single-lane baselines unchanged |
+
+Cooperation, visibility, discretionary changes and `laneChangeDistance` are **M3.2.8c** and get
+their rows before their code. Passing A01–A34 alone does not close M3.2.
 
 ## 2. T-junction fixture specification
 
