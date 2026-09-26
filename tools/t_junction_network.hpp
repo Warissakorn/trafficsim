@@ -35,6 +35,13 @@ struct TJunctionOptions {
     // A permanently red head on the far major lane past the merge: its queue fills the lane the
     // crossing movement must enter, which is what receiving-space control exists for.
     bool blockedExit = false;
+    // M3.2.7c. A fixed-time head on the minor Link 1 m before its end -- upstream of both of the
+    // minor road's waiting lines, which are on the Connectors -- showing these phases. Empty: none.
+    std::vector<SignalPhase> minorSignal;
+    // M3.2.7c. A fixed-time head on eastbound 16 m past the crossing, short of the near-turn merge. Its queue
+    // backs up through the junction and discharges slowly, so slow and standing major vehicles
+    // stand near the crossing entry -- the traffic in which `headway`, not `gapTime`, decides.
+    bool congestedMajor = false;
     // The rule on every area the minor road gives way at (contract §1 parameter names).
     double gapTime = 5, headway = 7;
 };
@@ -45,6 +52,7 @@ struct TJunction {
     std::string crossingArea, crossingMerge, nearMerge; // conflict areas
     std::string crossingRoute, nearRoute, eastRoute, westRoute;
     std::string counter;
+    std::string minorHead; // M3.2.7c, when TJunctionOptions::minorSignal is set
 };
 
 inline TJunction tJunction(const TJunctionOptions& options = {}) {
@@ -106,6 +114,14 @@ inline TJunction tJunction(const TJunctionOptions& options = {}) {
     if (options.blockedExit) {
         const auto red = putProgram(d, {"", 0, {{60, SignalColor::red}}});
         putSignalHead(d, {"", {t.westbound, lane0(d, t.westbound)}, far + join + 50, red, {}});
+    }
+    if (!options.minorSignal.empty()) {
+        const auto program = putProgram(d, {"", 0, options.minorSignal});
+        t.minorHead = putSignalHead(d, {"", {t.minor, lane0(d, t.minor)}, far - minorEnd - 1, program, {}});
+    }
+    if (options.congestedMajor) {
+        const auto program = putProgram(d, {"", 0, {{30, SignalColor::green}, {3, SignalColor::amber}, {27, SignalColor::red}}});
+        putSignalHead(d, {"", {t.eastbound, lane0(d, t.eastbound)}, far + 15, program, {}});
     }
     // Veh/h; the inputs stop at 900 s and the run continues to 1500 s, so finite demand drains.
     t.eastRoute = putRoute(d, {"", {t.eastbound}});

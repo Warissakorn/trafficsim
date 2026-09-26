@@ -3,6 +3,8 @@
 //
 //   trafficsim-t-junction-sweep --metadata <out.json> <repo root>   what the sweep depends on
 //   trafficsim-t-junction-sweep --run <out.csv> <repo root>         one row per seed and rule
+//   ... --metadata-congested / --run-congested                       M3.2.7c: the headway arm on
+//                                                                     the congested variant
 //
 // The metadata is committed before any sweep output is looked at; the rows after.
 #include "t_junction_sweep.hpp"
@@ -32,22 +34,24 @@ std::string figure(const std::optional<double>& v) {
 }
 }
 int main(int argc, char** argv) {
-    if (argc != 4 || (std::string(argv[1]) != "--metadata" && std::string(argv[1]) != "--run")) {
-        std::cerr << "usage: trafficsim-t-junction-sweep --metadata|--run <out> <repo root>\n"; return 2;
+    const std::string mode = argc == 4 ? argv[1] : "";
+    if (mode != "--metadata" && mode != "--run" && mode != "--metadata-congested" && mode != "--run-congested") {
+        std::cerr << "usage: trafficsim-t-junction-sweep --metadata|--run|--metadata-congested|--run-congested <out> <repo root>\n"; return 2;
     }
+    const bool congested = mode.ends_with("-congested");
     const std::filesystem::path root = argv[3];
     std::ofstream out(argv[2], std::ios::binary);
-    if (std::string(argv[1]) == "--metadata") {
-        auto j = sweep::fixtureMetadata(root);
+    if (mode.starts_with("--metadata")) {
+        auto j = congested ? sweep::congestedMetadata(root) : sweep::fixtureMetadata(root);
         j["build"] = build();
         out << j.dump(2) << "\n";
         return out ? 0 : 1;
     }
     // Movement columns in the fixture's own order: the report lists them as evaluationSpec does.
     bool header = false;
-    for (const auto& [gap, headway] : sweep::kRules)
+    for (const auto& [gap, headway] : congested ? sweep::kHeadwayRules : sweep::kRules)
         for (const auto seed : sweep::kSeeds) {
-            const auto row = sweep::runOne(root / "data", seed, gap, headway);
+            const auto row = sweep::runOne(root / "data", seed, gap, headway, congested);
             const auto& r = row.report;
             if (!header) {
                 out << "seed,gapTime,headway";
