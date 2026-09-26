@@ -88,6 +88,26 @@ std::vector<std::string> routeChainTo(const Network& network,
     }
     return {};
 }
+std::vector<std::vector<std::string>> routeShortestChains(const Network& network, const std::string& from,
+                                                          const std::string& target) {
+    // The object graph is built once per search: rebuilding it per chain, through
+    // routeContinuations, was 9% of an M2.6 Run.
+    const auto objects = routeObjects(network);
+    constexpr std::size_t kMaxDepth = 20, kMaxLevel = 4096;
+    std::vector<std::vector<std::string>> level{{from}};
+    for (std::size_t depth = 0; depth < kMaxDepth && !level.empty(); ++depth) {
+        std::vector<std::vector<std::string>> next, found;
+        for (const auto& chain : level)
+            for (const auto& step : continuations(objects, chain)) {
+                auto extended = chain; extended.push_back(step);
+                (step == target ? found : next).push_back(std::move(extended));
+            }
+        if (!found.empty()) return found;
+        if (next.size() > kMaxLevel) return {};
+        level = std::move(next);
+    }
+    return {};
+}
 std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
                                                       const std::vector<std::string>& objectIds,
                                                       std::vector<std::string>* ambiguous) {

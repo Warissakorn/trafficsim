@@ -19,28 +19,6 @@ std::string routelessLink(const AuthoringDefinition& d, const VehicleInput& inpu
     return {};
 }
 }
-namespace {
-// Every object chain from `from` to `target` of the shortest length, in continuation order.
-// routeChainTo refuses a tie, because a drawn route must mean one thing; a decision's destination
-// may be reached by several, since each lane of the Link follows whichever it can drive.
-std::vector<std::vector<std::string>> shortestChains(const Network& network, const std::string& from,
-                                                     const std::string& target) {
-    constexpr std::size_t kMaxDepth = 20, kMaxLevel = 4096;
-    std::vector<std::vector<std::string>> level{{from}};
-    for (std::size_t depth = 0; depth < kMaxDepth && !level.empty(); ++depth) {
-        std::vector<std::vector<std::string>> next, found;
-        for (const auto& chain : level)
-            for (const auto& step : routeContinuations(network, chain)) {
-                auto extended = chain; extended.push_back(step);
-                (step == target ? found : next).push_back(std::move(extended));
-            }
-        if (!found.empty()) return found;
-        if (next.size() > kMaxLevel) return {};
-        level = std::move(next);
-    }
-    return {};
-}
-}
 std::string routelessRouteId(const std::string& linkId, std::size_t k, std::size_t n) {
     return n == 1 ? "link:" + linkId : "link:" + linkId + "/path-" + std::to_string(k + 1);
 }
@@ -60,7 +38,7 @@ std::vector<PlacedDecision> placedDecisions(const Network& network, const Author
             std::vector<std::vector<std::string>> chains;
             if (!entry.destinationLinkId.empty()) {
                 if (!hasLink(network, entry.destinationLinkId)) { report("UNKNOWN_LINK", at); continue; }
-                chains = shortestChains(network, decision.linkId, entry.destinationLinkId);
+                chains = routeShortestChains(network, decision.linkId, entry.destinationLinkId);
             } else {
                 const auto route = std::find_if(d.routes.begin(), d.routes.end(), [&](const auto& r) { return r.id == entry.routeId; });
                 if (route == d.routes.end()) continue; // routingDecisionIssues names it

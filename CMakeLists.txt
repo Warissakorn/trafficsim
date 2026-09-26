@@ -124,12 +124,20 @@ if(BUILD_TESTING)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
     target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp)
-    foreach(group core network reference project editor connectors mouths points diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement routeless signals)
+    # One ctest test per group, so `ctest -j` spreads them; a single unfiltered run was 60 s of
+    # serial wall time and repeated every named group.
+    set(TRAFFICSIM_TEST_GROUPS core network reference project editor connectors mouths points
+        diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement
+        routeless signals m26study rightofway rightofway_lifecycle rightofway_resolution
+        conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
+        queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict
+        rightofway_runtime rightofway_editor)
+    foreach(group ${TRAFFICSIM_TEST_GROUPS})
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
-    # Also run the registry without a filter: a newly registered group must never silently
-    # disappear from CI just because this named list was not updated (previously "points").
-    add_test(NAME all-model-tests COMMAND trafficsim-tests)
+    # A newly registered group must never silently disappear from CI just because the list
+    # above was not updated (previously "points"): this fails on any group it does not name.
+    add_test(NAME all-model-tests COMMAND trafficsim-tests --check-groups ${TRAFFICSIM_TEST_GROUPS})
     add_test(NAME architecture COMMAND trafficsim-check-architecture "${PROJECT_SOURCE_DIR}")
     add_test(NAME architecture-negative COMMAND trafficsim-check-architecture --self-test)
     add_test(NAME file-sizes COMMAND trafficsim-check-file-sizes "${PROJECT_SOURCE_DIR}")

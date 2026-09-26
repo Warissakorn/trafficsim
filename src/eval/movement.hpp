@@ -67,6 +67,8 @@ private:
     std::vector<double> delay_, travel_;
     std::uint64_t unassigned_{}, observed_{};
     std::vector<double> queueSum_, queueMax_;
-    std::map<std::uint64_t, bool> queued_;
+    // Last observed queue state, sorted by vehicle id: a vector, not a map, because it is rebuilt
+    // every tick and a node per vehicle was most of observe()'s cost.
+    std::vector<std::pair<std::uint64_t, bool>> queued_;
 };
 }

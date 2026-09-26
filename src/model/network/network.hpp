@@ -267,6 +267,11 @@ std::vector<std::string> routeContinuations(const Network&, const std::vector<st
 // an ambiguity is the author's to settle, never this function's to guess.
 std::vector<std::string> routeChainTo(const Network&, const std::vector<std::string>& authored,
                                       const std::string& target);
+// Every object chain from `from` to `target` of the shortest length, in continuation order.
+// routeChainTo refuses a tie, because a drawn route must mean one thing; a decision's destination
+// may be reached by several, since each lane of the Link follows whichever it can drive.
+std::vector<std::vector<std::string>> routeShortestChains(const Network&, const std::string& from,
+                                                          const std::string& target);
 // One lane-level chain per lane the route actually carries: lane k of the first Link, the
 // Connector path that leaves that lane, the lane it arrives on, and so on. A lane with no path
 // onward contributes no chain, which is exactly what makes narrowing a Connector safe. Empty
