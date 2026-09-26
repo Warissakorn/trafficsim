@@ -42,6 +42,9 @@ struct TJunctionOptions {
     // backs up through the junction and discharges slowly, so slow and standing major vehicles
     // stand near the crossing entry -- the traffic in which `headway`, not `gapTime`, decides.
     bool congestedMajor = false;
+    // M3.2.4c. False draws the roads, routes and demand only: no area, line, rule, control or
+    // counter, so what remains is exactly what the editor derives on its own (automaticConflicts).
+    bool authoredControls = true;
     // The rule on every area the minor road gives way at (contract §1 parameter names).
     double gapTime = 5, headway = 7;
 };
@@ -82,35 +85,38 @@ inline TJunction tJunction(const TJunctionOptions& options = {}) {
     editableConnector(d, t.crossingTurn).name = "Minor crossing turn";
     editableConnector(d, t.nearTurn).name = "Minor near turn";
 
-    const PriorityDefaults defaults{options.gapTime, options.headway};
-    const auto crossings = addCrossingAreas(d, t.crossingTurn, t.eastbound, t.crossingTurn, defaults);
-    if (crossings.size() != 1) throw std::logic_error("T_JUNCTION_CROSSING");
-    t.crossingArea = crossings.front();
-    // A taken-over merge keeps the drawing-order fallback; the minor road gives way at both.
-    const auto yieldingMerge = [&](const std::string& connector, const std::string& name) {
-        const auto areas = takeOverMergesOf(d, connector, defaults);
-        if (areas.size() != 1) throw std::logic_error("T_JUNCTION_MERGE");
-        const auto& a = *std::find_if(d.network.rightOfWay.conflictAreas.begin(), d.network.rightOfWay.conflictAreas.end(),
-                                      [&](const auto& x) { return x.id == areas.front(); });
-        const auto yields = a.first.path.connectorId == connector ? ConflictPriority::firstYields : ConflictPriority::secondYields;
-        setConflictControl(d, a.id, name, yields, options.gapTime, options.headway);
-        return a.id;
-    };
-    setConflictControl(d, t.crossingArea, "Minor crosses eastbound", ConflictPriority::firstYields, options.gapTime, options.headway);
-    t.crossingMerge = yieldingMerge(t.crossingTurn, "Minor joins westbound");
-    t.nearMerge = yieldingMerge(t.nearTurn, "Minor joins eastbound");
-    // The sign stands where the minor road first gives way on each turn; the crossing turn's merge
-    // line comes after a crossing already made, where a second stop would be no sign anyone posts.
-    if (options.control) {
-        setAreaControl(d, t.crossingArea, options.control);
-        setAreaControl(d, t.nearMerge, options.control);
+    // M3.2.4c: without them, the drawing alone -- the automatic areas the editor derives from it.
+    if (options.authoredControls) {
+        const PriorityDefaults defaults{options.gapTime, options.headway};
+        const auto crossings = addCrossingAreas(d, t.crossingTurn, t.eastbound, t.crossingTurn, defaults);
+        if (crossings.size() != 1) throw std::logic_error("T_JUNCTION_CROSSING");
+        t.crossingArea = crossings.front();
+        // A taken-over merge keeps the drawing-order fallback; the minor road gives way at both.
+        const auto yieldingMerge = [&](const std::string& connector, const std::string& name) {
+            const auto areas = takeOverMergesOf(d, connector, defaults);
+            if (areas.size() != 1) throw std::logic_error("T_JUNCTION_MERGE");
+            const auto& a = *std::find_if(d.network.rightOfWay.conflictAreas.begin(), d.network.rightOfWay.conflictAreas.end(),
+                                          [&](const auto& x) { return x.id == areas.front(); });
+            const auto yields = a.first.path.connectorId == connector ? ConflictPriority::firstYields : ConflictPriority::secondYields;
+            setConflictControl(d, a.id, name, yields, options.gapTime, options.headway);
+            return a.id;
+        };
+        setConflictControl(d, t.crossingArea, "Minor crosses eastbound", ConflictPriority::firstYields, options.gapTime, options.headway);
+        t.crossingMerge = yieldingMerge(t.crossingTurn, "Minor joins westbound");
+        t.nearMerge = yieldingMerge(t.nearTurn, "Minor joins eastbound");
+        // The sign stands where the minor road first gives way on each turn; the crossing turn's merge
+        // line comes after a crossing already made, where a second stop would be no sign anyone posts.
+        if (options.control) {
+            setAreaControl(d, t.crossingArea, options.control);
+            setAreaControl(d, t.nearMerge, options.control);
+        }
+        // The minor approach's queue, measured at both lines it forms behind.
+        AuthoredQueueCounter counter{"", "Minor approach queue", {}};
+        for (const auto* area : {&t.crossingArea, &t.nearMerge})
+            for (const auto& a : d.network.rightOfWay.conflictAreas) if (a.id == *area)
+                counter.lines.push_back({(a.first.path.connectorId.empty() ? a.second : a.first).waitingLineId, std::nullopt});
+        t.counter = putQueueCounter(d, counter);
     }
-    // The minor approach's queue, measured at both lines it forms behind.
-    AuthoredQueueCounter counter{"", "Minor approach queue", {}};
-    for (const auto* area : {&t.crossingArea, &t.nearMerge})
-        for (const auto& a : d.network.rightOfWay.conflictAreas) if (a.id == *area)
-            counter.lines.push_back({(a.first.path.connectorId.empty() ? a.second : a.first).waitingLineId, std::nullopt});
-    t.counter = putQueueCounter(d, counter);
     if (options.blockedExit) {
         const auto red = putProgram(d, {"", 0, {{60, SignalColor::red}}});
         putSignalHead(d, {"", {t.westbound, lane0(d, t.westbound)}, far + join + 50, red, {}});

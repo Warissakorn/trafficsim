@@ -144,6 +144,12 @@ private:
     void cyclePriority(const std::string& id);
     std::string selectedConflict() const;
     PriorityDefaults priorityDefaults() const; // data/priority-rules, as Run reads them
+    // M3.2.4c (D68): the automatic areas, derived once per revision and only while the Conflict
+    // area tool or tab is in use (3.4 ms a revision on the four-leg template, Release).
+    std::vector<AutomaticConflict> automatic_;
+    std::uint64_t automaticRevision_{UINT64_MAX};
+    bool automaticShown() const;
+    void authorConflict(const std::string& key);
     // M3.2.6c, src/shell/editor_counters.cpp: the Queue counters tab and the tool's commit.
     QTableWidget* counterTable_{};
     std::uint64_t counterRevision_{UINT64_MAX};

@@ -12,6 +12,7 @@ the log. Rewrite this file; do not append to it.
 ## Immediate — M3.2.8, and the owner's M3.2.7d
 
 **Done:**
+- **Conflict areas are automatic now (M3.2.4c, D68, the owner's ruling).** Every at-grade overlap is a passive area and every merge shows its derived priority; a click authors one. Any new right-of-way work must keep them derived, never stored.
 - M3.2.2a–M3.2.7c (D54–D67): authored right-of-way, the admission solver, Stop/Yield, queue
   counters, the editor for all of them, and the T-junction evidence (fixture, controlled cases,
   sweeps, signal composition, the congested headway arm).

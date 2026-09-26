@@ -1,6 +1,7 @@
 #pragma once
 #include "../project/document.hpp"
 #include "../model/network/display.hpp"
+#include "../model/network/right_of_way.hpp"
 #include <QGraphicsView>
 #include <QPainterPath>
 #include <functional>
@@ -83,6 +84,12 @@ public:
     std::function<void(const std::string&)> conflictPicked, conflictCycled;
     std::function<void(const std::string&, double)> waitingLineMoved;
     std::vector<std::string> conflictsAt(Point) const;   // areas whose drawn side contains it, by id
+    // M3.2.4c (D68): the areas the drawing implies (automaticConflicts), drawn under the Conflict
+    // area tool only -- passive crossings grey, derived merges in their derived colours, both
+    // dashed. A click on one where no authored area is asks to author it; the shell decides how.
+    void setAutomaticConflicts(std::vector<AutomaticConflict>);
+    std::string automaticAt(Point) const;               // the key of the automatic area under it
+    std::function<void(const std::string&)> conflictAuthored;
     // M3.2.6c, the Queue counter tool (docs/VISSIM_PARITY.md §2b). A click adds one measurement
     // line to an open draft: a stop line references its head, a waiting line references itself,
     // and anywhere else on a Link lane is an explicit point. Enter hands the draft over as one
@@ -146,6 +153,8 @@ private:
     void drawDemandOverlay();
     void drawConflicts();
     std::string highlightedConflict_;
+    std::vector<AutomaticConflict> automatic_;
+    void drawAutomaticConflicts();
     std::string waitingLineAt(Point) const;
     bool conflictPress(QMouseEvent*);
     void updateLineDrag(QPoint);

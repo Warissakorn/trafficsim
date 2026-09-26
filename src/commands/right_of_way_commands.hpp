@@ -3,6 +3,7 @@
 // runs it inside History::execute, which validates the whole document and makes it one undoable
 // step. A failed edit therefore changes nothing (docs/M3_CONTRACT.md §6).
 #include "../project/document.hpp"
+#include "../model/network/right_of_way.hpp"
 #include <optional>
 
 namespace trafficsim {
@@ -65,6 +66,13 @@ void moveWaitingLine(ProjectDocument&, const std::string& lineId, double station
 // every decided area that gives way at that line (M3.2.5b: a lane's crossing areas share one line,
 // D63). Throws EDIT_UNKNOWN_OBJECT, or EDIT_UNDETERMINED_PRIORITY while no side gives way.
 void setAreaControl(ProjectDocument&, const std::string& areaId, std::optional<StopMode>);
+// M3.2.4c (D68): the Conflict area tool's first click on an automatic area (automaticConflicts).
+// A passive crossing becomes one authored area for that lane pair -- a turning Connector giving way
+// to a Link, else the second side -- with a rule from `defaults` and each lane's shared waiting
+// line (D63). A derived merge is taken over whole (takeOverMerge), unchanged in behaviour. Returns
+// the area now standing where the click was. Deleting it (removeConflictArea) makes the pair
+// automatic again. Throws EDIT_NO_CROSSING / EDIT_NO_MERGE when the pair is no longer automatic.
+std::string authorAutomaticConflict(ProjectDocument&, const AutomaticConflict&, const PriorityDefaults&);
 // Deletes an area with its rule and the waiting lines no other area uses.
 void removeConflictArea(ProjectDocument&, const std::string& areaId);
 }

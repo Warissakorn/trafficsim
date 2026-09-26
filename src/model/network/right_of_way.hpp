@@ -63,6 +63,29 @@ std::vector<MergeGroup> mergeGroups(const Network&, const RuntimeSections&);
 // priority"); empty when there is none.
 std::vector<std::string> mergeSectionsOf(const Network&, const RuntimeSections&, const std::string& connectorId);
 std::string mergeSectionOfArea(const Network&, const RuntimeSections&, const ConflictArea&);
+// The side a taken-over merge gives one incoming segment, in authored coordinates: its waiting
+// line, entry and exit (the join). Shared by takeOverMerge and automaticConflicts, so what the
+// editor shows before a take-over is what the take-over writes. Throws EDIT_UNKNOWN_OBJECT.
+struct MergeSide { ControlPathRef path; double wait{}, entry{}, exit{}; };
+MergeSide mergeSide(const Network&, const RuntimeSections&, const std::string& segment);
+
+// M3.2.4c (D68): what the drawing implies where nobody has authored an area -- Vissim's automatic
+// conflict areas. Derived, never stored, so they need no lifecycle and a file never holds one.
+//  - A crossing: two lane paths of different roads on one level whose surfaces overlap, that no
+//    authored area covers. It is PASSIVE (priority undetermined): it compiles to nothing, and
+//    vehicles ignore each other there until the author sets a priority. A Connector against its
+//    own Links (its mouths) and two Connectors leaving or entering the same lane are not crossings.
+//  - A merge: each pair of an automatic merge group, as takeOverMerge would store it, with the
+//    drawing-order priority it already runs with.
+// `key` names it stably across revisions; output is in key order, whatever the input order.
+struct AutomaticConflict {
+    ConflictKind kind{ConflictKind::crossing};
+    ConflictSide first, second;
+    ConflictPriority priority{ConflictPriority::undetermined};
+    std::string key, mergeSection;
+    bool operator==(const AutomaticConflict&) const = default;
+};
+std::vector<AutomaticConflict> automaticConflicts(const Network&);
 
 // The one resolver the compiler and the diagnostics share. `issues` are runtime (Run-blocking)
 // issues; with none, `rules` and `zones` are what compiles. With no authored controls `rules` is

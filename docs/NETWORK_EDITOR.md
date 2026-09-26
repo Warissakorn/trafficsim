@@ -420,7 +420,7 @@ seed, time and active/pending/completed counts; seeded arrivals may leave the vi
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
-**Conflict area tool** (`A`, M3.2.4b, D61): click an area to select it, click it again or press `P` to
+**Conflict area tool** (`A`, M3.2.4b, D61): click an area to select it, click it again or press `P` to Since M3.2.4c (D68) the tool also shows what the drawing implies with no Add step: grey dashed passive crossings (not enforced at Run, as in Vissim) and each merge with its derived priority; a click or `P` on its row sets one, Delete makes a crossing passive again. Nothing automatic is saved.
 cycle its priority, drag a dashed waiting line along its lane. The side that gives way is hatched. The dialog's
 Control field (M3.2.5b, D63) sets Stop/Yield for the line: dashed = none, solid amber = Yield, solid red = Stop. **Queue counter tool** (`Q`, M3.2.6c, D65): click stop lines, waiting lines or places on a Link lane, Enter creates one counter (Backspace drops a line, Esc cancels); violet dotted bars. The **Queue counters** tab adds one over the selected heads, renames, deletes, and says which approach row it replaces.
 

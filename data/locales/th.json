@@ -470,5 +470,9 @@
   "editorAddCounter": "เพิ่มตัวนับคิวจากหัวสัญญาณไฟที่เลือก",
   "editorEditCounter": "แก้ไขตัวนับคิว",
   "editorDeleteCounter": "ลบตัวนับคิว",
-  "editorCounterPlaceHelp": "คลิกเส้นหยุด เส้นรอ หรือจุดบนช่องจราจรของ Link แล้วกด Enter เพื่อสร้างตัวนับคิวหนึ่งตัว Backspace ลบเส้นล่าสุด Esc ยกเลิก"
+  "editorCounterPlaceHelp": "คลิกเส้นหยุด เส้นรอ หรือจุดบนช่องจราจรของ Link แล้วกด Enter เพื่อสร้างตัวนับคิวหนึ่งตัว Backspace ลบเส้นล่าสุด Esc ยกเลิก",
+  "editorConflictPassive": "Passive — ยังไม่มีฝั่งที่ต้องให้ทาง",
+  "editorConflictPassiveStatus": "Passive: ยังไม่บังคับใช้ คลิกหรือกด P เพื่อตั้งสิทธิ์",
+  "editorConflictAutomaticStatus": "อัตโนมัติ: ตามลำดับการวาด คลิกหรือกด P เพื่อตั้งเอง",
+  "editorAuthorConflict": "ตั้งสิทธิ์ของพื้นที่ขัดแย้ง"
 }
