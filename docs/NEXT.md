@@ -9,34 +9,28 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.7c, then M3.2.8
+## Immediate — M3.2.8, and the owner's M3.2.7d
 
 **Done:**
-- M3.2.2a–M3.2.7b (D54–D66): authored right-of-way, the admission solver, Stop/Yield, queue
-  counters, the editor for all of them, and the T-junction evidence.
-- **The T-junction (D66):** `tools/t_junction_network.hpp`, with
-  `data/projects/t-junction-priority.traffic.json`, controlled cases (`tjunction_controlled.*`) and
-  the sweep (`docs/evidence/m3.2.7-sweep.*`).
+- M3.2.2a–M3.2.7c (D54–D67): authored right-of-way, the admission solver, Stop/Yield, queue
+  counters, the editor for all of them, and the T-junction evidence (fixture, controlled cases,
+  sweeps, signal composition, the congested headway arm).
+- Everything is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
-**Next, M3.2.7c** (ROADMAP row):
-1. **Signal-composition variant.** Add a `TJunctionOptions` flag that puts a head on the minor
-   approach upstream of its waiting line. Test that a green head neither serves the Stop nor
-   erases occupancy on the fixture, as `stop_control.a20` does on its own network.
-2. **A congested major-road variant**, so headway decides some blocks.
-   - Assert the forcing first: some tick has a major vehicle within `headway` but outside the
-     gap-time window.
-   - Then re-run the headway arm with new metadata, committed first. The M3.2.7b rows showed that
-     headway never binds at free flow.
-3. **Owner exercise (§3 of `docs/M3_ACCEPTANCE.md`)**, on Windows with the owner. Record it as
-   pending until the owner reports it; never infer it. Everything the owner needs is in the file:
-   open it, inspect the two areas, change gap and headway, Stop/Yield, save and reopen, repeat the
-   seed.
+**M3.2.7d — the owner's, not a session's.** Carry out the exercise with the recording sheet in
+`docs/M3_ACCEPTANCE.md` §3, on Windows. Until the owner reports it, the row stays pending.
 
-**Then M3.2.8** (ROADMAP): lane changing, cooperation, visibility, and a **commitment rule at a
-waiting line**. M3.2.7 found minor vehicles clamped when the gap closes as they reach the line:
-3–10 per sweep run, none on the major road.
-
-A24 still needs the Windows `native.yml` run of the Qt suites.
+**Next session: M3.2.8** (ROADMAP row). It is a new system with its own contract, so write the
+contract first, as `docs/M3_CONTRACT.md` did for M3.2.2. Start with the smallest piece the
+evidence asks for:
+1. **A commitment rule at a waiting line.**
+   - The T-junction sweeps show 3–10 minor-road safety clamps per run, all minor vehicles within
+     1.5 m of a line when the gap closed.
+   - Measure the fix against those runs: `trafficsim-t-junction-sweep --run`, then compare the
+     clamp column. Commit new metadata first if the fixture changes.
+   - The major road must stay at zero clamps, and `tjunction_controlled.*` must keep passing: the
+     gap and headway predicates are not what changes.
+2. Then lane changing and cooperation, which are needed for the known four-leg limit below.
 
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model; derived stop lines sit 1 m short of the join (D50). Conflict areas

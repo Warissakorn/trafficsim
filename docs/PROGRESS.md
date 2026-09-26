@@ -95,6 +95,14 @@ free flow the gap-time window always covered the headway.
   MSVC may round differently in the last bit.
 - A test checks the metadata still describes the variant.
 
+**The headway arm** (`docs/evidence/m3.2.7c-headway.*`, run after `e5e1e5f`): all 12 runs drained.
+Headway now changes the outcome:
+- The minor queue mean never fell from 3 to 7 to 12 m in any seed.
+- The near turn's delay rose in every seed. It merges 4 m past the head's line, so standing major
+  vehicles are within 7 and 12 m of its entry, but not 3.
+- The crossing turn responded in two of four seeds.
+- Eastbound delay rose to 13.6–17.1 s. There are 5–9 clamps per run.
+
 **Owner exercise → M3.2.7d.** The owner exercise (§3) needs the owner and Windows, so it is carved as
 M3.2.7d and stays pending. `docs/M3_ACCEPTANCE.md` §3 gains a recording sheet.
 
