@@ -75,7 +75,12 @@ bool EditorCanvas::conflictPress(QMouseEvent* e) {
         }
     }
     const auto areas = conflictsAt(p);
-    if (areas.empty()) { reject(); return true; }
+    if (areas.empty()) {
+        // No authored area here: an automatic one is authored by the click (D68), as Vissim's
+        // first click sets a passive area's priority.
+        if (const auto key = automaticAt(p); !key.empty()) { if (conflictAuthored) conflictAuthored(key); return true; }
+        reject(); return true;
+    }
     if (std::find(areas.begin(), areas.end(), highlightedConflict_) != areas.end()) {
         if (conflictCycled) conflictCycled(highlightedConflict_);
     } else if (conflictPicked) conflictPicked(areas.front());
@@ -97,8 +102,45 @@ void EditorCanvas::finishLineDrag(QPoint position) {
     redraw();
     if (drag.moved && std::abs(drag.station - drag.original) > 1e-9 && waitingLineMoved) waitingLineMoved(drag.id, drag.station);
 }
+void EditorCanvas::setAutomaticConflicts(std::vector<AutomaticConflict> automatic) {
+    if (automatic_ == automatic) return;
+    automatic_ = std::move(automatic);
+    if (tool_ == Tool::conflict) redraw();
+}
+std::string EditorCanvas::automaticAt(Point p) const {
+    if (!document_ || tool_ != Tool::conflict) return {};
+    const auto& n = document_->network;
+    for (const auto& a : automatic_)
+        for (const auto* side : {&a.first, &a.second}) {
+            if (!levelVisible(levelOf(n, side->path))) continue;
+            const auto outline = conflictSideOutline(n, *side);
+            if (outline.size() >= 3 && outlinePath(outline).contains(QPointF(p.x, p.y))) return a.key;
+        }
+    return {};
+}
+void EditorCanvas::drawAutomaticConflicts() {
+    if (!document_ || tool_ != Tool::conflict) return;
+    const auto& n = document_->network;
+    for (const auto& a : automatic_)
+        for (const auto* side : {&a.first, &a.second}) {
+            const int level = levelOf(n, side->path);
+            if (!levelVisible(level)) continue;
+            const auto outline = conflictSideOutline(n, *side);
+            if (outline.size() < 3) continue;
+            // Passive: grey, nothing enforced. A derived merge: the colour of the side it runs with.
+            const bool passive = a.priority == ConflictPriority::undetermined;
+            const bool yields = (side == &a.first) == (a.priority == ConflictPriority::firstYields);
+            const QColor tint = passive ? QColor(120, 128, 140, 90) : yields ? QColor(220, 38, 38, 80) : QColor(22, 163, 74, 80);
+            QPen pen(tint.darker(150), 1, Qt::DashLine); pen.setCosmetic(true);
+            auto* item = scene_.addPath(outlinePath(outline), pen, QBrush(tint));
+            item->setZValue(level * 100. + 5.5); item->setToolTip(QString::fromStdString(a.key));
+            item->setData(0, QStringLiteral("auto-conflict")); item->setData(1, QString::fromStdString(a.key));
+            item->setData(2, QString::fromLatin1(passive ? "passive" : "merge"));
+        }
+}
 void EditorCanvas::drawConflicts() {
     if (!document_) return;
+    drawAutomaticConflicts();
     const auto& n = document_->network;
     for (const auto& area : n.rightOfWay.conflictAreas) {
         const bool lit = area.id == highlightedConflict_;

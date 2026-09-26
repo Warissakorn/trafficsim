@@ -179,6 +179,15 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   A turn that does not wait for green — the Thai left turn at all times — makes it bind every
   cycle. **A derived rule's stop line is 1 m short of the join** (D50): held on the join itself,
   the waiting vehicle's front is on the shared lane and the major vehicle behind it deadlocks.
+- **Commitment (M3.2.8a, D69; [`M3_8_CONTRACT.md`](M3_8_CONTRACT.md) §1).** A vehicle short of a
+  derived rule's stop line or a zone's waiting line is committed when `v² > 2 · maxDeceleration ·
+  gap`: it cannot stop there. Equality can stop.
+  - A committed vehicle ignores the headway and gap-time parts of the test at that line.
+  - It is still held by occupancy (a major vehicle inside the area, or across the conflict point),
+    an unserved Stop, receiving space and the swept check. A clamp then is counted as before.
+  - It is read off the snapshot, never stored.
+  - It replaces the emergency clamp that a gap closing under a driver too close to stop used to
+    fire. It does not apply to signal heads.
 - Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
   turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
   in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).

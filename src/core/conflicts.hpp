@@ -13,9 +13,17 @@ std::vector<RouteZone> zoneIncidence(const Scenario&, const std::vector<RoutePar
 // The room a vehicle needs to wait in: the longest type plus its standstill distance. Less than
 // this between two zones means a vehicle waiting at the second still occupies the first.
 double waitingRoom(const Scenario&);
+// M3.2.8a (docs/M3_8_CONTRACT.md §1): a vehicle `gap` short of a line it gives way at that cannot
+// stop there at its type's maximum deceleration. A committed vehicle ignores the anticipation
+// part of the gap test (headway, gapTime), never occupancy, an unserved Stop, receiving space or
+// the swept check. Read off the snapshot, never stored. Equality can stop.
+inline bool committed(double speed, double gap, const VehicleType& type) {
+    return speed * speed > 2 * type.maxDeceleration * gap;
+}
 // One zone as the snapshot sees it at the start of a tick.
 struct ZoneState {
     bool majorBlocks{};                  // a major vehicle is inside, within headway, or within gapTime
+    bool majorInside{};                  // the occupancy part alone: a major front past entry, rear not clear
     std::vector<std::uint64_t> holders;  // minor vehicles past the waiting line, rear not yet clear
 };
 std::vector<ZoneState> summarizeZones(const Scenario&, const ScenarioIndex&, const std::vector<Vehicle>&,

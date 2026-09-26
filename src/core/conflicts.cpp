@@ -70,7 +70,7 @@ std::vector<ZoneState> summarizeZones(const Scenario& scenario, const ScenarioIn
                 continue;
             }
             const double d = rz.entryAt - vehicle.distance; // positive: still short of the area
-            if (d < 0) { if (rear < rz.exitAt) state.majorBlocks = true; }
+            if (d < 0) { if (rear < rz.exitAt) state.majorBlocks = state.majorInside = true; }
             else if (d <= zone.headway) state.majorBlocks = true;
             // Equality satisfies the time threshold (contract §4); a standing vehicle beyond the
             // headway is a gap, not a block -- it cannot enter while a minor vehicle holds anyway.
@@ -99,7 +99,9 @@ std::optional<double> zoneHold(const Scenario& scenario, const ScenarioIndex& in
             // exit -- the chain's last exit -- or it would be admitted only to stop inside.
             const bool exitTaken = leader && leader->speed < kStoppedSpeed &&
                 vehicle.distance + leader->gap - rz.clearAt < type.length + behaviour.standstillDistance;
-            if (!unserved && !state.majorBlocks && !exitTaken) continue;
+            // A driver who cannot stop at the line goes, unless the area is physically taken.
+            const bool blocked = committed(vehicle.speed, std::max(0.0, gap), type) ? state.majorInside : state.majorBlocks;
+            if (!unserved && !blocked && !exitTaken) continue;
         } else {
             gap = rz.entryAt - vehicle.distance;
             if (gap < -kPast) continue;

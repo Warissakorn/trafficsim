@@ -470,5 +470,9 @@
   "editorAddCounter": "Add queue counter over selected heads",
   "editorEditCounter": "Edit queue counter",
   "editorDeleteCounter": "Delete queue counter",
-  "editorCounterPlaceHelp": "Click stop lines, waiting lines or places on a Link lane, then press Enter to create one queue counter. Backspace removes the last line; Esc cancels."
+  "editorCounterPlaceHelp": "Click stop lines, waiting lines or places on a Link lane, then press Enter to create one queue counter. Backspace removes the last line; Esc cancels.",
+  "editorConflictPassive": "Passive — nobody gives way",
+  "editorConflictPassiveStatus": "Passive: not enforced; click or press P to set priority",
+  "editorConflictAutomaticStatus": "Automatic: drawing order; click or press P to take over",
+  "editorAuthorConflict": "Set conflict area priority"
 }

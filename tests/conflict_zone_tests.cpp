@@ -63,10 +63,11 @@ TEST(conflict_zone, a09_thresholds_are_exact) {
 }
 TEST(conflict_zone, a10_a_major_vehicle_before_the_section_cut_is_seen) {
     const auto place = [](Scenario sc) {
-        return test::withVehicles(sc, {on(1, "majorRoute", 40, 40), on(2, "minorRoute", 89.9, 5)});
+        return test::withVehicles(sc, {on(1, "majorRoute", 40, 40), on(2, "minorRoute", 89.9, 1)});
     };
     auto s = place(crossing());
     CHECK(locateVehicle(*s.scenario, s.vehicles.front(), *s.index).segmentId == "eastUp"); // the forcing
+    CHECK(!committed(1, 0.1, s.scenario->vehicleTypes[s.vehicles.back().typeIndex])); // slow enough to stop: not committed (M3.2.8a)
     auto open = crossing(); open.conflictZones.clear();
     CHECK(at(stepSimulation(place(open)), 2) > 90); // and unheld, the minor crosses this tick
     CHECK(zoneOf(s).majorBlocks); // 108 m at 40 m/s: 2.7 s, seen from the segment before
@@ -169,15 +170,19 @@ TEST(conflict_zone, congested_demand_never_overlaps_and_the_minor_road_waits) {
     auto s = crossing();
     s.inputs = {{"majorIn", "majorRoute", "car", 900, 0, 240}, {"minorIn", "minorRoute", "car", 400, 0, 240}};
     auto state = createSimulation(s, 3);
-    std::uint64_t clamps = 0;
+    std::uint64_t held = 0;
     while (state.tick < totalTicks(*state.scenario)) {
         const auto next = stepSimulation(state);
         CHECK(!sweptOverlap(state, next));
-        for (const auto& e : next.events) if (std::holds_alternative<SafetyClampEvent>(e)) ++clamps;
+        // A minor vehicle standing just short of its line (at 90) is one the zone held there.
+        for (const auto& v : next.vehicles)
+            held += next.scenario->routes[v.routeIndex].id == "minorRoute" && v.speed < 0.1 && v.distance > 85 && v.distance <= 90;
         state = next;
     }
     CHECK(state.completed > 0);
-    CHECK(clamps > 0); // the forcing: vehicles really were held at the line
+    // The forcing: vehicles really were held at the line. Counted as standing there, not as
+    // clamps, since M3.2.8a lets a driver too close to stop go instead of clamping it.
+    CHECK(held > 0);
     // A zone costs the minor road time: the same demand with no zone is faster through.
     auto open = s; open.conflictZones.clear();
     const auto delay = [](const Scenario& x) {

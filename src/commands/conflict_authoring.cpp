@@ -158,3 +158,46 @@ void removeConflictArea(ProjectDocument& d, const std::string& areaId) {
     detail::pruneQueueCounters(d);
 }
 }
+namespace trafficsim {
+std::string authorAutomaticConflict(ProjectDocument& d, const AutomaticConflict& automatic, const PriorityDefaults& defaults) {
+    requireDefaults(defaults);
+    if (automatic.kind == ConflictKind::merge) {
+        // The take-over stores the whole group exactly as shown; the clicked pair is returned.
+        const auto created = takeOverMerge(d, automatic.mergeSection, defaults);
+        for (const auto& id : created) {
+            const auto& a = area(d, id);
+            if (a.first.path == automatic.first.path && a.second.path == automatic.second.path) return id;
+        }
+        throw std::invalid_argument("EDIT_NO_MERGE");
+    }
+    // Still passive? A stale click on a pair authored since is refused rather than doubled.
+    const auto now = automaticConflicts(d.network);
+    if (std::none_of(now.begin(), now.end(), [&](const auto& x) { return x.key == automatic.key; }))
+        throw std::invalid_argument("EDIT_NO_CROSSING");
+    // A lane's crossing areas share one waiting line before the first of them (D63): reuse the
+    // line this path already waits at, moved upstream when the new area comes first.
+    const auto lineFor = [&](const ConflictSide& side) {
+        const double station = std::max(0.0, side.entryStation - kCrossingSetback);
+        for (const auto& a : d.network.rightOfWay.conflictAreas) {
+            if (a.kind != ConflictKind::crossing) continue;
+            for (const auto* s : {&a.first, &a.second})
+                if (s->path == side.path) {
+                    for (const auto& w : d.network.rightOfWay.waitingLines)
+                        if (w.id == s->waitingLineId && w.point.station > station) moveWaitingLine(d, w.id, station);
+                    return s->waitingLineId;
+                }
+        }
+        return putWaitingLine(d, {"", "", {side.path, station}});
+    };
+    auto first = automatic.first, second = automatic.second;
+    first.waitingLineId = lineFor(first);
+    second.waitingLineId = lineFor(second);
+    // Who gives way first: a turning Connector yields to a Link, as a side road yields to the
+    // through road; between two of a kind, the second in key order. One click cycles it after.
+    const bool firstIsConnector = !first.path.connectorId.empty(), secondIsConnector = !second.path.connectorId.empty();
+    const auto priority = firstIsConnector && !secondIsConnector ? ConflictPriority::firstYields : ConflictPriority::secondYields;
+    const auto id = putConflictArea(d, {"", "", ConflictKind::crossing, first, second, priority});
+    putPriorityRule(d, {"", "", id, defaults.gapTime, defaults.headway});
+    return id;
+}
+}

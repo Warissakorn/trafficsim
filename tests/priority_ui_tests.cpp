@@ -33,6 +33,10 @@ int items(EditorWindow& w, const char* kind) {
     for (auto* i : w.canvas()->scene()->items()) n += i->data(0).toString() == kind;
     return n;
 }
+// M3.2.4c (D68): the tab also lists the areas the drawing implies, after the authored ones, with
+// no id. These count each kind.
+int authoredRows(QTableWidget* t) { int n = 0; for (int r = 0; r < t->rowCount(); ++r) n += t->item(r, 0)->text() != QStringLiteral("\u2014"); return n; }
+int automaticRows(QTableWidget* t) { return t->rowCount() - authoredRows(t); }
 QAction* act(EditorWindow& w, const char* name) {
     auto* a = w.findChild<QAction*>(name); require(a, name); return a;
 }
@@ -81,7 +85,8 @@ int main(int argc, char** argv) {
         }, ran);
         act(w, "editorAddCrossing")->trigger(); QApplication::processEvents();
         require(ran, "Crossing dialog never opened");
-        require(table->rowCount() == 2, "Two lane pairs did not make two rows");
+        require(authoredRows(table) == 2, "Two lane pairs did not make two rows");
+        require(automaticRows(table) == 1, "The automatic merge is not listed"); // the crossings are authored now
         require(tabs->currentIndex() == 9, "The Conflict areas tab was not shown");
         require(items(w, "conflict-area") == 4 && items(w, "waiting-line") == 3, "Areas and waiting lines were not drawn"); // one line per lane (D63)
         require(table->item(0, 6)->text() == "Runs", "A complete crossing did not report that it runs");
@@ -112,13 +117,13 @@ int main(int argc, char** argv) {
         w.canvas()->select(join); QApplication::processEvents();
         require(act(w, "editorTakeOverMerge")->isEnabled(), "Take over merge disabled on a Connector");
         act(w, "editorTakeOverMerge")->trigger(); QApplication::processEvents();
-        require(table->rowCount() == 3, "Taking over the merge added no row");
+        require(authoredRows(table) == 3 && automaticRows(table) == 0, "Taking over the merge added no row");
         int merge = -1;
         for (int r = 0; r < table->rowCount(); ++r) if (table->item(r, 2)->text() == "Merge") merge = r;
         require(merge >= 0, "The taken-over area is not a merge row");
         table->selectRow(merge); QApplication::processEvents();
         act(w, "editorRestorePriority")->trigger(); QApplication::processEvents();
-        require(table->rowCount() == 2, "Restore automatic priority did not remove the merge");
+        require(authoredRows(table) == 2 && automaticRows(table) == 1, "Restore automatic priority did not remove the merge");
 
         // An undetermined area is a Problems row that leads back to the area.
         table->selectRow(1); QApplication::processEvents();

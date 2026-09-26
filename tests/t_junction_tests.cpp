@@ -1,5 +1,6 @@
 #include "t_junction_support.hpp"
 #include <fstream>
+#include <sstream>
 using namespace trafficsim;
 using namespace tjunction;
 // M3.2.7a, A26 of docs/M3_ACCEPTANCE.md: the T-junction fixture (§2). One drawing through the
@@ -129,4 +130,26 @@ TEST(tjunction, the_archived_sweep_metadata_still_describes_the_fixture) {
     CHECK(archived == sweep::fixtureMetadata(test::root()));
     // A changed catalog would be caught: the hash reads the file, not its name.
     CHECK(sweep::fnv1a(test::root() / "data/vehicle-types/car.json") != sweep::fnv1a(test::root() / "data/vehicle-types/heavy-vehicle.json"));
+}
+TEST(tjunction, commitment_removes_the_minor_clamps_the_sweep_archived_and_leaves_the_major_road_alone) {
+    // M3.2.8a (D69), measured against the M3.2.7b rows at the base rule (gapTime 5 s, headway 7 m):
+    // every clamp there was a minor driver too close to stop when its line closed.
+    std::ifstream f(test::root() / "docs/evidence/m3.2.7-sweep.csv");
+    std::string line; std::getline(f, line);
+    int archived = 0;
+    while (std::getline(f, line)) {
+        std::vector<std::string> cells; std::stringstream row(line);
+        for (std::string cell; std::getline(row, cell, ',');) cells.push_back(cell);
+        if (cells[1] == "5" && cells[2] == "7") archived += std::stoi(cells.back());
+    }
+    CHECK(archived > 0); // the forcing: the archive holds clamps to remove
+    int minor = 0;
+    for (const auto seed : sweep::kSeeds) {
+        fixture::TJunctionOptions o; o.gapTime = 5; o.headway = 7;
+        const auto r = run(fixture::tJunction(o), seed);
+        CHECK(r.report.pending == 0 && r.report.active == 0);
+        CHECK(r.majorClamps == 0); CHECK(!r.bothSidesInside);
+        minor += r.minorClamps;
+    }
+    CHECK(minor < archived);
 }

@@ -5,6 +5,8 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-25-m3.2.6a-b.md`](archive/PROGRESS-2026-09-25-m3.2.6a-b.md) — 2026-09-25 — M3.2.6a/b: signal positions and queue counters (D64); moved out 2026-09-26 as the oldest live entry
+- [`archive/PROGRESS-2026-09-25-m3.2.5b.md`](archive/PROGRESS-2026-09-25-m3.2.5b.md) — 2026-09-25 — M3.2.5b: Stop/Yield in the editor; one waiting line per lane (D63); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.5a.md`](archive/PROGRESS-2026-09-25-m3.2.5a.md) — 2026-09-25 — M3.2.5a: Stop and Yield at the waiting line (D62); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.4b.md`](archive/PROGRESS-2026-09-25-m3.2.4b.md) — 2026-09-25 — M3.2.4b: conflict areas on the canvas (D61); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.4a.md`](archive/PROGRESS-2026-09-25-m3.2.4a.md) — 2026-09-25 — M3.2.4a: the Conflict areas tab (D60); moved out 2026-09-25 as the oldest live entry
@@ -51,6 +53,118 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-26 — M3.2.8a: commitment at a waiting line (D69)
+
+M3.2.8 was split:
+- **a** — commitment;
+- **b** (ROADMAP) — lane changing, cooperation and visibility, whose contract
+  (`M3_8_CONTRACT.md` §2) is not yet written.
+
+The contract (`docs/M3_8_CONTRACT.md` §1) was committed before the code (`a31c029`).
+
+**The rule:** a vehicle short of a line it gives way at, with `v² > 2 · maxDeceleration · gap`,
+cannot stop there. It ignores the headway and gap-time parts of the test at that line.
+- It never ignores occupancy, an unserved Stop, receiving space or the swept check.
+- One predicate, `committed` (`src/core/conflicts.hpp`), serves both paths: `zoneHold`, through
+  the new `ZoneState::majorInside`, and the derived-rule loop in `stepSimulation`.
+- It is read off the snapshot and never stored, so a copied state replays exactly.
+
+**The owner's rulings, and one reversed by measurement:**
+- The rule covers derived M3.1 merges too, re-publishing the four-leg and M2.6 numbers D59 had
+  kept fixed.
+- The owner first chose `comfortableDeceleration`. Measured on seed 42, it clamped the major road:
+  - at the T-junction's congested variant, an eastbound vehicle was held 0.4 m short of the
+    crossing at 7.5 m/s behind a minor driver who had committed about 2 s ahead of it;
+  - at an M2.6 merge, a turn committed in front of a through vehicle within headway, and through
+    vehicles were clamped standing at the join (36 clamps, against 28).
+
+  Both broke NEXT's gate of zero major-road clamps, so it went back to the owner, who chose
+  `maxDeceleration`.
+- **Found while re-checking:** a derived rule's span front is clipped at its segment's end, so a
+  major vehicle across the join reads `reach == 0`. The committed path therefore skips it.
+  - That major vehicle is then on the minor route's next segment, and so is its car-following
+    leader, which holds it anyway.
+  - The mutation that drops derived-rule occupancy survives for the same reason; the contract
+    says so.
+  - The comfortable figures above were re-measured after checking this and did not change.
+
+**Results** (`docs/evidence/m3.2.8a-commitment.md`; rows `m3.2.8a-sweep.csv`,
+`m3.2.8a-headway.csv`; the M3.2.7 metadata still describes the inputs):
+- **T-junction clamps:**
+  - gap arm 76 → 3;
+  - headway runs 52 → 0;
+  - congested arm 83 → 20. Of those, 15 are eastbound vehicles at the fixed-time head (D36
+    amber) and 5 are minor vehicles standing or at walking pace within 1 m of the merge line,
+    **not diagnosed**.
+- **No clamp is a major vehicle at a conflict area. All runs drained.**
+- Minor delay fell by 0–11 s, and the gapTime and headway responses still hold per seed.
+- **Four-leg:** byte-identical.
+- **M2.6:**
+  - clamps 28 → 23; the 5 at merge lines are gone;
+  - movements move by at most 0.13 s;
+  - `m26study.a_minor_vehicle_held_at_the_join_itself_*` now asserts more clamps with lines on the
+    join than with the D50 setback (37 against 22). Pending demand now appears on only 2 of 7
+    seeds, since a driver who cannot stop no longer waits on the join.
+- **Cost:** +0.25% instructions (callgrind, M2.6 hour); wall time within the clock's spread.
+
+**Tests:**
+- `commitment.*` (6 tests), each with its forcing asserted first:
+  - a committed driver goes through a gap closed by anticipation, with no clamp;
+  - a driver able to stop still waits;
+  - occupancy still holds it, through `zoneHold` itself and not only the swept check;
+  - equality can stop;
+  - a derived rule, go and wait;
+  - replay.
+- `tjunction.commitment_removes_the_minor_clamps_*` reads the archived CSV.
+- Two tests whose forcing was a clamp now observe standing vehicles instead:
+  - `conflict_zone.congested_*` counts minor vehicles standing at the line;
+  - in `conflict_zone.a10_*` the minor vehicle can now stop.
+- Mutations caught:
+  - zone occupancy ignored;
+  - `>=` at the boundary;
+  - the derived loop not using the predicate.
+
+## 2026-09-26 — M3.2.4c: automatic conflict areas (D68)
+
+**The owner's ruling**, given while looking at the T-junction in the editor:
+- conflict areas should appear on their own wherever roads overlap, as in Vissim;
+- the author only changes priority, with the Conflict area tool;
+- an unset crossing is **passive**, as in Vissim;
+- merges are shown too.
+
+This supersedes D61's "an unauthored crossing is not an area".
+
+- **Model** (`src/model/network/automatic_conflicts.cpp`, `automaticConflicts`), derived from the
+  drawing and never stored:
+  - **Crossings:** every pair of lane paths from two different roads on one level whose surfaces
+    overlap (`surfaceOverlap`) and that no authored area covers. Excluded: a Connector against
+    its own Links, and two Connectors leaving or entering the same lane. Crossings are passive,
+    so they compile to nothing; runtime is exactly what it was.
+  - **Merges:** each pair of every automatic merge group, from the same `mergeSide` that
+    `takeOverMerge` now uses (moved out of the commands), so what is shown is what a take-over
+    stores.
+  - Output is in key order, whatever the input order.
+- **Command** `authorAutomaticConflict`:
+  - a passive crossing becomes one area for that lane pair, a turning Connector giving way to a
+    Link, sharing (and moving upstream) the lane's line (D63);
+  - a merge is taken over whole;
+  - Delete (`removeConflictArea`) makes a crossing passive again by derivation.
+  - `addCrossingAreas` was **not** refactored onto it: its id allocation order is what the
+    committed T-junction file and its evidence hashes record.
+- **Editor:**
+  - Under the Conflict area tool only, passive crossings are drawn grey and dashed, and merges
+    dashed in their derived colours.
+  - A click where no authored area is authors the automatic one.
+  - The tab lists automatic rows after authored ones, with no id. Enter or `P` authors a row;
+    Delete and Restore stay disabled on them.
+  - `priority-ui` now counts authored and automatic rows separately; before, it counted every
+    row.
+- **Cost:** 3.4 ms per revision on the four-leg and M2.6 templates in a Release build (29 ms in
+  Debug). It is computed once per revision, and only while the tool or the tab is in use.
+- **Test runs:** Linux headless 28/28, desktop 46/46 offscreen. Seed 42 and the four-leg and M2.6
+  reports are unchanged. Three mutations were caught: the diverge exclusion removed, the merge
+  sides computed apart from the take-over, and the click not authoring.
 
 ## 2026-09-26 — M3.2.7c: signal composition and a congested major road on the T-junction (D67)
 
@@ -242,81 +356,6 @@ Other changes:
 
 Test runs: Linux headless 28/28, desktop 45/45 offscreen. Seed 42 is unchanged. Not run on Windows.
 
-## 2026-09-25 — M3.2.6a/b: signal positions and queue counters (D64)
-
-M3.2.6 was split: **a** signal positions (A21), **b** queue counters (A22, A23), **c** counter
-authoring in the editor (ROADMAP row).
-
-**M3.2.6a** (`tests/signal_position_tests.cpp`): on both driving sides, heads before, exactly on and
-after a section cut, on every lane of a three-lane Link, through stretch, split (before, through
-and after the head) and copy. Each test checks that three readings of the place agree:
-- the command's station;
-- the canvas slot (`headSlot`);
-- the runtime section point (`rebaseHead`).
-
-A red head past a cut holds traffic at its compiled position. **Nothing needed fixing**: the
-behaviour was already right and only unmeasured. Mutating `sectionForStation` so a head on the cut
-resolves downstream fails the new test, and an existing merge test.
-
-**M3.2.6b**:
-- **Model:** `AuthoredQueueCounter{id, name, lines}` in `Network::queueCounters`, schema 16. Each
-  `MeasurementLine` is a head or waiting-line reference, or an explicit `ControlPoint`, never both.
-  The fixtures changed only `schemaVersion`.
-- **Evaluation:** a counter is now a set of `CounterLine{segmentId, position}`, one mechanism for
-  every counter. Derived counters take each head's compiled place. The four-leg and M2.6 template
-  CLI reports are **byte-identical** before and after.
-- **Resolution:** authored counters resolve through the new `locateControlPoint`. When an authored
-  counter measures any of a Link's heads, that Link's derived row is dropped, so there is one row
-  per approach (A23).
-- **Lifecycle:** `pruneQueueCounters` runs wherever a head, waiting line, Link or Connector is
-  removed. A split remaps an explicit point and refuses one on the cut. A lane a counter measures
-  on cannot be removed.
-- **Copying a Link does not copy its counters**, a deviation from the plan. A copied approach
-  would bring a second row with the same name; demand is not copied for the same reason.
-
-Test runs: Linux headless 28/28 (302 unit tests), desktop 44/44 offscreen. Seed 42 is unchanged.
-
-## 2026-09-25 — M3.2.5b: Stop/Yield in the editor; one waiting line per lane (D63)
-
-**The editor:**
-- **Conflict dialog:** a "Control at the waiting line" field — None / Yield / Stop. It is disabled
-  while the priority is Undetermined, and is submitted in the same step as the rest of the dialog.
-- **Conflict table:** a Control column, the eighth, appended so earlier column indices keep their
-  meaning.
-- **Canvas:** a waiting line is dashed amber with no control, solid amber for Yield, and solid red
-  and heavier for Stop. Item data 2 carries the mode for tests. There is no text on the canvas,
-  because it has no locale.
-
-**Owner decision, the open question from M3.2.4b:** `addCrossingAreas` now puts **one line per
-lane**, 1 m before the first area that lane meets, shared by all of that lane's areas.
-- **Why:** a line per area put the far lane's line inside the near lane's area, so a Stop would
-  have halted vehicles mid-crossing.
-- **What changes for admission:** nothing. The chain rule already admits the areas behind one line
-  together (A15).
-- **Scope:** new gestures only. Stored documents are untouched.
-
-With shared lines, `setAreaControl` now sets the control for **every** decided area giving way at
-that line. A line cannot be Stop for one area and uncontrolled for the next, which is the D62
-rule. A priority flip takes only that area off its old line's control.
-
-**Evidence:**
-- `rightofway_editor`:
-  - three lines for a 2×1 crossing;
-  - B's shared line sits before the first area, with the forcing that the two areas meet B
-    1 m and more apart.
-- `stop_control_model`: on a two-lane crossing under Stop, more than 20 minor vehicles each stood
-  at the shared line.
-- `priority-canvas`:
-  - Stop set from the dialog, then listed, drawn, undone and redone;
-  - the field disabled for Undetermined;
-  - the control survives Save and reopen.
-- Three mutations each fail their own test:
-  - the dialog not submitting the control;
-  - the canvas ignoring it;
-  - lines back at the last area.
-
-Test runs: Linux headless 28/28 (290 unit tests), desktop 44/44 offscreen. Seed 42 is unchanged.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -425,6 +464,8 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D65 | 2026-09-25 | **Queue counters are authored with their own tool: a stop-line click references the head, a waiting-line click references the line, a lane click is an explicit point on Link lanes only; the keyboard route is Add queue counter over the selected heads; the tab's Replaces column and the report's suppression read the one `replacedApproaches`** | A reference keeps the counter's line on the object when that object is moved, which a copied point would not. An approach queue is counted on the Link that carries it, so a point on a Connector path is refused rather than given a second station convention. Heads are already keyboard-selectable through the Signal heads table, so no second keyboard picker was needed. Sharing the rule is what keeps the tab from promising a replacement the report does not make |
 | D66 | 2026-09-25 | **M3.2.7 is split a (fixture + controlled cases), b (diagnostic sweep), c (signal-composition variant + owner exercise); the fixture is single-lane Links with a 1 m median; minor-road clamps at a closing waiting line are reported, not asserted away, and carved to M3.2.8** | One lane per Link keeps every lane on its reference line, so stations read directly; the median is what separates the crossing from the merge. The spec asks for clamps to be reported; the missing commitment rule is admission-model behaviour, and fixing it inside the evidence milestone would tune the model while measuring it |
 | D67 | 2026-09-26 | **The T-junction's signal variant puts the minor head upstream of both waiting lines; the headway exercise is a congested major road (a fixed-time head 16 m past the crossing), with the metadata recording the added head exactly instead of a geometry hash; the owner exercise is carved to M3.2.7d** | Upstream of the lines is where a signalised minor arm stands, and it composes the head with Stop/Yield rather than replacing them. Headway only decides for slow major vehicles near the entry, which free flow never produced (M3.2.7b). Hashing computed geometry would fail on another compiler for a last-bit difference the fixture tests already tolerate. A session cannot supply the owner |
+| D68 | 2026-09-26 | **Conflict areas are automatic (the owner's ruling, superseding D61's no-passive rule): every at-grade overlap of two roads is a passive area and every merge shows its derived priority; they are derived from the drawing, never stored, and a click authors one** | Vissim's modelling surface generates them and the owner asked for it. Deriving instead of storing keeps one source of truth and needs no lifecycle: an edit to the drawing simply derives again. Passive keeps today's runtime exactly, so no study result moves until the author sets a priority |
+| D69 | 2026-09-26 | **A driver who cannot stop at its line at `maxDeceleration` is committed: it ignores headway and gap time there, never occupancy, an unserved Stop, receiving space or the swept check; it applies to authored zones and derived merges; read off the snapshot, never stored** | The M3.2.7 sweeps' clamps were all drivers too close to stop when the gap closed; going is what a driver does, and the clamp was the model failing to. The owner ruled on derived merges (re-publishing the four-leg and M2.6 numbers; the four-leg did not move) and first on comfortable deceleration, which measured major-road clamps at the T-junction and an M2.6 merge and was replaced by the owner with maximum deceleration. Stateless keeps replay exact | The 5 residual minor clamps at walking pace near a merge line (not diagnosed); a stop-or-go decision at amber (D36, M4) |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |
