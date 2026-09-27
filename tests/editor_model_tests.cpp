@@ -302,12 +302,14 @@ TEST(editor, a_route_covers_every_lane_the_drawing_carries) {
     CHECK(d.definition->routes.front().segmentIds==route);
     CHECK(d.definition->inputs.size()==1);
     CHECK(routeLaneChains(d.network,route).size()==2);
-    // And the demand the run receives is still the Link total, now across two lanes.
+    // And the demand the run receives is still the Link total, over all three of its lanes: the
+    // lane the Connector no longer leaves is a stub whose vehicles change lanes (M3.2.8b).
     const auto scenario=buildScenario(d.network,*d.definition);
-    CHECK(scenario.routes.size()==2);CHECK(scenario.inputs.size()==2);
+    CHECK(scenario.routes.size()==3);CHECK(scenario.inputs.size()==3);
+    CHECK(scenario.routeDeadEnds.size()==1);CHECK(!scenario.laneChanges.empty());
     double total=0;for(const auto& i:scenario.inputs)total+=i.vehiclesPerHour;
     test::near(total,1800,1e-9);
-    for(const auto& i:scenario.inputs)test::near(i.vehiclesPerHour,900,1e-9);
+    for(const auto& i:scenario.inputs)test::near(i.vehiclesPerHour,600,1e-9);
     CHECK(scenario.inputs[0].routeId!=scenario.inputs[1].routeId);
     for(const auto& i:scenario.inputs)
         CHECK(std::any_of(scenario.routes.begin(),scenario.routes.end(),
@@ -336,15 +338,25 @@ TEST(editor, m1_26_1_lane_shares_weight_the_split_and_degrade_when_stale) {
         // A compiled per-lane share carries no further split of its own.
         for(const auto& i:scenario.inputs) CHECK(i.laneShares.empty());
     }
-    // Narrowing the Connector changes how many lanes the route reaches; the three authored
-    // weights no longer line up with them, so the split degrades to equal rather than landing
-    // a weight on the wrong lane.
+    // M3.2.8b: the weights are one per lane of the Link, so narrowing the Connector leaves them
+    // meaning what they said -- the lane it no longer leaves still gets its weight, as a stub.
     changeConnectorRange(d,connector,2,2,false);
     CHECK(routeLaneChains(d.network,route).size()==2);
     {
         const auto scenario=buildScenario(d.network,*d.definition);
-        CHECK(scenario.inputs.size()==2);
-        for(const auto& i:scenario.inputs) test::near(i.vehiclesPerHour,900,1e-9);
+        CHECK(scenario.inputs.size()==3);
+        test::near(scenario.inputs[0].vehiclesPerHour,300,1e-9);
+        test::near(scenario.inputs[2].vehiclesPerHour,900,1e-9);
+    }
+    // Weights that no longer line up with the Link's lanes degrade to the equal split rather
+    // than landing on the wrong lane.
+    auto stale=d.definition->inputs.front();
+    stale.laneShares={1,2};
+    putInput(d,stale);
+    {
+        const auto scenario=buildScenario(d.network,*d.definition);
+        CHECK(scenario.inputs.size()==3);
+        for(const auto& i:scenario.inputs) test::near(i.vehiclesPerHour,600,1e-9);
     }
 }
 TEST(editor, a_single_lane_route_keeps_its_authored_id_and_volume) {

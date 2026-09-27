@@ -41,9 +41,23 @@ same-build event replay exact. Do not weaken the frozen reference comparisons.
 | A25 | .3-.7 | Branch a copied state, same seed/toolchain; congested finite demand | Independent snapshots, exact replay, no lost vehicles; completed/active/pending/clamps reported |
 | A26 | .7 | T-junction gap/headway sweep described below | Controlled boundaries and admission times match; stochastic differences reported without invented monotonic guarantees |
 
-Extend the matrix for M3.2.8 before implementing lane changing. It must cover forward and
-rearward safety, required lane-change distance, cooperation, visibility, conflict reservations,
-emergency stopping, congestion accounting and replay. Passing A01-A26 alone does not close it.
+M3.2.8b rows (mandatory lane changing, [`M3_8_CONTRACT.md`](M3_8_CONTRACT.md) §2), written
+before its code:
+
+| ID | Slice | Case | Must show |
+|---|---|---|---|
+| A27 | .8b | Two-lane Link, a movement leaving from one lane, inserted on the other, empty road | The stub vehicle changes once, completes on the full chain; no clamp; a stub never arrives |
+| A28 | .8b | A leader alongside or just ahead in the target lane | Refused while the forward gap or own braking fails; changes once it clears |
+| A29 | .8b | A fast follower close behind in the target lane | Refused (the forcing is asserted first: the follower would brake harder than `comfortableDeceleration`); changes once safe |
+| A30 | .8b | Target lane blocked for a long time | Held at its dead end by the stop-line mechanism, zero clamps, then changes and completes |
+| A31 | .8b | Two stub vehicles aiming at one gap in the same tick | Only the lower id changes that tick; no overlap |
+| A32 | .8b | A span over a conflict area | No change between a waiting line and the area's exit, on either route |
+| A33 | .8b | Branch a copied state during changes; congested finite demand | Exact replay; completed + active + pending conserved; changes and dead-end waits reported |
+| A34 | .8b | The four-leg drawing compiled | Each turn has one chain per entry lane; the stubs, spans and dead ends are as drawn; single-lane baselines unchanged |
+| A35 | .8b | A stub vehicle waiting at its dead end beside a steady stream with no acceptable gap | The nearest target-lane vehicle that can stop comfortably holds back; the waiting vehicle changes mid-stream, with no clamp (added with the owner's cooperation ruling, contract §2 "Cooperation") |
+
+Visibility, discretionary changes, `laneChangeDistance` and any further cooperation are
+**M3.2.8c** and get their rows before their code. Passing A01–A35 alone does not close M3.2.
 
 ## 2. T-junction fixture specification
 
@@ -197,6 +211,8 @@ Command station, canvas slot and runtime point agree within 1e-6.
 **A26 partial** (M3.2.7a/b, D66): `tools/t_junction_network.hpp` → `data/projects/t-junction-priority.traffic.json` (`tjunction.*`) — the minor far turn crosses the near stream then merges separately into the far one; right-hand and its left-hand mirror (the crossing movement is then the minor right turn; identical rows on the same seed), Yield, Stop (more minor delay, same major count), blocked receiving lane (the turn never enters; chain admission and receiving space each suffice, both removed fails); streams never share the crossing; no major-road clamp; sink clearance fits the 12 m heavy vehicle. Controlled cases and the sweep are in the rows below. M3.2.7c (D67), `tjunction_signal.*`: a minor-road head upstream of both waiting lines — always green still has every finished minor vehicle served at the Stop (A20 on the fixture) and changes no minor row; always red holds the whole minor road and no major count changes; a fixed cycle never passes on red and adds minor delay on both driving sides. Uncovered: the owner exercise (§3) — M3.2.7d.
 
 **A24, automatic areas** (M3.2.4c, D68): `tests/automatic_conflict_tests.cpp` (`automatic_conflict.*`) — a T-junction with nothing authored derives exactly one passive crossing (not the diverge, not a Connector against its own Links) and two merges equal to what a take-over stores; a click authors what *Add crossing areas* would; a lane's second area shares and moves its line (D63); levels apart do not conflict; input order does not matter; passive areas compile to no zone. `tests/conflict_auto_ui_tests.cpp` (`conflict-auto-ui`) — drawn only under the tool, a click authors (one Undo step) and a second cycles, Delete makes it passive, a merge click takes over with its priority, `P` on a passive row authors it, Thai statuses, only authored areas saved. Linux only.
+
+**A27–A35** (M3.2.8b, D71): `tests/lane_change_tests.cpp` (`lanechange.*`) — A27 empty road (one change, completes on the full chain, no clamp, no stub arrival); A28 a vehicle alongside refuses, the change follows once it clears; A29 a fast close follower refuses (its braking beyond `comfortableDeceleration` asserted first); A30 a blocked target holds the vehicle at its dead end with zero clamps, then it changes and completes; A31 two changers at one gap, only the lower id goes; A32 no change inside a zone; A33 a copied state replays exactly, completed + active + pending conserved; A34 the four-leg family (left stub two spans, dead end where the left turn leaves; right stub one span); A35 a waiting vehicle beside a steady 10 m/s stream is let in mid-stream with no clamp; validation of unknown routes, bad ranges and an unreachable dead end. Four-leg and M2.6 re-published in `docs/evidence/m3.2.8b-mandatory.md`. **Verified on Windows headless only** — no Qt build locally, and the two shell edits were not compiled here; Linux and Windows CI pending.
 
 **A24 partial** (M3.2.4a, D60): `tests/right_of_way_editor_tests.cpp` (`rightofway_editor.*`) — lane-pair expansion, one-step edits, take over/restore, delete keeping shared lines, drawn geometry equals the resolver's, every right-of-way code in en/th; `tests/priority_ui_tests.cpp` (`priority-ui`) — add via dialog, Enter-to-edit, Undo, take over/restore, Problems → area, Run note, Thai. M3.2.4b (D61): `tests/priority_canvas_tests.cpp` (`priority-canvas`) — the Conflict area tool picks and cycles by pointer and `P`, each one Undo step, Select still picks the Link; a waiting-line drag along its lane is one step; the two sides are told apart; Save and reopen keep every edit and still run. M3.2.5b (D63): the same suite sets Stop from the dialog, one Undo step, listed and drawn, disabled for an undetermined area, and kept through Save and reopen. M3.2.6c (D65): `tests/queue_counter_ui_tests.cpp` (`queue-counter-ui`) — the Queue counter tool builds a counter from stop lines and a lane place and commits it on Enter as one Undo step (Esc, Backspace, a refused click), the tab adds one over heads selected by keyboard, renames and deletes it (each one step), the Results tab lists the authored row in place of the derived one with the same row count and restores it on delete, Thai headers, and Save and reopen keep, draw and still run it. A24 stays partial until the Windows run and the owner's attempt below. A18–A23, A25–A26 need M3.2.5+ |
 | Linux headless/desktop and Windows native CI | Pending |

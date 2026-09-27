@@ -38,6 +38,7 @@ struct MovementReport {
     std::optional<double> meanDelay;
     std::size_t pending{}, active{};
     double time{};
+    std::uint64_t laneChanges{}; // M3.2.8b
     bool operator==(const MovementReport&) const = default;
 };
 // Delay a completed trip contributes: the same term as the run summary, so movements add up.

@@ -22,15 +22,20 @@ struct WeightedChain {
     // Probability of this path for a vehicle in that lane -- or, when the result is
     // `byDestination`, the fraction of the Link's whole input.
     double share{};
+    // M3.2.8b: an entry decision's destination is a family -- one chain per lane of the entry
+    // Link -- and a lane that cannot reach it is a stub whose vehicles change lanes. `family`
+    // names the destination ("<decision>><destination Link>"); empty for a free-walk path.
+    bool stub{};
+    std::string family;
 };
 struct RoutelessResult {
     std::vector<WeightedChain> chains;
     // Blocking: ROUTELESS_CYCLE / ROUTELESS_TOO_MANY_PATHS carry an empty path (the caller names
     // the input); UNKNOWN_LINK likewise. Advisory: ROUTING_DECISION_LANE_UNSERVED at a decision.
     std::vector<ValidationIssue> issues, advisories;
-    // A decision placed on the entry Link itself chooses the lanes: each destination's flow goes
-    // equally to the lanes that reach it, as drivers would sort themselves by lane changing before
-    // the junction. So the typed proportions hold exactly, and the input's lane split is unused.
+    // A decision placed on the entry Link itself splits each destination's flow equally over the
+    // Link's lanes (M3.2.8b); a lane that cannot reach it enters on a stub and changes lanes. So
+    // the typed proportions hold exactly, and the input's lane split is unused.
     bool byDestination{};
 };
 constexpr std::size_t kMaxRoutelessPaths = 256;

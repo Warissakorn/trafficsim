@@ -282,6 +282,26 @@ std::vector<std::vector<std::string>> routeShortestChains(const Network&, const 
 std::vector<std::vector<std::string>> routeLaneChains(const Network&,
                                                       const std::vector<std::string>& objectIds,
                                                       std::vector<std::string>* ambiguous = nullptr);
+// M3.2.8b (docs/M3_8_CONTRACT.md §2): the same walk, keeping one chain per lane of the first Link.
+// A lane that cannot reach the end is a STUB: its chain follows the route's objects as far as that
+// lane goes and stops on the lane the next object does not leave; its vehicles change lanes. A
+// stub is kept only when neighbouring lanes with chains lead from it to a full chain. The full
+// chains are exactly routeLaneChains', in the same order; a route starting on a Connector has no
+// others. Empty when no lane reaches the end.
+struct FamilyChain { std::vector<std::string> ids; std::size_t lane{}; bool stub{}; };
+std::vector<FamilyChain> routeLaneFamily(const Network&, const std::vector<std::string>& objectIds,
+                                         std::vector<std::string>* ambiguous = nullptr);
+// How many weights an input's laneShares on this route carries: one per lane of its first Link,
+// or one per chain for a route starting on a Connector (M3.2.8b). One answer for the compile step
+// and the input dialog, so the two cannot disagree about which weight is which lane.
+std::size_t routeLaneShareCount(const Network&, const std::vector<std::string>& objectIds);
+// The lateral spans and dead ends between the compiled routes of ONE family (contract §2): from
+// each stub to each other chain on an adjacent lane of the same Link, over the stretch both
+// travel, in route distances. A stub's dead end is its last span end. One with no span keeps its
+// route length as a dead end and gets no span, which core validation refuses rather than lose volume.
+struct FamilyRoute { std::string id; std::vector<std::string> segments; bool stub{}; };
+void appendLaneChanges(const Network&, const RuntimeSections&, const std::vector<FamilyRoute>&,
+                       std::vector<LaneChangeSpan>& spans, std::vector<RouteDeadEnd>& deadEnds);
 // The centreline of one Link or Connector, for drawing what the pointer is over. Empty for an
 // unknown id or geometry that does not build, because a draft is drawn mid-edit.
 std::vector<Point> objectGeometry(const Network&, const std::string& objectId);

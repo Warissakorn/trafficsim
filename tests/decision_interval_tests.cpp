@@ -55,9 +55,14 @@ TEST(routeless, a_placed_decision_on_the_entry_follows_each_intervals_counts) {
     const auto first = routelessChains(w.d.network, w.upstream, placedDecisions(w.d.network, def, nullptr, 450.0));
     CHECK(first.byDestination);
     std::map<std::string, std::string> exitOf;
-    for (std::size_t k = 0; k < first.chains.size(); ++k)
+    // A stub (M3.2.8b) ends short of its destination; its family names it.
+    for (std::size_t k = 0; k < first.chains.size(); ++k) {
+        const auto& c = first.chains[k];
+        const auto id = routelessRouteId(w.upstream, k, first.chains.size());
+        if (c.stub) { exitOf[id] = c.family.substr(c.family.find('>') + 1); continue; }
         for (const auto& link : w.d.network.links) for (const auto& lane : link.lanes)
-            if (lane.id == first.chains[k].laneChain.back()) exitOf[routelessRouteId(w.upstream, k, first.chains.size())] = link.id;
+            if (lane.id == c.laneChain.back()) exitOf[id] = link.id;
+    }
     const auto expanded = expandRouteless(w.d.network, def, withRoutingDecisions(def));
     std::map<std::pair<std::string, double>, double> byExit; // (exit, interval start) -> veh/h
     for (const auto& i : expanded.inputs) {

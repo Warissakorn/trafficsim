@@ -137,9 +137,9 @@ TEST(routeless, a_placed_decision_splits_by_destination) {
     CHECK(compileDocument(viaDecision, data()).scenario.inputs == compileDocument(viaLink, data()).scenario.inputs);
 }
 TEST(routeless, a_decision_on_the_entry_link_holds_its_proportions_exactly) {
-    // Counted turning volumes typed into a decision on the approach itself. With no lane
-    // changing, which lane a vehicle is in fixes where it can turn, so the decision chooses the
-    // lanes: each destination's flow goes to the lanes that reach it, and the counts hold.
+    // Counted turning volumes typed into a decision on the approach itself. Each destination's
+    // flow is spread over every lane of the Link; a lane that cannot reach it enters on a stub and
+    // changes lanes (M3.2.8b). Either way the counts hold, by destination.
     auto w = westRouteless();
     RoutingDecision counted; counted.linkId = w.upstream;
     counted.routes = {{"", 500, w.eastExit}, {"", 120, w.northExit}, {"", 100, w.southExit}};
@@ -148,9 +148,17 @@ TEST(routeless, a_decision_on_the_entry_link_holds_its_proportions_exactly) {
     CHECK(r.byDestination); CHECK(r.issues.empty());
     const auto s = compileDocument(w.d, data()).scenario;
     std::map<std::string, double> byExit;
+    // A stub ends short of its destination: its vehicles arrive on the chain it changes to.
+    const auto arrivesOn = [&](std::string id) {
+        for (bool stub = true; stub;) {
+            stub = false;
+            for (const auto& span : s.laneChanges) if (span.fromRouteId == id) { id = span.toRouteId; stub = true; break; }
+        }
+        return id;
+    };
     for (const auto& input : s.inputs) {
         if (input.id.rfind("west", 0) != 0) continue;
-        const auto route = std::find_if(s.routes.begin(), s.routes.end(), [&](const auto& x) { return x.id == input.routeId; });
+        const auto route = std::find_if(s.routes.begin(), s.routes.end(), [&](const auto& x) { return x.id == arrivesOn(input.routeId); });
         for (const auto& link : w.d.network.links)
             for (const auto& lane : link.lanes)
                 if (route->segmentIds.back().rfind(lane.id, 0) == 0) byExit[link.id] += input.vehiclesPerHour;

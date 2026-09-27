@@ -1,5 +1,6 @@
 #include "validate.hpp"
 #include "conflicts.hpp"
+#include "lanes.hpp"
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -280,6 +281,9 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         number(head.position, p + ".position", true);
         if (segment != segments.end() && head.position > segment->second->length) add("INVALID_POSITION", p + ".position");
     }
+    // M3.2.8b: compiled lateral spans and dead ends, once the routes they name are known good.
+    if (routes.size() == s.routes.size())
+        for (auto& issue : laneChangeIssues(s)) issues.push_back(std::move(issue));
     return issues;
 }
 void assertValidScenario(const Scenario& scenario) {

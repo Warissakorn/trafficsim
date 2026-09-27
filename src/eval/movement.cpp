@@ -107,6 +107,7 @@ MovementReport MovementAccumulator::report(const SimState& end) const {
                             observed_ ? queueSum_[c] / static_cast<double>(observed_) : 0.0, queueMax_[c]});
     const auto summary = summary_.summary();
     r.completed = summary.completed; r.safetyClamps = summary.safetyClamps; r.meanDelay = summary.meanDelay;
+    r.laneChanges = summary.laneChanges;
     r.unassigned = unassigned_;
     r.pending = pendingCount(end); r.active = end.vehicles.size(); r.time = end.time;
     return r;

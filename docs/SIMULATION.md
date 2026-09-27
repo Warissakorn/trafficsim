@@ -2,8 +2,8 @@
 
 M0 implementation reference. **Not yet validated.** This engine is a reduced,
 Wiedemann-inspired prototype, not an implementation of W74/W99 and not calibrated to
-Vissim. Lane changing, crossing-conflict resolution, general priority control and LOS are not
-implemented. **Merge arbitration exists only as M3.1**: a deterministic gap-time/headway threshold,
+Vissim. Only mandatory lane changing exists (M3.2.8b, below); discretionary changes, general
+priority control and LOS are not implemented. **Merge arbitration exists only as M3.1**: a deterministic gap-time/headway threshold,
 described below — not a calibrated critical-gap model. M0 remains open until the
 owner reviews the live traffic behaviour against its plausibility gate.
 
@@ -102,10 +102,12 @@ routes `link:<id>/path-k` and one input per complete path, at volume × probabil
   the Link is not modelled. The vehicle takes a destination its lane can reach, by relative flow
   among those. A lane reaching none carries on routeless, with `ROUTING_DECISION_LANE_UNSERVED`.
   After the destination it is routeless again.
-- **On the entry Link** a decision instead puts each destination's flow in the lanes that reach
-  it, so typed proportions hold exactly and the input's lane weights are unused (D43).
-- **No lane changing:** further downstream, a vehicle's lane fixes its reachable destinations,
-  and the proportions shift towards what the lanes allow.
+- **On the entry Link** a decision instead spreads each destination's flow equally over every
+  lane of the Link. A lane that cannot reach it changes lanes (M3.2.8b), so typed proportions
+  hold exactly and the input's lane weights are unused (D43, D71).
+- **No lane changing downstream:** free-walk paths and placed decisions after the entry Link stay
+  lane-fixed, so a vehicle's lane fixes its reachable destinations there, and the proportions
+  shift towards what the lanes allow (M3.2.8c).
 - **Refused on Run:** a revisited lane (`ROUTELESS_CYCLE`), more than 256 paths, an unknown Link,
   two decisions on one Link, or a destination no lane can reach. Inputs still start only on
   entry Links (`UNSUPPORTED_INTERNAL_INPUT`), as for routes.
@@ -130,15 +132,26 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
 ## Runtime scope
 
 - Routes explicitly list connected lane/connector segment IDs. Route order is meaningful.
-  There is no routing algorithm, lane changing or repeated segment within a route yet.
+  There is no routing algorithm or repeated segment within a route yet.
   **The runtime route is compiled, never authored** (M1.26): an authored route names Links and
-  Connectors, and `buildScenario` expands it into one runtime route per lane the drawing
-  carries, keeping the authored id when there is exactly one.
+  Connectors, and `buildScenario` expands it into one runtime route per lane of its entry Link
+  (`route/lane-k`), keeping the authored id when there is exactly one.
+- **Mandatory lane changing (M3.2.8b, D71; contract `M3_8_CONTRACT.md` §2).** A lane that cannot
+  reach the route's end compiles to a **stub** route with a dead end; the compile step also
+  emits lateral spans (`ScenarioDefinition::laneChanges`, `routeDeadEnds`, never serialized)
+  between adjacent lanes of one Link. The core changes a stub vehicle as soon as it lies wholly
+  inside a span and both it and its new follower can accept the gap at `comfortableDeceleration`
+  without a clamp; nothing alongside, never inside a conflict area. It is instantaneous and
+  deterministic (vehicle-id order, no RNG); a stub vehicle is held at its dead end and never
+  arrives. One cooperation rule: the nearest target-lane vehicle that can stop comfortably holds
+  back for a vehicle waiting at its dead end. Results count `laneChanges`; a stub is never a
+  movement row.
 - Sources must begin on segments with no predecessor. They are Poisson processes with
   a rate in vehicles/hour over `[startTime, endTime)`. Zero-rate inputs generate no cars.
-  An authored input's volume is the **Link total** and is divided **equally** across its
-  route's lanes at compile time. That split is an authoring convenience, not a lane-choice
-  model — this engine has no lane changing — and like every figure here it is unvalidated.
+  An authored input's volume is the **Link total** and is divided **equally** (or by
+  `laneShares`, one weight per lane of the entry Link) across that Link's lanes at compile time.
+  That split is an authoring convenience, not a lane-choice model — there are no discretionary
+  changes — and like every figure here it is unvalidated.
   **Since M2.2 an input may carry counted `intervals`** (start, end, veh/h), ordered without
   overlap; each becomes its own core input (`id/int-k`), so the core still sees one Poisson
   process per `[startTime, endTime)`. Restarting a Poisson stream at a boundary changes no

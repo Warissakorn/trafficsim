@@ -17,8 +17,8 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 
 | CMake target | Location | Dependencies | Status |
 |---|---|---|---|
-| `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a) |
-| `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented; authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a) |
+| `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
+| `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented; authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay and approach queues for one run (M2.5) |
 | `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-8 authoring codec, schema-1–7 migration and revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
@@ -47,6 +47,11 @@ std::vector<ValidationIssue> validateNetwork(const Network&);
 RightOfWayResolution resolveRightOfWay(const Network&, const RuntimeSections&, const PriorityDefaults&);
 // ... and what a crossing area's extents are checked against (M3.2.2c, conflict_coverage.cpp)
 SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef&, const ControlPathRef&);
+// ... and one route's chains per entry lane, full or stub, with the spans between them (M3.2.8b)
+std::vector<FamilyChain> routeLaneFamily(const Network&, const std::vector<std::string>& objectIds,
+                                         std::vector<std::string>* ambiguous = nullptr);
+void appendLaneChanges(const Network&, const RuntimeSections&, const std::vector<FamilyRoute>&,
+                       std::vector<LaneChangeSpan>&, std::vector<RouteDeadEnd>&);
 
 // project/load.hpp
 LoadedScenario loadScenario(const std::filesystem::path& file,
@@ -56,7 +61,7 @@ LoadedScenario loadScenario(const std::filesystem::path& file,
 `runSimulation` invokes a synchronous `std::function<void(const SimEvent&)>` sink and
 returns the final state. The core owns no output stream. The callback decides whether to
 accumulate statistics, write a file or discard events. `SimEvent` is a `std::variant` of
-six typed event structs. States retain only the latest tick's events.
+seven typed event structs (`LaneChangeEvent` appended last, M3.2.8b). States retain only the latest tick's events.
 
 The desktop uses a Qt timer to schedule fixed steps. Playback time never enters the
 engine. The M0 workload runs on the UI thread; playback credit is capped per callback.

@@ -33,9 +33,9 @@ TEST(demand, a_decision_compiles_to_the_hand_split_inputs) {
                               std::vector<double>{500, 120, 100}[k], 0, 900, {}, {}});
     const auto x = compileDocument(a.document, test::root() / "data").scenario;
     const auto y = compileDocument(b.document, test::root() / "data").scenario;
-    // Through expands to both through lanes, left and right to one each: 4, on both sides. Not
-    // merely equal sizes -- two empty lists are equal too.
-    CHECK(x.inputs.size() == 4); CHECK(y.inputs.size() == 4);
+    // Every movement expands to both upstream lanes -- a turn's other lane is a stub (M3.2.8b) --
+    // so 6, on both sides. Not merely equal sizes -- two empty lists are equal too.
+    CHECK(x.inputs.size() == 6); CHECK(y.inputs.size() == 6);
     for (std::size_t i = 0; i < x.inputs.size(); ++i) {
         CHECK(x.inputs[i].id == y.inputs[i].id); CHECK(x.inputs[i].routeId == y.inputs[i].routeId);
         test::near(x.inputs[i].vehiclesPerHour, y.inputs[i].vehiclesPerHour, 1e-9);
@@ -53,7 +53,7 @@ TEST(demand, a_decision_with_counted_intervals_scales_each) {
     // extending a temporary's life through a member access, which MSVC did not do here -- the
     // loop read a destroyed snapshot and saw no inputs at all.
     const auto inputs = compileDocument(w.document, test::root() / "data").scenario.inputs;
-    CHECK(inputs.size() == 6); // through: 2 periods x 2 lanes; left: 2 periods x 1 lane
+    CHECK(inputs.size() == 8); // 2 periods x 2 lanes, each route (M3.2.8b: the left turn's other lane is a stub)
     const auto prefix = "in/route-" + w.routes[1] + "/int-2";
     double second = 0;
     for (const auto& i : inputs) if (i.id.rfind(prefix, 0) == 0) second += i.vehiclesPerHour;

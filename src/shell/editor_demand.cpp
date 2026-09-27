@@ -124,11 +124,11 @@ void EditorWindow::refreshDemand() {
         }
         for(const auto& i:def.inputs) {
             // The authored number is the Link total. What the run receives is that total divided
-            // across the lanes the route reaches, so the row says both -- an author reading only
-            // the total would not know what each lane actually gets.
+            // across the Link's lanes (M3.2.8b: a lane that cannot reach the end changes lanes), so
+            // the row says both -- an author reading only the total would not know what each gets.
             std::size_t lanes=0;
             for(const auto& r:def.routes)if(r.id==i.routeId)
-                lanes=routeLaneChains(history_.document().network,r.segmentIds).size();
+                lanes=routeLaneFamily(history_.document().network,r.segmentIds).size();
             // M2.1.1: a routeless input names its Link, and splits across that Link's lanes.
             auto target=QString::fromStdString(i.routeId.empty()?i.routingDecisionId:i.routeId);
             if(!i.linkId.empty()) {

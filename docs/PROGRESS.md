@@ -55,6 +55,50 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — M3.2.8b: mandatory lane changing, with minimal cooperation (D71)
+
+The contract (`docs/M3_8_CONTRACT.md` §2) and rows A27–A34 were committed before the code
+(`b472e05`); §2 "Cooperation" and A35 were added with the second ruling, before its code was
+kept. Evidence: `docs/evidence/m3.2.8b-mandatory.md`. **Verified on Windows headless only**
+(MSVC): no Qt build here, so the two edited shell files (`editor_demand.cpp`, `editor_input.cpp`)
+were not compiled; callgrind was not available, so the cost per tick is unmeasured.
+
+**The owner's rulings:**
+- **Vissim's way** over keeping lane-fixed entry: a movement's volume enters on every lane of its
+  entry Link, and a lane that cannot reach the end compiles to a **stub** route with a dead end.
+  This re-publishes the four-leg and M2.6 numbers, as D69 did.
+- **Minimal cooperation in this slice**, after the rule alone was measured: M2.6 mean delay 50.1 →
+  61.6 s, 4 vehicles pending, one waiting 404 s at its dead end. A queue or a dense stream rarely
+  leaves a gap both safety tests accept.
+
+**What was built:**
+- Model: `routeLaneFamily` (one chain per entry lane; a stub is kept only if a run of neighbouring
+  lanes with chains leads to a full chain) and `appendLaneChanges` (spans between adjacent lanes of
+  one Link, stations matched through the Link's reference polyline, so a curve is square).
+  `laneShares` now means one weight per entry-Link lane (`routeLaneShareCount`, shared with the
+  input dialog). The routeless entry decision spreads each destination over every lane (D43).
+- Core: `src/core/lanes.*`. The spans and dead ends are `ScenarioDefinition` fields, compiled and
+  never serialized, so `expandRouteless` can fill them. A change is decided on the snapshot in
+  vehicle-id order and applied at the start of the tick, then the spans are rebuilt.
+- Results: a stub is never a movement row; `laneChanges` in the report, CSV and event stream.
+
+**Non-obvious choices:**
+- **The change must also fit this tick's move** inside gap − standstill, for the changer and its
+  new follower. The acceleration test alone let a change 2 m behind a faster leader through, and
+  the next tick clamped it.
+- **The cooperating vehicle is chosen kinematically** (`v² ≤ 2·comfortableDeceleration·room`,
+  `v·dt ≤ room`), the nearest behind the target place that passes. The model's commanded braking
+  was tried first and flip-flopped: holding back changed the braking, which changed the choice.
+  The kinematic test only gets easier once a vehicle slows, so the choice is stable without state.
+- **The courtesy is a second obstacle**, the lower of the two accelerations, not a replacement
+  leader: a nearer moving leader otherwise hid it and nobody held back.
+- A vehicle alongside is not asked to hold back; asking it blocked every attempt.
+
+**Outcome, seed 42:** M2.6 completed 1977 → 1981, pending 0, clamps 23 → 19, mean delay 50.14 →
+50.16 s, 305 changes; left turns fell on all four approaches and right turns rose on all four.
+Four-leg: clamps 4 → 8 (all amber heads and one follow-on), one pending scheduled in the last tick.
+Single-lane frozen baselines are byte-identical.
+
 ## 2026-09-26 — Measured optimization pass: tests, evaluator, routing, leader search (D70)
 
 Behaviour-preserving; every change was checked byte for byte (M2.6 report, crossing event
@@ -439,6 +483,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D68 | 2026-09-26 | **Conflict areas are automatic (the owner's ruling, superseding D61's no-passive rule): every at-grade overlap of two roads is a passive area and every merge shows its derived priority; they are derived from the drawing, never stored, and a click authors one** | Vissim's modelling surface generates them and the owner asked for it. Deriving instead of storing keeps one source of truth and needs no lifecycle: an edit to the drawing simply derives again. Passive keeps today's runtime exactly, so no study result moves until the author sets a priority |
 | D69 | 2026-09-26 | **A driver who cannot stop at its line at `maxDeceleration` is committed: it ignores headway and gap time there, never occupancy, an unserved Stop, receiving space or the swept check; it applies to authored zones and derived merges; read off the snapshot, never stored** | The M3.2.7 sweeps' clamps were all drivers too close to stop when the gap closed; going is what a driver does, and the clamp was the model failing to. The owner ruled on derived merges (re-publishing the four-leg and M2.6 numbers; the four-leg did not move) and first on comfortable deceleration, which measured major-road clamps at the T-junction and an M2.6 merge and was replaced by the owner with maximum deceleration. Stateless keeps replay exact | The 5 residual minor clamps at walking pace near a merge line (not diagnosed); a stop-or-go decision at amber (D36, M4) |
 | D70 | 2026-09-26 | **Every model-test group is its own ctest test; `all-model-tests` is a registry check (`--check-groups`) that runs nothing and fails on a group the CMake list omits** | The unfiltered run was 60 s of serial wall time that `ctest -j` could not spread, and it re-ran every named group. The check keeps what that run was for (no group silently unregistered, as `points` once was) without the cost | — |
+| D71 | 2026-09-27 | **Mandatory lane changing, Vissim-style: volume enters on every lane of the entry Link, a stub changes before its dead end when it and its new follower accept the gap at `comfortableDeceleration` without a clamp; one cooperation rule — the nearest target-lane vehicle that can stop comfortably holds back for a vehicle waiting at its dead end** | Owner rulings. Lane-fixed entry put every Thai left turn in the kerb lane behind through traffic. The rule without cooperation was measured and rejected (M2.6 61.6 s mean, a 404 s wait); with it M2.6 is 50.16 s, all drained. Stateless, id-ordered, no RNG, so replay stays exact | A lane-change measurement against Vissim, or M3.2.8c's cooperation with a deceleration parameter and look-ahead |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |

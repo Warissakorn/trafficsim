@@ -1,5 +1,6 @@
 #include "routes.hpp"
 #include "conflicts.hpp"
+#include "lanes.hpp"
 #include "detail.hpp"
 #include <cstdint>
 
@@ -98,6 +99,7 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
     for (std::size_t r = 0; r < scenario.routes.size(); ++r) index.routeZones.push_back(zoneIncidence(scenario, index.parts[r]));
     index.stopZones = std::any_of(scenario.conflictZones.begin(), scenario.conflictZones.end(),
                                   [](const auto& z) { return z.control == ZoneControl::stop; });
+    indexLaneChanges(scenario, index);
     return index;
 }
 const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenario& scenario, const Route& route) {
@@ -137,6 +139,16 @@ VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle) 
 }
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle, const ScenarioIndex& index) {
     return locate(partsFor(index, scenario, scenario.routes[vehicle.routeIndex]), vehicle);
+}
+SpanBuckets bucketSpans(const std::vector<OccupiedSpan>& spans, std::size_t segmentCount) {
+    SpanBuckets buckets;
+    buckets.start.assign(segmentCount + 1, 0);
+    for (const auto& span : spans) ++buckets.start[span.segmentIndex + 1];
+    for (std::size_t i = 0; i < segmentCount; ++i) buckets.start[i + 1] += buckets.start[i];
+    buckets.items.resize(spans.size());
+    auto cursor = buckets.start;
+    for (std::uint32_t i = 0; i < spans.size(); ++i) buckets.items[cursor[spans[i].segmentIndex]++] = i;
+    return buckets;
 }
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles) {
     std::vector<OccupiedSpan> spans;

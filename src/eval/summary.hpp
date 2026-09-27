@@ -5,6 +5,7 @@ namespace trafficsim {
 struct RunSummary {
     std::uint64_t completed{}, safetyClamps{};
     std::optional<double> meanTravelTime, meanDelay;
+    std::uint64_t laneChanges{}; // M3.2.8b; last, so existing brace-initialisations keep meaning
 };
 // Incremental completed-trip diagnostic. This is NOT HCM control delay or LOS.
 class SummaryAccumulator {
@@ -12,7 +13,7 @@ public:
     void add(const SimEvent& event);
     RunSummary summary() const;
 private:
-    std::uint64_t completed_{}, clamps_{};
+    std::uint64_t completed_{}, clamps_{}, laneChanges_{};
     double travel_{}, delay_{};
 };
 std::size_t pendingCount(const SimState& state);
