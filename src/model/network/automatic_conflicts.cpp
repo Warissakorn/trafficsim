@@ -24,9 +24,28 @@ void bound(Path& p, const std::vector<Point>& g, double margin) {
         p.hi = {std::max(p.hi.x, q.x + margin), std::max(p.hi.y, q.y + margin)};
     }
 }
-bool covered(const Network& n, const ControlPathRef& a, const ControlPathRef& b) {
+bool meets(double from, double to, StationInterval i) { return from <= i.to && i.from <= to; }
+// An authored area covers the piece it lies over, not every piece of the pair (D72).
+bool covered(const Network& n, const ControlPathRef& a, const ControlPathRef& b, const SurfaceOverlap& o) {
     return std::any_of(n.rightOfWay.conflictAreas.begin(), n.rightOfWay.conflictAreas.end(), [&](const auto& x) {
-        return (x.first.path == a && x.second.path == b) || (x.first.path == b && x.second.path == a); });
+        if (x.first.path == a && x.second.path == b)
+            return meets(x.first.entryStation, x.first.exitStation, o.first) && meets(x.second.entryStation, x.second.exitStation, o.second);
+        if (x.first.path == b && x.second.path == a)
+            return meets(x.first.entryStation, x.first.exitStation, o.second) && meets(x.second.entryStation, x.second.exitStation, o.first);
+        return false; });
+}
+// Pairs whose overlap is not a crossing. One place, so a later case (a diverge) is lifted here.
+bool sharedMouth(const Path& a, const Path& b) {
+    if (a.owner == b.owner || a.level != b.level) return true;
+    const bool ca = !a.ref.connectorId.empty(), cb = !b.ref.connectorId.empty();
+    if (ca && cb) // same entry lane: a diverge; same exit lane: a merge (mergeGroups owns it)
+        return (a.fromLink == b.fromLink && a.fromLane == b.fromLane) || (a.toLink == b.toLink && a.toLane == b.toLane);
+    // A Connector's mouth lies on exactly one lane of each of its Links; its other lanes it may cross (D72).
+    const auto mouth = [](const Path& c, const Path& l) {
+        return (c.fromLink == l.owner && c.fromLane == l.ref.laneId) || (c.toLink == l.owner && c.toLane == l.ref.laneId); };
+    if (ca && !cb) return mouth(a, b);
+    if (cb && !ca) return mouth(b, a);
+    return false;
 }
 }
 // Every station is chosen on the runtime segment itself, then converted to the authored polyline.
@@ -81,17 +100,17 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
     for (std::size_t i = 0; i < paths.size(); ++i)
         for (std::size_t j = i + 1; j < paths.size(); ++j) {
             const auto& a = paths[i]; const auto& b = paths[j];
-            if (a.owner == b.owner || a.level != b.level) continue;
+            if (sharedMouth(a, b)) continue;
             if (a.hi.x < b.lo.x || b.hi.x < a.lo.x || a.hi.y < b.lo.y || b.hi.y < a.lo.y) continue;
-            // A Connector's mouths lie on its own Links; a diverge or a merge is not a crossing.
-            if (a.fromLink == b.owner || a.toLink == b.owner || b.fromLink == a.owner || b.toLink == a.owner) continue;
-            const bool connectors = !a.ref.connectorId.empty() && !b.ref.connectorId.empty();
-            if (connectors && (a.fromLane == b.fromLane || a.toLane == b.toLane)) continue;
-            if (covered(n, a.ref, b.ref)) continue;
-            const auto o = surfaceOverlap(n, a.ref, b.ref);
-            if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
-            result.push_back({ConflictKind::crossing, {a.ref, o.first.from, o.first.to, ""}, {b.ref, o.second.from, o.second.to, ""},
-                              ConflictPriority::undetermined, "auto/" + a.key + "|" + b.key, ""});
+            const auto pieces = surfaceOverlaps(n, a.ref, b.ref);
+            for (std::size_t k = 0; k < pieces.size(); ++k) {
+                const auto& o = pieces[k];
+                if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
+                if (covered(n, a.ref, b.ref, o)) continue;
+                result.push_back({ConflictKind::crossing, {a.ref, o.first.from, o.first.to, ""}, {b.ref, o.second.from, o.second.to, ""},
+                                  ConflictPriority::undetermined,
+                                  "auto/" + a.key + "|" + b.key + (k ? "#" + std::to_string(k) : std::string{}), ""});
+            }
         }
     const auto table = runtimeSections(n);
     for (const auto& g : mergeGroups(n, table)) {

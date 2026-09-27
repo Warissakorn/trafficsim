@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QGraphicsPathItem>
 #include <QMouseEvent>
+#include <QPainterPathStroker>
 #include <QPen>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,15 @@ QPainterPath outlinePath(const std::vector<Point>& points) {
     for (std::size_t i = 1; i < points.size(); ++i) shape.lineTo(points[i].x, points[i].y);
     shape.closeSubpath();
     return shape;
+}
+// D72: the fill stands this far inside its lane edges so the Link and Connector outlines stay
+// readable around it. Display only -- hit-testing and the runtime keep the full outline.
+constexpr double kConflictInset = 0.3; // m
+QPainterPath insetPath(const std::vector<Point>& points) {
+    const auto full = outlinePath(points);
+    QPainterPathStroker stroker; stroker.setWidth(2 * kConflictInset); stroker.setJoinStyle(Qt::MiterJoin);
+    const auto inset = full.subtracted(stroker.createStroke(full)).simplified();
+    return inset.isEmpty() ? full : inset; // too narrow to inset: the whole area rather than none
 }
 int levelOf(const Network& n, const ControlPathRef& ref) {
     for (const auto& l : n.links) if (l.id == ref.linkId) return l.level;
@@ -132,7 +142,7 @@ void EditorCanvas::drawAutomaticConflicts() {
             const bool yields = (side == &a.first) == (a.priority == ConflictPriority::firstYields);
             const QColor tint = passive ? QColor(120, 128, 140, 90) : yields ? QColor(220, 38, 38, 80) : QColor(22, 163, 74, 80);
             QPen pen(tint.darker(150), 1, Qt::DashLine); pen.setCosmetic(true);
-            auto* item = scene_.addPath(outlinePath(outline), pen, QBrush(tint));
+            auto* item = scene_.addPath(insetPath(outline), pen, QBrush(tint));
             item->setZValue(level * 100. + 5.5); item->setToolTip(QString::fromStdString(a.key));
             item->setData(0, QStringLiteral("auto-conflict")); item->setData(1, QString::fromStdString(a.key));
             item->setData(2, QString::fromLatin1(passive ? "passive" : "merge"));
@@ -158,7 +168,7 @@ void EditorCanvas::drawConflicts() {
             QPen pen(lit ? QColor("#ffb454") : hatched ? tint.darker() : tint.darker(130), lit ? 3 : hatched ? 2 : 1);
             pen.setCosmetic(true);
             QColor solid = tint; if (hatched) solid.setAlpha(230);
-            auto* item = scene_.addPath(outlinePath(outline), pen, QBrush(solid, hatched ? Qt::BDiagPattern : Qt::SolidPattern));
+            auto* item = scene_.addPath(insetPath(outline), pen, QBrush(solid, hatched ? Qt::BDiagPattern : Qt::SolidPattern));
             item->setZValue(level * 100. + (hatched ? 6.5 : 6)); item->setToolTip(QString::fromStdString(area.id));
             item->setData(0, QStringLiteral("conflict-area")); item->setData(1, QString::fromStdString(area.id));
         }

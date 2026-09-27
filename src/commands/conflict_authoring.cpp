@@ -45,8 +45,8 @@ std::vector<std::string> addCrossingAreas(ProjectDocument& d, const std::string&
     std::vector<Found> found;
     for (std::size_t i = 0; i < a.size(); ++i)
         for (std::size_t j = 0; j < b.size(); ++j) {
-            const auto o = surfaceOverlap(d.network, a[i], b[j]);
-            if (o.status == SurfaceOverlap::Status::overlap) found.push_back({i, j, o}); // no guessed area (§1)
+            for (const auto& o : surfaceOverlaps(d.network, a[i], b[j])) // every piece its own area (D72)
+                if (o.status == SurfaceOverlap::Status::overlap) found.push_back({i, j, o}); // no guessed area (§1)
         }
     if (found.empty()) throw std::invalid_argument("EDIT_NO_CROSSING");
     // One line per lane, before the FIRST area that lane meets (D63): a line per area put the far

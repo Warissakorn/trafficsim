@@ -25,7 +25,13 @@ the log. Rewrite this file; do not append to it.
 - Conflict areas are automatic (M3.2.4c, D68), derived and never stored. M3.2.2a–M3.2.7c are
   D54–D67; the evidence is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
-**First, before anything new (M3.2.8b was verified on Windows headless only):**
+**First, before anything new — D72 (conflict areas on every overlap, 0.3 m inset) was written on a
+host with no compiler and has never been built:** build and run `ctest` (headless and desktop);
+fix anything red in `automatic_conflict_tests`, `right_of_way_resolution_tests`,
+`priority_canvas_tests`, `conflict_auto_ui_tests` before continuing. Then open the T-junction in
+the desktop, Conflict tool: areas inset from the lane edges, none on a Connector's landing lane.
+
+**Then (M3.2.8b was verified on Windows headless only):**
 1. `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop` on Linux.
    `src/shell/editor_demand.cpp` (input row: `routeLaneFamily(...).size()`) and
    `src/shell/editor_input.cpp` (share count: `routeLaneShareCount`) were edited but **never

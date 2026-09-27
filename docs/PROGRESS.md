@@ -55,6 +55,28 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — Conflict areas on every overlap, drawn inset (D72)
+
+Owner request: automatic conflict areas were missing where surfaces really overlap, notably at a
+Connector's end on a Link, and the fill sat exactly on the Link/Connector outline.
+
+- **Exclusion narrowed to the mouth** (`automatic_conflicts.cpp`, `sharedMouth`). A Connector was
+  skipped against *every* lane of its from/to Link; now only the lane it leaves or lands on is its
+  mouth, so a turn sweeping across a neighbouring lane of the Link it joins gets an area.
+  Connector pairs sharing a lane id were excluded on the id alone, across unrelated Links; the
+  diverge/merge exclusion now also requires the same Link. Diverges stay excluded — the named
+  predicate is where lifting them goes.
+- **One area per overlap piece** (`surfaceOverlaps`). A pair crossing twice was `unsupported`
+  and got nothing; pieces touching on both paths now cluster into one area each, keys
+  `auto/<a>|<b>` then `…#1`. `surfaceOverlap` keeps its single-answer meaning. Validation and
+  `addCrossingAreas` measure each authored area against the piece it lies over; `covered`
+  suppresses only that piece.
+- **Inset drawing, 0.3 m** (`canvas_conflicts.cpp`, `insetPath`). Display only: picking, the
+  runtime and validation keep the full `conflictSideOutline`. An area narrower than 0.6 m is
+  drawn whole rather than vanish.
+- **Not compiled locally**: this Windows host had no C++ toolchain in the session. CI
+  (`native.yml`) is the first build.
+
 ## 2026-09-27 — M3.2.8b: mandatory lane changing, with minimal cooperation (D71)
 
 The contract (`docs/M3_8_CONTRACT.md` §2) and rows A27–A34 were committed before the code
@@ -484,6 +506,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D69 | 2026-09-26 | **A driver who cannot stop at its line at `maxDeceleration` is committed: it ignores headway and gap time there, never occupancy, an unserved Stop, receiving space or the swept check; it applies to authored zones and derived merges; read off the snapshot, never stored** | The M3.2.7 sweeps' clamps were all drivers too close to stop when the gap closed; going is what a driver does, and the clamp was the model failing to. The owner ruled on derived merges (re-publishing the four-leg and M2.6 numbers; the four-leg did not move) and first on comfortable deceleration, which measured major-road clamps at the T-junction and an M2.6 merge and was replaced by the owner with maximum deceleration. Stateless keeps replay exact | The 5 residual minor clamps at walking pace near a merge line (not diagnosed); a stop-or-go decision at amber (D36, M4) |
 | D70 | 2026-09-26 | **Every model-test group is its own ctest test; `all-model-tests` is a registry check (`--check-groups`) that runs nothing and fails on a group the CMake list omits** | The unfiltered run was 60 s of serial wall time that `ctest -j` could not spread, and it re-ran every named group. The check keeps what that run was for (no group silently unregistered, as `points` once was) without the cost | — |
 | D71 | 2026-09-27 | **Mandatory lane changing, Vissim-style: volume enters on every lane of the entry Link, a stub changes before its dead end when it and its new follower accept the gap at `comfortableDeceleration` without a clamp; one cooperation rule — the nearest target-lane vehicle that can stop comfortably holds back for a vehicle waiting at its dead end** | Owner rulings. Lane-fixed entry put every Thai left turn in the kerb lane behind through traffic. The rule without cooperation was measured and rejected (M2.6 61.6 s mean, a 404 s wait); with it M2.6 is 50.16 s, all drained. Stateless, id-ordered, no RNG, so replay stays exact | A lane-change measurement against Vissim, or M3.2.8c's cooperation with a deceleration parameter and look-ahead |
+| D72 | 2026-09-27 | **Automatic conflict areas on every overlap: only the joined lane is a Connector's mouth, a pair that overlaps in several places gets one area per piece, and areas draw 0.3 m inside their lane edges (display only)** | Owner request: areas were missing at Connector ends and multiple crossings; the fill hid the lane outline | A diverge (same entry lane) conflict kind |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |
