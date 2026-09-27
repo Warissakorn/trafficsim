@@ -59,6 +59,25 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — M3.2.9g: sliding an end along its lanes keeps the curve (D78)
+
+- The owner did not want a Connector's curve reset when an end is dragged along the lanes it
+  already joins. `retargetConnector` rebuilt the turn on every move (and `LaneReference ==`
+  includes the station, so any slide counted as a move). Now, when both ends keep their Link,
+  first lane and lane counts, every point follows the two ends by its blend weight -- the shift a
+  leading resize already uses -- and `laneBlend`, widths and markings are kept.
+- Guard: if an end leg that ran with its lane would now run against it, the turn is rebuilt as
+  before; that is the wrong-way elbow the rebuild was introduced for, and
+  `lifecycle.retarget_across_the_road_…` (same lane, moved past the last control point) still
+  rebuilds. Any other lane or Link rebuilds as before.
+- Tests: `lifecycle.sliding_an_end_along_its_lanes_keeps_the_authored_curve` (both driving sides,
+  point-for-point blend shift, not the rebuilt curve, Undo; another lane still rebuilds);
+  `attachment-ui` slides the target grip and checks the kept shape and one Undo.
+- Windows desktop: 67/67; `trafficsim-cli 42` on the M2.6 template is byte-identical to the
+  M3.2.9c run. Linux not run.
+
+---
+
 ## 2026-09-27 — M3.2.9f: end grips on the middle of their Link lanes (D77)
 
 - The owner saw end grips land in the wrong place on steep Connectors. A grip was the midpoint of
@@ -413,6 +432,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D75 | 2026-09-27 | **A Connector asked for across more than a two-lane difference is created narrowed: the wider end keeps `narrower + 2` lanes; the gesture centres them on the lane it ended on, other paths keep the first lane** | Owner ruling (always create, connect only the lanes that can pair, where the user chose). Refusing lost the gesture entirely. Explicit resizes still refuse because their tabs already stop | — |
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
+| D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |

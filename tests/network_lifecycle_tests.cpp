@@ -22,7 +22,8 @@ TEST(lifecycle, retarget_across_the_road_rebuilds_the_turn_and_undo_restores_aut
         auto d=turn(0,side);auto& c=d.network.connectors.front();
         c.geometry={c.geometry.front(),{-20,-25},{-15,-10},{-5,-3},c.geometry.back()};
         const auto old=c;History h;h.reset(d);
-        // Move the destination past the old last control point, to the opposite side.
+        // Move the destination past the old last control point, to the opposite side. Same lane,
+        // but kept points would arrive against the lane, so the turn is rebuilt (D78's guard).
         auto to=c.to;to.station=20;
         const auto target=laneAttachment(d.network,to,false);
         CHECK(dot(step(old.geometry[old.geometry.size()-2],target),Point{1,0})<0);
@@ -34,6 +35,39 @@ TEST(lifecycle, retarget_across_the_road_rebuilds_the_turn_and_undo_restores_aut
         CHECK(validateNetwork(h.document().network).empty());
         const auto saved=documentJson(h.document());CHECK(documentJson(parseDocument(saved))==saved);
         h.undo();CHECK(h.document()==d);h.redo();CHECK(documentJson(h.document())==saved);
+    }
+}
+TEST(lifecycle, sliding_an_end_along_its_lanes_keeps_the_authored_curve) {
+    // M3.2.9g (D78): the same lanes at another station keep the author's interior points, each
+    // shifted by its blend weight; another lane still rebuilds the turn.
+    for(auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=turn(0,side);auto& c=d.network.connectors.front();
+        c.geometry={c.geometry.front(),{-20,-25},{-15,-10},{-5,-3},c.geometry.back()};
+        const auto old=c;History h;h.reset(d);
+        auto to=c.to;to.station=63;
+        const auto target=laneAttachment(d.network,to,false);
+        h.execute("slide",[&](auto& doc){changeConnectorEndpoints(doc,old.id,old.from,to);});
+        const auto moved=h.document().network.connectors.front();
+        CHECK(moved.geometry.size()==old.geometry.size());
+        CHECK(moved.geometry.front()==old.geometry.front());
+        test::near(moved.geometry.back().x,target.x,1e-12);test::near(moved.geometry.back().y,target.y,1e-12);
+        const auto weights=connectorBlendWeights(old);
+        for(std::size_t j=1;j+1<old.geometry.size();++j) {
+            test::near(moved.geometry[j].x,old.geometry[j].x+(target.x-old.geometry.back().x)*weights[j],1e-9);
+            test::near(moved.geometry[j].y,old.geometry[j].y+(target.y-old.geometry.back().y)*weights[j],1e-9);
+        }
+        // The forcing: a rebuild would have produced a different shape.
+        CHECK(moved.geometry!=connectorCurve(d.network,old.from,to,3));
+        CHECK(validateNetwork(h.document().network).empty());
+        h.undo();CHECK(h.document()==d);
+    }
+    for(auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=turn(0,side,2);auto& c=d.network.connectors.front();
+        c.geometry={c.geometry.front(),{-20,-25},{-15,-10},{-5,-3},c.geometry.back()};
+        const auto old=c;
+        changeConnectorEndpoints(d,old.id,old.from,{"b","b1",60});
+        const auto& moved=d.network.connectors.front();
+        CHECK(moved.geometry==connectorCurve(d.network,moved.from,moved.to,3));
     }
 }
 TEST(lifecycle, perpendicular_authored_mouth_never_collapses_to_a_needle) {

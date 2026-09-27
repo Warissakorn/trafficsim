@@ -13,12 +13,18 @@ the log. Rewrite this file; do not append to it.
 
 **Done (Windows desktop only):** M3.2.9a lane correspondence (D73), M3.2.9b dividers on their
 Link boundaries (D74), M3.2.9c the Inspector's "Lane change side" and lane tabs that stop at a
-two-lane difference (the owner declined a message for it). Evidence in PROGRESS.md.
+two-lane difference (the owner declined a message for it), M3.2.9d–g the owner's Connector end
+requests: creating across a larger lane difference narrows it (D75), dividers meet their Link
+boundary as P1/P4 do (D76), end grips on the middle of their Link lanes (D77), sliding an end
+along its lanes keeps the curve (D78). Evidence in PROGRESS.md. PR #69 holds a–c; d–g are on
+`claude/connector-end-fixes`, stacked on it.
 
 1. **Owner review (Windows):** the four-point mouth at 45°, 89°, 90° and obtuse, both ends;
-   2 -> 3 and 3 -> 2 with Kerb/Left/Right; 2 -> 4; dividers meeting the Link's; Undo/Redo.
+   2 -> 3 and 3 -> 2 with Kerb/Left/Right; 2 -> 4; dividers running straight onto the Link's;
+   a 2-lane Link dragged onto each lane of a 5-lane one; end grips on steep Connectors; sliding
+   an end along its lane with an authored curve; Undo/Redo.
 2. **Linux:** `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop`.
-   M3.2.9a–c have never been compiled with GCC.
+   M3.2.9a–g have never been compiled with GCC.
 
 **Known, not fixed:**
 - **`scenario-run-ui` exceeds its 90 s limit on this Windows machine** (Debug): 97 s on M3.2.9,

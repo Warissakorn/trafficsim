@@ -246,10 +246,9 @@ The warning is advisory: the drawing can be saved, but exact lane-edge alignment
 claimed. Use `Reset curve` or adjust intermediate points/attachments to approach with traffic.
 
 An endpoint grip sits on the middle of the Link lanes that end joins (the mouth's P2, D77), where
-a drop is measured too. Dragging it or changing its reference in Properties rebuilds the turn at its
-existing point count. Keeping stale interior points when an endpoint crossed them caused the
-old wrong-way elbow. This explicit retarget is one undoable edit; Undo restores the entire old
-shape. Moving a Link still follows the separate world-position/deletion contract described
+a drop is measured too. Dragging it along the lanes it joins keeps the curve, every point shifted
+by its blend weight (D78); onto other lanes, or where a kept end leg would run against its lane
+(the old wrong-way elbow), it rebuilds the turn at its point count. One undoable edit either way. Moving a Link still follows the separate world-position/deletion contract described
 above. Merely opening a file does not regenerate any authored curve.
 
 Interior points are editable; dragging one moves that corner and nothing else. Reset curve to
