@@ -108,13 +108,14 @@ std::vector<std::vector<std::string>> routeShortestChains(const Network& network
     }
     return {};
 }
-std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
-                                                      const std::vector<std::string>& objectIds,
-                                                      std::vector<std::string>* ambiguous) {
+std::vector<FamilyChain> routeLaneFamily(const Network& network, const std::vector<std::string>& objectIds,
+                                         std::vector<std::string>* ambiguous) {
     if (objectIds.empty()) return {};
-    // A chain in progress: the lane-level ids so far, and where the vehicle currently is.
-    struct Chain { std::vector<std::string> ids; LaneReference at; bool onConnector{}; };
+    // A chain in progress: the lane-level ids so far, where the vehicle currently is, the lane it
+    // started on, and whether it has stopped on a lane the next object does not leave (M3.2.8b).
+    struct Chain { std::vector<std::string> ids; LaneReference at; bool onConnector{}; std::size_t lane{}; bool stub{}; };
     std::vector<Chain> chains;
+    const auto* firstLink = linkById(network, objectIds.front());
     const auto pathsOf = [&](const Connector& connector) {
         std::vector<ConnectorPath> paths;
         try { paths = connectorPaths(network, connector); } catch (const std::exception&) { return paths; }
@@ -122,28 +123,40 @@ std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
     };
     // The route covers EVERY lane of the Link it starts on. That is the authored meaning: a
     // routing decision belongs to the carriageway, not to one lane of it.
-    if (const auto* link = linkById(network, objectIds.front())) {
-        for (const auto& lane : link->lanes) chains.push_back({{lane.id}, {link->id, lane.id}, false});
+    if (firstLink) {
+        for (std::size_t k = 0; k < firstLink->lanes.size(); ++k)
+            chains.push_back({{firstLink->lanes[k].id}, {firstLink->id, firstLink->lanes[k].id}, false, k});
     } else if (const auto* connector = connectorById(network, objectIds.front())) {
-        for (const auto& path : pathsOf(*connector)) chains.push_back({{path.id}, path.to, true});
+        const auto paths = pathsOf(*connector);
+        for (std::size_t k = 0; k < paths.size(); ++k) chains.push_back({{paths[k].id}, paths[k].to, true, k});
     } else return {};
+    // A chain on a lane that the next object does not leave stops there as a stub, when the route
+    // starts on a Link: its vehicles change lanes to a chain that goes on (contract §2). On a
+    // Connector, or at an ambiguous step, it is dropped as it always was.
+    const auto stop = [&](std::vector<Chain>& carried, Chain& chain) {
+        if (firstLink && !chain.onConnector) { chain.stub = true; carried.push_back(std::move(chain)); }
+    };
     for (std::size_t i = 1; i < objectIds.size(); ++i) {
         std::vector<Chain> carried;
         for (auto& chain : chains) {
+            if (chain.stub) { carried.push_back(std::move(chain)); continue; }
             if (const auto* connector = connectorById(network, objectIds[i])) {
-                // A lane with no path onward contributes no chain. The route itself is untouched:
-                // narrowing a Connector changes how many lanes it expands to, nothing else.
+                // A lane with no path onward contributes no full chain. The route itself is
+                // untouched: narrowing a Connector changes how many lanes reach its end, nothing else.
                 if (chain.onConnector) continue;
+                bool found = false;
                 for (const auto& path : pathsOf(*connector)) if (path.from.laneId == chain.at.laneId) {
                     auto ids = chain.ids; ids.push_back(path.id);
-                    carried.push_back({std::move(ids), path.to, true});
+                    carried.push_back({std::move(ids), path.to, true, chain.lane});
+                    found = true;
                     break; // One path may leave a given lane; the first is the one drawn.
                 }
+                if (!found) stop(carried, chain);
             } else if (const auto* link = linkById(network, objectIds[i])) {
                 if (chain.onConnector) {
                     if (chain.at.linkId != link->id) continue;
                     auto ids = chain.ids; ids.push_back(chain.at.laneId);
-                    carried.push_back({std::move(ids), chain.at, false});
+                    carried.push_back({std::move(ids), chain.at, false, chain.lane});
                     continue;
                 }
                 // Two Links named one after the other: the Connector between them is implied,
@@ -160,16 +173,39 @@ std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
                             if (!bridge) bridge = path;
                         }
                 if (twoWays && ambiguous) ambiguous->push_back(chain.at.laneId);
-                if (!bridge || twoWays) continue;
+                if (twoWays) continue;
+                if (!bridge) { stop(carried, chain); continue; }
                 auto ids = chain.ids; ids.push_back(bridge->id); ids.push_back(bridge->to.laneId);
-                carried.push_back({std::move(ids), bridge->to, false});
+                carried.push_back({std::move(ids), bridge->to, false, chain.lane});
             }
         }
         chains = std::move(carried);
-        if (chains.empty()) return {};
+        if (std::all_of(chains.begin(), chains.end(), [](const auto& c) { return c.stub; })) return {};
     }
+    // A stub is kept only when a run of neighbouring lanes, each with a chain, leads from it to a
+    // full chain on the first Link. Every chain covers that Link from its start, so each step of the
+    // run is a change a vehicle can make there. Anything else could only wait at its dead end.
+    std::vector<int> kind(firstLink ? firstLink->lanes.size() : 0, 0); // 0 none, 1 stub, 2 full
+    if (firstLink) for (const auto& chain : chains) kind[chain.lane] = chain.stub ? 1 : 2;
+    const auto reaches = [&](std::size_t k) {
+        for (const std::ptrdiff_t step : {-1, 1})
+            for (auto j = static_cast<std::ptrdiff_t>(k) + step; j >= 0 && j < static_cast<std::ptrdiff_t>(kind.size()); j += step) {
+                if (kind[static_cast<std::size_t>(j)] == 0) break;
+                if (kind[static_cast<std::size_t>(j)] == 2) return true;
+            }
+        return false;
+    };
+    std::vector<FamilyChain> result;
+    for (auto& chain : chains)
+        if (!chain.stub || reaches(chain.lane)) result.push_back({std::move(chain.ids), chain.lane, chain.stub});
+    return result;
+}
+std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
+                                                      const std::vector<std::string>& objectIds,
+                                                      std::vector<std::string>* ambiguous) {
     std::vector<std::vector<std::string>> result;
-    for (auto& chain : chains) result.push_back(std::move(chain.ids));
+    for (auto& chain : routeLaneFamily(network, objectIds, ambiguous))
+        if (!chain.stub) result.push_back(std::move(chain.ids));
     return result;
 }
 std::vector<Point> objectGeometry(const Network& network, const std::string& objectId) {

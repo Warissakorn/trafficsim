@@ -2,8 +2,8 @@
 
 The editor supports network drawing, demand and fixed-time control editing, persistence
 and recovery, and simulation on the same canvas. The M0 core remains an unvalidated
-prototype: merges, internal sources and cyclic routes are rejected at Run; geometric
-crossing conflicts, lane changing and priority control are not implemented.
+prototype: merges, internal sources and cyclic routes are rejected at Run; crossing conflicts
+and priority control are M3.2 (below); lane changing is mandatory only (M3.2.8b).
 
 The owner's M0 plausibility and M1 timed usability gates remain open. See
 [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). Running a drawing is not scientific validation.
@@ -386,8 +386,8 @@ Levels only affect display and selection; they do not change runtime conflicts.
    and a click no chain reaches, or two reach equally, authors nothing (Add is the same, by dialog).
 3. With the Vehicle inputs tool (V), click the link traffic enters on: the dialog opens on the
    route starting there or, when none does, on **following the network from that link** with no
-   route (M2.1.1). The volume is the **link total**, divided across lanes (equally or by
-   weights; no lane changing). A routing decision can be **placed on a link** with destination
+   route (M2.1.1). The volume is the **link total**, divided across the link's lanes (equally or
+   by weights); a vehicle on a lane that cannot reach the route's end changes lanes (M3.2.8b). A routing decision can be **placed on a link** with destination
    links and relative flows, and draws as a diamond (SIMULATION.md). Each input draws a chevron
    and its volume. Right-clicking a route, input or decision marker edits or deletes it.
 4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal

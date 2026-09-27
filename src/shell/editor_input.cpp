@@ -90,7 +90,7 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
         if(chosen.startsWith("link:"))for(const auto& l:history_.document().network.links)
             if(l.id==id)return std::max<std::size_t>(1,l.lanes.size());
         if(chosen.startsWith("route:"))for(const auto& r:catalog.routes)if(r.id==id)
-            return std::max<std::size_t>(1,routeLaneChains(history_.document().network,r.segmentIds).size());
+            return std::max<std::size_t>(1,routeLaneShareCount(history_.document().network,r.segmentIds));
         return 1;
     };
     const auto rebuildShares=[&,sharesDirty,shareFields]{

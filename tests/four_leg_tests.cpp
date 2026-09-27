@@ -65,7 +65,12 @@ TEST(fourleg, runs_and_every_movement_delivers) {
         if (const auto* a = std::get_if<ArrivedEvent>(&e)) { arrived[authoredRoute(a->routeId)]++; trips.push_back(*a); }
     }, false);
     for (const auto& route : d.definition->routes) CHECK(arrived[route.id] > 0);
-    CHECK(pendingCount(end) == 0); // All demand entered the network; none is queued off it.
+    // All demand entered the network; none is queued off it. The only exception is an arrival
+    // due in the run's last tick, which the engine retains but cannot insert (M3.2.8b made one
+    // appear here: the trajectories moved).
+    for (std::size_t i = 0; i < end.inputs.size(); ++i)
+        for (const auto& pending : end.inputs[i].queue)
+            CHECK(pending.scheduledTime >= end.scenario->duration - end.scenario->timeStep);
     // Same scenario, same seed, same build: the same trips (hard rule 2).
     std::vector<ArrivedEvent> again;
     runSimulation(snapshot.scenario, 42, [&](const SimEvent& e) {
@@ -76,9 +81,12 @@ TEST(fourleg, runs_and_every_movement_delivers) {
 TEST(fourleg, right_turn_reaches_the_pocket_only_through_its_named_entry) {
     const auto d = parseDocument(committed());
     const auto snapshot = compileDocument(d, test::root() / "data");
-    // Twelve movements, and the four through movements expand to both through lanes: 16 routes.
-    // Were the pocket entry left implied, the inner upstream lane would be ambiguous and dropped.
-    CHECK(snapshot.scenario.routes.size() == 16);
+    // Twelve movements, one chain per upstream lane each (M3.2.8b): 24 routes. The turns reach
+    // their Connector from one lane only, so each has one stub -- 8 -- and the through movements
+    // reach from both. Were the pocket entry left implied, the inner upstream lane would be
+    // ambiguous and dropped.
+    CHECK(snapshot.scenario.routes.size() == 24);
+    CHECK(snapshot.scenario.routeDeadEnds.size() == 8);
 }
 TEST(fourleg, the_natural_drawing_needed_no_more_than_start_of_lane_ordering) {
     // Before M2.0.1 the natural drawing was refused with 8 x UNSUPPORTED_MERGE: three movements
@@ -126,7 +134,7 @@ TEST(fourleg, a_lane_dropped_at_an_ambiguous_implied_step_is_reported) {
     CHECK(rows.size() == 1);
     CHECK(rows.front().code == "AMBIGUOUS_ROUTE_STEP"); CHECK(rows.front().path == "routes[0]");
     CHECK(rows.front().severity == DiagnosticSeverity::advisory);
-    CHECK(compileDocument(d, test::root() / "data").scenario.routes.size() == 15);
+    CHECK(compileDocument(d, test::root() / "data").scenario.routes.size() == 23);
 }
 TEST(fourleg, every_safety_clamp_is_a_vehicle_caught_at_its_stop_line_by_amber) {
     // M2.0.3. The run clamps a handful of vehicles, and every one is the same thing: a vehicle
@@ -141,6 +149,7 @@ TEST(fourleg, every_safety_clamp_is_a_vehicle_caught_at_its_stop_line_by_amber) 
     std::map<std::string, SignalColor> color;
     std::map<std::uint64_t, MovedEvent> last;
     int clamps = 0, explained = 0;
+    std::vector<MovedEvent> atAmber; // where, and when, each explained clamp held its vehicle
     runSimulation(snapshot.scenario, 42, [&](const SimEvent& e) {
         if (const auto* s = std::get_if<SignalEvent>(&e)) color[s->signalId] = s->color;
         // A clamp is emitted before the same step's moves, so `last` is the position it acted on.
@@ -150,7 +159,12 @@ TEST(fourleg, every_safety_clamp_is_a_vehicle_caught_at_its_stop_line_by_amber) 
             const auto head = headOnSegment.find(before.segmentId);
             if (head != headOnSegment.end() && color[head->second->id] == SignalColor::amber &&
                 head->second->position - before.position >= 0 &&
-                head->second->position - before.position < 2) ++explained;
+                head->second->position - before.position < 2) { ++explained; atAmber.push_back(before); return; }
+            // The same thing one vehicle back: its leader was just halted at the line by amber,
+            // with no warning, so it is halted behind it (seen since M3.2.8b moved trajectories).
+            if (std::any_of(atAmber.begin(), atAmber.end(), [&](const auto& a) {
+                    return a.segmentId == before.segmentId && a.position > before.position &&
+                           a.position - before.position < 10 && before.time - a.time < 5; })) ++explained;
         }
         if (const auto* m = std::get_if<MovedEvent>(&e)) last[m->vehicleId] = *m;
     }, true);

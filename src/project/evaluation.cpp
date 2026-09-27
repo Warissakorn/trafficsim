@@ -62,7 +62,12 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
         }
     }
     // A route no author drew -- a routeless path (M2.1.1) -- is a movement by the Links its lane
-    // sections belong to, first and last, grouped and named exactly as an authored one.
+    // sections belong to, first and last, grouped and named exactly as an authored one. A stub
+    // (M3.2.8b) is never one: no vehicle arrives on it, so it would only be an empty row.
+    const auto stub = [&](const std::string& id) {
+        return std::any_of(snapshot.scenario.routeDeadEnds.begin(), snapshot.scenario.routeDeadEnds.end(),
+                           [&](const auto& d) { return d.routeId == id; });
+    };
     const auto table = runtimeSections(snapshot.network);
     const auto linkOf = [&](const std::string& segment) -> std::string {
         for (const auto& section : table.sections) if (section.id == segment) return section.linkId;
@@ -76,7 +81,7 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
     for (const auto& route : snapshot.scenario.routes) {
         if (const auto it = movementOfAuthored.find(route.id.substr(0, route.id.find('/')));
             it != movementOfAuthored.end()) { spec.movementOfRoute[route.id] = it->second; continue; }
-        if (route.segmentIds.empty()) continue;
+        if (route.segmentIds.empty() || stub(route.id)) continue;
         const std::pair key{linkOf(route.segmentIds.front()), linkOf(route.segmentIds.back())};
         if (key.first.empty() || key.second.empty()) continue;
         auto [it, added] = movementOfLinks.try_emplace(key, spec.movementNames.size());
@@ -150,6 +155,7 @@ Json movementJson(const MovementReport& r) {
         j["queues"].push_back({{"approach", q.name}, {"meanLength", q.meanLength}, {"maxLength", q.maxLength}});
     j["completed"] = r.completed; j["notInMovement"] = r.unassigned; j["meanDelay"] = r.meanDelay ? Json(*r.meanDelay) : Json(nullptr);
     j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
+    j["laneChanges"] = r.laneChanges;
     return j;
 }
 std::string movementCsv(const MovementReport& r) {
@@ -162,7 +168,7 @@ std::string movementCsv(const MovementReport& r) {
     for (const auto& q : r.queues)
         out << quoted(q.name) << ',' << number(q.meanLength) << ',' << number(q.maxLength) << '\n';
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
-        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << '\n';
+        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges << '\n';
     return out.str();
 }
 }

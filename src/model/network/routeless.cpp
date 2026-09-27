@@ -11,6 +11,7 @@ struct Walk {
     std::vector<ConnectorPath> paths; // every connector path in the drawing, in connector order
     RoutelessResult result;
     bool stopped{};
+    std::string family; // the entry decision's destination being walked (M3.2.8b)
     const Link* link(const std::string& id) const {
         for (const auto& l : network.links) if (l.id == id) return &l;
         return nullptr;
@@ -23,12 +24,12 @@ struct Walk {
         for (const auto& d : decisions) if (d.linkId == linkId) return &d;
         return nullptr;
     }
-    void finish(std::vector<std::string> chain, std::size_t lane, double share) {
+    void finish(std::vector<std::string> chain, std::size_t lane, double share, bool stub = false) {
         if (result.chains.size() >= kMaxRoutelessPaths) {
             if (!stopped) result.issues.push_back({"ROUTELESS_TOO_MANY_PATHS", {}});
             stopped = true; return;
         }
-        result.chains.push_back({std::move(chain), lane, share});
+        result.chains.push_back({std::move(chain), lane, share, stub, family});
     }
     void cycle() {
         if (std::none_of(result.issues.begin(), result.issues.end(), [](const auto& i) { return i.code == "ROUTELESS_CYCLE"; }))
@@ -81,30 +82,46 @@ struct Walk {
         if (leg.size() >= 2) if (const auto* p = path(leg[leg.size() - 2])) { arrived = p->to.station; arrivedLink = p->to.linkId; }
         at(std::move(chain), arrivedLink, leg.back(), arrived, leg.size() >= 2, lane, share);
     }
-    // The entry Link carries the decision: route each destination's share to the lanes reaching it.
+    // The entry Link carries the decision: each destination's share goes equally to every lane of
+    // the Link. A lane that reaches it takes its full chain; one that does not takes the stub its
+    // vehicles change lanes from (M3.2.8b). A lane with neither -- no neighbouring chain leads to a
+    // full one -- takes no share, as before.
     bool entryDecision(const Link& start) {
         const auto* d = decisionOn(start.id);
         if (!d) return false;
-        struct Served { double weight; std::vector<std::pair<std::size_t, std::vector<std::string>>> legs; };
+        struct Leg { std::size_t lane; FamilyChain chain; };
+        struct Served { double weight; std::string family; std::vector<Leg> legs; };
         std::vector<Served> served;
         double sum = 0;
         for (const auto& destination : d->destinations) {
-            Served s{destination.weight, {}};
+            const auto& objects0 = destination.chains.front();
+            Served s{destination.weight, d->id + ">" + (objects0.empty() ? std::string{} : objects0.back()), {}};
+            std::vector<std::vector<FamilyChain>> families;
+            for (const auto& objects : destination.chains) families.push_back(routeLaneFamily(network, objects));
             for (std::size_t k = 0; k < start.lanes.size(); ++k) {
-                bool found = false;
-                for (const auto& objects : destination.chains) {
-                    for (auto& leg : routeLaneChains(network, objects))
-                        if (!leg.empty() && leg.front() == start.lanes[k].id) { s.legs.push_back({k, std::move(leg)}); found = true; break; }
-                    if (found) break;
-                }
+                const auto pick = [&](bool stub) {
+                    for (const auto& family : families)
+                        for (const auto& chain : family)
+                            if (chain.stub == stub && !chain.ids.empty() && chain.ids.front() == start.lanes[k].id) {
+                                s.legs.push_back({k, chain}); return true;
+                            }
+                    return false;
+                };
+                if (!pick(false)) pick(true);
             }
             if (!s.legs.empty() && destination.weight > 0) { sum += destination.weight; served.push_back(std::move(s)); }
         }
         if (!(sum > 0)) return false;
         result.byDestination = true;
-        for (const auto& s : served)
-            for (const auto& [k, leg] : s.legs)
-                follow({start.lanes[k].id}, leg, start.id, k, s.weight / sum / static_cast<double>(s.legs.size()));
+        for (const auto& s : served) {
+            family = s.family;
+            for (const auto& leg : s.legs) {
+                const double share = s.weight / sum / static_cast<double>(s.legs.size());
+                if (leg.chain.stub) finish(leg.chain.ids, leg.lane, share, true);
+                else follow({start.lanes[leg.lane].id}, leg.chain.ids, start.id, leg.lane, share);
+            }
+            family.clear();
+        }
         return true;
     }
     void free(std::vector<std::string> chain, const std::string& laneId, std::optional<double> arrived,
@@ -137,7 +154,7 @@ struct Walk {
 }
 RoutelessResult routelessChains(const Network& network, const std::string& linkId,
                                 const std::vector<PlacedDecision>& decisions) {
-    Walk walk{network, decisions, {}, {}, false};
+    Walk walk{network, decisions, {}, {}, false, {}};
     for (const auto& connector : network.connectors) {
         try { for (auto& p : connectorPaths(network, connector)) walk.paths.push_back(std::move(p)); }
         catch (const std::exception&) {} // a broken Connector is reported by its own diagnostics

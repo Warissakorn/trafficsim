@@ -168,9 +168,10 @@ TEST(attachments, a_vehicle_enters_a_lane_at_the_drawn_station_and_gives_way) {
         test::near(sectionForStation(table,"b1",0).end,40,1e-9);
         const auto route=putRoute(d,{"",{"a1",id,"b1"}});putInput(d,{"",route,"car",600,0,60});
         const auto snapshot=compileDocument(d,test::root()/"data");
-        // The arriving route's total is 100 m of a1, the connector, and 60 m of b1 -- not 140.
+        // The arriving route's total is 100 m of a1, the connector, and 60 m of b1 -- not 140. Link a
+        // has three lanes, so the chain from a1 is "/lane-1"; a2 and a3 are stubs (M3.2.8b).
         double total=0;
-        for(const auto& r:snapshot.scenario.routes)if(r.id==route)
+        for(const auto& r:snapshot.scenario.routes)if(r.id==route+"/lane-1")
             for(const auto& sid:r.segmentIds)for(const auto& seg:snapshot.scenario.segments)
                 if(seg.id==sid)total+=seg.length;
         const double connectorLength=[&]{
@@ -209,7 +210,7 @@ TEST(attachments, an_arriving_vehicle_holds_at_the_connector_while_the_lane_is_o
         return test::Placement{vid,route,distance,speed};};
     // A major vehicle 20 m short of the conflict point at 40 m, moving slowly enough that it
     // stays inside the three-second gap time for several seconds.
-    auto state=test::withVehicles(scenario,{place(1,arriving,stopLine-3,0),
+    auto state=test::withVehicles(scenario,{place(1,arriving+"/lane-1",stopLine-3,0),
                                             place(2,majorLane,20,5)});
     const auto distanceOf=[](const SimState& st,std::uint64_t vid){
         for(const auto& v:st.vehicles)if(v.id==vid)return v.distance;
@@ -232,7 +233,7 @@ TEST(attachments, an_arriving_vehicle_holds_at_the_connector_while_the_lane_is_o
     // And with the lane clear, the same vehicle from the same place crosses into it. Checked
     // DURING the run, not after: it goes on to finish the route and leave the network, and a
     // departed vehicle has no distance to compare.
-    auto clear=test::withVehicles(scenario,{place(1,arriving,stopLine-3,0)});
+    auto clear=test::withVehicles(scenario,{place(1,arriving+"/lane-1",stopLine-3,0)});
     bool crossed=false;
     for(int i=0;i<80 && !crossed;++i) {
         clear=stepSimulation(clear);
@@ -300,9 +301,10 @@ TEST(attachments, a_route_authored_on_whole_lanes_expands_to_the_sections_it_tra
     };
     // Turning off at 25 m travels ONLY the first section. The through section being absent is the
     // whole point: carrying it would drive the vehicle 75 m it never drove.
-    CHECK(ids("turning")==std::vector<std::string>({"a1",turn,"b1"}));
+    // Link a has three lanes, so each route's chain from a1 is "/lane-1" (M3.2.8b: a2 and a3 are stubs).
+    CHECK(ids("turning/lane-1")==std::vector<std::string>({"a1",turn,"b1"}));
     // Going straight on travels both sections, in order.
-    CHECK(ids("through")==std::vector<std::string>({"a1","a1/sec-2",ahead,"b2"}));
+    CHECK(ids("through/lane-1")==std::vector<std::string>({"a1","a1/sec-2",ahead,"b2"}));
     CHECK(validateScenario(scenario).empty());
     // The negative, in the terms a route is now authored in: objects that do not join up are
     // not quietly stitched together. Naming them is allowed -- an author must be able to draw

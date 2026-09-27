@@ -3,8 +3,8 @@
 M3.2.8 adds driver behaviour on top of the M3.2 right-of-way runtime
 ([`M3_CONTRACT.md`](M3_CONTRACT.md)). It is two systems, each with its own section here:
 **M3.2.8a**, a commitment rule at waiting lines (§1), and **M3.2.8b**, mandatory lane
-changing (§2). Cooperation, visibility and discretionary changes are **M3.2.8c**, not yet
-written. Nothing here is calibration: the
+changing, with the one cooperation rule it could not run without (§2). Visibility,
+discretionary changes and the rest of cooperation are **M3.2.8c**, not yet written. Nothing here is calibration: the
 not-yet-validated marker stays, and gap acceptance remains a deterministic threshold until M6
 evidence exists.
 
@@ -86,7 +86,9 @@ One predicate (`committed`, `src/core/conflicts.hpp`) serves both runtime paths.
 
 The owner's ruling (D71): **Vissim's way**. A movement's volume enters on every lane of its
 entry Link, and a vehicle on a lane that cannot reach its destination changes lanes before it
-has to. Cooperation, visibility, discretionary changes and `laneChangeDistance` are M3.2.8c.
+has to. One cooperation rule came with it, by a second owner ruling in the same session, because
+the measurement without it was not usable (§2, "Cooperation"). Visibility, discretionary changes,
+`laneChangeDistance` and any further cooperation are M3.2.8c.
 
 ### Why
 
@@ -108,10 +110,14 @@ every left-turner of an M2.6 approach appeared in the kerb lane at the network e
   Link is approximated.
 - **A dead end** is the stub's last span end: the last metre at which a change is still possible
   (the adjacent chain leaves the lane there, or the lane ends).
-- A stub from which no chain of changes reaches a full chain is not emitted. Its lane then gets
-  no share of that family, which is the pre-M3.2.8b behaviour.
-- The core gets spans and dead ends as data (`Scenario::laneChanges`, `Scenario::routeDeadEnds`).
-  It never sees geometry, lanes or Links. Neither is in the project file.
+- A stub is kept only when a run of neighbouring lanes, each with a chain, leads from it to a full
+  chain on the entry Link. Every chain covers that Link from its start, so each step of the run
+  is a change a vehicle can make there. Any other stub is not emitted, and its lane gets no share
+  of that family, which is the pre-M3.2.8b behaviour. A stub that still ends up with no span is
+  refused by core validation (`LANE_CHANGE_DEAD_END_UNREACHABLE`) rather than losing its volume.
+- The core gets spans and dead ends as data (`ScenarioDefinition::laneChanges`,
+  `::routeDeadEnds`, filled by the compile step next to the routes they join). It never sees
+  geometry, lanes or Links. Neither is in the project file.
 
 Routeless free walk and routing decisions placed downstream of the entry Link stay lane-fixed
 (M3.2.8c). When a full chain branches after its destination, a stub vehicle joins the
@@ -128,17 +134,19 @@ snapshot:
    short of the span end.
 2. **It is not inside a conflict area** on its current route or its target route (between a
    zone's waiting line and its exit), and it holds no Stop service.
-3. **Forward safety.** At the mapped position, the nearest vehicle ahead on the target route
-   leaves at least the vehicle's own `standstillDistance`. The vehicle's own
-   `followingAcceleration` behind that leader is at least `−comfortableDeceleration`.
-4. **Rearward safety.** The nearest vehicle behind it on the target route leaves at least that
-   vehicle's `standstillDistance`. That vehicle's `followingAcceleration` behind the changer is
-   at least `−comfortableDeceleration` of its type.
+3. **Forward safety.** At the mapped position, the vehicle's own `followingAcceleration` behind
+   the nearest vehicle ahead on the target route is at least `−comfortableDeceleration`. Its move
+   this tick at that acceleration also fits inside the gap less its `standstillDistance`.
+4. **Rearward safety.** The same two tests for the nearest vehicle behind it on the target route,
+   with the changer as its leader, in that vehicle's own type and behaviour.
 5. **Nothing overlaps it.** No vehicle on the target route lies alongside the mapped position.
 
 Both safety tests reuse the car-following model; nothing new is calibrated. `comfortableDeceleration`
 is the vehicle type's (car 2 m/s²), the conservative choice: §1's measurement showed what
-accepting `maxDeceleration` for other drivers costs.
+accepting `maxDeceleration` for other drivers costs. The move-fits test was added after the
+first measurement: without it, a change 2 m behind a faster leader passed the acceleration test
+and was clamped the next tick, because the move is capped at the gap less the standstill
+distance whatever the model asks.
 
 **Same tick.** Candidates are decided in vehicle-id order. A later candidate is also tested
 against the new positions of those already accepted this tick. A vehicle that changed away
@@ -151,8 +159,34 @@ claim. Car-following, priority rules, zones and the phase-2 checks then run on t
 snapshot, which every vehicle shares.
 
 **Dead end.** A stub vehicle is held at its dead end by the stop-line mechanism, exactly as a red
-head holds one, and waits there for a gap. It never arrives on a stub. With no cooperation, a
-dense target lane can hold it for a long time; M3.2.8c addresses that.
+head holds one, and waits there for a gap. It never arrives on a stub.
+
+### Cooperation: holding back for a waiting vehicle
+
+The rule above, measured alone, left M2.6 vehicles waiting at a dead end, one for 404 s,
+blocking the kerb lane. Mean delay rose from 50.1 to 61.6 s and 4 vehicles were still pending
+at the end: a queue or a dense stream rarely leaves a gap both safety tests accept. The owner then ruled that the
+smallest cooperation rule comes with this slice.
+
+- **Who is waiting.** A stub vehicle at walking pace (below 0.5 m/s) that car-following has
+  brought as close to its dead end as it goes (`stopLineReach`, the Stop-line reach of §5). Its
+  target is the one rule 1 would pick.
+- **Who holds back.** Among the vehicles behind its target place on the target route, nearest
+  first, the first that can stop short of it: `v² ≤ 2 · comfortableDeceleration · room` and
+  `v · dt ≤ room`, where room is the gap less its `standstillDistance`. Nearer vehicles cannot
+  stop comfortably, and they pass first. A vehicle alongside is not asked.
+- **How.** The holding vehicle treats the target place as a standing obstacle: its move is capped
+  at the gap less its standstill distance, and its acceleration is the lower of its ordinary one
+  and the one behind that obstacle. This is a second obstacle, not a replacement leader. A nearer
+  moving leader would otherwise hide it.
+- **Stateless.** The stopping test is kinematic, not the model's commanded braking. Once a vehicle
+  holds back, its stopping distance only shrinks, so the same vehicle is chosen tick after tick.
+  Nothing is stored; replay is unaffected.
+- The waiting vehicle still changes only when rules 1–5 hold. Cooperation opens the gap; it never
+  waives a safety test.
+
+This is not Vissim's cooperative lane change: it has no deceleration parameter and no look-ahead,
+and a vehicle not yet stopped is not helped. Those are M3.2.8c.
 
 ### Replay
 
@@ -166,16 +200,18 @@ before.
 - **An input's volume is split over every lane of its entry Link.** It is split equally, or by
   `laneShares`, which now carry one weight per lane of that Link. A stored size that no longer
   matches falls back to the equal split, as before.
-- **A routing decision on the entry Link** (D43) now spreads each destination's flow over every
-  lane in the same way. The typed proportions still hold exactly at entry.
+- **A routing decision on the entry Link** (D43) now spreads each destination's flow equally over
+  every lane of the Link, full or stub. The typed proportions still hold exactly at entry; the
+  input's lane weights stay unused there, as before.
 - **Movements** are reported from full chains only. A stub is never its own row.
 
 ### Consequences to measure, not assume
 
 - Every published multi-lane movement whose lanes do not all reach it moves: the four-leg and
   M2.6 reports are re-published (`docs/evidence/m3.2.8b-mandatory.md`).
-- Left-turn delay is not expected to fall. A through vehicle in the shared kerb lane still blocks
-  a Thai left turn; this rule changes where a turning vehicle enters, not who is ahead of it.
-- A turning vehicle held at a dead end blocks its own lane. That is real, and it is reported
-  (lane changes and vehicles waiting at a dead end).
-- The single-lane frozen baselines must stay byte-identical.
+- Left-turn delay was not expected to fall, since a through vehicle in the shared kerb lane still
+  blocks a Thai left turn. **Measured, it fell on all four M2.6 approaches** (by 1.7–11.1 s), with
+  the lane changes and cooperation together. That is reported, not explained: no controlled case
+  isolates why.
+- A turning vehicle held at a dead end blocks its own lane. That is real, and it is reported.
+- The single-lane frozen baselines must stay byte-identical. They do.

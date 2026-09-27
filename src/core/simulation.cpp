@@ -2,6 +2,7 @@
 #include "conflicts.hpp"
 #include "detail.hpp"
 #include "following.hpp"
+#include "lanes.hpp"
 #include "routes.hpp"
 #include "validate.hpp"
 #include <cmath>
@@ -20,23 +21,13 @@ Scenario canonicalScenario(Scenario scenario) {
     sort(scenario.routes); sort(scenario.vehicleTypes); sort(scenario.behaviours);
     sort(scenario.inputs); sort(scenario.signalPrograms); sort(scenario.signalHeads);
     sort(scenario.conflictZones);
+    std::sort(scenario.laneChanges.begin(), scenario.laneChanges.end(), [](const auto& a, const auto& b) {
+        if (a.fromRouteId != b.fromRouteId) return a.fromRouteId < b.fromRouteId;
+        return a.fromStart != b.fromStart ? a.fromStart < b.fromStart : a.toRouteId < b.toRouteId;
+    });
+    std::sort(scenario.routeDeadEnds.begin(), scenario.routeDeadEnds.end(),
+              [](const auto& a, const auto& b) { return a.routeId < b.routeId; });
     return scenario;
-}
-// Spans grouped by segment, flat (CSR) so grouping costs three allocations, not one per segment.
-// items keeps each segment's spans in their original relative order, which is what makes the
-// strictly-less-than tie-break below select exactly the same span as a full scan would.
-struct SpanBuckets {
-    std::vector<std::uint32_t> start, items;
-};
-SpanBuckets bucketSpans(const std::vector<OccupiedSpan>& spans, std::size_t segmentCount) {
-    SpanBuckets buckets;
-    buckets.start.assign(segmentCount + 1, 0);
-    for (const auto& span : spans) ++buckets.start[span.segmentIndex + 1];
-    for (std::size_t i = 0; i < segmentCount; ++i) buckets.start[i + 1] += buckets.start[i];
-    buckets.items.resize(spans.size());
-    auto cursor = buckets.start;
-    for (std::uint32_t i = 0; i < spans.size(); ++i) buckets.items[cursor[spans[i].segmentIndex]++] = i;
-    return buckets;
 }
 // `id`, when asked for, receives the leader's vehicle id -- only admission needs it (M3.2.3c).
 std::optional<Leader> closestVehicle(const Vehicle& vehicle, const std::vector<RoutePart>& parts,
@@ -171,9 +162,29 @@ SimState stepSimulation(const SimState& state, double dt) {
         std::inplace_merge(vehicles.begin(), arrivals, vehicles.end(), byId);
     else std::sort(vehicles.begin(), vehicles.end(), byId);
     // Resolved once per tick rather than roughly six times per vehicle.
-    const auto refs = resolveRefs(scenario, vehicles, index);
-    const auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.
-    const auto buckets = bucketSpans(spans, scenario.segments.size());
+    auto refs = resolveRefs(scenario, vehicles, index);
+    auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.
+    auto buckets = bucketSpans(spans, scenario.segments.size());
+    // Mandatory lane changes (M3.2.8b), decided off that snapshot and applied before anything
+    // moves; the rest of the tick then runs on the post-change snapshot, shared by every vehicle.
+    // Free without a stub: the scenario then has no span at all.
+    if (index.laneChanges) {
+        const auto changes = decideLaneChanges(scenario, index, vehicles, refs, spans, buckets, state.stopService);
+        for (const auto& change : changes) {
+            auto& vehicle = vehicles[change.vehicle];
+            events.emplace_back(LaneChangeEvent{state.time, vehicle.id, scenario.routes[vehicle.routeIndex].id,
+                                                scenario.routes[change.route].id});
+            vehicle.routeIndex = change.route; vehicle.distance = change.distance;
+        }
+        if (!changes.empty()) {
+            refs = resolveRefs(scenario, vehicles, index);
+            spans = occupiedSpans(scenario, vehicles, index, refs);
+            buckets = bucketSpans(spans, scenario.segments.size());
+        }
+    }
+    // Cooperation, from the post-change snapshot: who holds back for a vehicle waiting to change.
+    const auto courtesy = index.laneChanges ? courtesyHolds(scenario, index, vehicles, refs, spans, buckets)
+                                            : std::vector<double>{};
     // Signal colour depends only on the tick's time, so it is the same for every vehicle.
     std::vector<SignalColor> headColors;
     headColors.reserve(scenario.signalHeads.size());
@@ -215,6 +226,16 @@ SimState stepSimulation(const SimState& state, double dt) {
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
             if (!leader || gap < leader->gap) leader = Leader{gap, 0};
         }
+        // A stub route's dead end holds its vehicle as a red head does, until it changes lanes.
+        if (index.laneChanges)
+            if (const double gap = std::max(0.0, index.deadEndOfRoute[refs[v].route] - vehicle.distance); std::isfinite(gap)) {
+                allowedDistance = std::min(allowedDistance, gap);
+                if (!leader || gap < leader->gap) leader = Leader{gap, 0};
+            }
+        // Holding back for a waiting changer, as behind a standing vehicle -- even when a moving
+        // leader is nearer, so it is a second obstacle rather than a replacement leader (below).
+        const bool yields = !courtesy.empty() && std::isfinite(courtesy[v]);
+        if (yields) allowedDistance = std::min(allowedDistance, std::max(0.0, courtesy[v] - behaviour.standstillDistance));
         // Priority rules, after the signal heads and by the same mechanism: a vehicle that must
         // give way is held at its stop line exactly as a red head holds one. Car-following past
         // the merge already works without any of this, because spans are bucketed by GLOBAL
@@ -259,8 +280,12 @@ SimState stepSimulation(const SimState& state, double dt) {
             allowedDistance = std::min(allowedDistance, *hold);
             if (!leader || *hold < leader->gap) leader = Leader{*hold, 0};
         }
-        const auto following = followingAcceleration(vehicle.speed, vehicle.desiredSpeed,
-                                                       vehicle.driverFactor, type, behaviour, leader);
+        auto following = followingAcceleration(vehicle.speed, vehicle.desiredSpeed,
+                                                 vehicle.driverFactor, type, behaviour, leader);
+        if (yields)
+            if (const auto held = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type,
+                                                        behaviour, Leader{courtesy[v], 0});
+                held.acceleration < following.acceleration) following = held;
         const auto motion = integrate(vehicle.speed, following.acceleration, dt);
         auto& move = moves[v];
         move = {motion.distance, std::min(vehicle.desiredSpeed, motion.speed), following.acceleration, following.mode, false};
@@ -300,7 +325,9 @@ SimState stepSimulation(const SimState& state, double dt) {
             if (vehicle.distance < parts[i].start && moved.distance >= parts[i].start)
                 events.emplace_back(SegmentEnteredEvent{time, vehicle.id, parts[i].segmentId});
         const double routeLength = parts.back().start + parts.back().length;
-        if (moved.distance >= routeLength) {
+        // A stub's dead end may be its last metre; standing there is waiting, never arriving.
+        const bool stub = index.laneChanges && std::isfinite(index.deadEndOfRoute[refs[v].route]);
+        if (moved.distance >= routeLength && !stub) {
             ++next.completed;
             events.emplace_back(ArrivedEvent{time, vehicle.id, scenario.routes[vehicle.routeIndex].id,
                 time - vehicle.enteredTime,

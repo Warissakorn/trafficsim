@@ -283,7 +283,8 @@ TEST(connectors, two_connectors_arriving_at_one_station_share_one_cut) {
     const auto snapshot=compileDocument(d,test::root()/"data");
     std::map<std::string,int> arrived;std::vector<ArrivedEvent> trips,again;
     runSimulation(snapshot.scenario,42,[&](const SimEvent& e){
-        if(const auto* a=std::get_if<ArrivedEvent>(&e)){arrived[a->routeId]++;trips.push_back(*a);}},false);
+        // By authored route: each compiles to one chain per lane of its first Link (M3.2.8b).
+        if(const auto* a=std::get_if<ArrivedEvent>(&e)){arrived[a->routeId.substr(0,a->routeId.find('/'))]++;trips.push_back(*a);}},false);
     CHECK(arrived[viaA]>0);CHECK(arrived[viaB]>0);
     runSimulation(snapshot.scenario,42,[&](const SimEvent& e){
         if(const auto* a=std::get_if<ArrivedEvent>(&e))again.push_back(*a);},false);

@@ -111,6 +111,22 @@ struct ConflictZone {
     ZoneControl control{ZoneControl::yield};
     bool operator==(const ConflictZone&) const = default;
 };
+// M3.2.8b (docs/M3_8_CONTRACT.md §2). A vehicle on route `fromRouteId` whose rear is at or past
+// `fromStart` and whose front is at or short of `fromEnd` may change to `toRouteId`; distances map
+// linearly between [fromStart, fromEnd] and [toStart, toEnd]. Compiled from the drawing -- two
+// chains of one movement on adjacent lanes of a Link -- and never authored: the core sees route
+// distances only, never a lane.
+struct LaneChangeSpan {
+    std::string fromRouteId, toRouteId;
+    double fromStart{}, fromEnd{}, toStart{}, toEnd{};
+    bool operator==(const LaneChangeSpan&) const = default;
+};
+// A route that cannot reach its movement's end on its own lane (a stub): a vehicle on it is held
+// at `at` until it changes lanes, and never arrives on it.
+struct RouteDeadEnd {
+    std::string routeId; double at{};
+    bool operator==(const RouteDeadEnd&) const = default;
+};
 struct ScenarioDefinition {
     double duration{}, timeStep{};
     std::vector<Route> routes;
@@ -129,6 +145,12 @@ struct ScenarioDefinition {
     // Last again, for the same reason. Empty for every scenario without an authored crossing,
     // which then runs exactly the code path it always did.
     std::vector<ConflictZone> conflictZones;
+    // M3.2.8b, last again. COMPILED, never authored and never in a project file: the compile step
+    // that expands routes into lane chains fills these alongside them (buildScenario for authored
+    // routes, expandRouteless for routeless paths). Empty for every scenario without a stub,
+    // which then runs exactly the code path it always did.
+    std::vector<LaneChangeSpan> laneChanges;
+    std::vector<RouteDeadEnd> routeDeadEnds;
     // Value equality, so callers can tell "this edit changed nothing" without serialising.
     bool operator==(const ScenarioDefinition&) const = default;
 };
@@ -157,8 +179,16 @@ struct RouteZone {
     double entryAt{}, exitAt{}, waitAt{}, clearAt{};
     bool joinsInside{}; // met the chain after its first segment
 };
+// A lateral span as the run uses it: the target route's slot and the same four distances.
+struct RouteLaneChange { std::size_t target{}; double fromStart{}, fromEnd{}, toStart{}, toEnd{}; };
 struct ScenarioIndex {
     std::vector<std::vector<RoutePart>> parts;
+    // M3.2.8b, parallel to Scenario::routes. `remainingOfRoute` is how many changes a vehicle on the
+    // route still has to make (0 for a full route); `deadEndOfRoute` is +infinity without one.
+    bool laneChanges{};
+    std::vector<std::vector<RouteLaneChange>> laneChangesOfRoute;
+    std::vector<double> deadEndOfRoute;
+    std::vector<std::uint32_t> remainingOfRoute;
     std::vector<std::vector<RouteZone>> routeZones;  // parallel to Scenario::routes, in conflictZones order
     bool stopZones{};                                // any zone is a Stop: only then is service tracked
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads
@@ -235,8 +265,14 @@ struct ArrivedEvent {
     double travelTime{}, departureDelay{}, freeFlowTime{};
     bool operator==(const ArrivedEvent&) const = default;
 };
+// M3.2.8b: a vehicle moved from one route to another at the start of a tick (contract §2).
+struct LaneChangeEvent {
+    double time{}; std::uint64_t vehicleId{}; std::string fromRouteId, toRouteId;
+    bool operator==(const LaneChangeEvent&) const = default;
+};
+// LaneChangeEvent is last so every existing alternative keeps its index.
 using SimEvent = std::variant<SignalEvent, DepartedEvent, MovedEvent,
-                              SegmentEnteredEvent, SafetyClampEvent, ArrivedEvent>;
+                              SegmentEnteredEvent, SafetyClampEvent, ArrivedEvent, LaneChangeEvent>;
 // M3.2.5: one vehicle's service at a Stop line (contract §5). `line` is the route distance of the
 // next Stop line it has not passed; `since` the tick whose start first found it standing there.
 // It has served the line once a whole tick has run since then. Kept only while the line is ahead

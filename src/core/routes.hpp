@@ -33,4 +33,11 @@ std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vec
 // that adds vehicles one at a time ends up with a byte-identical span list.
 void appendVehicleSpans(std::vector<OccupiedSpan>& spans, const Scenario& scenario,
                         const ScenarioIndex& index, const Vehicle& vehicle, const VehicleRefs& refs);
+// Spans grouped by segment, flat (CSR) so grouping costs three allocations, not one per segment.
+// items keeps each segment's spans in their original relative order, which is what makes a
+// strictly-less-than tie-break select exactly the same span as a full scan would.
+struct SpanBuckets {
+    std::vector<std::uint32_t> start, items;
+};
+SpanBuckets bucketSpans(const std::vector<OccupiedSpan>& spans, std::size_t segmentCount);
 }

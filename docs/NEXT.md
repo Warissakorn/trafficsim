@@ -9,45 +9,59 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.8b, and the owner's M3.2.7d
+## Immediate — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
 
 **Done:**
-- **M3.2.8a, commitment (D69, `docs/M3_8_CONTRACT.md` §1).** A driver who cannot stop at its line
-  at `maxDeceleration` goes. The T-junction's right-of-way clamps are gone. No major vehicle is
-  clamped at an area. The four-leg report is unchanged, and M2.6 moved by at most 0.13 s per
-  movement (`docs/evidence/m3.2.8a-commitment.md`). The owner's first choice,
-  `comfortableDeceleration`, clamped the major road and was replaced: **do not retry it without a
-  new measurement.**
-- Conflict areas are automatic (M3.2.4c, D68); any new right-of-way work must keep them derived,
-  never stored.
-- M3.2.2a–M3.2.7c (D54–D67); everything is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
+- **M3.2.8b, mandatory lane changing with minimal cooperation (D71, `docs/M3_8_CONTRACT.md` §2,
+  A27–A35).** Volume enters on every lane of the entry Link. A lane that cannot reach the end is
+  a stub route that changes before its dead end. The nearest target-lane vehicle that can stop
+  comfortably holds back for one waiting there. M2.6: all drained, mean delay 50.14 → 50.16 s,
+  left turns down on all four approaches, right turns up on all four
+  (`docs/evidence/m3.2.8b-mandatory.md`). **Without cooperation it was 61.6 s with a 404 s wait:
+  do not remove the courtesy without a new measurement.**
+- **M3.2.8a, commitment (D69, contract §1).** The owner's first choice, `comfortableDeceleration`,
+  clamped the major road and was replaced by `maxDeceleration`: do not retry it without a new
+  measurement.
+- Conflict areas are automatic (M3.2.4c, D68), derived and never stored. M3.2.2a–M3.2.7c are
+  D54–D67; the evidence is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
-**M3.2.7d is the owner's, not a session's.** Carry out the exercise with the recording sheet in
-`docs/M3_ACCEPTANCE.md` §3, on Windows. Until the owner reports it, the row stays pending.
+**First, before anything new (M3.2.8b was verified on Windows headless only):**
+1. `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop` on Linux.
+   `src/shell/editor_demand.cpp` (input row: `routeLaneFamily(...).size()`) and
+   `src/shell/editor_input.cpp` (share count: `routeLaneShareCount`) were edited but **never
+   compiled**. Fix anything red before other work.
+2. Re-run `trafficsim-cli 42 --project data/projects/m2.6-study-template.traffic.json` on
+   Linux/GCC and compare with the evidence tables. A difference in the last digits is the
+   toolchain. Record it in the evidence file either way.
+3. Callgrind the M2.6 one-hour run (baseline 4.35G instructions, D70) and record the cost of
+   `decideLaneChanges`, `courtesyHolds` and the span rebuild on a tick with a change.
 
-**Next session: M3.2.8b** (ROADMAP row): lane changing, cooperation and visibility. It is a new
-system, so write its contract first, as `docs/M3_8_CONTRACT.md` §2 (the placeholder is there).
-1. **Start from the known limit below.** A Thai left turn at all times queues behind through
-   traffic in a shared kerb lane, because a vehicle keeps the lane it entered on. The smallest
-   useful piece is a mandatory lane change toward the lane a route's next Connector leaves from.
-   Measure it on the M2.6 template: its left turns, and whether the through movements' delay
-   moves.
-2. Then cooperation (a vehicle opening a gap for a merging one) and visibility at areas.
-3. The contract must say how a lane change keeps replay exact (no new RNG draw without a seeded
-   contract) and what a vehicle between two lanes occupies, for zones and car-following alike.
+**Then M3.2.8c** (ROADMAP row). Write its rows in `docs/M3_ACCEPTANCE.md` and its contract as
+`M3_8_CONTRACT.md` §3 before the code. It is several systems, so pick one per session. In the
+order the evidence argues for:
+1. **Right turns rose on all four M2.6 approaches** (up to +13 s East). A right-turning vehicle
+   entering on the kerb lane must now cross into the pocket lane. Measure first, before changing
+   anything: dead-end waits per movement, and where on the Link the changes happen. Then decide
+   whether `laneChangeDistance` (Vissim's look-ahead for a mandatory change) is the next piece.
+2. Cooperation with a deceleration parameter and look-ahead, so a vehicle that is not yet
+   stopped is helped too (today only a waiting vehicle is).
+3. Lane changes after the entry Link: free-walk paths and placed decisions are still lane-fixed
+   (SIMULATION.md, "No lane changing downstream").
+4. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
+   instantaneous, which the contract records as a limit.
 
 **Open item from M3.2.8a:** five minor vehicles standing or at walking pace within 1 m of the
 T-junction's merge line are still clamped in the congested headway arm (seeds 42 and 43). They
 are not the commitment case, since their stopping distance is about zero, and they are not
 diagnosed. Diagnose them before claiming the minor road clamp-free.
 
+**M3.2.7d is the owner's, not a session's.** Carry out the exercise with the recording sheet in
+`docs/M3_ACCEPTANCE.md` §3, on Windows. Until the owner reports it, the row stays pending.
+
 M3.1 supplied merge arbitration only — a deterministic gap-time/headway threshold, not a
 calibrated critical-gap model. Derived stop lines sit 1 m short of the join (D50). M3's
 done-condition (minor-road delay responds to gap time) is shown on development evidence only;
 no gate result is inferred.
-
-**Known limit, surfaced by the M2.6 template:** a Thai left turn at all times still queues behind
-through traffic in a shared kerb lane, because there is no lane changing until M3.2.8b.
 
 ## Engineering work that can proceed without the owner, if asked
 
@@ -55,9 +69,9 @@ through traffic in a shared kerb lane, because there is no lane changing until M
   is typed once; today the two are entered separately.
 - In-editor CSV export of the Results tab (the CLI has one).
 - Results-tab refresh that skips work while hidden — cheap today (16 rows), so measure first.
-- Per-lane shares (D32): no canvas gesture sets one, and the input table row
-  (`refreshDemand`, `src/shell/editor_demand.cpp`) shows the equal-split figure even when shares
-  are set.
+- Per-lane shares (D32; one weight per entry-Link lane since D71): no canvas gesture sets one,
+  and the input table row (`refreshDemand`, `src/shell/editor_demand.cpp`) shows the equal-split
+  figure even when shares are set.
 - Keyboard-only equivalents of the route and vehicle-input gestures (M1.25/M1.26) are still open.
 - The entry-acceleration bias in movement delay needs travel-time sections (M5), not a
   correction factor.

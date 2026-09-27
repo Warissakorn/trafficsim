@@ -41,7 +41,9 @@ Json eventJson(const SimEvent& event) {
             } else if constexpr (std::is_same_v<T, SegmentEnteredEvent>) {
                 j["kind"] = "segment-entered"; j["segmentId"] = e.segmentId;
             } else if constexpr (std::is_same_v<T, SafetyClampEvent>) j["kind"] = "safety-clamp";
-            else {
+            else if constexpr (std::is_same_v<T, LaneChangeEvent>) {
+                j["kind"] = "lane-change"; j["fromRouteId"] = e.fromRouteId; j["toRouteId"] = e.toRouteId;
+            } else {
                 j["kind"] = "arrived"; j["routeId"] = e.routeId; j["travelTime"] = e.travelTime;
                 j["departureDelay"] = e.departureDelay; j["freeFlowTime"] = e.freeFlowTime;
             }

@@ -118,8 +118,11 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
     const auto table = runtimeSections(network);
     // Per Link: the union of every slice's paths, in order of first appearance, so one runtime
     // route serves a path in every slice; and each slice's share of each path.
+    // M3.2.8b: `stub` and `family` per path, so an entry decision's destination gets its lateral
+    // spans; a stub is a path of its own family only, never merged with a full one.
     struct Walks { std::vector<std::vector<std::string>> paths; std::vector<std::size_t> lanes;
-                   std::vector<std::vector<double>> share; bool byDestination{}; bool failed{}; };
+                   std::vector<std::vector<double>> share; std::vector<bool> stub; std::vector<std::string> family;
+                   bool byDestination{}; bool failed{}; };
     std::map<std::string, Walks> walks;
     std::vector<VehicleInput> inputs;
     for (const auto& input : resolved.inputs) {
@@ -132,19 +135,27 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 if (!walk.issues.empty()) { w.failed = true; break; }
                 w.byDestination = w.byDestination || walk.byDestination;
                 for (const auto& c : walk.chains) {
-                    auto at = std::find(w.paths.begin(), w.paths.end(), c.laneChain);
-                    if (at == w.paths.end()) {
+                    std::size_t at = 0;
+                    while (at < w.paths.size() && !(w.paths[at] == c.laneChain && w.stub[at] == c.stub &&
+                                                     (!c.stub || w.family[at] == c.family))) ++at;
+                    if (at == w.paths.size()) {
                         w.paths.push_back(c.laneChain); w.lanes.push_back(c.lane);
                         w.share.emplace_back(placed.size(), 0.0);
-                        at = w.paths.end() - 1;
+                        w.stub.push_back(c.stub); w.family.push_back(c.family);
                     }
-                    w.share[static_cast<std::size_t>(at - w.paths.begin())][s] += c.share;
+                    w.share[at][s] += c.share;
                 }
             }
-            if (!w.failed)
-                for (std::size_t k = 0; k < w.paths.size(); ++k)
-                    resolved.routes.push_back({routelessRouteId(input.linkId, k, w.paths.size()),
-                                               expandRouteSegments(table, w.paths[k])});
+            if (!w.failed) {
+                std::map<std::string, std::vector<FamilyRoute>> families;
+                for (std::size_t k = 0; k < w.paths.size(); ++k) {
+                    Route route{routelessRouteId(input.linkId, k, w.paths.size()), expandRouteSegments(table, w.paths[k])};
+                    if (!w.family[k].empty()) families[w.family[k]].push_back({route.id, route.segmentIds, w.stub[k]});
+                    resolved.routes.push_back(std::move(route));
+                }
+                for (const auto& [name, members] : families)
+                    appendLaneChanges(network, table, members, resolved.laneChanges, resolved.routeDeadEnds);
+            }
         }
         if (w.failed) continue; // routelessIssues names it
         // The Link total divided across its lanes, as for a route (M1.26, M1.26.1).
