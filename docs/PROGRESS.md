@@ -75,8 +75,7 @@ Connector's end on a Link, and the fill sat exactly on the Link/Connector outlin
 - **Inset drawing, 0.3 m** (`canvas_conflicts.cpp`, `insetPath`). Display only: picking, the
   runtime and validation keep the full `conflictSideOutline`. An area narrower than 0.6 m is
   drawn whole rather than vanish.
-- **Not compiled locally**: this Windows host had no C++ toolchain in the session. CI
-  (`native.yml`) is the first build.
+- Verified on Windows desktop (MSVC 14.51 from VS 18, Qt 6.8.3): 64/64 `ctest`. Not yet on Linux.
 
 ## 2026-09-27 — M3.2.8b: mandatory lane changing, with minimal cooperation (D71)
 
