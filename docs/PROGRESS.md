@@ -59,6 +59,31 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-28 — M3.2.9h: one P1–P4 construction at every angle (D79)
+
+- The owner asked for P1–P4 without a separate case past 90°. The mouth used to try both
+  pairings of Connector and Link edges and keep the shorter, which switched Link edges past 90°.
+  Now the first rail's edge line always meets the range's first Link boundary (index order), and
+  the shoulder keeps growing as W/2·tan(θ/2) (4 m lane: 2.00 m at 90°, 4.83 m at 135°, 7.46 m at
+  150°). Past about 152° the existing reach limit (4× width) hands that end to the legacy cap.
+  Offered the alternative (same edge side geometrically, today's picture); the owner chose index
+  order.
+- Which rail is on which side stays read off the rails. Deriving it from the driving side was
+  tried and reverted: legacy strips at an obtuse end run lane 0 on the driver's left, so the cut
+  crossed the rails and whole surfaces fell back (1,512-case sweep: 2,150 mouths, 367 Connectors
+  with neither end, against 2,928 / 27 before).
+- New in the rail/divider step: the stretch of a boundary that runs past its cut along the end
+  direction is pulled back onto the cut before the bend. Past 90° a strip can run across the Link
+  beyond its cut and the bend alone hooked it (a divider ended 1.83 m off its point; mutation
+  check: removing the pull-back fails `mouth_sweep` again).
+- Sweep now: 2,847 mouths, 7 Connectors with neither end (lost mouths: target 150°, where the
+  reach limit is expected, and folded-strip cases at 30°, NEXT's known issue).
+- Tests: `mouths.four_point_mouth_keeps_one_construction_beyond_90_degrees` (91–150° both sides,
+  170° falls back) and `…sweep_follows_one_formula_at_every_angle` (5–355°, 60 placed).
+- Windows desktop: 67/67. Linux not run.
+
+---
+
 ## 2026-09-27 — M3.2.9g: sliding an end along its lanes keeps the curve (D78)
 
 - The owner did not want a Connector's curve reset when an end is dragged along the lanes it
@@ -433,6 +458,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D79 | 2026-09-28 | **P1–P4 use one pairing at every angle: Connector boundary 0's edge line meets the range's first Link boundary (index order); no switch at 90°; a boundary running past its cut is pulled back before the bend** | Owner ruling, choosing index order over the geometric same-side pairing. Sides stay read off the rails because legacy strips can reverse lane order at an obtuse end (measured: driving-side kerb made 367 surfaces fall back) | A fix for folded/reversed `connectorBoundaries` strips, which would let the side come from the driving side |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |

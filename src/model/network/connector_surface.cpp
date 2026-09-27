@@ -1,7 +1,6 @@
 #include "connector_surface.hpp"
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <numeric>
 
 namespace trafficsim {
@@ -45,6 +44,24 @@ void bend(std::vector<Point>& g,Point target,bool start) {
         g[i]=add(g[i],mul(delta,w));
     }
 }
+// Bring one end of a boundary to its cut. The stretch running past the cut along the end
+// direction (`outward`, pointing off the Connector) is first pulled back onto the line through
+// the cut square to it; the rest is then bent. Past 90 degrees a lane strip can run on across the
+// Link beyond its cut (D79), and bending that end back would hook the line over itself.
+void reach(std::vector<Point>& g,Point target,Point outward,bool start) {
+    const std::size_t count=g.size();
+    const auto at=[&](std::size_t k)->Point&{return g[start?k:count-1-k];};
+    const auto past=[&](Point p){return dot(sub(p,target),outward);};
+    std::size_t beyond=0;
+    while(beyond<count && past(at(beyond))>1e-9)++beyond;
+    if(beyond>0 && beyond<count) {
+        const Point in=at(beyond),out=at(beyond-1);
+        const double t=past(in)/(past(in)-past(out));
+        const Point cut=add(in,mul(sub(out,in),t));
+        for(std::size_t k=0;k<beyond;++k)at(k)=cut;
+    }
+    bend(g,target,start);
+}
 struct Edge { std::vector<Point> geometry; Point at,along; };
 // The Link lane range an end is attached to, and its boundaries' lines at the attachment station.
 struct Range { const Link* link{}; std::size_t first{}; int count{}; double station{}; };
@@ -78,34 +95,32 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
     const auto u=directionAlong(c.geometry,start?0:polylineLength(c.geometry),!start);
     Point normal{-u.y,u.x};
     const auto end=[&](const auto& g){return start?g.front():g.back();};
-    // Keep boundary indices attached to the body's actual two rails, even on a reversed
-    // arrival. Pairing with the Link edges below is allowed to swap, lane order is not.
+    // Keep boundary indices attached to the body's actual two rails, even on a reversed arrival.
     if(dot(normal,sub(end(rails.back()),end(rails.front())))<0)normal=mul(normal,-1);
     const std::array<Point,2> own{add(centre,mul(normal,-width/2)),add(centre,mul(normal,width/2))};
-    std::array<Point,2> cuts{};int pairing=-1;double best=std::numeric_limits<double>::max();
-    for(int swap=0;swap<2;++swap) {
-        const auto a=intersection(own[0],u,edges[swap].at,edges[swap].along);
-        const auto b=intersection(own[1],u,edges[1-swap].at,edges[1-swap].along);
-        if(!a || !b)continue;
-        const double reach=norm(sub(*a,centre))+norm(sub(*b,centre));
-        // Choosing the shorter pairing folds the angle at 90 degrees. At equal width the
-        // shoulder is W/2*tan(min(theta,180-theta)/2), bounded by W/2.
-        if(reach<best-1e-9){best=reach;cuts={*a,*b};pairing=swap;}
-    }
-    if(pairing<0 || best>4*std::max(width,norm(sub(edges[1].at,edges[0].at))))return {};
+    // One construction at every angle (owner ruling, D79): the first rail's edge line meets the
+    // range's first Link boundary and the last meets the last, so the Connector's lanes join the
+    // Link's in index order. Past 90 degrees the shoulder keeps growing as W/2*tan(theta/2)
+    // rather than switching edges; past the reach limit below the legacy cap takes over. The
+    // sides come from the rails, not the driving side: a legacy strip may run lane 0 on the
+    // driver's left, and a cut on the other side would cross the rails.
+    const auto a=intersection(own[0],u,edges[0].at,edges[0].along);
+    const auto b=intersection(own[1],u,edges[1].at,edges[1].along);
+    if(!a || !b)return {};
+    const std::array<Point,2> cuts{*a,*b};
+    if(norm(sub(*a,centre))+norm(sub(*b,centre))>4*std::max(width,norm(sub(edges[1].at,edges[0].at))))return {};
     const Point outward=mul(u,start?-1:1);
     const int near=dot(sub(cuts[0],centre),outward)<=dot(sub(cuts[1],centre),outward)+1e-9?0:1;
-    const int far=1-near,farEdge=far==0?pairing:1-pairing;
-    const auto& g=edges[farEdge].geometry;
+    const int far=1-near;
+    const auto& g=edges[far].geometry;
     const Point projection=pointAlong(g,stationOfClosestPoint(g,centre));
     ConnectorMouth result{{cuts[near],centre,projection,cuts[far]},near==0,{}};
-    // cuts[0] is the first rail's end and lies on edges[pairing]: past 90 degrees the rails meet
-    // the range in reverse lane order, and the interior boundaries must follow them.
+    // cuts[0] is the first rail's end and lies on edges[0]; interior boundaries follow in order.
     const std::array<Point,3> cap{result.points[0],result.points[1],result.points[2]};
     result.boundaries.push_back(cuts[0]);
     double offset=0;std::size_t nextLane=0;
     for(int j=1;j<count;++j) {
-        const auto b=edge(first+static_cast<std::size_t>(pairing==0?j:count-j));
+        const auto b=edge(first+static_cast<std::size_t>(j));
         // D76: built as P1/P4 are -- the Connector's own divider line, offset from the first rail's
         // edge by the widths of the lanes before it, runs on along the end direction to meet the
         // Link boundary's line. A surplus lane has no width here, so it adds no offset.
@@ -191,10 +206,12 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
     const auto widths=connectorLaneWidths(n,c);
     const auto apply=[&](const std::optional<ConnectorMouth>& m,bool start) {
         if(!m)return;
-        // The rails bend onto P1/P4 exactly as the dividers bend onto their points, so the body
-        // stays one shape and no divider runs outside a rail that moved only its last vertex.
-        bend(rails.front(),m->points[m->firstBoundaryNear?0:3],start);
-        bend(rails.back(),m->points[m->firstBoundaryNear?3:0],start);
+        const auto u=directionAlong(c.geometry,start?0:polylineLength(c.geometry),!start);
+        const Point outward=mul(u,start?-1:1);
+        // The rails reach P1/P4 exactly as the dividers reach their points, so the body stays
+        // one shape and no divider runs outside a rail that moved only its last vertex.
+        reach(rails.front(),m->points[m->firstBoundaryNear?0:3],outward,start);
+        reach(rails.back(),m->points[m->firstBoundaryNear?3:0],outward,start);
         // Each interior boundary ends on the Link boundary it belongs to: the one after as many
         // lanes as have width at this end. A surplus lane (width 0) adds none, so a taper closes
         // onto its neighbour's point, which for an outermost surplus lane is P1 or P4 (D73).
@@ -202,7 +219,7 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
         std::size_t lanes=0;
         for(std::size_t k=1;k+1<rails.size();++k) {
             if(w[k-1]>0)++lanes;
-            bend(rails[k],m->boundaries[std::min(lanes,m->boundaries.size()-1)],start);
+            reach(rails[k],m->boundaries[std::min(lanes,m->boundaries.size()-1)],outward,start);
         }
     };
     apply(result.source,true);apply(result.target,false);

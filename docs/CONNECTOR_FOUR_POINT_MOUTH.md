@@ -18,15 +18,22 @@ At each end, `connectorSurface` builds a cap P1 → P2 → P3 → P4:
 The local Connector edges use the authored end-leg direction and total end width from
 `connectorLaneWidths`. The Link edges use the selected lane range, `matchedStation`, and
 the directed edge segment at that station. Intersections use the supporting lines; P3 uses
-the finite Link boundary. Of the two pairings, use the one with smaller total reach from P2.
-This switches Link-edge pairing beyond 90 degrees instead of extending a long miter.
+the finite Link boundary. **One pairing at every angle (D79, owner ruling 2026-09-28):** the
+first rail's edge line meets the range's first Link boundary and the last rail's the last, so
+lanes join in index order. Until then the shorter of the two pairings was used, which switched
+Link edges past 90°; now the shoulder keeps growing instead. Which rail is on which side comes
+from the rails themselves (a legacy strip can run lane 0 on the driver's left).
 Near/far are ordered looking outward from the Connector body (opposite directions at source
 and target). Ties use boundary order, with a metre tolerance to avoid roundoff-driven flips.
 
-For straight equal-width roads of width W and the acute angle phi between their axes:
+For straight equal-width roads of width W and the arrival angle theta between their axes
+(0–180°, measured so that it is acute when the Connector joins the Link's direction):
 
 - distance(P2,P3) = W/2;
-- distance(P3,P4) = W/2 tan(phi/2) ≤ W/2.
+- distance(P3,P4) = W/2 tan(theta/2): ≤ W/2 up to 90°, W/2·2.41 at 135°, W/2·3.73 at 150°.
+
+The combined reach limit (four times the larger width) is passed at about 152° for one lane;
+from there that end keeps the legacy cap.
 
 The bound is not asserted for unequal widths, curved Link edges, or a projection clamped at
 a Link endpoint. These are evaluated geometrically, not forced into the equal-width formula.
@@ -41,14 +48,15 @@ With the horizontal Link bounded by y=0 and y=4 and P1=(0,0):
 
 ## Rendering and limits
 
-The existing body rails remain. Their outside endpoints move to P1/P4, and P2/P3 become
+The existing body rails remain. Their outside endpoints move to P1/P4 (a stretch that runs past
+its cut along the end direction is first pulled back onto it, then the rest bends: past 90° a
+strip can run on across the Link beyond its cut, and bending it back would hook), and P2/P3 become
 additional cap vertices. Caps are reversed as needed to assemble one perimeter, rather than
 being appended in a fixed left/right order. The cap itself is not a painted stop line.
 Coincident adjacent vertices are collapsed.
 
 **Dividers (M3.2.9b/e, D74, D76).** The mouth also yields one point per Link lane boundary of
-the attached range, in the order of the Connector's own boundaries (reversed past 90°, as the
-rails are). The range edges are P1 and P4. Each interior point is built as P1/P4 are: the
+the attached range, in the order of the Connector's own boundaries. The range edges are P1 and P4. Each interior point is built as P1/P4 are: the
 Connector's own divider line -- through the first local edge point, offset square to the end
 direction by the Connector widths of the lanes before it, running along that direction --
 intersected with that Link boundary's tangent line. On straight Links the points therefore lie
@@ -79,7 +87,7 @@ path lengths or conflict-priority rules change in this work.
 ## Verification
 
 `tests/connector_surface_tests.cpp` checks the agreed numerical examples, perpendicular
-projection onto the Link, the acute-angle shoulder bound, source/target ends, rotations,
+projection onto the Link, the one shoulder formula on both sides of 90° and the reach-limit fallback, source/target ends, rotations,
 reflections, driving sides, a two-lane range, unequal widths, and the parallel fallback.
 `tests/connector_mouth_sweep_tests.cpp` checks every divider end against its Link boundary
 and against its own Connector divider line (offset by the widths before it) over 1,512 cases (target 30–150°, source 0/±45/30/60/90/135°, 1–3 lanes each end, offset
