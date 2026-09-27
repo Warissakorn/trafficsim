@@ -46,6 +46,7 @@ void retargetConnector(const Network& network,Connector& c,LaneReference from,La
     moved.fromLaneCount=std::min(c.fromLaneCount,lanesFromReference(network,moved.from));
     moved.toLaneCount=std::min(c.toLaneCount,lanesFromReference(network,moved.to));
     if(moved.fromLaneCount<1 || moved.toLaneCount<1)throw std::invalid_argument("UNKNOWN_LANE");
+    fitLaneDifference(moved); // D75: onto a narrower Link the range shrinks rather than refuses
     if(std::max(moved.fromLaneCount,moved.toLaneCount)!=std::max(c.fromLaneCount,c.toLaneCount)) {
         moved.laneWidths.clear();moved.laneMarkings.clear();
     }

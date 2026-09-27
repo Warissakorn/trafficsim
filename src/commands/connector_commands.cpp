@@ -48,6 +48,7 @@ bool connectorReferenced(const ProjectDocument& d,const Connector& c) {
 std::string addConnectorRange(ProjectDocument& d,const LaneReference& from,const LaneReference& to,int fromCount,int toCount) {
     const auto id=addConnector(d,from,to);
     auto& c=editableConnector(d,id);c.fromLaneCount=fromCount;c.toLaneCount=toCount;
+    fitLaneDifference(c); // D75: a range the rule cannot pair is narrowed, not refused
     c.level=editableLink(d,from.linkId).level;c.displayType=editableLink(d,from.linkId).displayType;
     (void)connectorPaths(d.network,c);return id;
 }
