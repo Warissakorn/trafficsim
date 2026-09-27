@@ -35,6 +35,9 @@ struct SurfaceOverlap {
     StationInterval first, second;
 };
 SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const ControlPathRef& second);
+// D72: each separate overlap of the two surfaces, ordered along `first`. Every element has status
+// `overlap`, or the result is a single element carrying none/unsupported/unresolved.
+std::vector<SurfaceOverlap> surfaceOverlaps(const Network&, const ControlPathRef& first, const ControlPathRef& second);
 // M3.2.4: what the editor draws, from the same lane strips. A side's area is the strip between
 // its entry and exit as a closed outline; a waiting line is a bar across its lane. Empty when the
 // reference does not resolve -- the editor draws nothing rather than a guess.

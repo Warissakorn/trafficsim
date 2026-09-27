@@ -129,3 +129,45 @@ TEST(automatic_conflict, passive_areas_change_nothing_at_run) {
     CHECK(s.conflictZones.empty());
     CHECK(!documentJson(t.document)["network"].contains("rightOfWay"));
 }
+TEST(automatic_conflict, a_connector_crosses_the_other_lanes_of_the_link_it_joins) {
+    // D72: only the lane a Connector lands on is its mouth; a lane it sweeps across on the way is a
+    // crossing. Landing on each lane in turn, the landing lane never conflicts, and the one reached
+    // across the other lane does.
+    bool crossedNeighbour = false;
+    for (std::size_t target = 0; target < 2; ++target) {
+        ProjectDocument d;
+        const auto main = addLink(d, {{0, 0}, {200, 0}}, 2, 3.5);
+        const auto minor = addLink(d, {{100, -60}, {100, -15}}, 1, 3.5);
+        const auto& m = *std::find_if(d.network.links.begin(), d.network.links.end(), [&](const auto& l) { return l.id == main; });
+        CHECK(m.lanes.size() == 2); // the forcing: there is another lane to cross
+        const auto landing = m.lanes[target].id, other = m.lanes[1 - target].id;
+        const auto& mi = *std::find_if(d.network.links.begin(), d.network.links.end(), [&](const auto& l) { return l.id == minor; });
+        addConnector(d, {minor, mi.lanes.front().id}, {main, landing, 130});
+        for (const auto& a : of(automaticConflicts(d.network), ConflictKind::crossing))
+            for (const auto* s : {&a.first, &a.second})
+                if (s->path.linkId == main) {
+                    CHECK(s->path.laneId != landing);
+                    if (s->path.laneId == other) crossedNeighbour = true;
+                }
+    }
+    CHECK(crossedNeighbour);
+}
+TEST(automatic_conflict, a_pair_that_crosses_twice_implies_two_areas) {
+    // D72: a U-shaped road over a straight one overlaps it in two places -- two areas, not none.
+    ProjectDocument d;
+    addLink(d, {{0, 0}, {200, 0}}, 1, 3.5);
+    addLink(d, {{60, -60}, {60, 40}, {140, 40}, {140, -60}}, 1, 3.5);
+    auto passive = of(automaticConflicts(d.network), ConflictKind::crossing);
+    CHECK(passive.size() == 2);
+    CHECK(passive[0].key != passive[1].key);
+    CHECK(passive[0].key.find('#') == std::string::npos || passive[1].key.find('#') == std::string::npos);
+    // Authoring one piece leaves the other passive, and each authored area validates on its own piece.
+    authorAutomaticConflict(d, passive[0], kDefaults);
+    validateDocument(d);
+    const auto rest = of(automaticConflicts(d.network), ConflictKind::crossing);
+    CHECK(rest.size() == 1 && rest.front().key == passive[1].key);
+    authorAutomaticConflict(d, rest.front(), kDefaults);
+    validateDocument(d);
+    CHECK(of(automaticConflicts(d.network), ConflictKind::crossing).empty());
+    CHECK(d.network.rightOfWay.conflictAreas.size() == 2);
+}

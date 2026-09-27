@@ -183,12 +183,17 @@ TEST(rightofway_resolution, a_crossing_area_must_cover_the_real_overlap) {
     CHECK(surfaceOverlap(apart.network, c.pa, c.pb).status == SurfaceOverlap::Status::none);
     CHECK(has(resolve(apart).issues, "CONFLICT_NO_OVERLAP"));
     CHECK(apart.network.rightOfWay == c.d.network.rightOfWay);
-    // Reshape A to cross B twice: which crossing the area meant would be a guess.
+    // Reshape A to cross B twice: one overlap is still no single answer, but each piece is measured
+    // on its own (D72) and the area answers for the piece it lies over.
     auto twice = c.d;
     changeGeometry(twice, c.a, {{0, -20}, {80, -20}, {80, 20}, {0, 20}});
     validateDocument(twice);
     CHECK(surfaceOverlap(twice.network, c.pa, c.pb).status == SurfaceOverlap::Status::unsupported);
-    CHECK(has(resolve(twice).issues, "CONFLICT_GEOMETRY_UNSUPPORTED"));
+    const auto pieces = surfaceOverlaps(twice.network, c.pa, c.pb);
+    CHECK(pieces.size() == 2);
+    for (const auto& o : pieces) CHECK(o.status == SurfaceOverlap::Status::overlap);
+    CHECK(pieces[0].first.to < pieces[1].first.from);
+    CHECK(!has(resolve(twice).issues, "CONFLICT_GEOMETRY_UNSUPPORTED"));
 }
 TEST(rightofway_resolution, the_overlap_is_measured_on_curved_lanes_for_both_driving_sides) {
     for (const auto side : {DrivingSide::left, DrivingSide::right}) {

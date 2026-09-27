@@ -25,7 +25,11 @@ the log. Rewrite this file; do not append to it.
 - Conflict areas are automatic (M3.2.4c, D68), derived and never stored. M3.2.2a–M3.2.7c are
   D54–D67; the evidence is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
-**First, before anything new (M3.2.8b was verified on Windows headless only):**
+**D72 (conflict areas on every overlap, 0.3 m inset)** is built and green on Windows desktop
+(MSVC 14.51, Qt 6.8.3, 64/64). Still to do: the owner looks at it in the editor (T-junction,
+Conflict tool), and a Linux run.
+
+**Then (M3.2.8b was verified on Windows headless only):**
 1. `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop` on Linux.
    `src/shell/editor_demand.cpp` (input row: `routeLaneFamily(...).size()`) and
    `src/shell/editor_input.cpp` (share count: `routeLaneShareCount`) were edited but **never

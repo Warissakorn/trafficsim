@@ -168,6 +168,56 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
                          pointAlong(strip->right, matchedStation(strip->base, strip->right, point.station))};
     } catch (const std::exception&) { return std::nullopt; }
 }
+// D72: every place two surfaces overlap, as separate areas. Pieces that touch on BOTH paths are
+// one area; a pair that crosses twice is two. When nothing is measured the result is one element
+// whose status says why (none / unsupported / unresolved).
+std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
+    SurfaceOverlap failed;
+    const auto a = stripOf(n, first), b = stripOf(n, second);
+    if (!a || !b) return {failed};
+    failed.status = SurfaceOverlap::Status::unsupported;
+    try {
+        const auto qa = quadsOf(*a), qb = quadsOf(*b);
+        if (!qa || !qb) return {failed};
+        std::vector<StationInterval> onA, onB;
+        for (const auto& x : *qa)
+            for (const auto& y : *qb) {
+                if (x.hi.x < y.lo.x || y.hi.x < x.lo.x || x.hi.y < y.lo.y || y.hi.y < x.lo.y) continue;
+                const auto piece = clip(x.ccw, y.ccw);
+                if (piece.size() < 3 || area(piece) < kMinOverlapArea) continue;
+                StationInterval sa{INFINITY, -INFINITY}, sb{INFINITY, -INFINITY};
+                for (const auto& p : piece) {
+                    const double u = stationIn(x, p), v = stationIn(y, p);
+                    sa = {std::min(sa.from, u), std::max(sa.to, u)};
+                    sb = {std::min(sb.from, v), std::max(sb.to, v)};
+                }
+                onA.push_back(sa); onB.push_back(sb);
+            }
+        if (onA.empty()) { SurfaceOverlap none; none.status = SurfaceOverlap::Status::none; return {none}; }
+        // Union-find over pieces touching on both paths.
+        std::vector<std::size_t> root(onA.size());
+        for (std::size_t i = 0; i < root.size(); ++i) root[i] = i;
+        const auto find = [&](std::size_t i) { while (root[i] != i) i = root[i] = root[root[i]]; return i; };
+        const auto touch = [](StationInterval p, StationInterval q) { return p.from <= q.to + kJoinGap && q.from <= p.to + kJoinGap; };
+        for (std::size_t i = 0; i < onA.size(); ++i)
+            for (std::size_t j = i + 1; j < onA.size(); ++j)
+                if (touch(onA[i], onA[j]) && touch(onB[i], onB[j])) root[find(i)] = find(j);
+        std::vector<SurfaceOverlap> result;
+        std::vector<std::size_t> owner;
+        for (std::size_t i = 0; i < onA.size(); ++i) {
+            const auto r = find(i);
+            const auto at = std::find(owner.begin(), owner.end(), r);
+            if (at == owner.end()) { owner.push_back(r); result.push_back({SurfaceOverlap::Status::overlap, onA[i], onB[i]}); continue; }
+            auto& o = result[static_cast<std::size_t>(at - owner.begin())];
+            o.first = {std::min(o.first.from, onA[i].from), std::max(o.first.to, onA[i].to)};
+            o.second = {std::min(o.second.from, onB[i].from), std::max(o.second.to, onB[i].to)};
+        }
+        std::sort(result.begin(), result.end(), [](const auto& x, const auto& y) {
+            return x.first.from != y.first.from ? x.first.from < y.first.from : x.second.from < y.second.from; });
+        return result;
+    } catch (const std::exception&) {}
+    return {failed};
+}
 SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
     SurfaceOverlap result;
     const auto a = stripOf(n, first), b = stripOf(n, second);

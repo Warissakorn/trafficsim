@@ -367,7 +367,16 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
             else *wait = held.at;
         }
         if (a.kind == ConflictKind::crossing && r.first && r.second) {
-            const auto overlap = surfaceOverlap(n, a.first.path, a.second.path);
+            // D72: a pair may overlap in several places; the area answers for the one it lies over.
+            const auto pieces = surfaceOverlaps(n, a.first.path, a.second.path);
+            auto overlap = pieces.front();
+            if (overlap.status == SurfaceOverlap::Status::overlap) {
+                const auto over = std::find_if(pieces.begin(), pieces.end(), [&](const auto& o) {
+                    return a.first.entryStation <= o.first.to && o.first.from <= a.first.exitStation &&
+                           a.second.entryStation <= o.second.to && o.second.from <= a.second.exitStation; });
+                if (over == pieces.end()) overlap.status = SurfaceOverlap::Status::none;
+                else overlap = *over;
+            }
             if (overlap.status == SurfaceOverlap::Status::none) add("CONFLICT_NO_OVERLAP", path);
             else if (overlap.status != SurfaceOverlap::Status::overlap) add("CONFLICT_GEOMETRY_UNSUPPORTED", path);
             else {
