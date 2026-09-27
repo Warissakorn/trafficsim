@@ -46,22 +46,29 @@ void bend(std::vector<Point>& g,Point target,bool start) {
     }
 }
 struct Edge { std::vector<Point> geometry; Point at,along; };
-std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
-                                  const std::vector<std::vector<Point>>& rails,bool start) {
+// The Link lane range an end is attached to, and its boundaries' lines at the attachment station.
+struct Range { const Link* link{}; std::size_t first{}; int count{}; double station{}; };
+std::optional<Range> attachedRange(const Network& n,const Connector& c,bool start) {
     const auto& ref=start?c.from:c.to;
     const int count=start?c.fromLaneCount:c.toLaneCount;
     const auto link=std::find_if(n.links.begin(),n.links.end(),[&](const auto& l){return l.id==ref.linkId;});
     if(link==n.links.end())return {};
     const auto lane=std::find_if(link->lanes.begin(),link->lanes.end(),[&](const auto& l){return l.id==ref.laneId;});
     if(lane==link->lanes.end() || std::distance(lane,link->lanes.end())<count)return {};
-    const auto first=static_cast<std::size_t>(std::distance(link->lanes.begin(),lane));
-    const double station=attachmentStation(n,ref,start);
-    const auto edge=[&](std::size_t i) {
-        auto g=laneBoundaryGeometry(*link,i,n.drivingSide);
-        const double at=matchedStation(link->geometry,g,station);
-        const auto p=pointAlong(g,at),u=directionAlong(g,at,start);
-        return Edge{std::move(g),p,u};
-    };
+    return Range{&*link,static_cast<std::size_t>(std::distance(link->lanes.begin(),lane)),count,attachmentStation(n,ref,start)};
+}
+Edge rangeEdge(const Network& n,const Range& r,std::size_t i,bool start) {
+    auto g=laneBoundaryGeometry(*r.link,i,n.drivingSide);
+    const double at=matchedStation(r.link->geometry,g,r.station);
+    const auto p=pointAlong(g,at),u=directionAlong(g,at,start);
+    return Edge{std::move(g),p,u};
+}
+std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
+                                  const std::vector<std::vector<Point>>& rails,bool start) {
+    const auto range=attachedRange(n,c,start);
+    if(!range)return {};
+    const auto first=range->first;const int count=range->count;
+    const auto edge=[&](std::size_t i){return rangeEdge(n,*range,i,start);};
     const std::array<Edge,2> edges{edge(first),edge(first+count)};
     const Point centre=mid(edges[0].at,edges[1].at);
     const auto widths=connectorLaneWidths(n,c);
@@ -215,5 +222,18 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
         else clippedMarking(result.markings,marking,result.outline);
     }
     return result;
+}
+std::optional<Point> connectorRangeCentre(const Network& n,const Connector& c,bool start) {
+    const auto range=attachedRange(n,c,start);
+    if(!range)return {};
+    return mid(rangeEdge(n,*range,range->first,start).at,
+               rangeEdge(n,*range,range->first+static_cast<std::size_t>(range->count),start).at);
+}
+std::vector<Point> connectorGrips(const Network& n,const Connector& c) {
+    auto grips=connectorCentreline(n,c);
+    if(grips.empty())return grips;
+    if(const auto p=connectorRangeCentre(n,c,true))grips.front()=*p;
+    if(const auto p=connectorRangeCentre(n,c,false))grips.back()=*p;
+    return grips;
 }
 }

@@ -3,6 +3,7 @@
 #include "../src/commands/network_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include "../src/project/run.hpp"
+#include "../src/model/network/connector_surface.hpp"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -231,6 +232,17 @@ TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
         test::near(centre[i].y,(boundaries.front()[i].y+boundaries.back()[i].y)/2,1e-9);
     }
     CHECK(editableConnector(d,id).geometry==c.geometry);
+    // The end grips are the middle of the Link lanes each end joins (D77), which the mouth calls P2.
+    const auto grips=connectorGrips(d.network,c);const auto surface=connectorSurface(d.network,c);
+    CHECK(grips.size()==centre.size());
+    for(std::size_t i=1;i+1<grips.size();++i)CHECK(grips[i].x==centre[i].x && grips[i].y==centre[i].y);
+    for(const bool start:{true,false}) {
+        const auto grip=start?grips.front():grips.back();const auto expected=*connectorRangeCentre(d.network,c,start);
+        test::near(grip.x,expected.x,1e-12);test::near(grip.y,expected.y,1e-12);
+        if(const auto& m=start?surface.source:surface.target) {
+            test::near(grip.x,m->points[1].x,1e-9);test::near(grip.y,m->points[1].y,1e-9);
+        }
+    }
 }
 // Two Connectors arriving at the SAME station of one lane (CONNECTOR_PARITY_AUDIT.md §3.3).
 //

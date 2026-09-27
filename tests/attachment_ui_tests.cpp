@@ -95,6 +95,12 @@ int main(int argc,char** argv) {
                 }
             throw std::runtime_error("Missing connector end grip");
         };
+        // D77: each end grip is drawn on the middle of the Link lanes that end joins.
+        for(const bool leading:{true,false}) {
+            const auto expected=*connectorRangeCentre(w.history().document().network,connector,leading);
+            const auto at=grip(leading);
+            require(std::hypot(at.x-expected.x,at.y-expected.y)<1e-6,"End grip is not on the middle of its Link lanes");
+        }
         const auto attachedBefore=documentJson(w.history().document());
         releaseDrag(c,grip(true),lanePoint(0,2,.3),Qt::LeftButton,true);
         require(documentJson(w.history().document())==attachedBefore,"Esc committed an end move");

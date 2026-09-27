@@ -245,6 +245,9 @@ and do not slide. `WARN_CONNECTOR_ALIGNMENT` flags the fallback or a residual ga
 The warning is advisory: the drawing can be saved, but exact lane-edge alignment is not
 claimed. Use `Reset curve` or adjust intermediate points/attachments to approach with traffic.
 
+An endpoint grip is drawn on the middle of the Link lanes that end joins (the mouth's P2, D77),
+where a drop is measured too, at every arrival angle.
+
 Dragging an endpoint grip or changing its reference in Properties rebuilds the turn at its
 existing point count. Keeping stale interior points when an endpoint crossed them caused the
 old wrong-way elbow. This explicit retarget is one undoable edit; Undo restores the entire old

@@ -130,3 +130,21 @@ TEST(mouth_sweep, a_divider_runs_straight_on_to_its_link_boundary) {
     const double along=std::abs(b[1].y-b[0].y);
     CHECK(std::abs(along-3.5)<1e-6 || std::abs(along-3.0)<1e-6);
 }
+TEST(mouth_sweep, an_end_grip_sits_on_the_middle_of_its_link_lanes) {
+    // M3.2.9f (D77). The main Link runs along x and the target end attaches at x = 0, so the middle
+    // of its lane range is (0, midway between the range's two boundaries), at every arrival angle.
+    int steep=0;
+    for(double target:{30.,45.,60.,75.,80.,90.,100.,105.,120.,135.,150.})for(int from=1;from<=3;++from)
+    for(int to=1;to<=3;++to)for(auto side:{DrivingSide::right,DrivingSide::left}) {
+        const Case k{target,0,from,to,0,side};
+        const auto n=build(k);const auto& c=n.connectors.front();
+        const auto& main=n.links.front();
+        const auto a=laneBoundaryGeometry(main,0,side),b=laneBoundaryGeometry(main,static_cast<std::size_t>(to),side);
+        const Point expected{0,(pointAlong(a,100).y+pointAlong(b,100).y)/2};
+        const auto grip=connectorGrips(n,c).back();
+        if(distance(grip,expected)>1e-6)throw std::runtime_error(name(k)+": end grip "+std::to_string(distance(grip,expected))+" m off the lane range");
+        // The forcing: at a steep arrival the old grip (the body's centreline) really was elsewhere.
+        if(connectorMouthFit(n,c).target.squareFallback && distance(connectorCentreline(n,c).back(),expected)>0.5)++steep;
+    }
+    CHECK(steep>0);
+}
