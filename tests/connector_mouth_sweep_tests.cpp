@@ -4,7 +4,7 @@
 #include <numbers>
 #include <string>
 using namespace trafficsim;
-// M3.2.9b: across arrival angles at both ends, lane counts, offset ranges, unequal lane widths and
+// M3.2.9b/e: across arrival angles at both ends, lane counts, offset ranges, unequal lane widths and
 // both driving sides, every interior divider ends on the Link lane boundary it belongs to.
 namespace {
 double distance(Point a,Point b) { return std::hypot(a.x-b.x,a.y-b.y); }
@@ -55,6 +55,19 @@ int check(const Network& n,const ConnectorSurface& s,bool start,const std::strin
         const double onFirst=toLine(edges[j],m->boundaries[j]),onLast=toLine(edges[edges.size()-1-j],m->boundaries[j]);
         if(std::min(onFirst,onLast)>1e-2)throw std::runtime_error(label+": mouth point off its Link boundary");
     }
+    // D76: and on the Connector's own divider line, as P1/P4 are on its edge lines -- offset from
+    // the first rail's end by the widths of the lanes before it, square to the end direction.
+    const auto u=directionAlong(c.geometry,start?0:polylineLength(c.geometry),!start);
+    const auto widths=connectorLaneWidths(n,c);const auto& w=start?widths.source:widths.target;
+    double offset=0;std::size_t lane=0;
+    for(std::size_t j=1;j+1<m->boundaries.size();++j) {
+        while(lane<w.size() && w[lane]<=0)++lane;
+        offset+=w[lane++];
+        const Point d{m->boundaries[j].x-m->boundaries[0].x,m->boundaries[j].y-m->boundaries[0].y};
+        const double lateral=std::abs(d.x*u.y-d.y*u.x);
+        if(std::abs(lateral-offset)>1e-2)
+            throw std::runtime_error(label+": divider point "+std::to_string(lateral)+" m across, not "+std::to_string(offset));
+    }
     int dividers=0;
     for(const auto& marking:s.markings) {
         if(marking.edge)continue;
@@ -103,4 +116,17 @@ TEST(mouth_sweep, a_dropped_lane_closes_onto_the_edge_of_its_side) {
                         distance(ends[0],b[2])<1e-2 || distance(ends[1],b[2])<1e-2;
         CHECK(middle);CHECK(edge);
     }
+}
+TEST(mouth_sweep, a_divider_runs_straight_on_to_its_link_boundary) {
+    // A Connector arriving along +y, square onto a Link along x, two lanes. Its divider keeps the
+    // Connector's direction to the Link, so across the Connector (x) it stands one Connector lane
+    // from P1, and along it (y) one Link lane: a point the P1-P2 cap diagonal does not pass through.
+    auto n=build({90,0,2,2,0,DrivingSide::right});
+    const auto& c=n.connectors.front();const auto s=connectorSurface(n,c);
+    CHECK(s.target.has_value());
+    const auto& b=s.target->boundaries;CHECK(b.size()==3);
+    const double first=connectorLaneWidths(n,c).target[0];
+    CHECK(std::abs(std::abs(b[1].x-b[0].x)-first)<1e-6);
+    const double along=std::abs(b[1].y-b[0].y);
+    CHECK(std::abs(along-3.5)<1e-6 || std::abs(along-3.0)<1e-6);
 }

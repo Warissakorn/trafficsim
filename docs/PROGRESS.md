@@ -57,6 +57,21 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — M3.2.9e: dividers meet their Link boundary as the edges do (D76)
+
+- The owner asked for dividers computed as P1/P4 are. Before, an interior divider's point was
+  where its Link boundary crossed the cap P1→P2→P3, so it bent sideways onto the cap. Now it is
+  the Connector's own divider line (the first local edge point offset by the Connector widths
+  before it, along the end direction) meeting the Link boundary's line -- the divider runs
+  straight on. The cap crossing stays as the fallback (no intersection, or beyond the edges'
+  reach limit). Mapping, surplus-lane rule, bend and no-clipping are unchanged.
+- `mouth_sweep.*` now also checks each interior point's offset across the end direction equals the
+  cumulative widths, over all 1,512 cases, plus a square two-lane case. Both fail on the old
+  construction (3.03 m across instead of 3.00 at 30°; the square case off by a lane's slant).
+- Windows desktop: 67/67 after `ROADMAP.md` was brought back under 500 lines. Linux not run.
+
+---
+
 ## 2026-09-27 — M3.2.9d: connecting across more than a two-lane difference (D75)
 
 - A 2-lane Link dragged onto a 5-lane one used to be refused (EDIT_LANE_RANGE): the range dialog
@@ -489,6 +504,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D73 | 2026-09-27 | **A Connector's lanes pair one to one over the narrower end; at most one lane is added or dropped per side (|from − to| ≤ 2); a one-lane difference goes on `laneChangeSide`, default the kerb side (schema 17)** | Owner ruling on road realism, not measured Vissim behaviour — `VISSIM_PARITY.md` records that Vissim allows unequal counts, not how it pairs them. The kerb default reproduces every old one-lane pairing exactly | A measurement of Vissim's lane pairing across an unequal Connector |
 | D74 | 2026-09-27 | **At a four-point mouth each interior divider ends on its own Link boundary point along P1→P2→P3; rails and dividers reach P1/P4 and their points by one smoothstep bend over the nearer half; dividers are not clipped when a mouth exists** | The owner asked for dividers that meet the Link's; clipping cut correctly placed ends at the P2–P3 notch, and a last-vertex rail move left a kink dividers crossed. Display only | Folded `connectorBoundaries` strips, if they are fixed, may let clipping return |
 | D75 | 2026-09-27 | **A Connector asked for across more than a two-lane difference is created narrowed: the wider end keeps `narrower + 2` lanes; the gesture centres them on the lane it ended on, other paths keep the first lane** | Owner ruling (always create, connect only the lanes that can pair, where the user chose). Refusing lost the gesture entirely. Explicit resizes still refuse because their tabs already stop | — |
+| D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |

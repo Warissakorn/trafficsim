@@ -96,9 +96,16 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
     // the range in reverse lane order, and the interior boundaries must follow them.
     const std::array<Point,3> cap{result.points[0],result.points[1],result.points[2]};
     result.boundaries.push_back(cuts[0]);
+    double offset=0;std::size_t nextLane=0;
     for(int j=1;j<count;++j) {
         const auto b=edge(first+static_cast<std::size_t>(pairing==0?j:count-j));
-        std::optional<Point> hit;
+        // D76: built as P1/P4 are -- the Connector's own divider line, offset from the first rail's
+        // edge by the widths of the lanes before it, runs on along the end direction to meet the
+        // Link boundary's line. A surplus lane has no width here, so it adds no offset.
+        while(nextLane<w.size() && w[nextLane]<=0)++nextLane;
+        if(nextLane<w.size())offset+=w[nextLane++];
+        std::optional<Point> hit=intersection(add(own[0],mul(normal,offset)),u,b.at,b.along);
+        if(hit && norm(sub(*hit,centre))>4*std::max(width,norm(sub(edges[1].at,edges[0].at))))hit.reset();
         for(int s=0;s<2 && !hit;++s)hit=onSegment(b.at,b.along,cap[s],cap[s+1]);
         // A curved Link can bend a boundary's local tangent away from the cap; the nearest cap
         // vertex keeps the divider on the mouth rather than dropping it.
