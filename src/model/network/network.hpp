@@ -128,7 +128,8 @@ void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount
 struct ConnectorLaneWidths { std::vector<double> source, target; };
 ConnectorLaneWidths connectorLaneWidths(const Network&, const Connector&);
 std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connector&);
-// What the mouth correction did at each end, in metres, so it is a number rather than a look.
+// What the lane-strip mouth correction did at each end, in metres. The display-only four-point
+// cap is derived separately in connector_surface.hpp; these fits still describe conflict strips.
 // `shift` is how far each boundary slid ALONG its own offset curve to land on the Link's
 // cross-section, `zone` the length over which that slide decays back to nothing, and `residual`
 // the part of the slide a Connector too short to carry it did not get -- the distance its mouth

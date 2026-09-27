@@ -1,4 +1,5 @@
 #include "rotation.hpp"
+#include "connector_surface.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -39,8 +40,7 @@ std::optional<Point> rotationCentre(const Network& n,const std::vector<std::stri
         include(laneBoundaryGeometry(l,l.lanes.size(),n.drivingSide));
     }
     for(const auto& c:n.connectors)if(rotating.contains(c.id)) {
-        const auto boundaries=connectorBoundaries(n,c);
-        include(boundaries.front());include(boundaries.back());
+        include(connectorSurface(n,c).outline);
     }
     if(!found)return {};
     return Point{std::midpoint(low.x,high.x),std::midpoint(low.y,high.y)};

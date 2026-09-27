@@ -9,7 +9,17 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
+## Immediate — review the four-point Connector mouth
+
+The owner requested the P1 → P2 → P3 → P4 display cap; its contract is in
+`CONNECTOR_FOUR_POINT_MOUTH.md`. P3 projects onto the Link edge, and near/far edge pairing
+switches beyond 90 degrees. Inspect 45°, 89°, 90° and obtuse connections in the desktop,
+including both ends, a multi-lane range and Undo/Redo. Execution evidence is in PROGRESS.md.
+Parallel/unusable intersections and folded perimeters retain the legacy surface; the old
+alignment warnings still measure the conflict lane strips. Do not infer a runtime or Vissim
+parity change from the new display. The Windows owner review remains pending.
+
+## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
 
 **Done:**
 - **M3.2.8b, mandatory lane changing with minimal cooperation (D71, `docs/M3_8_CONTRACT.md` §2,

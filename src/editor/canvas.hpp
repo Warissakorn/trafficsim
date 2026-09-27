@@ -1,6 +1,7 @@
 #pragma once
 #include "../project/document.hpp"
 #include "../model/network/display.hpp"
+#include "../model/network/connector_surface.hpp"
 #include "../model/network/right_of_way.hpp"
 #include <QGraphicsView>
 #include <QPainterPath>
@@ -191,14 +192,14 @@ private:
         Connector connector; Link from, to; DrivingSide side{};
         std::optional<std::vector<ConnectorPath>> paths;
         std::optional<std::vector<std::vector<Point>>> boundaries;
-        std::optional<std::vector<ConnectorMarking>> markings;
+        std::optional<ConnectorSurface> surface;
     };
     mutable std::map<std::string,CachedConnector> connectorCache_;
     CachedConnector& connectorEntry(const Connector&) const;
     void pruneConnectorCache();
     const std::vector<ConnectorPath>& cachedPaths(const Connector&) const;
     const std::vector<std::vector<Point>>& cachedBoundaries(const Connector&) const;
-    const std::vector<ConnectorMarking>& cachedMarkings(const Connector&) const;
+    const ConnectorSurface& cachedSurface(const Connector&) const;
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;

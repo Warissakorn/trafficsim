@@ -167,6 +167,13 @@ cannot silently be omitted from CI.
 
 See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
 
+The owner-defined four-point display cap is derived in `connector_surface.*`: P3 is projected
+onto the far Link edge, and edge pairing switches at obtuse arrivals. `ConnectorSurface`
+supplies one outline for canvas paint, picking, previews and rotation bounds, plus clipped
+markings. It uses the existing Connector cache key. Runtime/conflict lane strips and their
+alignment diagnostics retain `connectorBoundaries`; no surface is persisted. The exact
+contract and fallback cases are in [CONNECTOR_FOUR_POINT_MOUTH.md](CONNECTOR_FOUR_POINT_MOUTH.md).
+
 ## Remaining systems
 
 M3's proposed right-of-way seam is specified in [M3_CONTRACT.md](M3_CONTRACT.md): authored
