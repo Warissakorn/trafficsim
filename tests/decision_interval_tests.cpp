@@ -101,7 +101,7 @@ TEST(demand, decision_intervals_round_trip) {
     decision.intervals = {{0, 900}, {900, 1800}};
     putRoutingDecision(w.d, decision);
     const auto j = documentJson(w.d);
-    CHECK(j["schemaVersion"] == 16);
+    CHECK(j["schemaVersion"] == 17);
     const auto back = parseDocument(j);
     CHECK(back.definition->routingDecisions == w.d.definition->routingDecisions);
 }

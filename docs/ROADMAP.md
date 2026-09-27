@@ -1,7 +1,6 @@
 # ROADMAP — TrafficSim
 
-Not a schedule. A **sequence**, so that any session can see where it sits and what closes
-the milestone it is in.
+Not a schedule. A **sequence**, so that any session can see where it sits and what closes the milestone it is in.
 
 **Two rules, inherited from a prior effort that broke both and paid for it:**
 
@@ -401,7 +400,7 @@ without disabling collision constraints; account explicitly for any removed bloc
 **Gate:** controlled merges, diverges and crossing conflicts, congestion/no-overlap regression,
 deterministic replay and the M3 owner exercise; scientific claims remain gated by M6.
 
-#### M3.2.1-M3.2.8 — Ordered implementation slices
+#### M3.2.1-M3.2.9 — Ordered implementation slices
 
 M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`.
 
@@ -417,6 +416,7 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`.
 | M3.2.6a/b/c | Signal positions and queue counters. **a** (D64): A21 evidence, before/on/after a cut, stretch/split/copy, both sides — **implemented 2026-09-25**. **b** (D64): `AuthoredQueueCounter`, schema 16, place-based evaluation, one row per approach — **implemented 2026-09-25**. **c** (D65): counter tool, Queue counters table, en/th, save/reopen — **implemented 2026-09-25** | a/b: `signal_position.*`, `queue_counter.*`; c: `queue-counter-ui` |
 | M3.2.7a–d | T-junction evidence (A26). **a** (D66): fixture through commands (both sides, Yield/Stop, blocked exit) and controlled gap/headway/movement cases — **implemented 2026-09-25**. **b** (D66): diagnostic seeded sweep, metadata committed first — **implemented 2026-09-25**. **c** (D67): signal-composition variant on the fixture; congested major road so headway decides, and its headway arm (metadata first) — **implemented 2026-09-26**. **d**: the owner exercise (§3, Windows) — **pending, owner** | a: `tjunction.*`, `tjunction_controlled.*`; b: `docs/evidence/m3.2.7-sweep.*`; c: `tjunction_signal.*`, `docs/evidence/m3.2.7c-headway.*`; d open |
 | M3.2.8a/b/c | Behaviour ([M3_8_CONTRACT.md](M3_8_CONTRACT.md)). **a** (D69): commitment at a waiting line — a driver who cannot stop at `maxDeceleration` ignores headway/gap time, never occupancy, Stop, receiving space or the swept check; zones and derived merges — **implemented 2026-09-26**. **b** (D71, the owner's ruling): mandatory lane changing, Vissim-style — volume on every entry lane, a stub changes before its dead end at `comfortableDeceleration`, plus one cooperation rule (hold back for a vehicle waiting at its dead end) — **implemented 2026-09-27** (Windows headless only). **c**: the remaining lane-change behaviour, rows before code — discretionary changes, visibility, `laneChangeDistance`, a between-lanes state, cooperation with a deceleration parameter and look-ahead, lane changes after the entry Link (free walk, placed decisions) — open | a: `commitment.*`, `docs/evidence/m3.2.8a-*`; b: `lanechange.*` (A27–A35), `docs/evidence/m3.2.8b-mandatory.md`; c: not written; calibrated gap acceptance still requires M6 evidence |
+| M3.2.9a/b/c | Lane correspondence across a Connector (D73, the owner's ruling). **a**: one-to-one pairing over the narrower end, at most one lane added/dropped per side, `laneChangeSide` (schema 17), the added lane is the tapering one — **implemented 2026-09-27** (Windows desktop only). **b** (D74): each divider ends on its own Link boundary point on the mouth; rails bend onto P1/P4; the 1,512-case probe is `mouth_sweep.*` — **implemented 2026-09-27** (Windows desktop only). **c**: "Lane change side" (Kerb/Left/Right) in the Connector Inspector, enabled only for a one-lane difference, one undoable edit; the lane tabs stop at a difference of 2 (no message, owner's call) — **implemented 2026-09-27** (Windows desktop only) | a: `lane_correspondence.*`; b: `mouth_sweep.*`; c: `connector-ui` (lane-change side step), `attachment-ui` (capped drag) |
 
 Passing M3.2.7 alone does not close M3.2; no gate result is inferred; the not-yet-validated marker remains.
 

@@ -61,6 +61,7 @@ private:
     void restoreHistory(std::uint64_t revision);
     QComboBox *objectLevel_{},*objectDisplay_{},*visibleLevel_{};
     QSpinBox *connectorFromCount_{},*connectorToCount_{},*connectorPoints_{};
+    QComboBox* connectorLaneSide_{}; // M3.2.9c: laneChangeSide, one-lane differences only (D73)
     // Vissim's Lanes tab, as comma-separated text, the same shape the Link lane-width row uses.
     QLineEdit *connectorWidths_{},*connectorMarkings_{};
     QDoubleSpinBox *connectorFromPosition_{},*connectorToPosition_{};

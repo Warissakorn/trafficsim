@@ -22,6 +22,29 @@ std::optional<Point> intersection(Point a,Point u,Point b,Point v) {
     if(!std::isfinite(p.x) || !std::isfinite(p.y))return {};
     return p;
 }
+// Where the line through `a` along `u` crosses the segment p-q, if it does.
+std::optional<Point> onSegment(Point a,Point u,Point p,Point q) {
+    const auto v=sub(q,p);const double d=cross(v,u);
+    if(std::abs(d)<1e-12)return {};
+    const double t=cross(sub(a,p),u)/d;
+    if(t<-1e-9 || t>1+1e-9)return {};
+    return add(p,mul(v,std::clamp(t,0.,1.)));
+}
+// Move one end of a boundary onto `target`, fading the shift out over the half of its length
+// nearest that end, so each end is bent independently and the far half is left alone.
+void bend(std::vector<Point>& g,Point target,bool start) {
+    if(g.size()<2)return;
+    const auto delta=sub(target,start?g.front():g.back());
+    const double half=polylineLength(g)/2;
+    double along=0;
+    for(std::size_t k=0;k<g.size();++k) {
+        const std::size_t i=start?k:g.size()-1-k;
+        if(k)along+=norm(sub(g[i],g[start?i-1:i+1]));
+        if(along>=half)break;
+        const double x=1-along/half,w=x*x*(3-2*x);
+        g[i]=add(g[i],mul(delta,w));
+    }
+}
 struct Edge { std::vector<Point> geometry; Point at,along; };
 std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
                                   const std::vector<std::vector<Point>>& rails,bool start) {
@@ -68,7 +91,23 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
     const int far=1-near,farEdge=far==0?pairing:1-pairing;
     const auto& g=edges[farEdge].geometry;
     const Point projection=pointAlong(g,stationOfClosestPoint(g,centre));
-    return ConnectorMouth{{cuts[near],centre,projection,cuts[far]},near==0};
+    ConnectorMouth result{{cuts[near],centre,projection,cuts[far]},near==0,{}};
+    // cuts[0] is the first rail's end and lies on edges[pairing]: past 90 degrees the rails meet
+    // the range in reverse lane order, and the interior boundaries must follow them.
+    const std::array<Point,3> cap{result.points[0],result.points[1],result.points[2]};
+    result.boundaries.push_back(cuts[0]);
+    for(int j=1;j<count;++j) {
+        const auto b=edge(first+static_cast<std::size_t>(pairing==0?j:count-j));
+        std::optional<Point> hit;
+        for(int s=0;s<2 && !hit;++s)hit=onSegment(b.at,b.along,cap[s],cap[s+1]);
+        // A curved Link can bend a boundary's local tangent away from the cap; the nearest cap
+        // vertex keeps the divider on the mouth rather than dropping it.
+        if(!hit)hit=*std::min_element(cap.begin(),cap.end(),[&](Point x,Point y){
+            return norm(sub(x,b.at))<norm(sub(y,b.at));});
+        result.boundaries.push_back(*hit);
+    }
+    result.boundaries.push_back(cuts[1]);
+    return result;
 }
 void cap(std::vector<Point>& ring,const std::optional<ConnectorMouth>& m,bool forward) {
     if(!m)return;
@@ -135,11 +174,22 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
     auto rails=original;
     ConnectorSurface result;
     result.source=mouth(n,c,rails,true);result.target=mouth(n,c,rails,false);
+    const auto widths=connectorLaneWidths(n,c);
     const auto apply=[&](const std::optional<ConnectorMouth>& m,bool start) {
         if(!m)return;
-        auto& a=start?rails.front().front():rails.front().back();
-        auto& b=start?rails.back().front():rails.back().back();
-        a=m->points[m->firstBoundaryNear?0:3];b=m->points[m->firstBoundaryNear?3:0];
+        // The rails bend onto P1/P4 exactly as the dividers bend onto their points, so the body
+        // stays one shape and no divider runs outside a rail that moved only its last vertex.
+        bend(rails.front(),m->points[m->firstBoundaryNear?0:3],start);
+        bend(rails.back(),m->points[m->firstBoundaryNear?3:0],start);
+        // Each interior boundary ends on the Link boundary it belongs to: the one after as many
+        // lanes as have width at this end. A surplus lane (width 0) adds none, so a taper closes
+        // onto its neighbour's point, which for an outermost surplus lane is P1 or P4 (D73).
+        const auto& w=start?widths.source:widths.target;
+        std::size_t lanes=0;
+        for(std::size_t k=1;k+1<rails.size();++k) {
+            if(w[k-1]>0)++lanes;
+            bend(rails[k],m->boundaries[std::min(lanes,m->boundaries.size()-1)],start);
+        }
     };
     apply(result.source,true);apply(result.target,false);
     result.outline=outline(rails,result.source,result.target);
@@ -149,10 +199,14 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
         result.source.reset();result.target.reset();rails=original;
         result.outline=trimSelfIntersections(outline(rails,{},{}));
     }
-    result.markings.push_back({trimSelfIntersections(rails.front()),true,MarkingType::solid});
-    for(const auto& marking:connectorMarkings(n,c))if(!marking.edge)
-        clippedMarking(result.markings,marking,result.outline);
-    result.markings.push_back({trimSelfIntersections(rails.back()),true,MarkingType::solid});
+    // A divider bent onto its mouth point ends ON the cap, and may reach it across the P2-P3
+    // notch, which is Link surface: clipping would cut that last stretch off. Only the legacy
+    // cap, where dividers are not placed, still needs clipping to keep them on the surface.
+    const bool placed=result.source || result.target;
+    for(const auto& marking:connectorMarkings(c,rails)) {
+        if(marking.edge || placed)result.markings.push_back(marking);
+        else clippedMarking(result.markings,marking,result.outline);
+    }
     return result;
 }
 }

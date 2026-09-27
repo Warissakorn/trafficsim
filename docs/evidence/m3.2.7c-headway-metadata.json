@@ -1,6 +1,6 @@
 {
   "fixture": "data/projects/t-junction-priority.traffic.json",
-  "projectHash": "ebdc765842f6519a",
+  "projectHash": "9f9fa64f8b7652bb",
   "duration": 1500.0,
   "timeStep": 0.1,
   "inputs": [

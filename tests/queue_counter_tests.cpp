@@ -97,7 +97,7 @@ TEST(queue_counter, schema_16_round_trips_and_bad_lines_are_refused) {
     putQueueCounter(d, {"", "west", {{head, std::nullopt}, {"", ControlPoint{{d.network.links[0].id, d.network.links[0].lanes[0].id, "", "", ""}, 10}}}});
     validateDocument(d);
     auto file = documentJson(d);
-    CHECK(file["schemaVersion"] == 16);
+    CHECK(file["schemaVersion"] == 17);
     CHECK(parseDocument(file).network == d.network);
     auto older = file; older["schemaVersion"] = 15;
     test::throws([&] { parseDocument(older); }, "");

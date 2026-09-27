@@ -9,15 +9,26 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — review the four-point Connector mouth
+## Immediate — the owner's review of M3.2.9 in the desktop; then Linux
 
-The owner requested the P1 → P2 → P3 → P4 display cap; its contract is in
-`CONNECTOR_FOUR_POINT_MOUTH.md`. P3 projects onto the Link edge, and near/far edge pairing
-switches beyond 90 degrees. Inspect 45°, 89°, 90° and obtuse connections in the desktop,
-including both ends, a multi-lane range and Undo/Redo. Execution evidence is in PROGRESS.md.
-Parallel/unusable intersections and folded perimeters retain the legacy surface; the old
-alignment warnings still measure the conflict lane strips. Do not infer a runtime or Vissim
-parity change from the new display. The Windows owner review remains pending.
+**Done (Windows desktop only):** M3.2.9a lane correspondence (D73), M3.2.9b dividers on their
+Link boundaries (D74), M3.2.9c the Inspector's "Lane change side" and lane tabs that stop at a
+two-lane difference (the owner declined a message for it). Evidence in PROGRESS.md.
+
+1. **Owner review (Windows):** the four-point mouth at 45°, 89°, 90° and obtuse, both ends;
+   2 -> 3 and 3 -> 2 with Kerb/Left/Right; 2 -> 4; dividers meeting the Link's; Undo/Redo.
+2. **Linux:** `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop`.
+   M3.2.9a–c have never been compiled with GCC.
+
+**Known, not fixed:**
+- **`scenario-run-ui` exceeds its 90 s limit on this Windows machine** (Debug): 97 s on M3.2.9,
+  99 s on `fc9e06a`, 77 s earlier the same day. Not caused by M3.2.9; no headroom. Measure where
+  its time goes before raising the limit.
+- **Folded lane strips.** `connectorBoundaries` folds for a straight Connector leaving a Link
+  at a 60–90° kink with 3 lanes (281 of the 1,512 `mouth_sweep` cases). The dividers still end
+  on their points, but the body can run outside the surface. It also feeds conflict coverage.
+  Measure it in a sweep of its own before changing the mouth slide (M1.18, D23: settled
+  geometry needs a new measurement to reopen).
 
 ## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
 

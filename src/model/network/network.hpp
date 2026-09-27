@@ -5,6 +5,8 @@
 namespace trafficsim {
 struct Point { double x{}, y{}; bool operator==(const Point&) const = default; };
 enum class MarkingType { solid, dashed, none, doubleLine };
+// The driver's left or right, looking along the direction of travel.
+enum class LaneSide { left, right };
 bool validMarking(MarkingType);
 const char* markingName(MarkingType);
 MarkingType markingFromName(const std::string&);
@@ -48,6 +50,10 @@ struct Connector {
     // default. The two outer edges are always solid: they are the edge of the carriageway, not a
     // lane divider, and nothing in this milestone makes them authorable.
     std::vector<MarkingType> laneMarkings{};
+    // M3.2.9a, schema 17: which side the one added or dropped lane is on when the two ends differ
+    // by exactly one lane. Empty means the kerb side, which is what the proportional pairing of
+    // schemas 1-16 always produced for a one-lane difference. Meaningless otherwise (D73).
+    std::optional<LaneSide> laneChangeSide{};
     bool operator==(const Connector&) const = default;
 };
 // One authored connector owns a contiguous range at each end. Individual runtime
@@ -120,6 +126,12 @@ std::vector<Point> polylineSpan(const std::vector<Point>&, double from, double t
 void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
 std::vector<double> connectorBlendWeights(const Connector&);
 void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
+// Lane correspondence (M3.2.9a, D73). The narrower end's lanes pair one to one with a contiguous
+// run of the wider end's; at most one lane is added or dropped on each side, so the two counts
+// differ by at most 2. Returns how many wider-end lanes lie beyond that run on the index-0 (kerb)
+// side: path i uses wide lane i and narrow lane clamp(i-shift). Throws EDIT_LANE_RANGE when the
+// counts differ by more than 2, or when laneChangeSide is set for a difference other than 1.
+int connectorLaneShift(const Network&, const Connector&);
 // The width of each lane path at the Connector's two ends: the authored width where the Connector
 // carries one, and the width of the Link lane that end joins otherwise. Zero at an end where the
 // path is a surplus lane, which is what makes it taper closed rather than run at full width.
@@ -151,6 +163,8 @@ std::vector<ConnectorMarking> linkMarkings(const Link&, DrivingSide);
 // Both renderers use the same expansion. Surface geometry and runtime paths never change.
 std::vector<ConnectorMarking> markingStrokes(const std::vector<ConnectorMarking>&);
 std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
+// The same markings for boundaries the caller has already adjusted (the four-point mouth, M3.2.9b).
+std::vector<ConnectorMarking> connectorMarkings(const Connector&, const std::vector<std::vector<Point>>& boundaries);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);
 // Snap both ends onto the lanes they NAME. For an edit whose input IS the reference: creating a

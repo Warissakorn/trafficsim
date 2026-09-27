@@ -4,6 +4,9 @@
 namespace trafficsim {
 std::string addConnectorRange(ProjectDocument&, const LaneReference&, const LaneReference&, int fromCount, int toCount);
 void changeConnectorRange(ProjectDocument&, const std::string&, int fromCount, int toCount, bool leading = false);
+// M3.2.9a (D73): the side the one added or dropped lane is on; empty returns it to the kerb
+// side. Refused (EDIT_LANE_RANGE) unless the two ends differ by exactly one lane.
+void changeConnectorLaneSide(ProjectDocument&, const std::string& id, std::optional<LaneSide>);
 // Vissim's Lanes tab: a width in metres for every lane path, and a MarkingType for every interior
 // divider. Both empty restores the derived behaviour, which is what a Connector whose lanes were
 // never given a width has always done. A partial list is rejected: no field would say which lanes

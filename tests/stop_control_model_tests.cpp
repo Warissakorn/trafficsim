@@ -69,7 +69,7 @@ TEST(stop_control_model, stop_controls_round_trip_and_an_older_or_malformed_file
     auto p = crossingLinks();
     setAreaControl(p.d, p.area, StopMode::stop);
     auto file = documentJson(p.d);
-    CHECK(file["schemaVersion"] == 16);
+    CHECK(file["schemaVersion"] == 17);
     CHECK(file["network"]["rightOfWay"]["stopControls"][0]["mode"] == "stop");
     CHECK(parseDocument(file).network == p.d.network);
     auto older = file; older["schemaVersion"] = 14;
