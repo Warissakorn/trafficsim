@@ -202,8 +202,12 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors")) {
-        knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
-            "laneBlend","name","laneWidths","laneMarkings"},"connectors["+std::to_string(network.connectors.size())+"]",schemaVersion);
+        const auto where="connectors["+std::to_string(network.connectors.size())+"]";
+        // `laneChangeSide` exists from schema 17 (M3.2.9a, D73).
+        if(schemaVersion>=17)knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
+            "laneBlend","name","laneWidths","laneMarkings","laneChangeSide"},where,schemaVersion);
+        else knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
+            "laneBlend","name","laneWidths","laneMarkings"},where,schemaVersion);
         network.connectors.push_back({field<std::string>(c, "id"), reference(member(c, "from"),schemaVersion), reference(member(c, "to"),schemaVersion), points(c,schemaVersion),
             integer(c,"fromLaneCount",1),integer(c,"toLaneCount",1),integer(c,"level",0),
             c.contains("displayType")?field<std::string>(c,"displayType"):"default"});
@@ -222,6 +226,11 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         if(c.contains("laneMarkings"))for(const auto& m:array(c,"laneMarkings")) {
             if(!m.is_string())throw std::invalid_argument("INVALID_MARKING");
             network.connectors.back().laneMarkings.push_back(markingFromName(m.get<std::string>()));
+        }
+        if(schemaVersion>=17 && present(c,"laneChangeSide")) {
+            const auto side=field<std::string>(c,"laneChangeSide");
+            if(side!="left" && side!="right")throw ValidationError({{"EDIT_LANE_RANGE",where+".laneChangeSide"}});
+            network.connectors.back().laneChangeSide=side=="left"?LaneSide::left:LaneSide::right;
         }
     }
     for (const auto& h : array(value, "signalHeads")) {

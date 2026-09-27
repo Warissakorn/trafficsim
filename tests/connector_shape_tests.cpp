@@ -137,6 +137,7 @@ double minimumRadius(const std::vector<Point>& g) {
 TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_tapers_in) {
     auto d=roads();
     const auto id=addConnectorRange(d,{"in","in-1"},{"other","other-1"},2,1);
+    changeConnectorLaneSide(d,id,LaneSide::right); // D73: the median side's in-2 tapers, in-1 continues
     const auto& c=editableConnector(d,id);
     // The forcing: two lanes into one, three boundaries, and source lanes of two different widths.
     CHECK(c.fromLaneCount==2);CHECK(c.toLaneCount==1);
@@ -190,11 +191,6 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
     const auto both=connectorBoundaries(wide.network,editableConnector(wide,pair));
     const auto pairWeights=connectorBlendWeights(editableConnector(wide,pair));
     for(std::size_t j=0;j<both[0].size();++j) {
-        // Exact where the links fix it, and close to the straight interpolation in between,
-        // where each lane's two edges converge at their own rate. The 8 cm allowed at a corner
-        // is the miter (6.3 cm measured): along the cross-section a mitered corner reads wide,
-        // exactly as a Link's own edges do at a bend. Square to the road it is the lane width,
-        // which is what the perpendicular check above measures.
         // The body is untouched by M1.18 and is asserted exactly as it always was: close to the
         // straight interpolation, each lane's two edges converging at their own rate, within the
         // 8 cm the miter costs at a corner (6.3 cm measured). The two mouths are the samples the
@@ -219,6 +215,7 @@ TEST(connectors, the_lane_that_continues_keeps_its_width_and_the_extra_one_taper
     CHECK(connectorMarkings(plain.network,editableConnector(plain,single)).size()==2);
     // A diverge is the mirror image: the lane that opens out starts at nothing and grows.
     auto open=roads();const auto out2=addConnectorRange(open,{"other","other-1"},{"out","out-1"},1,2);
+    changeConnectorLaneSide(open,out2,LaneSide::right); // D73: out-2, the median-side lane, opens
     const auto opening=connectorBoundaries(open.network,editableConnector(open,out2));
     // The closed end stays exactly closed -- a lane tapered to nothing leaves ON its neighbour,
     // and the mouth slide is made to keep it there rather than prise it back open by millimetres.

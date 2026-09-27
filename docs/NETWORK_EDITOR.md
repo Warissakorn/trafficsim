@@ -138,10 +138,9 @@ station is measured on the reference polyline, which `laneOffset` keeps fixed. R
 why nothing was created. Esc and Cancel leave the document and history unchanged.
 
 A connector stores a base polyline and source/target lane counts. Its lane paths are
-derived in monotone order, with stable IDs: the first uses the connector ID and subsequent
-paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference those paths.
-Unequal counts express fan-outs or merges in the drawing; merging still fails the M0
-run check. Connector ranges are limited by the existing lanes, at most 12 per end.
+derived in monotone order, with stable IDs: the first uses the connector ID and subsequent paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference those paths.
+Unequal counts pair lane for lane over the narrower end, with at most one lane added or dropped on each side, so the counts differ by at most 2 (M3.2.9a, D73). For a one-lane difference
+`laneChangeSide` (schema 17, `"left"`/`"right"`, the driver's view) picks the side, absent = kerb side; that lane is the one drawn tapering. Ranges are limited by the existing lanes, at most 12 per end.
 
 In Select (S), orange **lane tabs** exist even on a one-lane Connector. Each is drawn as a
 rounded tab on the edge of the carriageway, joined to it by a short stem, with the resulting

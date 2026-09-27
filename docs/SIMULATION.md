@@ -59,7 +59,7 @@ is not production project persistence; save/versioning remains M1.
 | `Network` | ID, driving side, links, connectors and signal heads |
 | `Link` | Road centreline as an ordered polyline; ordered lanes; no authored junction |
 | `Lane` | Globally unique ID and positive width; ordered from driving-side curb inward |
-| `Connector` | Explicit lane-to-lane connection with its own polyline and runtime length |
+| `Connector` | Explicit lane-to-lane connection with its own polyline and runtime length; unequal ends pair lane for lane, one lane added or dropped per side at most (D73) |
 | `NetworkSignalHead` | Lane reference, stop-line position, and a signal group (`controllerId` + `groupNumber`, M2.7b) or a legacy signal-program ID |
 
 Coordinates are planar Cartesian metres with positive Y upwards. Geographic projection

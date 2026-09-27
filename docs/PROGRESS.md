@@ -56,6 +56,35 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — M3.2.9a: lane correspondence across a Connector (D73)
+
+Owner ruling after a probe of the four-point mouth (1,512 cases) showed dividers missing their
+Link dividers: `connectorPaths` paired lanes proportionally, so 2 → 5 sent source lane 0 into
+four target lanes. Vehicles followed that pairing; the drawing did too.
+
+- **Rule** (`connectorLaneShift`, `connector_paths.cpp`): the narrower end pairs one to one with a
+  contiguous run of the wider end; at most one lane is added or dropped per side, so the counts
+  differ by at most 2 (2 → 5 is refused, `EDIT_LANE_RANGE`; an old file still opens and
+  validation names it). A one-lane difference puts the lane on `laneChangeSide` (driver's
+  left/right), empty = the kerb side. Path 0 is still `from[0] → to[0]`, so the stored geometry,
+  `laneBlend`, path ids and heads keep their meaning.
+- **Why kerb is the default:** for a one-lane difference the old proportional formula IS the
+  kerb-side rule, for every count (asserted up to 6 lanes). Only a two-lane difference with
+  2+ lanes at the narrow end changes (2 → 4: `0,0,0,1` → `0,0,1,1`). No committed project has
+  an unequal Connector: the M2.6 CLI output is byte-identical before and after (111 lines).
+- **The tapering lane is now the added/dropped lane itself** (`laneWidthsOf`). It was "the second
+  of two paths sharing a lane", which put a 2 → 3 taper in the middle of the carriageway.
+  Display only for a one-lane difference; two `connector_shape_tests` pick
+  `LaneSide::right` to keep asserting the lane they always measured.
+- **Schema 17**: `laneChangeSide` is written only when chosen; refused in a pre-17 file. The three
+  `data/projects` files changed only their `schemaVersion` key, which moved the fixture hash in
+  the two archived T-junction metadata files (`ebdc765842f6519a` → `9f9fa64f8b7652bb`); nothing
+  those rows describe changed. `changeConnectorLaneSide` is the undoable command; no UI yet.
+- Windows desktop (MSVC 14.51, Qt 6.8.3): 66/66. `scenario-run-ui` timed out once under
+  `ctest -j 8` and passed alone (77 s). Linux not run.
+
+---
+
 ## 2026-09-27 — Four-point Connector display mouths (owner request)
 
 The owner specified P1 (near edge intersection), P2 (connection centre), P3 (nearest point
@@ -457,6 +486,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D70 | 2026-09-26 | **Every model-test group is its own ctest test; `all-model-tests` is a registry check (`--check-groups`) that runs nothing and fails on a group the CMake list omits** | The unfiltered run was 60 s of serial wall time that `ctest -j` could not spread, and it re-ran every named group. The check keeps what that run was for (no group silently unregistered, as `points` once was) without the cost | — |
 | D71 | 2026-09-27 | **Mandatory lane changing, Vissim-style: volume enters on every lane of the entry Link, a stub changes before its dead end when it and its new follower accept the gap at `comfortableDeceleration` without a clamp; one cooperation rule — the nearest target-lane vehicle that can stop comfortably holds back for a vehicle waiting at its dead end** | Owner rulings. Lane-fixed entry put every Thai left turn in the kerb lane behind through traffic. The rule without cooperation was measured and rejected (M2.6 61.6 s mean, a 404 s wait); with it M2.6 is 50.16 s, all drained. Stateless, id-ordered, no RNG, so replay stays exact | A lane-change measurement against Vissim, or M3.2.8c's cooperation with a deceleration parameter and look-ahead |
 | D72 | 2026-09-27 | **Automatic conflict areas on every overlap: only the joined lane is a Connector's mouth, a pair that overlaps in several places gets one area per piece, and areas draw 0.3 m inside their lane edges (display only)** | Owner request: areas were missing at Connector ends and multiple crossings; the fill hid the lane outline | A diverge (same entry lane) conflict kind |
+| D73 | 2026-09-27 | **A Connector's lanes pair one to one over the narrower end; at most one lane is added or dropped per side (|from − to| ≤ 2); a one-lane difference goes on `laneChangeSide`, default the kerb side (schema 17)** | Owner ruling on road realism, not measured Vissim behaviour — `VISSIM_PARITY.md` records that Vissim allows unequal counts, not how it pairs them. The kerb default reproduces every old one-lane pairing exactly | A measurement of Vissim's lane pairing across an unequal Connector |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |

@@ -75,6 +75,13 @@ void changeConnectorLanes(ProjectDocument& d,const std::string& id,
     // Proves the cross-section still builds with these numbers before the edit is committed.
     (void)connectorBoundaries(d.network,c);
 }
+void changeConnectorLaneSide(ProjectDocument& d,const std::string& id,std::optional<LaneSide> side) {
+    auto& c=editableConnector(d,id);if(c.laneChangeSide==side)return;
+    if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
+    auto changed=c;changed.laneChangeSide=side;
+    if(side && std::abs(c.fromLaneCount-c.toLaneCount)!=1)throw std::invalid_argument("EDIT_LANE_RANGE");
+    (void)connectorBoundaries(d.network,changed);c=std::move(changed);
+}
 void changeConnectorGeometry(ProjectDocument& d, const std::string& id, const std::vector<Point>& geometry) {
     auto& c = editableConnector(d, id);
     // Hold this to the same contract as changeGeometry: a command validates its own input

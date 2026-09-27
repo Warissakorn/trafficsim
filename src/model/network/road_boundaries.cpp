@@ -122,13 +122,18 @@ ConnectorLaneWidths laneWidthsOf(const Network& n,const Connector& c,bool useAut
     const auto paths=connectorPaths(n,c);
     // A Connector carries lanes, not a ribbon that shrinks. Each lane keeps its width from end to
     // end; a lane the other end has no room for is the one that tapers, closing onto its neighbour
-    // like a merge taper. Where two paths share a lane at one end, the second of them is the
-    // surplus one, so its width there is zero.
+    // like a merge taper. The surplus path is the added or dropped lane itself (D73): the one the
+    // lane shift puts outside the narrower end's range, so the taper closes at that side's edge.
     const std::size_t count=paths.size();
+    const int shift=connectorLaneShift(n,c);
+    const auto surplus=[&](std::size_t i,int lanes) {
+        const int j=static_cast<int>(i)-shift;
+        return lanes<static_cast<int>(count) && (j<0 || j>=lanes);
+    };
     ConnectorLaneWidths widths{std::vector<double>(count),std::vector<double>(count)};
     for(std::size_t i=0;i<count;++i) {
-        const bool surplusSource=i && paths[i].from.laneId==paths[i-1].from.laneId;
-        const bool surplusTarget=i && paths[i].to.laneId==paths[i-1].to.laneId;
+        const bool surplusSource=surplus(i,c.fromLaneCount);
+        const bool surplusTarget=surplus(i,c.toLaneCount);
         // An authored width replaces the width the Links give, at both ends, so the lane runs at
         // the metre value the author typed. It does NOT fill in a surplus end: that zero is a
         // consequence of the lane counts, not a width the author chose, and overriding it would

@@ -9,15 +9,33 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — review the four-point Connector mouth
+## Immediate — M3.2.9b: lane dividers end on their own points on the four-point mouth
 
-The owner requested the P1 → P2 → P3 → P4 display cap; its contract is in
-`CONNECTOR_FOUR_POINT_MOUTH.md`. P3 projects onto the Link edge, and near/far edge pairing
-switches beyond 90 degrees. Inspect 45°, 89°, 90° and obtuse connections in the desktop,
-including both ends, a multi-lane range and Undo/Redo. Execution evidence is in PROGRESS.md.
-Parallel/unusable intersections and folded perimeters retain the legacy surface; the old
-alignment warnings still measure the conflict lane strips. Do not infer a runtime or Vissim
-parity change from the new display. The Windows owner review remains pending.
+**Done (M3.2.9a, D73):** unequal Connector ends pair lane for lane; at most one lane is added or
+dropped per side (`connectorLaneShift`, `connector_paths.cpp`); `laneChangeSide` (schema 17)
+picks the side of a one-lane difference, default kerb; the added lane is the tapering one.
+Windows desktop 66/66; **Linux not run.**
+
+**The defect this fixes (measured, scratchpad probe, 1,512 cases):** P2 is always at the centre of
+the attached lane range, but interior dividers miss the Link's dividers by 0.5–4.5 m at 90°+
+(up to 18 m at 30–60° with 3 lanes), and the body's end midpoint misses P2 by 1.4–6.5 m once an
+end has 2+ lanes. Cause: `connectorSurface` (`connector_surface.cpp`) takes the interior
+dividers from `connectorMarkings` on the unmodified rails and only clips them to the new outline.
+1. P1–P4 do not change. Split the mouth polyline P1→P2→P3→P4 by the Link's lane widths of the
+   attached range, giving one point per Link boundary; with `connectorLaneShift`, a divider whose
+   lane is surplus at that end (width 0 in `connectorLaneWidths`) lands on the outer edge point.
+2. Bend each interior divider's last stretch onto its point (the same decay idea as the mouth
+   slide), rather than clipping it.
+3. Turn the probe into `tests/connector_mouth_sweep_tests.cpp`: angles 30–150° at the target and
+   0/±45/60/90/135° at the source, 1–3 lanes each end, offset ranges, unequal widths, both
+   driving sides. Assert each divider end is within 1 cm of its Link boundary. Keep the fixture
+   builder in a header; keep the run under a few seconds.
+4. Then the owner's desktop review of the four-point mouth (45°, 89°, 90°, obtuse, both ends,
+   multi-lane, Undo/Redo), which was already pending and now includes unequal ends.
+
+**Then M3.2.9c:** `laneChangeSide` in the Connector Inspector (only enabled for a one-lane
+difference), and the lane tabs stop at a difference of 2 with a message instead of a silent
+refusal (`canvas_connectors.cpp:115` swallows the preview's `EDIT_LANE_RANGE`).
 
 ## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
 

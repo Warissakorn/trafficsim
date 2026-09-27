@@ -1,6 +1,7 @@
 #include "network.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <stdexcept>
 namespace trafficsim {
 std::string connectorPathId(const Connector& c,int index) {
@@ -48,6 +49,8 @@ void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCoun
         resized.geometry.front()=a;resized.geometry.back()=b;
     }
     resized.fromLaneCount=fromCount;resized.toLaneCount=toCount;
+    // A side chosen for a one-lane difference says nothing about any other difference.
+    if(std::abs(fromCount-toCount)!=std::abs(c.fromLaneCount-c.toLaneCount))resized.laneChangeSide.reset();
     // Authored widths and markings are indexed by lane path, so a resize that changes how many
     // paths there are leaves them describing lanes that no longer exist. Dropped rather than
     // padded: a width the author never typed is not a width they chose, and the derived one is
@@ -55,6 +58,16 @@ void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCoun
     if(connectorPaths(n,resized).size()!=connectorPaths(n,c).size())
         { resized.laneWidths.clear();resized.laneMarkings.clear(); }
     (void)connectorPaths(n,resized);c=std::move(resized);
+}
+int connectorLaneShift(const Network& n,const Connector& c) {
+    const int difference=std::abs(c.fromLaneCount-c.toLaneCount);
+    // One lane added or dropped per side at most (D73): a 2 -> 5 Connector is not a road.
+    if(difference>2 || (c.laneChangeSide && difference!=1))throw std::invalid_argument("EDIT_LANE_RANGE");
+    if(difference!=1)return difference/2;
+    // Lane 0 is the kerb lane on both driving sides, so the kerb is the driver's right in
+    // right-hand traffic and the driver's left in left-hand traffic.
+    const auto kerb=n.drivingSide==DrivingSide::left?LaneSide::left:LaneSide::right;
+    return c.laneChangeSide.value_or(kerb)==kerb?1:0;
 }
 std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
     const auto range=[&](const LaneReference& ref,int count) {
@@ -70,11 +83,12 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
     };
     const auto from=range(c.from,c.fromLaneCount),to=range(c.to,c.toLaneCount);
     const int count=std::max(c.fromLaneCount,c.toLaneCount);
+    const int shift=connectorLaneShift(n,c);
+    const auto narrow=[&](int i,int lanes){return lanes==count?i:std::clamp(i-shift,0,lanes-1);};
     const auto weights=connectorBlendWeights(c);
     std::vector<ConnectorPath> result;
     for(int i=0;i<count;++i) {
-        const int a=count==1?0:i*(c.fromLaneCount-1)/(count-1);
-        const int b=count==1?0:i*(c.toLaneCount-1)/(count-1);
+        const int a=narrow(i,c.fromLaneCount),b=narrow(i,c.toLaneCount);
         auto shape=c.geometry;
         if(i && !shape.empty()) {
             const auto start=laneAttachment(n,from[a],true),end=laneAttachment(n,to[b],false);
