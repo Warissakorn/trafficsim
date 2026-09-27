@@ -95,6 +95,12 @@ int main(int argc,char** argv) {
                 }
             throw std::runtime_error("Missing connector end grip");
         };
+        // D77: each end grip is drawn on the middle of the Link lanes that end joins.
+        for(const bool leading:{true,false}) {
+            const auto expected=*connectorRangeCentre(w.history().document().network,connector,leading);
+            const auto at=grip(leading);
+            require(std::hypot(at.x-expected.x,at.y-expected.y)<1e-6,"End grip is not on the middle of its Link lanes");
+        }
         const auto attachedBefore=documentJson(w.history().document());
         releaseDrag(c,grip(true),lanePoint(0,2,.3),Qt::LeftButton,true);
         require(documentJson(w.history().document())==attachedBefore,"Esc committed an end move");
@@ -107,6 +113,23 @@ int main(int argc,char** argv) {
         attached(w.history().document());
         action(w,"editorUndo");
         require(documentJson(w.history().document())==attachedBefore,"Moving an end was not one undoable edit");
+        {
+            // D78: sliding an end along the lane it joins keeps the curve, each point shifted by its
+            // blend weight, rather than rebuilding the turn.
+            const auto before=w.history().document().network.connectors.front();
+            int lane=0;while(links[1].lanes[static_cast<std::size_t>(lane)].id!=before.to.laneId)++lane;
+            releaseDrag(c,grip(false),lanePoint(1,lane,.45),Qt::LeftButton);
+            const auto after=w.history().document().network.connectors.front();
+            require(after.to.laneId==before.to.laneId && after.to.station!=before.to.station,"Target end did not slide along its lane");
+            require(after.geometry.size()==before.geometry.size(),"Sliding an end changed the point count");
+            const auto weights=connectorBlendWeights(before);
+            const Point shift{after.geometry.back().x-before.geometry.back().x,after.geometry.back().y-before.geometry.back().y};
+            for(std::size_t j=1;j+1<before.geometry.size();++j)
+                require(std::hypot(after.geometry[j].x-before.geometry[j].x-shift.x*weights[j],
+                                   after.geometry[j].y-before.geometry[j].y-shift.y*weights[j])<1e-6,"Sliding an end rebuilt the curve");
+            action(w,"editorUndo");
+            require(documentJson(w.history().document())==attachedBefore,"Sliding an end was not one undoable edit");
+        }
         auto p=handle(c,1);releaseDrag(c,p,{p.x,p.y-3.5},Qt::LeftButton);
         require(w.history().document().network.connectors.front().fromLaneCount==2,"Single lane source cannot grow");
         p=handle(c,2);releaseDrag(c,p,{p.x,p.y-7},Qt::LeftButton);

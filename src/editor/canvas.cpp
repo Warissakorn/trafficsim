@@ -66,7 +66,7 @@ std::vector<Point> EditorCanvas::handleGeometry() const {
         if(const auto* connector=selectedConnector()) {
             auto preview=*connector;preview.geometry=points;
             if(points.size()!=connector->geometry.size())preview.laneBlend.clear();
-            return connectorCentreline(document_->network,preview);
+            return connectorGrips(document_->network,preview);
         }
     } catch(const std::exception&) { /* An invalid draft still needs draggable grips. */ }
     return points;

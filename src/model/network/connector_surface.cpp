@@ -46,22 +46,29 @@ void bend(std::vector<Point>& g,Point target,bool start) {
     }
 }
 struct Edge { std::vector<Point> geometry; Point at,along; };
-std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
-                                  const std::vector<std::vector<Point>>& rails,bool start) {
+// The Link lane range an end is attached to, and its boundaries' lines at the attachment station.
+struct Range { const Link* link{}; std::size_t first{}; int count{}; double station{}; };
+std::optional<Range> attachedRange(const Network& n,const Connector& c,bool start) {
     const auto& ref=start?c.from:c.to;
     const int count=start?c.fromLaneCount:c.toLaneCount;
     const auto link=std::find_if(n.links.begin(),n.links.end(),[&](const auto& l){return l.id==ref.linkId;});
     if(link==n.links.end())return {};
     const auto lane=std::find_if(link->lanes.begin(),link->lanes.end(),[&](const auto& l){return l.id==ref.laneId;});
     if(lane==link->lanes.end() || std::distance(lane,link->lanes.end())<count)return {};
-    const auto first=static_cast<std::size_t>(std::distance(link->lanes.begin(),lane));
-    const double station=attachmentStation(n,ref,start);
-    const auto edge=[&](std::size_t i) {
-        auto g=laneBoundaryGeometry(*link,i,n.drivingSide);
-        const double at=matchedStation(link->geometry,g,station);
-        const auto p=pointAlong(g,at),u=directionAlong(g,at,start);
-        return Edge{std::move(g),p,u};
-    };
+    return Range{&*link,static_cast<std::size_t>(std::distance(link->lanes.begin(),lane)),count,attachmentStation(n,ref,start)};
+}
+Edge rangeEdge(const Network& n,const Range& r,std::size_t i,bool start) {
+    auto g=laneBoundaryGeometry(*r.link,i,n.drivingSide);
+    const double at=matchedStation(r.link->geometry,g,r.station);
+    const auto p=pointAlong(g,at),u=directionAlong(g,at,start);
+    return Edge{std::move(g),p,u};
+}
+std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
+                                  const std::vector<std::vector<Point>>& rails,bool start) {
+    const auto range=attachedRange(n,c,start);
+    if(!range)return {};
+    const auto first=range->first;const int count=range->count;
+    const auto edge=[&](std::size_t i){return rangeEdge(n,*range,i,start);};
     const std::array<Edge,2> edges{edge(first),edge(first+count)};
     const Point centre=mid(edges[0].at,edges[1].at);
     const auto widths=connectorLaneWidths(n,c);
@@ -96,9 +103,16 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
     // the range in reverse lane order, and the interior boundaries must follow them.
     const std::array<Point,3> cap{result.points[0],result.points[1],result.points[2]};
     result.boundaries.push_back(cuts[0]);
+    double offset=0;std::size_t nextLane=0;
     for(int j=1;j<count;++j) {
         const auto b=edge(first+static_cast<std::size_t>(pairing==0?j:count-j));
-        std::optional<Point> hit;
+        // D76: built as P1/P4 are -- the Connector's own divider line, offset from the first rail's
+        // edge by the widths of the lanes before it, runs on along the end direction to meet the
+        // Link boundary's line. A surplus lane has no width here, so it adds no offset.
+        while(nextLane<w.size() && w[nextLane]<=0)++nextLane;
+        if(nextLane<w.size())offset+=w[nextLane++];
+        std::optional<Point> hit=intersection(add(own[0],mul(normal,offset)),u,b.at,b.along);
+        if(hit && norm(sub(*hit,centre))>4*std::max(width,norm(sub(edges[1].at,edges[0].at))))hit.reset();
         for(int s=0;s<2 && !hit;++s)hit=onSegment(b.at,b.along,cap[s],cap[s+1]);
         // A curved Link can bend a boundary's local tangent away from the cap; the nearest cap
         // vertex keeps the divider on the mouth rather than dropping it.
@@ -208,5 +222,18 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
         else clippedMarking(result.markings,marking,result.outline);
     }
     return result;
+}
+std::optional<Point> connectorRangeCentre(const Network& n,const Connector& c,bool start) {
+    const auto range=attachedRange(n,c,start);
+    if(!range)return {};
+    return mid(rangeEdge(n,*range,range->first,start).at,
+               rangeEdge(n,*range,range->first+static_cast<std::size_t>(range->count),start).at);
+}
+std::vector<Point> connectorGrips(const Network& n,const Connector& c) {
+    auto grips=connectorCentreline(n,c);
+    if(grips.empty())return grips;
+    if(const auto p=connectorRangeCentre(n,c,true))grips.front()=*p;
+    if(const auto p=connectorRangeCentre(n,c,false))grips.back()=*p;
+    return grips;
 }
 }

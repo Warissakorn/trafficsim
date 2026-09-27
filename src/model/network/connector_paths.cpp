@@ -69,6 +69,15 @@ int connectorLaneShift(const Network& n,const Connector& c) {
     const auto kerb=n.drivingSide==DrivingSide::left?LaneSide::left:LaneSide::right;
     return c.laneChangeSide.value_or(kerb)==kerb?1:0;
 }
+void fitLaneDifference(Connector& c) {
+    c.fromLaneCount=std::min(c.fromLaneCount,c.toLaneCount+2);
+    c.toLaneCount=std::min(c.toLaneCount,c.fromLaneCount+2);
+    if(std::abs(c.fromLaneCount-c.toLaneCount)!=1)c.laneChangeSide.reset();
+}
+std::size_t centredLaneRange(std::size_t focus,int count,std::size_t laneCount) {
+    const long long lanes=static_cast<long long>(laneCount),run=std::max(1,count);
+    return static_cast<std::size_t>(std::clamp(static_cast<long long>(focus)-(run-1)/2,0LL,std::max(0LL,lanes-run)));
+}
 std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
     const auto range=[&](const LaneReference& ref,int count) {
         std::vector<LaneReference> result;

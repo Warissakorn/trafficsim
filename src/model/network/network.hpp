@@ -132,6 +132,14 @@ void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount
 // side: path i uses wide lane i and narrow lane clamp(i-shift). Throws EDIT_LANE_RANGE when the
 // counts differ by more than 2, or when laneChangeSide is set for a difference other than 1.
 int connectorLaneShift(const Network&, const Connector&);
+// Fitting a range to that rule (M3.2.9d, D75): the wider end keeps its first lane and loses lanes
+// from its far end until it is at most two wider, and a side that no longer describes a one-lane
+// difference is dropped. What creating and retargeting call, so connecting a 2-lane Link to a
+// 5-lane one makes 2 -> 4 instead of refusing.
+void fitLaneDifference(Connector&);
+// The first lane of a `count`-lane run of a `laneCount`-lane Link that puts lane `focus` as near
+// its middle as the Link allows; a tie goes to index 0 (the kerb).
+std::size_t centredLaneRange(std::size_t focus, int count, std::size_t laneCount);
 // The width of each lane path at the Connector's two ends: the authored width where the Connector
 // carries one, and the width of the Link lane that end joins otherwise. Zero at an end where the
 // path is a surplus lane, which is what makes it taper closed rather than run at full width.

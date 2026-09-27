@@ -46,13 +46,41 @@ void retargetConnector(const Network& network,Connector& c,LaneReference from,La
     moved.fromLaneCount=std::min(c.fromLaneCount,lanesFromReference(network,moved.from));
     moved.toLaneCount=std::min(c.toLaneCount,lanesFromReference(network,moved.to));
     if(moved.fromLaneCount<1 || moved.toLaneCount<1)throw std::invalid_argument("UNKNOWN_LANE");
+    fitLaneDifference(moved); // D75: onto a narrower Link the range shrinks rather than refuses
     if(std::max(moved.fromLaneCount,moved.toLaneCount)!=std::max(c.fromLaneCount,c.toLaneCount)) {
         moved.laneWidths.clear();moved.laneMarkings.clear();
     }
-    // Keeping the old interior points makes the last leg run backwards when the attachment
-    // crosses them. Retarget is a topology gesture: rebuild its directed turn, with Undo
-    // retaining the complete old shape. Manual interior-point edits remain manual.
     if(c.geometry.size()<2)throw std::invalid_argument("INVALID_GEOMETRY");
+    // M3.2.9g (D78): an end slid along the lanes it already joins keeps the author's curve. Every
+    // point follows the two ends by its blend weight, as a leading resize moves one.
+    if(moved.from.linkId==c.from.linkId && moved.from.laneId==c.from.laneId &&
+       moved.to.linkId==c.to.linkId && moved.to.laneId==c.to.laneId &&
+       moved.fromLaneCount==c.fromLaneCount && moved.toLaneCount==c.toLaneCount) {
+        const auto a=laneAttachment(network,moved.from,true),b=laneAttachment(network,moved.to,false);
+        const auto weights=connectorBlendWeights(c);
+        const Point da{a.x-c.geometry.front().x,a.y-c.geometry.front().y},db{b.x-c.geometry.back().x,b.y-c.geometry.back().y};
+        for(std::size_t j=0;j<moved.geometry.size();++j) {
+            moved.geometry[j].x+=da.x*(1-weights[j])+db.x*weights[j];
+            moved.geometry[j].y+=da.y*(1-weights[j])+db.y*weights[j];
+        }
+        moved.geometry.front()=a;moved.geometry.back()=b;
+        // Unless an end leg that ran with its lane now runs against it: the wrong-way elbow a
+        // rebuild exists for.
+        const auto leg=[](const std::vector<Point>& g,bool start) {
+            const auto p=start?g[0]:g[g.size()-2],q=start?g[1]:g.back();return Point{q.x-p.x,q.y-p.y};
+        };
+        const auto [entry,exit]=connectorTangents(network,moved.from,moved.to);
+        bool forward=true;
+        for(const bool start:{true,false}) {
+            const auto was=leg(c.geometry,start),now=leg(moved.geometry,start);const auto lane=start?entry:exit;
+            if(was.x*lane.x+was.y*lane.y>0 && now.x*lane.x+now.y*lane.y<=0)forward=false;
+        }
+        if(forward) { (void)connectorPaths(network,moved);c=std::move(moved);return; }
+        moved.geometry=c.geometry;
+    }
+    // Keeping the old interior points makes the last leg run backwards when the attachment
+    // crosses them. Retarget to other lanes is a topology gesture: rebuild its directed turn,
+    // with Undo retaining the complete old shape. Manual interior-point edits remain manual.
     moved.geometry=connectorCurve(network,moved.from,moved.to,
         static_cast<int>(std::min<std::size_t>(c.geometry.size()-2,40)));
     // Imported polylines may have more points than the inspector's 0–40 editing range.

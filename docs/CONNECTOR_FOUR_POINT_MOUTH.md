@@ -46,15 +46,20 @@ additional cap vertices. Caps are reversed as needed to assemble one perimeter, 
 being appended in a fixed left/right order. The cap itself is not a painted stop line.
 Coincident adjacent vertices are collapsed.
 
-**Dividers (M3.2.9b, D74).** The mouth also yields one point per Link lane boundary of the
-attached range, in the order of the Connector's own boundaries (reversed past 90°, as the
-rails are): the range edges are P1 and P4, and each interior Link boundary's line crosses
-P1 → P2 → P3. Interior Connector boundary k ends on the point after as many lanes as have
-width at that end, so a surplus (added/dropped, D73) lane closes onto its neighbour's point, or
-onto P1/P4 when it is outermost. Rails and dividers reach their points by the same bend: the
-shift fades out (smoothstep) over the half of the boundary nearest that end, so the other
-half is untouched. With a mouth present, dividers are **not** clipped: one may reach its point
-across the P2–P3 notch, which is Link surface. Only the legacy cap still clips.
+**Dividers (M3.2.9b/e, D74, D76).** The mouth also yields one point per Link lane boundary of
+the attached range, in the order of the Connector's own boundaries (reversed past 90°, as the
+rails are). The range edges are P1 and P4. Each interior point is built as P1/P4 are: the
+Connector's own divider line -- through the first local edge point, offset square to the end
+direction by the Connector widths of the lanes before it, running along that direction --
+intersected with that Link boundary's tangent line. On straight Links the points therefore lie
+on P1–P4, not on the P1→P2→P3 cap. Where that intersection is missing or reaches further than
+the edges' limit, the older cap crossing (P1→P2→P3) is kept. Interior Connector boundary k ends
+on the point after as many lanes as have width at that end, so a surplus (added/dropped, D73)
+lane closes onto its neighbour's point, or onto P1/P4 when it is outermost. Rails and dividers
+reach their points by the same bend: the shift fades out (smoothstep) over the half of the
+boundary nearest that end, so the other half is untouched. With a mouth present, dividers are
+**not** clipped: one may reach its point across the P2–P3 notch, which is Link surface. Only the
+legacy cap still clips.
 
 Parallel edge lines have no unique intersection and retain the existing cap. An intersection
 whose combined reach exceeds four times the larger width is also unusable. If the new
@@ -77,7 +82,7 @@ path lengths or conflict-priority rules change in this work.
 projection onto the Link, the acute-angle shoulder bound, source/target ends, rotations,
 reflections, driving sides, a two-lane range, unequal widths, and the parallel fallback.
 `tests/connector_mouth_sweep_tests.cpp` checks every divider end against its Link boundary
-over 1,512 cases (target 30–150°, source 0/±45/30/60/90/135°, 1–3 lanes each end, offset
+and against its own Connector divider line (offset by the widths before it) over 1,512 cases (target 30–150°, source 0/±45/30/60/90/135°, 1–3 lanes each end, offset
 ranges, unequal widths, both driving sides).
 `tests/connector_surface_ui_tests.cpp` checks actual canvas paint, picking on both sides of
 the cap, Link-dependent cache invalidation and Undo/Redo. Environment-specific execution

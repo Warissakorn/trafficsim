@@ -148,9 +148,10 @@ void EditorCanvas::drawConnectors() {
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
             scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+5);
         }
-        // Grips ride the middle of the connector's whole width, not the first lane's path.
+        // Grips ride the middle of the connector's whole width, not the first lane's path; its
+        // end grips sit on the middle of the Link lanes it joins (D77).
         if (c.id==primary) {
-            const auto handles=connectorCentreline(document_->network,preview);
+            const auto handles=connectorGrips(document_->network,preview);
             QPen outline(QColor("#334155"),1);outline.setCosmetic(true);
             for (std::size_t i=0; i<handles.size(); ++i) {
                 const auto p=handles[i];

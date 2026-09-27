@@ -31,15 +31,15 @@ void drag(EditorCanvas* c,Point a,Point b,Qt::MouseButton button,Qt::KeyboardMod
 }
 // `lanes` fills the Connector range boxes when a test is about the dialog honouring them.
 // Left at 0 the dialog is accepted exactly as it opens, which is how its defaults are tested.
-void confirm(const char* expected,int lanes=0) {
+void confirm(const char* expected,int lanes=0,int linkLanes=3) {
     // QTest's mouse events process timers before release opens the modal. Wait for
     // the actual dialog; never throw through a Qt event handler.
     auto* timer=new QTimer(qApp);
-    QObject::connect(timer,&QTimer::timeout,timer,[timer,expected,lanes]{
+    QObject::connect(timer,&QTimer::timeout,timer,[timer,expected,lanes,linkLanes]{
         auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());if(!dialog)return;
         timer->stop();timer->deleteLater();
         if(dialog->objectName()!=expected){std::cerr<<"Unexpected dialog: "<<dialog->objectName().toStdString()<<'\n';dialog->reject();return;}
-        if(auto* count=dialog->findChild<QSpinBox*>("editorGestureLaneCount"))count->setValue(3);
+        if(auto* count=dialog->findChild<QSpinBox*>("editorGestureLaneCount"))count->setValue(linkLanes);
         if(lanes)for(const auto* name:{"editorRangeFromCount","editorRangeToCount"})
             if(auto* count=dialog->findChild<QSpinBox*>(name))count->setValue(lanes);
         auto* buttons=dialog->findChild<QDialogButtonBox*>();
@@ -170,6 +170,19 @@ int main(int argc,char** argv) {
         for(auto* item:c->scene()->items())
             if(item->data(0).toString()=="road-marking" && item->data(1).toString()==QString::fromStdString(single.id))++markings;
         require(markings==4,"A three-lane Connector is not drawn with its two dividers");
+        // M3.2.9d (D75): a drag from a two-lane Link onto the far lane of a five-lane one connects
+        // 2 -> 4, centred on that lane, instead of refusing 2 -> 5.
+        confirm("editorLinkDialog",0,2);drag(c,{-60,-110},{-10,-110},Qt::RightButton,Qt::ControlModifier);
+        confirm("editorLinkDialog",0,5);drag(c,{10,-110},{60,-110},Qt::RightButton,Qt::ControlModifier);
+        const auto wide=w.history().document().network.links;
+        require(wide.size()==7 && wide[5].lanes.size()==2 && wide[6].lanes.size()==5,"Unequal fixture links missing");
+        confirm("editorRangeDialog");
+        drag(c,laneGeometry(wide[5],wide[5].lanes[0].id,DrivingSide::left).back(),
+             laneGeometry(wide[6],wide[6].lanes[4].id,DrivingSide::left).front(),Qt::RightButton,Qt::ControlModifier);
+        require(w.history().document().network.connectors.size()==3,"A 2 -> 5 drag created nothing");
+        const auto fitted=w.history().document().network.connectors.back();
+        require(fitted.fromLaneCount==2 && fitted.toLaneCount==4,"The wider end was not narrowed to 4");
+        require(fitted.from.laneId==wide[5].lanes[0].id && fitted.to.laneId==wide[6].lanes[1].id,"The range is not centred on the dropped lane");
         w.saveFile(file); // Leave the document clean; closing a dirty window waits on a prompt.
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");
         require(item<QListWidget>(w,"editorObjectPalette")->item(2)->text().contains(QString::fromUtf8("เชื่อม")),"Thai palette missing");

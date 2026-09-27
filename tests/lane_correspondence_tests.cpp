@@ -1,5 +1,6 @@
 #include "test.hpp"
 #include "../src/commands/connector_commands.hpp"
+#include <tuple>
 #include <utility>
 using namespace trafficsim;
 // M3.2.9a (D73): the lanes of a Connector's two ends pair one to one, and at most one lane is
@@ -50,16 +51,34 @@ TEST(lane_correspondence, two_lanes_differ_by_one_on_each_side) {
         CHECK(connect(side,1,3)==Pairs({{0,0},{0,1},{0,2}}));
     }
 }
-TEST(lane_correspondence, more_than_one_lane_per_side_is_refused) {
-    for(const auto [from,to]:{std::pair{2,5},{5,2},{1,4}}) {
-        auto d=roads(DrivingSide::right);
-        test::throws([&]{addConnectorRange(d,{"a","a1"},{"b","b1"},from,to);},"EDIT_LANE_RANGE");
+TEST(lane_correspondence, a_wider_request_is_narrowed_to_what_can_pair) {
+    // M3.2.9d (D75): creating across more than a two-lane difference keeps the narrower end and
+    // the wider end's first lane, and drops the lanes the rule cannot pair.
+    for(const auto [from,to,fitFrom,fitTo]:{std::tuple{2,5,2,4},{5,2,4,2},{1,4,1,3},{1,6,1,3}}) {
+        auto d=roads(DrivingSide::right);addConnectorRange(d,{"a","a1"},{"b","b1"},from,to);
+        const auto& c=d.network.connectors.front();
+        CHECK(c.fromLaneCount==fitFrom);CHECK(c.toLaneCount==fitTo);
+        CHECK(c.from.laneId=="a1");CHECK(c.to.laneId=="b1");
     }
+    // An explicit resize is still refused: its tabs already stop at the limit.
     auto d=roads(DrivingSide::right);const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,4);
     test::throws([&]{changeConnectorRange(d,id,2,5);},"EDIT_LANE_RANGE");
     // An old file may still hold one: it loads, and validation names it.
     d.network.connectors.front().toLaneCount=5;
     CHECK(!validateNetwork(d.network).empty());
+}
+TEST(lane_correspondence, a_range_centres_on_the_lane_it_was_dropped_on) {
+    CHECK(centredLaneRange(0,4,5)==0);CHECK(centredLaneRange(4,4,5)==1);
+    CHECK(centredLaneRange(2,4,5)==1);CHECK(centredLaneRange(3,3,6)==2);
+    CHECK(centredLaneRange(5,3,6)==3);CHECK(centredLaneRange(0,1,1)==0);
+    CHECK(centredLaneRange(2,6,4)==0); // a run longer than the Link starts at its first lane
+}
+TEST(lane_correspondence, moving_an_end_onto_a_narrow_link_narrows_the_other_end) {
+    auto d=roads(DrivingSide::right);const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},4,4);
+    // The forcing: b6 is the last lane, so the moved end can only keep one.
+    changeConnectorEndpoints(d,id,{"a","a1"},{"b","b6"});
+    const auto& c=d.network.connectors.front();
+    CHECK(c.toLaneCount==1);CHECK(c.fromLaneCount==3);CHECK(validateNetwork(d.network).empty());
 }
 TEST(lane_correspondence, a_side_only_means_something_for_a_one_lane_difference) {
     auto d=roads(DrivingSide::right);const auto id=addConnectorRange(d,{"a","a1"},{"b","b1"},2,4);
