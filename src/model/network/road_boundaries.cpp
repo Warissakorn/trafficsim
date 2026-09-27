@@ -441,8 +441,8 @@ std::vector<std::vector<Point>> connectorBoundaries(const Network& n,const Conne
     return std::move(ribbon.boundaries);
 }
 ConnectorMouthFits connectorMouthFit(const Network& n,const Connector& c) {
-    // Measured off the same ribbon connectorBoundaries draws, by the same call, so a reported
-    // number cannot describe a mouth other than the one on screen (hard rule 3).
+    // Measured off the same lane-strip ribbon connectorBoundaries returns. The display-only
+    // four-point cap in connectorSurface does not alter these conflict/diagnostic strips.
     auto ribbon=squareRibbon(n,c);
     return fitAndShear(n,c,ribbon);
 }

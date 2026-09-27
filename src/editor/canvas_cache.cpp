@@ -43,11 +43,9 @@ const std::vector<std::vector<Point>>& EditorCanvas::cachedBoundaries(const Conn
     if(!entry.boundaries)entry.boundaries=connectorBoundaries(document_->network,c);
     return *entry.boundaries;
 }
-const std::vector<ConnectorMarking>& EditorCanvas::cachedMarkings(const Connector& c) const {
+const ConnectorSurface& EditorCanvas::cachedSurface(const Connector& c) const {
     auto& entry=connectorEntry(c);
-    // connectorMarkings recomputes the boundaries itself, which is why it was the most
-    // expensive thing a frame did once the boundaries themselves were cached.
-    if(!entry.markings)entry.markings=connectorMarkings(document_->network,c);
-    return *entry.markings;
+    if(!entry.surface)entry.surface=connectorSurface(document_->network,c);
+    return *entry.surface;
 }
 }

@@ -22,7 +22,12 @@ QPainterPath EditorCanvas::objectShape(const std::string& id) const {
     for(const auto& l:document_->network.links)if(l.id==id)
         return polygon(laneBoundaryGeometry(l,0,document_->network.drivingSide),laneBoundaryGeometry(l,l.lanes.size(),document_->network.drivingSide));
     for(const auto& c:document_->network.connectors)if(c.id==id) {
-        const auto& boundaries=cachedBoundaries(c);return polygon(boundaries.front(),boundaries.back());
+        const auto& ring=cachedSurface(c).outline;
+        QPainterPath shape;
+        if(ring.empty())return shape;
+        shape.moveTo(ring.front().x,ring.front().y);
+        for(std::size_t i=1;i<ring.size();++i)shape.lineTo(ring[i].x,ring[i].y);
+        shape.closeSubpath();shape.setFillRule(Qt::WindingFill);return shape;
     }
     for(const auto& h:document_->network.signalHeads)if(h.id==id)return headShape(h);
     return {};

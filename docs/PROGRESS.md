@@ -56,6 +56,39 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — Four-point Connector display mouths (owner request)
+
+The owner specified P1 (near edge intersection), P2 (connection centre), P3 (nearest point
+on the far **Link** edge), and P4 (far edge intersection), then authorized implementation.
+The worked 4 m examples at 45°, 89° and 90° are preserved in
+`CONNECTOR_FOUR_POINT_MOUTH.md`. Beyond 90° the edge pairing switches: for equal-width straight
+roads P2–P3 is W/2 and P3–P4 is at most W/2. Projecting P3 onto the Connector was explicitly
+rejected in the discussion and is guarded by a coordinate test.
+
+- `connector_surface.*` owns the derived cap, perimeter and clipped markings. The local
+  intersections use the authored end direction, Link range edges and existing width policy;
+  P2 is the range centre, not the first lane's endpoint. Finite Link-edge projection handles
+  actual polylines. Parallel/unbounded intersections retain the old cap; a folded perimeter
+  retains the old surface rather than trimming the requested P2/P3 away.
+- The existing value-keyed Connector cache now holds the complete surface. Paint, picking,
+  box selection, framing, copy/rotation previews and rotation bounds read its outline.
+  Runtime paths, conflict strips, serialization and legacy lane-strip diagnostics are not
+  changed. This separation and the diagnostics' meaning are explicit in the contract.
+- Model tests pin both ends, the numerical examples, angle/rotation/reflection sweeps,
+  driving sides, two-lane ranges, unequal widths and parallel fallback. A Qt test compares
+  painted geometry and hit testing, including Link edits and Undo/Redo cache invalidation.
+
+Verification: Linux/GCC 13.3 headless CTest passed 46/46, including the frozen references;
+the mouth group passed 12/12. The Qt 6.8.3 desktop application builds, and the five targeted
+UI suites passed: connector-surface-ui, editor-rotation-ui, network-lifecycle-ui, connector-ui
+and editor-attachments. The new suite checks a grid of 357 pick locations per document and
+captures the 89-degree canvas for visual inspection. Build tools, Qt/ICU and a writable TMPDIR
+were provisioned outside the repository; no machine paths enter the build configuration in Git.
+Architecture and file-size checks pass. No Windows verification, owner visual acceptance or
+Vissim parity is inferred; the complete desktop suite was not run in this workstream.
+
+---
+
 ## 2026-09-27 — Conflict areas on every overlap, drawn inset (D72)
 
 Owner request: automatic conflict areas were missing where surfaces really overlap, notably at a

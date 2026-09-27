@@ -123,22 +123,15 @@ void EditorCanvas::drawConnectors() {
             preview=std::move(moved);
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;
-        const auto& boundaries=cachedBoundaries(preview);
-        // Trimming each rail on its own only cuts a loop within that one rail. The two rails
-        // cross EACH OTHER where the near and far edges are cut onto the link's cross-section at
-        // a sharp merge angle, which draws as a spike/notch unless the closed ring is trimmed as
-        // one curve.
-        std::vector<Point> ring(boundaries.front());
-        ring.insert(ring.end(),boundaries.back().rbegin(),boundaries.back().rend());
-        ring=trimSelfIntersections(ring);
-        auto surface=path(ring);
+        const auto& drawing=cachedSurface(preview);
+        auto surface=path(drawing.outline);
         surface.closeSubpath();
         // A ribbon that overlaps itself on a tight turn is still road there. The even-odd
         // default punched the overlap out as a hole, which read as a tear in the surface.
         surface.setFillRule(Qt::WindingFill);
         auto* road=scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour));road->setZValue(z+4);
         road->setData(0,QStringLiteral("road-surface"));road->setData(1,QString::fromStdString(c.id));
-        for(const auto& marking:markingStrokes(cachedMarkings(preview))) {
+        for(const auto& marking:markingStrokes(drawing.markings)) {
             // An outer edge is solid; an interior divider draws its own type.
             QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
                      marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
