@@ -154,6 +154,19 @@ int main(int argc,char** argv) {
         require(documentJson(w.history().document())==resized,"Leading middle cancel committed");
         for(int i=0;i<4;++i)action(w,"editorUndo");
         require(w.history().document().network==originalNetwork,"Edge edits did not undo exactly");
+        {
+            // M3.2.9a (D73): a target tab stops at a two-lane difference. The forcing: the target
+            // Link grows to five lanes, so the drag below really asks for 2 -> 5.
+            c->select(links[1].id);
+            for(int i=0;i<2;++i){p=handle(c,4);releaseDrag(c,p,{p.x,p.y-3.5},Qt::LeftButton);}
+            require(w.history().document().network.links[1].lanes.size()==5,"Target Link did not grow to five lanes");
+            const auto& before=w.history().document().network.connectors.front();
+            require(before.fromLaneCount==2 && before.toLaneCount==2,"Unexpected range before the capped drag");
+            c->select(id);p=handle(c,2);releaseDrag(c,p,{p.x,p.y-10.5},Qt::LeftButton);
+            require(w.history().document().network.connectors.front().toLaneCount==4,"Target tab did not stop at a two-lane difference");
+            for(int i=0;i<3;++i)action(w,"editorUndo");
+            require(w.history().document().network==originalNetwork,"Capped drag did not undo exactly");
+        }
         // N lanes have exactly N+1 longitudinal markings, with no dashed lane centres.
         for(const auto& link:w.history().document().network.links) {
             int markings=0;

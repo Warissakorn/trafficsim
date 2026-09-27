@@ -9,6 +9,10 @@ namespace trafficsim {
 struct ConnectorMouth {
     std::array<Point,4> points;
     bool firstBoundaryNear{};
+    // M3.2.9b: one point on P1->P2->P3->P4 per Link lane boundary of the attached range, in the
+    // order of the Connector's own boundaries: [0] is where the first rail ends, back() the last.
+    // Interior Link boundaries cross P1->P2->P3; the two range edges are P1 and P4.
+    std::vector<Point> boundaries;
 };
 struct ConnectorSurface {
     std::vector<Point> outline; // Closed implicitly, in perimeter order.

@@ -124,7 +124,7 @@ if(BUILD_TESTING)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
-    target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp tests/connector_surface_tests.cpp tests/lane_correspondence_tests.cpp)
+    target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp tests/connector_surface_tests.cpp tests/lane_correspondence_tests.cpp tests/connector_mouth_sweep_tests.cpp)
     # One ctest test per group, so `ctest -j` spreads them; a single unfiltered run was 60 s of
     # serial wall time and repeated every named group.
     set(TRAFFICSIM_TEST_GROUPS core network reference project editor connectors mouths points
@@ -132,7 +132,7 @@ if(BUILD_TESTING)
         routeless signals m26study rightofway rightofway_lifecycle rightofway_resolution
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict
-        rightofway_runtime rightofway_editor lanechange lane_correspondence)
+        rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep)
     foreach(group ${TRAFFICSIM_TEST_GROUPS})
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()

@@ -452,7 +452,9 @@ ConnectorMouthFits connectorMouthFit(const Network& n,const Connector& c) {
     return fitAndShear(n,c,ribbon);
 }
 std::vector<ConnectorMarking> connectorMarkings(const Network& n,const Connector& c) {
-    const auto boundaries=connectorBoundaries(n,c);
+    return connectorMarkings(c,connectorBoundaries(n,c));
+}
+std::vector<ConnectorMarking> connectorMarkings(const Connector& c,const std::vector<std::vector<Point>>& boundaries) {
     std::vector<ConnectorMarking> result;
     result.push_back({trimSelfIntersections(boundaries.front()),true,MarkingType::solid});
     for(std::size_t i=1;i+1<boundaries.size();++i) {

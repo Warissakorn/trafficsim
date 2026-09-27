@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-26-m3.2.7c.md`](archive/PROGRESS-2026-09-26-m3.2.7c.md) — 2026-09-26 — M3.2.7c: signal composition and a congested major road on the T-junction (D67); moved out 2026-09-27 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.7a-b.md`](archive/PROGRESS-2026-09-25-m3.2.7a-b.md) — 2026-09-25 — M3.2.7a/b: the T-junction evidence (D66); moved out 2026-09-27 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.6c-counters-editor.md`](archive/PROGRESS-2026-09-25-m3.2.6c-counters-editor.md) — 2026-09-25 — M3.2.6c: queue counters in the editor (D65); moved out 2026-09-26 as the oldest live entry
 - [`archive/PROGRESS-2026-09-25-m3.2.6a-b.md`](archive/PROGRESS-2026-09-25-m3.2.6a-b.md) — 2026-09-25 — M3.2.6a/b: signal positions and queue counters (D64); moved out 2026-09-26 as the oldest live entry
@@ -53,6 +54,31 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
 - [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+
+---
+
+## 2026-09-27 — M3.2.9b: dividers end on their Link boundaries at the mouth (D74)
+
+The 1,512-case probe (now `mouth_sweep.*`) had interior dividers 0.5–18 m off the Link's
+dividers: `connectorSurface` took them from the unmodified lane strips and only clipped them.
+- `ConnectorMouth::boundaries`: one point per Link lane boundary of the range, in rail order.
+  P1–P4 are unchanged. Interior points are where each Link boundary's line crosses P1→P2→P3.
+- Interior boundary k goes to the point after the lanes with width at that end, so a surplus
+  lane (D73) closes on its neighbour's point or on P1/P4.
+- **Rails bend too.** Moving only the rail's last vertex to P1/P4 left a kink that bent dividers
+  crossed; both now use one smoothstep bend over the half nearest that end.
+- **No clipping with a mouth.** With unequal lane widths, a Link divider can cross the cap on
+  the P2–P3 leg, just past P2, so a correctly placed divider passes 0.2–0.3 m through the
+  notch, which is Link surface. Clipping cut that off (31 of the last 47 failures).
+- Result: 0 of 1,512 fail. 281 cases have **folded lane strips** from `connectorBoundaries`
+  itself (a straight Connector leaving a Link at a 60–90° kink, 3 lanes): their dividers end
+  right but may run outside the surface in the body, as before the four-point mouth. That fold
+  is upstream, also feeds conflict coverage, and is not fixed here.
+- **The lane tabs stop at a two-lane difference** (`updateLaneResize`). M3.2.9a let a 2 -> 5 drag
+  reach the paint-time preview, which threw: the editor crashed (access violation, reproduced by
+  removing the clamp from the new `attachment-ui` step).
+- Windows desktop: 67/67 except `scenario-run-ui`, over its 90 s limit at 97 s — and 99 s on
+  `fc9e06a` built the same way, so not this change. Linux not run. Owner review still pending.
 
 ---
 
@@ -319,60 +345,6 @@ This supersedes D61's "an unauthored crossing is not an area".
   reports are unchanged. Three mutations were caught: the diverge exclusion removed, the merge
   sides computed apart from the take-over, and the click not authoring.
 
-## 2026-09-26 — M3.2.7c: signal composition and a congested major road on the T-junction (D67)
-
-Two new builder options (`tools/t_junction_network.hpp`), both off by default, so the committed file
-and the M3.2.7b metadata are unchanged; `tjunction_signal.the_base_fixture_is_untouched_by_the_new_options`
-checks the defaults.
-- `minorSignal`: a fixed-time head on the minor Link 1 m before its end. That puts it upstream of
-  both minor waiting lines, which lie on the Connectors.
-- `congestedMajor`: a fixed-time head on eastbound 16 m past the crossing (30 s green, 3 s amber,
-  27 s red).
-
-**Signal composition** (`tjunction_signal.*`, A20 on the fixture):
-- **Always green with Stop:** every minor vehicle that finishes was served at a Stop line, and the
-  minor movement rows equal the no-signal Stop run exactly. Green is the head's permission only.
-- **Always red:**
-  - The forcing: the minor queue counter's maximum is above zero.
-  - No minor trip completes and no minor front passes the head.
-  - The major counts equal the open run's.
-- **Fixed cycle, both driving sides:**
-  - No minor front passes on red; trips complete; the run drains.
-  - The streams never share the crossing, and the major road has no clamp.
-  - Both minor delays are above the gap-test-alone run's.
-- **Mutations:** heads forced always green fails the red and cycle tests; Stop service removed
-  fails the green test.
-
-**Congested major road, the headway exercise:** the M3.2.7b headway arm said nothing, because at
-free flow the gap-time window always covered the headway.
-- The first placement, 50 m past the near-turn merge, congested only the merges: its queue never
-  reached the crossing, and the crossing-only forcing test failed. The head was moved to 16 m past
-  the crossing's exit.
-- With headway 12, some ticks on seed 42 then have a major vehicle within 12 m of the crossing
-  entry but outside the gap window. This is asserted before any headway row exists
-  (`a_congested_major_road_lets_headway_decide`); the variant drains, the streams never share the
-  crossing, and the major road has no clamp.
-
-**The headway arm's metadata is committed first**, as in M3.2.7b:
-`docs/evidence/m3.2.7c-headway-metadata.json`, written by `trafficsim-t-junction-sweep
---metadata-congested`.
-- The variant is not a file of its own, so the metadata records the added head's link, station and
-  phases exactly, as the builder reads them back.
-- It does not hash the variant's JSON text: that text includes computed Connector geometry, which
-  MSVC may round differently in the last bit.
-- A test checks the metadata still describes the variant.
-
-**The headway arm** (`docs/evidence/m3.2.7c-headway.*`, run after `e5e1e5f`): all 12 runs drained.
-Headway now changes the outcome:
-- The minor queue mean never fell from 3 to 7 to 12 m in any seed.
-- The near turn's delay rose in every seed. It merges 4 m past the head's line, so standing major
-  vehicles are within 7 and 12 m of its entry, but not 3.
-- The crossing turn responded in two of four seeds.
-- Eastbound delay rose to 13.6–17.1 s. There are 5–9 clamps per run.
-
-**Owner exercise → M3.2.7d.** The owner exercise (§3) needs the owner and Windows, so it is carved as
-M3.2.7d and stays pending. `docs/M3_ACCEPTANCE.md` §3 gains a recording sheet.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -487,6 +459,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D71 | 2026-09-27 | **Mandatory lane changing, Vissim-style: volume enters on every lane of the entry Link, a stub changes before its dead end when it and its new follower accept the gap at `comfortableDeceleration` without a clamp; one cooperation rule — the nearest target-lane vehicle that can stop comfortably holds back for a vehicle waiting at its dead end** | Owner rulings. Lane-fixed entry put every Thai left turn in the kerb lane behind through traffic. The rule without cooperation was measured and rejected (M2.6 61.6 s mean, a 404 s wait); with it M2.6 is 50.16 s, all drained. Stateless, id-ordered, no RNG, so replay stays exact | A lane-change measurement against Vissim, or M3.2.8c's cooperation with a deceleration parameter and look-ahead |
 | D72 | 2026-09-27 | **Automatic conflict areas on every overlap: only the joined lane is a Connector's mouth, a pair that overlaps in several places gets one area per piece, and areas draw 0.3 m inside their lane edges (display only)** | Owner request: areas were missing at Connector ends and multiple crossings; the fill hid the lane outline | A diverge (same entry lane) conflict kind |
 | D73 | 2026-09-27 | **A Connector's lanes pair one to one over the narrower end; at most one lane is added or dropped per side (|from − to| ≤ 2); a one-lane difference goes on `laneChangeSide`, default the kerb side (schema 17)** | Owner ruling on road realism, not measured Vissim behaviour — `VISSIM_PARITY.md` records that Vissim allows unequal counts, not how it pairs them. The kerb default reproduces every old one-lane pairing exactly | A measurement of Vissim's lane pairing across an unequal Connector |
+| D74 | 2026-09-27 | **At a four-point mouth each interior divider ends on its own Link boundary point along P1→P2→P3; rails and dividers reach P1/P4 and their points by one smoothstep bend over the nearer half; dividers are not clipped when a mouth exists** | The owner asked for dividers that meet the Link's; clipping cut correctly placed ends at the P2–P3 notch, and a last-vertex rail move left a kink dividers crossed. Display only | Folded `connectorBoundaries` strips, if they are fixed, may let clipping return |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |
 | D61 | 2026-09-25 | **Conflict areas are picked by their own tool; a click on the selected one cycles priority without a passive state; a dragged line is kept and reported, not clamped; the yielding side is hatched** | Hit-testing areas under Select would steal the Link at every junction, which is the object an author clicks most there; Vissim avoids the same collision with its object-type sidebar. There is no passive state because an unauthored crossing is not an area (M3_PLAN §2); deleting the area is how an author gets one back. Clamping a waiting line at its entry would hide a draft that the resolver already names (`CONFLICT_WAITING_LINE_AFTER_ENTRY`), and authoring does not refuse what Run refuses. A crossing's two sides cover the same square, so one of them must let the other show through |

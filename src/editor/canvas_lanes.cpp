@@ -91,8 +91,9 @@ void EditorCanvas::updateLaneResize(QPoint position) {
     }
     const int count=static_cast<int>(std::clamp(h.count+std::round(lateral/h.width),1.,static_cast<double>(h.maximum)));
     if(kind==4)previewLinkCount_=count;
-    else if(kind==1)previewFromCount_=count;
-    else if(kind==2)previewToCount_=count;
+    // One lane added or dropped per side at most (D73): the tab stops at a two-lane difference.
+    else if(kind==1)previewFromCount_=std::clamp(count,std::max(1,previewToCount_-2),previewToCount_+2);
+    else if(kind==2)previewToCount_=std::clamp(count,std::max(1,previewFromCount_-2),previewFromCount_+2);
     else previewFromCount_=previewToCount_=count;
     redraw();
 }

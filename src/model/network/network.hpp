@@ -163,6 +163,8 @@ std::vector<ConnectorMarking> linkMarkings(const Link&, DrivingSide);
 // Both renderers use the same expansion. Surface geometry and runtime paths never change.
 std::vector<ConnectorMarking> markingStrokes(const std::vector<ConnectorMarking>&);
 std::vector<ConnectorMarking> connectorMarkings(const Network&, const Connector&);
+// The same markings for boundaries the caller has already adjusted (the four-point mouth, M3.2.9b).
+std::vector<ConnectorMarking> connectorMarkings(const Connector&, const std::vector<std::vector<Point>>& boundaries);
 // Lanes from this reference to the last lane of its link; 0 when the reference is unknown.
 int lanesFromReference(const Network&, const LaneReference&);
 // Snap both ends onto the lanes they NAME. For an edit whose input IS the reference: creating a
