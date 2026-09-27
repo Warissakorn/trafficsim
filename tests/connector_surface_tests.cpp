@@ -36,18 +36,25 @@ TEST(mouths, four_point_near_perpendicular_and_perpendicular_mouths_keep_the_sho
         included(drawing,*drawing.target);
     }
 }
-TEST(mouths, four_point_mouth_swaps_link_edges_beyond_90_degrees) {
-    for(double degrees:{91.,120.,135.,179.})for(auto side:{DrivingSide::left,DrivingSide::right}) {
+TEST(mouths, four_point_mouth_keeps_one_construction_beyond_90_degrees) {
+    // D79: no switch of Link edges at 90 degrees. Each Connector edge meets the Link edge on its
+    // own side, so past 90 the shoulder keeps growing as W/2*tan(theta/2) -- beyond W/2.
+    for(double degrees:{91.,120.,135.,150.})for(auto side:{DrivingSide::left,DrivingSide::right}) {
         auto n=surface_fixture::arrival(degrees);n.drivingSide=side;
         const auto drawing=connectorSurface(n,n.connectors.front());
         CHECK(drawing.target.has_value());
         const auto& p=drawing.target->points;
         test::near(p[1].x,p[2].x); // Projection remains vertical on the horizontal Link.
         test::near(distance(p[1],p[2]),2);
-        test::near(distance(p[2],p[3]),2*std::tan((180-degrees)*std::numbers::pi/360));
-        CHECK(distance(p[2],p[3])<=2+1e-8);
+        test::near(distance(p[2],p[3]),2*std::tan(degrees*std::numbers::pi/360));
+        CHECK(distance(p[2],p[3])>2);
         included(drawing,*drawing.target);
     }
+    // A shoulder past the reach limit (four times the width) is unusable: the legacy cap stays.
+    const auto n=surface_fixture::arrival(170);
+    const auto drawing=connectorSurface(n,n.connectors.front());
+    CHECK(!drawing.target);
+    for(auto p:drawing.outline)CHECK(std::isfinite(p.x) && std::isfinite(p.y));
 }
 TEST(mouths, four_point_source_and_target_follow_rotation_and_reflection) {
     for(bool source:{false,true})for(bool mirror:{false,true})for(double rotation:{0.,37.,90.,180.,270.}) {
@@ -76,18 +83,22 @@ TEST(mouths, parallel_mouth_retains_the_existing_cap) {
     CHECK(drawing.outline.front()==boundaries.front().front());
     for(auto p:drawing.outline)CHECK(std::isfinite(p.x) && std::isfinite(p.y));
 }
-TEST(mouths, four_point_mouth_sweep_keeps_the_link_projection_and_bounded_shoulder) {
+TEST(mouths, four_point_mouth_sweep_follows_one_formula_at_every_angle) {
+    int placed=0;
     for(int degrees=5;degrees<360;degrees+=5) {
         if(degrees==180)continue;
         const auto n=surface_fixture::arrival(degrees);
         const auto drawing=connectorSurface(n,n.connectors.front());
-        CHECK(drawing.target.has_value());
+        const double theta=degrees<180?degrees:360-degrees; // arrival angle to the Link axis
+        if(theta>=155){CHECK(!drawing.target);continue;} // past the reach limit
+        CHECK(drawing.target.has_value());++placed;
         const auto& p=drawing.target->points;
         test::near(p[1].x,p[2].x);
         test::near(distance(p[1],p[2]),2);
-        CHECK(distance(p[2],p[3])<=2+1e-8);
+        test::near(distance(p[2],p[3]),2*std::tan(theta*std::numbers::pi/360));
         included(drawing,*drawing.target);
     }
+    CHECK(placed==60);
 }
 TEST(mouths, four_point_mouth_uses_the_attached_lane_range_centre) {
     auto n=surface_fixture::arrival(45);
