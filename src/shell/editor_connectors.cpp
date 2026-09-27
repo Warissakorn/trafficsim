@@ -66,6 +66,19 @@ QWidget* EditorWindow::buildConnectorInspector() {
     label(form,"editorConnectorWidths",connectorWidths_);
     connectorMarkings_=new QLineEdit(page);connectorMarkings_->setObjectName("editorConnectorMarkings");
     label(form,"editorConnectorMarkings",connectorMarkings_);
+    // M3.2.9c (D73): which side the one added or dropped lane is on. Its own undoable edit, like
+    // the intermediate points; enabled only when the two ends differ by exactly one lane.
+    connectorLaneSide_=new QComboBox(page);connectorLaneSide_->setObjectName("editorConnectorLaneSide");
+    label(form,"editorConnectorLaneSide",connectorLaneSide_);
+    connect(connectorLaneSide_,&QComboBox::currentIndexChanged,this,[this]{
+        const auto* c=canvas_->selectedConnector();if(!c)return;
+        const auto value=connectorLaneSide_->currentData().toString();
+        const std::optional<LaneSide> side=value=="left"?std::optional(LaneSide::left):
+            value=="right"?std::optional(LaneSide::right):std::nullopt;
+        if(c->laneChangeSide==side)return;
+        const auto id=canvas_->selected();
+        execute("editorConnectorLaneSide",[&](auto& d){changeConnectorLaneSide(d,id,side);});
+    });
     connect(connectorPoints_,&QSpinBox::valueChanged,this,[this](int count){
         if(!canvas_->selectedConnector() || static_cast<int>(canvas_->selectedConnector()->geometry.size())-2==count)return;
         const auto id=canvas_->selected();
@@ -201,6 +214,16 @@ void EditorWindow::refreshConnector() {
     // would make the next Create connector inherit a width the new gesture never asked for.
     else {connectorFromCount_->setValue(1);connectorToCount_->setValue(1);
           connectorWidths_->clear();connectorMarkings_->clear();}
+    {
+        const QSignalBlocker block(connectorLaneSide_);connectorLaneSide_->clear();
+        connectorLaneSide_->addItem(text("editorLaneSideKerb"),QString());
+        connectorLaneSide_->addItem(text("editorLaneSideLeft"),QStringLiteral("left"));
+        connectorLaneSide_->addItem(text("editorLaneSideRight"),QStringLiteral("right"));
+        const auto side=connector && connector->laneChangeSide?
+            QString(*connector->laneChangeSide==LaneSide::left?"left":"right"):QString();
+        connectorLaneSide_->setCurrentIndex(connectorLaneSide_->findData(side));
+        connectorLaneSide_->setEnabled(connector && std::abs(connector->fromLaneCount-connector->toLaneCount)==1);
+    }
     if (connector) {
         // Say how many lanes each end carries. A connector that drops or gains lanes is legal
         // to author, and seeing 3 -> 2 on the canvas is how the author notices it is a merge.

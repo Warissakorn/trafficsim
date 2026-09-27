@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QSpinBox>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTest>
@@ -147,6 +148,49 @@ int main(int argc,char** argv) {
                     "Clearing the Lanes tab was not one undoable edit");
             while(w.history().canUndo() && documentJson(w.history().document())!=beforeLanes)
                 action(w,"editorUndo");
+        }
+        // M3.2.9c (D73): the lane-change side. Disabled unless the ends differ by one lane;
+        // choosing a side re-pairs the paths in one undoable edit that survives a reopen.
+        {
+            auto* side=item<QComboBox>(w,"editorConnectorLaneSide");
+            const auto beforeSide=documentJson(w.history().document());
+            c->select(id);require(!side->isEnabled(),"Lane-change side enabled on a 1 -> 1 Connector");
+            require(links[0].lanes.size()>=2,"Source Link has no second lane to widen onto");
+            // The Lanes block above leaves one authored width, which cannot describe two lanes.
+            const auto authoredWidths=item<QLineEdit>(w,"editorConnectorWidths")->text();
+            item<QLineEdit>(w,"editorConnectorWidths")->clear();
+            item<QSpinBox>(w,"editorFromLaneCount")->setValue(2);action(w,"editorApplyConnector");
+            const auto widened=w.history().document().network.connectors[0];
+            require(widened.fromLaneCount==2 && widened.toLaneCount==1,"Range edit did not make 2 -> 1");
+            require(side->isEnabled() && side->currentData().toString().isEmpty(),"Side not enabled at kerb default");
+            const auto pairs=[&]{
+                std::vector<std::string> result;
+                for(const auto& p:connectorPaths(w.history().document().network,w.history().document().network.connectors[0]))
+                    result.push_back(p.from.laneId+">"+p.to.laneId);
+                return result;
+            };
+            const auto widths=[&]{return connectorLaneWidths(w.history().document().network,w.history().document().network.connectors[0]).target;};
+            const auto kerb=widths();
+            lane(side,"right");
+            require(w.history().document().network.connectors[0].laneChangeSide==LaneSide::right,"Side did not reach the model");
+            require(widths()!=kerb,"The tapering lane did not follow the side");
+            require(pairs().size()==2,"Paths lost");
+            const auto file=directory.path()+"/lane-side.traffic.json";
+            const auto saved=documentJson(w.history().document());w.saveFile(file);w.openFile(file);
+            require(documentJson(w.history().document())==saved,"Lane-change side lost on save/reopen");
+            c->select(id);require(item<QComboBox>(w,"editorConnectorLaneSide")->currentData().toString()=="right","Side did not reload");
+            item<QComboBox>(w,"editorConnectorLaneSide")->setCurrentIndex(0); // Kerb side (default)
+            require(!w.history().document().network.connectors[0].laneChangeSide,"Kerb did not clear the side");
+            action(w,"editorUndo");
+            require(w.history().document().network.connectors[0].laneChangeSide==LaneSide::right,"Side change was not one undoable edit");
+            w.openFile(file);
+            // Reopening replaced the history: restore the document the rest of this test expects.
+            c->select(id);
+            item<QSpinBox>(w,"editorFromLaneCount")->setValue(1);
+            item<QLineEdit>(w,"editorConnectorWidths")->setText(authoredWidths);action(w,"editorApplyConnector");
+            require(!w.history().document().network.connectors[0].laneChangeSide,"Narrowing to 1 -> 1 kept a stale side");
+            require(!item<QComboBox>(w,"editorConnectorLaneSide")->isEnabled(),"Side stayed enabled at 1 -> 1");
+            require(w.history().document().network==parseDocument(beforeSide).network,"Side round trip did not return the network");
         }
         lane(source,links[0].lanes[1].id);lane(target,links[1].lanes[0].id);action(w,"editorCreateConnector");
         require(w.history().document().network.connectors.size()==2,"Inspector creation failed");

@@ -9,35 +9,24 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — M3.2.9c: the lane-change side in the Inspector; then the owner's review
+## Immediate — the owner's review of M3.2.9 in the desktop; then Linux
 
-**Done:**
-- **M3.2.9a (D73):** unequal Connector ends pair lane for lane, at most one lane added or
-  dropped per side (`connectorLaneShift`), `laneChangeSide` (schema 17, default kerb).
-- **M3.2.9b (D74):** at a four-point mouth every divider ends on its own Link boundary point
-  (`ConnectorMouth::boundaries`); rails and dividers bend onto the mouth by one smoothstep;
-  no clipping with a mouth. `mouth_sweep.*` holds this over 1,512 cases.
-- **The lane tabs stop at a two-lane difference** (`canvas_lanes.cpp`, `updateLaneResize`).
-  Without it, a 2 -> 5 drag crashed the editor (access violation, measured by removing the clamp).
-- Windows desktop only: 67/67 except `scenario-run-ui`, see below. **Linux not run for a, b.**
+**Done (Windows desktop only):** M3.2.9a lane correspondence (D73), M3.2.9b dividers on their
+Link boundaries (D74), M3.2.9c the Inspector's "Lane change side" and lane tabs that stop at a
+two-lane difference (the owner declined a message for it). Evidence in PROGRESS.md.
 
-**Next:**
-1. Connector Inspector (`src/shell/editor_connectors.cpp`, next to the Lanes tab controls): a
-   "Lane change side" combo, Kerb (default) / Left / Right, enabled only when the two counts
-   differ by exactly 1, calling `changeConnectorLaneSide` in one history transaction. The
-   string keys go in `data/locales/`; the parameter name `laneChangeSide` stays untranslated.
-2. When a tab reaches the two-lane limit, say so in the status line (it now just stops).
-3. A UI test: choose each side, see `connectorPaths` and the taper follow, Undo/Redo, reopen.
-4. The owner's desktop review of the four-point mouth, now with dividers and unequal ends:
-   45°, 89°, 90°, obtuse, both ends, multi-lane, 2 -> 3 with each side, Undo/Redo.
+1. **Owner review (Windows):** the four-point mouth at 45°, 89°, 90° and obtuse, both ends;
+   2 -> 3 and 3 -> 2 with Kerb/Left/Right; 2 -> 4; dividers meeting the Link's; Undo/Redo.
+2. **Linux:** `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop`.
+   M3.2.9a–c have never been compiled with GCC.
 
 **Known, not fixed:**
-- **`scenario-run-ui` exceeds its 90 s limit on this Windows machine** (Debug): 97 s on this
-  branch, 99 s on `fc9e06a` built the same way, 77 s earlier the same day. Not caused by
-  M3.2.9b; it has no headroom. Measure where its time goes before raising the limit.
+- **`scenario-run-ui` exceeds its 90 s limit on this Windows machine** (Debug): 97 s on M3.2.9,
+  99 s on `fc9e06a`, 77 s earlier the same day. Not caused by M3.2.9; no headroom. Measure where
+  its time goes before raising the limit.
 - **Folded lane strips.** `connectorBoundaries` folds for a straight Connector leaving a Link
-  at a 60–90° kink with 3 lanes (281 of the 1,512 sweep cases). The dividers still end on
-  their points, but the body can run outside the surface. It also feeds conflict coverage.
+  at a 60–90° kink with 3 lanes (281 of the 1,512 `mouth_sweep` cases). The dividers still end
+  on their points, but the body can run outside the surface. It also feeds conflict coverage.
   Measure it in a sweep of its own before changing the mouth slide (M1.18, D23: settled
   geometry needs a new measurement to reopen).
 

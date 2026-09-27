@@ -57,6 +57,19 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-27 — M3.2.9c: the lane-change side in the Inspector
+
+- Connector Inspector row "Lane change side" (`editorConnectorLaneSide`): Kerb side (default) /
+  Left / Right, enabled only when the ends differ by one lane; each choice is one
+  `changeConnectorLaneSide` transaction. Items are rebuilt from the locale on every refresh.
+- No message when a lane tab reaches the two-lane limit: the owner declined it; the tab stops.
+- `connector-ui` step: disabled at 1 -> 1, enabled at the kerb default at 2 -> 1, Right re-pairs
+  the taper, survives save/reopen, Kerb clears it, Undo, and narrowing back clears a stale side.
+  Removing the command call from the combo fails the step ("Side did not reach the model").
+- Windows desktop: all pass except `scenario-run-ui` (known, 97 s vs 90 s). Linux not run.
+
+---
+
 ## 2026-09-27 — M3.2.9b: dividers end on their Link boundaries at the mouth (D74)
 
 The 1,512-case probe (now `mouth_sweep.*`) had interior dividers 0.5–18 m off the Link's
