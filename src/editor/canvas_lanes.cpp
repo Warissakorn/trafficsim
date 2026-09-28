@@ -45,7 +45,24 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const LaneReference ref{link->id,link->lanes.front().id,length*location/2};
             for(int kind:{4,8}) {
                 auto h=handle(*link,ref,static_cast<int>(link->lanes.size()),kind);
-                h.maximum=12;h.location=location;result.push_back(h);
+                h.maximum=12;h.location=location;
+                const auto boundary=laneBoundaryGeometry(*link,kind==8?0:link->lanes.size(),side);
+                const double railLength=polylineLength(boundary);
+                const double scale=std::abs(transform().m11());
+                h.tabLength=std::min(canvasStyle::laneTabLength,railLength*scale/3);
+                const double inset=h.tabLength/2/scale;
+                const double station=location==0?inset:location==1?railLength/2:railLength-inset;
+                h.anchor=pointAlong(boundary,station);
+                const auto& lane=kind==8?link->lanes.front():link->lanes.back();
+                const auto geometry=laneGeometry(*link,lane.id,side);
+                const double onLink=matchedStation(boundary,link->geometry,station);
+                const double onLane=matchedStation(link->geometry,geometry,onLink);
+                const auto tangent=directionAlong(geometry,onLane,false);
+                const double sign=(side==DrivingSide::left?1.:-1.)*(kind==8?-1.:1.);
+                h.direction={sign*tangent.y,-sign*tangent.x};
+                const double offset=canvasStyle::laneTabDepth/2/scale;
+                h.position={h.anchor.x+h.direction.x*offset,h.anchor.y+h.direction.y*offset};
+                result.push_back(h);
             }
         }
         return result;

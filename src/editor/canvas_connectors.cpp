@@ -123,6 +123,7 @@ void EditorCanvas::drawConnectors() {
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
         const auto& geometry=preview.geometry;
         const auto& drawing=cachedSurface(preview);
+        const QColor boundaryColour=canvasStyle::connectorBoundaryColor(colour);
         auto surface=path(drawing.outline);
         surface.closeSubpath();
         // A ribbon that overlaps itself on a tight turn is still road there. The even-odd
@@ -132,14 +133,17 @@ void EditorCanvas::drawConnectors() {
         road->setData(0,QStringLiteral("road-surface"));road->setData(1,QString::fromStdString(c.id));
         for(const auto& marking:markingStrokes(drawing.markings)) {
             // An outer edge is solid; an interior divider draws its own type.
-            const auto pen=canvasStyle::markingPen(QColor(QString::fromStdString(style(c.displayType).laneColor)),marking.type);
+            const QColor markingColour=marking.edge?boundaryColour:
+                QColor(QString::fromStdString(style(c.displayType).laneColor));
+            const auto pen=canvasStyle::markingPen(markingColour,marking.type);
             auto* item=scene_.addPath(path(marking.geometry),pen);item->setZValue(z+4.5);
             item->setData(0,QStringLiteral("road-marking"));item->setData(1,QString::fromStdString(c.id));
+            item->setData(2,marking.edge?QStringLiteral("edge"):QStringLiteral("divider"));
         }
         const auto mouthEdge=[&](const std::optional<ConnectorMouth>& mouth,const char* end) {
             if(!mouth)return;
             auto* item=scene_.addPath(path({mouth->points[2],mouth->points[3]}),
-                canvasStyle::markingPen(QColor(QString::fromStdString(style(c.displayType).laneColor)),MarkingType::solid));
+                canvasStyle::markingPen(boundaryColour,MarkingType::solid));
             item->setZValue(z+4.5);item->setData(0,QStringLiteral("connector-mouth-edge"));
             item->setData(1,QString::fromStdString(c.id));item->setData(2,QString::fromLatin1(end));
         };

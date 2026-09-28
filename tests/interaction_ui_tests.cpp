@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QFile>
+#include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsSimpleTextItem>
 #include <QLineEdit>
@@ -51,6 +52,12 @@ void selectionWorkflow(EditorCanvas& c) {
     require(feedback(c,"a","hover"),"Select hover has no feedback");
     click(c,{-65,0});require(c.selected()=="a" && feedback(c,"a","selected"),"Click did not select hovered road");
     require(count(c,"geometry-point")==3 && count(c,"lane-resize")==6,"Single selection controls missing");
+    for(auto* item:c.scene()->items())if(item->data(0).toString()=="geometry-point" ||
+        item->data(0).toString()=="connector-end") {
+        const auto* dot=dynamic_cast<QGraphicsEllipseItem*>(item);
+        require(dot && dot->pen().style()==Qt::NoPen && std::abs(dot->rect().width()*4-8)<1e-7 &&
+                std::abs(dot->rect().height()*4-8)<1e-7,"Geometry grip is not a solid, borderless circle");
+    }
     click(c,{50,0},Qt::ShiftModifier);
     require(c.selection().size()==2 && count(c,"geometry-point")==0 && count(c,"lane-resize")==0,"Group selection exposes single-object grips");
     click(c,{-50,-30},Qt::ShiftModifier);require(c.selection().size()==2,"Shift-empty click cleared selection");
@@ -99,11 +106,23 @@ void laneTabs(EditorCanvas& c) {
             item->data(1).toInt()==kind && item->data(2).toInt()==location) {
             auto* path=dynamic_cast<QGraphicsPathItem*>(item);require(path,"Lane grip is not a path");
             const auto bounds=path->path().boundingRect();
-            require(std::abs(bounds.width()*4-24)<1e-7 && std::abs(bounds.height()*4-8)<1e-7,"Lane grip is not a constant-size rectangle");
+            const double scale=4;
+            require(std::abs(bounds.width()*scale-std::min(24.,polylineLength(
+                laneBoundaryGeometry(before.network.links.front(),kind==8?0:before.network.links.front().lanes.size(),side))*scale/3))<1e-7 &&
+                std::abs(bounds.height()*scale-8)<1e-7,"Link lane tab has the wrong fitted rectangular size");
             const auto& link=before.network.links.front();
             const auto edge=laneBoundaryGeometry(link,kind==8?0:link.lanes.size(),side);
-            const auto at=pointAlong(edge,matchedStation(link.geometry,edge,polylineLength(link.geometry)*location/2));
+            const double railLength=polylineLength(edge), tabLength=bounds.width();
+            const double inset=tabLength/2;
+            const double station=location==0?inset:location==1?railLength/2:railLength-inset;
+            const auto at=pointAlong(edge,station);
             require(std::min(std::abs(bounds.top()-at.y),std::abs(bounds.bottom()-at.y))<1e-7,"Lane grip floats away from road edge");
+            const double first=stationOfClosestPoint(edge,{bounds.left(),at.y});
+            const double last=stationOfClosestPoint(edge,{bounds.right(),at.y});
+            const double expectedFirst=location==0?0.:location==1?railLength/2-inset:railLength-tabLength;
+            const double expectedLast=location==0?tabLength:location==1?railLength/2+inset:railLength;
+            require(std::abs(std::min(first,last)-expectedFirst)<1e-7 &&
+                    std::abs(std::max(first,last)-expectedLast)<1e-7,"Link lane tab extends beyond its road end");
             // The end of the rectangular target is usable, not only a circular centre hit area.
             const auto p=bounds.center()+QPointF(9/4.,0);press=c.mapFromScene(p);found=true;break;
         }
@@ -116,6 +135,29 @@ void laneTabs(EditorCanvas& c) {
         QTest::mouseRelease(c.viewport(),Qt::LeftButton,{},c.mapFromScene(target));
         require(commits==old+1 && h.document().network.links.front().lanes.size()==3,"Lane tab drag did not add one lane");
         h.undo();require(h.document()==before,"Lane tab resize was not one undoable edit");
+    }
+    auto shortLink=fixture();shortLink.network.connectors.clear();
+    shortLink.network.links.front().geometry={{-80,-20},{-73,-20}};
+    for(const int kind:{4,8})for(int location=0;location<3;++location) {
+        h.reset(shortLink);c.setDocument(&h.document());c.select("a");
+        c.setTransform(QTransform::fromScale(4,-4));c.centerOn(-76.5,-20);c.redraw();
+        const auto& link=h.document().network.links.front();
+        const auto edge=laneBoundaryGeometry(link,kind==8?0:link.lanes.size(),DrivingSide::left);
+        QGraphicsPathItem* tab=nullptr;
+        for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize" &&
+            item->data(1).toInt()==kind && item->data(2).toInt()==location)
+            tab=dynamic_cast<QGraphicsPathItem*>(item);
+        require(tab,"Short Link is missing a lane tab");
+        const auto bounds=tab->path().boundingRect();
+        const double railLength=polylineLength(edge),width=bounds.width();
+        require(std::abs(width*4-railLength*4/3)<1e-7,"Short Link lane tabs do not shrink to fit");
+        const double center=stationOfClosestPoint(edge,{bounds.center().x(),edge.front().y});
+        const double first=stationOfClosestPoint(edge,{bounds.left(),edge.front().y});
+        const double last=stationOfClosestPoint(edge,{bounds.right(),edge.front().y});
+        const double inset=width/2;
+        const double expectedCenter=location==0?inset:location==1?railLength/2:railLength-inset;
+        require(std::abs(center-expectedCenter)<1e-7 && std::min(first,last)>=-1e-7 &&
+                std::max(first,last)<=railLength+1e-7,"Short Link lane tab protrudes past the road");
     }
     // A miter moves along both axes when widened. Tabs must follow the rendered edge,
     // including during the drag, rather than jump from a translated approximation on release.
@@ -145,6 +187,14 @@ void connectorEndTabs(EditorCanvas& c) {
         c.setTransform(QTransform::fromScale(4,-4));c.centerOn(0,0);c.redraw();
         const auto boundaries=connectorBoundaries(d.network,d.network.connectors.front());
         const auto surface=connectorSurface(d.network,d.network.connectors.front());
+        bool foundRoadFill=false;
+        for(auto* item:c.scene()->items())if(item->data(0).toString()=="road-surface" &&
+            item->data(1).toString()==QString::fromStdString(d.network.connectors.front().id)) {
+            const auto* road=dynamic_cast<QGraphicsPathItem*>(item);require(road,"Connector surface is not a path");
+            require(road->brush().color()==QColor("#607d8b"),"Default Connector surface is still purple");
+            foundRoadFill=true;
+        }
+        require(foundRoadFill,"Connector surface is missing its display colour");
         for(const int kind:{1,2,5,6}) {
             QGraphicsPathItem* tab=nullptr;
             for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize" && item->data(1).toInt()==kind)
@@ -191,11 +241,23 @@ void connectorEndTabs(EditorCanvas& c) {
                         QLineF(p4.x,p4.y,points[3].x,points[3].y).length()<1e-9,
                         "Connector edge is not the P3–P4 segment");
                 require(line->pen().style()==Qt::SolidLine && !line->pen().isCosmetic() &&
-                        std::abs(line->pen().widthF()-.10)<1e-9,"Connector mouth edge is not a solid road marking");
+                        std::abs(line->pen().widthF()-.10)<1e-9 &&
+                        line->pen().color()==canvasStyle::connectorBoundaryColor(QColor("#607d8b")),
+                        "Connector mouth edge is not a solid, contrasting road boundary");
                 found=true;
             }
             require(found,"P3–P4 is not drawn as a Connector boundary");
         }
+        int outerEdges=0;
+        for(auto* item:c.scene()->items())if(item->data(0).toString()=="road-marking" &&
+            item->data(1).toString()==QString::fromStdString(d.network.connectors.front().id) &&
+            item->data(2).toString()=="edge") {
+            const auto* line=dynamic_cast<QGraphicsPathItem*>(item);require(line,"Connector border is not a path");
+            require(line->pen().color()==canvasStyle::connectorBoundaryColor(QColor("#607d8b")),
+                    "Connector outer edge does not use its contrasting boundary colour");
+            ++outerEdges;
+        }
+        require(outerEdges==2,"Connector does not draw both outer edges in its boundary colour");
     }
     auto shortRoad=fixture();shortRoad.network.connectors.clear();
     shortRoad.network.links[0].geometry={{-9,0},{-2,0}};
@@ -257,7 +319,9 @@ void windowWorkflow(const std::filesystem::path& data,const QString& screenshot)
 int main(int argc,char** argv) {
     QApplication app(argc,argv);
     try {
-        require(argc>1,"Data directory required");EditorCanvas c;c.resize(1000,650);c.show();QTest::qWait(20);
+        require(argc>1,"Data directory required");EditorCanvas c;
+        c.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}});
+        c.resize(1000,650);c.show();QTest::qWait(20);
         selectionWorkflow(c);laneTabs(c);connectorEndTabs(c);markings(c);c.hide();
         windowWorkflow(std::filesystem::path(argv[1]),argc>2?QString::fromUtf8(argv[2]):QString{});
         std::cout<<"PASS selection workflow, hover, rectangular edge tabs and 10 cm markings\n";return 0;

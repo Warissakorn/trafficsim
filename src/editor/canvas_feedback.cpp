@@ -74,15 +74,14 @@ void EditorCanvas::drawObjectFeedback(const std::string& id, const QPainterPath&
 }
 void EditorCanvas::drawGeometryHandles(const std::string& id, const std::vector<Point>& points, bool connector) {
     if (tool_ != Tool::select || selection_.size() != 1 || id != selected() || copyDragging_ || rotationPivot_) return;
-    const double r = 3.5 / std::abs(transform().m11());
+    const double r = 4 / std::abs(transform().m11());
     for (std::size_t i = 0; i < points.size(); ++i) {
         const bool end = connector && (i == 0 || i + 1 == points.size());
         const bool held = end ? endpointDrag_ && *endpointDrag_ == (i == 0) : dragging_ && vertex_ == static_cast<int>(i);
         const bool hovered = hoverVertex_ == static_cast<int>(i);
-        const QColor colour = held ? canvasStyle::active : canvasStyle::selection;
-        QPen pen(colour, hovered || held ? 2 : 1.5); pen.setCosmetic(true);
-        auto* item = scene_.addRect(points[i].x - r, points[i].y - r, 2*r, 2*r, pen,
-                                    QBrush(held || hovered ? colour : QColor(Qt::white)));
+        const QColor colour = held ? canvasStyle::active : hovered ? canvasStyle::hover : canvasStyle::selection;
+        auto* item = scene_.addEllipse(points[i].x - r, points[i].y - r, 2*r, 2*r,
+                                      QPen(Qt::NoPen), QBrush(colour));
         item->setZValue(200012);
         item->setData(0, end ? QStringLiteral("connector-end") : QStringLiteral("geometry-point"));
         item->setData(1, QString::fromStdString(id));

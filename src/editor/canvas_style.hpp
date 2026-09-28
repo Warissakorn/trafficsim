@@ -2,6 +2,7 @@
 #include "../model/network/network.hpp"
 #include <QColor>
 #include <QPen>
+#include <cmath>
 
 namespace trafficsim::canvasStyle {
 inline const QColor selection{"#167b98"};
@@ -10,6 +11,15 @@ inline const QColor active{"#de8618"};
 inline constexpr double markingWidth = 0.10; // metres, including each stroke of a double line
 inline constexpr double laneTabLength = 24; // logical pixels along the road
 inline constexpr double laneTabDepth = 8;   // logical pixels outside the road
+
+inline QColor connectorBoundaryColor(const QColor& surface) {
+    const auto linear = [](double channel) {
+        return channel <= .04045 ? channel / 12.92 : std::pow((channel + .055) / 1.055, 2.4);
+    };
+    const double luminance = .2126 * linear(surface.redF()) + .7152 * linear(surface.greenF()) +
+                             .0722 * linear(surface.blueF());
+    return luminance > .27 ? QColor("#334155") : QColor("#f8fafc");
+}
 
 inline QPen markingPen(const QColor& colour, MarkingType type) {
     QPen pen(colour, markingWidth, Qt::SolidLine, Qt::FlatCap, Qt::MiterJoin);
