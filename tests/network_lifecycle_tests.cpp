@@ -2,6 +2,7 @@
 #include "../src/commands/connector_commands.hpp"
 #include "../src/project/diagnostics.hpp"
 #include <numbers>
+#include "../src/model/network/connector_surface.hpp"
 using namespace trafficsim;
 namespace {
 ProjectDocument turn(double degrees, DrivingSide side=DrivingSide::left, int lanes=1) {
@@ -83,17 +84,17 @@ TEST(lifecycle, perpendicular_authored_mouth_never_collapses_to_a_needle) {
         const auto edges=connectorBoundaries(d.network,c);
         const auto p=edges.front().back(),q=edges.back().back();
         const double perpendicular=std::abs((q.x-p.x)*direction.y-(q.y-p.y)*direction.x);
-        // A square fallback keeps a full-width mouth; a clipped needle cannot pass this.
+        // No angle-triggered cap replacement. Nonparallel ends retain P1-P4; exactly
+        // reversed parallel edge pairs are reported as undefined.
         CHECK(perpendicular>=lanes*3.5*.95);
-        CHECK(std::hypot(q.x-p.x,q.y-p.y)<lanes*3.5*2);
-        const auto fit=connectorMouthFit(d.network,c);
-        CHECK(fit.target.squareFallback);
+        const auto surface=connectorSurface(d.network,c);
+        if(surface.target)CHECK(surface.target->boundaries.size()==static_cast<std::size_t>(lanes+1));
         const auto diagnostics=documentDiagnostics(d);
         bool advisory=false;
         for(const auto& issue:diagnostics)if(issue.code=="WARN_CONNECTOR_ALIGNMENT") {
             CHECK(issue.selectId==c.id);CHECK(issue.severity==DiagnosticSeverity::advisory);advisory=true;
         }
-        CHECK(advisory);validateDocument(d);
+        CHECK(advisory==(!surface.source || !surface.target || surface.selfIntersecting));validateDocument(d);
     }
 }
 TEST(lifecycle, generated_turns_keep_forward_end_legs_on_both_driving_sides) {

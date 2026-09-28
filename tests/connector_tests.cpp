@@ -223,7 +223,7 @@ TEST(connectors, grips_ride_the_middle_of_the_whole_width) {
     auto d=roads();const auto id=addConnectorRange(d,{"in","in-1"},{"out","out-1"},2,2);
     const auto& c=d.network.connectors[0];
     const auto centre=connectorCentreline(d.network,c);
-    const auto boundaries=connectorBoundaries(d.network,c);
+    const auto boundaries=connectorBodyBoundaries(d.network,c);
     CHECK(centre.size()==c.geometry.size());
     // The stored polyline is the first lane's path, so it is an edge of the ribbon, not its middle.
     CHECK(std::hypot(centre.front().x-c.geometry.front().x,centre.front().y-c.geometry.front().y)>1);

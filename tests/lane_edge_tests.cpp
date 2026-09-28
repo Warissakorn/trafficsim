@@ -1,4 +1,5 @@
 #include "test.hpp"
+#include "../src/model/network/connector_surface.hpp"
 #include "../src/commands/appearance_commands.hpp"
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
@@ -82,7 +83,13 @@ TEST(attachments, connector_leading_edges_rebase_without_moving_surviving_paths)
         changeConnectorRange(d,id,2,2,true);
         CHECK(d.network.connectors[0].from.laneId=="a1");CHECK(d.network.connectors[0].to.laneId=="b1");
         auto paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,original.geometry);
-        same(fixedEdge,connectorBoundaries(d.network,d.network.connectors[0]).back());
+        const auto centred=connectorCentreline(d.network,d.network.connectors[0]);
+        const auto body=connectorBodyBoundaries(d.network,d.network.connectors[0]);
+        CHECK(fixedEdge.size()==body.back().size());
+        for(std::size_t j=0;j<centred.size();++j) {
+            test::near(centred[j].x,(body.front()[j].x+body.back()[j].x)/2);
+            test::near(centred[j].y,(body.front()[j].y+body.back()[j].y)/2);
+        } // Resizing retains runtime lane paths; centred drawing edges are re-derived.
         // Reopen must keep the frozen weights; otherwise the old curve drifts during derivation.
         d=parseDocument(Json::parse(documentJson(d).dump()));
         paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,original.geometry);
@@ -190,7 +197,7 @@ TEST(attachments, a_connector_carries_its_own_lane_widths) {
         // the cross-section. Along it this reads 5.529 m, which is the mitered corner's diagonal
         // (width/cos(phi/2)) and not a width error: see M1.12.2, where the reported 24% bulge was
         // measured that way and turned out to be exactly this. Square to the road it is 5.5 m.
-        const auto after=connectorBoundaries(h.document().network,connector(h.document(),id));
+        const auto after=connectorBodyBoundaries(h.document().network,connector(h.document(),id));
         // The BODY only. Each mouth is now built from the Link's own lane boundaries, so an
         // authored width does not reach it and a sample inside a mouth's transition zone is
         // part-way between the two (5.473 m at the sample next to the mouth here). That is
@@ -250,18 +257,11 @@ TEST(attachments, an_authored_width_is_exact_where_the_connector_is_straight) {
     const std::size_t middle=b[0].size()/2;
     test::near(across(b[0],b[1],middle),5.5,1e-9);
     test::near(across(b[1],b[2],middle),6.25,1e-9);
-    // At each mouth it is the LINK's 3 m lane, exactly, because that is where the two roads meet
-    // and a lane laid at 5.5 m cannot both start on the Link's lane middle and end on its edges
-    // (M1.12.3). An author who wants 5.5 m at the joint widens the Link's lane.
-    // Measured ALONG the cut -- the separation of the two edges at the same index -- because that
-    // is what the mouth is: one straight line across the road, on the Link's own cross-section.
-    const auto apart=[](const std::vector<Point>& x,const std::vector<Point>& y,std::size_t j) {
-        return std::hypot(x[j].x-y[j].x,x[j].y-y[j].y);
-    };
-    for(const std::size_t j:{std::size_t{0},b[0].size()-1}) {
-        test::near(apart(b[0],b[1],j),3,1e-9);
-        test::near(apart(b[1],b[2],j),3,1e-9);
-    }
+    // Parallel edges at unequal widths do not intersect. This is reported rather than
+    // quietly switching to the Link widths or fabricating a square cap.
+    const auto surface=connectorSurface(h.document().network,connector(h.document(),id));
+    CHECK(!surface.source);CHECK(!surface.target);CHECK(surface.outline.empty());
+
 }
 // The no-regression assertion this milestone turns on: a Connector that was never given a width
 // must draw exactly what it drew before the field existed.

@@ -157,22 +157,20 @@ insertion, midpoint, straighten and unreferenced reverse through the existing Hi
 Model validation checks imported Connector cross-section lists, not just command inputs.
 Geometry advisories have their own severity and never enter the Run/save blocking checks.
 
-The Network lifecycle regression audit adds `directionAlong` for unambiguous incoming/outgoing
-directions at vertices, validation of collapsed derived lanes, and a full-width square-mouth
-fallback for near-perpendicular or reversed authored arrivals. `connectorMouthFit` reports the
-fallback as well as residual metres; `WARN_CONNECTOR_ALIGNMENT` exposes it without rewriting
-authored geometry or changing runtime topology. See `NETWORK_LIFECYCLE_AUDIT.md` for evidence
-and limits. CTest runs the unfiltered model registry as well as named groups, so new groups
-cannot silently be omitted from CI.
+The Network lifecycle audit supplies `directionAlong` for unambiguous vertex tangents and
+validation of collapsed derived lanes. D80 replaces the old slide/square-mouth correction:
+`connectorCentreline` derives a central axis from the compatible stored first-lane geometry;
+`connectorBodyBoundaries` offsets every lane boundary around it; `connectorSurface` attaches
+those boundaries with P1–P4. Both ends pair by lane index at every angle. `connectorBoundaries`
+returns the same final rails used by paint, so conflict coverage and lane handles no longer
+read a second, legacy strip. Runtime lane paths and project schema are unchanged.
 
-See [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls and file semantics.
-
-The owner-defined four-point display cap is derived in `connector_surface.*`: P3 is projected
-onto the far Link edge, and edge pairing switches at obtuse arrivals. `ConnectorSurface`
-supplies one outline for canvas paint, picking, previews and rotation bounds, plus clipped
-markings. It uses the existing Connector cache key. Runtime/conflict lane strips and their
-alignment diagnostics retain `connectorBoundaries`; no surface is persisted. The exact
-contract and fallback cases are in [CONNECTOR_FOUR_POINT_MOUTH.md](CONNECTOR_FOUR_POINT_MOUTH.md).
+The surface owns its computed mouths and a `selfIntersecting` flag. Singular intersections
+and folds produce `WARN_CONNECTOR_ALIGNMENT`; they never select a square cap. Open markings
+on an undefined join remain selectable. Waiting-line bars use the actual rails' intersection
+with the normal at the authored runtime station. See
+[CONNECTOR_FOUR_POINT_MOUTH.md](CONNECTOR_FOUR_POINT_MOUTH.md) for the contract and
+[NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls/file semantics.
 
 ## Remaining systems
 

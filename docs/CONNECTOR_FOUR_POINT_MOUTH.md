@@ -1,97 +1,102 @@
-# Four-point Connector drawing mouth
+# Centred Connector axis and four-point mouths
 
-Owner-authorized on 2026-09-27 after coordinate examples, including the correction that P3
-projects onto the **Link**, not the Connector. This is a drawing contract, not a claim of
-measured Vissim parity and not a change to vehicle paths or right-of-way.
+Owner instructions of 2026-09-28 (D80) supersede the legacy slide/square fallback and the
+D79 reach cutoff. This is an owner-defined geometry contract, not measured Vissim parity.
 
-## Points and orientation
+## Axis before edges
 
-At each end, `connectorSurface` builds a cap P1 → P2 → P3 → P4:
+`connectorCentreline` derives the whole-carriageway axis from `geometry`, translating each
+point by the blend of the two offsets from the first lane's attachment to the attached range
+centre. It does not read any boundary. `connectorBodyBoundaries` stacks the lane widths from
+minus half the total to plus half the total around that axis, using the existing miter offset
+for body corners. A surplus lane has zero width at the narrower end as before.
 
-1. P1: near intersection of a local Connector edge and a Link range edge.
-2. P2: midpoint between the attached lane range's two Link boundaries at its station.
-   A multi-lane Connector's stored first-lane endpoint is not this midpoint.
-3. P3: nearest point to P2 on the far **Link boundary polyline**. On a straight Link this
-   is the perpendicular projection; on a finite segment it may be its endpoint.
-4. P4: far intersection of the other local Connector edge and Link range edge.
+The serialized schema-17 `geometry` still denotes the first authored lane path. It is not
+silently reinterpreted as a centreline: existing files, lane references, runtime paths and
+path lengths remain compatible. The *derived reference used to construct the road* is now
+central. Changing lane widths does not move that reference.
 
-The local Connector edges use the authored end-leg direction and total end width from
-`connectorLaneWidths`. The Link edges use the selected lane range, `matchedStation`, and
-the directed edge segment at that station. Intersections use the supporting lines; P3 uses
-the finite Link boundary. **One pairing at every angle (D79, owner ruling 2026-09-28):** the
-first rail's edge line meets the range's first Link boundary and the last rail's the last, so
-lanes join in index order. Until then the shorter of the two pairings was used, which switched
-Link edges past 90°; now the shoulder keeps growing instead. Which rail is on which side comes
-from the rails themselves (a legacy strip can run lane 0 on the driver's left).
-Near/far are ordered looking outward from the Connector body (opposite directions at source
-and target). Ties use boundary order, with a metre tolerance to avoid roundoff-driven flips.
+Grips use the axis directly. An interior drag solves the inverse blend on [0,1] by 64 fixed
+bisection steps, so the displayed point reaches the pointer after the command clears frozen
+weights. Both canvas preview and release use that conversion; Undo and file round trips keep
+ordinary stored geometry. The end grips remain P2 at the attached range centre.
 
-For straight equal-width roads of width W and the arrival angle theta between their axes
-(0–180°, measured so that it is acute when the Connector joins the Link's direction):
+## P1–P4 and lane order
 
-- distance(P2,P3) = W/2;
-- distance(P3,P4) = W/2 tan(theta/2): ≤ W/2 up to 90°, W/2·2.41 at 135°, W/2·3.73 at 150°.
+At each end:
 
-The combined reach limit (four times the larger width) is passed at about 152° for one lane;
-from there that end keeps the legacy cap.
+1. P1: near intersection of a local Connector edge and its corresponding Link boundary.
+2. P2: midpoint of the attached Link range's outer boundaries at the attachment station.
+3. P3: nearest point to P2 on the far **finite Link boundary polyline**.
+4. P4: the other outer-edge intersection.
 
-The bound is not asserted for unequal widths, curved Link edges, or a projection clamped at
-a Link endpoint. These are evaluated geometrically, not forced into the equal-width formula.
+The local Connector directions come from the central axis. The normal's sign comes from
+traffic handedness, never from a previously modified rail. Boundary k meets Link boundary
+`first + k` at both ends, before and after 90 degrees. Near/far names and perimeter traversal
+may reverse between ends; **lane pairing never does**.
 
-With the horizontal Link bounded by y=0 and y=4 and P1=(0,0):
+P1/P4 use supporting lines, so an intersection can lie beyond a Link endpoint. Interior
+boundaries use the same intersection rule, with their accumulated Connector lane widths.
+A tapered lane closes onto its neighbour's intersection. There is no alternate cap crossing,
+nearest-cap-vertex substitute, compression floor, square fallback, or maximum-reach cutoff.
 
-| Angle | P2 | P3 | P4 |
-|---|---|---|---|
-| 45° | (-0.828427, 2) | (-0.828427, 4) | (-1.656854, 4) |
-| 89° | (-1.965395, 2) | (-1.965395, 4) | (-3.930789, 4) |
-| 90° | (-2, 2) | (-2, 4) | (-4, 4) |
+For straight equal-width roads of width W, with P3's projection inside the Link edge:
 
-## Rendering and limits
+- P2–P3 = W/2;
+- P3–P4 = W/2 tan(theta/2), at source and target alike.
 
-The existing body rails remain. Their outside endpoints move to P1/P4 (a stretch that runs past
-its cut along the end direction is first pulled back onto it, then the rest bends: past 90° a
-strip can run on across the Link beyond its cut, and bending it back would hook), and P2/P3 become
-additional cap vertices. Caps are reversed as needed to assemble one perimeter, rather than
-being appended in a fixed left/right order. The cap itself is not a painted stop line.
-Coincident adjacent vertices are collapsed.
+| Directed angle | P3–P4 for W = 4 m |
+|---|---:|
+| 45° | 0.828427 m |
+| 90° | 2 m |
+| 120° | 3.464102 m |
+| 150° | 7.464102 m |
+| 170° | 22.860105 m |
+| 179° | 229.177300 m |
 
-**Dividers (M3.2.9b/e, D74, D76).** The mouth also yields one point per Link lane boundary of
-the attached range, in the order of the Connector's own boundaries. The range edges are P1 and P4. Each interior point is built as P1/P4 are: the
-Connector's own divider line -- through the first local edge point, offset square to the end
-direction by the Connector widths of the lanes before it, running along that direction --
-intersected with that Link boundary's tangent line. On straight Links the points therefore lie
-on P1–P4, not on the P1→P2→P3 cap. Where that intersection is missing or reaches further than
-the edges' limit, the older cap crossing (P1→P2→P3) is kept. Interior Connector boundary k ends
-on the point after as many lanes as have width at that end, so a surplus (added/dropped, D73)
-lane closes onto its neighbour's point, or onto P1/P4 when it is outermost. Rails and dividers
-reach their points by the same bend: the shift fades out (smoothstep) over the half of the
-boundary nearest that end, so the other half is untouched. With a mouth present, dividers are
-**not** clipped: one may reach its point across the P2–P3 notch, which is Link surface. Only the
-legacy cap still clips.
+The old four-width cutoff rejected a symmetric mouth above 151.044976 degrees, independently
+of the old 75.522488-degree square fallback. Both are removed. Near 180 degrees the formula
+really does grow without bound; a retained intersection is not a claim of a drivable turn.
+The body-corner miter limit remains; it is not a mouth-angle fallback.
 
-Parallel edge lines have no unique intersection and retain the existing cap. An intersection
-whose combined reach exceeds four times the larger width is also unusable. If the new
-perimeter crosses itself (for example on a short sharp bend), the whole Connector retains
-the prior surface, with absent `source`/`target` mouth descriptors; the four points are never
-silently deleted by loop trimming while still being reported as active.
+## Singular lines and folds
 
-Paint, hit testing, box selection, framing, copy/move/rotation previews and the rotation
-bounds read the same `ConnectorSurface`. The existing value-keyed cache covers the Connector,
-both Links and driving side, so previews and Undo/Redo invalidate the same result.
+Coincident parallel edge lines use the Link attachment station to define a continuous straight
+join. Distinct parallel lines have no intersection: exactly reversed equal-width roads, or
+parallel unequal-width roads, may therefore have no mouth. The numerical parallel tolerance
+is 1e-12 on the unit-direction cross product. Non-finite intersections are also rejected.
+If any required boundary intersection is undefined, that end's mouth is absent; the opposite
+end's computed descriptor and rails are retained. No square cap is fabricated. With an
+undefined end, no closed fill is drawn; open markings remain selectable and in rotation bounds.
 
-The legacy `connectorBoundaries` lane strips still drive conflict coverage and existing
-mouth-fit/alignment diagnostics. Those diagnostics measure the lane strips, not the new
-display cap. The surface is derived only: no project schema, persisted vertices, runtime
-path lengths or conflict-priority rules change in this work.
+A folded perimeter is retained and flagged by `selfIntersecting`. It no longer deletes both
+mouths or swaps in a legacy polygon. `WARN_CONNECTOR_ALIGNMENT` reports missing intersections
+or a fold, in both languages. Authoring remains possible. Conflict coverage still rejects
+non-convex lane quads as unsupported instead of guessing a station through a fold.
+
+## One geometry for consumers
+
+Rails and dividers reach the mouth intersections with a common smoothstep weight measured
+on the **original axis**, supported on the nearest half of that axis. No distance is measured
+from a vertex that was already moved. On straight Link edges the symmetric outer cuts and
+common weights keep the rail midpoint on the controlling axis, including at obtuse arrivals.
+On curved Link edges the mouth need not be symmetric; P2 remains the attached range centre.
+
+`ConnectorSurface` supplies the final boundaries, markings and outline. `connectorBoundaries`
+returns those same boundaries for conflict coverage and lane handles. Paint, selection,
+copy/move previews and rotation bounds use the same surface cache. Runtime lane paths remain
+separate and unchanged; lane-strip overlap stations can change with the corrected drawing.
+Waiting-line bars intersect the actual rails with the normal at their authored path station,
+rather than interpolating longitudinally shifted boundary vertices.
 
 ## Verification
 
-`tests/connector_surface_tests.cpp` checks the agreed numerical examples, perpendicular
-projection onto the Link, the one shoulder formula on both sides of 90° and the reach-limit fallback, source/target ends, rotations,
-reflections, driving sides, a two-lane range, unequal widths, and the parallel fallback.
-`tests/connector_mouth_sweep_tests.cpp` checks every divider end against its Link boundary
-and against its own Connector divider line (offset by the widths before it) over 1,512 cases (target 30–150°, source 0/±45/30/60/90/135°, 1–3 lanes each end, offset
-ranges, unequal widths, both driving sides).
-`tests/connector_surface_ui_tests.cpp` checks actual canvas paint, picking on both sides of
-the cap, Link-dependent cache invalidation and Undo/Redo. Environment-specific execution
-results are recorded in PROGRESS.md; a Linux run is not Windows evidence.
+- `connector_surface_tests`: numerical examples, 5–355° sweep, rotation/reflection, widths.
+- `connector_mouth_tests`: both ends and driving sides, 180 angle/rotation cases through
+  179.9°, signed lane order, midpoint preservation, singular/fold reporting, centred unequal
+  lane ranges, pointer inversion, save/reopen and Undo/Redo.
+- `connector_mouth_sweep_tests`: 1,512 cases with 1–3 lanes, offsets, widths and driving sides;
+  each divider is checked against its **own indexed** Link edge and the central-axis normal.
+- Body-width tests measure `connectorBodyBoundaries`; end-intersection tests measure the final
+  surface. Old assertions about a perpendicular/square legacy cap are superseded.
+- Execution results and platform limitations are in PROGRESS.md. Linux is not Windows evidence.

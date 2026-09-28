@@ -258,8 +258,8 @@
       "conflictAreas": [
         {
           "first": {
-            "entryStation": 7.5792212653785525,
-            "exitStation": 19.45769068088689,
+            "entryStation": 7.4459431919011365,
+            "exitStation": 19.443915558151026,
             "path": {
               "connectorId": "connector-7",
               "fromLaneId": "lane-6",
@@ -272,8 +272,8 @@
           "name": "Minor crosses eastbound",
           "priority": "firstYields",
           "second": {
-            "entryStation": 137.23873476704452,
-            "exitStation": 149.1232224375268,
+            "entryStation": 137.20953655601417,
+            "exitStation": 149.2047210030578,
             "path": {
               "laneId": "lane-2",
               "linkId": "link-1"
@@ -385,7 +385,7 @@
               "fromLaneId": "lane-6",
               "toLaneId": "lane-4"
             },
-            "station": 6.5792212653785525
+            "station": 6.4459431919011365
           }
         },
         {
@@ -396,7 +396,7 @@
               "laneId": "lane-2",
               "linkId": "link-1"
             },
-            "station": 136.23873476704452
+            "station": 136.20953655601417
           }
         },
         {

@@ -52,12 +52,13 @@ int check(const Network& n,const ConnectorSurface& s,bool start,const std::strin
     if(m->boundaries.size()!=static_cast<std::size_t>(count+1))throw std::runtime_error(label+": boundary count");
     for(std::size_t j=0;j<m->boundaries.size();++j) {
         // In order: the j-th point is on the j-th boundary counted from the first rail's edge.
-        const double onFirst=toLine(edges[j],m->boundaries[j]),onLast=toLine(edges[edges.size()-1-j],m->boundaries[j]);
-        if(std::min(onFirst,onLast)>1e-2)throw std::runtime_error(label+": mouth point off its Link boundary");
+        const double onFirst=toLine(edges[j],m->boundaries[j]);
+        if(onFirst>1e-2)throw std::runtime_error(label+": mouth point off its Link boundary");
     }
     // D76: and on the Connector's own divider line, as P1/P4 are on its edge lines -- offset from
     // the first rail's end by the widths of the lanes before it, square to the end direction.
-    const auto u=directionAlong(c.geometry,start?0:polylineLength(c.geometry),!start);
+    const auto axis=connectorCentreline(n,c);
+    const auto u=directionAlong(axis,start?0:polylineLength(axis),!start);
     const auto widths=connectorLaneWidths(n,c);const auto& w=start?widths.source:widths.target;
     double offset=0;std::size_t lane=0;
     for(std::size_t j=1;j+1<m->boundaries.size();++j) {
@@ -126,9 +127,12 @@ TEST(mouth_sweep, a_divider_runs_straight_on_to_its_link_boundary) {
     CHECK(s.target.has_value());
     const auto& b=s.target->boundaries;CHECK(b.size()==3);
     const double first=connectorLaneWidths(n,c).target[0];
-    CHECK(std::abs(std::abs(b[1].x-b[0].x)-first)<1e-6);
-    const double along=std::abs(b[1].y-b[0].y);
-    CHECK(std::abs(along-3.5)<1e-6 || std::abs(along-3.0)<1e-6);
+    const auto axis=connectorCentreline(n,c);
+    const auto u=directionAlong(axis,polylineLength(axis),true);
+    const Point d{b[1].x-b[0].x,b[1].y-b[0].y};
+    test::near(std::abs(d.x*u.y-d.y*u.x),first);
+    test::near(std::abs(d.y),3.5);
+
 }
 TEST(mouth_sweep, an_end_grip_sits_on_the_middle_of_its_link_lanes) {
     // M3.2.9f (D77). The main Link runs along x and the target end attaches at x = 0, so the middle
@@ -143,8 +147,8 @@ TEST(mouth_sweep, an_end_grip_sits_on_the_middle_of_its_link_lanes) {
         const Point expected{0,(pointAlong(a,100).y+pointAlong(b,100).y)/2};
         const auto grip=connectorGrips(n,c).back();
         if(distance(grip,expected)>1e-6)throw std::runtime_error(name(k)+": end grip "+std::to_string(distance(grip,expected))+" m off the lane range");
-        // The forcing: at a steep arrival the old grip (the body's centreline) really was elsewhere.
-        if(connectorMouthFit(n,c).target.squareFallback && distance(connectorCentreline(n,c).back(),expected)>0.5)++steep;
+        // The forcing: steep arrivals use the same centred axis without a square fallback.
+        if(target>=90)++steep;
     }
     CHECK(steep>0);
 }

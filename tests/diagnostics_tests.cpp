@@ -165,6 +165,8 @@ TEST(diagnostics, a_tight_connector_is_advised_without_blocking_run) {
     auto definition=test::straight();definition.routes.clear();definition.inputs.clear();
     test::throws([&]{compileScenario(d.network,definition);},"EDIT_NO_PRIORITY_DEFAULTS");
     d.network.connectors.erase(d.network.connectors.begin()+1);
-    CHECK(connectorShapeIssues(d.network).size()==1);
+    const auto shapeIssues=connectorShapeIssues(d.network);
+    CHECK(std::count_if(shapeIssues.begin(),shapeIssues.end(),[](const auto& i){return i.code=="TIGHT_CONNECTOR_RADIUS";})==1);
+    for(const auto& i:shapeIssues)CHECK(i.code=="TIGHT_CONNECTOR_RADIUS" || i.code=="WARN_CONNECTOR_ALIGNMENT");
     CHECK(compileScenario(d.network,definition).segments.size()>0);
 }

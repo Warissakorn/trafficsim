@@ -148,19 +148,11 @@ std::size_t centredLaneRange(std::size_t focus, int count, std::size_t laneCount
 struct ConnectorLaneWidths { std::vector<double> source, target; };
 ConnectorLaneWidths connectorLaneWidths(const Network&, const Connector&);
 std::vector<std::vector<Point>> connectorBoundaries(const Network&, const Connector&);
-// What the lane-strip mouth correction did at each end, in metres. The display-only four-point
-// cap is derived separately in connector_surface.hpp; these fits still describe conflict strips.
-// `shift` is how far each boundary slid ALONG its own offset curve to land on the Link's
-// cross-section, `zone` the length over which that slide decays back to nothing, and `residual`
-// the part of the slide a Connector too short to carry it did not get -- the distance its mouth
-// still stands off the Link. A residual above zero is the honest report that the arrival is too
-// oblique for the room available, not a defect.
-struct ConnectorMouthFit { std::vector<double> shift; double zone{},residual{}; bool squareFallback{}; };
-struct ConnectorMouthFits { ConnectorMouthFit source,target; };
-ConnectorMouthFits connectorMouthFit(const Network&, const Connector&);
-// The same idea for a connector: the middle of its whole width, point for point with its
-// stored geometry, which is the first lane's path.
+// The authoritative whole-carriageway axis derived from the stored first-lane geometry.
+// Its points drive edges and grips; it is never reconstructed from the mouth-adjusted rails.
 std::vector<Point> connectorCentreline(const Network&, const Connector&);
+// Centred body offsets before P1-P4 attachment. connectorBoundaries returns the final rails.
+std::vector<std::vector<Point>> connectorBodyBoundaries(const Network&, const Connector&);
 // What to draw on a Connector: its two outer edges, plus an interior divider for each pair of
 // adjacent lane paths, trimmed to the stretch where those two lanes are genuinely side by side.
 // Where a range merges, the divider stops instead of running down the middle of the single lane

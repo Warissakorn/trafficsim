@@ -118,16 +118,23 @@ TEST(tjunction, a_full_receiving_lane_keeps_the_crossing_turn_out_of_the_crossin
     CHECK(r.majorClamps == 0);
 }
 #include "../tools/t_junction_sweep.hpp"
-TEST(tjunction, the_archived_sweep_metadata_still_describes_the_fixture) {
+TEST(tjunction, the_archived_sweep_metadata_keeps_its_original_geometry) {
     // M3.2.7b: docs/evidence/m3.2.7-sweep-metadata.json was committed before the sweep ran. Its
-    // `build` line records where it ran and is not compared; everything else must still hold, or
-    // the archived rows describe a drawing that no longer exists.
+    // `build` line records where it ran and is not compared. D80 preserves its original
+    // input separately; the old results are not evidence for the new mouth geometry.
     std::ifstream f(test::root() / "docs/evidence/m3.2.7-sweep-metadata.json");
     CHECK(f.good());
     auto archived = nlohmann::ordered_json::parse(f);
     CHECK(archived.contains("build")); // the forcing: the file really is the tool's output
     archived.erase("build");
-    CHECK(archived == sweep::fixtureMetadata(test::root()));
+    // D80 changes measured conflict/line stations. Keep the old evidence tied to its
+    // exact archived input; never rewrite old metadata to claim a new geometry was measured.
+    const auto oldHash=sweep::fnv1a(test::root()/"docs/evidence/m3.2.7-original-project.traffic.json");
+    CHECK(archived.at("projectHash")==oldHash);
+    auto current=sweep::fixtureMetadata(test::root());
+    CHECK(current.at("projectHash")!=oldHash); // the geometry really changed
+    current["projectHash"]=oldHash;
+    CHECK(archived==current); // timing, volumes, catalogs, seeds and rules still agree
     // A changed catalog would be caught: the hash reads the file, not its name.
     CHECK(sweep::fnv1a(test::root() / "data/vehicle-types/car.json") != sweep::fnv1a(test::root() / "data/vehicle-types/heavy-vehicle.json"));
 }

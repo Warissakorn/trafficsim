@@ -40,7 +40,8 @@ std::optional<Point> rotationCentre(const Network& n,const std::vector<std::stri
         include(laneBoundaryGeometry(l,l.lanes.size(),n.drivingSide));
     }
     for(const auto& c:n.connectors)if(rotating.contains(c.id)) {
-        include(connectorSurface(n,c).outline);
+        const auto s=connectorSurface(n,c);include(s.outline);
+        if(s.outline.empty())for(const auto& b:s.boundaries)include(b);
     }
     if(!found)return {};
     return Point{std::midpoint(low.x,high.x),std::midpoint(low.y,high.y)};

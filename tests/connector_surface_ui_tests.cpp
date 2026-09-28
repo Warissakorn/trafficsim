@@ -46,10 +46,21 @@ int main(int argc,char** argv) {
         const auto after=verify(canvas,history.document());require(before!=after,"Angle edit did not change cap");
         history.undo();require(verify(canvas,history.document())==before,"Undo left stale surface cache");
         history.redo();require(verify(canvas,history.document())==after,"Redo left stale surface cache");
-        for(double angle:{90.,91.,135.}) {
+        for(double angle:{90.,91.,135.,170.,179.}) {
             doc.network=surface_fixture::arrival(angle);verify(canvas,doc);
         }
+        doc.network=surface_fixture::arrival(180);
+        canvas.setDocument(&doc);canvas.redraw();
+        const auto singular=connectorSurface(doc.network,doc.network.connectors.front());
+        require(singular.outline.empty(),"Singular mouth fabricated a closed cap");
+        for(const auto& marking:singular.markings) {
+            const auto p=pointAlong(marking.geometry,polylineLength(marking.geometry)/2);
+            const auto hits=canvas.hitObjects(p);
+            require(std::any_of(hits.begin(),hits.end(),[](const auto& h){return h.first=="c";}),
+                    "Singular Connector's open rail could not be selected");
+        }
         // Same Connector, changed Link: exercise the dependency in the cache key.
+        doc.network=surface_fixture::arrival(135);
         doc.network.links.front().lanes.front().width=5;
         verify(canvas,doc);
         if(argc>1) {
