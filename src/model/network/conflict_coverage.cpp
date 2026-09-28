@@ -164,6 +164,30 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
         const auto strip = stripOf(n, point.path);
         if (!strip || strip->left.size() != strip->base.size() || strip->right.size() != strip->base.size()) return std::nullopt;
         if (point.station < 0 || point.station > polylineLength(strip->base)) return std::nullopt;
+        if(!point.path.connectorId.empty()) {
+            // P1-P4 bends boundary vertices longitudinally. Matching their segment parameter
+            // no longer puts a waiting bar on the normal at its authored runtime station.
+            const auto origin=pointAlong(strip->base,point.station);
+            const auto u=directionAlong(strip->base,point.station,false);
+            const auto meet=[&](const std::vector<Point>& edge)->std::optional<Point> {
+                std::optional<Point> best;double nearest=INFINITY;
+                const auto guess=pointAlong(edge,matchedStation(strip->base,edge,point.station));
+                for(std::size_t i=1;i<edge.size();++i) {
+                    const auto d=sub(edge[i],edge[i-1]);const double denominator=d.x*u.x+d.y*u.y;
+                    if(std::abs(denominator)<1e-12)continue;
+                    const auto offset=sub(origin,edge[i-1]);
+                    const double t=(offset.x*u.x+offset.y*u.y)/denominator;
+                    if(t<0 || t>1)continue;
+                    const Point hit{edge[i-1].x+t*d.x,edge[i-1].y+t*d.y};
+                    const double distance=std::hypot(hit.x-guess.x,hit.y-guess.y);
+                    if(distance<nearest){nearest=distance;best=hit;}
+                }
+                return best;
+            };
+            const auto a=meet(strip->left),b=meet(strip->right);
+            if(!a || !b)return std::nullopt;
+            return std::pair{*a,*b};
+        }
         return std::pair{pointAlong(strip->left, matchedStation(strip->base, strip->left, point.station)),
                          pointAlong(strip->right, matchedStation(strip->base, strip->right, point.station))};
     } catch (const std::exception&) { return std::nullopt; }

@@ -1,4 +1,5 @@
 #include "network.hpp"
+#include "connector_surface.hpp"
 #include "right_of_way.hpp"
 #include "../../core/validate.hpp"
 #include <cmath>
@@ -244,9 +245,8 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
         std::vector<ConnectorPath> paths;
         try { paths=connectorPaths(network,c); } catch(const std::exception&) { continue; }
         try {
-            const auto fit=connectorMouthFit(network,c);
-            if(fit.source.squareFallback || fit.target.squareFallback ||
-               fit.source.residual>.01 || fit.target.residual>.01)
+            const auto surface=connectorSurface(network,c);
+            if(!surface.source || !surface.target || surface.selfIntersecting)
                 issues.push_back({"WARN_CONNECTOR_ALIGNMENT","connectors["+std::to_string(i)+"]"});
         } catch(const std::exception&) { continue; }
         // The same widths connectorBoundaries draws from, so an authored width is measured

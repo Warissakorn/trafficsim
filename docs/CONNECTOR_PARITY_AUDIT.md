@@ -115,6 +115,10 @@ itself that is no longer true, or a gap in behaviour that no test covers.
 
 ### 3.1 The recorded description of the mouth is stale in two files
 
+> Superseded by D80 (2026-09-28): the centred-axis/P1–P4 pipeline removes the legacy slide,
+> square fallback and reach cutoff. See CONNECTOR_FOUR_POINT_MOUTH.md. The audit below is
+> historical, not the current geometry contract.
+
 `docs/PROGRESS.md:272` (entry "2026-09-18 — The Connector mouth is a plain square end again")
 states that `connectorBoundaries` stops at `offsetGeometry` and that *"the whole end-cut block is
 gone: the fixed-distance cut …, the bounded re-miter …, the fold test …, and the

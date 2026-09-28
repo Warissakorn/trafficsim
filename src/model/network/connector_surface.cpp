@@ -16,51 +16,30 @@ bool same(Point a,Point b) { return norm(sub(a,b))<1e-9; }
 void append(std::vector<Point>& out,Point p) { if(out.empty() || !same(out.back(),p))out.push_back(p); }
 std::optional<Point> intersection(Point a,Point u,Point b,Point v) {
     const double divisor=cross(u,v);
-    if(std::abs(divisor)<1e-8)return {};
+    if(std::abs(divisor)<1e-12) {
+        if(std::abs(cross(sub(b,a),u))<1e-9)return b;
+        return {};
+    }
     const auto p=add(a,mul(u,cross(sub(b,a),v)/divisor));
     if(!std::isfinite(p.x) || !std::isfinite(p.y))return {};
     return p;
 }
-// Where the line through `a` along `u` crosses the segment p-q, if it does.
-std::optional<Point> onSegment(Point a,Point u,Point p,Point q) {
-    const auto v=sub(q,p);const double d=cross(v,u);
-    if(std::abs(d)<1e-12)return {};
-    const double t=cross(sub(a,p),u)/d;
-    if(t<-1e-9 || t>1+1e-9)return {};
-    return add(p,mul(v,std::clamp(t,0.,1.)));
-}
-// Move one end of a boundary onto `target`, fading the shift out over the half of its length
-// nearest that end, so each end is bent independently and the far half is left alone.
-void bend(std::vector<Point>& g,Point target,bool start) {
+// All boundaries use the original centre-axis stations, never their own already moved
+// vertices. A common weight preserves the body's centre when the two cuts are symmetric.
+// Both ends have disjoint half-axis support; no clipping or angle-specific square cut.
+void reach(std::vector<Point>& g,Point target,const std::vector<Point>& axis,bool start) {
     if(g.size()<2)return;
     const auto delta=sub(target,start?g.front():g.back());
-    const double half=polylineLength(g)/2;
+    const double half=polylineLength(axis)/2;
+    if(half<=0)return;
     double along=0;
     for(std::size_t k=0;k<g.size();++k) {
         const std::size_t i=start?k:g.size()-1-k;
-        if(k)along+=norm(sub(g[i],g[start?i-1:i+1]));
+        if(k)along+=norm(sub(axis[i],axis[start?i-1:i+1]));
         if(along>=half)break;
         const double x=1-along/half,w=x*x*(3-2*x);
         g[i]=add(g[i],mul(delta,w));
     }
-}
-// Bring one end of a boundary to its cut. The stretch running past the cut along the end
-// direction (`outward`, pointing off the Connector) is first pulled back onto the line through
-// the cut square to it; the rest is then bent. Past 90 degrees a lane strip can run on across the
-// Link beyond its cut (D79), and bending that end back would hook the line over itself.
-void reach(std::vector<Point>& g,Point target,Point outward,bool start) {
-    const std::size_t count=g.size();
-    const auto at=[&](std::size_t k)->Point&{return g[start?k:count-1-k];};
-    const auto past=[&](Point p){return dot(sub(p,target),outward);};
-    std::size_t beyond=0;
-    while(beyond<count && past(at(beyond))>1e-9)++beyond;
-    if(beyond>0 && beyond<count) {
-        const Point in=at(beyond),out=at(beyond-1);
-        const double t=past(in)/(past(in)-past(out));
-        const Point cut=add(in,mul(sub(out,in),t));
-        for(std::size_t k=0;k<beyond;++k)at(k)=cut;
-    }
-    bend(g,target,start);
 }
 struct Edge { std::vector<Point> geometry; Point at,along; };
 // The Link lane range an end is attached to, and its boundaries' lines at the attachment station.
@@ -81,7 +60,7 @@ Edge rangeEdge(const Network& n,const Range& r,std::size_t i,bool start) {
     return Edge{std::move(g),p,u};
 }
 std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
-                                  const std::vector<std::vector<Point>>& rails,bool start) {
+                                  const std::vector<Point>& axis,bool start) {
     const auto range=attachedRange(n,c,start);
     if(!range)return {};
     const auto first=range->first;const int count=range->count;
@@ -92,23 +71,15 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
     const auto& w=start?widths.source:widths.target;
     const double width=std::accumulate(w.begin(),w.end(),0.);
     if(width<=1e-9)return {};
-    const auto u=directionAlong(c.geometry,start?0:polylineLength(c.geometry),!start);
-    Point normal{-u.y,u.x};
-    const auto end=[&](const auto& g){return start?g.front():g.back();};
-    // Keep boundary indices attached to the body's actual two rails, even on a reversed arrival.
-    if(dot(normal,sub(end(rails.back()),end(rails.front())))<0)normal=mul(normal,-1);
+    const auto u=directionAlong(axis,start?0:polylineLength(axis),!start);
+    const double sign=n.drivingSide==DrivingSide::left?-1.:1.;
+    const Point normal{-sign*u.y,sign*u.x};
     const std::array<Point,2> own{add(centre,mul(normal,-width/2)),add(centre,mul(normal,width/2))};
-    // One construction at every angle (owner ruling, D79): the first rail's edge line meets the
-    // range's first Link boundary and the last meets the last, so the Connector's lanes join the
-    // Link's in index order. Past 90 degrees the shoulder keeps growing as W/2*tan(theta/2)
-    // rather than switching edges; past the reach limit below the legacy cap takes over. The
-    // sides come from the rails, not the driving side: a legacy strip may run lane 0 on the
-    // driver's left, and a cut on the other side would cross the rails.
+    // Boundary k always meets Link boundary first+k, at BOTH ends and every angle.
     const auto a=intersection(own[0],u,edges[0].at,edges[0].along);
     const auto b=intersection(own[1],u,edges[1].at,edges[1].along);
     if(!a || !b)return {};
     const std::array<Point,2> cuts{*a,*b};
-    if(norm(sub(*a,centre))+norm(sub(*b,centre))>4*std::max(width,norm(sub(edges[1].at,edges[0].at))))return {};
     const Point outward=mul(u,start?-1:1);
     const int near=dot(sub(cuts[0],centre),outward)<=dot(sub(cuts[1],centre),outward)+1e-9?0:1;
     const int far=1-near;
@@ -116,7 +87,6 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
     const Point projection=pointAlong(g,stationOfClosestPoint(g,centre));
     ConnectorMouth result{{cuts[near],centre,projection,cuts[far]},near==0,{}};
     // cuts[0] is the first rail's end and lies on edges[0]; interior boundaries follow in order.
-    const std::array<Point,3> cap{result.points[0],result.points[1],result.points[2]};
     result.boundaries.push_back(cuts[0]);
     double offset=0;std::size_t nextLane=0;
     for(int j=1;j<count;++j) {
@@ -127,12 +97,7 @@ std::optional<ConnectorMouth> mouth(const Network& n,const Connector& c,
         while(nextLane<w.size() && w[nextLane]<=0)++nextLane;
         if(nextLane<w.size())offset+=w[nextLane++];
         std::optional<Point> hit=intersection(add(own[0],mul(normal,offset)),u,b.at,b.along);
-        if(hit && norm(sub(*hit,centre))>4*std::max(width,norm(sub(edges[1].at,edges[0].at))))hit.reset();
-        for(int s=0;s<2 && !hit;++s)hit=onSegment(b.at,b.along,cap[s],cap[s+1]);
-        // A curved Link can bend a boundary's local tangent away from the cap; the nearest cap
-        // vertex keeps the divider on the mouth rather than dropping it.
-        if(!hit)hit=*std::min_element(cap.begin(),cap.end(),[&](Point x,Point y){
-            return norm(sub(x,b.at))<norm(sub(y,b.at));});
+        if(!hit)return {}; // This boundary is singular; do not invent a lane intersection.
         result.boundaries.push_back(*hit);
     }
     result.boundaries.push_back(cuts[1]);
@@ -169,49 +134,20 @@ bool simple(const std::vector<Point>& ring) {
     }
     return true;
 }
-bool contains(const std::vector<Point>& ring,Point p) {
-    bool inside=false;
-    for(std::size_t i=0,j=ring.size()-1;i<ring.size();j=i++) {
-        const auto a=ring[j],b=ring[i],v=sub(b,a),w=sub(p,a);
-        if(std::abs(cross(v,w))<1e-8 && dot(w,v)>=0 && dot(w,v)<=dot(v,v))return true;
-        if((a.y>p.y)!=(b.y>p.y) && p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)inside=!inside;
-    }
-    return inside;
-}
-void clippedMarking(std::vector<ConnectorMarking>& result,const ConnectorMarking& marking,
-                    const std::vector<Point>& ring) {
-    std::vector<Point> run;
-    const auto flush=[&] { if(run.size()>1)result.push_back({run,marking.edge,marking.type});run.clear(); };
-    for(std::size_t i=1;i<marking.geometry.size();++i) {
-        const auto a=marking.geometry[i-1],b=marking.geometry[i],v=sub(b,a);
-        std::vector<double> cuts{0,1};
-        for(std::size_t j=0;j<ring.size();++j)
-            if(auto t=crossing(a,b,ring[j],ring[(j+1)%ring.size()]))cuts.push_back(*t);
-        std::sort(cuts.begin(),cuts.end());
-        for(std::size_t j=1;j<cuts.size();++j) {
-            if(cuts[j]-cuts[j-1]<1e-10)continue;
-            if(contains(ring,add(a,mul(v,(cuts[j-1]+cuts[j])/2)))) {
-                append(run,add(a,mul(v,cuts[j-1])));append(run,add(a,mul(v,cuts[j])));
-            } else flush();
-        }
-    }
-    flush();
-}
+
 }
 ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
-    const auto original=connectorBoundaries(n,c);
-    auto rails=original;
+    auto rails=connectorBodyBoundaries(n,c);
+    const auto axis=connectorCentreline(n,c);
     ConnectorSurface result;
-    result.source=mouth(n,c,rails,true);result.target=mouth(n,c,rails,false);
+    result.source=mouth(n,c,axis,true);result.target=mouth(n,c,axis,false);
     const auto widths=connectorLaneWidths(n,c);
     const auto apply=[&](const std::optional<ConnectorMouth>& m,bool start) {
         if(!m)return;
-        const auto u=directionAlong(c.geometry,start?0:polylineLength(c.geometry),!start);
-        const Point outward=mul(u,start?-1:1);
         // The rails reach P1/P4 exactly as the dividers reach their points, so the body stays
         // one shape and no divider runs outside a rail that moved only its last vertex.
-        reach(rails.front(),m->points[m->firstBoundaryNear?0:3],outward,start);
-        reach(rails.back(),m->points[m->firstBoundaryNear?3:0],outward,start);
+        reach(rails.front(),m->points[m->firstBoundaryNear?0:3],axis,start);
+        reach(rails.back(),m->points[m->firstBoundaryNear?3:0],axis,start);
         // Each interior boundary ends on the Link boundary it belongs to: the one after as many
         // lanes as have width at this end. A surplus lane (width 0) adds none, so a taper closes
         // onto its neighbour's point, which for an outermost surplus lane is P1 or P4 (D73).
@@ -219,25 +155,14 @@ ConnectorSurface connectorSurface(const Network& n,const Connector& c) {
         std::size_t lanes=0;
         for(std::size_t k=1;k+1<rails.size();++k) {
             if(w[k-1]>0)++lanes;
-            reach(rails[k],m->boundaries[std::min(lanes,m->boundaries.size()-1)],outward,start);
+            reach(rails[k],m->boundaries[std::min(lanes,m->boundaries.size()-1)],axis,start);
         }
     };
     apply(result.source,true);apply(result.target,false);
-    result.outline=outline(rails,result.source,result.target);
-    // A short/bent Connector can run out of room before a local edge intersection. Do not
-    // silently trim P2/P3 away or draw a folded polygon: retain the established surface.
-    if(!simple(result.outline)) {
-        result.source.reset();result.target.reset();rails=original;
-        result.outline=trimSelfIntersections(outline(rails,{},{}));
-    }
-    // A divider bent onto its mouth point ends ON the cap, and may reach it across the P2-P3
-    // notch, which is Link surface: clipping would cut that last stretch off. Only the legacy
-    // cap, where dividers are not placed, still needs clipping to keep them on the surface.
-    const bool placed=result.source || result.target;
-    for(const auto& marking:connectorMarkings(c,rails)) {
-        if(marking.edge || placed)result.markings.push_back(marking);
-        else clippedMarking(result.markings,marking,result.outline);
-    }
+    if(result.source && result.target)result.outline=outline(rails,result.source,result.target);
+    result.selfIntersecting=!result.outline.empty() && !simple(result.outline);
+    result.boundaries=rails;
+    result.markings=connectorMarkings(c,rails);
     return result;
 }
 std::optional<Point> connectorRangeCentre(const Network& n,const Connector& c,bool start) {

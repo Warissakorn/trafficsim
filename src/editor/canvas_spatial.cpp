@@ -1,6 +1,7 @@
 #include "canvas.hpp"
 #include <QGraphicsPathItem>
 #include <QPainter>
+#include <QPainterPathStroker>
 #include <cmath>
 namespace trafficsim {
 std::optional<std::pair<Point,int>> EditorCanvas::headPosition(const NetworkSignalHead& head) const {
@@ -22,9 +23,21 @@ QPainterPath EditorCanvas::objectShape(const std::string& id) const {
     for(const auto& l:document_->network.links)if(l.id==id)
         return polygon(laneBoundaryGeometry(l,0,document_->network.drivingSide),laneBoundaryGeometry(l,l.lanes.size(),document_->network.drivingSide));
     for(const auto& c:document_->network.connectors)if(c.id==id) {
-        const auto& ring=cachedSurface(c).outline;
+        const auto& drawing=cachedSurface(c);const auto& ring=drawing.outline;
         QPainterPath shape;
-        if(ring.empty())return shape;
+        if(ring.empty()) {
+            // A singular mouth has no fabricated square cap, but its open rails remain
+            // selectable through hitObjects' existing stroke tolerance.
+            for(const auto& marking:drawing.markings) {
+                if(marking.geometry.empty())continue;
+                shape.moveTo(marking.geometry.front().x,marking.geometry.front().y);
+                for(std::size_t i=1;i<marking.geometry.size();++i)shape.lineTo(marking.geometry[i].x,marking.geometry[i].y);
+            }
+            // QPainterPath::contains implicitly closes an open subpath. Return only a
+            // thin stroked region, otherwise selection could hit an invisible polygon.
+            QPainterPathStroker stroke;stroke.setWidth(1/std::abs(transform().m11()));
+            return stroke.createStroke(shape);
+        }
         shape.moveTo(ring.front().x,ring.front().y);
         for(std::size_t i=1;i<ring.size();++i)shape.lineTo(ring[i].x,ring[i].y);
         shape.closeSubpath();shape.setFillRule(Qt::WindingFill);return shape;

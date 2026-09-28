@@ -50,10 +50,11 @@ TEST(mouths, four_point_mouth_keeps_one_construction_beyond_90_degrees) {
         CHECK(distance(p[2],p[3])>2);
         included(drawing,*drawing.target);
     }
-    // A shoulder past the reach limit (four times the width) is unusable: the legacy cap stays.
-    const auto n=surface_fixture::arrival(170);
+    // No reach cutoff: an almost reversed arrival retains its actual, long shoulder.
+    const auto n=surface_fixture::arrival(179);
     const auto drawing=connectorSurface(n,n.connectors.front());
-    CHECK(!drawing.target);
+    CHECK(drawing.target.has_value());
+    test::near(distance(drawing.target->points[2],drawing.target->points[3]),2*std::tan(179*std::numbers::pi/360));
     for(auto p:drawing.outline)CHECK(std::isfinite(p.x) && std::isfinite(p.y));
 }
 TEST(mouths, four_point_source_and_target_follow_rotation_and_reflection) {
@@ -75,10 +76,10 @@ TEST(mouths, four_point_source_and_target_follow_rotation_and_reflection) {
         included(drawing,*transformed);
     }
 }
-TEST(mouths, parallel_mouth_retains_the_existing_cap) {
+TEST(mouths, coincident_parallel_mouth_uses_the_attachment_station) {
     const auto n=surface_fixture::arrival(0);
     const auto drawing=connectorSurface(n,n.connectors.front());
-    CHECK(!drawing.source);CHECK(!drawing.target);
+    CHECK(drawing.source);CHECK(drawing.target);
     const auto boundaries=connectorBoundaries(n,n.connectors.front());
     CHECK(drawing.outline.front()==boundaries.front().front());
     for(auto p:drawing.outline)CHECK(std::isfinite(p.x) && std::isfinite(p.y));
@@ -90,7 +91,6 @@ TEST(mouths, four_point_mouth_sweep_follows_one_formula_at_every_angle) {
         const auto n=surface_fixture::arrival(degrees);
         const auto drawing=connectorSurface(n,n.connectors.front());
         const double theta=degrees<180?degrees:360-degrees; // arrival angle to the Link axis
-        if(theta>=155){CHECK(!drawing.target);continue;} // past the reach limit
         CHECK(drawing.target.has_value());++placed;
         const auto& p=drawing.target->points;
         test::near(p[1].x,p[2].x);
@@ -98,7 +98,7 @@ TEST(mouths, four_point_mouth_sweep_follows_one_formula_at_every_angle) {
         test::near(distance(p[2],p[3]),2*std::tan(theta*std::numbers::pi/360));
         included(drawing,*drawing.target);
     }
-    CHECK(placed==60);
+    CHECK(placed==70);
 }
 TEST(mouths, four_point_mouth_uses_the_attached_lane_range_centre) {
     auto n=surface_fixture::arrival(45);
@@ -121,5 +121,7 @@ TEST(mouths, four_point_mouth_handles_unequal_widths_without_claiming_the_half_w
     const auto drawing=connectorSurface(n,n.connectors.front());CHECK(drawing.target.has_value());
     const auto& p=drawing.target->points;
     test::near(p[1].x,p[2].x);test::near(distance(p[1],p[2]),2); // Link half-width, not 1.5.
-    included(drawing,*drawing.target);
+    CHECK(!drawing.source);CHECK(drawing.outline.empty());
+    near(drawing.boundaries.front().back(),drawing.target->boundaries.front());
+    near(drawing.boundaries.back().back(),drawing.target->boundaries.back());
 }

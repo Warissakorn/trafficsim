@@ -59,28 +59,36 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
-## 2026-09-28 — M3.2.9h: one P1–P4 construction at every angle (D79)
+## 2026-09-28 — D80: central reference and one P1–P4 pipeline
 
-- The owner asked for P1–P4 without a separate case past 90°. The mouth used to try both
-  pairings of Connector and Link edges and keep the shorter, which switched Link edges past 90°.
-  Now the first rail's edge line always meets the range's first Link boundary (index order), and
-  the shoulder keeps growing as W/2·tan(θ/2) (4 m lane: 2.00 m at 90°, 4.83 m at 135°, 7.46 m at
-  150°). Past about 152° the existing reach limit (4× width) hands that end to the legacy cap.
-  Offered the alternative (same edge side geometrically, today's picture); the owner chose index
-  order.
-- Which rail is on which side stays read off the rails. Deriving it from the driving side was
-  tried and reverted: legacy strips at an obtuse end run lane 0 on the driver's left, so the cut
-  crossed the rails and whole surfaces fell back (1,512-case sweep: 2,150 mouths, 367 Connectors
-  with neither end, against 2,928 / 27 before).
-- New in the rail/divider step: the stretch of a boundary that runs past its cut along the end
-  direction is pulled back onto the cut before the bend. Past 90° a strip can run across the Link
-  beyond its cut and the bend alone hooked it (a divider ended 1.83 m off its point; mutation
-  check: removing the pull-back fails `mouth_sweep` again).
-- Sweep now: 2,847 mouths, 7 Connectors with neither end (lost mouths: target 150°, where the
-  reach limit is expected, and folded-strip cases at 30°, NEXT's known issue).
-- Tests: `mouths.four_point_mouth_keeps_one_construction_beyond_90_degrees` (91–150° both sides,
-  170° falls back) and `…sweep_follows_one_formula_at_every_angle` (5–355°, 60 placed).
-- Windows desktop: 67/67. Linux not run.
+- Owner requested a whole-carriageway reference, fixed source/target lane pairing, removal of
+  all steep-angle square caps, and investigation of the near-180-degree missing mouths.
+- Reproduced the source reversal: at 120/150 degrees a 4 m source shoulder was 1.155/0.536 m,
+  versus target 3.464/7.464 m. The rail-derived normal inherited the old strip's reversed order.
+  A separate four-width reach guard rejected target mouths above 151.044976 degrees; it was
+  not caused solely by the 75.522488-degree square fallback. Both legacy paths are removed.
+- `geometry` retains schema-17 first-lane semantics for files/runtime. The derived construction
+  axis is now the whole range centre, computed BEFORE edges. Widths stack symmetrically around
+  it. P1/P4 and dividers pair by lane index with handedness-fixed normals at both ends.
+- Mouth displacements share original-axis station weights. This removes the already-mutated
+  distance bug and keeps symmetric rails centred. Grips use the axis; inverse bisection makes
+  pointer position survive preview, commit, save/reopen and Undo/Redo.
+- No reach cutoff or two-mouth reset on a fold. Undefined parallel intersections have no closed
+  fill, but open rails remain selectable; a fold retains its computed mouths and is reported.
+  Diagnostics now read the surface; the obsolete `connectorMouthFit` API is removed.
+- Conflict strips now use the same final rails. Waiting bars intersect those rails at the
+  authored path normal. The generated T-junction example updates measured area/line stations;
+  frozen core trajectory baselines and runtime lane paths are unchanged.
+- Regression tests distinguish centred body width from P1–P4 cuts, check signed lane order,
+  both ends through 179.9 degrees, all retained cap points, undefined/fold cases and real
+  command round trips. Old tests requiring a square cap are replaced by the owner’s contract.
+- Verification: Linux/GCC 13.3 Debug headless build and CTest passed 48/48, including frozen
+  core references, architecture/file-size gates and CLI checks (nlohmann/json 3.12).
+  Desktop/Windows verification is pending; the local Qt SDK installation was blocked.
+- Original M3.2.7 simulation evidence remains tied to its archived project snapshot
+  (`docs/evidence/m3.2.7-original-project.traffic.json`), not the regenerated example geometry.
+- Prior D79 implementation/history moved intact to
+  [archive/PROGRESS-2026-09-28-d79-mouth.md](archive/PROGRESS-2026-09-28-d79-mouth.md).
 
 ---
 
@@ -458,6 +466,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D80 | 2026-09-28 | **Derive a centred whole-carriageway axis; pair both mouths by lane index at every angle; remove square/slide/reach fallbacks** | Owner instructions in this session. Preserve file/runtime lane geometry through a central derived reference. Distinct parallel lines remain undefined; retain and diagnose folds rather than erase P1–P4 | Windows desktop owner review; no Vissim fidelity claim |
 | D79 | 2026-09-28 | **P1–P4 use one pairing at every angle: Connector boundary 0's edge line meets the range's first Link boundary (index order); no switch at 90°; a boundary running past its cut is pulled back before the bend** | Owner ruling, choosing index order over the geometric same-side pairing. Sides stay read off the rails because legacy strips can reverse lane order at an obtuse end (measured: driving-side kerb made 367 surfaces fall back) | A fix for folded/reversed `connectorBoundaries` strips, which would let the side come from the driving side |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
 | D62 | 2026-09-25 | **A Stop is served by coming to the line below walking pace and then resting at zero for one whole tick, which the Stop itself enforces; Yield is the existing gap test; the mode belongs to the waiting line** | Contract §5 asks for zero speed at the line, but the reduced car-following model only approaches zero behind an obstacle (0.04 m/s after 29 s), so a literal test never fires. Accepting 0.1 m/s within the gap the model keeps at that pace, then holding the vehicle at zero, keeps the one-tick minimum with no dwell parameter; the rest is ordinary braking, not an emergency clamp, so clamp counts stay honest. One control per line because a physical line cannot be Stop for one area and Yield for another; changing who gives way clears the area's control rather than leaving it on the wrong line |

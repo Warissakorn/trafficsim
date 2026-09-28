@@ -157,7 +157,8 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if(dragging_) {
         if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance())return;
         const auto p=world(e->pos()); preview_=original_;
-        if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
+        if(vertex_>=0 && selectedConnector())preview_=connectorGeometryWithGrip(document_->network,*selectedConnector(),static_cast<std::size_t>(vertex_),p);
+        else if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
         else for(auto& point:preview_) { point.x+=p.x-dragStart_.x; point.y+=p.y-dragStart_.y; }
         redraw();
     }
@@ -243,7 +244,8 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
     if(e->button()==Qt::LeftButton && dragging_) {
         if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance()) {dragging_=false;preview_.clear();original_.clear();redraw();return;}
         const auto p=world(e->pos());preview_=original_;
-        if(vertex_>=0)preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
+        if(vertex_>=0 && selectedConnector())preview_=connectorGeometryWithGrip(document_->network,*selectedConnector(),static_cast<std::size_t>(vertex_),p);
+        else if(vertex_>=0)preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
         else for(auto& point:preview_){point.x+=p.x-dragStart_.x;point.y+=p.y-dragStart_.y;}
         dragging_=false;
         const auto geometry=preview_; preview_.clear();

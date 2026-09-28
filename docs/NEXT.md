@@ -9,33 +9,26 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — the owner's review of M3.2.9 in the desktop; then Linux
+## Immediate — review D80 central axis and four-point mouths
 
-**Done (Windows desktop only):** M3.2.9a lane correspondence (D73), M3.2.9b dividers on their
-Link boundaries (D74), M3.2.9c the Inspector's "Lane change side" and lane tabs that stop at a
-two-lane difference (the owner declined a message for it), M3.2.9d–g the owner's Connector end
-requests: creating across a larger lane difference narrows it (D75), dividers meet their Link
-boundary as P1/P4 do (D76), end grips on the middle of their Link lanes (D77), sliding an end
-along its lanes keeps the curve (D78), one P1–P4 pairing at every angle (D79). Evidence in
-PROGRESS.md. a–g are merged (#69, #70); h is on `claude/single-case-mouth`.
+D80 replaces the legacy square/slide mouth system. Read CONNECTOR_FOUR_POINT_MOUTH.md and the
+latest PROGRESS entry before changing it. The owner explicitly requested fixed lane-index
+pairing on both ends, including obtuse arrivals, and a central construction reference.
+Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outstanding.
 
-1. **Owner review (Windows):** the four-point mouth at 45°, 89°, 90° and obtuse, both ends;
-   2 -> 3 and 3 -> 2 with Kerb/Left/Right; 2 -> 4; dividers running straight onto the Link's;
-   a 2-lane Link dragged onto each lane of a 5-lane one; end grips on steep Connectors; sliding
-   an end along its lane with an authored curve; obtuse arrivals (120°, 135°, 150°), where the
-   mouth is now a long slanted cut; Undo/Redo.
-2. **Linux:** `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop`.
-   M3.2.9a–h have never been compiled with GCC.
+1. Review in the desktop on Windows: both ends at 45/90/120/150/170/179 degrees; 1–3 lanes,
+   kerb/median added or dropped lanes; drag central grips, save/reopen and Undo/Redo.
+2. Exactly parallel **distinct** edge lines (including exactly 180 degrees or parallel unequal
+   widths) have no P1–P4 intersection: open selectable rails plus an alignment advisory are
+   intentional. Any alternative bounded geometry needs an explicit construction rule.
+3. Near 180 degrees, real supporting-line intersections can be hundreds of metres away. They
+   are retained. Folded strips remain unsupported by conflict coverage; no square fallback or
+   silent point deletion should be reintroduced to hide this.
+4. Runtime paths remain the stored first-lane-derived paths; schema-17 files are compatible.
+   Conflict extents use the new rails, so existing authored extents can require review.
 
-**Known, not fixed:**
-- **`scenario-run-ui` exceeds its 90 s limit on this Windows machine** (Debug): 97 s on M3.2.9,
-  99 s on `fc9e06a`, 77 s earlier the same day. Not caused by M3.2.9; no headroom. Measure where
-  its time goes before raising the limit.
-- **Folded lane strips.** `connectorBoundaries` folds for a straight Connector leaving a Link
-  at a 60–90° kink with 3 lanes (281 of the 1,512 `mouth_sweep` cases). The dividers still end
-  on their points, but the body can run outside the surface. It also feeds conflict coverage.
-  Measure it in a sweep of its own before changing the mouth slide (M1.18, D23: settled
-  geometry needs a new measurement to reopen).
+The prior Windows `scenario-run-ui` timeout remains a separate known issue (97–99 s Debug).
+Do not infer Windows verification from a Linux test run.
 
 ## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
 
@@ -135,8 +128,8 @@ no gate result is inferred.
 3. **Drive M1.19/M1.20 in the desktop editor** — measured at model and command level only. Watch
    for a Connector deleted by a Link drag the author did not expect, and whether half a lane width
    is the right "off the Link" distance (`laneContains`). When checking a mouth by eye, every
-   Connector lane should meet the Link lane it feeds, middle on middle; past about 60° it cannot
-   (`kMouthSpanFloor` in `road_boundaries.cpp`; `connectorMouthFit` reports the shortfall).
+   Connector lane should meet the Link lane it feeds, middle on middle; the D80 P1–P4 construction now fixes lane-index pairing at both ends; singular or folded
+   geometry is reported without a square fallback.
 4. **The M2.6 template** (`data/projects/m2.6-study-template.traffic.json`) has placeholder
    volumes, a guessed timing-window-to-approach mapping and no aerial image; replace them before
    using it for a real study.

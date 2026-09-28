@@ -121,12 +121,19 @@ TEST(tjunction_signal, a_congested_major_road_lets_headway_decide) {
 }
 #include "../tools/t_junction_sweep.hpp"
 #include <fstream>
-TEST(tjunction_signal, the_archived_headway_metadata_still_describes_the_congested_variant) {
+TEST(tjunction_signal, the_archived_headway_metadata_keeps_its_original_geometry) {
     // docs/evidence/m3.2.7c-headway-metadata.json was committed before the headway arm ran.
     std::ifstream f(test::root() / "docs/evidence/m3.2.7c-headway-metadata.json");
     CHECK(f.good());
     auto archived = nlohmann::ordered_json::parse(f);
     CHECK(archived.contains("build") && archived.at("variant") == "congestedMajor"); // the forcing
     archived.erase("build");
-    CHECK(archived == sweep::congestedMetadata(test::root()));
+    // D80 changes measured conflict/line stations. Keep the old evidence tied to its
+    // exact archived input; never rewrite old metadata to claim a new geometry was measured.
+    const auto oldHash=sweep::fnv1a(test::root()/"docs/evidence/m3.2.7-original-project.traffic.json");
+    CHECK(archived.at("projectHash")==oldHash);
+    auto current=sweep::congestedMetadata(test::root());
+    CHECK(current.at("projectHash")!=oldHash); // the geometry really changed
+    current["projectHash"]=oldHash;
+    CHECK(archived==current); // timing, volumes, catalogs, seeds and rules still agree
 }
