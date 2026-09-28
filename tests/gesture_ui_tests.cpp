@@ -147,7 +147,7 @@ int main(int argc,char** argv) {
             c->setTransform(QTransform::fromScale(scale,-scale));c->centerOn(-50,0);
             QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,{-50,0}));
             require(c->selected()==upper,"Upper level was not picked first");
-            QTest::keyClick(c,Qt::Key_Tab);require(c->selected()==links[0].id,"Tab did not reach lower level");
+            QTest::keyClick(c,Qt::Key_Tab,Qt::ControlModifier);require(c->selected()==links[0].id,"Ctrl+Tab did not reach lower level");
         }
         auto* visible=item<QComboBox>(w,"editorVisibleLevel");visible->setCurrentIndex(visible->findData(0));
         const auto ground=c->hitObjects({-50,0});require(ground.size()==1 && ground.front().first==links[0].id,"Hidden level remained pickable");

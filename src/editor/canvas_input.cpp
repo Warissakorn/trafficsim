@@ -320,7 +320,10 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     // Only while a route draft is open: Backspace belongs to the view otherwise.
     if(e->key()==Qt::Key_Backspace && !routeDraft_.empty()) { dropLastRouteSegment(); return; }
     if(e->key()==Qt::Key_Backspace && !counterDraft_.empty()) { counterDraft_.pop_back(); redraw(); return; }
-    if(e->key()==Qt::Key_Tab && (tool_==Tool::select || tool_==Tool::conflict) && !mouseGestureActive()) {cycleOverlap();return;}
+    if(e->key()==Qt::Key_Tab && (e->modifiers()&Qt::ControlModifier) &&
+       (tool_==Tool::select || tool_==Tool::conflict) && !mouseGestureActive()) {
+        cycleOverlap();e->accept();return;
+    }
     if(e->key()==Qt::Key_Delete && tool_==Tool::select && !mouseGestureActive()) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
     const bool arrow = e->key()==Qt::Key_Left || e->key()==Qt::Key_Right ||
                        e->key()==Qt::Key_Up || e->key()==Qt::Key_Down;

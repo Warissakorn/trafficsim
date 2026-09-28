@@ -75,7 +75,6 @@ void EditorCanvas::cycleOverlap() {
 }
 bool EditorCanvas::focusNextPrevChild(bool next) {
     if(mouseGestureActive())return true; // Tab must not move focus away from an unfinished draft.
-    if(next && (tool_==Tool::select || tool_==Tool::conflict)){cycleOverlap();return true;}
     return QGraphicsView::focusNextPrevChild(next);
 }
 }
