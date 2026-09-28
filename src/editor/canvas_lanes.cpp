@@ -73,7 +73,7 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const auto& other=leading?boundaries.back():boundaries.front();
             const double length=polylineLength(edge);
             const double scale=std::abs(transform().m11());
-            h.tabLength=std::min(canvasStyle::laneTabLength,length*scale);
+            h.tabLength=std::min(canvasStyle::laneTabLength,length*scale/2);
             const double inset=std::min(h.tabLength/2/scale,length/2);
             const double station=source?inset:length-inset;
             h.anchor=pointAlong(edge,station);

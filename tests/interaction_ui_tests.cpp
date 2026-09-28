@@ -155,7 +155,7 @@ void connectorEndTabs(EditorCanvas& c) {
             const double length=QLineF(polygon[0],polygon[1]).length();
             const bool source=kind==1 || kind==5;
             const double railLength=polylineLength(kind>4?boundaries.front():boundaries.back());
-            const double buttonPixels=std::min(canvasStyle::laneTabLength,railLength*4);
+            const double buttonPixels=std::min(canvasStyle::laneTabLength,railLength*4/2);
             const double halfButton=buttonPixels/8;
             require(std::abs(length*4-buttonPixels)<1e-7,"Connector end tab does not fit the road end");
             const auto& rail=kind>4?boundaries.front():boundaries.back();
@@ -211,7 +211,7 @@ void connectorEndTabs(EditorCanvas& c) {
         const auto railIndex=kind>4?0:shortBoundaries.size()-1;
         const auto& rail=shortBoundaries[railIndex];const double railLength=polylineLength(rail);
         const auto polygon=tab->path().toFillPolygon();
-        require(std::abs(QLineF(polygon[0],polygon[1]).length()*4-std::min(24.,railLength*4))<1e-7,
+        require(std::abs(QLineF(polygon[0],polygon[1]).length()*4-std::min(24.,railLength*4/2))<1e-7,
                 "Short Connector end tab is not reduced to fit");
         const double expected=kind==1 || kind==5?std::min(railLength/2,12./4)
                                                    :railLength-std::min(railLength/2,12./4);
