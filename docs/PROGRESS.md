@@ -75,8 +75,8 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - Initial CI passed the new interaction suite on Linux/Windows; it exposed teardown repainting
   a destroyed History. The shell now detaches the canvas document before members are destroyed.
   Updated legacy inspector/Conflict tests to explicitly reselect after mode/empty-space clearing.
-- Local file-size/diff checks pass; the workspace has no CMake or Qt SDK. Native Linux/Windows
-  build and UI validation are pending on the branch's GitHub Actions run.
+- Local architecture, file-size and diff checks pass. Linux/Windows screenshot artifacts were
+  inspected; Native C++ verification for this branch is tracked in PR #73.
 
 ---
 

@@ -9,13 +9,14 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — validate the editor interaction cleanup
+## Immediate — review the editor interaction cleanup (PR #73)
 
-Run the branch's Native C++ workflow and resolve any regression before merging. Inspect the
-`editor-interaction-linux` and `editor-interaction-windows` screenshots. The local workspace
-has no Qt/CMake toolchain. The UI test covers hover, empty-space/table clearing, mode changes,
-Escape cancellation, tabs on both edges at all three Link stations, Undo and 10 cm markings.
-After automated checks, review curved/overlapping roads and the tabs at working zoom levels.
+The implementation and regression tests are on `codex/editor-interaction-polish`; check its
+latest Native C++ workflow before merging. Linux/Windows screenshot artifacts have been
+inspected. The UI suite covers hover, empty-space/table clearing, mode changes, Escape,
+tabs on both edges at all three Link stations, curved resize previews, Undo and 10 cm markings.
+Review curved/overlapping roads and the tabs at working zoom levels in the desktop. The local
+coding workspace has no Qt/CMake toolchain; the workflow runs Linux and Windows builds/tests.
 
 ## Then — review D80 central axis and four-point mouths
 
