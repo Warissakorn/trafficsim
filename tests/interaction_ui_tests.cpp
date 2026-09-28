@@ -7,6 +7,7 @@
 #include <QGraphicsPathItem>
 #include <QGraphicsSimpleTextItem>
 #include <QLineEdit>
+#include <QLineF>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTest>
@@ -134,6 +135,42 @@ void laneTabs(EditorCanvas& c) {
     require(preview.size()==6 && preview==tabs(),"Lane tabs jumped from the preview edge on release");
     c.resizeLinkRequested={};c.setDocument(nullptr);
 }
+void connectorEndTabs(EditorCanvas& c) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right}) {
+        auto d=fixture(side);d.network.connectors.clear();
+        d.network.links[1].geometry={{25,24},{55,76}};
+        addConnectorRange(d,{"a","a1"},{"b","b1"},2,2);validateDocument(d);
+        c.setDocument(&d);c.select(d.network.connectors.front().id);
+        c.setTransform(QTransform::fromScale(4,-4));c.centerOn(0,0);c.redraw();
+        const auto boundaries=connectorBoundaries(d.network,d.network.connectors.front());
+        for(const int kind:{1,2,5,6}) {
+            QGraphicsPathItem* tab=nullptr;
+            for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize" && item->data(1).toInt()==kind)
+                tab=dynamic_cast<QGraphicsPathItem*>(item);
+            require(tab,"Connector is missing an end tab");
+            const auto polygon=tab->path().toFillPolygon();require(polygon.size()>=4,"Connector end tab is not rectangular");
+            const QPointF midpoint=(polygon[0]+polygon[1])/2;
+            const double length=QLineF(polygon[0],polygon[1]).length();
+            require(std::abs(length*4-24)<1e-7,"Connector end tab is not 24 pixels long");
+            const bool source=kind==1 || kind==5;
+            double nearest=1e300,alignment=0,endpointDistance=1e300;
+            for(const auto& rail:boundaries) {
+                const double station=stationOfClosestPoint(rail,{midpoint.x(),midpoint.y()});
+                const auto on=pointAlong(rail,station),tangent=directionAlong(rail,station,false);
+                const double distance=std::hypot(midpoint.x()-on.x,midpoint.y()-on.y);
+                const auto end=source?rail.front():rail.back();
+                endpointDistance=std::min(endpointDistance,std::hypot(midpoint.x()-end.x,midpoint.y()-end.y));
+                const double dx=polygon[1].x()-polygon[0].x(),dy=polygon[1].y()-polygon[0].y();
+                const double dot=std::abs(dx*tangent.x+dy*tangent.y)/length;
+                if(distance<nearest){nearest=distance;alignment=dot;}
+            }
+            require(nearest<1e-7,"Connector end tab is detached from its painted edge");
+            require(endpointDistance<1e-7,"Connector end tab is on the wrong end of the road");
+            require(alignment>.999,"Connector end tab does not follow its edge at the Link joint");
+        }
+    }
+    c.setDocument(nullptr);
+}
 void markings(EditorCanvas& c) {
     auto d=fixture();c.setDocument(&d);
     for(double zoom:{2.,10.,40.}) {
@@ -171,7 +208,7 @@ int main(int argc,char** argv) {
     QApplication app(argc,argv);
     try {
         require(argc>1,"Data directory required");EditorCanvas c;c.resize(1000,650);c.show();QTest::qWait(20);
-        selectionWorkflow(c);laneTabs(c);markings(c);c.hide();
+        selectionWorkflow(c);laneTabs(c);connectorEndTabs(c);markings(c);c.hide();
         windowWorkflow(std::filesystem::path(argv[1]),argc>2?QString::fromUtf8(argv[2]):QString{});
         std::cout<<"PASS selection workflow, hover, rectangular edge tabs and 10 cm markings\n";return 0;
     } catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

@@ -64,9 +64,10 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - Unified subtle hover/selection outlines, preserving display-type road colours. Geometry
   grips are small squares only for a single object in Select. Hover clears on leave/focus loss.
 - Lane tabs are 24 × 8 logical-pixel rectangles directly on both road edges, without stems or
-  counts. Links now expose start/middle/end tabs; Connector source/target/body semantics stay.
+  counts. Link tabs appear at start/middle/end; Connector end tabs follow the rendered rails.
   Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
-  Resizing tabs use the preview geometry, keeping them on curved edges throughout the drag.
+  Connector end tabs now use the painted edge and its tangent, including angled Link joints.
+  Resizing tabs use preview geometry, keeping Link tabs on curved edges throughout the drag.
 - Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
 - Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear
   selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then

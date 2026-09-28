@@ -64,6 +64,25 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         const auto& paths=cachedPaths(*connector);
         const auto& boundaries=cachedBoundaries(*connector);
         const auto widths=connectorLaneWidths(document_->network,*connector);
+        const double offset=canvasStyle::laneTabDepth/2/std::abs(transform().m11());
+        const auto attachEnd=[&](LaneHandle& h,bool source) {
+            const auto endpoint=[&](const auto& rail)->Point{return source?rail.front():rail.back();};
+            const auto first=endpoint(boundaries.front()),last=endpoint(boundaries.back());
+            const double dFirst=std::hypot(first.x-h.anchor.x,first.y-h.anchor.y);
+            const double dLast=std::hypot(last.x-h.anchor.x,last.y-h.anchor.y);
+            const auto& edge=dFirst<=dLast?boundaries.front():boundaries.back();
+            const auto& other=dFirst<=dLast?boundaries.back():boundaries.front();
+            const double station=source?0.:polylineLength(edge);
+            h.anchor=pointAlong(edge,station);
+            const auto tangent=directionAlong(edge,station,false);
+            const auto opposite=pointAlong(other,matchedStation(edge,other,station));
+            Point normal{h.anchor.x-opposite.x,h.anchor.y-opposite.y};
+            const double along=normal.x*tangent.x+normal.y*tangent.y;
+            normal.x-=along*tangent.x;normal.y-=along*tangent.y;
+            const double magnitude=std::hypot(normal.x,normal.y);
+            if(magnitude>1e-9)h.direction={normal.x/magnitude,normal.y/magnitude};
+            h.position={h.anchor.x+h.direction.x*offset,h.anchor.y+h.direction.y*offset};
+        };
         for(bool leading:{false,true}) {
             const int extra=leading?4:0;
             auto a=handle(*from,connector->from,connector->fromLaneCount,1+extra);
@@ -76,7 +95,8 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const auto& boundary=leading?boundaries.front():boundaries.back();
             const auto anchor=polylineLength(boundary)>0
                 ?pointAlong(boundary,matchedStation(outer,boundary,length/2)):boundary.front();
-            const double width=(widths.source[index]+widths.target[index])/2,offset=canvasStyle::laneTabDepth/2/std::abs(transform().m11());
+            attachEnd(a,true);attachEnd(b,false);
+            const double width=(widths.source[index]+widths.target[index])/2;
             LaneHandle body{{anchor.x+direction.x*offset,anchor.y+direction.y*offset},anchor,
                             direction,width,3+extra,std::max(a.count,b.count),std::min(a.maximum,b.maximum)};
             result.insert(result.end(),{a,b,body});
