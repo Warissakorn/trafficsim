@@ -71,6 +71,8 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
   selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then
   clears selection when idle. Tab/Delete cannot accidentally edit roads in authoring tools.
 - Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
+- Initial CI passed the new interaction suite on Linux/Windows; it exposed teardown repainting
+  a destroyed History. The shell now detaches the canvas document before members are destroyed.
 - Local file-size/diff checks pass; the workspace has no CMake or Qt SDK. Native Linux/Windows
   build and UI validation are pending on the branch's GitHub Actions run.
 

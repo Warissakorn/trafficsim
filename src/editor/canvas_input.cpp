@@ -30,7 +30,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         if(gestureFrom_)draft_.front()=laneAttachment(document_->network,*gestureFrom_,true);
         redraw();return;
     }
-    if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; clearHover(); setCursor(Qt::ClosedHandCursor); panStart_=panPress_=e->pos(); return; }
+    if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; clearHover(); setCursor(Qt::ClosedHandCursor); panStart_=panPress_=e->pos(); redraw(); return; }
     if (e->button()!=Qt::LeftButton) return;
     auto p=world(e->pos());lastPick_=world(e->pos(),false);
     if(tool_==Tool::select)clearHighlights();

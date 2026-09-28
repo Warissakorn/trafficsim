@@ -146,7 +146,7 @@ void windowWorkflow(const std::filesystem::path& data,const QString& screenshot)
     require(c.highlightedRoute().empty() && routes->selectedItems().isEmpty(),"Tool change retained route selection");
     tool->setCurrentIndex(0);c.select("a");
     if(!screenshot.isEmpty())require(w.grab().save(screenshot),"Cannot save interaction preview");
-    w.close();
+    c.setFocus(); // Also exercise destruction of a visible editor with canvas focus.
 }
 }
 int main(int argc,char** argv) {

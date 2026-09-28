@@ -18,7 +18,7 @@ jobs:
       - run: cmake --build --preset ${{ matrix.preset }} --parallel 2
       - run: cmake --build build/${{ matrix.preset }} --target check
       - uses: actions/upload-artifact@v4
-        if: matrix.preset == 'desktop'
+        if: always() && matrix.preset == 'desktop'
         with:
           name: editor-interaction-linux
           path: build/desktop/interaction-preview.png
@@ -47,6 +47,7 @@ jobs:
       - run: cmake --build build/desktop --config Release --parallel 2
       - run: ctest --test-dir build/desktop -C Release --output-on-failure
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: editor-interaction-windows
           path: build/desktop/interaction-preview.png

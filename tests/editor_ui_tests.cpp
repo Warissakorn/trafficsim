@@ -67,6 +67,7 @@ int main(int argc,char** argv){
         require(c->mapToScene(centre)!=beforePan,"Pan did not change viewport");
         const double scale=c->transform().m11();QWheelEvent wheel(QPointF(centre),QPointF(c->viewport()->mapToGlobal(centre)),{},QPoint(0,120),Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);
         QApplication::sendEvent(c->viewport(),&wheel);require(c->transform().m11()>scale&&c->transform().m22()<0,"Zoom lost world orientation");
+        c->select(id); // Switching tools cleared the previous edit target.
         item<QSpinBox>(w,"editorLaneCount")->setValue(3);item<QLineEdit>(w,"editorLaneWidths")->setText("3, 3.5, 4");action(w,"editorApplyLanes");
         require(w.history().document().network.links[0].lanes.size()==3,"Lane count not applied");
         require(w.history().document().network.links[0].lanes[2].width==4,"Per-lane width lost");
