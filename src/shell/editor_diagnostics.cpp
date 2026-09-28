@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QHeaderView>
 #include <QSignalBlocker>
@@ -57,6 +58,7 @@ void EditorWindow::refreshDiagnostics() {
             QString::fromStdString(item.path)};
         for (int column=0; column<4; ++column) {
             auto* cell=new QTableWidgetItem(values[column]);
+            if(column==2||column==3)editorDesign::setNumericText(cell);
             cell->setData(Qt::UserRole,QString::fromStdString(item.selectId));
             cell->setData(Qt::UserRole+1,QString::fromStdString(item.objectId));
             if (item.selectId.empty()) cell->setToolTip(text("EDIT_UNKNOWN_OBJECT"));

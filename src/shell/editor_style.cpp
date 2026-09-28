@@ -1,9 +1,12 @@
 #include "editor_style.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPalette>
+#include <QString>
 #include <QWidget>
 #include <map>
+#include <utility>
 namespace trafficsim {
 QIcon editorIcon(EditorIcon icon) {
     static std::map<EditorIcon,QIcon> cache;
@@ -13,7 +16,7 @@ QIcon editorIcon(EditorIcon icon) {
     for(int size:{20,40,60}) {
         QPixmap pixmap(size,size);pixmap.fill(Qt::transparent);
         QPainter p(&pixmap);p.setRenderHint(QPainter::Antialiasing);p.scale(size/20.,size/20.);
-        p.setPen(QPen(QColor("#475569"),1.6,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+        p.setPen(QPen(QColor(editorDesign::gray7),1.6,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
         const auto line=[&](int x,int y,int a,int b){p.drawLine(x,y,a,b);};
         const auto box=[&](int x,int y,int w,int h){p.drawRoundedRect(QRectF(x,y,w,h),1.5,1.5);};
         switch(icon) {
@@ -48,8 +51,8 @@ QIcon editorIcon(EditorIcon icon) {
         case EditorIcon::image: box(2,3,16,14);line(3,15,8,9);line(8,9,13,14);line(13,14,17,9);p.drawEllipse(QPointF(13,7),1.5,1.5);break;
         case EditorIcon::run: case EditorIcon::step: {
             QPolygonF points;points<<QPointF(5,3)<<QPointF(15,10)<<QPointF(5,17);
-            p.setBrush(QColor("#0f766e"));p.setPen(Qt::NoPen);p.drawPolygon(points);
-            if(icon==EditorIcon::step){p.setPen(QPen(QColor("#475569"),2));line(17,4,17,16);}break;
+            p.setBrush(QColor(editorDesign::accent));p.setPen(Qt::NoPen);p.drawPolygon(points);
+            if(icon==EditorIcon::step){p.setPen(QPen(QColor(editorDesign::gray7),2));line(17,4,17,16);}break;
         }
         case EditorIcon::pause: line(7,3,7,17);line(13,3,13,17);break;
         case EditorIcon::inspector: box(2,3,16,14);line(12,3,12,17);line(14,7,16,7);line(14,11,16,11);break;
@@ -64,58 +67,98 @@ QIcon editorIcon(EditorIcon icon) {
 }
 void applyEditorStyle(QWidget* window) {
     QPalette palette=window->palette();
-    palette.setColor(QPalette::Window,QColor("#f3f6fa"));
-    palette.setColor(QPalette::WindowText,QColor("#243247"));
-    palette.setColor(QPalette::Base,Qt::white);
-    palette.setColor(QPalette::AlternateBase,QColor("#f6f8fb"));
-    palette.setColor(QPalette::Text,QColor("#243247"));
-    palette.setColor(QPalette::Button,QColor("#f8fafc"));
-    palette.setColor(QPalette::ButtonText,QColor("#243247"));
-    palette.setColor(QPalette::Highlight,QColor("#d8eeeb"));
-    palette.setColor(QPalette::HighlightedText,QColor("#115e59"));
-    palette.setColor(QPalette::Disabled,QPalette::Text,QColor("#8793a3"));
-    palette.setColor(QPalette::Disabled,QPalette::ButtonText,QColor("#8793a3"));
+    palette.setColor(QPalette::Window,QColor(editorDesign::gray1));
+    palette.setColor(QPalette::WindowText,QColor(editorDesign::gray9));
+    palette.setColor(QPalette::Base,QColor(editorDesign::gray0));
+    palette.setColor(QPalette::AlternateBase,QColor(editorDesign::gray1));
+    palette.setColor(QPalette::Text,QColor(editorDesign::gray9));
+    palette.setColor(QPalette::Button,QColor(editorDesign::gray1));
+    palette.setColor(QPalette::ButtonText,QColor(editorDesign::gray9));
+    palette.setColor(QPalette::Highlight,QColor(editorDesign::gray3));
+    palette.setColor(QPalette::HighlightedText,QColor(editorDesign::gray9));
+    palette.setColor(QPalette::Disabled,QPalette::Text,QColor(editorDesign::gray7));
+    palette.setColor(QPalette::Disabled,QPalette::ButtonText,QColor(editorDesign::gray7));
     window->setPalette(palette);
-    window->setStyleSheet(QStringLiteral(R"(
-        QMainWindow::separator { background: #e2e8f0; width: 5px; height: 5px; }
-        QMainWindow::separator:hover { background: #94c9c2; }
-        QMenuBar { background: #ffffff; padding: 2px 6px; border-bottom: 1px solid #e2e8f0; }
-        QMenuBar::item { padding: 4px 10px; border-radius: 4px; }
-        QMenuBar::item:selected, QMenu::item:selected { background: #d8eeeb; color: #115e59; }
-        QMenu { background: white; border: 1px solid #d6dee8; padding: 5px; }
-        QMenu::item { padding: 6px 24px; }
-        QToolBar { background: #ffffff; border: 0; spacing: 2px; padding: 4px; }
-        QToolBar::separator { background: #e2e8f0; width: 1px; margin: 5px; }
-        QToolButton, QPushButton { padding: 5px 7px; border: 1px solid #dbe3ec; border-radius: 5px; background: #f8fafc; }
-        QToolBar QToolButton { border-color: transparent; background: transparent; padding: 4px; }
-        QToolButton:hover, QPushButton:hover { background: #eaf2f5; border-color: #b9ccd5; }
-        QToolButton:pressed, QPushButton:pressed, QToolButton:checked { background: #d8eeeb; border-color: #94c9c2; color: #115e59; }
-        QToolButton:focus, QPushButton:focus { border-color: #0f766e; }
-        QToolButton#editorRunButton { background: #d8eeeb; border-color: #94c9c2; color: #115e59; font-weight: 600; }
-        QDockWidget { border: 1px solid #e2e8f0; }
-        QDockWidget::title { background: #eaf0f5; padding: 7px 9px; font-weight: 600; }
-        QScrollArea, QTabWidget::pane { border: 0; }
-        QTabBar::tab { padding: 7px 10px; border-bottom: 2px solid transparent; color: #64748b; }
-        QTabBar::tab:selected { color: #0f766e; border-bottom-color: #0f766e; background: #ffffff; }
-        QTabBar::tab:hover { background: #eaf2f5; }
-        QLineEdit, QComboBox, QAbstractSpinBox { background: white; border: 1px solid #cfd9e4; border-radius: 4px; padding: 4px 6px; min-height: 18px; }
-        QLineEdit:focus, QComboBox:focus, QAbstractSpinBox:focus { border-color: #0f766e; }
-        QLineEdit:read-only { background: #eaf0f5; color: #64748b; }
-        QLineEdit:disabled, QComboBox:disabled, QAbstractSpinBox:disabled { background: #f0f3f7; color: #8793a3; }
-        QListWidget { border: 0; background: transparent; outline: 0; }
-        QListWidget::item { padding: 6px; border-radius: 5px; }
-        QListWidget::item:hover { background: #eaf2f5; }
-        QListWidget::item:selected { background: #d8eeeb; color: #115e59; }
-        QListWidget::item:focus { border: 1px solid #0f766e; }
-        QTableView { background: white; alternate-background-color: #f6f8fb; border: 1px solid #e2e8f0; selection-background-color: #d8eeeb; selection-color: #115e59; }
-        QHeaderView::section { background: #eef3f7; color: #475569; border: 0; border-right: 1px solid #e2e8f0; padding: 5px 8px; font-weight: 600; }
-        QLabel#editorScope { background: #fff5db; color: #795c16; padding: 5px 8px; border-radius: 5px; }
-        QLabel#editorRunInfo { background: #ffffff; color: #475569; padding: 5px 8px; border-radius: 5px; }
-        QLabel#editorError { color: #a5263c; padding: 2px 6px; }
-        QLabel#editorPaletteHint, QLabel#editorToolHint { color: #64748b; }
-        QStatusBar { background: #ffffff; border-top: 1px solid #e2e8f0; color: #64748b; }
+    QString stylesheet=QStringLiteral(R"(
+        QWidget { color: @gray9; font-size: @fontBodypx; }
+        QMainWindow::separator { background: @gray2; width: @space1px; height: @space1px; border-left: 1px solid @gray3; border-right: 1px solid @gray3; }
+        QMainWindow::separator:hover { background: @gray4; }
+        QMenuBar { background: @gray0; padding: 0 @space1px; border-bottom: 1px solid @gray3; min-height: @controlHeightpx; }
+        QMenuBar::item { padding: @space1px @space2px; }
+        QMenuBar::item:focus, QMenu::item:focus { border: 2px solid @accent; }
+        QMenuBar::item:selected, QMenu::item:selected { background: @gray3; color: @gray9; }
+        QMenu { background: @gray0; border: 1px solid @gray4; padding: @space1px; }
+        QMenu::item { min-height: @space5px; padding: @space1px @space6px; }
+        QToolBar { background: @gray0; border: 0; border-bottom: 1px solid @gray3; spacing: @space1px; padding: @space1px; }
+        QToolBar::separator { background: @gray4; width: 1px; margin: @space1px; }
+        QToolButton, QPushButton { min-height: @space5px; padding: @space1px @space2px; border: 1px solid @gray6; border-radius: 2px; background: @gray1; }
+        QToolBar QToolButton { border-color: transparent; background: transparent; padding: @space1px; }
+        QToolButton:hover, QPushButton:hover { background: @gray2; border-color: @gray7; }
+        QToolButton:pressed, QPushButton:pressed, QToolButton:checked { background: @gray3; border-color: @accent; }
+        QAbstractButton:focus { border: 2px solid @accent; }
+        QToolButton:disabled, QPushButton:disabled { color: @gray7; background: @gray2; border-color: @gray4; }
+        QToolButton#editorRunButton { background: @gray2; border-color: @accent; color: @gray9; font-weight: 600; }
+        QDockWidget { border: 1px solid @gray3; }
+        QDockWidget::title { background: @gray1; min-height: @space5px; padding: @space1px @space2px; color: @gray8; font-size: @fontLabelpx; font-weight: 600; }
+        QDockWidget[englishLabels="true"]::title { letter-spacing: 1px; }
+        QScrollArea, QTabWidget::pane { border: 0; background: @gray0; }
+        QGraphicsView { background: @gray0; border: 1px solid @gray3; }
+        QGraphicsView:focus { border: 2px solid @accent; }
+        QTabBar::tab { min-height: @space5px; padding: @space1px @space2px; border-bottom: 1px solid transparent; color: @gray7; }
+        QTabBar::tab:selected { color: @gray9; border-bottom: 2px solid @accent; background: @gray0; }
+        QTabBar::tab:hover { background: @gray2; }
+        QTabBar::tab:focus { border: 2px solid @accent; }
+        QLineEdit, QComboBox, QAbstractSpinBox { min-height: @space5px; background: @gray0; border: 1px solid @gray6; border-radius: 2px; padding: @space1px @space2px; selection-background-color: @accent; selection-color: @gray0; }
+        QAbstractSpinBox, QLineEdit[numeric="true"], QComboBox[numeric="true"] { font-family: monospace; font-size: @fontNumericpx; }
+        QLineEdit:focus, QComboBox:focus, QAbstractSpinBox:focus { border: 2px solid @accent; }
+        QLineEdit:read-only { background: @gray2; color: @gray7; }
+        QLineEdit:disabled, QComboBox:disabled, QAbstractSpinBox:disabled { background: @gray2; color: @gray7; }
+        QAbstractSpinBox[validationState="invalid"], QLineEdit[validationState="invalid"] { border: 2px solid @danger; }
+        QComboBox::drop-down { width: @space6px; border: 0; border-left: 1px solid @gray3; }
+        QTreeWidget, QListWidget { border: 0; background: @gray0; outline: 0; }
+        QTreeWidget::item, QListWidget::item { min-height: @space5px; padding: @space1px; border: 1px solid transparent; }
+        QTreeWidget::item:hover, QListWidget::item:hover { background: @gray2; }
+        QTreeWidget::item:selected, QListWidget::item:selected { background: @gray3; color: @gray9; border-left: 2px solid @accent; }
+        QTreeWidget::item:focus, QListWidget::item:focus { border: 2px solid @accent; }
+        QTableView { background: @gray0; alternate-background-color: @gray1; border: 1px solid @gray6; selection-background-color: @gray3; selection-color: @gray9; gridline-color: @gray3; }
+        QTableView::item { min-height: @space5px; padding: @space1px; border-bottom: 1px solid @gray3; }
+        QTableView::item:focus { border: 2px solid @accent; }
+        QHeaderView::section { min-height: @space5px; background: @gray1; color: @gray8; border: 0; border-right: 1px solid @gray3; padding: @space1px @space2px; font-size: @fontLabelpx; font-weight: 600; }
+        QHeaderView[englishLabels="true"]::section { letter-spacing: 1px; }
+        QLabel#editorScope { background: @gray1; color: @gray8; padding: @space1px @space2px; border-bottom: 1px solid @gray3; }
+        QLabel#editorRunInfo { background: @gray0; color: @gray8; padding: @space1px @space2px; }
+        QLabel#editorError { color: @danger; padding: @space1px @space2px; }
+        QLabel[validationState="invalid"], QLabel#editorError { color: @danger; }
+        QLabel[status="error"] { color: @danger; }
+        QLabel[status="ok"] { color: @success; }
+        QLabel#editorPaletteHint, QLabel#editorToolHint { color: @gray7; font-size: @fontNumericpx; }
+        QLabel[editorEyebrow="true"] { color: @gray7; font-size: @fontLabelpx; font-weight: 600; }
+        QLabel[editorEyebrow="true"][englishLabels="true"] { letter-spacing: 1px; }
+        QLabel#editorCommandTitle { color: @gray9; font-size: @fontTitlepx; font-weight: 600; }
+        QLabel[numeric="true"] { font-family: monospace; font-size: @fontNumericpx; }
+        QStatusBar { background: @gray0; border-top: 1px solid @gray3; color: @gray8; min-height: @controlHeightpx; }
         QStatusBar::item { border: 0; }
-        QToolTip { background: #243247; color: #ffffff; border: 0; padding: 6px; }
-    )"));
+        QToolTip { background: @gray9; color: @gray0; border: 1px solid @gray8; padding: @space1px @space2px; }
+    )");
+    const std::pair<const char*,const char*> tokens[]={
+        {"@gray0",editorDesign::gray0},{"@gray1",editorDesign::gray1},{"@gray2",editorDesign::gray2},
+        {"@gray3",editorDesign::gray3},{"@gray4",editorDesign::gray4},{"@gray5",editorDesign::gray5},
+        {"@gray6",editorDesign::gray6},{"@gray7",editorDesign::gray7},{"@gray8",editorDesign::gray8},
+        {"@gray9",editorDesign::gray9},{"@accent",editorDesign::accent},{"@danger",editorDesign::danger},
+        {"@success",editorDesign::success}
+    };
+    for(const auto& [name,value]:tokens)stylesheet.replace(QLatin1String(name),QLatin1String(value));
+    stylesheet.replace("@fontLabel",QString::number(editorDesign::fontSizeLabel));
+    stylesheet.replace("@fontNumeric",QString::number(editorDesign::fontSizeNumeric));
+    stylesheet.replace("@fontBody",QString::number(editorDesign::fontSizeBody));
+    stylesheet.replace("@fontTitle",QString::number(editorDesign::fontSizeTitle));
+    stylesheet.replace("@space1",QString::number(editorDesign::space1));
+    stylesheet.replace("@space2",QString::number(editorDesign::space2));
+    stylesheet.replace("@space3",QString::number(editorDesign::space3));
+    stylesheet.replace("@space4",QString::number(editorDesign::space4));
+    stylesheet.replace("@space5",QString::number(editorDesign::space5));
+    stylesheet.replace("@space6",QString::number(editorDesign::space6));
+    stylesheet.replace("@controlHeight",QString::number(editorDesign::controlHeight));
+    window->setStyleSheet(stylesheet);
 }
 }

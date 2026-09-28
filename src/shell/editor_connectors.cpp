@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QLineEdit>
 #include <QAction>
 #include <QAbstractButton>
@@ -42,6 +43,8 @@ std::vector<MarkingType> markingTypes(const QString& text) {
 }
 QWidget* EditorWindow::buildConnectorInspector() {
     auto* page=new QWidget(this);auto* form=new QFormLayout(page);
+    form->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     form->setRowWrapPolicy(QFormLayout::WrapLongRows);
     connectorObject_=new QComboBox(page);label(form,"editorConnectorObject",connectorObject_);
     connectorFrom_=new QComboBox(page);connectorTo_=new QComboBox(page);

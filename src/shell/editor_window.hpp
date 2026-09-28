@@ -16,8 +16,12 @@
 #include <QJsonObject>
 #include <map>
 #include <filesystem>
+#include <functional>
+#include <vector>
 #include <QKeySequence>
 
+class QTreeWidget;
+class QTreeWidgetItem;
 class QListWidget;
 class QLockFile;
 class QAction;
@@ -53,7 +57,8 @@ private:
     History history_;
     std::filesystem::path data_;
     DisplayCatalog displayCatalog_;
-    QListWidget* palette_{};
+    QTreeWidget* palette_{};
+    std::map<int,QTreeWidgetItem*> paletteItems_;
     QListWidget* historyList_{};
     void buildHistory();
     void rotateSelection();
@@ -67,6 +72,7 @@ private:
     QDoubleSpinBox *connectorFromPosition_{},*connectorToPosition_{};
     void buildPalette();
     void translatePalette();
+    void showCommandPalette();
     void buildAppearance(QFormLayout*);
     void refreshAppearance();
     // The Name of whatever is selected, empty when nothing is or the object carries none.
@@ -175,6 +181,7 @@ private:
     std::map<QString,QJsonObject> locales_;
     std::map<std::string,QAction*> actions_;
     std::map<std::string,QWidget*> texts_;
+    std::vector<std::function<void()>> validationRefresh_;
     EditorCanvas* canvas_{};
     QComboBox *language_{}, *tool_{}, *side_{};
     QComboBox *connectorObject_{}, *connectorFrom_{}, *connectorTo_{};

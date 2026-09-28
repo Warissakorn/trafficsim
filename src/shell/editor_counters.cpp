@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include "../commands/right_of_way_commands.hpp"
 #include "../project/evaluation.hpp"
 #include <QAction>
@@ -29,7 +30,7 @@ QString describe(const MeasurementLine& l) {
 }
 void EditorWindow::buildCounters() {
     auto* body = new QWidget(objects_); auto* layout = new QVBoxLayout(body);
-    layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(3);
+    layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(editorDesign::space1);
     auto* bar = new QToolBar(body); layout->addWidget(bar);
     counterTable_ = new QTableWidget(0, 4, body); counterTable_->setObjectName("editorCounterTable");
     counterTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -87,6 +88,7 @@ void EditorWindow::refreshCounters() {
                                      QString("%1: %2").arg(c.lines.size()).arg(lines.join(", ")), replaced.join(", ")};
             for (int col = 0; col < values.size(); ++col) {
                 auto* cell = new QTableWidgetItem(values[col]); cell->setData(Qt::UserRole, QString::fromStdString(c.id));
+                if(col==0||col>=2)editorDesign::setNumericText(cell,col==2);
                 counterTable_->setItem(r, col, cell);
             }
             if (c.id == keep) counterTable_->selectRow(r);
@@ -115,6 +117,8 @@ void EditorWindow::editCounter(const std::string& id) {
     if (c == counters.end()) return;
     QDialog dialog(this); dialog.setObjectName("editorCounterDialog"); dialog.setWindowTitle(text("editorEditCounter"));
     auto* form = new QFormLayout(&dialog);
+    form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     auto* name = new QLineEdit(QString::fromStdString(c->name), &dialog); name->setObjectName("editorCounterName");
     form->addRow(text("editorColumnName"), name);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);

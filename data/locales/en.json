@@ -327,7 +327,7 @@
   "editorHistoryChange": "Edit",
   "editorMove": "Move selection",
   "EDIT_HISTORY_REVISION": "This history state is no longer available. Choose a state from the current list.",
-  "editorKeyboardHelp": "Select (S): arrow keys move selected Links/Connectors by the grid interval (1 m with Snap off); Shift moves ten intervals. Ctrl+Shift+H opens History. Alt + left-drag rotates the selection; hold Shift for 15° steps. Ctrl+Shift+R enters an exact angle.",
+  "editorKeyboardHelp": "Ctrl+K opens the command palette. Select (S): arrow keys move selected Links/Connectors by the grid interval (1 m with Snap off); Shift moves ten intervals. Ctrl+Shift+H opens History. Alt + left-drag rotates the selection; hold Shift for 15° steps. Ctrl+Shift+R enters an exact angle.",
   "editorRotate": "Rotate selection",
   "editorRotationHelp": "Angle in degrees around the centre of the selected roads. Positive turns counter-clockwise; negative turns clockwise. Connectors that leave their parent roads are removed with their dependent routes and heads; Undo restores the whole edit.",
   "EDIT_ROTATE_TARGET": "Select at least one Link or Connector to rotate. Signal heads rotate with their parent road.",
@@ -479,5 +479,18 @@
   "editorConflictPassive": "Passive — nobody gives way",
   "editorConflictPassiveStatus": "Passive: not enforced; click or press P to set priority",
   "editorConflictAutomaticStatus": "Automatic: drawing order; click or press P to take over",
-  "editorAuthorConflict": "Set conflict area priority"
+  "editorAuthorConflict": "Set conflict area priority",
+  "editorPaletteGeometry": "Geometry",
+  "editorPaletteControl": "Controls",
+  "editorPaletteTools": "Tools",
+  "editorCommandPalette": "Command palette",
+  "editorCommandPaletteTitle": "Commands",
+  "editorCommandPaletteSearch": "Search commands, tools, or shortcuts",
+  "editorCommandPaletteEmpty": "No matching commands",
+  "editorValidRange": "Valid range: %1–%2%3",
+  "editorLaneWidthsRange": "Valid width: > 0 m, finite. Enter 1 value or %1 values.",
+  "editorConnectorWidthsRange": "Valid width: > 0 m, finite. Enter %1 values; blank derives widths from the links.",
+  "editorSignalGreen": "Green",
+  "editorSignalAmber": "Amber",
+  "editorSignalRed": "Red"
 }

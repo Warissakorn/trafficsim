@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QComboBox>
 #include <QDialog>
@@ -29,6 +30,7 @@ std::string selectedId(QTableWidget* table) {
 void row(QTableWidget* t,int r,const QStringList& values,const std::string& id) {
     for (int c=0;c<values.size();++c) {
         auto* cell=new QTableWidgetItem(values[c]); cell->setData(Qt::UserRole,QString::fromStdString(id));
+        if(c==0||c==2)editorDesign::setNumericText(cell,c==2);
         t->setItem(r,c,cell);
     }
 }
@@ -37,7 +39,7 @@ void EditorWindow::buildDemandTables() {
     const auto page=[&](QTableWidget*& view,const char* name,const char* add,const char* edit,const char* remove,
                         const std::function<void(const std::string&)>& open,const char* kind) {
         auto* body=new QWidget(objects_); auto* layout=new QVBoxLayout(body);
-        layout->setContentsMargins(0,0,0,0);layout->setSpacing(3);
+        layout->setContentsMargins(0,0,0,0);layout->setSpacing(editorDesign::space1);
         auto* bar=new QToolBar(body); layout->addWidget(bar);
         view=new QTableWidget(0,3,body); view->setObjectName(name);
         view->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -200,6 +202,8 @@ void EditorWindow::editRoute(const std::string& id,const std::vector<std::string
     if(history_.document().definition)for(const auto& r:history_.document().definition->routes)if(r.id==id)value=r;
     QDialog dialog(this);dialog.setObjectName("editorRouteDialog");dialog.setWindowTitle(text("editorEditRoute"));
     auto* layout=new QVBoxLayout(&dialog);
+    layout->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    layout->setSpacing(editorDesign::space2);
     auto* help=new QLabel(text("editorRouteHelp"),&dialog);help->setWordWrap(true);layout->addWidget(help);
     auto* list=new QListWidget(&dialog);list->setObjectName("editorRoutePath");layout->addWidget(list);
     auto* next=new QComboBox(&dialog);next->setObjectName("editorRouteNext");layout->addWidget(next);

@@ -76,8 +76,8 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
 - Initial Linux/Windows UI tests exposed teardown repainting after History destruction; detaching
   the canvas fixed it. Legacy inspector/Conflict tests now reselect after deselection.
-- Local architecture, file-size and diff checks pass. Linux/Windows screenshot artifacts were
-  inspected; Native C++ verification for this branch is tracked in PR #73.
+- Local architecture, file-size and diff checks pass. Existing Linux/Windows screenshots were
+  inspected; precision UI is added to PR #73. Local CMake/Qt unavailable, new CI pending.
 
 ---
 

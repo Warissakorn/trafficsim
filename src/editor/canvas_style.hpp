@@ -1,13 +1,14 @@
 #pragma once
 #include "../model/network/network.hpp"
+#include "ui_design_tokens.hpp"
 #include <QColor>
 #include <QPen>
 #include <cmath>
 
 namespace trafficsim::canvasStyle {
-inline const QColor selection{"#167b98"};
-inline const QColor hover{"#38a3c4"};
-inline const QColor active{"#de8618"};
+inline const QColor selection{editorDesign::accent};
+inline const QColor hover{editorDesign::accent};
+inline const QColor active{editorDesign::accent};
 inline constexpr double markingWidth = 0.10; // metres, including each stroke of a double line
 inline constexpr double laneTabLength = 24; // logical pixels along the road
 inline constexpr double laneTabDepth = 8;   // logical pixels outside the road
@@ -18,7 +19,7 @@ inline QColor connectorBoundaryColor(const QColor& surface) {
     };
     const double luminance = .2126 * linear(surface.redF()) + .7152 * linear(surface.greenF()) +
                              .0722 * linear(surface.blueF());
-    return luminance > .27 ? QColor("#334155") : QColor("#f8fafc");
+    return luminance > .27 ? QColor(editorDesign::gray8) : QColor(editorDesign::gray0);
 }
 
 inline QPen markingPen(const QColor& colour, MarkingType type) {

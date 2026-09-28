@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -28,6 +29,8 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     catch(const std::exception& e){showError(e);return;}
     QDialog dialog(this);dialog.setObjectName("editorInputDialog");dialog.setWindowTitle(text("editorEditInput"));
     auto* form=new QFormLayout(&dialog);
+    form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     auto* route=new QComboBox(&dialog);route->setObjectName("editorInputRoute");
     // Routes, then routing decisions (M2.4): an input follows one route, or is split across the
     // routes of a decision by its turning proportions. Item data says which.
@@ -79,6 +82,7 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     // which is what keeps an unedited input's compiled volumes bit-identical (D32).
     auto* sharesGroup=new QWidget(&dialog);sharesGroup->setObjectName("editorInputShares");
     auto* sharesForm=new QFormLayout(sharesGroup);sharesForm->setContentsMargins(0,0,0,0);
+    sharesForm->setHorizontalSpacing(editorDesign::space2);sharesForm->setVerticalSpacing(editorDesign::space1);
     form->addRow(sharesGroup);
     auto* sharesHelp=new QLabel(text("editorInputShareHelp"),&dialog);sharesHelp->setObjectName("editorInputShareHelp");
     sharesHelp->setWordWrap(true);form->addRow(sharesHelp);

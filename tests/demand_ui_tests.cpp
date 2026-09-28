@@ -103,7 +103,8 @@ int main(int argc,char** argv) {
         require(band && !band->data(2).toBool(),"Rubber band did not warn");
         click(w,laneMiddle(w,north,northLane));
         require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"Unreachable click was appended");
-        require(drawn(w,"demand-reject-pulse"),"Refused click drew no feedback");
+        require(!item<QLabel>(w,"editorError")->text().isEmpty(),"Refused click did not report an error");
+        require(!drawn(w,"demand-reject-pulse"),"Refused click left a transient canvas pulse");
         require(!w.history().document().definition || w.history().document().definition->routes.empty(),
             "A refused click authored a route");
 
@@ -135,15 +136,14 @@ int main(int argc,char** argv) {
         const auto routeId=definition->routes.front().id;
         require(w.canvas()->highlightedRoute()==routeId,"Committed route was not drawn");
         require(drawn(w,"route-overlay"),"Selected route drew nothing");
-        require(drawn(w,"route-committed-pulse"),"Commit drew no feedback");
-
-        // The animation is paint state: a test sets the phase rather than waiting for a clock.
         auto* overlay=dynamic_cast<QGraphicsPathItem*>(drawn(w,"route-overlay"));
         require(overlay,"Route overlay is not a path");
-        const double first=overlay->pen().dashOffset();
-        w.canvas()->setAnimationPhase(w.canvas()->animationPhase()+3);QApplication::processEvents();
+        require(overlay->pen().style()==Qt::CustomDashLine&&overlay->pen().dashOffset()==0,
+                "Selected route is not a static directional overlay");
+        const double first=overlay->pen().dashOffset();QApplication::processEvents();
         overlay=dynamic_cast<QGraphicsPathItem*>(drawn(w,"route-overlay"));
-        require(overlay && overlay->pen().dashOffset()!=first,"Route dashes did not march");
+        require(overlay&&overlay->pen().dashOffset()==first,"Route overlay changed without input");
+        require(!drawn(w,"route-committed-pulse"),"Commit left a transient canvas pulse");
 
         // Esc drops a draft, and so does losing the canvas: an unfinished gesture never commits.
         click(w,laneMiddle(w,west,westLane));

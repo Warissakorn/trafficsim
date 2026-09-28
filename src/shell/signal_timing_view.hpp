@@ -1,6 +1,7 @@
 #pragma once
 #include "../model/demand/definition.hpp"
 #include <QWidget>
+#include <QString>
 
 namespace trafficsim {
 // M2.7b. The timing-bar diagram a signal controller dialog shows: one row per signal group across
@@ -10,10 +11,12 @@ class SignalTimingView : public QWidget {
 public:
     explicit SignalTimingView(QWidget* parent = nullptr);
     void setController(SignalController controller);
+    void setStatusLabels(QString green,QString amber,QString red);
     QSize sizeHint() const override;
 protected:
     void paintEvent(QPaintEvent*) override;
 private:
     SignalController controller_;
+    QString greenLabel_,amberLabel_,redLabel_;
 };
 }

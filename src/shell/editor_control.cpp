@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -21,6 +22,8 @@ void EditorWindow::editRunSettings() {
     const auto def=history_.document().definition.value_or(AuthoringDefinition{});
     QDialog dialog(this);dialog.setObjectName("editorSettingsDialog");dialog.setWindowTitle(text("editorRunSettings"));
     auto* form=new QFormLayout(&dialog);
+    form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     auto* duration=number(dialog,0.001,10000000,def.duration,"editorDuration");
     auto* dt=number(dialog,0.001,0.5,def.timeStep,"editorTimeStep");
     form->addRow(text("editorDuration"),duration);form->addRow(text("editorTimeStep"),dt);
@@ -33,7 +36,8 @@ void EditorWindow::editProgram(const std::string& id) {
     SignalProgram value{id,0,{{30,SignalColor::red},{30,SignalColor::green},{3,SignalColor::amber}}};
     if(history_.document().definition)for(const auto& p:history_.document().definition->signalPrograms)if(p.id==id)value=p;
     QDialog dialog(this);dialog.setObjectName("editorProgramDialog");dialog.setWindowTitle(text("editorEditProgram"));
-    auto* layout=new QVBoxLayout(&dialog);auto* form=new QFormLayout;layout->addLayout(form);
+    auto* layout=new QVBoxLayout(&dialog);layout->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);layout->setSpacing(editorDesign::space2);
+    auto* form=new QFormLayout;form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);layout->addLayout(form);
     auto* offset=number(dialog,-10000000,10000000,value.offset,"editorProgramOffset");form->addRow(text("editorProgramOffset"),offset);
     auto* phases=new QTableWidget(0,2,&dialog);phases->setObjectName("editorPhases");
     phases->setHorizontalHeaderLabels({text("editorPhaseDuration"),text("editorPhaseColor")});
@@ -74,7 +78,9 @@ void EditorWindow::editHead(const std::string& id,const std::optional<HeadPlacem
         } else if(lastHeadSignal_.rfind("p:",0)==0) value.programId=lastHeadSignal_.substr(2);
     }
     QDialog dialog(this);dialog.setObjectName("editorHeadDialog");dialog.setWindowTitle(text("editorEditHead"));
-    auto* form=new QFormLayout(&dialog);auto* lane=new QComboBox(&dialog);lane->setObjectName("editorHeadLane");
+    auto* form=new QFormLayout(&dialog);form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
+    auto* lane=new QComboBox(&dialog);lane->setObjectName("editorHeadLane");
     // Names first, the way the canvas shows them: "Main St · lane 2", never "link-4 / lane-9".
     // The station's upper bound is the chosen lane's own length, so a stop line cannot be typed
     // off the end of the road it holds.
@@ -113,7 +119,7 @@ void EditorWindow::editHead(const std::string& id,const std::optional<HeadPlacem
     };
     fill(keyOf(value));
     auto* create=new QPushButton(text("editorNewController"),&dialog);create->setObjectName("editorHeadNewController");
-    auto* signalRow=new QWidget(&dialog);auto* signalLayout=new QHBoxLayout(signalRow);signalLayout->setContentsMargins(0,0,0,0);
+    auto* signalRow=new QWidget(&dialog);auto* signalLayout=new QHBoxLayout(signalRow);signalLayout->setContentsMargins(0,0,0,0);signalLayout->setSpacing(editorDesign::space1);
     signalLayout->addWidget(program,1);signalLayout->addWidget(create);
     auto* station=number(dialog,0,10000000,value.position,"editorHeadPosition");
     const auto bound=[&]{

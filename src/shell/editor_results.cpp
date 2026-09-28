@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include "../core/simulation.hpp"
 #include <QHeaderView>
 #include <QLabel>
@@ -23,16 +24,20 @@ QTableWidget* resultTable(QWidget* parent, const char* name, int columns) {
 }
 QTableWidgetItem* figure(const std::optional<double>& value) {
     auto* item=new QTableWidgetItem(value?QString::number(*value,'f',1):QString());
+    editorDesign::setNumericText(item,true);
     item->setTextAlignment(Qt::AlignRight|Qt::AlignVCenter);
     return item;
 }
 }
 void EditorWindow::buildResults() {
     auto* page=new QWidget(objects_); auto* layout=new QVBoxLayout(page);
+    layout->setContentsMargins(editorDesign::space1,editorDesign::space1,editorDesign::space1,editorDesign::space1);
+    layout->setSpacing(editorDesign::space1);
     resultsNote_=new QLabel(page); resultsNote_->setObjectName("editorResultsNote");
     resultsNote_->setWordWrap(true); layout->addWidget(resultsNote_);
     // Side by side, so the dock's height goes to rows: twelve movements beside four approaches.
     auto* row=new QHBoxLayout; layout->addLayout(row,1);
+    row->setContentsMargins(0,0,0,0);row->setSpacing(editorDesign::space1);
     movementTable_=resultTable(page,"editorMovementTable",4); row->addWidget(movementTable_,3);
     queueTable_=resultTable(page,"editorQueueTable",3); row->addWidget(queueTable_,2);
     objects_->addTab(page,QString());
@@ -57,6 +62,7 @@ void EditorWindow::refreshResults() {
         const auto& m=report->movements[static_cast<std::size_t>(r)];
         movementTable_->setItem(r,0,new QTableWidgetItem(QString::fromStdString(m.name)));
         auto* count=new QTableWidgetItem(QString::number(m.vehicles));
+        editorDesign::setNumericText(count,true);
         count->setTextAlignment(Qt::AlignRight|Qt::AlignVCenter); movementTable_->setItem(r,1,count);
         movementTable_->setItem(r,2,figure(m.meanDelay));
         movementTable_->setItem(r,3,figure(m.meanTravelTime));

@@ -6,7 +6,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QListWidget>
+#include <QTreeWidget>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTemporaryDir>
@@ -19,6 +19,14 @@ namespace {
 void require(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
 template<class T>T* item(QObject& root,const char* name){auto* p=root.findChild<T*>(name);require(p,"Missing widget");return p;}
 void action(EditorWindow& w,const char* name){item<QAction>(w,name)->trigger();QApplication::processEvents();}
+QTreeWidgetItem* paletteItem(EditorWindow& w,int mode) {
+    auto* tree=item<QTreeWidget>(w,"editorObjectPalette");
+    for(int i=0;i<tree->topLevelItemCount();++i)for(int j=0;j<tree->topLevelItem(i)->childCount();++j) {
+        auto* child=tree->topLevelItem(i)->child(j);
+        if(child->data(0,Qt::UserRole).toInt()==mode)return child;
+    }
+    throw std::runtime_error("Tool missing from palette tree");
+}
 QPoint pixel(EditorCanvas* c,Point p){const auto q=c->mapFromScene(p.x,p.y);require(c->viewport()->rect().contains(q),"Outside viewport");return q;}
 void drag(EditorCanvas* c,Point a,Point b,Qt::MouseButton button,Qt::KeyboardModifiers modifiers={}) {
     QTest::mousePress(c->viewport(),button,modifiers,pixel(c,a));QTest::mouseMove(c->viewport(),pixel(c,b));
@@ -56,14 +64,14 @@ int main(int argc,char** argv) {
         qputenv("XDG_DATA_HOME",directory.path().toUtf8());
         EditorWindow w{std::filesystem::path(argv[1])};w.resize(1600,1000);w.show();QTest::qWait(30);
         auto* c=w.canvas();c->fitInView(QRectF(-100,-40,200,80),Qt::KeepAspectRatio);c->centerOn(0,0);
-        QTest::keyClick(c,Qt::Key_L);require(item<QListWidget>(w,"editorObjectPalette")->currentRow()==1,"L did not select Links");
+        QTest::keyClick(c,Qt::Key_L);require(item<QTreeWidget>(w,"editorObjectPalette")->currentItem()==paletteItem(w,1),"L did not select Links");
         confirm("editorLinkDialog");drag(c,{-80,0},{-20,0},Qt::RightButton,Qt::ControlModifier);
         confirm("editorLinkDialog");drag(c,{20,0},{80,0},Qt::RightButton,Qt::ControlModifier);
         require(w.history().document().network.links.size()==2,"Ctrl-right-drag did not draw two links");
         const auto links=w.history().document().network.links;
         const auto from=laneGeometry(links[0],links[0].lanes[0].id,DrivingSide::left).back();
         const auto to=laneGeometry(links[1],links[1].lanes[0].id,DrivingSide::left).front();
-        QTest::keyClick(c,Qt::Key_C);require(item<QListWidget>(w,"editorObjectPalette")->currentRow()==2,"C did not select Connectors");const auto before=documentJson(w.history().document());
+        QTest::keyClick(c,Qt::Key_C);require(item<QTreeWidget>(w,"editorObjectPalette")->currentItem()==paletteItem(w,5),"C did not select Connectors");const auto before=documentJson(w.history().document());
         QTest::mousePress(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,from));
         QTest::mouseMove(c->viewport(),pixel(c,to));QTest::keyClick(c,Qt::Key_Escape);
         QTest::mouseRelease(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,to));
@@ -185,7 +193,7 @@ int main(int argc,char** argv) {
         require(fitted.from.laneId==wide[5].lanes[0].id && fitted.to.laneId==wide[6].lanes[1].id,"The range is not centred on the dropped lane");
         w.saveFile(file); // Leave the document clean; closing a dirty window waits on a prompt.
         item<QComboBox>(w,"editorLanguage")->setCurrentIndex(1);action(w,"editorFit");
-        require(item<QListWidget>(w,"editorObjectPalette")->item(2)->text().contains(QString::fromUtf8("เชื่อม")),"Thai palette missing");
+        require(paletteItem(w,5)->text(0).contains(QString::fromUtf8("เชื่อม")),"Thai palette missing");
         if(argc>2)require(w.grab().save(QString::fromUtf8(argv[2])),"Screenshot failed");
         w.close();std::cout<<"Creation, lane ranges, corner resize, duplication and level selection passed\n";return 0;
     }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

@@ -3,13 +3,20 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDockWidget>
+#include <QDialog>
+#include <QLineEdit>
 #include <QLabel>
 #include <QMenu>
+#include <QPointer>
+#include <QSpinBox>
 #include <QScrollArea>
 #include <QStandardPaths>
+#include <QTableWidget>
 #include <QTabWidget>
 #include <QTest>
 #include <QToolBar>
+#include <QToolButton>
+#include <QTreeWidget>
 #include <iostream>
 using namespace trafficsim;
 namespace {
@@ -28,10 +35,42 @@ int main(int argc,char** argv) {
         const auto revision=window.history().revision();const auto selection=canvas->selected();
         const auto defaultCanvas=canvas->viewport()->size();
         auto* palette=item<QDockWidget>(window,"editorPaletteDock");
+        auto* toolTree=item<QTreeWidget>(window,"editorObjectPalette");
         auto* inspector=item<QDockWidget>(window,"editorInspectorDock");
         auto* objects=item<QDockWidget>(window,"editorObjectsDock");
         auto* history=item<QDockWidget>(window,"editorHistoryDock");
         require(palette->isVisible()&&inspector->isVisible()&&objects->isVisible(),"Default panels missing");
+        require(toolTree->topLevelItemCount()==3,"Tool tree categories missing");
+        require(item<QTableWidget>(window,"editorLinkTable")->verticalHeader()->defaultSectionSize()==28,"Object row density changed");
+        auto* laneCount=item<QSpinBox>(window,"editorLaneCount");
+        require(laneCount->font().fixedPitch()&&laneCount->font().pixelSize()==12,"Numeric control is not tabular monospace");
+        auto* laneCountEdit=laneCount->findChild<QLineEdit*>();require(laneCountEdit,"Lane count editor missing");
+        laneCountEdit->setText("13");settle();
+        bool rangeShown=false;
+        for(auto* hint:window.findChildren<QLabel*>("editorRangeHint"))
+            rangeShown=rangeShown||(hint->isVisible()&&hint->text().contains("1–12"));
+        require(rangeShown,"Invalid lane count did not show its valid range");laneCount->setValue(2);
+        auto* laneWidths=item<QLineEdit>(window,"editorLaneWidths");laneWidths->setText("not a width");settle();
+        bool widthRangeShown=false;
+        for(auto* hint:window.findChildren<QLabel*>("editorLaneWidthsRange"))
+            widthRangeShown=widthRangeShown||(hint->isVisible()&&hint->text().contains("> 0 m"));
+        require(widthRangeShown,"Invalid lane width did not explain its valid range");laneWidths->clear();
+        toolTree->setFocus();QTest::keyClick(toolTree,Qt::Key_Tab);settle();
+        require(item<QComboBox>(window,"editorVisibleLevel")->hasFocus(),"Tab order skipped the level filter");
+        QTest::keyClick(item<QComboBox>(window,"editorVisibleLevel"),Qt::Key_Tab);settle();
+        require(item<QToolButton>(window,"editorBackgroundButton")->hasFocus(),"Tab order skipped the background toggle");
+        QTest::keyClick(item<QToolButton>(window,"editorBackgroundButton"),Qt::Key_Tab);settle();
+        require(canvas->hasFocus(),"Tab order did not move from the tree to the canvas");
+        QTest::keyClick(canvas,Qt::Key_Tab);settle();
+        require(item<QLineEdit>(window,"editorId")->hasFocus(),"Tab order did not move from the canvas to the inspector");
+        canvas->setFocus();QTest::keyClick(canvas,Qt::Key_K,Qt::ControlModifier);settle();
+        auto* commandDialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        require(commandDialog&&commandDialog->objectName()=="editorCommandPaletteDialog","Ctrl+K did not open command palette");
+        QPointer<QDialog> commandGuard(commandDialog);
+        auto* commandSearch=item<QLineEdit>(*commandDialog,"editorCommandSearch");
+        commandSearch->setText("Draw link");settle();QTest::keyClick(commandSearch,Qt::Key_Return);settle();
+        require(commandGuard.isNull()&&item<QComboBox>(window,"editorTool")->currentIndex()==1,
+                "Command search did not activate the Link tool");
         require(defaultCanvas.width()>=700&&defaultCanvas.height()>=350,"Default canvas crowded out");
         const int top=item<QToolBar>(window,"editorFiles")->y();
         for(const auto* name:{"editorTools","editorRunToolbar","editorWorkspace"})

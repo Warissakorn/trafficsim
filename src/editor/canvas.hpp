@@ -9,8 +9,6 @@
 #include <optional>
 #include <map>
 
-class QTimer;
-
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
 public:
@@ -100,10 +98,6 @@ public:
     std::function<void(std::vector<MeasurementLine>)> counterDraftCommitted;
     const std::vector<MeasurementLine>& counterDraft() const { return counterDraft_; }
     void commitCounterDraft();
-    // Paint state only, advanced by a timer. Tests set it directly: waiting on wall clock for
-    // an animation is how a suite becomes flaky, and no measured number depends on it.
-    void setAnimationPhase(int phase);
-    int animationPhase() const { return animationPhase_; }
     std::function<void(Point)> duplicateRequested;
     std::function<void(Point)> translateRequested;
     std::function<void(Point,double)> rotateRequested;
@@ -177,15 +171,10 @@ private:
     bool demandHover(QMouseEvent*);
     void clearRouteDraft();
     void reject();
-    void animate();
-    bool animating() const;
     std::vector<std::string> routeDraft_;
-    std::vector<std::vector<Point>> pulseGeometry_;
     std::string hoverSegment_, highlightedRoute_;
     bool hoverReachable_{};
     Point hoverPoint_{};
-    int animationPhase_{}, commitPulse_{}, rejectPulse_{};
-    QTimer* animation_{};
     // Connector geometry is the most expensive thing a frame does, and a frame recomputed all
     // of it even when nothing had moved. What `connectorPaths` and `connectorBoundaries` read is
     // exactly the Connector, the two Links it names and the driving side -- nothing else in the
