@@ -275,7 +275,7 @@ private:
     void drawGeometryHandles(const std::string&, const std::vector<Point>&, bool connector);
     std::string hoverObject_, hoverConflict_, hoverAutomatic_, hoverWaitingLine_;
     int hoverVertex_{-1}, hoverLaneKind_{}, hoverLaneLocation_{-1};
-    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; int location{1}; };
+    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; int location{1}; double tabLength{}; };
     std::vector<LaneHandle> laneHandles() const;
     void previewLinkLanes(Link&) const;
     QPainterPath laneHandlePath(const LaneHandle&, double padding = 0) const;

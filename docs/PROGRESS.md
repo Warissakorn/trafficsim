@@ -67,7 +67,7 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
   counts. Link tabs appear at start/middle/end; Connector end tabs follow the rendered rails.
   Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
   Connector end tabs now use the painted edge and its tangent, including angled Link joints.
-  End tabs inset by half their length; P3–P4 mouth edges now draw as solid road boundaries.
+  End tabs inset by half their length and shrink to fit short Connectors; P3–P4 draws as a solid boundary.
   Resizing tabs use preview geometry, keeping Link tabs on curved edges throughout the drag.
 - Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
 - Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear

@@ -72,7 +72,9 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const auto& edge=leading?boundaries.front():boundaries.back();
             const auto& other=leading?boundaries.back():boundaries.front();
             const double length=polylineLength(edge);
-            const double inset=std::min(canvasStyle::laneTabLength/2/std::abs(transform().m11()),length/2);
+            const double scale=std::abs(transform().m11());
+            h.tabLength=std::min(canvasStyle::laneTabLength,length*scale);
+            const double inset=std::min(h.tabLength/2/scale,length/2);
             const double station=source?inset:length-inset;
             h.anchor=pointAlong(edge,station);
             const auto tangent=directionAlong(edge,station,false);
@@ -113,7 +115,8 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
 }
 QPainterPath EditorCanvas::laneHandlePath(const LaneHandle& h,double padding) const {
     const double scale=std::abs(transform().m11());
-    const double length=canvasStyle::laneTabLength/2/scale+padding,depth=canvasStyle::laneTabDepth/2/scale+padding;
+    const double length=(h.tabLength>0?h.tabLength:canvasStyle::laneTabLength)/2/scale+padding;
+    const double depth=canvasStyle::laneTabDepth/2/scale+padding;
     const Point tangent{-h.direction.y,h.direction.x};
     QPainterPath shape;bool first=true;
     for(const auto [along,outward]:{std::pair{-length,-depth},std::pair{length,-depth},

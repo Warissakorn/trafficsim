@@ -144,7 +144,6 @@ void connectorEndTabs(EditorCanvas& c) {
         c.setTransform(QTransform::fromScale(4,-4));c.centerOn(0,0);c.redraw();
         const auto boundaries=connectorBoundaries(d.network,d.network.connectors.front());
         const auto surface=connectorSurface(d.network,d.network.connectors.front());
-        const double halfButton=canvasStyle::laneTabLength/2/4;
         for(const int kind:{1,2,5,6}) {
             QGraphicsPathItem* tab=nullptr;
             for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize" && item->data(1).toInt()==kind)
@@ -153,17 +152,20 @@ void connectorEndTabs(EditorCanvas& c) {
             const auto polygon=tab->path().toFillPolygon();require(polygon.size()>=4,"Connector end tab is not rectangular");
             const QPointF midpoint=(polygon[0]+polygon[1])/2;
             const double length=QLineF(polygon[0],polygon[1]).length();
-            require(std::abs(length*4-24)<1e-7,"Connector end tab is not 24 pixels long");
             const bool source=kind==1 || kind==5;
+            const double railLength=polylineLength(kind>4?boundaries.front():boundaries.back());
+            const double buttonPixels=std::min(canvasStyle::laneTabLength,railLength*4);
+            const double halfButton=buttonPixels/8;
+            require(std::abs(length*4-buttonPixels)<1e-7,"Connector end tab does not fit the road end");
             const auto& rail=kind>4?boundaries.front():boundaries.back();
-            const double railLength=polylineLength(rail);
+            const double lengthOnRail=polylineLength(rail);
             const double station=stationOfClosestPoint(rail,{midpoint.x(),midpoint.y()});
-            require(std::abs(station-(source?halfButton:railLength-halfButton))<1e-6,
+            require(std::abs(station-(source?halfButton:lengthOnRail-halfButton))<1e-6,
                     "Connector end tab is centred beyond the road end");
             const double first=stationOfClosestPoint(rail,{polygon[0].x(),polygon[0].y()});
             const double second=stationOfClosestPoint(rail,{polygon[1].x(),polygon[1].y()});
-            const double expectedFirst=source?0.:railLength-2*halfButton;
-            const double expectedLast=source?2*halfButton:railLength;
+            const double expectedFirst=source?0.:lengthOnRail-2*halfButton;
+            const double expectedLast=source?2*halfButton:lengthOnRail;
             require(std::abs(std::min(first,second)-expectedFirst)<.05 &&
                     std::abs(std::max(first,second)-expectedLast)<.05,
                     "Connector end tab extends past the road end");
@@ -193,6 +195,28 @@ void connectorEndTabs(EditorCanvas& c) {
             }
             require(found,"P3–P4 is not drawn as a Connector boundary");
         }
+    }
+    auto shortRoad=fixture();shortRoad.network.connectors.clear();
+    shortRoad.network.links[0].geometry={{-9,0},{-2,0}};
+    shortRoad.network.links[1].geometry={{2,0},{9,0}};
+    addConnectorRange(shortRoad,{"a","a1"},{"b","b1"},2,2);validateDocument(shortRoad);
+    c.setDocument(&shortRoad);c.select(shortRoad.network.connectors.front().id);c.redraw();
+    const auto shortBoundaries=connectorBoundaries(shortRoad.network,shortRoad.network.connectors.front());
+    for(const int kind:{1,2,5,6}) {
+        QGraphicsPathItem* tab=nullptr;
+        for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize" && item->data(1).toInt()==kind)
+            tab=dynamic_cast<QGraphicsPathItem*>(item);
+        require(tab,"Short Connector is missing an end tab");
+        const auto railIndex=kind>4?0:shortBoundaries.size()-1;
+        const auto& rail=shortBoundaries[railIndex];const double railLength=polylineLength(rail);
+        const auto polygon=tab->path().toFillPolygon();
+        require(std::abs(QLineF(polygon[0],polygon[1]).length()*4-std::min(24.,railLength*4))<1e-7,
+                "Short Connector end tab is not reduced to fit");
+        const double expected=kind==1 || kind==5?std::min(railLength/2,12./4)
+                                                   :railLength-std::min(railLength/2,12./4);
+        const QPointF mid=(polygon[0]+polygon[1])/2;
+        require(std::abs(stationOfClosestPoint(rail,{mid.x(),mid.y()})-expected)<1e-6,
+                "Short Connector end tab protrudes past its mouth");
     }
     c.setDocument(nullptr);
 }
