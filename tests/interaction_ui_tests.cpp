@@ -213,8 +213,8 @@ void connectorEndTabs(EditorCanvas& c) {
         const auto polygon=tab->path().toFillPolygon();
         require(std::abs(QLineF(polygon[0],polygon[1]).length()*4-std::min(24.,railLength*4/2))<1e-7,
                 "Short Connector end tab is not reduced to fit");
-        const double expected=kind==1 || kind==5?std::min(railLength/2,12./4)
-                                                   :railLength-std::min(railLength/2,12./4);
+        const double inset=std::min(12./4,railLength/4);
+        const double expected=kind==1 || kind==5?inset:railLength-inset;
         const QPointF mid=(polygon[0]+polygon[1])/2;
         require(std::abs(stationOfClosestPoint(rail,{mid.x(),mid.y()})-expected)<1e-6,
                 "Short Connector end tab protrudes past its mouth");
