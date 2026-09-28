@@ -67,15 +67,15 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
   counts. Link tabs appear at start/middle/end; Connector end tabs follow the rendered rails.
   Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
   Connector end tabs now use the painted edge and its tangent, including angled Link joints.
+  End tabs inset by half their length; P3–P4 mouth edges now draw as solid road boundaries.
   Resizing tabs use preview geometry, keeping Link tabs on curved edges throughout the drag.
 - Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
 - Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear
   selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then
   clears selection when idle. Tab/Delete cannot accidentally edit roads in authoring tools.
 - Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
-- Initial CI passed the new interaction suite on Linux/Windows; it exposed teardown repainting
-  a destroyed History. The shell now detaches the canvas document before members are destroyed.
-  Updated legacy inspector/Conflict tests to explicitly reselect after mode/empty-space clearing.
+- Initial Linux/Windows UI tests exposed teardown repainting after History destruction; detaching
+  the canvas fixed it. Legacy inspector/Conflict tests now reselect after deselection.
 - Local architecture, file-size and diff checks pass. Linux/Windows screenshot artifacts were
   inspected; Native C++ verification for this branch is tracked in PR #73.
 

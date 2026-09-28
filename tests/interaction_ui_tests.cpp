@@ -143,6 +143,8 @@ void connectorEndTabs(EditorCanvas& c) {
         c.setDocument(&d);c.select(d.network.connectors.front().id);
         c.setTransform(QTransform::fromScale(4,-4));c.centerOn(0,0);c.redraw();
         const auto boundaries=connectorBoundaries(d.network,d.network.connectors.front());
+        const auto surface=connectorSurface(d.network,d.network.connectors.front());
+        const double halfButton=canvasStyle::laneTabLength/2/4;
         for(const int kind:{1,2,5,6}) {
             QGraphicsPathItem* tab=nullptr;
             for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize" && item->data(1).toInt()==kind)
@@ -153,20 +155,43 @@ void connectorEndTabs(EditorCanvas& c) {
             const double length=QLineF(polygon[0],polygon[1]).length();
             require(std::abs(length*4-24)<1e-7,"Connector end tab is not 24 pixels long");
             const bool source=kind==1 || kind==5;
-            double nearest=1e300,alignment=0,endpointDistance=1e300;
-            for(const auto& rail:boundaries) {
-                const double station=stationOfClosestPoint(rail,{midpoint.x(),midpoint.y()});
-                const auto on=pointAlong(rail,station),tangent=directionAlong(rail,station,false);
-                const double distance=std::hypot(midpoint.x()-on.x,midpoint.y()-on.y);
-                const auto end=source?rail.front():rail.back();
-                endpointDistance=std::min(endpointDistance,std::hypot(midpoint.x()-end.x,midpoint.y()-end.y));
-                const double dx=polygon[1].x()-polygon[0].x(),dy=polygon[1].y()-polygon[0].y();
-                const double dot=std::abs(dx*tangent.x+dy*tangent.y)/length;
-                if(distance<nearest){nearest=distance;alignment=dot;}
-            }
+            const auto& rail=kind>4?boundaries.front():boundaries.back();
+            const double railLength=polylineLength(rail);
+            const double station=stationOfClosestPoint(rail,{midpoint.x(),midpoint.y()});
+            require(std::abs(station-(source?halfButton:railLength-halfButton))<1e-6,
+                    "Connector end tab is centred beyond the road end");
+            const double first=stationOfClosestPoint(rail,{polygon[0].x(),polygon[0].y()});
+            const double second=stationOfClosestPoint(rail,{polygon[1].x(),polygon[1].y()});
+            const double expectedFirst=source?0.:railLength-2*halfButton;
+            const double expectedLast=source?2*halfButton:railLength;
+            require(std::abs(std::min(first,second)-expectedFirst)<.05 &&
+                    std::abs(std::max(first,second)-expectedLast)<.05,
+                    "Connector end tab extends past the road end");
+            const auto on=pointAlong(rail,station),tangent=directionAlong(rail,station,false);
+            const double nearest=std::hypot(midpoint.x()-on.x,midpoint.y()-on.y);
+            const double dx=polygon[1].x()-polygon[0].x(),dy=polygon[1].y()-polygon[0].y();
+            const double alignment=std::abs(dx*tangent.x+dy*tangent.y)/length;
             require(nearest<1e-7,"Connector end tab is detached from its painted edge");
-            require(endpointDistance<1e-7,"Connector end tab is on the wrong end of the road");
             require(alignment>.999,"Connector end tab does not follow its edge at the Link joint");
+        }
+        for(const auto* mouth:{&surface.source,&surface.target}) {
+            require(mouth->has_value(),"Angled Connector is missing its four-point mouth");
+            bool found=false;
+            for(auto* item:c.scene()->items())if(item->data(0).toString()=="connector-mouth-edge" &&
+                item->data(1).toString()==QString::fromStdString(d.network.connectors.front().id) &&
+                item->data(2).toString()==(mouth==&surface.source?"source":"target")) {
+                const auto* line=dynamic_cast<QGraphicsPathItem*>(item);require(line,"Mouth edge is not a painted path");
+                const auto path=line->path();
+                const auto p3=path.elementAt(0),p4=path.elementAt(1);
+                const auto& points=mouth->value().points;
+                require(QLineF(p3.x,p3.y,points[2].x,points[2].y).length()<1e-9 &&
+                        QLineF(p4.x,p4.y,points[3].x,points[3].y).length()<1e-9,
+                        "Connector edge is not the P3–P4 segment");
+                require(line->pen().style()==Qt::SolidLine && !line->pen().isCosmetic() &&
+                        std::abs(line->pen().widthF()-.10)<1e-9,"Connector mouth edge is not a solid road marking");
+                found=true;
+            }
+            require(found,"P3–P4 is not drawn as a Connector boundary");
         }
     }
     c.setDocument(nullptr);

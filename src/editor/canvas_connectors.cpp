@@ -136,6 +136,14 @@ void EditorCanvas::drawConnectors() {
             auto* item=scene_.addPath(path(marking.geometry),pen);item->setZValue(z+4.5);
             item->setData(0,QStringLiteral("road-marking"));item->setData(1,QString::fromStdString(c.id));
         }
+        const auto mouthEdge=[&](const std::optional<ConnectorMouth>& mouth,const char* end) {
+            if(!mouth)return;
+            auto* item=scene_.addPath(path({mouth->points[2],mouth->points[3]}),
+                canvasStyle::markingPen(QColor(QString::fromStdString(style(c.displayType).laneColor)),MarkingType::solid));
+            item->setZValue(z+4.5);item->setData(0,QStringLiteral("connector-mouth-edge"));
+            item->setData(1,QString::fromStdString(c.id));item->setData(2,QString::fromLatin1(end));
+        };
+        mouthEdge(drawing.source,"source");mouthEdge(drawing.target,"target");
         drawObjectFeedback(c.id,drawing.outline.empty()?objectShape(c.id):surface,z+4.75);
         const double length=polylineLength(geometry);
         if (length>0) {

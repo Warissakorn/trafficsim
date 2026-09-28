@@ -71,7 +71,9 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const bool leading=h.kind>4;
             const auto& edge=leading?boundaries.front():boundaries.back();
             const auto& other=leading?boundaries.back():boundaries.front();
-            const double station=source?0.:polylineLength(edge);
+            const double length=polylineLength(edge);
+            const double inset=std::min(canvasStyle::laneTabLength/2/std::abs(transform().m11()),length/2);
+            const double station=source?inset:length-inset;
             h.anchor=pointAlong(edge,station);
             const auto tangent=directionAlong(edge,station,false);
             const auto opposite=pointAlong(other,matchedStation(edge,other,station));

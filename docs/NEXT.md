@@ -14,8 +14,8 @@ the log. Rewrite this file; do not append to it.
 The implementation and regression tests are on `codex/editor-interaction-polish`; check its
 latest Native C++ workflow before merging. Linux/Windows screenshot artifacts have been
 inspected. The UI suite covers hover, empty-space/table clearing, mode changes, Escape,
-tabs on both edges at all three Link stations, Connector end tabs following angled boundary rails,
-curved resize previews, Undo and 10 cm markings.
+tabs at all Link stations, Connector end tabs staying inside the mouth and following angled rails,
+visible P3–P4 boundaries, curved resize previews, Undo and 10 cm markings.
 Review curved/overlapping roads and the tabs at working zoom levels in the desktop. The local
 coding workspace has no Qt/CMake toolchain; the workflow runs Linux and Windows builds/tests.
 
