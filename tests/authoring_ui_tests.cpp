@@ -54,7 +54,7 @@ int main(int argc,char** argv) {
         for(auto* p:w.canvas()->scene()->items())if(p->data(0).toString()=="road-marking") {
             auto* path=dynamic_cast<QGraphicsPathItem*>(p);require(path,"Marking is not a path");
             if(path->pen().style()==Qt::SolidLine)++solid;
-            if(path->pen().style()==Qt::DashLine)++dashed;
+            if(path->pen().style()==Qt::CustomDashLine)++dashed;
         }
         require(solid==2 && dashed==1,"Authored outer dashed edge was forced solid");
         const auto authored=w.history().document();

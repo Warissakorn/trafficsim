@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include <QGraphicsPathItem>
 #include <QGraphicsSimpleTextItem>
 #include <QMouseEvent>
@@ -50,6 +51,7 @@ bool EditorCanvas::demandPress(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton && !ctrlRight)return false;
     const auto p=world(e->pos(),false);
     const auto target=objectAt(p);
+    if(target.empty()){clearSelection(false);return true;}
     if(tool_==Tool::input) {
         // A vehicle input is placed on a LINK, the way Vissim places one, and its volume is the
         // Link's total: the compiler divides it across the lanes the route actually reaches.
@@ -141,9 +143,10 @@ void EditorCanvas::drawDemandOverlay() {
     if((tool_==Tool::route || tool_==Tool::input) && !hoverSegment_.empty()) {
         const auto geometry=objectGeometry(document_->network,hoverSegment_);
         if(geometry.size()>1) {
-            const QColor colour=hoverReachable_?QColor(22,123,152,90):QColor(239,68,68,90);
-            QPen halo(colour,14);halo.setCosmetic(true);halo.setCapStyle(Qt::RoundCap);
-            auto* item=scene_.addPath(polylinePath(geometry),halo);
+            const QColor colour=hoverReachable_?canvasStyle::hover:QColor("#ef4444");
+            QPen outline(colour,1.5);outline.setCosmetic(true);
+            QColor fill=colour;fill.setAlpha(24);
+            auto* item=scene_.addPath(objectShape(hoverSegment_),outline,QBrush(fill));
             item->setZValue(200003);item->setData(0,QStringLiteral("demand-hover"));
             item->setData(1,QString::fromStdString(hoverSegment_));
             item->setData(2,hoverReachable_);

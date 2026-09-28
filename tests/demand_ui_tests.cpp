@@ -86,7 +86,7 @@ int main(int argc,char** argv) {
 
         auto* tool=item<QComboBox>(w,"editorTool");
         auto* hint=item<QLabel>(w,"editorToolHint");
-        require(hint->text().isEmpty(),"Select tool showed a gesture hint");
+        require(!hint->text().isEmpty(),"Select tool did not explain selection and lane tabs");
         tool->setCurrentIndex(6);QApplication::processEvents();
         require(!hint->text().isEmpty(),"Route tool explained nothing");
 

@@ -17,6 +17,11 @@ jobs:
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }} --parallel 2
       - run: cmake --build build/${{ matrix.preset }} --target check
+      - uses: actions/upload-artifact@v4
+        if: matrix.preset == 'desktop'
+        with:
+          name: editor-interaction-linux
+          path: build/desktop/interaction-preview.png
   # The UI suites are platform-sensitive: they touch real user paths, locks and window
   # activation. Until 2026-09-15 they ran on Windows only in the manual packaging workflow,
   # so a Windows-only UI failure merged to main green and surfaced days later. This job
@@ -41,6 +46,10 @@ jobs:
         run: cmake -S . -B build/desktop -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
       - run: cmake --build build/desktop --config Release --parallel 2
       - run: ctest --test-dir build/desktop -C Release --output-on-failure
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editor-interaction-windows
+          path: build/desktop/interaction-preview.png
   windows-core:
     runs-on: windows-2022
     steps:

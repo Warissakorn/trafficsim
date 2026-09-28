@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include "../model/network/right_of_way.hpp"
 #include <QApplication>
 #include <QGraphicsPathItem>
@@ -89,7 +90,7 @@ bool EditorCanvas::conflictPress(QMouseEvent* e) {
         // No authored area here: an automatic one is authored by the click (D68), as Vissim's
         // first click sets a passive area's priority.
         if (const auto key = automaticAt(p); !key.empty()) { if (conflictAuthored) conflictAuthored(key); return true; }
-        reject(); return true;
+        clearSelection(false); return true;
     }
     if (std::find(areas.begin(), areas.end(), highlightedConflict_) != areas.end()) {
         if (conflictCycled) conflictCycled(highlightedConflict_);
@@ -141,7 +142,7 @@ void EditorCanvas::drawAutomaticConflicts() {
             const bool passive = a.priority == ConflictPriority::undetermined;
             const bool yields = (side == &a.first) == (a.priority == ConflictPriority::firstYields);
             const QColor tint = passive ? QColor(120, 128, 140, 90) : yields ? QColor(220, 38, 38, 80) : QColor(22, 163, 74, 80);
-            QPen pen(tint.darker(150), 1, Qt::DashLine); pen.setCosmetic(true);
+            QPen pen(a.key==hoverAutomatic_?canvasStyle::hover:tint.darker(150), a.key==hoverAutomatic_?2:1, Qt::DashLine); pen.setCosmetic(true);
             auto* item = scene_.addPath(insetPath(outline), pen, QBrush(tint));
             item->setZValue(level * 100. + 5.5); item->setToolTip(QString::fromStdString(a.key));
             item->setData(0, QStringLiteral("auto-conflict")); item->setData(1, QString::fromStdString(a.key));
@@ -165,7 +166,7 @@ void EditorCanvas::drawConflicts() {
             // The two sides of a crossing cover the same square. The one that gives way (the second
             // while undetermined) is hatched and drawn above, so the other still shows through.
             const bool hatched = undetermined ? side == &area.second : yields;
-            QPen pen(lit ? QColor("#ffb454") : hatched ? tint.darker() : tint.darker(130), lit ? 3 : hatched ? 2 : 1);
+            QPen pen(lit ? canvasStyle::selection : area.id==hoverConflict_ ? canvasStyle::hover : hatched ? tint.darker() : tint.darker(130), lit || area.id==hoverConflict_ ? 2.5 : hatched ? 2 : 1);
             pen.setCosmetic(true);
             QColor solid = tint; if (hatched) solid.setAlpha(230);
             auto* item = scene_.addPath(insetPath(outline), pen, QBrush(solid, hatched ? Qt::BDiagPattern : Qt::SolidPattern));
@@ -187,7 +188,7 @@ void EditorCanvas::drawConflicts() {
                                           [&](const auto& c) { return c.waitingLineId == line.id; });
         const bool controlled = control != n.rightOfWay.stopControls.end();
         const bool stop = controlled && control->mode == StopMode::stop;
-        QPen pen(dragged ? QColor("#ffb454") : stop ? QColor("#dc2626") : QColor("#f59e0b"), dragged || stop ? 3 : 2,
+        QPen pen(dragged ? canvasStyle::active : line.id==hoverWaitingLine_ ? canvasStyle::hover : stop ? QColor("#dc2626") : QColor("#f59e0b"), dragged || stop ? 3 : 2,
                  controlled ? Qt::SolidLine : Qt::DashLine);
         pen.setCosmetic(true); pen.setCapStyle(Qt::FlatCap);
         auto* item = scene_.addLine(bar->first.x, bar->first.y, bar->second.x, bar->second.y, pen);

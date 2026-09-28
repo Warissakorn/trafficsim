@@ -45,7 +45,7 @@ bool EditorCanvas::counterPress(QMouseEvent* e) {
     const auto p = world(e->pos(), false);
     lastPick_ = p;
     auto line = counterLineAt(p);
-    if (!line) { reject(); return true; }
+    if (!line) { clearSelection(false); return true; }
     // A head or waiting line measured twice is still one line.
     if (!line->point && std::any_of(counterDraft_.begin(), counterDraft_.end(), [&](const auto& l) { return l.referenceId == line->referenceId; }))
         return true;

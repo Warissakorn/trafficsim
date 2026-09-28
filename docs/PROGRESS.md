@@ -59,6 +59,23 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 
 ---
 
+## 2026-09-28 — Editor selection and visual cleanup (owner request)
+
+- Unified subtle hover/selection outlines, preserving display-type road colours. Geometry
+  grips are small squares only for a single object in Select. Hover clears on leave/focus loss.
+- Lane tabs are 24 × 8 logical-pixel rectangles directly on both road edges, without stems or
+  counts. Links now expose start/middle/end tabs; Connector source/target/body semantics stay.
+  Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
+- Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
+- Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear
+  selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then
+  clears selection when idle. Tab/Delete cannot accidentally edit roads in authoring tools.
+- Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
+- Local file-size/diff checks pass; the workspace has no CMake or Qt SDK. Native Linux/Windows
+  build and UI validation are pending on the branch's GitHub Actions run.
+
+---
+
 ## 2026-09-28 — D80: central reference and one P1–P4 pipeline
 
 - Owner requested a whole-carriageway reference, fixed source/target lane pairing, removal of

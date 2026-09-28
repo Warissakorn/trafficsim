@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include <QGraphicsPathItem>
 #include <QGraphicsPixmapItem>
 #include <QMouseEvent>
@@ -52,7 +53,8 @@ void EditorCanvas::setDocument(const ProjectDocument* d) {
     redraw();
 }
 void EditorCanvas::setTool(Tool tool) {
-    resetGesture(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
+    if (tool_ == tool) return;
+    tool_ = tool; clearSelection();
 }
 std::vector<Point> EditorCanvas::handleGeometry() const {
     const auto* geometry=selectedGeometry();
@@ -78,6 +80,7 @@ void EditorCanvas::cancel() { resetGesture(); redraw(); }
 // network. The callbacks stay here, in the order cancel() ran them, so the only difference a
 // caller can observe is the frame that is no longer drawn and immediately thrown away.
 void EditorCanvas::resetGesture() {
+    clearHover();
     copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
     groupDrag_=groupDragging_=false;groupOffset_={};
     rotationPivot_.reset();rotationDegrees_=0;rotationDragging_=false;
@@ -115,7 +118,6 @@ void EditorCanvas::redraw() {
     for (auto link : document_->network.links) {
         if(!levelVisible(link.level))continue;
         const auto& appearance=style(link.displayType);const double z=link.level*100.;
-        const bool chosen=isSelected(link.id);
         if (link.id==primary && !preview_.empty()) link.geometry=preview_;
         if(link.id==primary && laneResize_ && (laneResize_->kind==4 || laneResize_->kind==8)) {
             const bool leading=laneResize_->kind==8;auto lanes=link.lanes;
@@ -125,7 +127,7 @@ void EditorCanvas::redraw() {
             while(static_cast<int>(lanes.size())>previewLinkCount_)lanes.erase(leading?lanes.begin():lanes.end()-1);
             replaceLaneBundle(link,std::move(lanes),leading);
         }
-        const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
+        const QColor colour(QString::fromStdString(appearance.linkColor));
         const auto road=linkCentreline(link,document_->network.drivingSide);
         if(!std::isfinite(polylineLength(road)) || polylineLength(road)<=0) {
             // Invalid transient geometry must remain a cancellable gesture, not an exception
@@ -140,10 +142,11 @@ void EditorCanvas::redraw() {
         auto surface=path(left);for(auto it=right.rbegin();it!=right.rend();++it)surface.lineTo(q(*it));surface.closeSubpath();
         scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+1);
         for(const auto& marking:markingStrokes(linkMarkings(link,document_->network.drivingSide))) {
-            QPen pen(QColor(QString::fromStdString(appearance.laneColor)),1,marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            const auto pen=canvasStyle::markingPen(QColor(QString::fromStdString(appearance.laneColor)),marking.type);
             auto* mark=scene_.addPath(path(marking.geometry),pen);
             mark->setZValue(z+2);mark->setData(0,QStringLiteral("road-marking"));mark->setData(1,QString::fromStdString(link.id));
         }
+        drawObjectFeedback(link.id,surface,z+2.5);
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
         if (polylineLength(link.geometry) <= 0) continue;
         const auto mid=pointAlong(road,polylineLength(road)/2);
@@ -152,18 +155,7 @@ void EditorCanvas::redraw() {
         QPolygonF arrow;
         for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
         scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+3);
-        // Handles belong to the primary alone; drawing them for every selected link would
-        // suggest a group drag that M1.5 deliberately does not implement.
-        // Grips sit on the bundle centreline, where Vissim shows them, not on the reference
-        // polyline, which ends up at one edge as soon as lanes are added to a single side.
-        if (link.id==primary) {
-            const auto handles=linkCentreline(link,document_->network.drivingSide);
-            const double radius=4/std::abs(transform().m11());
-            QPen outline(QColor("#334155"),1);outline.setCosmetic(true);
-            for (std::size_t i=0;i<handles.size();++i)
-                scene_.addEllipse(handles[i].x-radius,handles[i].y-radius,2*radius,2*radius,outline,
-                    QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(z+5);
-        }
+        drawGeometryHandles(link.id,road,false);
     }
     drawConnectors();
     drawLaneHandles();
@@ -199,6 +191,7 @@ void EditorCanvas::drawBackground(QPainter* painter,const QRectF& rect) {
     for(double y=std::floor(rect.top()/step)*step;y<=rect.bottom();y+=step) painter->drawLine(QPointF(rect.left(),y),QPointF(rect.right(),y));
 }
 void EditorCanvas::wheelEvent(QWheelEvent* e) {
+    clearHover();
     const auto before=mapToScene(e->position().toPoint());
     const double old=std::abs(transform().m11()), next=std::clamp(old*std::pow(1.0015,e->angleDelta().y()),0.05,100.0);
     scale(next/old,next/old);

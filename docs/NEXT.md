@@ -9,7 +9,15 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — review D80 central axis and four-point mouths
+## Immediate — validate the editor interaction cleanup
+
+Run the branch's Native C++ workflow and resolve any regression before merging. Inspect the
+`editor-interaction-linux` and `editor-interaction-windows` screenshots. The local workspace
+has no Qt/CMake toolchain. The UI test covers hover, empty-space/table clearing, mode changes,
+Escape cancellation, tabs on both edges at all three Link stations, Undo and 10 cm markings.
+After automated checks, review curved/overlapping roads and the tabs at working zoom levels.
+
+## Then — review D80 central axis and four-point mouths
 
 D80 replaces the legacy square/slide mouth system. Read CONNECTOR_FOUR_POINT_MOUTH.md and the
 latest PROGRESS entry before changing it. The owner explicitly requested fixed lane-index

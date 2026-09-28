@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include <QApplication>
 #include <QGraphicsLineItem>
 #include <QMouseEvent>
@@ -54,7 +55,7 @@ bool EditorCanvas::headPress(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton && !ctrlRight) return false;
     const auto placed = headAt(world(e->pos(), false));
     hoverHead_.reset();
-    if (!placed) { reject(); return true; }
+    if (!placed) { clearSelection(false); return true; }
     redraw();
     if (headPlaced) headPlaced(*placed);
     return true;
@@ -113,7 +114,7 @@ void EditorCanvas::drawHeads() {
         const bool dragged = headDrag_ && headDrag_->id == head.id && headDrag_->moved;
         const double station = dragged ? headDrag_->station : head.position;
         bar(geometry->points, station, geometry->width, geometry->level,
-            isSelected(head.id) ? QColor("#ffb454") : QColor(Qt::white), false);
+            isSelected(head.id) ? canvasStyle::selection : head.id==hoverObject_ ? canvasStyle::hover : QColor(Qt::white), false);
         const auto p = pointAlong(geometry->points, station); const double r = 3 / std::abs(transform().m11());
         scene_.addEllipse(p.x - r, p.y - r, 2 * r, 2 * r, QPen(Qt::darkGray), QBrush(QColor("#dc2626")))
             ->setZValue(geometry->level * 100. + 11);

@@ -13,7 +13,7 @@ std::optional<int> EditorCanvas::objectLevel(const std::string& id) const {
     return {};
 }
 void EditorCanvas::setVisibleLevel(std::optional<int> level) {
-    visibleLevel_ = level;
+    visibleLevel_ = level; clearHighlights();
     std::erase_if(selection_, [&](const auto& id) {
         const auto at = objectLevel(id);
         return !at || !levelVisible(*at);
@@ -43,6 +43,7 @@ void EditorCanvas::setSelection(std::vector<std::string> ids) {
         visibleLevel_.reset();
         if (visibleLevelChanged) visibleLevelChanged({});
     }
+    if(selection_.empty())clearHighlights();
     vertex_ = -1; notifySelection();
 }
 void EditorCanvas::toggle(const std::string& id) {

@@ -142,18 +142,17 @@ derived in monotone order, with stable IDs: the first uses the connector ID and 
 Unequal counts pair lane for lane over the narrower end, with at most one lane added or dropped on each side, so the counts differ by at most 2 (M3.2.9a, D73). For a one-lane difference
 `laneChangeSide` (schema 17, `"left"`/`"right"`, the driver's view; the Inspector's "Lane change side", M3.2.9c) picks the side, absent = kerb side; that lane is the one drawn tapering. Lane tabs stop at a two-lane difference. A Connector asked for across a larger difference (a 2-lane Link dragged onto a 5-lane one) is created narrowed to it: the wider end gets `narrower + 2` lanes, centred on the lane the drag ended on (M3.2.9d, D75). Ranges are limited by the existing lanes, at most 12 per end.
 
-In Select (S), orange **lane tabs** exist even on a one-lane Connector. Each is drawn as a
-rounded tab on the edge of the carriageway, joined to it by a short stem, with the resulting
-lane count inside it — one shape saying what it edits and what the release will produce:
+In Select (S), rectangular **lane tabs** exist even on a one-lane Connector. Each sits directly
+against the carriageway edge, without a stem or a numeric label:
 
 - Source handles on both sides: grow/shrink the contiguous source lane range.
 - Target handles on both sides: grow/shrink the contiguous target lane range independently.
 - Middle handles on both sides: set both ends to the same count, limited by available lanes.
-- Each selected Link has a tab on **both sides** to add/remove lanes (up to 12). Existing
+- Each selected Link has tabs at the start, middle and end on **both sides** to add/remove lanes (up to 12). Existing
   widths and world positions are retained. Added lanes use the width of the dragged edge lane.
 
-Drag outward to add lanes and inward to remove them; the number and geometry preview
-update during the drag. One release is one undo entry. Esc cancels. Each tab changes
+Drag outward to add lanes and inward to remove them; the road geometry previews the result
+during the drag. One release is one undo entry. Esc cancels. Each tab changes
 its own edge, leaving the opposite edge fixed. The first-side handles add/remove lanes
 before the current first lane; the other handles change the last lane. Surviving lane
 IDs and positions stay fixed, including on curved Links. Connector paths whose lane pair
@@ -183,7 +182,7 @@ whose ends carry different lane counts, an interior divider is drawn only over t
 the two lanes it separates are genuinely side by side — at least half their full spacing apart —
 and stops where they converge, rather than continuing down the middle of the single lane they
 merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. The
-small centre arrows show travel direction; white dots are editable geometry handles.
+small centre arrows show travel direction; small white squares are editable geometry handles, shown for a single object in Select.
 
 **A Connector may carry its own lane widths and divider markings** (Vissim's `Lanes` tab). The
 Properties fields take comma-separated metres, one per lane, and comma-separated `solid`/`dashed`

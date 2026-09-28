@@ -24,7 +24,7 @@ namespace trafficsim {
 namespace {
 std::string selectedId(QTableWidget* table) {
     const auto* cell=table->item(table->currentRow(),0);
-    return cell?cell->data(Qt::UserRole).toString().toStdString():std::string{};
+    return cell && !table->selectedItems().isEmpty()?cell->data(Qt::UserRole).toString().toStdString():std::string{};
 }
 void row(QTableWidget* t,int r,const QStringList& values,const std::string& id) {
     for (int c=0;c<values.size();++c) {

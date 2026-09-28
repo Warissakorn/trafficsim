@@ -30,20 +30,26 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         if(gestureFrom_)draft_.front()=laneAttachment(document_->network,*gestureFrom_,true);
         redraw();return;
     }
-    if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; panStart_=panPress_=e->pos(); return; }
+    if (e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) { panning_=true; clearHover(); setCursor(Qt::ClosedHandCursor); panStart_=panPress_=e->pos(); return; }
     if (e->button()!=Qt::LeftButton) return;
     auto p=world(e->pos());lastPick_=world(e->pos(),false);
+    if(tool_==Tool::select)clearHighlights();
     if((e->modifiers()&Qt::ControlModifier) && tool_==Tool::select) {
         const auto picked=hit(lastPick_);
-        if(picked.first.empty()) {additive_=true;band_=QRectF(p.x,p.y,0,0);dragStart_=p;redraw();return;}
+        if(picked.first.empty()) {additive_=true;band_=QRectF(lastPick_.x,lastPick_.y,0,0);dragStart_=lastPick_;dragPress_=e->pos();redraw();return;}
         copyPick_=picked.first;copyArmed_=isSelected(copyPick_);copyStart_=e->pos();dragStart_=p;
         copyDragging_=false;copyOffset_={};return;
     }
+    if(tool_!=Tool::select && tool_!=Tool::conflict &&
+       (!selection_.empty() || !highlightedRoute_.empty() || !highlightedConflict_.empty()))clearSelection(false);
     if(demandPress(e))return;
     if(headPress(e))return;
     if(conflictPress(e))return;
     if(counterPress(e))return;
-    if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {startRotation(e->pos());return;}
+    if(tool_==Tool::select && (e->modifiers()&Qt::AltModifier)) {
+        if(hit(lastPick_).first.empty())clearSelection();else startRotation(e->pos());
+        return;
+    }
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
     if (tool_==Tool::draw || tool_==Tool::measure || tool_==Tool::calibrate) {
@@ -56,19 +62,18 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         redraw(); return;
     }
     const auto picked=hit(world(e->pos(),false),tool_!=Tool::split);
-    if (tool_==Tool::split) { if (!picked.first.empty() && splitAt) splitAt(picked.first,picked.second); return; }
+    if (tool_==Tool::split) { if (picked.first.empty())clearSelection(false);else if(splitAt)splitAt(picked.first,picked.second); return; }
     const bool additive=(e->modifiers()&Qt::ShiftModifier)!=0;
     if (additive) {
         // Adding to a selection is never also a drag: the two gestures would fight over the press.
-        if (picked.first.empty()) { additive_=true; band_=QRectF(p.x,p.y,0,0); dragStart_=p; redraw(); }
+        if (picked.first.empty()) { additive_=true; band_=QRectF(lastPick_.x,lastPick_.y,0,0); dragStart_=lastPick_; dragPress_=e->pos(); redraw(); }
         else toggle(picked.first);
         return;
     }
     if (picked.first.empty() && vertexAt(e->pos())<0) {
-        // A plain drag on empty space did nothing before, so the band displaces no gesture.
-        additive_=false; band_=QRectF(p.x,p.y,0,0); dragStart_=p;
-        if (!selection_.empty()) { selection_.clear(); if(selectionChanged) selectionChanged(); }
-        redraw(); return;
+        clearSelection();
+        additive_=false; band_=QRectF(lastPick_.x,lastPick_.y,0,0); dragStart_=lastPick_; dragPress_=e->pos();
+        return;
     }
     vertex_=vertexAt(e->pos());
     if (vertex_<0 && !isSelected(picked.first)) { selection_={picked.first}; vertex_=vertexAt(e->pos()); }
@@ -98,15 +103,16 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
             }
         }
     }
+    setCursor(Qt::ClosedHandCursor);
     redraw(); if(selectionChanged) selectionChanged();
 }
 int EditorCanvas::vertexAt(QPoint position) const {
     // Pick the nearest handle: dense curve points must not steal each other's drags.
     const auto* geometry=selectedGeometry();
-    if (!geometry || selection_.size()!=1) return -1;
+    if (tool_!=Tool::select || !geometry || selection_.size()!=1) return -1;
     const auto handles=handleGeometry();
     if (handles.size()!=geometry->size()) return -1;
-    int best=12, found=-1;
+    int best=9, found=-1;
     for(std::size_t i=0;i<handles.size();++i) {
         const auto screen=mapFromScene(handles[i].x,handles[i].y);
         const int distance=(screen-position).manhattanLength();
@@ -147,7 +153,7 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if (tool_==Tool::connect && connectorFrom_) {
         const auto hovered=hitLanePosition(world(e->pos(),false),false);
         if (hovered!=connectorHover_) { connectorHover_=hovered; redraw(); }
-        return;
+        updateHover(e->pos()); return;
     }
     if(groupDrag_) {
         groupDragging_=(e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance();
@@ -160,10 +166,12 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
         if(vertex_>=0 && selectedConnector())preview_=connectorGeometryWithGrip(document_->network,*selectedConnector(),static_cast<std::size_t>(vertex_),p);
         else if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};
         else for(auto& point:preview_) { point.x+=p.x-dragStart_.x; point.y+=p.y-dragStart_.y; }
-        redraw();
+        redraw();return;
     }
+    updateHover(e->pos());
 }
 void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
+    setCursor(tool_==Tool::select?Qt::ArrowCursor:Qt::CrossCursor);
     if(e->button()==Qt::LeftButton && rotationPivot_) {
         // Native platforms may coalesce the last move; commit the release angle once.
         updateRotation(e->pos(),e->modifiers()&Qt::ShiftModifier);
@@ -226,7 +234,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
     }
     if(e->button()==Qt::MiddleButton || e->button()==Qt::RightButton) {
         const bool click=(e->pos()-panPress_).manhattanLength()<QApplication::startDragDistance();
-        panning_=false;
+        panning_=false;updateHover(e->pos());
         // A right-DRAG pans, which is the gesture this editor already spends the button on.
         // A right-CLICK spent nothing until now, so a context menu displaces no gesture.
         if(click && e->button()==Qt::RightButton && !(e->modifiers()&Qt::ControlModifier) && contextMenuRequested)
@@ -237,7 +245,8 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         const auto p=world(e->pos(),false);
         const auto box=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized();
         const bool additive=additive_; band_.reset(); additive_=false;
-        auto found=inRectangle({box.left(),box.top()},{box.right(),box.bottom()});
+        auto found=(e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance()
+            ?inRectangle({box.left(),box.top()},{box.right(),box.bottom()}):std::vector<std::string>{};
         if (additive) { auto merged=selection_; for(auto& id:found) merged.push_back(std::move(id)); found=std::move(merged); }
         setSelection(std::move(found)); return;
     }
@@ -298,7 +307,11 @@ void EditorCanvas::removeVertex() {
     if(editGeometry) editGeometry(selected(),geometry);
 }
 void EditorCanvas::keyPressEvent(QKeyEvent* e) {
-    if(e->key()==Qt::Key_Escape) { if(stopRequested)stopRequested(); cancel(); return; }
+    if(e->key()==Qt::Key_Escape) {
+        if(stopRequested)stopRequested();
+        if(mouseGestureActive() || !draft_.empty() || connectorFrom_)cancel();else clearSelection();
+        return;
+    }
     if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) {
         if(!routeDraft_.empty()) {commitRouteDraft();return;}
         if(!counterDraft_.empty()) {commitCounterDraft();return;}
@@ -307,8 +320,8 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     // Only while a route draft is open: Backspace belongs to the view otherwise.
     if(e->key()==Qt::Key_Backspace && !routeDraft_.empty()) { dropLastRouteSegment(); return; }
     if(e->key()==Qt::Key_Backspace && !counterDraft_.empty()) { counterDraft_.pop_back(); redraw(); return; }
-    if(e->key()==Qt::Key_Tab) {cycleOverlap();return;}
-    if(e->key()==Qt::Key_Delete) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
+    if(e->key()==Qt::Key_Tab && (tool_==Tool::select || tool_==Tool::conflict) && !mouseGestureActive()) {cycleOverlap();return;}
+    if(e->key()==Qt::Key_Delete && tool_==Tool::select && !mouseGestureActive()) {if(e->modifiers()&Qt::ControlModifier)removeVertex();else if(deleteRequested)deleteRequested();return;}
     const bool arrow = e->key()==Qt::Key_Left || e->key()==Qt::Key_Right ||
                        e->key()==Qt::Key_Up || e->key()==Qt::Key_Down;
     if (arrow && tool_==Tool::select &&
@@ -341,6 +354,7 @@ bool EditorCanvas::mouseGestureActive() const {
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {
     if (mouseGestureActive()) cancel();
+    else {clearHover();redraw();}
     QGraphicsView::focusOutEvent(e);
 }
 }

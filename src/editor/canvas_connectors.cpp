@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include "../commands/connector_commands.hpp"
 #include <QGraphicsPathItem>
 #include <QPainter>
@@ -89,7 +90,7 @@ std::optional<LaneReference> EditorCanvas::connectorEndpointTarget(Point p,bool 
 }
 void EditorCanvas::pickConnector(Point p) {
     const auto lane=hitLanePosition(p,!connectorFrom_);
-    if (!lane) return;
+    if (!lane) { clearSelection(false); return; }
     if (!connectorFrom_) {
         connectorFrom_=lane;
         if (connectorSourcePicked) connectorSourcePicked(*lane);
@@ -107,9 +108,7 @@ void EditorCanvas::drawConnectors() {
     for (const auto& c : document_->network.connectors) {
         if(!levelVisible(c.level))continue;
         const double z=c.level*100.;
-        const bool chosen=isSelected(c.id);
-        const QColor colour=c.id==primary?QColor("#b33f8d"):chosen?QColor("#c877b0"):QColor(QString::fromStdString(style(c.displayType).connectorColor));
-        QPen pen(colour,chosen?3:2); pen.setCosmetic(true);
+        const QColor colour(QString::fromStdString(style(c.displayType).connectorColor));
         auto preview=c;
         if(c.id==primary && !preview_.empty()){preview.geometry=preview_;preview.laneBlend.clear();}
         if(c.id==primary && rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4);
@@ -133,12 +132,11 @@ void EditorCanvas::drawConnectors() {
         road->setData(0,QStringLiteral("road-surface"));road->setData(1,QString::fromStdString(c.id));
         for(const auto& marking:markingStrokes(drawing.markings)) {
             // An outer edge is solid; an interior divider draws its own type.
-            QPen pen(QColor(QString::fromStdString(style(c.displayType).laneColor)),1,
-                     marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);
-            pen.setCosmetic(true);
+            const auto pen=canvasStyle::markingPen(QColor(QString::fromStdString(style(c.displayType).laneColor)),marking.type);
             auto* item=scene_.addPath(path(marking.geometry),pen);item->setZValue(z+4.5);
             item->setData(0,QStringLiteral("road-marking"));item->setData(1,QString::fromStdString(c.id));
         }
+        drawObjectFeedback(c.id,drawing.outline.empty()?objectShape(c.id):surface,z+4.75);
         const double length=polylineLength(geometry);
         if (length>0) {
             const auto mid=pointAlong(geometry,length/2), ahead=pointAlong(geometry,length/2+length/100);
@@ -148,25 +146,8 @@ void EditorCanvas::drawConnectors() {
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
             scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+5);
         }
-        // Grips ride the middle of the connector's whole width, not the first lane's path; its
-        // end grips sit on the middle of the Link lanes it joins (D77).
-        if (c.id==primary) {
-            const auto handles=connectorGrips(document_->network,preview);
-            QPen outline(QColor("#334155"),1);outline.setCosmetic(true);
-            for (std::size_t i=0; i<handles.size(); ++i) {
-                const auto p=handles[i];
-                if (i==0 || i+1==handles.size()) {
-                    const bool held=endpointDrag_ && *endpointDrag_==(i==0);
-                    auto* item=scene_.addRect(p.x-radius,p.y-radius,2*radius,2*radius,pen,
-                                              QBrush(held?QColor("#ffb454"):QColor("#334155")));
-                    item->setZValue(z+6);item->setData(0,QStringLiteral("connector-end"));
-                    item->setData(1,QString::fromStdString(c.id));item->setData(2,i==0);
-                } else {
-                    const auto color=static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff");
-                    scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,outline,QBrush(color))->setZValue(z+6);
-                }
-            }
-        }
+        if(c.id==primary && tool_==Tool::select && selection_.size()==1)
+            drawGeometryHandles(c.id,connectorGrips(document_->network,preview),true);
     }
     if (tool_!=Tool::connect) return;
     if(connectorFrom_) {

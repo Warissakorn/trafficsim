@@ -47,6 +47,8 @@ public:
     void redraw();
     void fitNetwork();
     void cancel();                                        // forget the gesture AND repaint
+    void clearSelection(bool cancelGesture = true);       // includes table-owned highlights
+    std::function<void()> selectionCleared;
     void finishDrawing();
     void removeVertex();
     bool snap{true};
@@ -128,6 +130,7 @@ protected:
     void wheelEvent(QWheelEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
+    void leaveEvent(QEvent*) override;
     void drawBackground(QPainter*, const QRectF&) override;
     bool focusNextPrevChild(bool) override;
 private:
@@ -264,8 +267,18 @@ private:
     // cancel() without the repaint, for callers that redraw for their own reasons anyway.
     void resetGesture();
     void drawConnectors();
-    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; };
+    void clearSelectionState();
+    void clearHighlights();
+    void clearHover();
+    void updateHover(QPoint);
+    void drawObjectFeedback(const std::string&, const QPainterPath&, double z);
+    void drawGeometryHandles(const std::string&, const std::vector<Point>&, bool connector);
+    std::string hoverObject_, hoverConflict_, hoverAutomatic_, hoverWaitingLine_;
+    int hoverVertex_{-1}, hoverLaneKind_{}, hoverLaneLocation_{-1};
+    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; int location{1}; };
     std::vector<LaneHandle> laneHandles() const;
+    QPainterPath laneHandlePath(const LaneHandle&, double padding = 0) const;
+    std::optional<LaneHandle> laneHandleAt(QPoint) const;
     bool startLaneResize(QPoint);
     void updateLaneResize(QPoint);
     void drawLaneHandles();

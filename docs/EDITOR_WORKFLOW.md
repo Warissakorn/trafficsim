@@ -3,6 +3,27 @@
 The Network Editor offers the same workflow in English and Thai. These controls extend the
 existing authoring commands; they do not change the project format or simulation model.
 
+## Selection and editing feedback
+
+Hover shows a light blue outline; selection uses a stronger teal outline and a subtle tint,
+keeping the road's display-type colour and markings visible. Geometry points are small square
+grips, shown only for a single object in Select. Rectangular lane tabs sit directly against
+both edges at the start, middle and end; drag a tab outward/inward to add/remove lanes. Tabs
+have no count labels. Lane markings are 0.10 m wide, with 3 m dashes and gaps that scale with
+zoom. Each stroke of a double marking has the same width.
+
+A plain click on empty space clears selection, Properties and table-owned highlights. Shift
+or Ctrl with an empty click preserves the selection; dragging a box adds its objects. Change
+of tool clears the previous selection and cancels unfinished gestures. Table selection in an
+authoring tool can still show properties, but exposes no geometry/lane grips. Tab cycling and
+canvas Delete operate in Select (conflict areas also support Tab in their own tool).
+
+Escape first cancels an unfinished gesture/draft; when idle, it clears selection. Empty-space
+clicks in Route, Connector and Queue counter tools clear selection while keeping an unfinished
+multi-click draft, without showing an error. Enter commits and Escape cancels those drafts.
+Right/middle drag remains pan. Shift-click toggles, Ctrl-click adds an unselected object, and
+Ctrl-drag of a selected object copies it, retaining the D30 convention.
+
 ## History
 
 Use **View → History** or **Ctrl+Shift+H**. The dock lists reachable states from oldest
