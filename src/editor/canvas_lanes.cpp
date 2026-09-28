@@ -66,20 +66,24 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         const auto widths=connectorLaneWidths(document_->network,*connector);
         const double offset=canvasStyle::laneTabDepth/2/std::abs(transform().m11());
         const auto attachEnd=[&](LaneHandle& h,bool source) {
-            const auto endpoint=[&](const auto& rail)->Point{return source?rail.front():rail.back();};
-            const auto first=endpoint(boundaries.front()),last=endpoint(boundaries.back());
-            const double dFirst=std::hypot(first.x-h.anchor.x,first.y-h.anchor.y);
-            const double dLast=std::hypot(last.x-h.anchor.x,last.y-h.anchor.y);
-            const auto& edge=dFirst<=dLast?boundaries.front():boundaries.back();
-            const auto& other=dFirst<=dLast?boundaries.back():boundaries.front();
+            // The non-leading tabs follow the far rail; leading tabs follow the kerb rail,
+            // matching the corresponding Connector-body tab at midspan.
+            const bool leading=h.kind>4;
+            const auto& edge=leading?boundaries.front():boundaries.back();
+            const auto& other=leading?boundaries.back():boundaries.front();
             const double station=source?0.:polylineLength(edge);
             h.anchor=pointAlong(edge,station);
             const auto tangent=directionAlong(edge,station,false);
             const auto opposite=pointAlong(other,matchedStation(edge,other,station));
             Point normal{h.anchor.x-opposite.x,h.anchor.y-opposite.y};
-            const double along=normal.x*tangent.x+normal.y*tangent.y;
+            double along=normal.x*tangent.x+normal.y*tangent.y;
             normal.x-=along*tangent.x;normal.y-=along*tangent.y;
-            const double magnitude=std::hypot(normal.x,normal.y);
+            double magnitude=std::hypot(normal.x,normal.y);
+            if(magnitude<=1e-9) {
+                normal=h.direction;along=normal.x*tangent.x+normal.y*tangent.y;
+                normal.x-=along*tangent.x;normal.y-=along*tangent.y;
+                magnitude=std::hypot(normal.x,normal.y);
+            }
             if(magnitude>1e-9)h.direction={normal.x/magnitude,normal.y/magnitude};
             h.position={h.anchor.x+h.direction.x*offset,h.anchor.y+h.direction.y*offset};
         };
