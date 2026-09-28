@@ -119,14 +119,7 @@ void EditorCanvas::redraw() {
         if(!levelVisible(link.level))continue;
         const auto& appearance=style(link.displayType);const double z=link.level*100.;
         if (link.id==primary && !preview_.empty()) link.geometry=preview_;
-        if(link.id==primary && laneResize_ && (laneResize_->kind==4 || laneResize_->kind==8)) {
-            const bool leading=laneResize_->kind==8;auto lanes=link.lanes;
-            const double width=(leading?lanes.front():lanes.back()).width;
-            while(static_cast<int>(lanes.size())<previewLinkCount_)
-                lanes.insert(leading?lanes.begin():lanes.end(),{"preview-"+std::to_string(lanes.size()),width});
-            while(static_cast<int>(lanes.size())>previewLinkCount_)lanes.erase(leading?lanes.begin():lanes.end()-1);
-            replaceLaneBundle(link,std::move(lanes),leading);
-        }
+        previewLinkLanes(link);
         const QColor colour(QString::fromStdString(appearance.linkColor));
         const auto road=linkCentreline(link,document_->network.drivingSide);
         if(!std::isfinite(polylineLength(road)) || polylineLength(road)<=0) {

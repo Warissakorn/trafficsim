@@ -277,6 +277,7 @@ private:
     int hoverVertex_{-1}, hoverLaneKind_{}, hoverLaneLocation_{-1};
     struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; int location{1}; };
     std::vector<LaneHandle> laneHandles() const;
+    void previewLinkLanes(Link&) const;
     QPainterPath laneHandlePath(const LaneHandle&, double padding = 0) const;
     std::optional<LaneHandle> laneHandleAt(QPoint) const;
     bool startLaneResize(QPoint);

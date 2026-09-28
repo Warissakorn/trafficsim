@@ -12,6 +12,7 @@
 #include <QTest>
 #include <cmath>
 #include <iostream>
+#include <map>
 
 using namespace trafficsim;
 namespace {
@@ -114,6 +115,23 @@ void laneTabs(EditorCanvas& c) {
         require(commits==old+1 && h.document().network.links.front().lanes.size()==3,"Lane tab drag did not add one lane");
         h.undo();require(h.document()==before,"Lane tab resize was not one undoable edit");
     }
+    // A miter moves along both axes when widened. Tabs must follow the rendered edge,
+    // including during the drag, rather than jump from a translated approximation on release.
+    auto curved=fixture();curved.network.connectors.clear();
+    curved.network.links.front().geometry={{-80,-20},{-50,-20},{-50,10}};
+    h.reset(curved);c.setDocument(&h.document());c.select("a");
+    const auto tabs=[&] {
+        std::map<std::pair<int,int>,QRectF> result;
+        for(auto* item:c.scene()->items())if(item->data(0).toString()=="lane-resize")
+            result[{item->data(1).toInt(),item->data(2).toInt()}]=dynamic_cast<QGraphicsPathItem*>(item)->path().boundingRect();
+        return result;
+    };
+    const auto press=c.mapFromScene(tabs().at({4,1}).center()),target=press+QPoint(14,0);
+    QTest::mousePress(c.viewport(),Qt::LeftButton,{},press);
+    QTest::mouseMove(c.viewport(),target);const auto preview=tabs();
+    QTest::mouseRelease(c.viewport(),Qt::LeftButton,{},target);
+    require(h.document().network.links.front().lanes.size()==3,"Curved Link resize fixture did not grow");
+    require(preview.size()==6 && preview==tabs(),"Lane tabs jumped from the preview edge on release");
     c.resizeLinkRequested={};c.setDocument(nullptr);
 }
 void markings(EditorCanvas& c) {

@@ -6,6 +6,15 @@
 #include <cmath>
 
 namespace trafficsim {
+void EditorCanvas::previewLinkLanes(Link& link) const {
+    if(link.id!=selected() || !laneResize_ || (laneResize_->kind!=4 && laneResize_->kind!=8))return;
+    const bool leading=laneResize_->kind==8;auto lanes=link.lanes;
+    const double width=(leading?lanes.front():lanes.back()).width;
+    while(static_cast<int>(lanes.size())<previewLinkCount_)
+        lanes.insert(leading?lanes.begin():lanes.end(),{"preview-"+std::to_string(lanes.size()),width});
+    while(static_cast<int>(lanes.size())>previewLinkCount_)lanes.erase(leading?lanes.begin():lanes.end()-1);
+    replaceLaneBundle(link,std::move(lanes),leading);
+}
 std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
     if(!document_ || tool_!=Tool::select || selection_.size()!=1)return {};
     const auto side=document_->network.drivingSide;
@@ -28,7 +37,8 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         return LaneHandle{{anchor.x+direction.x*offset,anchor.y+direction.y*offset},anchor,
                           direction,lane.width,kind,count,leading?static_cast<int>(std::distance(link.lanes.begin(),first))+count:available};
     };
-    if(const auto* link=selectedLink();link && levelVisible(link->level)) {
+    if(const auto* original=selectedLink();original && levelVisible(original->level)) {
+        auto preview=*original;previewLinkLanes(preview);const auto* link=&preview;
         std::vector<LaneHandle> result;
         const double length=polylineLength(link->geometry);
         for(int location=0;location<3;++location) {
@@ -40,7 +50,10 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
         }
         return result;
     }
-    if(const auto* connector=selectedConnector();connector && levelVisible(connector->level)) {
+    if(const auto* original=selectedConnector();original && levelVisible(original->level)) {
+        auto preview=*original;
+        if(rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4);
+        const auto* connector=&preview;
         const Link *from=nullptr,*to=nullptr;
         for(const auto& link:document_->network.links) {
             if(link.id==connector->from.linkId)from=&link;
@@ -133,13 +146,6 @@ void EditorCanvas::drawLaneHandles() {
     for(auto h:laneHandles()) {
         const bool held=laneResize_ && laneResize_->kind==h.kind && laneResize_->location==h.location;
         const bool hovered=hoverLaneKind_==h.kind && hoverLaneLocation_==h.location;
-        if(laneResize_ && (laneResize_->kind>4)==(h.kind>4)) {
-            const int kind=(h.kind-1)%4+1;
-            const int count=kind==4?previewLinkCount_:kind==2?previewToCount_:kind==1?previewFromCount_:std::max(previewFromCount_,previewToCount_);
-            const double shift=(count-h.count)*h.width;
-            h.position.x+=h.direction.x*shift;h.position.y+=h.direction.y*shift;
-            h.anchor.x+=h.direction.x*shift;h.anchor.y+=h.direction.y*shift;
-        }
         const QColor colour=held?canvasStyle::active:canvasStyle::selection;
         QPen border(colour,held || hovered?2:1);border.setCosmetic(true);
         auto* item=scene_.addPath(laneHandlePath(h),border,QBrush(held || hovered?colour:QColor("#f8fafc")));

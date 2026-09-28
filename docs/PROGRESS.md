@@ -66,6 +66,7 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - Lane tabs are 24 × 8 logical-pixel rectangles directly on both road edges, without stems or
   counts. Links now expose start/middle/end tabs; Connector source/target/body semantics stay.
   Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
+  Resizing tabs use the preview geometry, keeping them on curved edges throughout the drag.
 - Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
 - Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear
   selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then
@@ -73,6 +74,7 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
 - Initial CI passed the new interaction suite on Linux/Windows; it exposed teardown repainting
   a destroyed History. The shell now detaches the canvas document before members are destroyed.
+  Updated legacy inspector/Conflict tests to explicitly reselect after mode/empty-space clearing.
 - Local file-size/diff checks pass; the workspace has no CMake or Qt SDK. Native Linux/Windows
   build and UI validation are pending on the branch's GitHub Actions run.
 
