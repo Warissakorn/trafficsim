@@ -2,6 +2,7 @@
 #include "../editor/ui_design_tokens.hpp"
 #include <QAbstractItemView>
 #include <QAction>
+#include <QComboBox>
 #include <QDialog>
 #include <QKeyEvent>
 #include <QLabel>
