@@ -7,6 +7,7 @@
 #include <QComboBox>
 #include <QDockWidget>
 #include <QHeaderView>
+#include <QLineEdit>
 #include <QLabel>
 #include <QLocale>
 #include <QMenu>
@@ -18,6 +19,7 @@
 #include <QTableWidget>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTreeWidget>
 #include <initializer_list>
 namespace trafficsim {
 void EditorWindow::buildWorkspace() {
