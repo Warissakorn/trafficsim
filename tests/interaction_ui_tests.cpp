@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "../src/editor/canvas_style.hpp"
 #include <nlohmann/json.hpp>
 #include <QAction>
 #include <QApplication>
