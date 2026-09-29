@@ -2,6 +2,7 @@
 #include "json.hpp"
 #include "run.hpp"
 #include "../core/validate.hpp"
+#include <nlohmann/json.hpp>
 #include <algorithm>
 #include <charconv>
 #include <cmath>

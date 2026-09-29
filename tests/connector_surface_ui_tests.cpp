@@ -6,6 +6,7 @@
 #include <QPainterPathStroker>
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
 using namespace trafficsim;
 namespace {
 void require(bool ok,const char* message) { if(!ok)throw std::runtime_error(message); }

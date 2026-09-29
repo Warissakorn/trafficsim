@@ -49,6 +49,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   (4:31 in run 360; baseline 6:17/6:16, so −10 to −28%), windows-core 3:45 (no change); whole
   run 8:03 against 8:27. Getting Windows down means the Ninja generator plus a compiler cache
   there — a separate change, not made here.
+- **Eleven files no longer lean on a PCH for `nlohmann/json.hpp`.** D27 says a file that builds
+  or reads a `Json` includes the definition itself; six `src/project` sources, three tools and
+  every `tests/` file (through `test.hpp`) compiled only because their target precompiles it.
+  `-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON` now builds and passes 69/69; with the PCH on nothing
+  changes (the header is already precompiled there), and `trafficsim-cli 42` is byte-identical.
+- **Windows jobs on Ninja + ccache.** The Visual Studio generator takes no compiler launcher,
+  so both Windows jobs configure with Ninja inside the vcvars64 environment (`cl` named
+  explicitly, since the runner's PATH also carries MinGW), ccache from Chocolatey, PCH off
+  (neither ccache nor sccache caches MSVC `/Yu`), and the same `actions/cache` scheme as Linux.
+  `/MP` is gone: Ninja already runs one file per core. `package.yml` keeps the Visual Studio
+  generator and its PCH; it builds release artifacts, where a cache buys nothing.
+  First run (364) failed on MSVC: `history.cpp` and `split_link.cpp` throw `std::invalid_argument`
+  without `<stdexcept>`, which libstdc++ and libc++ reach through `<string>` and MSVC does not.
+  An include check over `src/ tools/ tests/` (each `std::` symbol against the file's own
+  include closure) found the same class in twelve files; all now include `<stdexcept>`.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 

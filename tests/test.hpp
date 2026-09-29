@@ -3,6 +3,7 @@
 #include "../src/core/validate.hpp"
 #include "../src/project/load.hpp"
 #include "../src/project/json.hpp"
+#include <nlohmann/json.hpp>
 #include <cmath>
 #include <functional>
 #include <stdexcept>

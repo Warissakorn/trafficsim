@@ -24,6 +24,7 @@
 #include "../src/commands/right_of_way_commands.hpp"
 #include <algorithm>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace trafficsim::fixture {

@@ -7,6 +7,7 @@
 #include <map>
 #include <set>
 #include <cmath>
+#include <stdexcept>
 namespace trafficsim {
 void renameObject(ProjectDocument& d,const std::string& id,const std::string& name) {
     // A name long enough to be a document belongs in neither a dialog nor a table cell.

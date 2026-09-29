@@ -3,6 +3,7 @@
 //
 //   trafficsim-m26-study <output.traffic.json>
 #include "m26_study_network.hpp"
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
 using namespace trafficsim;

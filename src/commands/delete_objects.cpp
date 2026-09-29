@@ -2,6 +2,7 @@
 #include "detail.hpp"
 #include "connector_commands.hpp"
 #include <algorithm>
+#include <stdexcept>
 
 namespace trafficsim {
 namespace {

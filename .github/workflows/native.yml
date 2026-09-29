@@ -52,11 +52,14 @@ jobs:
   # gates it on every push and pull request instead.
   windows-desktop:
     runs-on: windows-2022
-    # Public-repository runners have 4 vCPUs. The Visual Studio generator's --parallel is
-    # msbuild /m (projects in parallel); /MP also compiles a project's own files in parallel,
-    # which is where trafficsim-tests spends its time. CL is read by every cl.exe invocation.
+    # Ninja + ccache, as on Linux. The Visual Studio generator cannot take a compiler launcher,
+    # and neither ccache nor sccache caches MSVC precompiled headers, so these jobs build with
+    # PCH off (every source includes what it uses; b87b63a). Ninja schedules one file per core.
     env:
-      CL: /MP
+      CCACHE_DIR: ${{ github.workspace }}\.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 500M
     steps:
       - uses: actions/checkout@v5
       - name: Install Qt
@@ -73,9 +76,25 @@ jobs:
         # Header-only, so vcpkg has no DLL to copy beside each binary; its per-target copy step
         # (applocal) is off because parallel targets raced on it (package run 68, exit 32).
         run: vcpkg install nlohmann-json:x64-windows
+      - name: Install ccache
+        run: choco install ccache -y --no-progress
+      - uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-windows-desktop-${{ github.sha }}
+          restore-keys: ccache-windows-desktop-
+      - name: Enter the MSVC x64 environment
+        # What vcvars64.bat sets, exported to the later steps, so Ninja finds cl.exe.
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') { "$($matches[1])=$($matches[2])" | Out-File $env:GITHUB_ENV -Append -Encoding utf8 }
+          }
       - name: Configure MSVC
-        run: cmake -S . -B build/desktop -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_APPLOCAL_DEPS=OFF
-      - run: cmake --build build/desktop --config Release --parallel 4
+        run: cmake -S . -B build/desktop -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_APPLOCAL_DEPS=OFF
+      - run: ccache -z
+      - run: cmake --build build/desktop
+      - run: ccache -s
       - run: ctest --test-dir build/desktop -C Release --output-on-failure
       - uses: actions/upload-artifact@v4
         if: always()
@@ -85,14 +104,33 @@ jobs:
   windows-core:
     runs-on: windows-2022
     env:
-      CL: /MP
+      CCACHE_DIR: ${{ github.workspace }}\.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 500M
     steps:
       - uses: actions/checkout@v5
       - name: Install JSON headers
         # Header-only, so vcpkg has no DLL to copy beside each binary; its per-target copy step
         # (applocal) is off because parallel targets raced on it (package run 68, exit 32).
         run: vcpkg install nlohmann-json:x64-windows
+      - name: Install ccache
+        run: choco install ccache -y --no-progress
+      - uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-windows-core-${{ github.sha }}
+          restore-keys: ccache-windows-core-
+      - name: Enter the MSVC x64 environment
+        # What vcvars64.bat sets, exported to the later steps, so Ninja finds cl.exe.
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') { "$($matches[1])=$($matches[2])" | Out-File $env:GITHUB_ENV -Append -Encoding utf8 }
+          }
       - name: Configure MSVC
-        run: cmake -S . -B build/native -G "Visual Studio 17 2022" -A x64 -DTRAFFICSIM_BUILD_DESKTOP=OFF -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_APPLOCAL_DEPS=OFF
-      - run: cmake --build build/native --config Release --parallel 4
+        run: cmake -S . -B build/native -DTRAFFICSIM_BUILD_DESKTOP=OFF -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_APPLOCAL_DEPS=OFF
+      - run: ccache -z
+      - run: cmake --build build/native
+      - run: ccache -s
       - run: cmake --build build/native --config Release --target check

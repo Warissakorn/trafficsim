@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include <nlohmann/json.hpp>
 #include <type_traits>
 
 namespace trafficsim {

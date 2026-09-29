@@ -12,6 +12,7 @@
 // Committed as data/projects/m2.6-study-template.traffic.json; regenerate with
 // trafficsim-m26-study, never by hand. `m26study` fails when the file and this builder differ.
 #include "four_leg_network.hpp"
+#include <stdexcept>
 
 namespace trafficsim::fixture {
 inline ProjectDocument m26StudyTemplate() {

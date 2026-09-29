@@ -1,6 +1,7 @@
 #include "document.hpp"
 #include "../core/validate.hpp"
 #include "../model/network/diagnostics.hpp"
+#include <nlohmann/json.hpp>
 #include <cmath>
 #include <set>
 #include <limits>

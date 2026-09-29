@@ -4,6 +4,7 @@
 //
 //   trafficsim-four-leg-fixture <output.traffic.json>
 #include "four_leg_network.hpp"
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
 using namespace trafficsim;
