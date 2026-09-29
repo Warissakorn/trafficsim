@@ -39,6 +39,11 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   times) is what lets the PCH targets hit. The cache is `actions/cache` keyed per preset and
   commit, restored by prefix; ~120 MB for `release`, capped at 500 MB. Windows is not covered:
   ccache with MSVC needs the Ninja generator, which would change how those jobs build.
+- **Measured in CI** (build step; baseline runs 355/356 → run 360, items 3–4 with ccache cold):
+  windows-desktop 6:17/6:16 → 4:31 (−28%; the run's critical path, whole run 8:27 → 6:33);
+  windows-core 4:41/3:41 → 3:55 (within noise); linux desktop 4:12/4:14 → 3:30; headless
+  2:31/2:08 → 1:57; **release 3:09/3:37 → 4:01, slower** — one sample, taken while ccache was
+  writing its first cache, so not yet attributed. The next run is the first warm-cache one.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 
