@@ -135,7 +135,18 @@ QString editorStyleSheet() {
         QAbstractSpinBox[validationState="invalid"], QLineEdit[validationState="invalid"] { border: 2px solid palette(bright-text); padding: 1px 7px; }
         QAbstractSpinBox { min-height: 0; padding: @spinToppx @space2px @spinBottompx @space2px; }
         QAbstractSpinBox:focus, QAbstractSpinBox[validationState="invalid"] { padding: @spinFocusToppx 7px @spinFocusBottompx 7px; }
-        QComboBox::drop-down { width: @space6px; border: 0; border-left: 1px solid palette(mid); }
+        QComboBox::drop-down { width: @space5px; border: 0; border-left: 1px solid palette(mid); }
+        QComboBox::down-arrow { image: url(@glyphs/down.png); width: 8px; height: 5px; }
+        QComboBox::down-arrow:disabled { image: url(@glyphs/down-off.png); }
+        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button { width: @space4px; border: 0; border-left: 1px solid palette(mid); background: transparent; }
+        QAbstractSpinBox::up-button { subcontrol-origin: border; subcontrol-position: top right; }
+        QAbstractSpinBox::down-button { subcontrol-origin: border; subcontrol-position: bottom right; }
+        QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: palette(midlight); }
+        QAbstractSpinBox::up-button:pressed, QAbstractSpinBox::down-button:pressed { background: palette(mid); }
+        QAbstractSpinBox::up-arrow { image: url(@glyphs/up.png); width: 8px; height: 5px; }
+        QAbstractSpinBox::down-arrow { image: url(@glyphs/down.png); width: 8px; height: 5px; }
+        QAbstractSpinBox::up-arrow:disabled, QAbstractSpinBox::up-arrow:off { image: url(@glyphs/up-off.png); }
+        QAbstractSpinBox::down-arrow:disabled, QAbstractSpinBox::down-arrow:off { image: url(@glyphs/down-off.png); }
         QTreeWidget, QListWidget { border: 0; background: palette(base); outline: 0; }
         QTreeWidget::item, QListWidget::item { min-height: @controlContentpx; padding: @padYpx @space1px; border: 1px solid transparent; }
         QTreeWidget::item:hover, QListWidget::item:hover { background: palette(midlight); }
@@ -163,7 +174,8 @@ QString editorStyleSheet() {
     const std::pair<const char*,int> sizes[]={
         {"@fontLabel",editorDesign::fontSizeLabel},{"@fontNumeric",editorDesign::fontSizeNumeric},
         {"@fontBody",editorDesign::fontSizeBody},{"@fontTitle",editorDesign::fontSizeTitle},
-        {"@space1",editorDesign::space1},{"@space2",editorDesign::space2},{"@space6",editorDesign::space6},
+        {"@space1",editorDesign::space1},{"@space2",editorDesign::space2},{"@space4",editorDesign::space4},
+        {"@space5",editorDesign::space5},{"@space6",editorDesign::space6},
         {"@controlHeight",editorDesign::controlHeight},{"@controlContent",editorDesign::controlHeight-2*editorDesign::controlPaddingY-2},
         {"@padY",editorDesign::controlPaddingY},{"@spinFocusTop",spinPadding().top-1},{"@spinFocusBottom",spinPadding().bottom-1},
         {"@spinTop",spinPadding().top},{"@spinBottom",spinPadding().bottom},
@@ -171,9 +183,11 @@ QString editorStyleSheet() {
     };
     // No token is a prefix of another ("@space1" vs "@space6", "@controlHeight" vs "@controlContent").
     for(const auto& [name,value]:sizes)stylesheet.replace(QLatin1String(name),QString::number(value));
+    stylesheet.replace(QLatin1String("@glyphs"),editorGlyphDirectory());
     return stylesheet;
 }
 void applyEditorStyle(QWidget* window) {
+    installEditorStyle();
     window->setPalette(editorDesign::editorPalette());
     window->setStyleSheet(editorStyleSheet());
 }
