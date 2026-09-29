@@ -21,8 +21,9 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   still takes 1 px of padding back. Tabs, dock titles, menu items, header sections, list/table
   items and table rows follow the same padding. Toolbar icon buttons stay 24 px / toolbar 32 px.
   Measured (Linux Qt 6.10, offscreen): a styled spin box adds 3 px on top of a 16 px text floor,
-  so it was already 31 px against the other controls' 28 before this change. It now has its own
-  padding, 1 px top / 2 px bottom (focus/invalid 0 / 1), and measures 24 like the rest.
+  so it was already 31 px against the other controls' 28 before this change; Qt 6.5.3 (CI) does
+  not add them. The spin box padding is therefore measured once at runtime (what is left of 24 px
+  after an unpadded spin box, split top/bottom, focus/invalid 1 px less each side).
 - **Taper follows the tab (D83).** A lane-tab drag on a Connector that makes a one-lane
   difference sets `laneChangeSide` to the edge the tab changed: from equal counts the far tab's
   lane is the taper (far side), the kerb tab's is the kerb default; from a two-lane difference
