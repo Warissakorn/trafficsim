@@ -34,6 +34,11 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   sharing violation between parallel targets). nlohmann-json is header-only and Qt ships through
   `windeployqt`, so the copy step had nothing to copy; `-DVCPKG_APPLOCAL_DEPS=OFF` removes the
   race before more parallelism makes it likelier.
+- **ccache on the Linux jobs.** Measured locally on a clean `release` build, 4 cores: 196 s
+  cold, 8 s warm, 177/177 hits; `CCACHE_SLOPPINESS` (pch_defines, time_macros, include-file
+  times) is what lets the PCH targets hit. The cache is `actions/cache` keyed per preset and
+  commit, restored by prefix; ~120 MB for `release`, capped at 500 MB. Windows is not covered:
+  ccache with MSVC needs the Ninja generator, which would change how those jobs build.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 
