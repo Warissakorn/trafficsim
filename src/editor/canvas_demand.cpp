@@ -213,17 +213,12 @@ void EditorCanvas::drawDemandOverlay() {
 void EditorCanvas::drawRouteArrows(const std::vector<Point>& geometry,QColor colour) {
     const double length=polylineLength(geometry);
     if(!(length>0))return;
-    const double r=6/std::abs(transform().m11());
     // Spaced along the route rather than one per segment: a long lane needs more than one
     // arrow to read as a direction, and a short connector needs none of its own.
     for(double station=length/8;station<length;station+=length/4) {
         const auto at=pointAlong(geometry,station);
         const auto ahead=pointAlong(geometry,std::min(length,station+0.05));
-        const double angle=std::atan2(ahead.y-at.y,ahead.x-at.x);
-        QPolygonF arrow;
-        for(double offset:{0.0,2.5,-2.5})arrow<<QPointF(at.x+r*std::cos(angle+offset),at.y+r*std::sin(angle+offset));
-        auto* item=scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(colour));
-        item->setZValue(200008);item->setData(0,QStringLiteral("route-arrow"));
+        addArrowhead(at,std::atan2(ahead.y-at.y,ahead.x-at.x),6,colour,200008,QStringLiteral("route-arrow"));
     }
 }
 }

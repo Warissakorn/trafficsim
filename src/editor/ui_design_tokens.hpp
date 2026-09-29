@@ -32,7 +32,10 @@ inline constexpr const char* okHex="#176B44";
 inline constexpr int space1=4,space2=8,space3=12,space4=16,space5=20,space6=24;
 inline constexpr int fontSizeLabel=11,fontSizeNumeric=12,fontSizeBody=13;
 inline constexpr int fontSizeSection=14,fontSizeTitle=18;
-inline constexpr int controlHeight=28,tableRowHeight=28,toolbarHeight=32,iconSize=16;
+inline constexpr int controlHeight=24,tableRowHeight=24,toolbarHeight=32,iconSize=16;
+// Vertical padding inside a control. Not a spacing token: it is what makes a 24 px control
+// (1 border + 2 + 18 content + 2 + 1), not a gap between two things.
+inline constexpr int controlPaddingY=2;
 inline constexpr int maxRadius=3,maxMotionMs=150;
 inline constexpr double iconStroke=1.5;
 inline constexpr double labelTracking=1.0; // px, English uppercase group labels only

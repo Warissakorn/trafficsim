@@ -2,6 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QGraphicsItem>
+#include <QLocale>
 #include <QAction>
 #include <QComboBox>
 #include <QDialog>
@@ -62,7 +63,17 @@ int main(int argc,char** argv) {
     try {
         require(argc>1,"Data directory required");QTemporaryDir directory;require(directory.isValid(),"Temporary directory");
         qputenv("XDG_DATA_HOME",directory.path().toUtf8());
+        // A system locale with its own digits (Arabic-Indic here; th_TH's CLDR default is Latin, so
+        // it forces nothing). Assert the forcing took before asserting the editor overrides it.
+        QLocale::setDefault(QLocale(QLocale::Arabic,QLocale::Egypt));
+        require(QLocale().zeroDigit()!=QStringLiteral("0"),"Could not force a locale with native digits");
         EditorWindow w{std::filesystem::path(argv[1])};w.resize(1600,1000);w.show();QTest::qWait(30);
+        {
+            // What createLinkDialog builds: a spin box in a dialog parented to the editor.
+            QDialog dialog(&w);QSpinBox lanes(&dialog);lanes.setRange(1,12);lanes.setValue(3);
+            require(lanes.locale().zeroDigit()==QStringLiteral("0") && lanes.text()==QStringLiteral("3"),
+                    "A dialog lane count shows the system's digits");
+        }
         auto* c=w.canvas();c->fitInView(QRectF(-100,-40,200,80),Qt::KeepAspectRatio);c->centerOn(0,0);
         QTest::keyClick(c,Qt::Key_L);require(item<QTreeWidget>(w,"editorObjectPalette")->currentItem()==paletteItem(w,1),"L did not select Links");
         confirm("editorLinkDialog");drag(c,{-80,0},{-20,0},Qt::RightButton,Qt::ControlModifier);

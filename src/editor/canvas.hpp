@@ -260,8 +260,18 @@ private:
     void clearHighlights();
     void clearHover();
     void updateHover(QPoint);
-    void drawObjectFeedback(const std::string&, const QPainterPath&, double z);
+    // `edges` are the object's two long edges in travel order; a selected object carries its
+    // direction on them as arrowheads, not in the middle of the road.
+    void drawObjectFeedback(const std::string&, const QPainterPath&, double z,
+                            const std::vector<std::vector<Point>>& edges = {});
     void drawGeometryHandles(const std::string&, const std::vector<Point>&, bool connector);
+    // A filled arrowhead of constant screen size, centred on `at` and pointing along `angle`.
+    void addArrowhead(Point at, double angle, double pixels, QColor, double z, const QString& tag);
+    // True once a move is visibly under way: the lane tabs, which follow the committed document,
+    // are hidden until it is released rather than left behind at the old place.
+    bool movingGeometry() const;
+    bool movingBody() const;
+    void showMoveCursor();
     std::string hoverObject_, hoverConflict_, hoverAutomatic_, hoverWaitingLine_;
     int hoverVertex_{-1}, hoverLaneKind_{}, hoverLaneLocation_{-1};
     struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; int location{1}; double tabLength{}; };

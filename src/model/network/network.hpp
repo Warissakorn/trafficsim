@@ -125,7 +125,10 @@ Point directionAlong(const std::vector<Point>&, double station, bool arriving);
 std::vector<Point> polylineSpan(const std::vector<Point>&, double from, double to);
 void replaceLaneBundle(Link&, std::vector<Lane> lanes, bool leading);
 std::vector<double> connectorBlendWeights(const Connector&);
-void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading);
+// `fromTab` says the author dragged a lane tab on one edge (D83): a resize that makes a one-lane
+// difference then puts the taper on the side the tab added or dropped the lane, instead of the
+// kerb default a count typed into the Inspector keeps.
+void resizeConnectorEdges(const Network&, Connector&, int fromCount, int toCount, bool leading, bool fromTab = false);
 // Lane correspondence (M3.2.9a, D73). The narrower end's lanes pair one to one with a contiguous
 // run of the wider end's; at most one lane is added or dropped on each side, so the two counts
 // differ by at most 2. Returns how many wider-end lanes lie beyond that run on the index-0 (kerb)

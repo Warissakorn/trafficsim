@@ -69,7 +69,7 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
     }
     if(const auto* original=selectedConnector();original && levelVisible(original->level)) {
         auto preview=*original;
-        if(rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4);
+        if(rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4,true);
         const auto* connector=&preview;
         const Link *from=nullptr,*to=nullptr;
         for(const auto& link:document_->network.links) {
@@ -121,7 +121,9 @@ std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
             const auto anchor=polylineLength(boundary)>0
                 ?pointAlong(boundary,matchedStation(outer,boundary,length/2)):boundary.front();
             attachEnd(a,true);attachEnd(b,false);
-            const double width=(widths.source[index]+widths.target[index])/2;
+            // One drag step is one lane: the outer path may be a taper, zero wide at one end,
+            // and averaging that in would make half a lane's drag add or drop a whole one.
+            const double width=std::max(widths.source[index],widths.target[index]);
             LaneHandle body{{anchor.x+direction.x*offset,anchor.y+direction.y*offset},anchor,
                             direction,width,3+extra,std::max(a.count,b.count),std::min(a.maximum,b.maximum)};
             result.insert(result.end(),{a,b,body});
@@ -169,7 +171,7 @@ bool EditorCanvas::startLaneResize(QPoint position) {
         const auto* c=selectedConnector();previewFromCount_=c->fromLaneCount;previewToCount_=c->toLaneCount;
         rangeCorner_=picked->kind;
     }
-    setCursor(Qt::ClosedHandCursor);redraw();
+    redraw(); // the resize cursor set on hover stays for the drag
     return true;
 }
 void EditorCanvas::updateLaneResize(QPoint position) {
@@ -189,6 +191,7 @@ void EditorCanvas::updateLaneResize(QPoint position) {
     redraw();
 }
 void EditorCanvas::drawLaneHandles() {
+    if(movingGeometry())return; // skips laneHandles() too: they reappear on release
     for(auto h:laneHandles()) {
         const bool held=laneResize_ && laneResize_->kind==h.kind && laneResize_->location==h.location;
         const bool hovered=hoverLaneKind_==h.kind && hoverLaneLocation_==h.location;

@@ -103,7 +103,6 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
             }
         }
     }
-    setCursor(Qt::ClosedHandCursor);
     redraw(); if(selectionChanged) selectionChanged();
 }
 int EditorCanvas::vertexAt(QPoint position) const {
@@ -133,11 +132,13 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     }
     if(!copyPick_.empty()) {
         copyDragging_=copyArmed_ && (e->pos()-copyStart_).manhattanLength()>=QApplication::startDragDistance();
+        if(copyDragging_)showMoveCursor();
         const auto p=world(e->pos());copyOffset_={p.x-dragStart_.x,p.y-dragStart_.y};redraw();return;
     }
     if(endpointDrag_) {
-        if((e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance())
-            endpointDraft_=connectorEndpointTarget(world(e->pos(),false),*endpointDrag_);
+        if((e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance()) {
+            endpointDraft_=connectorEndpointTarget(world(e->pos(),false),*endpointDrag_);showMoveCursor();
+        }
         redraw();return;
     }
     if(laneResize_) {updateLaneResize(e->pos());return;}
@@ -157,11 +158,13 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     }
     if(groupDrag_) {
         groupDragging_=(e->pos()-dragPress_).manhattanLength()>=QApplication::startDragDistance();
+        if(groupDragging_)showMoveCursor();
         const auto p=world(e->pos());groupOffset_={p.x-dragStart_.x,p.y-dragStart_.y};redraw();return;
     }
     if(band_) { const auto p=world(e->pos(),false); band_=QRectF(QPointF(dragStart_.x,dragStart_.y),QPointF(p.x,p.y)).normalized(); redraw(); return; }
     if(dragging_) {
         if((e->pos()-dragPress_).manhattanLength()<QApplication::startDragDistance())return;
+        showMoveCursor();
         const auto p=world(e->pos()); preview_=original_;
         if(vertex_>=0 && selectedConnector())preview_=connectorGeometryWithGrip(document_->network,*selectedConnector(),static_cast<std::size_t>(vertex_),p);
         else if(vertex_>=0) preview_[static_cast<std::size_t>(vertex_)]={p.x-handleOffset_.x,p.y-handleOffset_.y};

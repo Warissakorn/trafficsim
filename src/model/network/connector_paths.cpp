@@ -26,7 +26,7 @@ std::vector<double> connectorBlendWeights(const Connector& c) {
     }
     return result;
 }
-void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCount,bool leading) {
+void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCount,bool leading,bool fromTab) {
     auto resized=c;
     if(leading) {
         const auto shift=[&](LaneReference& ref,int delta) {
@@ -50,7 +50,15 @@ void resizeConnectorEdges(const Network& n,Connector& c,int fromCount,int toCoun
     }
     resized.fromLaneCount=fromCount;resized.toLaneCount=toCount;
     // A side chosen for a one-lane difference says nothing about any other difference.
-    if(std::abs(fromCount-toCount)!=std::abs(c.fromLaneCount-c.toLaneCount))resized.laneChangeSide.reset();
+    const int before=std::abs(c.fromLaneCount-c.toLaneCount),after=std::abs(fromCount-toCount);
+    if(after!=before) {
+        resized.laneChangeSide.reset();
+        // A tab adds or drops its lane at its own edge: the kerb edge for a leading tab, the far
+        // edge otherwise. From equal counts that lane is the one that tapers; from a two-lane
+        // difference it pairs up, and the taper left is the other edge's (D83).
+        if(fromTab && after==1 && (before==0)!=leading)
+            resized.laneChangeSide=n.drivingSide==DrivingSide::left?LaneSide::right:LaneSide::left;
+    }
     // Authored widths and markings are indexed by lane path, so a resize that changes how many
     // paths there are leaves them describing lanes that no longer exist. Dropped rather than
     // padded: a width the author never typed is not a width they chose, and the derived one is

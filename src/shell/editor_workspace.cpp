@@ -9,7 +9,6 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QLabel>
-#include <QLocale>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -93,7 +92,7 @@ void EditorWindow::buildWorkspace() {
         table->horizontalHeader()->setMinimumSectionSize(editorDesign::controlHeight);
     }
     for(auto* number:findChildren<QAbstractSpinBox*>()) {
-        number->setFont(editorDesign::numericFont());number->setLocale(QLocale::c());number->setProperty("numeric",true);
+        number->setFont(editorDesign::numericFont());number->setProperty("numeric",true);
     }
     setTabOrder(palette_,visibleLevel_);
     setTabOrder(visibleLevel_,findChild<QToolButton*>("editorBackgroundButton"));

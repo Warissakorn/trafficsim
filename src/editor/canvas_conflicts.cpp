@@ -100,7 +100,7 @@ bool EditorCanvas::conflictPress(QMouseEvent* e) {
 void EditorCanvas::updateLineDrag(QPoint position) {
     if (!lineDrag_) return;
     if ((position - dragPress_).manhattanLength() < QApplication::startDragDistance() && !lineDrag_->moved) return;
-    lineDrag_->moved = true;
+    lineDrag_->moved = true; showMoveCursor();
     // Along its own path only, as a stop line drags: another lane is another line.
     const double length = polylineLength(lineDrag_->polyline);
     lineDrag_->station = std::clamp(stationOfClosestPoint(lineDrag_->polyline, world(position, false)), 0.0, length);

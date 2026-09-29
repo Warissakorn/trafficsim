@@ -11,6 +11,7 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QLockFile>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
@@ -30,6 +31,10 @@
 
 namespace trafficsim {
 EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& language,QWidget* parent) : QMainWindow(parent), data_(data) {
+    // Numbers are data a user reads back into the project file, so every widget shows Latin
+    // digits whatever the system locale. setLocale as well as setDefault: the QMainWindow base has
+    // already resolved the system locale, and every child and dialog inherits the window's.
+    QLocale::setDefault(QLocale::c());setLocale(QLocale::c());
     setObjectName("networkEditor");displayCatalog_=loadDisplayCatalog(data);
     const int font=QFontDatabase::addApplicationFont(displayPath(data/"fonts/NotoSansThai.ttf"));
     if(font<0) throw std::runtime_error("Cannot load bundled Thai font");
@@ -137,7 +142,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     canvas_->createLinkGesture=[this](const auto& points){createLinkDialog(points);};
     canvas_->createRangeGesture=[this](auto from,auto to,const auto& points){createRangeDialog(from,to,points);};
     canvas_->resizeRangeRequested=[this](int from,int to,bool leading){
-        execute("editorApplyConnector",[&](auto& d){changeConnectorRange(d,canvas_->selected(),from,to,leading);});
+        execute("editorApplyConnector",[&](auto& d){changeConnectorRange(d,canvas_->selected(),from,to,leading,true);});
     };
     canvas_->resizeLinkRequested=[this](int count,bool leading){
         execute("editorApplyLanes",[&](auto& d){resizeLinkLanes(d,canvas_->selected(),count,leading);});
