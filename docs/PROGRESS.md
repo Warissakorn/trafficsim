@@ -54,6 +54,12 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   every `tests/` file (through `test.hpp`) compiled only because their target precompiles it.
   `-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON` now builds and passes 69/69; with the PCH on nothing
   changes (the header is already precompiled there), and `trafficsim-cli 42` is byte-identical.
+- **Windows jobs on Ninja + ccache.** The Visual Studio generator takes no compiler launcher,
+  so both Windows jobs configure with Ninja inside the vcvars64 environment (`cl` named
+  explicitly, since the runner's PATH also carries MinGW), ccache from Chocolatey, PCH off
+  (neither ccache nor sccache caches MSVC `/Yu`), and the same `actions/cache` scheme as Linux.
+  `/MP` is gone: Ninja already runs one file per core. `package.yml` keeps the Visual Studio
+  generator and its PCH; it builds release artifacts, where a cache buys nothing.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 
