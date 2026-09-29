@@ -192,9 +192,9 @@ void EditorCanvas::drawLaneHandles() {
     for(auto h:laneHandles()) {
         const bool held=laneResize_ && laneResize_->kind==h.kind && laneResize_->location==h.location;
         const bool hovered=hoverLaneKind_==h.kind && hoverLaneLocation_==h.location;
-        const QColor colour=held?canvasStyle::active:canvasStyle::selection;
+        const QColor colour=held?canvasStyle::active():canvasStyle::selection();
         QPen border(colour,held || hovered?2:1);border.setCosmetic(true);
-        auto* item=scene_.addPath(laneHandlePath(h),border,QBrush(held || hovered?colour:QColor("#f8fafc")));
+        auto* item=scene_.addPath(laneHandlePath(h),border,QBrush(held || hovered?colour:editorDesign::role(QPalette::Base)));
         item->setZValue(200011);item->setData(0,QStringLiteral("lane-resize"));item->setData(1,h.kind);
         item->setData(2,h.location);
     }

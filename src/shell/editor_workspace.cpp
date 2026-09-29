@@ -74,7 +74,7 @@ void EditorWindow::buildWorkspace() {
     for(const auto* key:{"editorInspector","editorObjects","editorFocusCanvas"})workspace->addAction(actions_.at(key));
     workspace->addSeparator();workspace->addWidget(language_);
     for(auto* bar:findChildren<QToolBar*>(QString(),Qt::FindDirectChildrenOnly)) {
-        bar->setMovable(false);bar->setFloatable(false);bar->setIconSize(QSize(editorDesign::space5,editorDesign::space5));bar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        bar->setMovable(false);bar->setFloatable(false);bar->setIconSize(QSize(editorDesign::iconSize,editorDesign::iconSize));bar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
     auto* runBar=findChild<QToolBar*>("editorRunToolbar");
     if(auto* button=qobject_cast<QToolButton*>(runBar->widgetForAction(actions_.at("editorRun")))) {

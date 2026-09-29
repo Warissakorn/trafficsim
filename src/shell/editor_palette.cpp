@@ -43,9 +43,8 @@ void EditorWindow::buildPalette() {
     for(const auto& group:groups){
         auto* root=new QTreeWidgetItem(palette_);root->setData(0,Qt::UserRole,QString::fromLatin1(group.key));
         root->setFlags(Qt::ItemIsEnabled);root->setData(0,Qt::UserRole+1,true);
-        auto groupFont=root->font(0);groupFont.setPixelSize(editorDesign::fontSizeLabel);groupFont.setBold(true);
-        groupFont.setLetterSpacing(QFont::AbsoluteSpacing,1);root->setFont(0,groupFont);
-        root->setForeground(0,QColor(editorDesign::gray7));
+        auto groupFont=root->font(0);editorDesign::styleGroupLabel(groupFont,true);root->setFont(0,groupFont);
+        root->setForeground(0,editorDesign::role(QPalette::WindowText));
         for(const int mode:group.modes){
             auto* entry=new QTreeWidgetItem(root);entry->setData(0,Qt::UserRole,mode);
             entry->setIcon(0,editorIcon(icons[mode]));entry->setData(0,Qt::UserRole+2,QString::fromLatin1(shortcuts[mode]));
@@ -103,7 +102,7 @@ void EditorWindow::translatePalette() {
         auto* root=palette_->topLevelItem(index);const bool english=language_->currentData().toString()=="en";
         auto title=text(root->data(0,Qt::UserRole).toString().toStdString());
         if(english)title=title.toUpper();
-        auto font=root->font(0);font.setLetterSpacing(QFont::AbsoluteSpacing,english?1:0);root->setFont(0,font);
+        auto font=root->font(0);editorDesign::styleGroupLabel(font,english);root->setFont(0,font);
         root->setText(0,title);
     }
     const QSignalBlocker block(visibleLevel_);const auto selected=visibleLevel_->currentData();visibleLevel_->clear();

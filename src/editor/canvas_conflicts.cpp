@@ -141,8 +141,9 @@ void EditorCanvas::drawAutomaticConflicts() {
             // Passive: grey, nothing enforced. A derived merge: the colour of the side it runs with.
             const bool passive = a.priority == ConflictPriority::undetermined;
             const bool yields = (side == &a.first) == (a.priority == ConflictPriority::firstYields);
-            const QColor tint = passive ? QColor(120, 128, 140, 90) : yields ? QColor(220, 38, 38, 80) : QColor(22, 163, 74, 80);
-            QPen pen(a.key==hoverAutomatic_?canvasStyle::hover:tint.darker(150), a.key==hoverAutomatic_?2:1, Qt::DashLine); pen.setCosmetic(true);
+            const auto withAlpha = [](QColor colour, int alpha) { colour.setAlpha(alpha); return colour; };
+            const QColor tint = withAlpha(passive ? canvasStyle::ink() : yields ? canvasStyle::error() : canvasStyle::ok(), passive ? 90 : 80);
+            QPen pen(a.key==hoverAutomatic_?canvasStyle::hover():tint.darker(150), a.key==hoverAutomatic_?2:1, Qt::DashLine); pen.setCosmetic(true);
             auto* item = scene_.addPath(insetPath(outline), pen, QBrush(tint));
             item->setZValue(level * 100. + 5.5); item->setToolTip(QString::fromStdString(a.key));
             item->setData(0, QStringLiteral("auto-conflict")); item->setData(1, QString::fromStdString(a.key));
@@ -162,11 +163,12 @@ void EditorCanvas::drawConflicts() {
             if (outline.size() < 3) continue;
             const bool undetermined = area.priority == ConflictPriority::undetermined;
             const bool yields = (side == &area.first) == (area.priority == ConflictPriority::firstYields);
-            const QColor tint = undetermined ? QColor(234, 179, 8, 150) : yields ? QColor(220, 38, 38, 150) : QColor(22, 163, 74, 150);
+            QColor tint = undetermined ? canvasStyle::warning() : yields ? canvasStyle::error() : canvasStyle::ok();
+            tint.setAlpha(150);
             // The two sides of a crossing cover the same square. The one that gives way (the second
             // while undetermined) is hatched and drawn above, so the other still shows through.
             const bool hatched = undetermined ? side == &area.second : yields;
-            QPen pen(lit ? canvasStyle::selection : area.id==hoverConflict_ ? canvasStyle::hover : hatched ? tint.darker() : tint.darker(130), lit || area.id==hoverConflict_ ? 2.5 : hatched ? 2 : 1);
+            QPen pen(lit ? canvasStyle::selection() : area.id==hoverConflict_ ? canvasStyle::hover() : hatched ? tint.darker() : tint.darker(130), lit || area.id==hoverConflict_ ? 2.5 : hatched ? 2 : 1);
             pen.setCosmetic(true);
             QColor solid = tint; if (hatched) solid.setAlpha(230);
             auto* item = scene_.addPath(insetPath(outline), pen, QBrush(solid, hatched ? Qt::BDiagPattern : Qt::SolidPattern));
@@ -188,7 +190,7 @@ void EditorCanvas::drawConflicts() {
                                           [&](const auto& c) { return c.waitingLineId == line.id; });
         const bool controlled = control != n.rightOfWay.stopControls.end();
         const bool stop = controlled && control->mode == StopMode::stop;
-        QPen pen(dragged ? canvasStyle::active : line.id==hoverWaitingLine_ ? canvasStyle::hover : stop ? QColor("#dc2626") : QColor("#f59e0b"), dragged || stop ? 3 : 2,
+        QPen pen(dragged ? canvasStyle::active() : line.id==hoverWaitingLine_ ? canvasStyle::hover() : stop ? canvasStyle::error() : canvasStyle::warning(), dragged || stop ? 3 : 2,
                  controlled ? Qt::SolidLine : Qt::DashLine);
         pen.setCosmetic(true); pen.setCapStyle(Qt::FlatCap);
         auto* item = scene_.addLine(bar->first.x, bar->first.y, bar->second.x, bar->second.y, pen);

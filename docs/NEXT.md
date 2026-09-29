@@ -9,7 +9,17 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — review the editor interaction cleanup (PR #73)
+## Immediate — get the D81 restyle green, then look at it
+
+D81 (palette-role restyle, `docs/UI_REDESIGN_AUDIT.md`) was written **without a Qt toolchain, so
+it has never been compiled**. First: read the Native C++ workflow for this branch. Expect to fix
+compile slips and to adjust the new `design-system-ui` assertions to what Qt actually measures
+(the 28 px control and 32 px toolbar heights and the exact-pixel grid test are the likeliest to
+need a tweak — change the QSS padding, not the requirement). Then review on Windows at 100/150/200 %
+scaling: the grid hairlines, focus rings, icon sharpness, and Thai/English group labels.
+Open gaps are in the audit §6 (dock-title tracking, `tnum`, remaining C-locale cell formats).
+
+## Then — review the editor interaction cleanup (PR #73)
 
 The implementation and regression tests are on `codex/editor-interaction-polish`; check its
 latest Native C++ workflow before merging. Linux/Windows screenshot artifacts have been

@@ -156,7 +156,7 @@ void EditorCanvas::drawConnectors() {
             QPolygonF arrow;
             for (double offset : {0.0,2.5,-2.5})
                 arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
-            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+5);
+            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(editorDesign::role(QPalette::Base)))->setZValue(z+5);
         }
         if(c.id==primary && tool_==Tool::select && selection_.size()==1)
             drawGeometryHandles(c.id,connectorGrips(document_->network,preview),true);
@@ -164,11 +164,11 @@ void EditorCanvas::drawConnectors() {
     if (tool_!=Tool::connect) return;
     if(connectorFrom_) {
         const auto p=laneAttachment(document_->network,*connectorFrom_,true);
-        scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,QPen("#087d82"),QBrush("#ffb454"))->setZValue(200008);
+        scene_.addEllipse(p.x-radius,p.y-radius,2*radius,2*radius,QPen(canvasStyle::active()),QBrush(editorDesign::role(QPalette::Base)))->setZValue(200008);
     }
     if (connectorFrom_ && connectorHover_) {
         try {
-            QPen pen(QColor("#b33f8d"),2,Qt::DashLine); pen.setCosmetic(true);
+            QPen pen(canvasStyle::active(),2,Qt::DashLine); pen.setCosmetic(true);
             scene_.addPath(path(connectorCurve(document_->network,*connectorFrom_,*connectorHover_)),pen)->setZValue(200007);
         } catch (const std::exception&) { /* Coincident endpoints have no default curve preview. */ }
     }

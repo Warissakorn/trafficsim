@@ -125,7 +125,7 @@ void EditorCanvas::redraw() {
         if(!std::isfinite(polylineLength(road)) || polylineLength(road)<=0) {
             // Invalid transient geometry must remain a cancellable gesture, not an exception
             // from pointAlong while painting. The release command will reject it atomically.
-            QPen invalid(QColor("#ef4444"),2,Qt::DashLine);invalid.setCosmetic(true);
+            QPen invalid(canvasStyle::error(),2,Qt::DashLine);invalid.setCosmetic(true);
             scene_.addPath(path(link.geometry),invalid)->setZValue(z+5);continue;
         }
         // Drawn lines only: an edge offset round a bend tighter than the lane can loop back on
@@ -147,7 +147,7 @@ void EditorCanvas::redraw() {
         const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());
         QPolygonF arrow;
         for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
-        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+3);
+        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(editorDesign::role(QPalette::Base)))->setZValue(z+3);
         drawGeometryHandles(link.id,road,false);
     }
     drawConnectors();
@@ -157,11 +157,12 @@ void EditorCanvas::redraw() {
     drawCounters();
     drawHeads();
     if (band_) {
-        QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);
-        scene_.addRect(*band_,pen,QBrush(QColor(22,123,152,30)))->setZValue(200009);
+        QPen pen(canvasStyle::active(),1,Qt::DashLine); pen.setCosmetic(true);
+        QColor wash=canvasStyle::active(); wash.setAlpha(30);
+        scene_.addRect(*band_,pen,QBrush(wash))->setZValue(200009);
     }
     if (!draft_.empty()) {
-        QPen pen(QColor("#de8618"),2,Qt::DashLine); pen.setCosmetic(true);
+        QPen pen(canvasStyle::active(),2,Qt::DashLine); pen.setCosmetic(true);
         scene_.addPath(path(draft_),pen)->setZValue(200008);
         for (auto p:draft_) { const double r=3/std::abs(transform().m11()); scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,pen)->setZValue(8); }
     }
@@ -175,13 +176,26 @@ void EditorCanvas::fitNetwork() {
     setTransform(QTransform::fromScale(scale,-scale)); centerOn(bounds.center()); redraw();
 }
 void EditorCanvas::drawBackground(QPainter* painter,const QRectF& rect) {
-    painter->fillRect(rect,QColor("#f0f4f8"));
-    double step=grid;
-    if (step<=0) return;
-    while(step*std::abs(transform().m11())<20) step*=10;
-    QPen pen(QColor("#dce3eb"),1); pen.setCosmetic(true); painter->setPen(pen);
-    for(double x=std::floor(rect.left()/step)*step;x<=rect.right();x+=step) painter->drawLine(QPointF(x,rect.top()),QPointF(x,rect.bottom()));
-    for(double y=std::floor(rect.top()/step)*step;y<=rect.bottom();y+=step) painter->drawLine(QPointF(rect.left(),y),QPointF(rect.right(),y));
+    painter->fillRect(rect,editorDesign::role(QPalette::Base));
+    // Two tiers, chosen from the view's level of detail: minor lines never closer than 8 px,
+    // a major line every tenth. Each line is a one-device-pixel cosmetic pen centred on a
+    // device pixel (+0.5), so it stays a sharp hairline at any devicePixelRatio.
+    const auto tiers=editorDesign::gridTiers(grid,editorDesign::levelOfDetail(painter->worldTransform()));
+    if (tiers.minor<=0) return;
+    const auto device=painter->deviceTransform();
+    const double dpr=painter->device()?painter->device()->devicePixelRatioF():1.;
+    const auto snapX=[&](double x){return editorDesign::snapHairline(x,device.m11(),device.dx());};
+    const auto snapY=[&](double y){return editorDesign::snapHairline(y,device.m22(),device.dy());};
+    const auto lines=[&](double step,const QColor& colour,bool skipMajor) {
+        painter->setPen(editorDesign::hairlinePen(colour,dpr));
+        const auto major=[&](double v){return std::fmod(std::abs(v)+step/2,step*10)<step;};
+        for(double x=std::floor(rect.left()/step)*step;x<=rect.right();x+=step)
+            if(!(skipMajor&&major(x))) painter->drawLine(QPointF(snapX(x),rect.top()),QPointF(snapX(x),rect.bottom()));
+        for(double y=std::floor(rect.top()/step)*step;y<=rect.bottom();y+=step)
+            if(!(skipMajor&&major(y))) painter->drawLine(QPointF(rect.left(),snapY(y)),QPointF(rect.right(),snapY(y)));
+    };
+    lines(tiers.minor,editorDesign::role(QPalette::Midlight),true);
+    lines(tiers.major,editorDesign::role(QPalette::Mid),false);
 }
 void EditorCanvas::wheelEvent(QWheelEvent* e) {
     clearHover();

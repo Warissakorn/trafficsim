@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include <QGraphicsPathItem>
 #include <QPainter>
 #include <QPainterPathStroker>
@@ -50,10 +51,11 @@ void EditorCanvas::drawCopyPreview() {
     // everything that rides with it, is about to land.
     if(!copyDragging_ && !groupDragging_)return;
     const auto offset=copyDragging_?copyOffset_:groupOffset_;
-    QPen pen(QColor("#de8618"),2,Qt::DashLine);pen.setCosmetic(true);
+    QPen pen(canvasStyle::active(),2,Qt::DashLine);pen.setCosmetic(true);
+    QColor wash=canvasStyle::active();wash.setAlpha(40);
     const auto draw=[&](const std::string& id) {
         auto shape=objectShape(id);shape.translate(offset.x,offset.y);
-        auto* item=scene_.addPath(shape,pen,QBrush(QColor(222,134,24,60)));
+        auto* item=scene_.addPath(shape,pen,QBrush(wash));
         item->setZValue(200008);item->setData(0,QStringLiteral("copy-preview"));
     };
     for(const auto& id:selection_)draw(id);

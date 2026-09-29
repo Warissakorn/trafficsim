@@ -30,7 +30,8 @@ void SignalTimingView::paintEvent(QPaintEvent*) {
     // Cycle seconds, not simulation time: the offset shifts when the cycle starts, not its shape.
     auto shape = controller_; shape.offset = 0;
     const auto colour = [](SignalColor c) {
-        return c == SignalColor::green ? QColor(editorDesign::success) : c == SignalColor::amber ? QColor(editorDesign::warning) : QColor(editorDesign::danger);
+        using editorDesign::Semantic;
+        return editorDesign::semantic(c == SignalColor::green ? Semantic::ok : c == SignalColor::amber ? Semantic::warning : Semantic::error);
     };
     for (std::size_t k = 0; k < shape.groups.size(); ++k) {
         const auto& g = shape.groups[k];
@@ -62,10 +63,11 @@ void SignalTimingView::paintEvent(QPaintEvent*) {
     const int legendY=y+24;
     const QString symbols[]={QStringLiteral("G"),QStringLiteral("Y"),QStringLiteral("R")};
     const QString labels[]={greenLabel_,amberLabel_,redLabel_};
-    const QColor status[]={QColor(editorDesign::success),QColor(editorDesign::warning),QColor(editorDesign::danger)};
+    const QColor status[]={editorDesign::semantic(editorDesign::Semantic::ok),editorDesign::semantic(editorDesign::Semantic::warning),
+                           editorDesign::semantic(editorDesign::Semantic::error)};
     for(int i=0;i<3;++i) {
         const int x=label+i*96;p.fillRect(QRect(x,legendY+3,8,8),status[i]);
-        p.setPen(QColor(editorDesign::gray9));
+        p.setPen(editorDesign::role(QPalette::Text));
         p.drawText(QRect(x+12,legendY,80,14),Qt::AlignLeft|Qt::AlignVCenter,symbols[i]+" · "+labels[i]);
     }
 }

@@ -65,7 +65,7 @@ void EditorCanvas::drawObjectFeedback(const std::string& id, const QPainterPath&
     const bool chosen = isSelected(id), hovered = id == hoverObject_;
     if ((!chosen && !hovered) || shape.isEmpty()) return;
     const bool primary = id == selected();
-    const QColor colour = chosen ? canvasStyle::selection : canvasStyle::hover;
+    const QColor colour = chosen ? canvasStyle::selection() : canvasStyle::hover();
     QPen pen(colour, chosen && primary ? 2 : 1.5); pen.setCosmetic(true); pen.setJoinStyle(Qt::RoundJoin);
     QColor fill = colour; fill.setAlpha(chosen ? 32 : 16);
     auto* item = scene_.addPath(shape, pen, QBrush(fill)); item->setZValue(z);
@@ -79,7 +79,7 @@ void EditorCanvas::drawGeometryHandles(const std::string& id, const std::vector<
         const bool end = connector && (i == 0 || i + 1 == points.size());
         const bool held = end ? endpointDrag_ && *endpointDrag_ == (i == 0) : dragging_ && vertex_ == static_cast<int>(i);
         const bool hovered = hoverVertex_ == static_cast<int>(i);
-        const QColor colour = held ? canvasStyle::active : hovered ? canvasStyle::hover : canvasStyle::selection;
+        const QColor colour = held ? canvasStyle::active() : hovered ? canvasStyle::hover() : canvasStyle::selection();
         auto* item = scene_.addEllipse(points[i].x - r, points[i].y - r, 2*r, 2*r,
                                       QPen(Qt::NoPen), QBrush(colour));
         item->setZValue(200012);

@@ -31,12 +31,8 @@ void EditorWindow::label(QFormLayout* form,const std::string& key,QWidget* field
                 if(auto* whole=qobject_cast<QSpinBox*>(spin))
                     validRange=text("editorValidRange").arg(whole->minimum()).arg(whole->maximum()).arg(whole->suffix());
                 else if(auto* decimal=qobject_cast<QDoubleSpinBox*>(spin)) {
-                    const auto format=[decimal](double value){
-                        auto result=QString::number(value,'f',decimal->decimals());
-                        while(result.contains('.')&&result.endsWith('0'))result.chop(1);
-                        if(result.endsWith('.'))result.chop(1);
-                        return result;
-                    };
+                    // Same locale and decimals as the field itself, so the range reads like its value.
+                    const auto format=[decimal](double value){return decimal->locale().toString(value,'f',decimal->decimals());};
                     validRange=text("editorValidRange").arg(format(decimal->minimum())).arg(format(decimal->maximum())).arg(decimal->suffix());
                 }
                 hint->setText(validRange);hint->setVisible(invalid);

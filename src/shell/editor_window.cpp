@@ -103,7 +103,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         refresh(false);
         if (!canvas_->selected().empty()) properties_->setCurrentIndex(canvas_->selectedConnector()?1:0);
     };
-    canvas_->cursorMoved=[this](Point p){coordinates_->setText(QString("x %1 m   y %2 m").arg(p.x,0,'f',2).arg(p.y,0,'f',2));};
+    canvas_->cursorMoved=[this](Point p){coordinates_->setText(QString("x %1 m   y %2 m").arg(editorDesign::formatValue(p.x,2),9).arg(editorDesign::formatValue(p.y,2),9));};
     canvas_->createLink=[this](const auto& points){
         std::string created; if(execute("editorDraw",[&](auto& d){created=addLink(d,points,count_->value(),width_->value());
             changeAppearance(d,created,objectLevel_->currentData().toInt(),objectDisplay_->currentData().toString().toStdString());})) canvas_->select(created);
@@ -177,6 +177,7 @@ void EditorWindow::translate() {
             if(english&&label->property("editorEyebrow").toBool())title=title.toUpper();
             if(label->property("editorEyebrow").toBool()) {
                 label->setProperty("englishLabels",english);label->style()->unpolish(label);label->style()->polish(label);
+                auto groupFont=label->font();editorDesign::styleGroupLabel(groupFont,english);label->setFont(groupFont);
             }
             label->setText(title);
         }
@@ -199,6 +200,7 @@ void EditorWindow::translate() {
     for(auto* table:findChildren<QTableWidget*>()) {
         auto* header=table->horizontalHeader();header->setProperty("englishLabels",english);
         header->style()->unpolish(header);header->style()->polish(header);
+        auto headerFont=header->font();editorDesign::styleGroupLabel(headerFont,english);header->setFont(headerFont);
         if(english)for(int column=0;column<table->columnCount();++column)
             if(auto* item=table->horizontalHeaderItem(column))item->setText(item->text().toUpper());
     }
@@ -264,7 +266,7 @@ void EditorWindow::refresh(bool modelChanged) {
         count_->setValue(static_cast<int>(link->lanes.size()));
         QStringList widths; for(const auto& lane:link->lanes) widths<<QString::number(lane.width,'g',10);
         widths_->setText(widths.join(", "));
-        selectionInfo_->setText(text("editorLength").arg(polylineLength(link->geometry),0,'f',2));
+        selectionInfo_->setText(text("editorLength").arg(editorDesign::formatValue(polylineLength(link->geometry),2)));
     } else {widths_->clear();selectionInfo_->setText(text("editorNoSelection"));}
     // Property edits always act on the primary object, so say so rather than letting a
     // multi-selection look as if lane or geometry changes will apply to all of it.

@@ -6,9 +6,16 @@
 #include <cmath>
 
 namespace trafficsim::canvasStyle {
-inline const QColor selection{editorDesign::accent};
-inline const QColor hover{editorDesign::accent};
-inline const QColor active{editorDesign::accent};
+// Functions, not namespace-scope QColors: the palette must not be built before QApplication.
+inline QColor selection() { return editorDesign::accent(); }
+inline QColor hover() { return editorDesign::accent(); }
+inline QColor active() { return editorDesign::accent(); }
+inline QColor error() { return editorDesign::semantic(editorDesign::Semantic::error); }
+inline QColor warning() { return editorDesign::semantic(editorDesign::Semantic::warning); }
+inline QColor advisory() { return editorDesign::semantic(editorDesign::Semantic::advisory); }
+inline QColor ok() { return editorDesign::semantic(editorDesign::Semantic::ok); }
+// Neutral overlay ink: linework a tool draws that is not state (draft, band, waiting line).
+inline QColor ink() { return editorDesign::role(QPalette::Dark); }
 inline constexpr double markingWidth = 0.10; // metres, including each stroke of a double line
 inline constexpr double laneTabLength = 24; // logical pixels along the road
 inline constexpr double laneTabDepth = 8;   // logical pixels outside the road
@@ -19,7 +26,7 @@ inline QColor connectorBoundaryColor(const QColor& surface) {
     };
     const double luminance = .2126 * linear(surface.redF()) + .7152 * linear(surface.greenF()) +
                              .0722 * linear(surface.blueF());
-    return luminance > .27 ? QColor(editorDesign::gray8) : QColor(editorDesign::gray0);
+    return editorDesign::role(luminance > .27 ? QPalette::Text : QPalette::Base);
 }
 
 inline QPen markingPen(const QColor& colour, MarkingType type) {

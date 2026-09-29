@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include "../model/network/right_of_way.hpp"
 #include <QGraphicsLineItem>
 #include <QMouseEvent>
@@ -74,8 +75,8 @@ void EditorCanvas::drawCounters() {
             }
         }
         if (!bar || !levelVisible(level)) return; // a line that no longer resolves is not drawn
-        // Violet and dotted, above stop lines and waiting lines, so a counter on a head still shows.
-        QPen pen(QColor("#7c3aed"), draft ? 4 : 2, draft ? Qt::DashLine : Qt::DotLine);
+        // Advisory ink and dotted, above stop lines and waiting lines, so a counter on a head still shows.
+        QPen pen(canvasStyle::advisory(), draft ? 4 : 2, draft ? Qt::DashLine : Qt::DotLine);
         pen.setCosmetic(true); pen.setCapStyle(Qt::FlatCap);
         auto* item = scene_.addLine(bar->first.x, bar->first.y, bar->second.x, bar->second.y, pen);
         item->setZValue(level * 100. + 11.5);

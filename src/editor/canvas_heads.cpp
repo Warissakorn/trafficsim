@@ -102,7 +102,7 @@ void EditorCanvas::drawHeads() {
     if (!document_) return;
     const auto bar = [&](const std::vector<Point>& g, double station, double width, int level, QColor fill, bool dashed) {
         const auto [a, b] = barEnds(g, station, width);
-        QPen under(QColor("#1f2937"), 5); under.setCosmetic(true); under.setCapStyle(Qt::FlatCap);
+        QPen under(editorDesign::role(QPalette::Text), 5); under.setCosmetic(true); under.setCapStyle(Qt::FlatCap);
         QPen over(fill, 3, dashed ? Qt::DashLine : Qt::SolidLine); over.setCosmetic(true); over.setCapStyle(Qt::FlatCap);
         if (!dashed) scene_.addLine(a.x, a.y, b.x, b.y, under)->setZValue(level * 100. + 10);
         auto* line = scene_.addLine(a.x, a.y, b.x, b.y, over); line->setZValue(level * 100. + 10.5);
@@ -114,13 +114,13 @@ void EditorCanvas::drawHeads() {
         const bool dragged = headDrag_ && headDrag_->id == head.id && headDrag_->moved;
         const double station = dragged ? headDrag_->station : head.position;
         bar(geometry->points, station, geometry->width, geometry->level,
-            isSelected(head.id) ? canvasStyle::selection : head.id==hoverObject_ ? canvasStyle::hover : QColor(Qt::white), false);
+            isSelected(head.id) ? canvasStyle::selection() : head.id==hoverObject_ ? canvasStyle::hover() : editorDesign::role(QPalette::Base), false);
         const auto p = pointAlong(geometry->points, station); const double r = 3 / std::abs(transform().m11());
-        scene_.addEllipse(p.x - r, p.y - r, 2 * r, 2 * r, QPen(Qt::darkGray), QBrush(QColor("#dc2626")))
+        scene_.addEllipse(p.x - r, p.y - r, 2 * r, 2 * r, QPen(editorDesign::role(QPalette::Dark)), QBrush(canvasStyle::error()))
             ->setZValue(geometry->level * 100. + 11);
     }
     if (hoverHead_ && tool_ == Tool::head)
-        bar(hoverHead_->slot.geometry, hoverHead_->station, hoverHead_->slot.width, hoverHead_->slot.level, QColor("#167b98"), true);
+        bar(hoverHead_->slot.geometry, hoverHead_->station, hoverHead_->slot.width, hoverHead_->slot.level, canvasStyle::hover(), true);
 }
 std::optional<std::pair<Point,Point>> EditorCanvas::headBar(const NetworkSignalHead& head) const {
     const auto geometry = headGeometry(head);

@@ -5,6 +5,7 @@ reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
 move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
 
+- [`archive/PROGRESS-2026-09-26-optimization-d70.md`](archive/PROGRESS-2026-09-26-optimization-d70.md) — 2026-09-26, measured optimization pass (D70); moved out 2026-09-29 as the oldest live entry
 - [`archive/PROGRESS-2026-09-26-m3.2.8a.md`](archive/PROGRESS-2026-09-26-m3.2.8a.md) — 2026-09-26, M3.2.8a, commitment at a waiting line (D69); moved out 2026-09-27 as the oldest live entry
 - [`archive/PROGRESS-2026-09-26-m3.2.4c.md`](archive/PROGRESS-2026-09-26-m3.2.4c.md) — 2026-09-26, M3.2.4c, automatic conflict areas (D68); moved out 2026-09-27 as the oldest live entry
 - [`archive/PROGRESS-2026-09-26-m3.2.7c.md`](archive/PROGRESS-2026-09-26-m3.2.7c.md) — 2026-09-26 — M3.2.7c: signal composition and a congested major road on the T-junction (D67); moved out 2026-09-27 as the oldest live entry
@@ -58,6 +59,22 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ---
+
+## 2026-09-29 — D81: precision-tool restyle through palette roles
+
+- Presentation only. Every colour is a `QPalette` role from `editorDesign::editorPalette()`; QSS
+  is `palette(role)` only; canvas overlays read `canvasStyle::*()`. Accent `#2F6FED`; error /
+  warning / advisory / ok are `BrightText` / `LinkVisited` / `Link` / `Shadow`. Tool overlays that
+  were orange, teal, magenta and violet are now the accent.
+- Box model fixed: controls are 28 px and no longer grow on focus/invalid; toolbar 32 px; icons
+  16 px with a 1.5 px stroke. `letter-spacing` was never a Qt Style Sheet property, so tracking now
+  lives on the label `QFont`.
+- Grid: two tiers from the view's level of detail, 1-device-pixel cosmetic lines snapped to pixel
+  centres from `painter->deviceTransform()`.
+- Lengths, coordinates and range hints format through `QLocale` (`formatValue`).
+- **Not compiled where it was written** (no Qt toolchain in the session): the new `design-system-ui`
+  test and the existing UI suites on the Native C++ workflow are the verification. No performance
+  claim. Gaps are listed in `docs/UI_REDESIGN_AUDIT.md` §6.
 
 ## 2026-09-28 — Editor selection and visual cleanup (owner request)
 
@@ -345,30 +362,6 @@ were not compiled; callgrind was not available, so the cost per tick is unmeasur
 Four-leg: clamps 4 → 8 (all amber heads and one follow-on), one pending scheduled in the last tick.
 Single-lane frozen baselines are byte-identical.
 
-## 2026-09-26 — Measured optimization pass: tests, evaluator, routing, leader search (D70)
-
-Behaviour-preserving; every change was checked byte for byte (M2.6 report, crossing event
-streams for seeds 7/42/43, corridor trip counts) and the full suite (63 tests) passed after each.
-Linux only, this container, Release unless noted.
-
-| Item | Before | After |
-|---|---|---|
-| `ctest --preset desktop -j4` (Debug) | 64.1 s | 21.3 s |
-| M2.6 template, one hour, `trafficsim-cli 42 --project …` | 668 ms (661–707), 5.74G instr | median 454 ms (436–661, one outlier), 4.35G instr |
-| `stepSimulation` instr, corridor 96 × 300 s / 12 × 300 s / M2.6 | 4.26G / 761M / 2.99G | 3.48G / 655M / 2.88G |
-
-1. **One ctest test per model-test group (D70).** `all-model-tests` ran the registry serially
-   and repeated every named group; it is now `--check-groups`, which fails on an unlisted group.
-2. **`MovementAccumulator::observe`** kept queue state in a per-tick `std::map` (31% of the M2.6
-   run, 4.7M allocations an hour); it is a vector sorted by id.
-3. **`routeShortestChains`** (moved from `demand_paths.cpp` into `routing.cpp`) builds the route
-   object graph once per search; `routeContinuations` rebuilt it 3,300 times per Run.
-4. **`closestVehicle` stops** once a part starts beyond the nearest gap: parts ascend and span
-   rears are ≥ 0, so the strict tie-break keeps the same leader.
-
-Not done, measured: editor frames are 1.3–5.5 ms at 40 intersections (no work needed);
-`allocateId`/`putRoute` are O(n²) over a scripted build-up but under 1 ms per click.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -488,6 +481,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D81 | 2026-09-29 | **All editor colour is a `QPalette` role; the accent is `#2F6FED`; semantic colour reuses `BrightText`/`LinkVisited`/`Link`/`Shadow`; tool overlays use the accent; tracking is set on `QFont`, not QSS** | Owner brief: precision-tool look, one accent, semantic colour reserved. Qt Style Sheets have no `letter-spacing`, so the earlier tracking never rendered. The four semantic roles are ones the editor never paints with (no shadows are drawn). Accent text is 4.1:1 on the hover grey, so the accent is fill/border only. Verification is the CI UI suites; nothing was compiled or measured in the authoring session. |
 | D80 | 2026-09-28 | **Derive a centred whole-carriageway axis; pair both mouths by lane index at every angle; remove square/slide/reach fallbacks** | Owner instructions in this session. Preserve file/runtime lane geometry through a central derived reference. Distinct parallel lines remain undefined; retain and diagnose folds rather than erase P1–P4 | Windows desktop owner review; no Vissim fidelity claim |
 | D79 | 2026-09-28 | **P1–P4 use one pairing at every angle: Connector boundary 0's edge line meets the range's first Link boundary (index order); no switch at 90°; a boundary running past its cut is pulled back before the bend** | Owner ruling, choosing index order over the geometric same-side pairing. Sides stay read off the rails because legacy strips can reverse lane order at an obtuse end (measured: driving-side kerb made 367 surfaces fall back) | A fix for folded/reversed `connectorBoundaries` strips, which would let the side come from the driving side |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |
