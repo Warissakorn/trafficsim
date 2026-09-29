@@ -15,6 +15,7 @@
 #include <QTableWidget>
 #include <QTabWidget>
 #include <QTest>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -64,14 +65,21 @@ int main(int argc,char** argv) {
         require(canvas->hasFocus(),"Tab order did not move from the tree to the canvas");
         QTest::keyClick(canvas,Qt::Key_Tab);settle();
         require(item<QLineEdit>(window,"editorId")->hasFocus(),"Tab order did not move from the canvas to the inspector");
-        canvas->setFocus();QTest::keyClick(canvas,Qt::Key_K,Qt::ControlModifier);settle();
-        auto* commandDialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        require(commandDialog&&commandDialog->objectName()=="editorCommandPaletteDialog","Ctrl+K did not open command palette");
-        QPointer<QDialog> commandGuard(commandDialog);
-        auto* commandSearch=item<QLineEdit>(*commandDialog,"editorCommandSearch");
-        commandSearch->setText("Draw link");settle();QTest::keyClick(commandSearch,Qt::Key_Return);settle();
-        require(commandGuard.isNull()&&item<QComboBox>(window,"editorTool")->currentIndex()==1,
-                "Command search did not activate the Link tool");
+        // The palette runs a nested event loop (QDialog::exec), so Ctrl+K does not return until the
+        // dialog closes: the dialog has to be driven from a timer that fires inside that loop.
+        canvas->setFocus();bool paletteOpened=false;
+        QTimer::singleShot(150,[&]{
+            auto* commandDialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            paletteOpened=commandDialog&&commandDialog->objectName()=="editorCommandPaletteDialog";
+            if(!commandDialog)return;
+            if(!paletteOpened){commandDialog->reject();return;}
+            auto* commandSearch=commandDialog->findChild<QLineEdit*>("editorCommandSearch");
+            if(!commandSearch){commandDialog->reject();return;}
+            commandSearch->setText("Draw link");QApplication::processEvents();QTest::keyClick(commandSearch,Qt::Key_Return);
+        });
+        QTest::keyClick(canvas,Qt::Key_K,Qt::ControlModifier);settle();
+        require(paletteOpened,"Ctrl+K did not open command palette");
+        require(item<QComboBox>(window,"editorTool")->currentIndex()==1,"Command search did not activate the Link tool");
         require(defaultCanvas.width()>=700&&defaultCanvas.height()>=350,"Default canvas crowded out");
         const int top=item<QToolBar>(window,"editorFiles")->y();
         for(const auto* name:{"editorTools","editorRunToolbar","editorWorkspace"})

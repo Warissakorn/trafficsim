@@ -32,7 +32,11 @@ double luminance(const QColor& colour) {
 double contrast(const QColor& a,const QColor& b) {
     const double x=luminance(a),y=luminance(b);return (std::max(x,y)+.05)/(std::min(x,y)+.05);
 }
-bool chromatic(const QColor& c) { return c.hslSaturationF()>.2; }
+// RGB spread, not HSL saturation: near-white greys such as #F9FAFB have a large HSL saturation
+// from a 2/255 spread and are still neutral.
+bool chromatic(const QColor& c) {
+    return std::max({c.redF(),c.greenF(),c.blueF()})-std::min({c.redF(),c.greenF(),c.blueF()})>.08;
+}
 
 void palette() {
     const auto p=editorDesign::editorPalette();
