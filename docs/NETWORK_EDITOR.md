@@ -28,12 +28,18 @@ Objects and problems dock is below. Switching language updates controls and mess
 
 ## Draw and navigate
 
+**One gesture rule (D84).** In every tool a plain left click only selects, and **Ctrl+right-click
+or Ctrl+right-drag creates or changes** — Links, Connectors, split points, routes, vehicle inputs,
+signal heads, queue counters and conflict-area priority alike, so a stray click never authors.
+Dragging an already selected object (move, vertex, waiting line) stays a left drag. The one
+exception is Measure/Calibrate, whose left clicks place measuring points and change nothing.
+
 In **Select (S)** or **Links (L)**, Ctrl+right-drag from empty space creates a Link.
 Confirm lane count and width in Link Data. Starting the same drag on a Link and ending
 on another Link creates a Connector instead. The release position is used even if the
 last mouse-move event was coalesced or Ctrl was released before the mouse button. Left-click while creating
-adds intermediate points. The existing click-polyline workflow also works: click each
-point and press Enter or double-click to finish. Escape cancels an unfinished gesture.
+adds intermediate points. Escape cancels an unfinished gesture. (The earlier left-click
+polyline workflow was removed by D84: a left click no longer starts a Link.)
 
 Select **Select / move (S)** to pick a link body or connector path. Drag a link control
 point to reshape it, or drag its body between control points to translate it. Every
@@ -82,7 +88,7 @@ offset on the median side according to combined lane widths and the carriageway 
 It copies level/style. It is independent after creation.
 
 Split at distance measures from the selected centreline's start. The split tool
-projects a click onto that centreline. Splitting produces upstream and downstream
+projects a Ctrl+right-click onto that centreline. Splitting produces upstream and downstream
 links with explicit continuity connectors across a 0.2 m span. Existing routes expand
 in travel order and attached external connectors are reanchored.
 
@@ -260,7 +266,7 @@ Ctrl is released first. A click or small jitter adds selection without copying. 
 Internal Connectors and Signal heads copy with their Links, fresh IDs and level/style.
 Heads share their existing programs. A Connector can also be copied independently: both
 translated ends must drop onto existing lane ranges at their respective original levels.
-A Signal head is its stop line: placed by click at the pointer's station on a lane or Connector path, dragged along its lane, copied onto a lane or Connector at the same level (M2.7a, D47).
+A Signal head is its stop line: placed by Ctrl+right-click at the pointer's station on a lane or Connector path, dragged along its lane, copied onto a lane or Connector at the same level (M2.7a, D47).
 Invalid drops leave the entire document and selection unchanged. Routes/inputs are not
 copied, because copying a drawing must not silently double arrivals. Delete selected
 objects cascades dependent connectors, heads, routes and inputs; one Undo restores all.
@@ -288,13 +294,13 @@ Levels only affect display and selection; they do not change runtime conflicts.
 ## Routes, inputs and fixed-time signals
 
 1. Draw a continuous path using links and connectors.
-2. With the Routes tool (R), click the start link, then click each destination: the whole chain
-   leading there is appended, so a crossing takes two clicks. A route names Links and Connectors
+2. With the Routes tool (R), Ctrl+right-click the start link, then each destination: the whole
+   chain leading there is appended, so a crossing takes two clicks. A route names Links and Connectors
    and covers **every lane** of them, so a Connector's lane count never invalidates it.
-   Ctrl+right-click starts one the same way, Backspace removes the last object, Enter stores it,
+   Backspace removes the last object, Enter stores it,
    Esc cancels; the draft and the selected route draw with arrows, the hovered object is haloed,
    and a click no chain reaches, or two reach equally, authors nothing (Add is the same, by dialog).
-3. With the Vehicle inputs tool (V), click the link traffic enters on: the dialog opens on the
+3. With the Vehicle inputs tool (V), Ctrl+right-click the link traffic enters on: the dialog opens on the
    route starting there or, when none does, on **following the network from that link** with no
    route (M2.1.1). The volume is the **link total**, divided across the link's lanes (equally or
    by weights); a vehicle on a lane that cannot reach the route's end changes lanes (M3.2.8b). A routing decision can be **placed on a link** with destination
@@ -330,9 +336,9 @@ seed, time and active/pending/completed counts; seeded arrivals may leave the vi
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
-**Conflict area tool** (`A`, M3.2.4b, D61): click an area to select it, click it again or press `P` to Since M3.2.4c (D68) the tool also shows what the drawing implies with no Add step: grey dashed passive crossings (not enforced at Run, as in Vissim) and each merge with its derived priority; a click or `P` on its row sets one, Delete makes a crossing passive again. Nothing automatic is saved.
+**Conflict area tool** (`A`, M3.2.4b, D61): click an area to select it, Ctrl+right-click it or press `P` to Since M3.2.4c (D68) the tool also shows what the drawing implies with no Add step: grey dashed passive crossings (not enforced at Run, as in Vissim) and each merge with its derived priority; a Ctrl+right-click or `P` on its row sets one, Delete makes a crossing passive again. Nothing automatic is saved.
 cycle its priority, drag a dashed waiting line along its lane. The side that gives way is hatched. The dialog's
-Control field (M3.2.5b, D63) sets Stop/Yield for the line: dashed = none, solid amber = Yield, solid red = Stop. **Queue counter tool** (`Q`, M3.2.6c, D65): click stop lines, waiting lines or places on a Link lane, Enter creates one counter (Backspace drops a line, Esc cancels); violet dotted bars. The **Queue counters** tab adds one over the selected heads, renames, deletes, and says which approach row it replaces.
+Control field (M3.2.5b, D63) sets Stop/Yield for the line: dashed = none, solid amber = Yield, solid red = Stop. **Queue counter tool** (`Q`, M3.2.6c, D65): Ctrl+right-click stop lines, waiting lines or places on a Link lane, Enter creates one counter (Backspace drops a line, Esc cancels); violet dotted bars. The **Queue counters** tab adds one over the selected heads, renames, deletes, and says which approach row it replaces.
 
 ## Background image
 

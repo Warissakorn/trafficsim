@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "ui_gestures.hpp"
 #include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QAction>
@@ -11,6 +12,7 @@
 #include <QBuffer>
 #include <QFile>
 #include <QTemporaryDir>
+#include <QDialog>
 #include <QTest>
 #include <QInputDialog>
 #include <QTimer>
@@ -34,6 +36,8 @@ int main(int argc,char** argv){
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(40);
         auto* c=w.canvas();auto* tool=item<QComboBox>(w,"editorTool");
         tool->setCurrentIndex(1);click(c,-60,0);click(c,60,0);QTest::keyClick(c,Qt::Key_Return);
+        require(w.history().document().network.links.empty() && !w.history().dirty(),"Left clicks in the Link tool drew a link");
+        test::drawLink(c,c->mapFromScene(-60,0),c->mapFromScene(60,0));
         require(w.history().document().network.links.size()==1,"Draw did not create link");
         const auto original=documentJson(w.history().document());const auto id=c->selected();
         require(w.history().dirty(),"Draw must mark dirty");

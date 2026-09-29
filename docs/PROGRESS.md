@@ -8,6 +8,38 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-29 — D84: one gesture rule, one face, visible arrows
+
+Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) and in CI
+(Qt 6.5.3 Linux and Windows); **not yet looked at by the owner on Windows**.
+
+- **Dropdown arrow was invisible everywhere**, not only on the owner's machine: a style sheet
+  that styles `QComboBox::drop-down` paints the arrow only from `image:`, and none was set.
+  Chevrons are now drawn once from palette roles into 1x/2x PNGs (`editor_appearance.cpp`,
+  temp dir) and referenced by the QSS; spin boxes get flat stacked 16 px buttons with the same
+  chevrons. Fusion is the application style, so controls draw and measure alike on every OS
+  and Qt version CI runs (a proxy style was tried first: Fusion never calls it for these).
+- **One face.** The monospace numeric face is gone: bundled Noto Sans Thai's digits are
+  tabular (all 572 units) and it covers every glyph the UI uses (ASCII, `° × − – …`, NBSP),
+  while a second face put numbers on a different baseline from their labels. The variable
+  font is replaced by static 400/600 cuts (`fontTools.varLib.instancer`, recipe in
+  `data/fonts/README.md`), because weight axes are not honoured on every Qt/platform; bold is
+  600 everywhere. The limit: Thai needs taller line boxes than Latin (20 px at 13 px), and
+  weights other than 400/600 need another cut.
+- **Heights and centring.** Measured with the real face, fields were 26–28 px, not the 24 the
+  D83 test claimed (it measured the system font). Fields and buttons are now pinned
+  (min = max height), which retires the runtime spin-box probe. Digits and capitals sit 7 px
+  above / 8 px below in every 24 px control; a test renders line edit, spin box, combo box and
+  button and requires equal gaps (mutation-checked against a 3 px shift).
+- **Gesture rule (D84).** Plain left click selects in every tool; Ctrl+right-click or
+  Ctrl+right-drag creates or changes. This removes the left-click Link polyline, the two
+  left-click Connector, left-click split, head, input, route and queue-counter placement, and
+  the conflict tool's plain click that authored a passive area and cycled priority (the only
+  place a plain click changed an existing object). Dragging a selected object stays a left
+  drag; Measure/Calibrate keep left clicks because they author nothing. Every click-to-create
+  UI test moved to Ctrl+right (`tests/ui_gestures.hpp`) and each tool gained an assertion
+  that a left click leaves the document unchanged. Hints in both catalogs say the rule.
+
 ## 2026-09-29 — D83: editor polish from owner feedback
 
 - **Latin digits everywhere.** The workspace set `QLocale::c()` on the spin boxes that existed at
@@ -298,6 +330,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D84 | 2026-09-29 | **In every canvas tool a plain left click only selects; Ctrl+right-click or Ctrl+right-drag creates or changes (Measure/Calibrate excepted). Fusion is the application style; combo and spin arrows are palette-drawn images; one bundled face (Noto Sans Thai, static 400/600) for words and numbers; fields pinned at 24 px** | Owner: Links needed Ctrl but conflict areas changed on a plain click, so a stray click could author; the dropdown arrow was invisible (QSS drop-down without an image); numbers used a second face on another baseline | Owner review on Windows; a Vissim user finding Ctrl+right slower than click for heavy route/counter authoring |
 | D83 | 2026-09-29 | **A lane-tab drag that makes a one-lane Connector difference puts the taper on the edge the tab changed (far tab from equal counts → far side; from a two-lane difference the other edge keeps it); an Inspector count keeps the kerb default. Editor widgets use the C locale; controls are 24 px; direction shows as arrowheads on the selection outline; a carried object shows an arrow-with-hand pointer** | Owner feedback: the taper was always on the left whichever tab was dragged; Thai digits appeared in dialogs; controls used too much space; mid-road arrows cluttered the road. The tab knows which edge it changed, a typed count does not | Owner review on Windows |
 | D82 | 2026-09-29 | **Live docs keep headroom under the 500-line limit by moving dated blocks whole into `docs/archive/`, indexed in `archive/README.md`; a current reference doc that outgrows the limit is split, not archived** | The size check fails CI on a one-line overrun; four docs at 494–499 lines made every session's closing note a CI risk. The index had itself grown to 50 lines of this file | — |
 | D81 | 2026-09-29 | **All editor colour is a `QPalette` role; the accent is `#2F6FED`; semantic colour reuses `BrightText`/`LinkVisited`/`Link`/`Shadow`; tool overlays use the accent; tracking is set on `QFont`, not QSS** | Owner brief: precision-tool look, one accent, semantic colour reserved. Qt Style Sheets have no `letter-spacing`, so the earlier tracking never rendered. The four semantic roles are ones the editor never paints with (no shadows are drawn). Accent text is 4.1:1 on the hover grey, so the accent is fill/border only. Verification is the CI UI suites; nothing was compiled or measured in the authoring session. |

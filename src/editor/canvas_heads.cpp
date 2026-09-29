@@ -51,8 +51,7 @@ std::optional<HeadPlacement> EditorCanvas::headAt(Point p) const {
 }
 bool EditorCanvas::headPress(QMouseEvent* e) {
     if (tool_ != Tool::head) return false;
-    const bool ctrlRight = e->button() == Qt::RightButton && (e->modifiers() & Qt::ControlModifier);
-    if (e->button() != Qt::LeftButton && !ctrlRight) return false;
+    if (e->button() != Qt::RightButton || !(e->modifiers() & Qt::ControlModifier)) return false; // D84
     const auto placed = headAt(world(e->pos(), false));
     hoverHead_.reset();
     if (!placed) { clearSelection(false); return true; }

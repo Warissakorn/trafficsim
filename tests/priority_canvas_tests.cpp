@@ -46,6 +46,11 @@ void click(EditorWindow& w, Point p) {
     QTest::qWait(600); // never let two clicks become a double-click
     QTest::mouseClick(w.canvas()->viewport(), Qt::LeftButton, {}, pixel(w, p)); QApplication::processEvents();
 }
+// D84: Ctrl+right-click authors or changes; a left click only selects.
+void author(EditorWindow& w, Point p) {
+    QTest::qWait(600);
+    QTest::mouseClick(w.canvas()->viewport(), Qt::RightButton, Qt::ControlModifier, pixel(w, p)); QApplication::processEvents();
+}
 void drag(EditorWindow& w, QPoint from, QPoint to) {
     QTest::qWait(600);
     QTest::mousePress(w.canvas()->viewport(), Qt::LeftButton, {}, from);
@@ -125,7 +130,7 @@ int main(int argc, char** argv) {
         require(c->selected() == a || c->selected() == b, "Select did not pick a Link at the crossing");
         require(c->highlightedConflict().empty(), "Select picked a conflict area");
 
-        // The Conflict area tool (A): a click picks the area, a second click cycles, P cycles.
+        // The Conflict area tool (A): a click picks the area, Ctrl+right-click cycles, P cycles.
         QTest::keyClick(c, Qt::Key_A); QApplication::processEvents();
         require(w.findChild<QComboBox*>("editorTool")->currentIndex() == 9, "A did not choose the Conflict area tool");
         require(tabs->currentIndex() == 9, "The tool did not show the Conflict areas tab");
@@ -135,6 +140,8 @@ int main(int argc, char** argv) {
         require(table->item(table->currentRow(), 0)->data(Qt::UserRole).toString().toStdString() == first.id, "The row was not selected");
         require(w.history().revision() == revision, "Picking an area edited the document");
         click(w, inside);
+        require(w.history().revision() == revision, "A second left click changed the priority");
+        author(w, inside);
         require(priority(w, first.id) == ConflictPriority::undetermined, "A second click did not cycle the priority");
         c->setFocus(); QTest::keyClick(c, Qt::Key_P); QApplication::processEvents();
         require(priority(w, first.id) == ConflictPriority::firstYields, "P did not cycle the priority");

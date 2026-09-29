@@ -52,7 +52,7 @@ Roles the editor does not name keep no hue (test: only the accent and the four s
 |---|---|
 | Spacing | 4 / 8 / 12 / 16 / 20 / 24 px |
 | Type | 11 / 12 / 13 / 14 / 18 px |
-| Control / row | 24 px (18 content + 2×2 padding + 2×1 border; was 28 px until D83) |
+| Control / row | 24 px (22 content pinned by min/max height + 2×1 border, D84; 28 px until D83) |
 | Toolbar | 32 px (24 button + 2×4 padding) |
 | Icon | 16 px logical, 1.5 px stroke, rastered 1×/2×/3× |
 | Radius | 2 px (cap 3) |
@@ -93,7 +93,7 @@ Roles the editor does not name keep no hue (test: only the accent and the four s
 1. Accent is `#2F6FED`; only accent + semantic roles carry hue; text roles ≥ 4.5:1 on `Base` and `Midlight`; text on accent ≥ 4.5:1; outline ≥ 3:1.
 2. QSS: no hex literal, no gradient/shadow/glow/transition/animation/letter-spacing/rgb(); every `font-size` ∈ {11,12,13,14,18}; every radius ≤ 3; spacing tokens multiples of 4.
 3. Box model: `QLineEdit`, `QDoubleSpinBox`, `QComboBox`, `QPushButton` `sizeHint().height()==28`, and still 28 when `validationState=invalid`; toolbar 32; icon raster ≥ 16.
-4. Typography: numeric face fixed-pitch 12 px; English group label 11 px, uppercase, absolute tracking; Thai label untracked.
+4. Typography: numbers in the UI face (Noto Sans Thai, tabular digits) at 12 px, D84; English group label 11 px, uppercase, absolute tracking; Thai label untracked.
 5. `formatValue` in German/US locales, fixed decimals, no-break unit.
 6. Hairlines: cosmetic, 1/dpr wide; snapped coordinate lands on `k + 0.5` device px for positive/negative scale and any offset.
 7. Grid tiers: LOD of a flipped 4× view is 4; minor jumps to 10 m at 4 px/m; ≥ 8 px at any zoom; bad input yields no grid.
@@ -105,6 +105,6 @@ Existing suites keep covering tab order, Ctrl+K, range hints ("1–12", "> 0 m")
 ## 6. Known gaps (not done)
 
 - **Dock titles are uppercase 11 px but untracked**: `QDockWidget::title` has no font-spacing hook, and a custom title-bar widget would lose native drag/float.
-- **Tabular figures rely on the monospace face**, not an OpenType `tnum` switch (`QFont::setFeature` is Qt 6.7; the floor is 6.4).
+- **Tabular figures come from the UI face itself** (Noto Sans Thai digits are all 572 units, D84), so no `tnum` switch (`QFont::setFeature` is Qt 6.7; the floor is 6.4) and no second face are needed.
 - **Not every table value is `formatValue`d**: per-cell `QString::number(…,'f',n)` remains in results, counters and the signal table (fixed decimals, right-aligned, but C-locale separators, and no unit in the cell — the column header carries it).
 - Windows/high-DPI visual review is still the owner's; Linux offscreen cannot show fractional scaling.

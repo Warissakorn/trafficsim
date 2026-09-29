@@ -74,7 +74,6 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
     for(int i=0;i<11;++i) tool_->addItem("",i);
     tool_->hide();
-    tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
     tools->addAction(action("editorRotate",QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_R),[this]{rotateSelection();}));
     action("editorDeleteVertex",{},[this]{canvas_->removeVertex();});

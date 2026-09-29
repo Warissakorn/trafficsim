@@ -47,7 +47,6 @@ public:
     void cancel();                                        // forget the gesture AND repaint
     void clearSelection(bool cancelGesture = true);       // includes table-owned highlights
     std::function<void()> selectionCleared;
-    void finishDrawing();
     void removeVertex();
     bool snap{true};
     double grid{1};

@@ -13,17 +13,22 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     if(creating_ && e->button()==Qt::LeftButton) {
         draft_.back()=world(e->pos());draft_.push_back(draft_.back());redraw();return;
     }
+    // ONE rule in every tool (D84): a left click selects and never changes the network;
+    // Ctrl+right-click or Ctrl+right-drag creates or changes, as Vissim adds objects. The
+    // modifier is what keeps a stray click from authoring something.
     if(e->button()==Qt::RightButton && (e->modifiers()&Qt::ControlModifier)) {
         lastPick_=world(e->pos(),false);
-        if(tool_==Tool::route || tool_==Tool::input) {
-            // Vissim starts a routing decision with Ctrl+right-click on the link it sits on.
-            // The same press on the left button does the same thing, through demandPress.
-            demandPress(e);return;
+        if(demandPress(e) || headPress(e) || conflictPress(e) || counterPress(e))return;
+        if(tool_==Tool::split) {
+            const auto picked=hit(lastPick_,false);
+            if(picked.first.empty())clearSelection(false);else if(splitAt)splitAt(picked.first,picked.second);
+            return;
         }
-        if(headPress(e))return;
         if(tool_!=Tool::select && tool_!=Tool::draw && tool_!=Tool::connect)return;
-        cancel();creationStart_=e->pos();
-        gestureFrom_=hitLanePosition(lastPick_,true);
+        // A Connector can also be made by two Ctrl+right-clicks: keep the picked source lane.
+        const auto source=tool_==Tool::connect?connectorFrom_:std::nullopt;
+        cancel();connectorFrom_=source;creationStart_=e->pos();
+        gestureFrom_=source?source:hitLanePosition(lastPick_,true);
         creationTool_=(tool_==Tool::connect || gestureFrom_)?Tool::connect:Tool::draw;
         if(creationTool_==Tool::connect && !gestureFrom_) {if(creationRejected)creationRejected();return;}
         creating_=true;draft_={world(e->pos()),world(e->pos())};
@@ -51,18 +56,19 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         return;
     }
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
-    if (tool_==Tool::connect) { pickConnector(world(e->pos(),false)); return; }
-    if (tool_==Tool::draw || tool_==Tool::measure || tool_==Tool::calibrate) {
-        if (tool_!=Tool::draw) p=world(e->pos(),false);
+    // Measuring changes nothing in the network, so it keeps plain clicks (the one exception).
+    if (tool_==Tool::measure || tool_==Tool::calibrate) {
+        p=world(e->pos(),false);
         if (draft_.empty() || draft_.back()!=p) draft_.push_back(p);
-        if (tool_!=Tool::draw && draft_.size()==2) {
+        if (draft_.size()==2) {
             const auto a=draft_[0], b=draft_[1]; draft_.clear();
             if (measured) measured(a,b,tool_==Tool::calibrate);
         }
         redraw(); return;
     }
-    const auto picked=hit(world(e->pos(),false),tool_!=Tool::split);
-    if (tool_==Tool::split) { if (picked.first.empty())clearSelection(false);else if(splitAt)splitAt(picked.first,picked.second); return; }
+    const auto picked=hit(world(e->pos(),false));
+    // In an authoring tool a left click selects what is under it; moving objects is Select's.
+    if (tool_!=Tool::select) { if (picked.first.empty())clearSelection(false);else select(picked.first); return; }
     const bool additive=(e->modifiers()&Qt::ShiftModifier)!=0;
     if (additive) {
         // Adding to a selection is never also a drag: the two gestures would fight over the press.
@@ -190,8 +196,9 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         if(creationTool_==Tool::connect && target)draft_.back()=laneAttachment(document_->network,*target,false);
         const auto points=draft_;const auto from=gestureFrom_;const auto mode=creationTool_;
         const bool click=(e->pos()-creationStart_).manhattanLength()<QApplication::startDragDistance();
-        const auto pick=lastPick_;cancel();
+        const auto pick=lastPick_;const auto source=connectorFrom_;cancel();
         if(click && tool_==Tool::select){insertVertex(pick);return;}
+        if(click && tool_==Tool::connect){connectorFrom_=source;pickConnector(pick);return;}
         if(mode==Tool::draw && points.size()>=2 && points.front()!=points.back() && createLinkGesture)createLinkGesture(points);
         else if(mode==Tool::connect && from && target && createRangeGesture)createRangeGesture(*from,*target,points);
         else if(creationRejected)creationRejected();
@@ -268,7 +275,6 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
 void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton) return;
     if(e->modifiers()&Qt::AltModifier)return;
-    if(tool_==Tool::draw) { finishDrawing(); return; }
     if(tool_==Tool::route) { commitRouteDraft(); return; }
     if(tool_!=Tool::select) return;
     cancel();
@@ -294,12 +300,6 @@ void EditorCanvas::insertVertex(Point p) {
         distance+=length;
     }
 }
-void EditorCanvas::finishDrawing() {
-    if(creating_ || tool_!=Tool::draw || draft_.size()<2) return;
-    const auto geometry=draft_; draft_.clear();
-    if(createLink) createLink(geometry);
-    redraw();
-}
 void EditorCanvas::removeVertex() {
     if(vertex_<0 || !selectedGeometry()) return;
     auto geometry=*selectedGeometry();
@@ -318,7 +318,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     if(e->key()==Qt::Key_Return || e->key()==Qt::Key_Enter) {
         if(!routeDraft_.empty()) {commitRouteDraft();return;}
         if(!counterDraft_.empty()) {commitCounterDraft();return;}
-        finishDrawing(); return;
+        return;
     }
     // Only while a route draft is open: Backspace belongs to the view otherwise.
     if(e->key()==Qt::Key_Backspace && !routeDraft_.empty()) { dropLastRouteSegment(); return; }

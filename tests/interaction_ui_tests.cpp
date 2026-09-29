@@ -28,6 +28,10 @@ QPoint pixel(EditorCanvas& c,Point p) {
 void click(EditorCanvas& c,Point p,Qt::KeyboardModifiers modifiers={}) {
     QTest::mouseClick(c.viewport(),Qt::LeftButton,modifiers,pixel(c,p));
 }
+// D84: every tool creates or changes with Ctrl+right-click.
+void author(EditorCanvas& c,Point p) {
+    QTest::mouseClick(c.viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,p));
+}
 int count(EditorCanvas& c,const char* tag) {
     int n=0;for(auto* item:c.scene()->items())if(item->data(0).toString()==tag)++n;return n;
 }
@@ -84,9 +88,17 @@ void selectionWorkflow(EditorCanvas& c) {
     }
     require(rejections==0 && clears>0,"Empty-space navigation reported a creation error");
     c.setTool(EditorCanvas::Tool::route);click(c,{-65,0});
+    require(c.routeDraft().empty() && c.selected()=="a","A left click in the route tool did more than select");
+    author(c,{-65,0});
     require(c.routeDraft()==std::vector<std::string>{"a"},"Route draft did not start");
     click(c,{-50,-30});QTest::keyClick(&c,Qt::Key_Tab);
     require(c.routeDraft()==std::vector<std::string>{"a"} && c.selection().empty(),"Empty space or Tab discarded the route draft");
+    // Splitting changes the network, so it is Ctrl+right-click too (D84).
+    int splits=0;c.splitAt=[&](const auto&,double){++splits;};
+    c.setTool(EditorCanvas::Tool::split);click(c,{-65,0});
+    require(splits==0,"A left click split the link");
+    author(c,{-65,0});require(splits==1,"Ctrl+right-click did not split the link");
+    c.splitAt={};
     c.setTool(EditorCanvas::Tool::select);QTest::mouseMove(c.viewport(),pixel(c,{-60,0}));
     require(feedback(c,"a","hover"),"Hover fixture missing");
     QEvent leave(QEvent::Leave);QApplication::sendEvent(&c,&leave);

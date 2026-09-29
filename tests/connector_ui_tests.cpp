@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "ui_gestures.hpp"
 #include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QAction>
@@ -58,7 +59,7 @@ int main(int argc,char** argv) {
         // Fit the fixture's drawing area to the actual viewport after docks have laid out.
         c->fitInView(QRectF(-75,-40,150,100),Qt::KeepAspectRatio);
         c->centerOn(0,10);
-        const auto draw=[&](Point a,Point b){tool->setCurrentIndex(1);click(c,a);click(c,b);QTest::keyClick(c,Qt::Key_Return);};
+        const auto draw=[&](Point a,Point b){tool->setCurrentIndex(1);test::drawLink(c,pixel(c,a),pixel(c,b));};
         draw({-65,-30},{-15,-30});draw({15,0},{15,50});draw({25,-30},{65,-30});
         require(w.history().document().network.links.size()==3,"Road drawing failed");action(w,"editorFit");
         const auto links=w.history().document().network.links;
@@ -66,16 +67,18 @@ int main(int argc,char** argv) {
         const auto to=laneGeometry(links[1],links[1].lanes[1].id,DrivingSide::left).front();
         const auto beforeDraw=documentJson(w.history().document());
         tool->setCurrentIndex(5);click(c,from);
+        require(!c->pickingConnectorTarget() && documentJson(w.history().document())==beforeDraw,"A left click picked a source lane");
+        test::authorClick(c,pixel(c,from));
         require(c->pickingConnectorTarget(),"Source endpoint was not picked");
         require(documentJson(w.history().document())==beforeDraw,"First click changed document");
-        QTest::keyClick(c,Qt::Key_Escape);click(c,to);
+        QTest::keyClick(c,Qt::Key_Escape);test::authorClick(c,pixel(c,to));
         require(w.history().document().network.connectors.empty(),"Escape did not cancel source");
         QTest::keyClick(c,Qt::Key_Escape); // A target start is now also a legal source position.
-        click(c,from);tool->setCurrentIndex(0);require(!c->pickingConnectorTarget(),"Tool switch retained source");
-        tool->setCurrentIndex(5);click(c,from);
+        test::authorClick(c,pixel(c,from));tool->setCurrentIndex(0);require(!c->pickingConnectorTarget(),"Tool switch retained source");
+        tool->setCurrentIndex(5);test::authorClick(c,pixel(c,from));
         QTest::mouseMove(c->viewport(),pixel(c,to));
         require(documentJson(w.history().document())==beforeDraw,"Hover preview mutated document");
-        click(c,to);require(w.history().revision()==4,"Two-click connector was not one command");
+        test::authorClick(c,pixel(c,to));require(w.history().revision()==4,"Two-click connector was not one command");
         require(w.history().document().network.connectors.size()==1,"Connector not created");
         const auto id=c->selected();const auto created=w.history().document().network.connectors[0];
         require(created.from.laneId==links[0].lanes[0].id && created.to.laneId==links[1].lanes[1].id,"Wrong lane mapping");

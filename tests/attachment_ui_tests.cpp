@@ -207,8 +207,8 @@ int main(int argc,char** argv) {
         }
         // Both click-pick positions are also on link bodies, in connector mode.
         item<QComboBox>(w,"editorTool")->setCurrentIndex(5);
-        QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,lanePoint(0,2,.25)));
-        QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,lanePoint(1,2,.75)));
+        QTest::mouseClick(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,lanePoint(0,2,.25)));
+        QTest::mouseClick(c->viewport(),Qt::RightButton,Qt::ControlModifier,pixel(c,lanePoint(1,2,.75)));
         require(w.history().document().network.connectors.size()==2,"Two-click body attachment failed");attached(w.history().document());
         item<QComboBox>(w,"editorTool")->setCurrentIndex(0);c->select(id);
         const auto stored=w.history().document().network.connectors.front();action(w,"editorApplyConnector");
@@ -286,9 +286,15 @@ int main(int argc,char** argv) {
         // what authors a Link carrying interior geometry at all.
         c->select("");
         auto* drawTool=item<QComboBox>(w,"editorTool");drawTool->setCurrentIndex(1);
-        for(const Point& p:{Point{-90,-50},Point{-50,-38},Point{-10,-50}})
-            QTest::mouseClick(c->viewport(),Qt::LeftButton,{},pixel(c,p));
-        QTest::keyClick(c,Qt::Key_Return);QApplication::processEvents();
+        // Ctrl+right-drag, with a left click on the way for the bend (D84).
+        {
+            const auto a=pixel(c,{-90,-50}),bend=pixel(c,{-50,-38}),b=pixel(c,{-10,-50});
+            confirm("editorLinkDialog",true,item<QSpinBox>(w,"editorLaneCount")->value()); // what the tool drew with
+            QTest::mousePress(c->viewport(),Qt::RightButton,Qt::ControlModifier,a);QTest::mouseMove(c->viewport(),bend);
+            QTest::mouseClick(c->viewport(),Qt::LeftButton,Qt::ControlModifier,bend);QTest::mouseMove(c->viewport(),b);
+            QTest::mouseRelease(c->viewport(),Qt::RightButton,Qt::ControlModifier,b);
+            QApplication::setActiveWindow(c->window());c->setFocus();QTest::keyRelease(c,Qt::Key_Control);QApplication::processEvents();
+        }
         drawTool->setCurrentIndex(0);
         confirm("editorLinkDialog",true,1);releaseDrag(c,{10,50},{90,50},Qt::RightButton);
         const auto& withBend=w.history().document().network.links;

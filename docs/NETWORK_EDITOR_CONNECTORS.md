@@ -11,7 +11,7 @@ during creation can add intermediate points. One completed gesture creates one c
 object even when it carries several lanes.
 
 Both ends can attach anywhere on the **body** of their Link; endpoints remain valid.
-The two-click workflow (C) also picks positions on lane bodies. Picking **snaps to a point**,
+The two-click workflow (C, a Ctrl+right-click at each end, D84) also picks positions on lane bodies. Picking **snaps to a point**,
 which is Vissim's *Snap to Points*: the lane's two endpoints, then a station another Connector
 already attaches at on that lane, then the Link's own intermediate points — the first of those
 within the radius wins, and the station taken is that point's exactly. Two movements leaving one

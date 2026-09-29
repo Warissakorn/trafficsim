@@ -51,8 +51,9 @@ QPoint laneMiddle(EditorWindow& w,const std::string& linkId,const std::string& l
     }
     require(false,"Unknown lane");return {};
 }
+// D84: routes and inputs are authored with Ctrl+right-click; a left click only selects.
 void click(EditorWindow& w,QPoint position) {
-    QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},position);
+    QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,position);
     QApplication::processEvents();
 }
 void hover(EditorWindow& w,QPoint position) {
@@ -92,6 +93,8 @@ int main(int argc,char** argv) {
 
         // The forcing: the click lands on a LANE of the Link, and what starts is a route on the
         // whole Link -- the lane clicked is not stored anywhere.
+        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},laneMiddle(w,west,westLane));QApplication::processEvents();
+        require(w.canvas()->routeDraft().empty(),"A left click started a route");
         click(w,laneMiddle(w,west,westLane));
         require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"Click did not start a route on the Link");
         // Hovering an unreachable Link says so BEFORE the click, and the click is refused.
