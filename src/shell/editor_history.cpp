@@ -68,7 +68,7 @@ void EditorWindow::refreshHistory() {
         if (current) label += " · "+text("editorHistoryCurrent");
         auto* item = new QListWidgetItem(label, historyList_);
         item->setData(Qt::UserRole, QVariant::fromValue<qulonglong>(state.revision));
-        auto font = item->font(); font.setBold(current); item->setFont(font);
+        auto font = item->font(); font.setWeight(current?QFont::DemiBold:QFont::Normal); item->setFont(font);
         if (current) historyList_->setCurrentItem(item);
     }
 }

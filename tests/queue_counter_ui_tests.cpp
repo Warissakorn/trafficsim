@@ -37,6 +37,11 @@ void click(EditorWindow& w, Point p) {
     QTest::qWait(600); // never let two clicks become a double-click
     QTest::mouseClick(w.canvas()->viewport(), Qt::LeftButton, {}, pixel(w, p)); QApplication::processEvents();
 }
+// D84: Ctrl+right-click authors or changes; a left click only selects.
+void author(EditorWindow& w, Point p) {
+    QTest::qWait(600);
+    QTest::mouseClick(w.canvas()->viewport(), Qt::RightButton, Qt::ControlModifier, pixel(w, p)); QApplication::processEvents();
+}
 void key(EditorWindow& w, Qt::Key k) { w.canvas()->setFocus(); QTest::keyClick(w.canvas(), k); QApplication::processEvents(); }
 void onDialog(const char* name, std::function<void(QDialog*)> answer, bool& ran) {
     QTimer::singleShot(0, [=, &ran] {
@@ -108,23 +113,25 @@ int main(int argc, char** argv) {
         // Empty ground is refused. The forcing first: nothing is there.
         const Point empty{centre.x, centre.y + 40};
         require(c->hitObjects(empty).empty(), "The empty probe point is on a road");
-        click(w, empty);
+        author(w, empty);
         require(c->counterDraft().empty(), "A click on empty ground added a line");
-        // Esc drops a draft, and nothing is written.
         click(w, stop(*heads[0]));
+        require(c->counterDraft().empty(), "A left click on a stop line added a line");
+        // Esc drops a draft, and nothing is written.
+        author(w, stop(*heads[0]));
         require(c->counterDraft().size() == 1, "A click on a stop line did not add a line");
         key(w, Qt::Key_Escape);
         require(c->counterDraft().empty() && w.history().revision() == revision, "Esc did not drop the draft");
 
         // Three stop lines and a lane place; Backspace drops the last; Enter commits once.
-        for (const auto* h : heads) click(w, stop(*h));
-        click(w, stop(*heads[1])); // the same head twice is one line
-        click(w, onLane);
+        for (const auto* h : heads) author(w, stop(*h));
+        author(w, stop(*heads[1])); // the same head twice is one line
+        author(w, onLane);
         require(c->counterDraft().size() == 4, "The draft does not hold four lines");
         require(marks(w, true) == std::multiset<std::string>{"head", "head", "head", "point"}, "The draft is not drawn");
         key(w, Qt::Key_Backspace);
         require(c->counterDraft().size() == 3, "Backspace did not drop the last line");
-        click(w, onLane);
+        author(w, onLane);
         require(w.history().revision() == revision, "The draft wrote to the document");
         key(w, Qt::Key_Return);
         require(network().queueCounters.size() == 1, "Enter did not create one counter");

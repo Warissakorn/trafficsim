@@ -1,4 +1,5 @@
 #include "../src/editor/canvas.hpp"
+#include <QFontMetricsF>
 #include "../src/editor/ui_design_tokens.hpp"
 #include "../src/shell/editor_style.hpp"
 #include "../src/shell/editor_window.hpp"
@@ -17,6 +18,9 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <cmath>
+#include <QImage>
+#include <utility>
+#include <vector>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -86,16 +90,36 @@ void stylesheet() {
 void boxModel() {
     QWidget host;applyEditorStyle(&host);auto* layout=new QVBoxLayout(&host);
     auto* edit=new QLineEdit(&host);auto* spin=new QDoubleSpinBox(&host);auto* combo=new QComboBox(&host);
-    auto* button=new QPushButton("Apply",&host);combo->addItem("x");
+    auto* button=new QPushButton("Apply ตกลง",&host);combo->addItem("ค่าเริ่มต้น x");edit->setText("ถนน 12");
     for(QWidget* control:{static_cast<QWidget*>(edit),static_cast<QWidget*>(spin),static_cast<QWidget*>(combo),static_cast<QWidget*>(button)})layout->addWidget(control);
     host.show();QApplication::processEvents();
     for(QWidget* control:{static_cast<QWidget*>(edit),static_cast<QWidget*>(spin),static_cast<QWidget*>(combo),static_cast<QWidget*>(button)}) {
-        require(control->sizeHint().height()==editorDesign::controlHeight,
-                std::string(control->metaObject()->className())+" is "+std::to_string(control->sizeHint().height())+" px, not "+std::to_string(editorDesign::controlHeight));
-        // The invalid state swaps a 1 px border for 2 px; padding gives 1 px back so height holds.
+        // The laid-out height, with the bundled Thai face: that is what the user sees. A size hint
+        // alone varies with the font's line height and with Qt's per-version spin-box extra.
+        const auto height=[&]{host.adjustSize();QApplication::processEvents();return control->height();};
+        require(height()==editorDesign::controlHeight,
+                std::string(control->metaObject()->className())+" is "+std::to_string(control->height())+" px, not "+std::to_string(editorDesign::controlHeight));
+        // The invalid state swaps a 1 px border for 2 px; the content gives 2 px back so height holds.
         control->setProperty("validationState","invalid");control->style()->unpolish(control);control->style()->polish(control);
-        require(control->sizeHint().height()==editorDesign::controlHeight,
-                std::string(control->metaObject()->className())+" changes height when invalid: "+std::to_string(control->sizeHint().height()));
+        require(height()==editorDesign::controlHeight,
+                std::string(control->metaObject()->className())+" changes height when invalid: "+std::to_string(control->height()));
+        control->setProperty("validationState",QVariant());control->style()->unpolish(control);control->style()->polish(control);
+    }
+    // One vertical pattern: the same digits sit at the same rows in every kind of control, and
+    // centred to the pixel (a 9 px cap in 24 px leaves 15 px, so 7 above and 8 below is centred).
+    button->setFocus();QApplication::processEvents(); // no text cursor in the line edit
+    edit->setText("0000");spin->setValue(0);combo->setItemText(0,"0000");button->setText("0000");
+    std::vector<std::pair<int,int>> gaps;
+    for(QWidget* control:{static_cast<QWidget*>(edit),static_cast<QWidget*>(spin),static_cast<QWidget*>(combo),static_cast<QWidget*>(button)}) {
+        QApplication::processEvents();
+        const QImage image=control->grab().toImage();int top=-1,bottom=-1;
+        for(int y=2;y<image.height()-2;++y)for(int x=4;x<image.width()-24;++x)
+            if(image.pixelColor(x,y).lightness()<110){if(top<0)top=y;bottom=y;break;}
+        require(top>=0,std::string(control->metaObject()->className())+" drew no text");
+        gaps.push_back({top,image.height()-1-bottom});
+        require(std::abs(gaps.back().first-gaps.back().second)<=1,
+                std::string(control->metaObject()->className())+" text is not centred: "+std::to_string(gaps.back().first)+" above, "+std::to_string(gaps.back().second)+" below");
+        require(gaps.back()==gaps.front(),std::string(control->metaObject()->className())+" places text differently from a line edit");
     }
     // Same configuration as the editor's toolbars (editor_workspace.cpp): icon-only 16 px buttons.
     // Without it the button shows its text beside the icon and is 27 px, which is a test artefact.
@@ -120,7 +144,11 @@ void boxModel() {
 }
 void typography() {
     const auto numeric=editorDesign::numericFont();
-    require(numeric.fixedPitch()&&numeric.pixelSize()==12,"Numeric face is not 12 px fixed pitch");
+    // Tabular digits, not a monospace face: every digit advances the same, so columns align.
+    const QFontMetricsF digits(numeric);
+    for(QChar d='1';d<='9';d=QChar(d.unicode()+1))
+        require(digits.horizontalAdvance(d)==digits.horizontalAdvance(QChar('0')),"Numeric digits are not tabular");
+    require(numeric.pixelSize()==12,"Numeric face is not 12 px");
     QFont english;editorDesign::styleGroupLabel(english,true);
     require(english.pixelSize()==11&&english.capitalization()==QFont::AllUppercase&&english.letterSpacingType()==QFont::AbsoluteSpacing&&
             english.letterSpacing()==editorDesign::labelTracking,"English group label is not 11 px tracked uppercase");
@@ -188,7 +216,10 @@ int main(int argc,char** argv) {
     QApplication app(argc,argv);
     try {
         require(argc>=2,"Expected data directory");
+        // The editor's own face, as EditorWindow loads it: heights are measured with the font
+        // the user sees, not the test machine's default.
+        loadEditorFont(argv[1]);
         palette();stylesheet();boxModel();typography();hairlines();gridTiers();gridIsCrisp();window(argv[1]);
-        std::cout<<"Palette roles, QSS rules, 28/32 px box model, formatting, hairlines and grid tiers passed\n";return 0;
+        std::cout<<"Palette roles, QSS rules, 24/32 px box model, formatting, hairlines and grid tiers passed\n";return 0;
     } catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 }

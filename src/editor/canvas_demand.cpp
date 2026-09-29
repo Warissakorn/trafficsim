@@ -45,9 +45,8 @@ std::pair<std::string,std::string> EditorCanvas::demandObjectAt(QPoint viewportP
 }
 bool EditorCanvas::demandPress(QMouseEvent* e) {
     if(tool_!=Tool::route && tool_!=Tool::input)return false;
-    // Left-click, or Vissim's Ctrl+right-click on the link the decision sits on.
-    const bool ctrlRight=e->button()==Qt::RightButton && (e->modifiers()&Qt::ControlModifier);
-    if(e->button()!=Qt::LeftButton && !ctrlRight)return false;
+    // Vissim's Ctrl+right-click on the link the input or decision sits on (D84).
+    if(e->button()!=Qt::RightButton || !(e->modifiers()&Qt::ControlModifier))return false;
     const auto p=world(e->pos(),false);
     const auto target=objectAt(p);
     if(target.empty()){clearSelection(false);return true;}

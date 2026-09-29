@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QFont>
 #include <QFontDatabase>
+#include <QGuiApplication>
 #include <QLocale>
 #include <QPalette>
 #include <QPen>
@@ -78,17 +79,17 @@ inline QColor semantic(Semantic s) {
     return role(QPalette::Text);
 }
 
-// Monospace faces have equal-width digits, which is the tabular-figure guarantee: Qt 6.4 has
-// no OpenType feature switch, so a proportional face with "tnum" is not available here.
+// Numbers use the UI face itself: the bundled Noto Sans Thai has tabular digits (every digit
+// 572 units), which is the column-alignment guarantee a monospace face used to provide, without
+// a second typeface whose baseline disagrees with the labels beside it.
 inline QFont numericFont() {
-    auto font=QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    font.setStyleHint(QFont::Monospace);font.setFixedPitch(true);font.setPixelSize(fontSizeNumeric);
+    auto font=QGuiApplication::font();font.setPixelSize(fontSizeNumeric);
     return font;
 }
 // Group labels: 11 px, tracked, upper case. Thai has no case and tracking detaches its
 // combining marks, so only English gets either.
 inline void styleGroupLabel(QFont& font,bool english) {
-    font.setPixelSize(fontSizeLabel);font.setBold(true);
+    font.setPixelSize(fontSizeLabel);font.setWeight(QFont::DemiBold);
     font.setCapitalization(english?QFont::AllUppercase:QFont::MixedCase);
     font.setLetterSpacing(english?QFont::AbsoluteSpacing:QFont::PercentageSpacing,english?labelTracking:100.);
 }

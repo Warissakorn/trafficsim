@@ -71,7 +71,7 @@ int main(int argc,char** argv) {
             require(std::abs(station->maximum()-polylineLength(second))<1e-6,"Station was not bounded by the lane length");
             opened=true;dialog->accept();
         });
-        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,second,60));
+        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,at(w,second,60));
         QApplication::processEvents();
         require(opened,"Clicking a lane with the head tool opened nothing");
         require(w.history().document().network.signalHeads.size()==1,"The click placed no head");
@@ -91,16 +91,19 @@ int main(int argc,char** argv) {
                 "Dialog did not open on the clicked Connector path");
             dialog->accept();
         });
-        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,path.geometry,polylineLength(path.geometry)/2));
+        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,at(w,path.geometry,polylineLength(path.geometry)/2));
         QApplication::processEvents();
         require(w.history().document().network.signalHeads.size()==2,"No head was placed on the Connector");
         require(w.history().document().network.signalHeads.back().connectorId==path.id,"Connector head stood on the wrong path");
 
         // A miss places nothing and opens nothing.
-        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},w.canvas()->mapFromScene(0,60));
+        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,w.canvas()->mapFromScene(0,60));
         QApplication::processEvents();
         require(!QApplication::activeModalWidget(),"A miss opened a dialog");
         require(w.history().document().network.signalHeads.size()==2,"A miss placed a head");
+        // D84: a plain left click on a lane selects; it never places a head.
+        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,second,40));QApplication::processEvents();
+        require(!QApplication::activeModalWidget() && w.history().document().network.signalHeads.size()==2,"A left click placed a head");
 
         // Drag: select the first head, slide its stop line to 30 m, one Undo step.
         tool->setCurrentIndex(0);QApplication::processEvents();
@@ -155,14 +158,14 @@ int main(int argc,char** argv) {
             require(at>=0,"Group 2 is not offered for a head");
             signal->setCurrentIndex(at);dialog->accept();
         });
-        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,first,20));QApplication::processEvents();
+        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,at(w,first,20));QApplication::processEvents();
         QTimer::singleShot(0,[&]{
             auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
             require(dialog->findChild<QComboBox*>("editorHeadSignal")->currentData().toString().toStdString()=="c:"+controllerId+"#2",
                 "The next head did not default to the group just used");
             dialog->accept();
         });
-        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},at(w,other,20));QApplication::processEvents();
+        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,at(w,other,20));QApplication::processEvents();
         const auto& heads=w.history().document().network.signalHeads;
         require(heads.size()==4,"Two more heads were not placed");
         for(std::size_t k=2;k<4;++k)

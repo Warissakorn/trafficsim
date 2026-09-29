@@ -2,6 +2,7 @@
 #include "path.hpp"
 #include "editor_style.hpp"
 #include "../editor/ui_design_tokens.hpp"
+#include <QApplication>
 #include <QMenu>
 #include <QAction>
 #include <QComboBox>
@@ -36,10 +37,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     // already resolved the system locale, and every child and dialog inherits the window's.
     QLocale::setDefault(QLocale::c());setLocale(QLocale::c());
     setObjectName("networkEditor");displayCatalog_=loadDisplayCatalog(data);
-    const int font=QFontDatabase::addApplicationFont(displayPath(data/"fonts/NotoSansThai.ttf"));
-    if(font<0) throw std::runtime_error("Cannot load bundled Thai font");
-    QFont editorFont(QFontDatabase::applicationFontFamilies(font).front());
-    editorFont.setPixelSize(editorDesign::fontSizeBody);setFont(editorFont);
+    setFont(loadEditorFont(data));
     for(const auto* code:{"en","th"}) {
         QFile f(displayPath(data/"locales"/(std::string(code)+".json")));
         if(!f.open(QIODevice::ReadOnly)) throw std::runtime_error("Cannot load locale");
@@ -76,7 +74,6 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
     for(int i=0;i<11;++i) tool_->addItem("",i);
     tool_->hide();
-    tools->addAction(action("editorFinish",{},[this]{canvas_->finishDrawing();}));
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
     tools->addAction(action("editorRotate",QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_R),[this]{rotateSelection();}));
     action("editorDeleteVertex",{},[this]{canvas_->removeVertex();});

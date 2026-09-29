@@ -72,11 +72,15 @@ std::string EditorCanvas::waitingLineAt(Point p) const {
     return found;
 }
 bool EditorCanvas::conflictPress(QMouseEvent* e) {
-    if (tool_ != Tool::conflict || e->button() != Qt::LeftButton || !document_) return false;
+    if (tool_ != Tool::conflict || !document_) return false;
+    const bool change = e->button() == Qt::RightButton && (e->modifiers() & Qt::ControlModifier);
+    if (!change && e->button() != Qt::LeftButton) return false;
     const auto p = world(e->pos(), false);
     lastPick_ = p;
+    // D84: a left click selects an area and drags a waiting line; Ctrl+right-click authors a
+    // passive area or sets the next priority.
     // A line wins over an area: it is the smaller target, and it always stands just outside one.
-    if (const auto id = waitingLineAt(p); !id.empty()) {
+    if (const auto id = waitingLineAt(p); !change && !id.empty()) {
         for (const auto& line : document_->network.rightOfWay.waitingLines) if (line.id == id) {
             auto polyline = controlPathPolyline(document_->network, line.point.path);
             if (polyline.size() < 2) break;
@@ -89,12 +93,13 @@ bool EditorCanvas::conflictPress(QMouseEvent* e) {
     if (areas.empty()) {
         // No authored area here: an automatic one is authored by the click (D68), as Vissim's
         // first click sets a passive area's priority.
-        if (const auto key = automaticAt(p); !key.empty()) { if (conflictAuthored) conflictAuthored(key); return true; }
+        if (const auto key = automaticAt(p); change && !key.empty()) { if (conflictAuthored) conflictAuthored(key); return true; }
         clearSelection(false); return true;
     }
-    if (std::find(areas.begin(), areas.end(), highlightedConflict_) != areas.end()) {
-        if (conflictCycled) conflictCycled(highlightedConflict_);
-    } else if (conflictPicked) conflictPicked(areas.front());
+    const bool current = std::find(areas.begin(), areas.end(), highlightedConflict_) != areas.end();
+    const auto area = current ? highlightedConflict_ : areas.front();
+    if (!current && conflictPicked) conflictPicked(area);
+    if (change && conflictCycled) conflictCycled(area);
     return true;
 }
 void EditorCanvas::updateLineDrag(QPoint position) {

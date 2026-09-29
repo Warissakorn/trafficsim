@@ -19,9 +19,10 @@ authoring tool can still show properties, but exposes no geometry/lane grips. Ta
 canvas Delete operate in Select (conflict areas also support Tab in their own tool).
 
 Escape first cancels an unfinished gesture/draft; when idle, it clears selection. Empty-space
-clicks in Route, Connector and Queue counter tools clear selection while keeping an unfinished
+clicks in any authoring tool clear selection while keeping an unfinished
 multi-click draft, without showing an error. Enter commits and Escape cancels those drafts.
-Right/middle drag remains pan. Shift-click toggles, Ctrl-click adds an unselected object, and
+Plain right/middle drag remains pan; Ctrl+right-click or Ctrl+right-drag creates or changes
+in every tool, and a plain left click never authors (D84; Measure/Calibrate points excepted). Shift-click toggles, Ctrl-click adds an unselected object, and
 Ctrl-drag of a selected object copies it, retaining the D30 convention.
 
 ## History
@@ -95,12 +96,12 @@ a later release cannot commit it. Existing copy, move and vertex gestures keep t
 
 | Gesture | Effect |
 |---|---|
-| `R`, then left-click (or `Ctrl`+right-click) a link | Starts a route draft there, covering every lane of it |
-| Left-click a further link or connector | Appends the whole chain leading to it; refused, with a red flash, when none leads there or two do |
+| `R`, then `Ctrl`+right-click a link | Starts a route draft there, covering every lane of it |
+| `Ctrl`+right-click a further link or connector | Appends the whole chain leading to it; refused, with a red flash, when none leads there or two do |
 | `Backspace` | Removes the last segment of the draft |
 | `Enter` or double-click | Stores the route — one History entry, the same command the dialog uses |
 | `Esc`, or moving focus off the canvas | Cancels the draft; nothing is stored |
-| `V`, then left-click a link | Places a vehicle input on the route starting there, or offers to draw one. Its volume is the link total, split across the lanes the route reaches |
+| `V`, then `Ctrl`+right-click a link | Places a vehicle input on the route starting there, or offers to draw one. Its volume is the link total, split across the lanes the route reaches |
 | Right-click (without dragging) a drawn route or input | Edit, delete, or show it in its table |
 
 The draft and the selected route draw as moving dashes with direction arrows, the hovered

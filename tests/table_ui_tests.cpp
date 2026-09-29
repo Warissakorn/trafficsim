@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "ui_gestures.hpp"
 #include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QAction>
@@ -75,7 +76,7 @@ int main(int argc,char** argv) {
         require(links->rowCount()==0,"Empty document should list no links");
 
         // --- tables follow the document -------------------------------------------------
-        const auto draw=[&](Point a,Point b){tool->setCurrentIndex(1);click(c,a);click(c,b);QTest::keyClick(c,Qt::Key_Return);};
+        const auto draw=[&](Point a,Point b){tool->setCurrentIndex(1);test::drawLink(c,pixel(c,a),pixel(c,b));};
         draw({-70,-40},{-20,-40});draw({-70,20},{-20,20});draw({20,-40},{70,-40});
         action(w,"editorFit");tool->setCurrentIndex(0);
         const auto drawn=w.history().document().network.links;
@@ -118,7 +119,7 @@ int main(int argc,char** argv) {
         tool->setCurrentIndex(5);
         const auto source=laneGeometry(drawn[0],drawn[0].lanes[0].id,DrivingSide::left).back();
         const auto target=laneGeometry(drawn[2],drawn[2].lanes[0].id,DrivingSide::left).front();
-        click(c,source);click(c,target);
+        test::authorClick(c,pixel(c,source));test::authorClick(c,pixel(c,target));
         require(w.history().document().network.connectors.size()==1,"Connector not created");
         require(connectors->rowCount()==1,"Connector table did not follow the document");
         tool->setCurrentIndex(0);
@@ -163,7 +164,7 @@ int main(int argc,char** argv) {
         tool->setCurrentIndex(5);
         const auto merged=w.history().document().network.links;
         const auto second=laneGeometry(merged[1],merged[1].lanes[0].id,DrivingSide::left).back();
-        click(c,second);click(c,laneGeometry(merged[2],merged[2].lanes[0].id,DrivingSide::left).front());
+        test::authorClick(c,pixel(c,second));test::authorClick(c,pixel(c,laneGeometry(merged[2],merged[2].lanes[0].id,DrivingSide::left).front()));
         require(w.history().document().network.connectors.size()==2,"Merging connector was rejected");
         require(item<QLabel>(w,"editorError")->text().isEmpty(),"Authoring a merge reported an error");
         tool->setCurrentIndex(0);

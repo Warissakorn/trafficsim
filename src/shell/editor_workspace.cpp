@@ -46,7 +46,7 @@ void EditorWindow::buildWorkspace() {
     auto* files=findChild<QToolBar*>("editorFiles");
     for(const auto* key:{"editorRecover","editorEmbedCatalogs"})files->removeAction(actions_.at(key));
     menu("editorFileMenu",{"editorNew","editorOpen","editorSave","editorSaveAs","","editorRecover","editorEmbedCatalogs"});
-    menu("editorEditMenu",{"editorUndo","editorRedo","","editorFinish","editorRotate","editorDeleteVertex","editorDeleteLink","editorDeleteSelected"});
+    menu("editorEditMenu",{"editorUndo","editorRedo","","editorRotate","editorDeleteVertex","editorDeleteLink","editorDeleteSelected"});
     menu("editorViewMenu",{"editorFit","editorSnap","editorToggleBackground","","editorNetworkObjects","editorInspector","editorObjects","editorHistory","","editorFocusCanvas","editorResetLayout"});
     menu("editorSimulationMenu",{"editorRun","editorStep","editorReset","editorRunSettings","editorRecheck"});
     menu("editorHelpMenu",{"editorCommandPalette","editorShortcuts"});
@@ -62,7 +62,7 @@ void EditorWindow::buildWorkspace() {
     const std::pair<const char*,EditorIcon> icons[]={
         {"editorNew",EditorIcon::document},{"editorOpen",EditorIcon::open},{"editorSave",EditorIcon::save},
         {"editorUndo",EditorIcon::undo},{"editorRedo",EditorIcon::redo},{"editorFit",EditorIcon::fit},
-        {"editorFinish",EditorIcon::finish},{"editorRotate",EditorIcon::rotate},{"editorDeleteSelected",EditorIcon::remove},
+        {"editorRotate",EditorIcon::rotate},{"editorDeleteSelected",EditorIcon::remove},
         {"editorSnap",EditorIcon::grid},{"editorRun",EditorIcon::run},{"editorStep",EditorIcon::step},
         {"editorReset",EditorIcon::reset},{"editorInspector",EditorIcon::inspector},{"editorObjects",EditorIcon::objects},
         {"editorFocusCanvas",EditorIcon::focus},{"editorNetworkObjects",EditorIcon::link}

@@ -32,6 +32,11 @@ void click(EditorWindow& w, Point p) {
     QTest::qWait(600); // never let two clicks become a double-click
     QTest::mouseClick(w.canvas()->viewport(), Qt::LeftButton, {}, pixel(w, p)); QApplication::processEvents();
 }
+// D84: Ctrl+right-click authors or changes; a left click only selects.
+void author(EditorWindow& w, Point p) {
+    QTest::qWait(600);
+    QTest::mouseClick(w.canvas()->viewport(), Qt::RightButton, Qt::ControlModifier, pixel(w, p)); QApplication::processEvents();
+}
 void key(EditorWindow& w, Qt::Key k) { w.canvas()->setFocus(); QTest::keyClick(w.canvas(), k); QApplication::processEvents(); }
 int drawn(EditorWindow& w, const char* kind) {
     int n = 0;
@@ -88,6 +93,8 @@ int main(int argc, char** argv) {
         // First click: the passive crossing gets a priority -- the turn gives way to the road.
         const auto revision = w.history().revision();
         click(w, crossingPoint);
+        require(network().rightOfWay.empty() && w.history().revision() == revision, "A left click authored the crossing");
+        author(w, crossingPoint);
         require(network().rightOfWay.conflictAreas.size() == 1, "The click did not author the crossing");
         const auto authored = network().rightOfWay.conflictAreas.front();
         const auto& yielding = authored.priority == ConflictPriority::firstYields ? authored.first : authored.second;
@@ -95,7 +102,7 @@ int main(int argc, char** argv) {
         require(drawn(w, "passive") == 0, "The authored crossing is still drawn as passive");
         require(c->highlightedConflict() == authored.id, "The new area is not selected");
         // A second click cycles it, as on any authored area.
-        click(w, crossingPoint);
+        author(w, crossingPoint);
         require(network().rightOfWay.conflictAreas.front().priority != authored.priority, "A second click did not cycle");
         act(w, "editorUndo")->trigger(); act(w, "editorUndo")->trigger(); QApplication::processEvents();
         require(network().rightOfWay.empty() && w.history().revision() == revision, "Authoring was not one Undo step");
@@ -109,7 +116,7 @@ int main(int argc, char** argv) {
 
         // A click on a merge takes it over, one step, with the priority it already ran with.
         const auto beforeMerge = w.history().revision();
-        click(w, mergePoint);
+        author(w, mergePoint);
         require(network().rightOfWay.conflictAreas.size() == 1 && network().rightOfWay.conflictAreas.front().kind == ConflictKind::merge,
                 "The click did not take the merge over");
         require(network().rightOfWay.conflictAreas.front().priority == merge.priority, "The take-over changed the priority");

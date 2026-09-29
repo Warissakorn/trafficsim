@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "ui_gestures.hpp"
 #include <nlohmann/json.hpp>
 #include <QApplication>
 #include <QAction>
@@ -36,9 +37,7 @@ int main(int argc,char** argv) {
         EditorWindow w{std::filesystem::path(argv[1])};w.show();QTest::qWait(30);
         auto* c=w.canvas();item<QSpinBox>(w,"editorLaneCount")->setValue(1);
         item<QComboBox>(w,"editorTool")->setCurrentIndex(1);
-        QTest::mouseClick(c->viewport(),Qt::LeftButton,{},c->mapFromScene(-50,0));
-        QTest::mouseClick(c->viewport(),Qt::LeftButton,{},c->mapFromScene(50,0));
-        QTest::keyClick(c,Qt::Key_Return);
+        test::drawLink(c,c->mapFromScene(-50,0),c->mapFromScene(50,0));
         require(w.history().document().network.links.size()==1,"draw");
         QTimer::singleShot(0,[&]{
             auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());require(dialog,"route dialog");

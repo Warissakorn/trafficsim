@@ -42,7 +42,8 @@ std::optional<MeasurementLine> EditorCanvas::counterLineAt(Point p) const {
     return MeasurementLine{"", point};
 }
 bool EditorCanvas::counterPress(QMouseEvent* e) {
-    if (tool_ != Tool::counter || e->button() != Qt::LeftButton || !document_) return false;
+    if (tool_ != Tool::counter || !document_ || e->button() != Qt::RightButton || !(e->modifiers() & Qt::ControlModifier))
+        return false; // D84: Ctrl+right-click adds a line; a left click only selects
     const auto p = world(e->pos(), false);
     lastPick_ = p;
     auto line = counterLineAt(p);
