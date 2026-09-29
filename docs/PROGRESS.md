@@ -75,14 +75,9 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
 - **Not compiled where it was written** (no Qt toolchain in the session): the new `design-system-ui`
   test and the existing UI suites on the Native C++ workflow are the verification. No performance
   claim. Gaps are listed in `docs/UI_REDESIGN_AUDIT.md` §6.
-- CI fix (compiled and run on Linux/offscreen, Qt 6 from Ubuntu; Windows is CI's): Qt's stylesheet
-  style adds 3 px to a `QToolButton`'s content before the box model, so the toolbar button was
-  16 + 3 + 6 + 2 = 27 px. Toolbar-button padding is now `2px 1px 1px 2px` (focus `1px 0 0 1px`):
-  24 px, and the odd pixel sits top/left because Qt centres the 16 px icon in the 19 px box with
-  the spare pixel below/right. `QMainWindow` animated dock/toolbar re-layouts by default, against
-  the no-motion rule; `EditorWindow` now calls `setAnimated(false)`. Qt still builds zero-length
-  geometry animators that it deletes later, so the test flushes deferred deletes before asserting
-  none remain, and asserts `!isAnimated()` directly.
+- CI fix (Linux-verified): Qt's QSS adds 3 px to a `QToolButton`'s content, so toolbar padding is
+  `2px 1px 1px 2px` for 24 px (icon centred); `EditorWindow::setAnimated(false)` stops dock motion,
+  and the test flushes Qt's zero-length geometry animators before asserting none remain.
 
 ## 2026-09-28 — Editor selection and visual cleanup (owner request)
 
