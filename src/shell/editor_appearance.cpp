@@ -1,11 +1,30 @@
 #include "editor_style.hpp"
+#include "path.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QApplication>
 #include <QDir>
+#include <QFontDatabase>
+#include <stdexcept>
 #include <QPainter>
 #include <QStyleFactory>
 #include <QTemporaryDir>
 namespace trafficsim {
+QFont loadEditorFont(const std::filesystem::path& data) {
+    // One face for Thai, Latin and digits (its digits are tabular), in two static weights: 400
+    // and 600. Static cuts, not the variable font: weight axes are not honoured on every Qt
+    // version and platform this builds on. The APPLICATION font, so dialogs and message boxes
+    // built without a parent use it too.
+    static QString family;
+    if(family.isEmpty()) {
+        for(const auto* file:{"fonts/NotoSansThai-Regular.ttf","fonts/NotoSansThai-SemiBold.ttf"}) {
+            const int id=QFontDatabase::addApplicationFont(displayPath(data/file));
+            if(id<0)throw std::runtime_error("Cannot load bundled Thai font");
+            if(family.isEmpty())family=QFontDatabase::applicationFontFamilies(id).front();
+        }
+    }
+    QFont font(family);font.setPixelSize(editorDesign::fontSizeBody);QApplication::setFont(font);
+    return font;
+}
 void installEditorStyle() {
     // Fusion on every platform: a control looks and measures the same on Windows, Linux and
     // every Qt version CI runs. The native Windows styles each draw their own sub-controls under

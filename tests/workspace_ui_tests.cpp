@@ -1,4 +1,6 @@
 #include "../src/shell/editor_window.hpp"
+#include <QFontInfo>
+#include <QFontMetricsF>
 #include "../src/editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QApplication>
@@ -46,7 +48,15 @@ int main(int argc,char** argv) {
         require(toolTree->topLevelItemCount()==3,"Tool tree categories missing");
         require(item<QTableWidget>(window,"editorLinkTable")->verticalHeader()->defaultSectionSize()==editorDesign::tableRowHeight,"Object row density changed");
         auto* laneCount=item<QSpinBox>(window,"editorLaneCount");
-        require(laneCount->font().fixedPitch()&&laneCount->font().pixelSize()==12,"Numeric control is not tabular monospace");
+        {
+            // One face for words and numbers: the bundled one, whose digits are tabular.
+            const QFontMetricsF digits(laneCount->font());bool tabular=true;
+            for(QChar d='1';d<='9';d=QChar(d.unicode()+1))tabular=tabular&&digits.horizontalAdvance(d)==digits.horizontalAdvance(QChar('0'));
+            require(QFontInfo(laneCount->font()).family()==QStringLiteral("Noto Sans Thai")&&tabular&&laneCount->font().pixelSize()==12,
+                    "Numeric control is not the UI face with tabular digits");
+            QFont semibold=laneCount->font();semibold.setWeight(QFont::DemiBold);
+            require(QFontInfo(semibold).weight()==QFont::DemiBold,"The 600 weight is not a real cut");
+        }
         auto* laneCountEdit=laneCount->findChild<QLineEdit*>();require(laneCountEdit,"Lane count editor missing");
         laneCountEdit->setText("13");settle();
         bool rangeShown=false;

@@ -5,7 +5,6 @@
 #include <QPalette>
 #include <QString>
 #include <QWidget>
-#include <QDoubleSpinBox>
 #include <algorithm>
 #include <map>
 #include <utility>
@@ -73,28 +72,15 @@ QIcon editorIcon(EditorIcon icon) {
 // Every colour is a palette(role) reference, so the QSS holds no hex literal and follows the one
 // editorPalette(). Box model: a control is 1 px border + 2 px padding + 18 px content = 24 px, and
 // the 2 px focus / invalid border takes 1 px of padding back so a control never changes height.
-// A spin box's natural height differs between Qt versions (6.10 adds 3 px that 6.5 does not), so
-// its vertical padding is measured once, not written down: whatever is left of 24 px after an
-// unpadded spin box, split top/bottom, with focus/invalid giving 1 px back on each side.
+// Fields and buttons are PINNED at 24 px (min-height = max-height, no vertical padding): the
+// bundled Thai face has a 20 px line at 13 px, so padding-based heights came out 26-28 px, and
+// Qt adds its own few pixels to spin boxes differently per version. A pinned height is the same
+// for every font, language and Qt release; the text is centred in it by the widget.
 // Qt's stylesheet style adds 3 px to a QToolButton's content before the box model, so a toolbar
 // button is 16 icon + 3 + 3 padding + 2 border = 24 px. The odd pixel of padding sits top/left
 // because Qt centres the icon in the 19 px content box with the extra pixel below/right.
 // Qt Style Sheets have no letter-spacing, transition or shadow property; tracking is set on the
 // label QFont (styleGroupLabel), and nothing here animates.
-namespace {
-struct SpinPadding { int top, bottom; };
-SpinPadding spinPadding() {
-    static const SpinPadding padding=[]{
-        QDoubleSpinBox probe;
-        probe.setStyleSheet(QStringLiteral("QAbstractSpinBox { border: 1px solid black; padding: 0 8px; min-height: 0; "
-                                           "font-family: monospace; font-size: %1px; }").arg(editorDesign::fontSizeNumeric));
-        probe.ensurePolished();
-        const int total=std::max(2,editorDesign::controlHeight-probe.sizeHint().height());
-        return SpinPadding{total/2,total-total/2};
-    }();
-    return padding;
-}
-}
 QString editorStyleSheet() {
     QString stylesheet=QStringLiteral(R"(
         QWidget { color: palette(text); font-size: @fontBodypx; }
@@ -108,11 +94,11 @@ QString editorStyleSheet() {
         QMenu::item { min-height: @controlContentpx; padding: @padYpx @space6px; }
         QToolBar { background: palette(base); border: 0; spacing: @space1px; padding: @space1px; }
         QToolBar::separator { background: palette(mid); width: 1px; margin: @space1px; }
-        QToolButton, QPushButton { min-height: @controlContentpx; padding: @padYpx @space2px; border: 1px solid palette(dark); border-radius: @radiuspx; background: palette(button); }
+        QToolButton, QPushButton { min-height: @fieldContentpx; max-height: @fieldContentpx; padding: 0 @space2px; border: 1px solid palette(dark); border-radius: @radiuspx; background: palette(button); }
         QToolBar QToolButton { min-width: @iconpx; min-height: @iconpx; border-color: transparent; background: transparent; padding: 2px 1px 1px 2px; }
         QToolButton:hover, QPushButton:hover { background: palette(midlight); border-color: palette(window-text); }
         QToolButton:pressed, QPushButton:pressed, QToolButton:checked { background: palette(mid); border-color: palette(highlight); }
-        QToolButton:focus, QPushButton:focus { border: 2px solid palette(highlight); padding: 1px 7px; }
+        QToolButton:focus, QPushButton:focus { border: 2px solid palette(highlight); padding: 0 7px; min-height: @fieldFocuspx; max-height: @fieldFocuspx; }
         QToolBar QToolButton:focus { padding: 1px 0 0 1px; }
         QToolButton:disabled, QPushButton:disabled { color: palette(window-text); background: palette(midlight); border-color: palette(mid); }
         QToolButton#editorRunButton { background: palette(midlight); border-color: palette(highlight); color: palette(text); font-weight: 600; }
@@ -125,16 +111,14 @@ QString editorStyleSheet() {
         QTabBar::tab:selected { color: palette(text); border-bottom: 2px solid palette(highlight); background: palette(base); }
         QTabBar::tab:hover { background: palette(midlight); }
         QTabBar::tab:focus { border: 2px solid palette(highlight); }
-        QLineEdit, QComboBox, QAbstractSpinBox { min-height: @controlContentpx; background: palette(base); border: 1px solid palette(dark); border-radius: @radiuspx; padding: @padYpx @space2px; selection-background-color: palette(highlight); selection-color: palette(highlighted-text); }
-        QAbstractSpinBox, QLineEdit[numeric="true"], QComboBox[numeric="true"] { font-family: monospace; font-size: @fontNumericpx; }
+        QLineEdit, QComboBox, QAbstractSpinBox { min-height: @fieldContentpx; max-height: @fieldContentpx; background: palette(base); border: 1px solid palette(dark); border-radius: @radiuspx; padding: 0 @space2px; selection-background-color: palette(highlight); selection-color: palette(highlighted-text); }
+        QAbstractSpinBox, QLineEdit[numeric="true"], QComboBox[numeric="true"] { font-size: @fontNumericpx; }
         QAbstractSpinBox, QLineEdit[numeric="true"] { qproperty-alignment: AlignRight; }
         QLineEdit:hover, QComboBox:hover, QAbstractSpinBox:hover { border-color: palette(text); }
-        QLineEdit:focus, QComboBox:focus, QAbstractSpinBox:focus { border: 2px solid palette(highlight); padding: 1px 7px; }
+        QLineEdit:focus, QComboBox:focus, QAbstractSpinBox:focus { border: 2px solid palette(highlight); padding: 0 7px; min-height: @fieldFocuspx; max-height: @fieldFocuspx; }
         QLineEdit:read-only { background: palette(midlight); color: palette(window-text); }
         QLineEdit:disabled, QComboBox:disabled, QAbstractSpinBox:disabled { background: palette(midlight); color: palette(window-text); border-color: palette(mid); }
-        QAbstractSpinBox[validationState="invalid"], QLineEdit[validationState="invalid"] { border: 2px solid palette(bright-text); padding: 1px 7px; }
-        QAbstractSpinBox { min-height: 0; padding: @spinToppx @space2px @spinBottompx @space2px; }
-        QAbstractSpinBox:focus, QAbstractSpinBox[validationState="invalid"] { padding: @spinFocusToppx 7px @spinFocusBottompx 7px; }
+        QAbstractSpinBox[validationState="invalid"], QLineEdit[validationState="invalid"] { border: 2px solid palette(bright-text); padding: 0 7px; min-height: @fieldFocuspx; max-height: @fieldFocuspx; }
         QComboBox::drop-down { width: @space5px; border: 0; border-left: 1px solid palette(mid); }
         QComboBox::down-arrow { image: url(@glyphs/down.png); width: 8px; height: 5px; }
         QComboBox::down-arrow:disabled { image: url(@glyphs/down-off.png); }
@@ -166,7 +150,7 @@ QString editorStyleSheet() {
         QLabel#editorPaletteHint, QLabel#editorToolHint { color: palette(window-text); font-size: @fontNumericpx; }
         QLabel[editorEyebrow="true"] { color: palette(window-text); font-size: @fontLabelpx; font-weight: 600; }
         QLabel#editorCommandTitle { color: palette(text); font-size: @fontTitlepx; font-weight: 600; }
-        QLabel[numeric="true"] { font-family: monospace; font-size: @fontNumericpx; }
+        QLabel[numeric="true"] { font-size: @fontNumericpx; }
         QStatusBar { background: palette(base); border-top: 1px solid palette(mid); color: palette(text); min-height: @controlHeightpx; }
         QStatusBar::item { border: 0; }
         QToolTip { background: palette(text); color: palette(base); border: 1px solid palette(text); padding: @space1px @space2px; }
@@ -177,8 +161,8 @@ QString editorStyleSheet() {
         {"@space1",editorDesign::space1},{"@space2",editorDesign::space2},{"@space4",editorDesign::space4},
         {"@space5",editorDesign::space5},{"@space6",editorDesign::space6},
         {"@controlHeight",editorDesign::controlHeight},{"@controlContent",editorDesign::controlHeight-2*editorDesign::controlPaddingY-2},
-        {"@padY",editorDesign::controlPaddingY},{"@spinFocusTop",spinPadding().top-1},{"@spinFocusBottom",spinPadding().bottom-1},
-        {"@spinTop",spinPadding().top},{"@spinBottom",spinPadding().bottom},
+        {"@padY",editorDesign::controlPaddingY},
+        {"@fieldContent",editorDesign::controlHeight-2},{"@fieldFocus",editorDesign::controlHeight-4},
         {"@radius",2},{"@icon",editorDesign::iconSize}
     };
     // No token is a prefix of another ("@space1" vs "@space6", "@controlHeight" vs "@controlContent").
