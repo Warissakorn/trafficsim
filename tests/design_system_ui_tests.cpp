@@ -17,6 +17,7 @@
 #include <QVBoxLayout>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <string>
 // The presentation contract of the precision-tool restyle: tokens, palette roles, QSS rules,
 // box model, number formatting, hairlines and the two-tier grid. Every assertion names the
@@ -128,7 +129,7 @@ void gridTiers() {
     tiers=editorDesign::gridTiers(1,10);require(tiers.minor==1&&tiers.major==10,"10 px/m keeps the 1 m minor");
     tiers=editorDesign::gridTiers(1,.05);require(tiers.minor*.05>=editorDesign::minorMinPixels&&tiers.minor==1000,"Zoomed-out minor spacing below 8 px");
     tiers=editorDesign::gridTiers(.1,100);require(tiers.minor==.1,"Fine grid dropped at high zoom");
-    for(const double bad:{0.,-1.,std::nan(""),INFINITY}) {
+    for(const double bad:{0.,-1.,std::nan(""),std::numeric_limits<double>::infinity()}) {
         require(editorDesign::gridTiers(bad,4).minor==0,"Bad step accepted");require(editorDesign::gridTiers(1,bad).minor==0,"Bad zoom accepted");
     }
 }
