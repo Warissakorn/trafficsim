@@ -26,7 +26,7 @@ repository, or any package until the owner decides.
   (M3.2.3a–c, D57–D59), commitment at a line a driver cannot stop for (M3.2.8a, D69), and
   mandatory lane changes with minimal cooperation (M3.2.8b, D71).
   Contracts: `docs/SIMULATION.md`.
-- **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md`. Project files are
+- **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md` (Connectors: `docs/NETWORK_EDITOR_CONNECTORS.md`). Project files are
   schema 16 (authored right-of-way controls, M3.2.2a, D54; Stop/Yield, M3.2.5a, D62; queue counters, M3.2.6b, D64); unsupported network-object fields
   fail on load rather than vanish on save.
   Scenario JSON and editor `*.traffic.json` are **two formats on purpose** — read
