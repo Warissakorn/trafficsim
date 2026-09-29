@@ -14,6 +14,7 @@
 #include <QStyle>
 #include <QTest>
 #include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <cmath>
 #include <iostream>
@@ -98,7 +99,14 @@ void boxModel() {
     }
     QToolBar bar;bar.setStyleSheet(editorStyleSheet());bar.setIconSize(QSize(editorDesign::iconSize,editorDesign::iconSize));
     bar.addAction(editorIcon(EditorIcon::select),"Select");bar.show();QApplication::processEvents();
-    require(bar.sizeHint().height()==editorDesign::toolbarHeight,"Toolbar is "+std::to_string(bar.sizeHint().height())+" px, not 32");
+    const auto* toolButton=bar.findChild<QToolButton*>();
+    require(toolButton&&toolButton->sizeHint().height()==editorDesign::iconSize+8,
+            "Toolbar button is "+std::to_string(toolButton?toolButton->sizeHint().height():-1)+" px, not 24");
+    require(bar.sizeHint().height()==editorDesign::toolbarHeight,
+            "Toolbar is "+std::to_string(bar.sizeHint().height())+" px, not 32 (button "+std::to_string(toolButton->sizeHint().height())+
+            ", contents margins "+std::to_string(bar.contentsMargins().top())+"/"+std::to_string(bar.contentsMargins().bottom())+
+            ", layout margins "+std::to_string(bar.layout()?bar.layout()->contentsMargins().top():-1)+"/"+
+            std::to_string(bar.layout()?bar.layout()->contentsMargins().bottom():-1)+")");
     require(editorIcon(EditorIcon::select).actualSize(QSize(64,64),QIcon::Normal).width()>=editorDesign::iconSize,"Icon raster smaller than 16 px");
 }
 void typography() {
