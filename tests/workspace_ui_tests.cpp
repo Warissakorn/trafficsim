@@ -34,7 +34,7 @@ int main(int argc,char** argv) {
         EditorWindow window(data);window.resize(1360,860);window.show();settle();
         window.openFile(QString::fromStdString((data/"scenarios/crossing.json").string()));
         auto* canvas=window.canvas();canvas->select(window.history().document().network.links.front().id);canvas->fitNetwork();settle();
-        const auto revision=window.history().revision();const auto selection=canvas->selected();
+        auto revision=window.history().revision();auto selection=canvas->selected();
         const auto defaultCanvas=canvas->viewport()->size();
         auto* palette=item<QDockWidget>(window,"editorPaletteDock");
         auto* toolTree=item<QTreeWidget>(window,"editorObjectPalette");
@@ -80,6 +80,11 @@ int main(int argc,char** argv) {
         QTest::keyClick(canvas,Qt::Key_K,Qt::ControlModifier);settle();
         require(paletteOpened,"Ctrl+K did not open command palette");
         require(item<QComboBox>(window,"editorTool")->currentIndex()==1,"Command search did not activate the Link tool");
+        // Changing tool clears the selection, so restore one and take the layout baseline from it.
+        item<QComboBox>(window,"editorTool")->setCurrentIndex(0);
+        canvas->select(window.history().document().network.links.front().id);settle();
+        revision=window.history().revision();selection=canvas->selected();
+        require(!selection.empty(),"Selection baseline missing");
         require(defaultCanvas.width()>=700&&defaultCanvas.height()>=350,"Default canvas crowded out");
         const int top=item<QToolBar>(window,"editorFiles")->y();
         for(const auto* name:{"editorTools","editorRunToolbar","editorWorkspace"})

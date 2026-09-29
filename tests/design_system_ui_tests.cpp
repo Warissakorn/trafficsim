@@ -33,9 +33,10 @@ double contrast(const QColor& a,const QColor& b) {
     const double x=luminance(a),y=luminance(b);return (std::max(x,y)+.05)/(std::min(x,y)+.05);
 }
 // RGB spread, not HSL saturation: near-white greys such as #F9FAFB have a large HSL saturation
-// from a 2/255 spread and are still neutral.
+// from a 2/255 spread and are still neutral. The slate greys lean blue by up to 24/255 (0.094);
+// the accent and semantic colours spread by 0.4 or more, so 0.15 separates them cleanly.
 bool chromatic(const QColor& c) {
-    return std::max({c.redF(),c.greenF(),c.blueF()})-std::min({c.redF(),c.greenF(),c.blueF()})>.08;
+    return std::max({c.redF(),c.greenF(),c.blueF()})-std::min({c.redF(),c.greenF(),c.blueF()})>.15;
 }
 
 void palette() {
