@@ -1,5 +1,6 @@
 #include "json.hpp"
 #include "../core/validate.hpp"
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 
 namespace trafficsim {

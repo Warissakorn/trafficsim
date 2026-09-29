@@ -3,6 +3,7 @@
 //
 //   trafficsim-t-junction-fixture <output.traffic.json>
 #include "t_junction_network.hpp"
+#include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
 using namespace trafficsim;

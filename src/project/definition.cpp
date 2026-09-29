@@ -2,6 +2,7 @@
 #include "document.hpp"
 #include "../model/demand/signal_control.hpp"
 #include "../core/validate.hpp"
+#include <nlohmann/json.hpp>
 #include <algorithm>
 #include <cmath>
 #include <vector>
