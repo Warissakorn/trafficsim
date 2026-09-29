@@ -26,6 +26,10 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 - **CI runs once per commit.** Runs 355 and 356 were both the full five-job suite on `1a702eb`
   (`push` and `pull_request`). `push` now fires only on `main`, `workflow_dispatch` covers a
   branch without a pull request, and a newer push to a pull request cancels the older run.
+- **CI uses the runner's 4 vCPUs.** `--parallel 2` became 4; the Windows jobs set `CL=/MP`,
+  because the Visual Studio generator's `--parallel` only runs projects side by side and
+  `trafficsim-tests` compiled its files one at a time. Baseline (run 355): build steps
+  windows-desktop 6:17, windows-core 4:41, linux desktop 4:12, release 3:09, headless 2:31.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 

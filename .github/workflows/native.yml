@@ -24,7 +24,7 @@ jobs:
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev
       - run: cmake --preset ${{ matrix.preset }}
-      - run: cmake --build --preset ${{ matrix.preset }} --parallel 2
+      - run: cmake --build --preset ${{ matrix.preset }} --parallel 4
       - run: cmake --build build/${{ matrix.preset }} --target check
       - uses: actions/upload-artifact@v4
         if: always() && matrix.preset == 'desktop'
@@ -37,6 +37,11 @@ jobs:
   # gates it on every push and pull request instead.
   windows-desktop:
     runs-on: windows-2022
+    # Public-repository runners have 4 vCPUs. The Visual Studio generator's --parallel is
+    # msbuild /m (projects in parallel); /MP also compiles a project's own files in parallel,
+    # which is where trafficsim-tests spends its time. CL is read by every cl.exe invocation.
+    env:
+      CL: /MP
     steps:
       - uses: actions/checkout@v5
       - name: Install Qt
@@ -53,7 +58,7 @@ jobs:
         run: vcpkg install nlohmann-json:x64-windows
       - name: Configure MSVC
         run: cmake -S . -B build/desktop -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
-      - run: cmake --build build/desktop --config Release --parallel 2
+      - run: cmake --build build/desktop --config Release --parallel 4
       - run: ctest --test-dir build/desktop -C Release --output-on-failure
       - uses: actions/upload-artifact@v4
         if: always()
@@ -62,11 +67,13 @@ jobs:
           path: build/desktop/interaction-preview.png
   windows-core:
     runs-on: windows-2022
+    env:
+      CL: /MP
     steps:
       - uses: actions/checkout@v5
       - name: Install JSON headers
         run: vcpkg install nlohmann-json:x64-windows
       - name: Configure MSVC
         run: cmake -S . -B build/native -G "Visual Studio 17 2022" -A x64 -DTRAFFICSIM_BUILD_DESKTOP=OFF -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
-      - run: cmake --build build/native --config Release --parallel 2
+      - run: cmake --build build/native --config Release --parallel 4
       - run: cmake --build build/native --config Release --target check
