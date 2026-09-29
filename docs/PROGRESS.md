@@ -64,6 +64,10 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   without `<stdexcept>`, which libstdc++ and libc++ reach through `<string>` and MSVC does not.
   An include check over `src/ tools/ tests/` (each `std::` symbol against the file's own
   include closure) found the same class in twelve files; all now include `<stdexcept>`.
+  **Measured:** Windows build steps, VS + PCH 4:31/5:40 (desktop) and 3:45/3:55 (core) →
+  Ninja cold 7:44/7:31 and 5:04/4:57 (PCH off, empty cache) → **warm (run 367) 0:09 and 0:05**.
+  Whole run 8:27 before this pass → 2:55 warm. A pull request restores `main`'s cache, so only
+  a change to many sources, or a new cache key, pays the cold price.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 
