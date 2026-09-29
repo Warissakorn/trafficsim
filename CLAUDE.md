@@ -30,7 +30,7 @@ repository, or any package until the owner decides.
   schema 16 (authored right-of-way controls, M3.2.2a, D54; Stop/Yield, M3.2.5a, D62; queue counters, M3.2.6b, D64); unsupported network-object fields
   fail on load rather than vanish on save.
   Scenario JSON and editor `*.traffic.json` are **two formats on purpose** — read
-  `NETWORK_EDITOR.md` §"Two file kinds" and D19a before touching either loader.
+  `NETWORK_EDITOR.md` §"Save, recovery and formats" and D19a before touching either loader.
 - **Demand:** an authored route names Links and Connectors, **never a lane**; `buildScenario`
   expands it per lane (`routeLaneChains`). Intervals, compositions, routing decisions and signal
   controllers all compile into ordinary core inputs and programs, so `core/` and every frozen
@@ -54,7 +54,7 @@ The history behind each of these — and the M1.x milestones — is in `docs/PRO
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | To see which milestone this is and what closes it. |
 | [`docs/NEXT.md`](docs/NEXT.md) | **Every session, first.** The one live to-do; write the next session's work here, never into a `PROGRESS.md` entry. |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | The history and the reasoning, including the **decision log** every `D`-number here points at. Read the entry that touches what you are about to change. |
-| [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
+| [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1, §3 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
 | [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
 
 ## Stack

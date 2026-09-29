@@ -4,7 +4,7 @@ The point of D1 is a tool that behaves like the modelling surface its audience a
 This file measures how far the native editor is from that, **feature by feature and gesture by
 gesture**, so the gap is a list of decisions rather than a feeling.
 
-**Which parts are current.** §1 and §6 are the 2026-09-14 pre-completion assessment and are
+**Which parts are current.** §1, §3 and §6 are the 2026-09-14 pre-completion assessment and are
 kept as written — their "today" columns describe an editor that no longer exists. **§1a and §2
 are the current state**, §1a measured by `trafficsim-gesture-walkthrough` rather than read off
 the code. Everything M1.1–M1.10 built is listed in [`NETWORK_EDITOR.md`](NETWORK_EDITOR.md);
@@ -169,6 +169,10 @@ M1.9 — it is not decoration, it is what makes a single creation chord unambigu
 
 ## 3. Window layout
 
+**Dated 2026-09-14, like §1 and §6.** The sidebar (M1.9), levels and display types (M1.10, `data/levels/`,
+`data/display-types/`) and in-editor Run (M1.8) exist now; the renderer is `src/editor/canvas_*.cpp`
+(`src/render/` was removed in M1.24).
+
 | | Vissim | Today |
 |---|---|---|
 | Network object palette | Permanent left sidebar, one row per object type, the active row is the edit mode | None. A toolbar dropdown (§1) |
@@ -314,7 +318,7 @@ translated code (`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_N
 `SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`), and the dialogs default to
 `*.traffic.json` for projects. The **Open in Network Editor** hand-off the simulation window
 offered is moot since M1.24: the editor opens both kinds itself.
-See `docs/NETWORK_EDITOR.md` §"Two file kinds".
+See `docs/NETWORK_EDITOR.md` §"Save, recovery and formats" (the file-kind table).
 
 The two kinds were **not** merged into one schema, deliberately. A single format would make
 every drawing look runnable, which is the fidelity claim hard rule 4 exists to prevent. They

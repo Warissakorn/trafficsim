@@ -18,6 +18,11 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   `NETWORK_EDITOR_CONNECTORS.md` (current, not archived). Lines: PROGRESS 497→214, ROADMAP
   499→424, NETWORK_EDITOR 498→406, VISSIM_PARITY 494→328. PROGRESS ≈25.2k→18.6k tokens (the
   decision log is most of what remains). No other doc referenced a moved section by anchor.
+- **Stale references.** `CLAUDE.md` and `VISSIM_PARITY.md` §7 sent readers to `NETWORK_EDITOR.md`
+  §"Two file kinds", which does not exist; the table is under §"Save, recovery and formats".
+  `VISSIM_PARITY.md` §3 still said levels and display types do not exist and named `src/render/`
+  (removed in M1.24); it is now marked dated like §1 and §6. The remaining ~99 "broken" paths the
+  audit script reports are lane ids, branch names and archived history, not references.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 
