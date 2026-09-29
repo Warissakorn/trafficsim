@@ -104,8 +104,13 @@ void boxModel() {
     auto* selectAction=bar.addAction(editorIcon(EditorIcon::select),"Select");bar.show();QApplication::processEvents();
     // widgetForAction, not findChild: the first QToolButton child is the 12 px overflow extension.
     const auto* toolButton=qobject_cast<QToolButton*>(bar.widgetForAction(selectAction));
-    require(toolButton&&toolButton->sizeHint().height()==editorDesign::iconSize+8,
-            "Toolbar button is "+std::to_string(toolButton?toolButton->sizeHint().height():-1)+" px, not 24");
+    require(toolButton!=nullptr,"Toolbar has no button for its action");
+    require(toolButton->sizeHint().height()==editorDesign::iconSize+8,
+            "Toolbar button is "+std::to_string(toolButton->sizeHint().height())+" px, not 24 (iconSize "+
+            std::to_string(toolButton->iconSize().height())+", style "+std::to_string(static_cast<int>(toolButton->toolButtonStyle()))+
+            ", font height "+std::to_string(toolButton->fontMetrics().height())+", text '"+toolButton->text().toStdString()+
+            "', minimum "+std::to_string(toolButton->minimumSizeHint().height())+", padding-rule "+
+            std::to_string(toolButton->style()->pixelMetric(QStyle::PM_ButtonMargin,nullptr,toolButton))+")");
     require(bar.sizeHint().height()==editorDesign::toolbarHeight,
             "Toolbar is "+std::to_string(bar.sizeHint().height())+" px, not 32 (button "+std::to_string(toolButton->sizeHint().height())+
             ", contents margins "+std::to_string(bar.contentsMargins().top())+"/"+std::to_string(bar.contentsMargins().bottom())+
