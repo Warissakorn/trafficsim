@@ -59,6 +59,7 @@ std::optional<LaneReference> EditorCanvas::nearestLane(Point p) const {
     return {};
 }
 void EditorCanvas::cycleOverlap() {
+    if(mouseGestureActive() || (tool_!=Tool::select && tool_!=Tool::conflict))return;
     if(tool_==Tool::conflict) {
         // The next area under the last click, the way Tab cycles objects under Select.
         const auto areas=conflictsAt(lastPick_);if(areas.empty())return;
@@ -73,7 +74,7 @@ void EditorCanvas::cycleOverlap() {
     select(hits[i].first);
 }
 bool EditorCanvas::focusNextPrevChild(bool next) {
-    if(next){cycleOverlap();return true;}
+    if(mouseGestureActive())return true; // Tab must not move focus away from an unfinished draft.
     return QGraphicsView::focusNextPrevChild(next);
 }
 }

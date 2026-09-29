@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include "../core/routes.hpp"
 #include "../core/simulation.hpp"
 #include <QGraphicsEllipseItem>
@@ -42,7 +43,7 @@ void EditorCanvas::drawRunItems() {
     };
     for(const auto& h:runFrame_.scenario->signalHeads)for(const auto& p:runFrame_.scenario->signalPrograms)if(p.id==h.programId) {
         const auto color=signalColorAt(p,runFrame_.time);
-        marker(h.segmentId,h.position,color==SignalColor::red?QColor("#dc2626"):color==SignalColor::green?QColor("#16a34a"):QColor("#f59e0b"),radius*1.3,12);
+        marker(h.segmentId,h.position,color==SignalColor::red?canvasStyle::error():color==SignalColor::green?canvasStyle::ok():canvasStyle::warning(),radius*1.3,12);
     }
     for(const auto& v:runFrame_.vehicles) {
         const auto location=locateVehicle(*runFrame_.scenario,v);

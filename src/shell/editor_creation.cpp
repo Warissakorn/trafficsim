@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -11,6 +12,8 @@ namespace trafficsim {
 void EditorWindow::createLinkDialog(const std::vector<Point>& points) {
     pauseRun();QDialog dialog(this);dialog.setObjectName("editorLinkDialog");dialog.setWindowTitle(text("editorLinkData"));
     auto* form=new QFormLayout(&dialog);auto* count=new QSpinBox(&dialog);count->setObjectName("editorGestureLaneCount");
+    form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     count->setRange(1,12);count->setValue(count_->value());form->addRow(text("editorLaneCount"),count);
     auto* width=new QDoubleSpinBox(&dialog);width->setRange(.1,20);width->setValue(width_->value());form->addRow(text("editorDefaultWidth"),width);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
@@ -23,7 +26,9 @@ void EditorWindow::createLinkDialog(const std::vector<Point>& points) {
 }
 void EditorWindow::createRangeDialog(LaneReference from,LaneReference to,const std::vector<Point>& points) {
     pauseRun();QDialog dialog(this);dialog.setObjectName("editorRangeDialog");dialog.setWindowTitle(text("editorConnect"));
-    auto* form=new QFormLayout(&dialog);auto* source=new QComboBox(&dialog);source->setObjectName("editorRangeFrom");
+    auto* form=new QFormLayout(&dialog);form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
+    auto* source=new QComboBox(&dialog);source->setObjectName("editorRangeFrom");
     auto* target=new QComboBox(&dialog);target->setObjectName("editorRangeTo");
     for(const auto& l:history_.document().network.links)for(const auto& lane:l.lanes) {
         if(l.id==from.linkId)source->addItem(QString::fromStdString(lane.id),QString::fromStdString(lane.id));

@@ -1,43 +1,68 @@
 #include "editor_window.hpp"
 #include "editor_style.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QComboBox>
+#include <QColor>
 #include <QDockWidget>
+#include <QFont>
 #include <QFormLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QAbstractItemView>
 #include <QSignalBlocker>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <initializer_list>
 namespace trafficsim {
 void EditorWindow::buildPalette() {
     auto* dock=new QDockWidget(this);dock->setObjectName("editorPaletteDock");texts_["editorNetworkObjects"]=dock;
     dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable);
     auto* body=new QWidget(dock);auto* layout=new QVBoxLayout(body);
-    layout->setContentsMargins(6,8,6,8);layout->setSpacing(6);
-    palette_=new QListWidget(body);palette_->setObjectName("editorObjectPalette");layout->addWidget(palette_,1);
-    palette_->setIconSize(QSize(20,20));palette_->setSpacing(2);
+    layout->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    layout->setSpacing(editorDesign::space1);
+    palette_=new QTreeWidget(body);palette_->setObjectName("editorObjectPalette");
+    palette_->setHeaderHidden(true);palette_->setRootIsDecorated(true);palette_->setIndentation(editorDesign::space3);
+    palette_->setUniformRowHeights(true);palette_->setSelectionMode(QAbstractItemView::SingleSelection);
+    palette_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);layout->addWidget(palette_,1);
+    palette_->setIconSize(QSize(editorDesign::space4,editorDesign::space4));
     palette_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     palette_->setTextElideMode(Qt::ElideRight);palette_->setMinimumWidth(0);
-    // Conflict areas (A) and queue counters (Q) sit with the other control objects, after signal heads.
-    const int modes[]={0,1,5,6,7,8,9,10,2,3,4};
-    const char* shortcuts[]={"S","L","C","R","V","H","A","Q","X","M","K"};
-    const EditorIcon icons[]={EditorIcon::select,EditorIcon::link,EditorIcon::connector,EditorIcon::route,
-        EditorIcon::input,EditorIcon::signal,EditorIcon::conflict,EditorIcon::counter,EditorIcon::split,EditorIcon::measure,EditorIcon::image};
-    for(int row=0;row<11;++row){
-        auto* entry=new QListWidgetItem(palette_);entry->setData(Qt::UserRole,modes[row]);entry->setIcon(editorIcon(icons[row]));
-        auto* key=action("editorTool"+std::to_string(modes[row]),QKeySequence(shortcuts[row]),[this,row]{palette_->setCurrentRow(row);canvas_->setFocus();});
-        key->setShortcutContext(Qt::WidgetWithChildrenShortcut);canvas_->addAction(key);
+    struct Group {const char* key;std::initializer_list<int> modes;};
+    const Group groups[]={
+        {"editorPaletteGeometry",{0,1,5,2}},
+        {"editorPaletteControl",{6,7,8,9,10}},
+        {"editorPaletteTools",{3,4}}
+    };
+    const char* shortcuts[]={"S","L","X","M","K","C","R","V","H","A","Q"};
+    const EditorIcon icons[]={EditorIcon::select,EditorIcon::link,EditorIcon::split,EditorIcon::measure,
+        EditorIcon::image,EditorIcon::connector,EditorIcon::route,EditorIcon::input,EditorIcon::signal,
+        EditorIcon::conflict,EditorIcon::counter};
+    for(const auto& group:groups){
+        auto* root=new QTreeWidgetItem(palette_);root->setData(0,Qt::UserRole,QString::fromLatin1(group.key));
+        root->setFlags(Qt::ItemIsEnabled);root->setData(0,Qt::UserRole+1,true);
+        auto groupFont=root->font(0);editorDesign::styleGroupLabel(groupFont,true);root->setFont(0,groupFont);
+        root->setForeground(0,editorDesign::role(QPalette::WindowText));
+        for(const int mode:group.modes){
+            auto* entry=new QTreeWidgetItem(root);entry->setData(0,Qt::UserRole,mode);
+            entry->setIcon(0,editorIcon(icons[mode]));entry->setData(0,Qt::UserRole+2,QString::fromLatin1(shortcuts[mode]));
+            paletteItems_[mode]=entry;
+            auto* key=action("editorTool"+std::to_string(mode),QKeySequence(shortcuts[mode]),[this,mode]{
+                palette_->setCurrentItem(paletteItems_.at(mode));canvas_->setFocus();
+            });
+            key->setShortcutContext(Qt::WidgetWithChildrenShortcut);canvas_->addAction(key);
+        }
     }
     visibleLevel_=new QComboBox(body);visibleLevel_->setObjectName("editorVisibleLevel");
-    auto* label=new QLabel(body);texts_["editorVisibleLevel"]=label;layout->addWidget(label);layout->addWidget(visibleLevel_);
-    auto* help=new QLabel(body);help->setWordWrap(true);help->setObjectName("editorPaletteHint");texts_["editorPaletteHint"]=help;layout->addWidget(help);
-    connect(palette_,&QListWidget::currentRowChanged,this,[this](int row){
-        if(row<0)return;tool_->setCurrentIndex(palette_->item(row)->data(Qt::UserRole).toInt());canvas_->setFocus();
+    auto* label=new QLabel(body);label->setProperty("editorEyebrow",true);texts_["editorVisibleLevel"]=label;layout->addWidget(label);layout->addWidget(visibleLevel_);
+    connect(palette_,&QTreeWidget::currentItemChanged,this,[this](QTreeWidgetItem* current){
+        if(!current||current->data(0,Qt::UserRole+1).toBool())return;
+        tool_->setCurrentIndex(current->data(0,Qt::UserRole).toInt());
     });
     connect(tool_,&QComboBox::currentIndexChanged,this,[this](int mode){
-        const QSignalBlocker blocked(palette_);
-        for(int row=0;row<palette_->count();++row)if(palette_->item(row)->data(Qt::UserRole).toInt()==mode)palette_->setCurrentRow(row);
+        const QSignalBlocker blocked(palette_);if(paletteItems_.contains(mode))palette_->setCurrentItem(paletteItems_.at(mode));
     });
     connect(visibleLevel_,&QComboBox::currentIndexChanged,this,[this]{
         if(visibleLevel_->currentData().isValid())canvas_->setVisibleLevel(visibleLevel_->currentData().toInt());
@@ -53,26 +78,32 @@ void EditorWindow::buildPalette() {
         canvas_->setBackgroundVisible(actions_.at("editorToggleBackground")->isChecked());
     });
     background->setCheckable(true);background->setChecked(true);addAction(background);
-    auto* button=new QToolButton(body);button->setDefaultAction(background);button->setToolButtonStyle(Qt::ToolButtonTextOnly);layout->addWidget(button);
+    auto* button=new QToolButton(body);button->setObjectName("editorBackgroundButton");button->setDefaultAction(background);
+    button->setToolButtonStyle(Qt::ToolButtonTextOnly);layout->addWidget(button);
     auto redo=QKeySequence::keyBindings(QKeySequence::Redo);
     if(!redo.contains(QKeySequence("Ctrl+Y")))redo.push_back(QKeySequence("Ctrl+Y"));
     actions_.at("editorRedo")->setShortcuts(redo);
-    palette_->setCurrentRow(0);dock->setWidget(body);addDockWidget(Qt::LeftDockWidgetArea,dock);
-    resizeDocks({dock},{190},Qt::Horizontal);
+    for(int index=0;index<palette_->topLevelItemCount();++index)palette_->expandItem(palette_->topLevelItem(index));
+    palette_->setCurrentItem(paletteItems_.at(0));dock->setWidget(body);addDockWidget(Qt::LeftDockWidgetArea,dock);
+    resizeDocks({dock},{224},Qt::Horizontal);
 }
 void EditorWindow::translatePalette() {
-    canvas_->setToolTip(text("editorKeyboardHelp"));
-    texts_.at("editorPaletteHint")->setToolTip(text("editorGestureHelp"));
+    canvas_->setToolTip(text("editorKeyboardHelp"));palette_->setToolTip(text("editorGestureHelp"));
     palette_->setAccessibleName(text("editorNetworkObjects"));
     visibleLevel_->setAccessibleName(text("editorVisibleLevel"));
     canvas_->setAccessibleDescription(text("editorKeyboardHelp"));
-    const char* keys[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool"};
-    const char* shortcuts[]={"S","L","X","M","K","C","R","V","H","A","Q"};
-    for(int row=0;row<palette_->count();++row){
-        const int mode=palette_->item(row)->data(Qt::UserRole).toInt();
-        palette_->item(row)->setText(text(keys[mode])+" ("+shortcuts[mode]+")");
-        palette_->item(row)->setToolTip(palette_->item(row)->text());
-        actions_.at("editorTool"+std::to_string(mode))->setText(text(keys[mode]));
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool"};
+    for(const auto& [mode,entry]:paletteItems_){
+        const auto label=text(modes[mode]);const auto shortcut=entry->data(0,Qt::UserRole+2).toString();
+        entry->setText(0,label+"  "+shortcut);entry->setToolTip(0,label+" · "+shortcut);
+        actions_.at("editorTool"+std::to_string(mode))->setText(label);
+    }
+    for(int index=0;index<palette_->topLevelItemCount();++index){
+        auto* root=palette_->topLevelItem(index);const bool english=language_->currentData().toString()=="en";
+        auto title=text(root->data(0,Qt::UserRole).toString().toStdString());
+        if(english)title=title.toUpper();
+        auto font=root->font(0);editorDesign::styleGroupLabel(font,english);root->setFont(0,font);
+        root->setText(0,title);
     }
     const QSignalBlocker block(visibleLevel_);const auto selected=visibleLevel_->currentData();visibleLevel_->clear();
     visibleLevel_->addItem(text("editorAllLevels"));

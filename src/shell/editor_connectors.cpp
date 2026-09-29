@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QLineEdit>
 #include <QAction>
 #include <QAbstractButton>
@@ -42,6 +43,8 @@ std::vector<MarkingType> markingTypes(const QString& text) {
 }
 QWidget* EditorWindow::buildConnectorInspector() {
     auto* page=new QWidget(this);auto* form=new QFormLayout(page);
+    form->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     form->setRowWrapPolicy(QFormLayout::WrapLongRows);
     connectorObject_=new QComboBox(page);label(form,"editorConnectorObject",connectorObject_);
     connectorFrom_=new QComboBox(page);connectorTo_=new QComboBox(page);
@@ -227,7 +230,7 @@ void EditorWindow::refreshConnector() {
     if (connector) {
         // Say how many lanes each end carries. A connector that drops or gains lanes is legal
         // to author, and seeing 3 -> 2 on the canvas is how the author notices it is a merge.
-        selectionInfo_->setText(text("editorConnectorLength").arg(polylineLength(connector->geometry),0,'f',2)+"   "+
+        selectionInfo_->setText(text("editorConnectorLength").arg(editorDesign::formatValue(polylineLength(connector->geometry),2))+"   "+
             text("editorConnectorLanes").arg(connector->fromLaneCount).arg(connector->toLaneCount));
     }
     connectorHint();

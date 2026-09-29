@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include "../commands/right_of_way_commands.hpp"
 #include "../model/network/right_of_way.hpp"
 #include <QAction>
@@ -42,7 +43,7 @@ PriorityDefaults EditorWindow::priorityDefaults() const {
 }
 void EditorWindow::buildConflicts() {
     auto* body = new QWidget(objects_); auto* layout = new QVBoxLayout(body);
-    layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(3);
+    layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(editorDesign::space1);
     auto* bar = new QToolBar(body); layout->addWidget(bar);
     conflictTable_ = new QTableWidget(0, 8, body); conflictTable_->setObjectName("editorConflictTable");
     conflictTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -140,6 +141,7 @@ void EditorWindow::refreshConflicts() {
                 !control ? QString() : text(*control == StopMode::stop ? "editorControlStop" : "editorControlYield")};
             for (int c = 0; c < values.size(); ++c) {
                 auto* cell = new QTableWidgetItem(values[c]); cell->setData(Qt::UserRole, QString::fromStdString(a.id));
+                if(c==0||c==4||c==5)editorDesign::setNumericText(cell,c>0);
                 conflictTable_->setItem(r, c, cell);
             }
             if (a.id == keep) conflictTable_->selectRow(r);
@@ -156,6 +158,7 @@ void EditorWindow::refreshConflicts() {
                 text(a.kind == ConflictKind::crossing ? "editorConflictPassiveStatus" : "editorConflictAutomaticStatus"), QString()};
             for (int c = 0; c < values.size(); ++c) {
                 auto* cell = new QTableWidgetItem(values[c]); cell->setData(Qt::UserRole, QString::fromStdString(a.key));
+                if(c==0)editorDesign::setNumericText(cell);
                 conflictTable_->setItem(r, c, cell);
             }
             if (a.key == keep) conflictTable_->selectRow(r);
@@ -216,6 +219,8 @@ void EditorWindow::editConflict(const std::string& id) {
     const auto defaults = priorityDefaults();
     QDialog dialog(this); dialog.setObjectName("editorConflictDialog"); dialog.setWindowTitle(text("editorEditConflict"));
     auto* form = new QFormLayout(&dialog);
+    form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     auto* name = new QLineEdit(QString::fromStdString(a->name), &dialog); name->setObjectName("editorConflictName");
     auto* priority = new QComboBox(&dialog); priority->setObjectName("editorConflictPriority");
     priority->addItem(text("editorConflictGivesWay").arg(owner(a->first.path)), static_cast<int>(ConflictPriority::firstYields));
@@ -268,6 +273,8 @@ void EditorWindow::addCrossings() {
     const auto defaults = priorityDefaults();
     QDialog dialog(this); dialog.setObjectName("editorCrossingDialog"); dialog.setWindowTitle(text("editorAddCrossing"));
     auto* form = new QFormLayout(&dialog);
+    form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     auto* yields = new QComboBox(&dialog); yields->setObjectName("editorCrossingYields");
     for (const auto& id : sel) yields->addItem(QString::fromStdString(id), QString::fromStdString(id));
     yields->setCurrentIndex(1); // the one selected last, as Vissim's second click marks the minor road

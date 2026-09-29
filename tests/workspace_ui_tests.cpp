@@ -3,13 +3,22 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDockWidget>
+#include <QDialog>
+#include <QHeaderView>
+#include <QLineEdit>
 #include <QLabel>
 #include <QMenu>
+#include <QPointer>
+#include <QSpinBox>
 #include <QScrollArea>
 #include <QStandardPaths>
+#include <QTableWidget>
 #include <QTabWidget>
 #include <QTest>
+#include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
+#include <QTreeWidget>
 #include <iostream>
 using namespace trafficsim;
 namespace {
@@ -25,13 +34,57 @@ int main(int argc,char** argv) {
         EditorWindow window(data);window.resize(1360,860);window.show();settle();
         window.openFile(QString::fromStdString((data/"scenarios/crossing.json").string()));
         auto* canvas=window.canvas();canvas->select(window.history().document().network.links.front().id);canvas->fitNetwork();settle();
-        const auto revision=window.history().revision();const auto selection=canvas->selected();
+        auto revision=window.history().revision();auto selection=canvas->selected();
         const auto defaultCanvas=canvas->viewport()->size();
         auto* palette=item<QDockWidget>(window,"editorPaletteDock");
+        auto* toolTree=item<QTreeWidget>(window,"editorObjectPalette");
         auto* inspector=item<QDockWidget>(window,"editorInspectorDock");
         auto* objects=item<QDockWidget>(window,"editorObjectsDock");
         auto* history=item<QDockWidget>(window,"editorHistoryDock");
         require(palette->isVisible()&&inspector->isVisible()&&objects->isVisible(),"Default panels missing");
+        require(toolTree->topLevelItemCount()==3,"Tool tree categories missing");
+        require(item<QTableWidget>(window,"editorLinkTable")->verticalHeader()->defaultSectionSize()==28,"Object row density changed");
+        auto* laneCount=item<QSpinBox>(window,"editorLaneCount");
+        require(laneCount->font().fixedPitch()&&laneCount->font().pixelSize()==12,"Numeric control is not tabular monospace");
+        auto* laneCountEdit=laneCount->findChild<QLineEdit*>();require(laneCountEdit,"Lane count editor missing");
+        laneCountEdit->setText("13");settle();
+        bool rangeShown=false;
+        for(auto* hint:window.findChildren<QLabel*>("editorRangeHint"))
+            rangeShown=rangeShown||(hint->isVisible()&&hint->text().contains("1–12"));
+        require(rangeShown,"Invalid lane count did not show its valid range");laneCount->setValue(2);
+        auto* laneWidths=item<QLineEdit>(window,"editorLaneWidths");laneWidths->setText("not a width");settle();
+        bool widthRangeShown=false;
+        for(auto* hint:window.findChildren<QLabel*>("editorLaneWidthsRange"))
+            widthRangeShown=widthRangeShown||(hint->isVisible()&&hint->text().contains("> 0 m"));
+        require(widthRangeShown,"Invalid lane width did not explain its valid range");laneWidths->clear();
+        toolTree->setFocus();QTest::keyClick(toolTree,Qt::Key_Tab);settle();
+        require(item<QComboBox>(window,"editorVisibleLevel")->hasFocus(),"Tab order skipped the level filter");
+        QTest::keyClick(item<QComboBox>(window,"editorVisibleLevel"),Qt::Key_Tab);settle();
+        require(item<QToolButton>(window,"editorBackgroundButton")->hasFocus(),"Tab order skipped the background toggle");
+        QTest::keyClick(item<QToolButton>(window,"editorBackgroundButton"),Qt::Key_Tab);settle();
+        require(canvas->hasFocus(),"Tab order did not move from the tree to the canvas");
+        QTest::keyClick(canvas,Qt::Key_Tab);settle();
+        require(item<QLineEdit>(window,"editorId")->hasFocus(),"Tab order did not move from the canvas to the inspector");
+        // The palette runs a nested event loop (QDialog::exec), so Ctrl+K does not return until the
+        // dialog closes: the dialog has to be driven from a timer that fires inside that loop.
+        canvas->setFocus();bool paletteOpened=false;
+        QTimer::singleShot(150,[&]{
+            auto* commandDialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            paletteOpened=commandDialog&&commandDialog->objectName()=="editorCommandPaletteDialog";
+            if(!commandDialog)return;
+            if(!paletteOpened){commandDialog->reject();return;}
+            auto* commandSearch=commandDialog->findChild<QLineEdit*>("editorCommandSearch");
+            if(!commandSearch){commandDialog->reject();return;}
+            commandSearch->setText("Draw link");QApplication::processEvents();QTest::keyClick(commandSearch,Qt::Key_Return);
+        });
+        QTest::keyClick(canvas,Qt::Key_K,Qt::ControlModifier);settle();
+        require(paletteOpened,"Ctrl+K did not open command palette");
+        require(item<QComboBox>(window,"editorTool")->currentIndex()==1,"Command search did not activate the Link tool");
+        // Changing tool clears the selection, so restore one and take the layout baseline from it.
+        item<QComboBox>(window,"editorTool")->setCurrentIndex(0);
+        canvas->select(window.history().document().network.links.front().id);settle();
+        revision=window.history().revision();selection=canvas->selected();
+        require(!selection.empty(),"Selection baseline missing");
         require(defaultCanvas.width()>=700&&defaultCanvas.height()>=350,"Default canvas crowded out");
         const int top=item<QToolBar>(window,"editorFiles")->y();
         for(const auto* name:{"editorTools","editorRunToolbar","editorWorkspace"})

@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QDockWidget>
 #include <QHBoxLayout>
@@ -15,6 +16,8 @@ void EditorWindow::buildHistory() {
     texts_["editorHistory"] = dock;
     auto* body = new QWidget(dock);
     auto* layout = new QVBoxLayout(body);
+    layout->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    layout->setSpacing(editorDesign::space1);
     auto* help = new QLabel(body);
     help->setWordWrap(true);
     texts_["editorHistoryHelp"] = help;
@@ -23,6 +26,7 @@ void EditorWindow::buildHistory() {
     historyList_->setObjectName("editorHistoryList");
     layout->addWidget(historyList_);
     auto* buttons = new QHBoxLayout;
+    buttons->setContentsMargins(0,0,0,0);buttons->setSpacing(editorDesign::space1);
     for (const auto* key : {"editorUndo", "editorRedo"}) {
         auto* button = new QToolButton(body);
         button->setDefaultAction(actions_.at(key));

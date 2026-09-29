@@ -1,5 +1,6 @@
 #include "editor_window.hpp"
 #include "editor_storage.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <nlohmann/json.hpp>
 #include <QBuffer>
 #include <QCloseEvent>
@@ -63,7 +64,7 @@ void EditorWindow::applyBackground() {
 }
 void EditorWindow::measure(Point a,Point b,bool calibrate) {
     const double distance=std::hypot(b.x-a.x,b.y-a.y);
-    if(!calibrate){error_->setText(text("editorMeasured").arg(distance,0,'f',3));return;}
+    if(!calibrate){error_->setText(text("editorMeasured").arg(editorDesign::formatValue(distance,3)));return;}
     if(history_.document().background.pngBase64->empty()||distance<1e-9){showError(std::runtime_error("EDIT_BACKGROUND_INVALID"));return;}
     QInputDialog dialog(this);dialog.setWindowTitle(text("editorCalibrate"));dialog.setLabelText(text("editorKnownDistance"));
     dialog.setInputMode(QInputDialog::DoubleInput);dialog.setDoubleRange(0.001,1000000);dialog.setDoubleDecimals(3);dialog.setDoubleValue(distance);

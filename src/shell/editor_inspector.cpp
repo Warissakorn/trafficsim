@@ -1,5 +1,7 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
+#include <QAbstractSpinBox>
 #include <QComboBox>
 #include <QDockWidget>
 #include <QDoubleSpinBox>
@@ -11,18 +13,70 @@
 #include <QToolButton>
 #include <QTabWidget>
 #include <QVBoxLayout>
+#include <QStyle>
+#include <algorithm>
+#include <cmath>
 
 namespace trafficsim {
 void EditorWindow::label(QFormLayout* form,const std::string& key,QWidget* field) {
     auto* label=new QLabel(this);label->setWordWrap(true);label->setBuddy(field);texts_[key]=label;
     field->setObjectName(QString::fromStdString(key));form->addRow(label,field);
+    if(auto* spin=qobject_cast<QAbstractSpinBox*>(field)) {
+        field->setFont(editorDesign::numericFont());field->setProperty("numeric",true);
+        auto* hint=new QLabel(field->parentWidget());hint->setObjectName("editorRangeHint");
+        hint->setWordWrap(true);hint->setProperty("validationState","invalid");hint->hide();form->addRow(QString(),hint);
+        if(auto* edit=field->findChild<QLineEdit*>()) {
+            const auto update=[this,spin,hint,field]{
+                const bool invalid=!spin->hasAcceptableInput();QString validRange;
+                if(auto* whole=qobject_cast<QSpinBox*>(spin))
+                    validRange=text("editorValidRange").arg(whole->minimum()).arg(whole->maximum()).arg(whole->suffix());
+                else if(auto* decimal=qobject_cast<QDoubleSpinBox*>(spin)) {
+                    // Same locale and decimals as the field itself, so the range reads like its value.
+                    const auto format=[decimal](double value){return decimal->locale().toString(value,'f',decimal->decimals());};
+                    validRange=text("editorValidRange").arg(format(decimal->minimum())).arg(format(decimal->maximum())).arg(decimal->suffix());
+                }
+                hint->setText(validRange);hint->setVisible(invalid);
+                field->setToolTip(validRange);field->setAccessibleDescription(validRange);
+                field->setProperty("validationState",invalid?QStringLiteral("invalid"):QStringLiteral("valid"));
+                field->style()->unpolish(field);field->style()->polish(field);field->update();
+            };
+            QObject::connect(edit,&QLineEdit::textChanged,field,update);validationRefresh_.push_back(update);update();
+        }
+    } else if(key=="editorId"||key=="editorConnectorObject"||key=="editorConnectorFrom"||
+              key=="editorConnectorTo"||key=="editorVisibleLevel"||key.find("Widths")!=std::string::npos||
+              key.find("Markings")!=std::string::npos) {
+        field->setFont(editorDesign::numericFont());field->setProperty("numeric",true);
+        if(key=="editorConnectorWidths")if(auto* widths=qobject_cast<QLineEdit*>(field)) {
+            auto* hint=new QLabel(field->parentWidget());hint->setObjectName("editorConnectorWidthsRange");
+            hint->setWordWrap(true);hint->setProperty("validationState","invalid");hint->hide();form->addRow(QString(),hint);
+            const auto validate=[this,widths,hint]{
+                const auto parts=widths->text().split(',',Qt::KeepEmptyParts);
+                const bool empty=widths->text().trimmed().isEmpty();
+                const int expected=std::max(connectorFromCount_->value(),connectorToCount_->value());
+                bool valid=empty||parts.size()==expected;
+                for(const auto& part:parts){bool ok=false;const double value=part.trimmed().toDouble(&ok);valid=valid&&ok&&std::isfinite(value)&&value>0;}
+                const bool invalid=!empty&&!valid;
+                widths->setProperty("validationState",invalid?QStringLiteral("invalid"):QStringLiteral("valid"));
+                const auto range=text("editorConnectorWidthsRange").arg(expected);
+                hint->setText(range);hint->setVisible(invalid);widths->setToolTip(range);widths->setAccessibleDescription(range);
+                widths->style()->unpolish(widths);widths->style()->polish(widths);widths->update();
+            };
+            QObject::connect(widths,&QLineEdit::textChanged,field,[validate]{validate();});
+            QObject::connect(connectorFromCount_,&QSpinBox::valueChanged,field,[validate]{validate();});
+            QObject::connect(connectorToCount_,&QSpinBox::valueChanged,field,[validate]{validate();});
+            validationRefresh_.push_back(validate);validate();
+        }
+    }
 }
 void EditorWindow::buildInspector() {
     auto* dock=new QDockWidget(this);dock->setObjectName("editorInspectorDock");texts_["editorInspector"]=dock;
     dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetClosable);
     auto* body=new QWidget(dock);auto* layout=new QVBoxLayout(body);
-    layout->setContentsMargins(8,8,8,8);layout->setSpacing(6);
-    auto* common=new QFormLayout;common->setRowWrapPolicy(QFormLayout::WrapLongRows);layout->addLayout(common);
+    layout->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    layout->setSpacing(editorDesign::space1);
+    auto* common=new QFormLayout;common->setContentsMargins(0,0,0,0);
+    common->setHorizontalSpacing(editorDesign::space2);common->setVerticalSpacing(editorDesign::space1);
+    common->setRowWrapPolicy(QFormLayout::WrapLongRows);layout->addLayout(common);
     id_=new QLineEdit(body);id_->setReadOnly(true);label(common,"editorId",id_);
     // Vissim's Name sits beside No. on every object dialog, so it lives in the common section
     // rather than the Link tab: one field names a Link, a Connector or a signal head alike.
@@ -41,7 +95,8 @@ void EditorWindow::buildInspector() {
     auto* appearanceAction=action("editorAppearance",{},[]{});appearanceAction->setCheckable(true);
     appearanceToggle->setDefaultAction(appearanceAction);layout->addWidget(appearanceToggle);
     auto* appearance=new QWidget(body);auto* appearanceForm=new QFormLayout(appearance);
-    appearanceForm->setContentsMargins(0,0,0,0);appearanceForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    appearanceForm->setContentsMargins(0,0,0,0);appearanceForm->setHorizontalSpacing(editorDesign::space2);
+    appearanceForm->setVerticalSpacing(editorDesign::space1);appearanceForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
     layout->addWidget(appearance);appearance->hide();
     connect(appearanceAction,&QAction::toggled,this,[appearance,appearanceToggle](bool open){
         appearance->setVisible(open);appearanceToggle->setArrowType(open?Qt::DownArrow:Qt::RightArrow);
@@ -55,6 +110,8 @@ void EditorWindow::buildInspector() {
         scroll->setFrameShape(QFrame::NoFrame);scroll->setWidget(page);properties_->addTab(scroll,QString());
     };
     auto* linkPage=new QWidget(properties_);auto* form=new QFormLayout(linkPage);
+    form->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     form->setRowWrapPolicy(QFormLayout::WrapLongRows);addPage(linkPage);
     auto number=[&](double min,double max,double value,int decimals=2){
         auto* s=new QDoubleSpinBox(body);s->setDecimals(decimals);s->setRange(min,max);s->setValue(value);return s;
@@ -62,11 +119,25 @@ void EditorWindow::buildInspector() {
     auto button=[&](const std::string& key,const std::function<void()>& callback){
         auto* b=new QToolButton(body);b->setToolButtonStyle(Qt::ToolButtonTextOnly);b->setDefaultAction(action(key,{},callback));form->addRow(b);
     };
-    auto heading=[&](const std::string& key){auto* h=new QLabel(body);h->setStyleSheet("font-weight:600;margin-top:8px;");texts_[key]=h;form->addRow(h);};
+    auto heading=[&](const std::string& key){auto* h=new QLabel(body);h->setProperty("editorEyebrow",true);texts_[key]=h;form->addRow(h);};
     heading("editorRoadProperties");
     count_=new QSpinBox(body);count_->setRange(1,12);count_->setValue(2);label(form,"editorLaneCount",count_);
     width_=number(0.1,20,3.5);label(form,"editorDefaultWidth",width_);
     widths_=new QLineEdit(body);label(form,"editorLaneWidths",widths_);
+    auto* widthsHint=new QLabel(body);widthsHint->setObjectName("editorLaneWidthsRange");widthsHint->setWordWrap(true);
+    widthsHint->setProperty("validationState","invalid");form->addRow(QString(),widthsHint);widthsHint->hide();
+    const auto validateWidths=[this,widthsHint]{
+        const auto parts=widths_->text().split(',',Qt::KeepEmptyParts);
+        bool valid=parts.size()==1||parts.size()==count_->value();
+        for(const auto& part:parts){bool ok=false;const double value=part.trimmed().toDouble(&ok);valid=valid&&ok&&std::isfinite(value)&&value>0;}
+        const bool invalid=!widths_->text().trimmed().isEmpty()&&!valid;
+        widths_->setProperty("validationState",invalid?QStringLiteral("invalid"):QStringLiteral("valid"));
+        const auto range=text("editorLaneWidthsRange").arg(count_->value());
+        widthsHint->setText(range);widthsHint->setVisible(invalid);widths_->setToolTip(range);widths_->setAccessibleDescription(range);
+        widths_->style()->unpolish(widths_);widths_->style()->polish(widths_);widths_->update();
+    };
+    connect(widths_,&QLineEdit::textChanged,this,[validateWidths]{validateWidths();});
+    connect(count_,&QSpinBox::valueChanged,this,[validateWidths]{validateWidths();});validationRefresh_.push_back(validateWidths);
     button("editorApplyLanes",[this]{
         const auto parts=widths_->text().split(',',Qt::SkipEmptyParts);std::vector<double> widths;
         for(const auto& part:parts){bool ok=false;const double w=part.trimmed().toDouble(&ok);if(!ok){showError(std::runtime_error("EDIT_LANES"));return;}widths.push_back(w);}
@@ -107,6 +178,8 @@ void EditorWindow::buildInspector() {
     });
     addPage(buildConnectorInspector());
     auto* imagePage=new QWidget(properties_);form=new QFormLayout(imagePage);
+    form->setContentsMargins(editorDesign::space2,editorDesign::space2,editorDesign::space2,editorDesign::space2);
+    form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     form->setRowWrapPolicy(QFormLayout::WrapLongRows);addPage(imagePage);
     heading("editorBackground");button("editorImportImage",[this]{importImage();});
     bgX_=number(-1000000,1000000,0,4);label(form,"editorImageX",bgX_);

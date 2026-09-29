@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include "signal_timing_view.hpp"
 #include "../model/demand/signal_control.hpp"
 #include <QComboBox>
@@ -12,6 +13,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QStyle>
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <cmath>
@@ -39,7 +41,8 @@ std::string EditorWindow::editController(const std::string& id) {
     if(def)for(const auto& c:def->signalControllers)if(c.id==id){value=c;existing=true;}
     QDialog dialog(this);dialog.setObjectName("editorControllerDialog");
     dialog.setWindowTitle(text(existing?"editorEditController":"editorAddController"));
-    auto* layout=new QVBoxLayout(&dialog);auto* form=new QFormLayout;layout->addLayout(form);
+    auto* layout=new QVBoxLayout(&dialog);layout->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);layout->setSpacing(editorDesign::space2);
+    auto* form=new QFormLayout;form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);layout->addLayout(form);
     auto* templates=new QComboBox(&dialog);templates->setObjectName("editorControllerTemplate");
     templates->addItem(text("editorTemplateTwoPhase"));templates->addItem(text("editorTemplateFourPhase"));
     templates->addItem(text("editorTemplateBlank"));
@@ -55,12 +58,12 @@ std::string EditorWindow::editController(const std::string& id) {
     groups->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     groups->horizontalHeader()->setSectionResizeMode(name,QHeaderView::Stretch);
     groups->verticalHeader()->hide();layout->addWidget(groups);
-    auto* buttonsRow=new QHBoxLayout;layout->addLayout(buttonsRow);
+    auto* buttonsRow=new QHBoxLayout;buttonsRow->setContentsMargins(0,0,0,0);buttonsRow->setSpacing(editorDesign::space1);layout->addLayout(buttonsRow);
     auto* add=new QPushButton(text("editorAddGroup"),&dialog);add->setObjectName("editorAddGroup");
     auto* remove=new QPushButton(text("editorRemoveGroup"),&dialog);remove->setObjectName("editorRemoveGroup");
     buttonsRow->addWidget(add);buttonsRow->addWidget(remove);buttonsRow->addStretch();
     layout->addWidget(new QLabel(text("editorTimingDiagram"),&dialog));
-    auto* diagram=new SignalTimingView(&dialog);layout->addWidget(diagram);
+    auto* diagram=new SignalTimingView(&dialog);diagram->setStatusLabels(text("editorSignalGreen"),text("editorSignalAmber"),text("editorSignalRed"));layout->addWidget(diagram);
     auto* status=new QLabel(&dialog);status->setObjectName("editorControllerStatus");status->setWordWrap(true);layout->addWidget(status);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);layout->addWidget(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
@@ -88,7 +91,7 @@ std::string EditorWindow::editController(const std::string& id) {
         auto* title=new QLineEdit(QString::fromStdString(g.name),groups);groups->setCellWidget(r,name,title);
         groups->setCellWidget(r,start,second(g.greenStart));groups->setCellWidget(r,end,second(g.greenEnd));
         groups->setCellWidget(r,amber,second(g.amber));
-        auto* derived=new QTableWidgetItem;derived->setFlags(Qt::ItemIsEnabled);groups->setItem(r,green,derived);
+        auto* derived=new QTableWidgetItem;derived->setFlags(Qt::ItemIsEnabled);editorDesign::setNumericText(derived,true);groups->setItem(r,green,derived);
         connect(n,qOverload<int>(&QSpinBox::valueChanged),&dialog,[&]{update();});
         connect(title,&QLineEdit::textChanged,&dialog,[&]{update();});
         for(int col:{start,end,amber})
@@ -113,7 +116,8 @@ std::string EditorWindow::editController(const std::string& id) {
         for(const auto& issue:signalControlIssues(Network{},probe))
             problems<<text(issue.code)+" ("+QString::fromStdString(issue.path.substr(issue.path.find('.')+1))+")";
         status->setText(problems.isEmpty()?text("editorTimingOk"):problems.join("\n"));
-        status->setStyleSheet(problems.isEmpty()?QString{}:"color: #b91c1c;");
+        status->setProperty("status",problems.isEmpty()?QStringLiteral("ok"):QStringLiteral("error"));
+        status->style()->unpolish(status);status->style()->polish(status);
         buttons->button(QDialogButtonBox::Ok)->setEnabled(problems.isEmpty());
     };
     connect(cycle,qOverload<double>(&QDoubleSpinBox::valueChanged),&dialog,[&]{update();});

@@ -3,59 +3,91 @@
 Append-only. Newest entry at the top. **This is the history and the reasoning** — what a session
 reads to understand why the code is the way it is. What to do next is in
 [`NEXT.md`](NEXT.md); the decision log is at the bottom of this file. Never delete an entry;
-move old blocks whole into `docs/archive/` if this gets long. Older entries are preserved there:
+move old blocks whole into `docs/archive/` if this gets long, and list each in
+[`archive/README.md`](archive/README.md), which indexes every older entry.
 
-- [`archive/PROGRESS-2026-09-26-m3.2.8a.md`](archive/PROGRESS-2026-09-26-m3.2.8a.md) — 2026-09-26, M3.2.8a, commitment at a waiting line (D69); moved out 2026-09-27 as the oldest live entry
-- [`archive/PROGRESS-2026-09-26-m3.2.4c.md`](archive/PROGRESS-2026-09-26-m3.2.4c.md) — 2026-09-26, M3.2.4c, automatic conflict areas (D68); moved out 2026-09-27 as the oldest live entry
-- [`archive/PROGRESS-2026-09-26-m3.2.7c.md`](archive/PROGRESS-2026-09-26-m3.2.7c.md) — 2026-09-26 — M3.2.7c: signal composition and a congested major road on the T-junction (D67); moved out 2026-09-27 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.7a-b.md`](archive/PROGRESS-2026-09-25-m3.2.7a-b.md) — 2026-09-25 — M3.2.7a/b: the T-junction evidence (D66); moved out 2026-09-27 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.6c-counters-editor.md`](archive/PROGRESS-2026-09-25-m3.2.6c-counters-editor.md) — 2026-09-25 — M3.2.6c: queue counters in the editor (D65); moved out 2026-09-26 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.6a-b.md`](archive/PROGRESS-2026-09-25-m3.2.6a-b.md) — 2026-09-25 — M3.2.6a/b: signal positions and queue counters (D64); moved out 2026-09-26 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.5b.md`](archive/PROGRESS-2026-09-25-m3.2.5b.md) — 2026-09-25 — M3.2.5b: Stop/Yield in the editor; one waiting line per lane (D63); moved out 2026-09-26 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.5a.md`](archive/PROGRESS-2026-09-25-m3.2.5a.md) — 2026-09-25 — M3.2.5a: Stop and Yield at the waiting line (D62); moved out 2026-09-26 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.4b.md`](archive/PROGRESS-2026-09-25-m3.2.4b.md) — 2026-09-25 — M3.2.4b: conflict areas on the canvas (D61); moved out 2026-09-26 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.4a.md`](archive/PROGRESS-2026-09-25-m3.2.4a.md) — 2026-09-25 — M3.2.4a: the Conflict areas tab (D60); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.3c.md`](archive/PROGRESS-2026-09-25-m3.2.3c.md) — 2026-09-25, M3.2.3c, shared receiving space, merges on the solver, hold cycles (D59); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.3b.md`](archive/PROGRESS-2026-09-25-m3.2.3b.md) — 2026-09-25, M3.2.3b, spans, atomic chains, authored merges run (D58); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.3a.md`](archive/PROGRESS-2026-09-25-m3.2.3a.md) — 2026-09-25, M3.2.3a, one authored crossing runs (D57); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.2b-c.md`](archive/PROGRESS-2026-09-25-m3.2.2b-c.md) — 2026-09-25, M3.2.2b (controls follow their owners, D55) and M3.2.2c (waiting lines upstream, crossing coverage, D56); moved out 2026-09-25 as the oldest live entries
-- [`archive/PROGRESS-2026-09-25-m3.2.2a-scrutinised.md`](archive/PROGRESS-2026-09-25-m3.2.2a-scrutinised.md) — 2026-09-25, M3.2.2a scrutinised, four defects fixed (D55); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m3.2.2a.md`](archive/PROGRESS-2026-09-25-m3.2.2a.md) — 2026-09-25, M3.2.2a, authored right-of-way controls at the file/model seam (D54); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-docs-pass.md`](archive/PROGRESS-2026-09-25-docs-pass.md) — 2026-09-25, docs pass: stale instructions out, session-start reading cut; moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m2-gate-passed.md`](archive/PROGRESS-2026-09-25-m2-gate-passed.md) — 2026-09-25 — M2 gate passed by the owner (D53); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-c2-and-c4-withdrawn-the-owner-judges-the.md`](archive/PROGRESS-2026-09-25-c2-and-c4-withdrawn-the-owner-judges-the.md) — 2026-09-25 — C2 and C4 withdrawn; the owner judges the gate (D51, D52); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m1-accepted.md`](archive/PROGRESS-2026-09-25-m1-accepted.md) — 2026-09-25, M1 accepted by owner ruling, the M2.6 template, the D50 merge deadlock; moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m1-timed-drawing.md`](archive/PROGRESS-2026-09-25-m1-timed-drawing.md) — 2026-09-25, the M1 timed drawing (9 min 40 s); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m2.7b-controllers.md`](archive/PROGRESS-2026-09-25-m2.7b-controllers.md) — 2026-09-25, M2.7b, fixed-time Signal Controllers (D48); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-25-m2.7a-heads.md`](archive/PROGRESS-2026-09-25-m2.7a-heads.md) — 2026-09-25, M2.7a, a Signal head placed where clicked (D47); moved out 2026-09-25 as the oldest live entry
-- [`archive/PROGRESS-2026-09-24-m2.1-demand.md`](archive/PROGRESS-2026-09-24-m2.1-demand.md) — 2026-09-24, M2.1.1 and M2.1.2 (routeless inputs, counted turning proportions); moved out 2026-09-25 as the oldest live entries
-- [`archive/PROGRESS-2026-09-24-m2-slices.md`](archive/PROGRESS-2026-09-24-m2-slices.md) — 2026-09-24, M1.26.1 through the M3 contract, and the superseded `## Next` blocks; moved out 2026-09-25 as the oldest live entries
-- [`archive/PROGRESS-2026-09-23-editor-benchmark.md`](archive/PROGRESS-2026-09-23-editor-benchmark.md) — 2026-09-23, the editor benchmark was measuring itself (D31); moved out 2026-09-24 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.27.3-reflexes.md`](archive/PROGRESS-2026-09-22-m1.27.3-reflexes.md) — 2026-09-22, M1.27.3, the reflexes counted; moved out 2026-09-24 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.27.2-slots.md`](archive/PROGRESS-2026-09-22-m1.27.2-slots.md) — 2026-09-22, M1.27.2, a vehicle carries scenario slots; moved out 2026-09-24 as the oldest live entry
-- [`archive/PROGRESS-2026-09-23-compact-workspace.md`](archive/PROGRESS-2026-09-23-compact-workspace.md) — 2026-09-23, the compact desktop workspace; moved out 2026-09-24 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.27.1-redraw.md`](archive/PROGRESS-2026-09-22-m1.27.1-redraw.md) — 2026-09-22, M1.27.1, the connector cache; its numbers corrected 2026-09-23; moved out 2026-09-23 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.27-build-stage.md`](archive/PROGRESS-2026-09-22-m1.27-build-stage.md) — 2026-09-22, M1.27 build stage, the PCH and json_fwd work; moved out 2026-09-23 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md`](archive/PROGRESS-2026-09-22-m1.26-carriageway-routes.md) — 2026-09-22, M1.26, a route belongs to the carriageway; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.24-one-window.md`](archive/PROGRESS-2026-09-22-m1.24-one-window.md) — 2026-09-22, M1.24, the one-window editor; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.25-pointer-demand.md`](archive/PROGRESS-2026-09-22-m1.25-pointer-demand.md) — 2026-09-22, M1.25, demand drawn by pointer; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-22-m1.22.2-rotation.md`](archive/PROGRESS-2026-09-22-m1.22.2-rotation.md) — 2026-09-22, M1.22.2, selection rotation; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md`](archive/PROGRESS-2026-09-21-m1.22.1-keyboard.md) — 2026-09-21, M1.22.1, editor history and the keyboard workflow; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-21-toolchain-and-3.3.md`](archive/PROGRESS-2026-09-21-toolchain-and-3.3.md) — 2026-09-21, the toolchain install and the §3.3 measurement; moved out 2026-09-22
-- [`archive/PROGRESS-2026-09-21-connector-parity-audit.md`](archive/PROGRESS-2026-09-21-connector-parity-audit.md) — 2026-09-21, the Connector parity audit; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md`](archive/PROGRESS-2026-09-21-m1.21.1-lifecycle.md) — 2026-09-21, M1.21.1, the Network lifecycle correctness audit; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-20-m1.21-authoring.md`](archive/PROGRESS-2026-09-20-m1.21-authoring.md) — 2026-09-20, M1.21, the supplied-spec audit and authoring foundation; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-18-connector-position.md`](archive/PROGRESS-2026-09-18-connector-position.md) — 2026-09-18, M1.20; moved out 2026-09-22 as the oldest live entry
-- [`archive/PROGRESS-2026-09-18-m1.19-lane-middles.md`](archive/PROGRESS-2026-09-18-m1.19-lane-middles.md) — 2026-09-18, M1.19, the Connector lane middles land on the Link lane middles; moved out 2026-09-21 as the oldest live entry
-- [`archive/PROGRESS-2026-09-18-square-mouth.md`](archive/PROGRESS-2026-09-18-square-mouth.md) — 2026-09-18, the square-mouth revert (M1.17 reverted); moved out 2026-09-21 when it was the oldest live entry and the parity audit superseded it
-- [`archive/PROGRESS-2026-09-18-earlier.md`](archive/PROGRESS-2026-09-18-earlier.md) — 2026-09-18, the snapping audit, the engine profile and the M1.17 revert
-- [`archive/PROGRESS-2026-09-18-flush-mouth.md`](archive/PROGRESS-2026-09-18-flush-mouth.md) — 2026-09-18, M1.18, the flush mouth
-- [`archive/PROGRESS-2026-09-17-mouth.md`](archive/PROGRESS-2026-09-17-mouth.md) — 2026-09-17, the wedge mouth and the miter "bulge"
-- [`archive/PROGRESS-2026-09-17.md`](archive/PROGRESS-2026-09-17.md) — 2026-09-17, later entries
-- [`archive/PROGRESS-2026-09-17-early.md`](archive/PROGRESS-2026-09-17-early.md) — 2026-09-17, earlier entries
-- [`archive/PROGRESS-2026-09-16.md`](archive/PROGRESS-2026-09-16.md) — 2026-09-16
-- [`archive/PROGRESS-2026-09-14.md`](archive/PROGRESS-2026-09-14.md) — 2026-09-14
-- [`archive/PROGRESS-2026-09-10--2026-09-15.md`](archive/PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
+---
+
+## 2026-09-29 — Measured optimization pass: docs headroom, CI (D82)
+
+- **Docs headroom.** Four live docs sat at 494–499 of the 500-line limit, and a three-line note
+  had just turned CI red. Moved whole, never deleted: M3.2.8b–M3.2.9g out of this file; the
+  2026-09-15..21 follow-ups out of `VISSIM_PARITY.md`; the M1.11/M1.11.1/M1.12/M3.1 bodies out of
+  `ROADMAP.md` (each keeps its heading and a status line). The archive index moved from the top
+  of this file to `archive/README.md`. `NETWORK_EDITOR.md`'s two Connector sections became
+  `NETWORK_EDITOR_CONNECTORS.md` (current, not archived). Lines: PROGRESS 497→214, ROADMAP
+  499→424, NETWORK_EDITOR 498→406, VISSIM_PARITY 494→328. PROGRESS ≈25.2k→18.6k tokens (the
+  decision log is most of what remains). No other doc referenced a moved section by anchor.
+- **Stale references.** `CLAUDE.md` and `VISSIM_PARITY.md` §7 sent readers to `NETWORK_EDITOR.md`
+  §"Two file kinds", which does not exist; the table is under §"Save, recovery and formats".
+  `VISSIM_PARITY.md` §3 still said levels and display types do not exist and named `src/render/`
+  (removed in M1.24); it is now marked dated like §1 and §6. The remaining ~99 "broken" paths the
+  audit script reports are lane ids, branch names and archived history, not references.
+- **CI runs once per commit.** Runs 355 and 356 were both the full five-job suite on `1a702eb`
+  (`push` and `pull_request`). `push` now fires only on `main`, `workflow_dispatch` covers a
+  branch without a pull request, and a newer push to a pull request cancels the older run.
+- **CI uses the runner's 4 vCPUs.** `--parallel 2` became 4; the Windows jobs set `CL=/MP`,
+  because the Visual Studio generator's `--parallel` only runs projects side by side and
+  `trafficsim-tests` compiled its files one at a time. Baseline (run 355): build steps
+  windows-desktop 6:17, windows-core 4:41, linux desktop 4:12, release 3:09, headless 2:31.
+- **vcpkg applocal off on Windows.** Package run 68 failed in `z-applocal` with exit 32 (a
+  sharing violation between parallel targets). nlohmann-json is header-only and Qt ships through
+  `windeployqt`, so the copy step had nothing to copy; `-DVCPKG_APPLOCAL_DEPS=OFF` removes the
+  race before more parallelism makes it likelier.
+- **ccache on the Linux jobs.** Measured locally on a clean `release` build, 4 cores: 196 s
+  cold, 8 s warm, 177/177 hits; `CCACHE_SLOPPINESS` (pch_defines, time_macros, include-file
+  times) is what lets the PCH targets hit. The cache is `actions/cache` keyed per preset and
+  commit, restored by prefix; ~120 MB for `release`, capped at 500 MB. Windows is not covered:
+  ccache with MSVC needs the Ninja generator, which would change how those jobs build.
+- **Measured in CI** (build step; baseline runs 355/356 → run 360, items 3–4 with ccache cold):
+  windows-desktop 6:17/6:16 → 4:31 (−28%; the run's critical path, whole run 8:27 → 6:33);
+  windows-core 4:41/3:41 → 3:55 (within noise); linux desktop 4:12/4:14 → 3:30; headless
+  2:31/2:08 → 1:57; **release 3:09/3:37 → 4:01, slower** — one sample, taken while ccache was
+  writing its first cache, so not yet attributed. The next run is the first warm-cache one.
+  **Warm cache (run 361):** Linux build steps release 0:08, headless 0:07, desktop 0:24; the
+  release slowdown is gone. Windows is now the whole critical path: windows-desktop build 5:40
+  (4:31 in run 360; baseline 6:17/6:16, so −10 to −28%), windows-core 3:45 (no change); whole
+  run 8:03 against 8:27. Getting Windows down means the Ninja generator plus a compiler cache
+  there — a separate change, not made here.
+
+## 2026-09-29 — D81: precision-tool restyle through palette roles
+
+- Presentation only. Every colour is a `QPalette` role from `editorDesign::editorPalette()`; QSS
+  is `palette(role)` only; canvas overlays read `canvasStyle::*()`. Accent `#2F6FED`; error /
+  warning / advisory / ok are `BrightText` / `LinkVisited` / `Link` / `Shadow`. Tool overlays that
+  were orange, teal, magenta and violet are now the accent.
+- Box model fixed: controls are 28 px and no longer grow on focus/invalid; toolbar 32 px; icons
+  16 px with a 1.5 px stroke. `letter-spacing` was never a Qt Style Sheet property, so tracking now
+  lives on the label `QFont`.
+- Grid: two tiers from the view's level of detail, 1-device-pixel cosmetic lines snapped to pixel
+  centres from `painter->deviceTransform()`.
+- Lengths, coordinates and range hints format through `QLocale` (`formatValue`).
+- **Not compiled where it was written** (no Qt toolchain in the session): the new `design-system-ui`
+  test and the existing UI suites on the Native C++ workflow are the verification. No performance
+  claim. Gaps are listed in `docs/UI_REDESIGN_AUDIT.md` §6.
+- CI fix (Linux-verified): Qt's QSS adds 3 px to a `QToolButton`'s content, so toolbar padding is
+  `2px 1px 1px 2px` for 24 px (icon centred); `EditorWindow::setAnimated(false)` stops dock motion,
+  and the test flushes Qt's zero-length geometry animators before asserting none remain.
+
+## 2026-09-28 — Editor selection and visual cleanup (owner request)
+
+- Unified subtle hover/selection outlines, preserving display-type road colours. Geometry
+  grips are small squares only for a single object in Select. Hover clears on leave/focus loss.
+- Lane tabs are 24 × 8 logical-pixel rectangles directly on both road edges, without stems or
+  counts. Link tabs appear at start/middle/end; Connector end tabs follow the rendered rails.
+  Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
+  Connector end tabs now use the painted edge and its tangent, including angled Link joints.
+  End tabs inset by half their length and shrink to fit short Connectors; P3–P4 draws as a solid boundary.
+  Resizing tabs use preview geometry, keeping Link tabs on curved edges throughout the drag.
+- Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
+- Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear
+  selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then
+  clears selection when idle. Tab/Delete cannot accidentally edit roads in authoring tools.
+- Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
+- Initial Linux/Windows UI tests exposed teardown repainting after History destruction; detaching
+  the canvas fixed it. Legacy inspector/Conflict tests now reselect after deselection.
+- Local architecture, file-size and diff checks pass. Existing Linux/Windows screenshots were
+  inspected; precision UI is added to PR #73. Local CMake/Qt unavailable, new CI pending.
 
 ---
 
@@ -91,261 +123,6 @@ move old blocks whole into `docs/archive/` if this gets long. Older entries are 
   [archive/PROGRESS-2026-09-28-d79-mouth.md](archive/PROGRESS-2026-09-28-d79-mouth.md).
 
 ---
-
-## 2026-09-27 — M3.2.9g: sliding an end along its lanes keeps the curve (D78)
-
-- The owner did not want a Connector's curve reset when an end is dragged along the lanes it
-  already joins. `retargetConnector` rebuilt the turn on every move (and `LaneReference ==`
-  includes the station, so any slide counted as a move). Now, when both ends keep their Link,
-  first lane and lane counts, every point follows the two ends by its blend weight -- the shift a
-  leading resize already uses -- and `laneBlend`, widths and markings are kept.
-- Guard: if an end leg that ran with its lane would now run against it, the turn is rebuilt as
-  before; that is the wrong-way elbow the rebuild was introduced for, and
-  `lifecycle.retarget_across_the_road_…` (same lane, moved past the last control point) still
-  rebuilds. Any other lane or Link rebuilds as before.
-- Tests: `lifecycle.sliding_an_end_along_its_lanes_keeps_the_authored_curve` (both driving sides,
-  point-for-point blend shift, not the rebuilt curve, Undo; another lane still rebuilds);
-  `attachment-ui` slides the target grip and checks the kept shape and one Undo.
-- Windows desktop: 67/67; `trafficsim-cli 42` on the M2.6 template is byte-identical to the
-  M3.2.9c run. Linux not run.
-
----
-
-## 2026-09-27 — M3.2.9f: end grips on the middle of their Link lanes (D77)
-
-- The owner saw end grips land in the wrong place on steep Connectors. A grip was the midpoint of
-  the two outer `connectorBoundaries` rails, before they are bent onto the mouth; past about 75°
-  (the square-end fallback) that midpoint lies on a line square to the Connector, off the Link,
-  while a drop is measured from the Link range centre. Grips now come from `connectorGrips`:
-  the centreline, with both ends on `connectorRangeCentre` -- P2, factored out of `mouth()`.
-  Hit-testing (`handleGeometry`) and drawing use it; `connectorCentreline` is unchanged for routes.
-- Tests: `mouth_sweep.an_end_grip_sits_on_the_middle_of_its_link_lanes` (11 angles, 1–3 lanes,
-  both sides; asserts that at least one square-fallback case had the old grip over 0.5 m off);
-  `connectors.grips_ride_the_middle_of_the_whole_width` now also pins ends to P2;
-  `attachment-ui` checks the painted grips.
-- The two oldest entries (M3.2.8a, M3.2.4c) moved to `archive/` to keep this file under 500 lines.
-- Windows desktop: all pass. Linux not run.
-
----
-
-## 2026-09-27 — M3.2.9e: dividers meet their Link boundary as the edges do (D76)
-
-- The owner asked for dividers computed as P1/P4 are. Before, an interior divider's point was
-  where its Link boundary crossed the cap P1→P2→P3, so it bent sideways onto the cap. Now it is
-  the Connector's own divider line (the first local edge point offset by the Connector widths
-  before it, along the end direction) meeting the Link boundary's line -- the divider runs
-  straight on. The cap crossing stays as the fallback (no intersection, or beyond the edges'
-  reach limit). Mapping, surplus-lane rule, bend and no-clipping are unchanged.
-- `mouth_sweep.*` now also checks each interior point's offset across the end direction equals the
-  cumulative widths, over all 1,512 cases, plus a square two-lane case. Both fail on the old
-  construction (3.03 m across instead of 3.00 at 30°; the square case off by a lane's slant).
-- Windows desktop: 67/67 after `ROADMAP.md` was brought back under 500 lines. Linux not run.
-
----
-
-## 2026-09-27 — M3.2.9d: connecting across more than a two-lane difference (D75)
-
-- A 2-lane Link dragged onto a 5-lane one used to be refused (EDIT_LANE_RANGE): the range dialog
-  pre-filled both full carriageways and threw away the lane the drag ended on. It now opens at
-  2 -> 4, the wider end centred on that lane (`centredLaneRange`); its boxes stop at a two-lane
-  difference. `fitLaneDifference` narrows the wider end (keeping its first lane) in
-  `addConnectorRange` and `retargetConnector`, so the Inspector's add and moving an end onto a
-  narrow Link narrow instead of refusing. Explicit resizes and hand-edited files still refuse.
-- Tests: `lane_correspondence.*` (2,5 / 5,2 / 1,4 / 1,6 fits, the centring table, a 4 -> 4 end
-  moved onto a Link's last lane gives 3 -> 1); `gesture-ui` drags 2-lane onto lane 5 of a 5-lane
-  Link and gets lanes 2–5.
-- Windows desktop: 67/67. Linux not run.
-
----
-
-## 2026-09-27 — M3.2.9c: the lane-change side in the Inspector
-
-- Connector Inspector row "Lane change side" (`editorConnectorLaneSide`): Kerb side (default) /
-  Left / Right, enabled only when the ends differ by one lane; each choice is one
-  `changeConnectorLaneSide` transaction. Items are rebuilt from the locale on every refresh.
-- No message when a lane tab reaches the two-lane limit: the owner declined it; the tab stops.
-- `connector-ui` step: disabled at 1 -> 1, enabled at the kerb default at 2 -> 1, Right re-pairs
-  the taper, survives save/reopen, Kerb clears it, Undo, and narrowing back clears a stale side.
-  Removing the command call from the combo fails the step ("Side did not reach the model").
-- Windows desktop: all pass except `scenario-run-ui` (known, 97 s vs 90 s). Linux not run.
-
----
-
-## 2026-09-27 — M3.2.9b: dividers end on their Link boundaries at the mouth (D74)
-
-The 1,512-case probe (now `mouth_sweep.*`) had interior dividers 0.5–18 m off the Link's
-dividers: `connectorSurface` took them from the unmodified lane strips and only clipped them.
-- `ConnectorMouth::boundaries`: one point per Link lane boundary of the range, in rail order.
-  P1–P4 are unchanged. Interior points are where each Link boundary's line crosses P1→P2→P3.
-- Interior boundary k goes to the point after the lanes with width at that end, so a surplus
-  lane (D73) closes on its neighbour's point or on P1/P4.
-- **Rails bend too.** Moving only the rail's last vertex to P1/P4 left a kink that bent dividers
-  crossed; both now use one smoothstep bend over the half nearest that end.
-- **No clipping with a mouth.** With unequal lane widths, a Link divider can cross the cap on
-  the P2–P3 leg, just past P2, so a correctly placed divider passes 0.2–0.3 m through the
-  notch, which is Link surface. Clipping cut that off (31 of the last 47 failures).
-- Result: 0 of 1,512 fail. 281 cases have **folded lane strips** from `connectorBoundaries`
-  itself (a straight Connector leaving a Link at a 60–90° kink, 3 lanes): their dividers end
-  right but may run outside the surface in the body, as before the four-point mouth. That fold
-  is upstream, also feeds conflict coverage, and is not fixed here.
-- **The lane tabs stop at a two-lane difference** (`updateLaneResize`). M3.2.9a let a 2 -> 5 drag
-  reach the paint-time preview, which threw: the editor crashed (access violation, reproduced by
-  removing the clamp from the new `attachment-ui` step).
-- Windows desktop: 67/67 except `scenario-run-ui`, over its 90 s limit at 97 s — and 99 s on
-  `fc9e06a` built the same way, so not this change. Linux not run. Owner review still pending.
-
----
-
-## 2026-09-27 — M3.2.9a: lane correspondence across a Connector (D73)
-
-Owner ruling after a probe of the four-point mouth (1,512 cases) showed dividers missing their
-Link dividers: `connectorPaths` paired lanes proportionally, so 2 → 5 sent source lane 0 into
-four target lanes. Vehicles followed that pairing; the drawing did too.
-
-- **Rule** (`connectorLaneShift`, `connector_paths.cpp`): the narrower end pairs one to one with a
-  contiguous run of the wider end; at most one lane is added or dropped per side, so the counts
-  differ by at most 2 (2 → 5 is refused, `EDIT_LANE_RANGE`; an old file still opens and
-  validation names it). A one-lane difference puts the lane on `laneChangeSide` (driver's
-  left/right), empty = the kerb side. Path 0 is still `from[0] → to[0]`, so the stored geometry,
-  `laneBlend`, path ids and heads keep their meaning.
-- **Why kerb is the default:** for a one-lane difference the old proportional formula IS the
-  kerb-side rule, for every count (asserted up to 6 lanes). Only a two-lane difference with
-  2+ lanes at the narrow end changes (2 → 4: `0,0,0,1` → `0,0,1,1`). No committed project has
-  an unequal Connector: the M2.6 CLI output is byte-identical before and after (111 lines).
-- **The tapering lane is now the added/dropped lane itself** (`laneWidthsOf`). It was "the second
-  of two paths sharing a lane", which put a 2 → 3 taper in the middle of the carriageway.
-  Display only for a one-lane difference; two `connector_shape_tests` pick
-  `LaneSide::right` to keep asserting the lane they always measured.
-- **Schema 17**: `laneChangeSide` is written only when chosen; refused in a pre-17 file. The three
-  `data/projects` files changed only their `schemaVersion` key, which moved the fixture hash in
-  the two archived T-junction metadata files (`ebdc765842f6519a` → `9f9fa64f8b7652bb`); nothing
-  those rows describe changed. `changeConnectorLaneSide` is the undoable command; no UI yet.
-- Windows desktop (MSVC 14.51, Qt 6.8.3): 66/66. `scenario-run-ui` timed out once under
-  `ctest -j 8` and passed alone (77 s). Linux not run.
-
----
-
-## 2026-09-27 — Four-point Connector display mouths (owner request)
-
-The owner specified P1 (near edge intersection), P2 (connection centre), P3 (nearest point
-on the far **Link** edge), and P4 (far edge intersection), then authorized implementation.
-The worked 4 m examples at 45°, 89° and 90° are preserved in
-`CONNECTOR_FOUR_POINT_MOUTH.md`. Beyond 90° the edge pairing switches: for equal-width straight
-roads P2–P3 is W/2 and P3–P4 is at most W/2. Projecting P3 onto the Connector was explicitly
-rejected in the discussion and is guarded by a coordinate test.
-
-- `connector_surface.*` owns the derived cap, perimeter and clipped markings. The local
-  intersections use the authored end direction, Link range edges and existing width policy;
-  P2 is the range centre, not the first lane's endpoint. Finite Link-edge projection handles
-  actual polylines. Parallel/unbounded intersections retain the old cap; a folded perimeter
-  retains the old surface rather than trimming the requested P2/P3 away.
-- The existing value-keyed Connector cache now holds the complete surface. Paint, picking,
-  box selection, framing, copy/rotation previews and rotation bounds read its outline.
-  Runtime paths, conflict strips, serialization and legacy lane-strip diagnostics are not
-  changed. This separation and the diagnostics' meaning are explicit in the contract.
-- Model tests pin both ends, the numerical examples, angle/rotation/reflection sweeps,
-  driving sides, two-lane ranges, unequal widths and parallel fallback. A Qt test compares
-  painted geometry and hit testing, including Link edits and Undo/Redo cache invalidation.
-
-Verification: Linux/GCC 13.3 headless CTest passed 46/46, including the frozen references;
-the mouth group passed 12/12. The Qt 6.8.3 desktop application builds, and the five targeted
-UI suites passed: connector-surface-ui, editor-rotation-ui, network-lifecycle-ui, connector-ui
-and editor-attachments. The new suite checks a grid of 357 pick locations per document and
-captures the 89-degree canvas for visual inspection. Build tools, Qt/ICU and a writable TMPDIR
-were provisioned outside the repository; no machine paths enter the build configuration in Git.
-Architecture and file-size checks pass. No Windows verification, owner visual acceptance or
-Vissim parity is inferred; the complete desktop suite was not run in this workstream.
-
----
-
-## 2026-09-27 — Conflict areas on every overlap, drawn inset (D72)
-
-Owner request: automatic conflict areas were missing where surfaces really overlap, notably at a
-Connector's end on a Link, and the fill sat exactly on the Link/Connector outline.
-
-- **Exclusion narrowed to the mouth** (`automatic_conflicts.cpp`, `sharedMouth`). A Connector was
-  skipped against *every* lane of its from/to Link; now only the lane it leaves or lands on is its
-  mouth, so a turn sweeping across a neighbouring lane of the Link it joins gets an area.
-  Connector pairs sharing a lane id were excluded on the id alone, across unrelated Links; the
-  diverge/merge exclusion now also requires the same Link. Diverges stay excluded — the named
-  predicate is where lifting them goes.
-- **One area per overlap piece** (`surfaceOverlaps`). A pair crossing twice was `unsupported`
-  and got nothing; pieces touching on both paths now cluster into one area each, keys
-  `auto/<a>|<b>` then `…#1`. `surfaceOverlap` keeps its single-answer meaning. Validation and
-  `addCrossingAreas` measure each authored area against the piece it lies over; `covered`
-  suppresses only that piece.
-- **Inset drawing, 0.3 m** (`canvas_conflicts.cpp`, `insetPath`). Display only: picking, the
-  runtime and validation keep the full `conflictSideOutline`. An area narrower than 0.6 m is
-  drawn whole rather than vanish.
-- Verified on Windows desktop (MSVC 14.51 from VS 18, Qt 6.8.3): 64/64 `ctest`. Not yet on Linux.
-
-## 2026-09-27 — M3.2.8b: mandatory lane changing, with minimal cooperation (D71)
-
-The contract (`docs/M3_8_CONTRACT.md` §2) and rows A27–A34 were committed before the code
-(`b472e05`); §2 "Cooperation" and A35 were added with the second ruling, before its code was
-kept. Evidence: `docs/evidence/m3.2.8b-mandatory.md`. **Verified on Windows headless only**
-(MSVC): no Qt build here, so the two edited shell files (`editor_demand.cpp`, `editor_input.cpp`)
-were not compiled; callgrind was not available, so the cost per tick is unmeasured.
-
-**The owner's rulings:**
-- **Vissim's way** over keeping lane-fixed entry: a movement's volume enters on every lane of its
-  entry Link, and a lane that cannot reach the end compiles to a **stub** route with a dead end.
-  This re-publishes the four-leg and M2.6 numbers, as D69 did.
-- **Minimal cooperation in this slice**, after the rule alone was measured: M2.6 mean delay 50.1 →
-  61.6 s, 4 vehicles pending, one waiting 404 s at its dead end. A queue or a dense stream rarely
-  leaves a gap both safety tests accept.
-
-**What was built:**
-- Model: `routeLaneFamily` (one chain per entry lane; a stub is kept only if a run of neighbouring
-  lanes with chains leads to a full chain) and `appendLaneChanges` (spans between adjacent lanes of
-  one Link, stations matched through the Link's reference polyline, so a curve is square).
-  `laneShares` now means one weight per entry-Link lane (`routeLaneShareCount`, shared with the
-  input dialog). The routeless entry decision spreads each destination over every lane (D43).
-- Core: `src/core/lanes.*`. The spans and dead ends are `ScenarioDefinition` fields, compiled and
-  never serialized, so `expandRouteless` can fill them. A change is decided on the snapshot in
-  vehicle-id order and applied at the start of the tick, then the spans are rebuilt.
-- Results: a stub is never a movement row; `laneChanges` in the report, CSV and event stream.
-
-**Non-obvious choices:**
-- **The change must also fit this tick's move** inside gap − standstill, for the changer and its
-  new follower. The acceleration test alone let a change 2 m behind a faster leader through, and
-  the next tick clamped it.
-- **The cooperating vehicle is chosen kinematically** (`v² ≤ 2·comfortableDeceleration·room`,
-  `v·dt ≤ room`), the nearest behind the target place that passes. The model's commanded braking
-  was tried first and flip-flopped: holding back changed the braking, which changed the choice.
-  The kinematic test only gets easier once a vehicle slows, so the choice is stable without state.
-- **The courtesy is a second obstacle**, the lower of the two accelerations, not a replacement
-  leader: a nearer moving leader otherwise hid it and nobody held back.
-- A vehicle alongside is not asked to hold back; asking it blocked every attempt.
-
-**Outcome, seed 42:** M2.6 completed 1977 → 1981, pending 0, clamps 23 → 19, mean delay 50.14 →
-50.16 s, 305 changes; left turns fell on all four approaches and right turns rose on all four.
-Four-leg: clamps 4 → 8 (all amber heads and one follow-on), one pending scheduled in the last tick.
-Single-lane frozen baselines are byte-identical.
-
-## 2026-09-26 — Measured optimization pass: tests, evaluator, routing, leader search (D70)
-
-Behaviour-preserving; every change was checked byte for byte (M2.6 report, crossing event
-streams for seeds 7/42/43, corridor trip counts) and the full suite (63 tests) passed after each.
-Linux only, this container, Release unless noted.
-
-| Item | Before | After |
-|---|---|---|
-| `ctest --preset desktop -j4` (Debug) | 64.1 s | 21.3 s |
-| M2.6 template, one hour, `trafficsim-cli 42 --project …` | 668 ms (661–707), 5.74G instr | median 454 ms (436–661, one outlier), 4.35G instr |
-| `stepSimulation` instr, corridor 96 × 300 s / 12 × 300 s / M2.6 | 4.26G / 761M / 2.99G | 3.48G / 655M / 2.88G |
-
-1. **One ctest test per model-test group (D70).** `all-model-tests` ran the registry serially
-   and repeated every named group; it is now `--check-groups`, which fails on an unlisted group.
-2. **`MovementAccumulator::observe`** kept queue state in a per-tick `std::map` (31% of the M2.6
-   run, 4.7M allocations an hour); it is a vector sorted by id.
-3. **`routeShortestChains`** (moved from `demand_paths.cpp` into `routing.cpp`) builds the route
-   object graph once per search; `routeContinuations` rebuilt it 3,300 times per Run.
-4. **`closestVehicle` stops** once a part starts beyond the nearest gap: parts ascend and span
-   rears are ≥ 0, so the strict tie-break keeps the same leader.
-
-Not done, measured: editor frames are 1.3–5.5 ms at 40 intersections (no work needed);
-`allocateId`/`putRoute` are O(n²) over a scripted build-up but under 1 ms per click.
 
 ## Backlog (M0, in order)
 
@@ -466,6 +243,8 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D82 | 2026-09-29 | **Live docs keep headroom under the 500-line limit by moving dated blocks whole into `docs/archive/`, indexed in `archive/README.md`; a current reference doc that outgrows the limit is split, not archived** | The size check fails CI on a one-line overrun; four docs at 494–499 lines made every session's closing note a CI risk. The index had itself grown to 50 lines of this file | — |
+| D81 | 2026-09-29 | **All editor colour is a `QPalette` role; the accent is `#2F6FED`; semantic colour reuses `BrightText`/`LinkVisited`/`Link`/`Shadow`; tool overlays use the accent; tracking is set on `QFont`, not QSS** | Owner brief: precision-tool look, one accent, semantic colour reserved. Qt Style Sheets have no `letter-spacing`, so the earlier tracking never rendered. The four semantic roles are ones the editor never paints with (no shadows are drawn). Accent text is 4.1:1 on the hover grey, so the accent is fill/border only. Verification is the CI UI suites; nothing was compiled or measured in the authoring session. |
 | D80 | 2026-09-28 | **Derive a centred whole-carriageway axis; pair both mouths by lane index at every angle; remove square/slide/reach fallbacks** | Owner instructions in this session. Preserve file/runtime lane geometry through a central derived reference. Distinct parallel lines remain undefined; retain and diagnose folds rather than erase P1–P4 | Windows desktop owner review; no Vissim fidelity claim |
 | D79 | 2026-09-28 | **P1–P4 use one pairing at every angle: Connector boundary 0's edge line meets the range's first Link boundary (index order); no switch at 90°; a boundary running past its cut is pulled back before the bend** | Owner ruling, choosing index order over the geometric same-side pairing. Sides stay read off the rails because legacy strips can reverse lane order at an obtuse end (measured: driving-side kerb made 367 surfaces fall back) | A fix for folded/reversed `connectorBoundaries` strips, which would let the side come from the driving side |
 | D63 | 2026-09-25 | **A crossing gesture makes one waiting line per lane, before the first area the lane meets; a Stop/Yield control covers every area giving way at its line** | Owner choice. A line per area left the far lane's line inside the near lane's area, where a Stop would halt a vehicle in the crossing. The areas behind one line were already admitted together (A15), so sharing the line changes where vehicles wait, not what they are admitted to. Existing documents keep their lines: only new gestures change |

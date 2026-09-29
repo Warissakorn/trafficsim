@@ -1,8 +1,8 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include <QGraphicsPathItem>
 #include <QGraphicsSimpleTextItem>
 #include <QMouseEvent>
-#include <QTimer>
 #include <algorithm>
 #include <cmath>
 
@@ -32,7 +32,7 @@ std::vector<std::string> EditorCanvas::routeDraftWith(const std::string& target)
 void EditorCanvas::startRouteDraft(const std::string& objectId) {
     if(!document_ || objectId.empty())return;
     if(routeLaneChains(document_->network,{objectId}).empty())return;
-    routeDraft_={objectId};hoverSegment_.clear();animate();redraw();
+    routeDraft_={objectId};hoverSegment_.clear();redraw();
 }
 std::pair<std::string,std::string> EditorCanvas::demandObjectAt(QPoint viewportPosition) const {
     for(const auto* item:items(viewportPosition)) {
@@ -50,6 +50,7 @@ bool EditorCanvas::demandPress(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton && !ctrlRight)return false;
     const auto p=world(e->pos(),false);
     const auto target=objectAt(p);
+    if(target.empty()){clearSelection(false);return true;}
     if(tool_==Tool::input) {
         // A vehicle input is placed on a LINK, the way Vissim places one, and its volume is the
         // Link's total: the compiler divides it across the lanes the route actually reaches.
@@ -61,7 +62,7 @@ bool EditorCanvas::demandPress(QMouseEvent* e) {
     if(chain.empty()) {reject();return true;}
     // One click can append a whole chain: that is what makes "click the destination" work.
     routeDraft_.insert(routeDraft_.end(),chain.begin(),chain.end());
-    animate();redraw();
+    redraw();
     return true;
 }
 bool EditorCanvas::isLink(const std::string& objectId) const {
@@ -82,9 +83,7 @@ bool EditorCanvas::demandHover(QMouseEvent* e) {
 void EditorCanvas::commitRouteDraft() {
     if(routeDraft_.empty())return;
     const auto segments=routeDraft_;
-    pulseGeometry_=document_?routeGeometries(document_->network,segments):std::vector<std::vector<Point>>{};
     routeDraft_.clear();hoverSegment_.clear();
-    commitPulse_=8;animate();
     if(routeDraftCommitted)routeDraftCommitted(segments);
     redraw();
 }
@@ -97,39 +96,17 @@ void EditorCanvas::clearRouteDraft() {
     routeDraft_.clear();hoverSegment_.clear();
 }
 void EditorCanvas::reject() {
-    rejectPulse_=6;animate();
     if(creationRejected)creationRejected();
     redraw();
 }
 void EditorCanvas::setHighlightedRoute(std::string id) {
     if(highlightedRoute_==id)return;
-    highlightedRoute_=std::move(id);animate();redraw();
+    highlightedRoute_=std::move(id);redraw();
 }
-// One timer for the whole canvas, and only while there is something moving to draw: an editor
-// sitting still must not repaint itself forever. Nothing here reaches the document or the
-// engine -- the phase is paint state, so no measured number can depend on it.
-void EditorCanvas::animate() {
-    if(!animation_) {
-        animation_=new QTimer(this);animation_->setInterval(50);
-        connect(animation_,&QTimer::timeout,this,[this]{
-            ++animationPhase_;
-            if(commitPulse_>0)--commitPulse_;
-            if(rejectPulse_>0)--rejectPulse_;
-            if(!animating())animation_->stop();
-            redraw();
-        });
-    }
-    if(animating() && !animation_->isActive())animation_->start();
-}
-bool EditorCanvas::animating() const {
-    return !routeDraft_.empty() || !highlightedRoute_.empty() || commitPulse_>0 || rejectPulse_>0;
-}
-void EditorCanvas::setAnimationPhase(int phase) {animationPhase_=phase;redraw();}
 namespace {
-// A dash pattern that crawls along the route, so a drawn route reads as a direction of travel.
-QPen marchingPen(QColor colour,int phase,double width) {
+QPen routePen(QColor colour,double width,bool draft) {
     QPen pen(colour,width);pen.setCosmetic(true);pen.setDashPattern({6,4});
-    pen.setDashOffset(-static_cast<double>(phase%10));
+    if(draft)pen.setDashPattern({3,3});
     return pen;
 }
 }
@@ -141,9 +118,10 @@ void EditorCanvas::drawDemandOverlay() {
     if((tool_==Tool::route || tool_==Tool::input) && !hoverSegment_.empty()) {
         const auto geometry=objectGeometry(document_->network,hoverSegment_);
         if(geometry.size()>1) {
-            const QColor colour=hoverReachable_?QColor(22,123,152,90):QColor(239,68,68,90);
-            QPen halo(colour,14);halo.setCosmetic(true);halo.setCapStyle(Qt::RoundCap);
-            auto* item=scene_.addPath(polylinePath(geometry),halo);
+            const QColor colour=hoverReachable_?canvasStyle::hover():canvasStyle::error();
+            QPen outline(colour,1.5);outline.setCosmetic(true);
+            QColor fill=colour;fill.setAlpha(24);
+            auto* item=scene_.addPath(objectShape(hoverSegment_),outline,QBrush(fill));
             item->setZValue(200003);item->setData(0,QStringLiteral("demand-hover"));
             item->setData(1,QString::fromStdString(hoverSegment_));
             item->setData(2,hoverReachable_);
@@ -163,14 +141,14 @@ void EditorCanvas::drawDemandOverlay() {
         if(chains.empty() || chains.front().size()<2)continue;
         const auto& geometry=chains.front();
         const bool lit=input.routeId==highlightedRoute_;
-        const double pulse=lit?1+0.15*std::sin(animationPhase_*0.3):1;
-        const double r=(7/scale)*pulse;
+        const double r=7/scale;
         const auto at=pointAlong(geometry,0),ahead=pointAlong(geometry,std::min(0.5,polylineLength(geometry)));
         const double angle=std::atan2(ahead.y-at.y,ahead.x-at.x);
         QPolygonF chevron;
         for(double offset:{0.0,2.4,-2.4})chevron<<QPointF(at.x+r*std::cos(angle+offset),at.y+r*std::sin(angle+offset));
-        QPen pen(QColor("#0f766e"),1);pen.setCosmetic(true);
-        auto* marker=scene_.addPolygon(chevron,pen,QBrush(lit?QColor("#14b8a6"):QColor("#99f6e4")));
+        QPen pen(canvasStyle::active(),lit?2:1);pen.setCosmetic(true);
+        QColor markerFill=canvasStyle::active();markerFill.setAlpha(lit?72:28);
+        auto* marker=scene_.addPolygon(chevron,pen,QBrush(markerFill));
         marker->setZValue(200005);marker->setData(0,QStringLiteral("input-marker"));
         marker->setData(1,QString::fromStdString(input.id));
         // The authored number is the Link total; the lanes it splits across is what the author
@@ -179,7 +157,7 @@ void EditorCanvas::drawDemandOverlay() {
             ?QString::number(input.vehiclesPerHour,'f',0)+" / "+QString::number(chains.size())
             :QString::number(input.vehiclesPerHour,'f',0));
         label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        label->setBrush(QColor("#0f766e"));label->setPos(at.x+r,at.y+r);label->setZValue(200006);
+        label->setBrush(editorDesign::role(QPalette::Text));label->setPos(at.x+r,at.y+r);label->setZValue(200006);
         label->setData(0,QStringLiteral("input-volume"));
     }
     // M2.1.1: a routing decision placed on a Link draws as a diamond a little way along it, where
@@ -191,13 +169,13 @@ void EditorCanvas::drawDemandOverlay() {
         const double r=6/scale;
         const auto at=pointAlong(geometry,std::min(12.0,polylineLength(geometry)/2));
         QPolygonF diamond;diamond<<QPointF(at.x+r,at.y)<<QPointF(at.x,at.y+r)<<QPointF(at.x-r,at.y)<<QPointF(at.x,at.y-r);
-        QPen pen(QColor("#9a3412"),1);pen.setCosmetic(true);
-        auto* marker=scene_.addPolygon(diamond,pen,QBrush(QColor("#fdba74")));
+        QPen pen(canvasStyle::active(),1);pen.setCosmetic(true);
+        auto* marker=scene_.addPolygon(diamond,pen,QBrush(editorDesign::role(QPalette::Midlight)));
         marker->setZValue(200005);marker->setData(0,QStringLiteral("decision-marker"));
         marker->setData(1,QString::fromStdString(decision.id));
         auto* label=scene_.addSimpleText(QString::fromStdString(decision.name.empty()?decision.id:decision.name));
         label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        label->setBrush(QColor("#9a3412"));label->setPos(at.x+r,at.y-r);label->setZValue(200006);
+        label->setBrush(editorDesign::role(QPalette::Text));label->setPos(at.x+r,at.y-r);label->setZValue(200006);
         label->setData(0,QStringLiteral("decision-label"));
     }
     // A committed route draws only while it is selected, so the canvas does not silt up.
@@ -207,39 +185,24 @@ void EditorCanvas::drawDemandOverlay() {
             // travel -- drawing the whole lane put a line upstream of a mid-body arrival, which
             // read on screen as a route running against the traffic on that Link.
             for(const auto& geometry:routeGeometries(document_->network,route.segmentIds)) {
-                auto* item=scene_.addPath(polylinePath(geometry),marchingPen(QColor("#7c3aed"),animationPhase_,3));
+                auto* item=scene_.addPath(polylinePath(geometry),routePen(canvasStyle::active(),2,false));
                 item->setZValue(200004);item->setData(0,QStringLiteral("route-overlay"));
                 item->setData(1,QString::fromStdString(route.id));
-                drawRouteArrows(geometry,QColor("#7c3aed"));
+                drawRouteArrows(geometry,canvasStyle::active());
             }
         }
-    // A committed route flashes once, so the author sees which drawing became the new row.
-    if(commitPulse_>0)for(const auto& geometry:pulseGeometry_) {
-        if(geometry.size()<2)continue;
-        QPen pen(QColor(124,58,237,static_cast<int>(20*commitPulse_)),10);
-        pen.setCosmetic(true);pen.setCapStyle(Qt::RoundCap);
-        auto* item=scene_.addPath(polylinePath(geometry),pen);
-        item->setZValue(200002);item->setData(0,QStringLiteral("route-committed-pulse"));
-    }
-    // A refused click flashes where it was refused, rather than only writing to the error line.
-    if(rejectPulse_>0) {
-        const double r=(10+2.0*(6-rejectPulse_))/scale;
-        QPen pen(QColor(239,68,68,static_cast<int>(30*rejectPulse_)),2);pen.setCosmetic(true);
-        auto* item=scene_.addEllipse(hoverPoint_.x-r,hoverPoint_.y-r,2*r,2*r,pen);
-        item->setZValue(200009);item->setData(0,QStringLiteral("demand-reject-pulse"));
-    }
     if(routeDraft_.empty())return;
     const auto drawn=routeGeometries(document_->network,routeDraft_);
     for(const auto& geometry:drawn) {
         if(geometry.size()<2)continue;
-        auto* item=scene_.addPath(polylinePath(geometry),marchingPen(QColor("#de8618"),animationPhase_,3));
+        auto* item=scene_.addPath(polylinePath(geometry),routePen(canvasStyle::active(),2,true));
         item->setZValue(200007);item->setData(0,QStringLiteral("route-draft"));
-        drawRouteArrows(geometry,QColor("#de8618"));
+        drawRouteArrows(geometry,canvasStyle::active());
     }
     // The rubber band leaves the head of the draft -- the last lane it reached -- and says,
     // before the click, whether the click will be taken.
     if(!drawn.empty() && !drawn.front().empty()) {
-        const QColor colour=hoverSegment_.empty()||hoverReachable_?QColor("#de8618"):QColor("#ef4444");
+        const QColor colour=hoverSegment_.empty()||hoverReachable_?canvasStyle::active():canvasStyle::error();
         QPen pen(colour,1,Qt::DashLine);pen.setCosmetic(true);
         const auto tail=drawn.front().back();
         auto* band=scene_.addLine(tail.x,tail.y,hoverPoint_.x,hoverPoint_.y,pen);

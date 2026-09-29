@@ -1,4 +1,5 @@
 #include "canvas.hpp"
+#include "canvas_style.hpp"
 #include <QGraphicsPathItem>
 #include <QGraphicsPixmapItem>
 #include <QMouseEvent>
@@ -52,7 +53,8 @@ void EditorCanvas::setDocument(const ProjectDocument* d) {
     redraw();
 }
 void EditorCanvas::setTool(Tool tool) {
-    resetGesture(); tool_ = tool; setCursor(tool == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor); redraw();
+    if (tool_ == tool) return;
+    tool_ = tool; clearSelection();
 }
 std::vector<Point> EditorCanvas::handleGeometry() const {
     const auto* geometry=selectedGeometry();
@@ -78,6 +80,7 @@ void EditorCanvas::cancel() { resetGesture(); redraw(); }
 // network. The callbacks stay here, in the order cancel() ran them, so the only difference a
 // caller can observe is the frame that is no longer drawn and immediately thrown away.
 void EditorCanvas::resetGesture() {
+    clearHover();
     copyPick_.clear();copyArmed_=copyDragging_=false;copyOffset_={};
     groupDrag_=groupDragging_=false;groupOffset_={};
     rotationPivot_.reset();rotationDegrees_=0;rotationDragging_=false;
@@ -115,22 +118,14 @@ void EditorCanvas::redraw() {
     for (auto link : document_->network.links) {
         if(!levelVisible(link.level))continue;
         const auto& appearance=style(link.displayType);const double z=link.level*100.;
-        const bool chosen=isSelected(link.id);
         if (link.id==primary && !preview_.empty()) link.geometry=preview_;
-        if(link.id==primary && laneResize_ && (laneResize_->kind==4 || laneResize_->kind==8)) {
-            const bool leading=laneResize_->kind==8;auto lanes=link.lanes;
-            const double width=(leading?lanes.front():lanes.back()).width;
-            while(static_cast<int>(lanes.size())<previewLinkCount_)
-                lanes.insert(leading?lanes.begin():lanes.end(),{"preview-"+std::to_string(lanes.size()),width});
-            while(static_cast<int>(lanes.size())>previewLinkCount_)lanes.erase(leading?lanes.begin():lanes.end()-1);
-            replaceLaneBundle(link,std::move(lanes),leading);
-        }
-        const QColor colour=link.id==primary?QColor("#167b98"):chosen?QColor("#3fa3bf"):QColor(QString::fromStdString(appearance.linkColor));
+        previewLinkLanes(link);
+        const QColor colour(QString::fromStdString(appearance.linkColor));
         const auto road=linkCentreline(link,document_->network.drivingSide);
         if(!std::isfinite(polylineLength(road)) || polylineLength(road)<=0) {
             // Invalid transient geometry must remain a cancellable gesture, not an exception
             // from pointAlong while painting. The release command will reject it atomically.
-            QPen invalid(QColor("#ef4444"),2,Qt::DashLine);invalid.setCosmetic(true);
+            QPen invalid(canvasStyle::error(),2,Qt::DashLine);invalid.setCosmetic(true);
             scene_.addPath(path(link.geometry),invalid)->setZValue(z+5);continue;
         }
         // Drawn lines only: an edge offset round a bend tighter than the lane can loop back on
@@ -140,10 +135,11 @@ void EditorCanvas::redraw() {
         auto surface=path(left);for(auto it=right.rbegin();it!=right.rend();++it)surface.lineTo(q(*it));surface.closeSubpath();
         scene_.addPath(surface,QPen(Qt::NoPen),QBrush(colour))->setZValue(z+1);
         for(const auto& marking:markingStrokes(linkMarkings(link,document_->network.drivingSide))) {
-            QPen pen(QColor(QString::fromStdString(appearance.laneColor)),1,marking.type==MarkingType::solid?Qt::SolidLine:Qt::DashLine);pen.setCosmetic(true);
+            const auto pen=canvasStyle::markingPen(QColor(QString::fromStdString(appearance.laneColor)),marking.type);
             auto* mark=scene_.addPath(path(marking.geometry),pen);
             mark->setZValue(z+2);mark->setData(0,QStringLiteral("road-marking"));mark->setData(1,QString::fromStdString(link.id));
         }
+        drawObjectFeedback(link.id,surface,z+2.5);
         // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
         if (polylineLength(link.geometry) <= 0) continue;
         const auto mid=pointAlong(road,polylineLength(road)/2);
@@ -151,19 +147,8 @@ void EditorCanvas::redraw() {
         const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());
         QPolygonF arrow;
         for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
-        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(Qt::white))->setZValue(z+3);
-        // Handles belong to the primary alone; drawing them for every selected link would
-        // suggest a group drag that M1.5 deliberately does not implement.
-        // Grips sit on the bundle centreline, where Vissim shows them, not on the reference
-        // polyline, which ends up at one edge as soon as lanes are added to a single side.
-        if (link.id==primary) {
-            const auto handles=linkCentreline(link,document_->network.drivingSide);
-            const double radius=4/std::abs(transform().m11());
-            QPen outline(QColor("#334155"),1);outline.setCosmetic(true);
-            for (std::size_t i=0;i<handles.size();++i)
-                scene_.addEllipse(handles[i].x-radius,handles[i].y-radius,2*radius,2*radius,outline,
-                    QBrush(static_cast<int>(i)==vertex_?QColor("#ffb454"):QColor("#ffffff")))->setZValue(z+5);
-        }
+        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(editorDesign::role(QPalette::Base)))->setZValue(z+3);
+        drawGeometryHandles(link.id,road,false);
     }
     drawConnectors();
     drawLaneHandles();
@@ -172,11 +157,12 @@ void EditorCanvas::redraw() {
     drawCounters();
     drawHeads();
     if (band_) {
-        QPen pen(QColor("#167b98"),1,Qt::DashLine); pen.setCosmetic(true);
-        scene_.addRect(*band_,pen,QBrush(QColor(22,123,152,30)))->setZValue(200009);
+        QPen pen(canvasStyle::active(),1,Qt::DashLine); pen.setCosmetic(true);
+        QColor wash=canvasStyle::active(); wash.setAlpha(30);
+        scene_.addRect(*band_,pen,QBrush(wash))->setZValue(200009);
     }
     if (!draft_.empty()) {
-        QPen pen(QColor("#de8618"),2,Qt::DashLine); pen.setCosmetic(true);
+        QPen pen(canvasStyle::active(),2,Qt::DashLine); pen.setCosmetic(true);
         scene_.addPath(path(draft_),pen)->setZValue(200008);
         for (auto p:draft_) { const double r=3/std::abs(transform().m11()); scene_.addEllipse(p.x-r,p.y-r,2*r,2*r,pen)->setZValue(8); }
     }
@@ -190,15 +176,29 @@ void EditorCanvas::fitNetwork() {
     setTransform(QTransform::fromScale(scale,-scale)); centerOn(bounds.center()); redraw();
 }
 void EditorCanvas::drawBackground(QPainter* painter,const QRectF& rect) {
-    painter->fillRect(rect,QColor("#f0f4f8"));
-    double step=grid;
-    if (step<=0) return;
-    while(step*std::abs(transform().m11())<20) step*=10;
-    QPen pen(QColor("#dce3eb"),1); pen.setCosmetic(true); painter->setPen(pen);
-    for(double x=std::floor(rect.left()/step)*step;x<=rect.right();x+=step) painter->drawLine(QPointF(x,rect.top()),QPointF(x,rect.bottom()));
-    for(double y=std::floor(rect.top()/step)*step;y<=rect.bottom();y+=step) painter->drawLine(QPointF(rect.left(),y),QPointF(rect.right(),y));
+    painter->fillRect(rect,editorDesign::role(QPalette::Base));
+    // Two tiers, chosen from the view's level of detail: minor lines never closer than 8 px,
+    // a major line every tenth. Each line is a one-device-pixel cosmetic pen centred on a
+    // device pixel (+0.5), so it stays a sharp hairline at any devicePixelRatio.
+    const auto tiers=editorDesign::gridTiers(grid,editorDesign::levelOfDetail(painter->worldTransform()));
+    if (tiers.minor<=0) return;
+    const auto device=painter->deviceTransform();
+    const double dpr=painter->device()?painter->device()->devicePixelRatioF():1.;
+    const auto snapX=[&](double x){return editorDesign::snapHairline(x,device.m11(),device.dx());};
+    const auto snapY=[&](double y){return editorDesign::snapHairline(y,device.m22(),device.dy());};
+    const auto lines=[&](double step,const QColor& colour,bool skipMajor) {
+        painter->setPen(editorDesign::hairlinePen(colour,dpr));
+        const auto major=[&](double v){return std::fmod(std::abs(v)+step/2,step*10)<step;};
+        for(double x=std::floor(rect.left()/step)*step;x<=rect.right();x+=step)
+            if(!(skipMajor&&major(x))) painter->drawLine(QPointF(snapX(x),rect.top()),QPointF(snapX(x),rect.bottom()));
+        for(double y=std::floor(rect.top()/step)*step;y<=rect.bottom();y+=step)
+            if(!(skipMajor&&major(y))) painter->drawLine(QPointF(rect.left(),snapY(y)),QPointF(rect.right(),snapY(y)));
+    };
+    lines(tiers.minor,editorDesign::role(QPalette::Midlight),true);
+    lines(tiers.major,editorDesign::role(QPalette::Mid),false);
 }
 void EditorCanvas::wheelEvent(QWheelEvent* e) {
+    clearHover();
     const auto before=mapToScene(e->position().toPoint());
     const double old=std::abs(transform().m11()), next=std::clamp(old*std::pow(1.0015,e->angleDelta().y()),0.05,100.0);
     scale(next/old,next/old);

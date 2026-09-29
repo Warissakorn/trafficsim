@@ -14,7 +14,11 @@
 #include <QToolBar>
 #include <QUuid>
 namespace trafficsim {
-EditorWindow::~EditorWindow() = default;
+EditorWindow::~EditorWindow() {
+    // Qt destroys child widgets after C++ members. Focus/leave events during teardown must
+    // not let the canvas repaint a document whose owning History has already been destroyed.
+    canvas_->setDocument(nullptr);
+}
 void EditorWindow::buildRecovery() {
     recoveryDirectory_=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)+"/recovery";
     QDir().mkpath(recoveryDirectory_);

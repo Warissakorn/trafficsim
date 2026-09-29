@@ -1,11 +1,15 @@
 #include "editor_window.hpp"
 #include "editor_style.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QActionGroup>
+#include <QAbstractSpinBox>
 #include <QComboBox>
 #include <QDockWidget>
 #include <QHeaderView>
+#include <QLineEdit>
 #include <QLabel>
+#include <QLocale>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -15,8 +19,17 @@
 #include <QTableWidget>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTreeWidget>
+#include <initializer_list>
 namespace trafficsim {
 void EditorWindow::buildWorkspace() {
+    auto* commandPalette=action("editorCommandPalette",
+#if defined(Q_OS_MACOS) || defined(Q_OS_MAC)
+        QKeySequence("Meta+K"),[this]{showCommandPalette();});
+#else
+        QKeySequence("Ctrl+K"),[this]{showCommandPalette();});
+#endif
+    commandPalette->setShortcutContext(Qt::ApplicationShortcut);addAction(commandPalette);
     auto* palette=findChild<QDockWidget*>("editorPaletteDock");
     palette->setFeatures(QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable);
     actions_["editorNetworkObjects"]=palette->toggleViewAction();
@@ -37,7 +50,7 @@ void EditorWindow::buildWorkspace() {
     menu("editorEditMenu",{"editorUndo","editorRedo","","editorFinish","editorRotate","editorDeleteVertex","editorDeleteLink","editorDeleteSelected"});
     menu("editorViewMenu",{"editorFit","editorSnap","editorToggleBackground","","editorNetworkObjects","editorInspector","editorObjects","editorHistory","","editorFocusCanvas","editorResetLayout"});
     menu("editorSimulationMenu",{"editorRun","editorStep","editorReset","editorRunSettings","editorRecheck"});
-    menu("editorHelpMenu",{"editorShortcuts"});
+    menu("editorHelpMenu",{"editorCommandPalette","editorShortcuts"});
     // Menu alternatives keep widget controls reachable even at extreme toolbar widths.
     auto* languages=new QActionGroup(this);
     for(int index=0;index<language_->count();++index) {
@@ -61,7 +74,7 @@ void EditorWindow::buildWorkspace() {
     for(const auto* key:{"editorInspector","editorObjects","editorFocusCanvas"})workspace->addAction(actions_.at(key));
     workspace->addSeparator();workspace->addWidget(language_);
     for(auto* bar:findChildren<QToolBar*>(QString(),Qt::FindDirectChildrenOnly)) {
-        bar->setMovable(false);bar->setFloatable(false);bar->setIconSize(QSize(20,20));bar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        bar->setMovable(false);bar->setFloatable(false);bar->setIconSize(QSize(editorDesign::iconSize,editorDesign::iconSize));bar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     }
     auto* runBar=findChild<QToolBar*>("editorRunToolbar");
     if(auto* button=qobject_cast<QToolButton*>(runBar->widgetForAction(actions_.at("editorRun")))) {
@@ -75,8 +88,19 @@ void EditorWindow::buildWorkspace() {
     }
     for(auto* tabs:{properties_,objects_}){tabs->setDocumentMode(true);tabs->setUsesScrollButtons(true);tabs->setElideMode(Qt::ElideRight);}
     for(auto* table:findChildren<QTableWidget*>()) {
-        table->setAlternatingRowColors(true);table->setShowGrid(false);table->verticalHeader()->setDefaultSectionSize(28);
+        table->setAlternatingRowColors(true);table->setShowGrid(false);
+        table->verticalHeader()->setDefaultSectionSize(editorDesign::tableRowHeight);
+        table->horizontalHeader()->setMinimumSectionSize(editorDesign::controlHeight);
     }
+    for(auto* number:findChildren<QAbstractSpinBox*>()) {
+        number->setFont(editorDesign::numericFont());number->setLocale(QLocale::c());number->setProperty("numeric",true);
+    }
+    setTabOrder(palette_,visibleLevel_);
+    setTabOrder(visibleLevel_,findChild<QToolButton*>("editorBackgroundButton"));
+    setTabOrder(findChild<QToolButton*>("editorBackgroundButton"),canvas_);
+    setTabOrder(canvas_,id_);setTabOrder(id_,name_);setTabOrder(name_,properties_);
+    setTabOrder(properties_,objects_);setTabOrder(objects_,linkTable_);
+    setTabOrder(linkTable_,connectorTable_);setTabOrder(connectorTable_,signalTable_);
     for(auto* dock:findChildren<QDockWidget*>(QString(),Qt::FindDirectChildrenOnly))
         connect(dock,&QDockWidget::visibilityChanged,this,[this,dock](bool visible){
             if(visible&&!changingWorkspace_&&actions_.at("editorFocusCanvas")->isChecked()) {

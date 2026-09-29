@@ -1,6 +1,7 @@
 #include "editor_window.hpp"
 #include "path.hpp"
 #include "editor_style.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QMenu>
 #include <QAction>
 #include <QComboBox>
@@ -13,14 +14,18 @@
 #include <QLockFile>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include <QFont>
 #include <QSignalBlocker>
 #include <QStatusBar>
+#include <QHeaderView>
+#include <QTableWidget>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <QTabWidget>
+#include <QStyle>
 #include <cmath>
 
 namespace trafficsim {
@@ -28,7 +33,8 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     setObjectName("networkEditor");displayCatalog_=loadDisplayCatalog(data);
     const int font=QFontDatabase::addApplicationFont(displayPath(data/"fonts/NotoSansThai.ttf"));
     if(font<0) throw std::runtime_error("Cannot load bundled Thai font");
-    setFont(QFont(QFontDatabase::applicationFontFamilies(font).front(),10));
+    QFont editorFont(QFontDatabase::applicationFontFamilies(font).front());
+    editorFont.setPixelSize(editorDesign::fontSizeBody);setFont(editorFont);
     for(const auto* code:{"en","th"}) {
         QFile f(displayPath(data/"locales"/(std::string(code)+".json")));
         if(!f.open(QIODevice::ReadOnly)) throw std::runtime_error("Cannot load locale");
@@ -38,8 +44,10 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     language_->addItem(locales_.at("en").value("english").toString(),"en");
     language_->addItem(locales_.at("en").value("thai").toString(),"th"); language_->setCurrentIndex(language=="th"?1:0);
     applyEditorStyle(this);
+    setAnimated(false); // Docks and toolbars snap into place; the editor has no motion (D81).
     auto* central=new QWidget(this); auto* layout=new QVBoxLayout(central);
-    layout->setContentsMargins(6,6,6,4);layout->setSpacing(5);
+    layout->setContentsMargins(editorDesign::space1,editorDesign::space1,editorDesign::space1,editorDesign::space1);
+    layout->setSpacing(editorDesign::space1);
     auto* scope=new QLabel(central); scope->setWordWrap(true); scope->setObjectName("editorScope"); texts_["editorScopeCompact"]=scope; layout->addWidget(scope);
     scope->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
     canvas_=new EditorCanvas(central);canvas_->setDisplayCatalog(displayCatalog_); layout->addWidget(canvas_,1);
@@ -76,7 +84,9 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     auto* snap=action("editorSnap",{},[this]{canvas_->snap=actions_.at("editorSnap")->isChecked();});
     snap->setCheckable(true); snap->setChecked(true); tools->addAction(snap);
     grid_=new QDoubleSpinBox(this); grid_->setRange(0.1,100); grid_->setValue(1); grid_->setSuffix(" m"); grid_->setObjectName("editorGrid");grid_->setMaximumWidth(86); tools->addWidget(grid_);
-    coordinates_=new QLabel(this); statusBar()->addPermanentWidget(coordinates_);
+    coordinates_=new QLabel(this);coordinates_->setObjectName("editorCoordinates");
+    coordinates_->setProperty("numeric",true);coordinates_->setFont(editorDesign::numericFont());
+    statusBar()->addPermanentWidget(coordinates_);
     buildInspector();
     tools->addAction(action("editorDeleteSelected",{},[this]{deleteSelected();}));
     buildObjectTables();
@@ -94,7 +104,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         refresh(false);
         if (!canvas_->selected().empty()) properties_->setCurrentIndex(canvas_->selectedConnector()?1:0);
     };
-    canvas_->cursorMoved=[this](Point p){coordinates_->setText(QString("x %1 m   y %2 m").arg(p.x,0,'f',2).arg(p.y,0,'f',2));};
+    canvas_->cursorMoved=[this](Point p){coordinates_->setText(QString("x %1 m   y %2 m").arg(editorDesign::formatValue(p.x,2),9).arg(editorDesign::formatValue(p.y,2),9));};
     canvas_->createLink=[this](const auto& points){
         std::string created; if(execute("editorDraw",[&](auto& d){created=addLink(d,points,count_->value(),width_->value());
             changeAppearance(d,created,objectLevel_->currentData().toInt(),objectDisplay_->currentData().toString().toStdString());})) canvas_->select(created);
@@ -152,7 +162,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
     buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildConflicts(); buildCounters(); buildRecovery(); buildPalette();
-    resize(1360,860);buildWorkspace();
+    resize(1440,900);buildWorkspace();
     history_.reset(); translate(); refresh();canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {
@@ -163,17 +173,39 @@ QString EditorWindow::text(const std::string& key) const { return locales_.at(la
 void EditorWindow::translate() {
     for(const auto& [key,a]:actions_) a->setText(text(key));
     for(const auto& [key,w]:texts_) {
-        if(auto* label=qobject_cast<QLabel*>(w)) label->setText(text(key));
-        else if(auto* dock=qobject_cast<QDockWidget*>(w)) dock->setWindowTitle(text(key));
+        if(auto* label=qobject_cast<QLabel*>(w)) {
+            auto title=text(key);const bool english=language_->currentData().toString()=="en";
+            if(english&&label->property("editorEyebrow").toBool())title=title.toUpper();
+            if(label->property("editorEyebrow").toBool()) {
+                label->setProperty("englishLabels",english);label->style()->unpolish(label);label->style()->polish(label);
+                auto groupFont=label->font();editorDesign::styleGroupLabel(groupFont,english);label->setFont(groupFont);
+            }
+            label->setText(title);
+        }
+        else if(auto* dock=qobject_cast<QDockWidget*>(w)) {
+            const bool english=language_->currentData().toString()=="en";
+            dock->setProperty("englishLabels",english);dock->style()->unpolish(dock);dock->style()->polish(dock);
+            auto title=text(key);if(english)title=title.toUpper();dock->setWindowTitle(title);
+        }
         else if(auto* bar=qobject_cast<QToolBar*>(w)) bar->setWindowTitle(text(key));
         else if(auto* menu=qobject_cast<QMenu*>(w)) menu->setTitle(text(key));
     }
+    for(const auto& refreshValidation:validationRefresh_)refreshValidation();
     const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool"};
     for(int i=0;i<11;++i) tool_->setItemText(i,text(modes[i]));
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
-    retranslateTables(); translateDemand(); translateResults(); translateConflicts(); translateCounters(); translatePalette(); refreshToolHint();
+    retranslateTables();
+    const bool english=language_->currentData().toString()=="en";
+    for(auto* table:findChildren<QTableWidget*>()) {
+        auto* header=table->horizontalHeader();header->setProperty("englishLabels",english);
+        header->style()->unpolish(header);header->style()->polish(header);
+        auto headerFont=header->font();editorDesign::styleGroupLabel(headerFont,english);header->setFont(headerFont);
+        if(english)for(int column=0;column<table->columnCount();++column)
+            if(auto* item=table->horizontalHeaderItem(column))item->setText(item->text().toUpper());
+    }
+    translateDemand(); translateResults(); translateConflicts(); translateCounters(); translatePalette(); refreshToolHint();
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     language_->setAccessibleName(text("language"));
     texts_.at("editorScopeCompact")->setToolTip(text("editorScope"));
@@ -235,7 +267,7 @@ void EditorWindow::refresh(bool modelChanged) {
         count_->setValue(static_cast<int>(link->lanes.size()));
         QStringList widths; for(const auto& lane:link->lanes) widths<<QString::number(lane.width,'g',10);
         widths_->setText(widths.join(", "));
-        selectionInfo_->setText(text("editorLength").arg(polylineLength(link->geometry),0,'f',2));
+        selectionInfo_->setText(text("editorLength").arg(editorDesign::formatValue(polylineLength(link->geometry),2)));
     } else {widths_->clear();selectionInfo_->setText(text("editorNoSelection"));}
     // Property edits always act on the primary object, so say so rather than letting a
     // multi-selection look as if lane or geometry changes will apply to all of it.

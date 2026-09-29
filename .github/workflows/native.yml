@@ -1,7 +1,16 @@
 name: Native C++
+# A push to a branch with an open pull request used to run every job twice (push and
+# pull_request on the same commit). Branches are covered by their pull request; main by push.
+# Run it by hand from the Actions tab for a branch without one.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+# A newer push to the same pull request supersedes the run still going for the old commit.
+concurrency:
+  group: native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
@@ -10,19 +19,44 @@ jobs:
     strategy:
       matrix:
         preset: [headless, desktop, release]
+    # ccache: a clean release build is 196 s cold and 8 s warm locally (177/177 hits, PCH
+    # included). The sloppiness settings are what let the precompiled-header targets hit.
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_SLOPPINESS: pch_defines,time_macros,include_file_mtime,include_file_ctime
+      CCACHE_MAXSIZE: 500M
     steps:
       - uses: actions/checkout@v5
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev
-      - run: cmake --preset ${{ matrix.preset }}
-      - run: cmake --build --preset ${{ matrix.preset }} --parallel 2
+        run: sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev ccache
+      - uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.preset }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.preset }}-
+      - run: cmake --preset ${{ matrix.preset }} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - run: ccache -z
+      - run: cmake --build --preset ${{ matrix.preset }} --parallel 4
+      - run: ccache -s
       - run: cmake --build build/${{ matrix.preset }} --target check
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.preset == 'desktop'
+        with:
+          name: editor-interaction-linux
+          path: build/desktop/interaction-preview.png
   # The UI suites are platform-sensitive: they touch real user paths, locks and window
   # activation. Until 2026-09-15 they ran on Windows only in the manual packaging workflow,
   # so a Windows-only UI failure merged to main green and surfaced days later. This job
   # gates it on every push and pull request instead.
   windows-desktop:
     runs-on: windows-2022
+    # Public-repository runners have 4 vCPUs. The Visual Studio generator's --parallel is
+    # msbuild /m (projects in parallel); /MP also compiles a project's own files in parallel,
+    # which is where trafficsim-tests spends its time. CL is read by every cl.exe invocation.
+    env:
+      CL: /MP
     steps:
       - uses: actions/checkout@v5
       - name: Install Qt
@@ -36,18 +70,29 @@ jobs:
           arch: win64_msvc2019_64
           cache: true
       - name: Install JSON headers
+        # Header-only, so vcpkg has no DLL to copy beside each binary; its per-target copy step
+        # (applocal) is off because parallel targets raced on it (package run 68, exit 32).
         run: vcpkg install nlohmann-json:x64-windows
       - name: Configure MSVC
-        run: cmake -S . -B build/desktop -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
-      - run: cmake --build build/desktop --config Release --parallel 2
+        run: cmake -S . -B build/desktop -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_APPLOCAL_DEPS=OFF
+      - run: cmake --build build/desktop --config Release --parallel 4
       - run: ctest --test-dir build/desktop -C Release --output-on-failure
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: editor-interaction-windows
+          path: build/desktop/interaction-preview.png
   windows-core:
     runs-on: windows-2022
+    env:
+      CL: /MP
     steps:
       - uses: actions/checkout@v5
       - name: Install JSON headers
+        # Header-only, so vcpkg has no DLL to copy beside each binary; its per-target copy step
+        # (applocal) is off because parallel targets raced on it (package run 68, exit 32).
         run: vcpkg install nlohmann-json:x64-windows
       - name: Configure MSVC
-        run: cmake -S . -B build/native -G "Visual Studio 17 2022" -A x64 -DTRAFFICSIM_BUILD_DESKTOP=OFF -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
-      - run: cmake --build build/native --config Release --parallel 2
+        run: cmake -S . -B build/native -G "Visual Studio 17 2022" -A x64 -DTRAFFICSIM_BUILD_DESKTOP=OFF -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_APPLOCAL_DEPS=OFF
+      - run: cmake --build build/native --config Release --parallel 4
       - run: cmake --build build/native --config Release --target check

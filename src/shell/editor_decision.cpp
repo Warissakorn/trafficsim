@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
 #include <QFormLayout>
@@ -28,6 +29,8 @@ void EditorWindow::editDecision(const std::string& id) {
     if(def)for(const auto& x:def->routingDecisions)if(x.id==id)value=x;
     QDialog dialog(this);dialog.setObjectName("editorDecisionDialog");dialog.setWindowTitle(text("editorEditDecision"));
     auto* layout=new QVBoxLayout(&dialog);
+    layout->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
+    layout->setSpacing(editorDesign::space2);
     auto* name=new QLineEdit(QString::fromStdString(value.name),&dialog);name->setObjectName("editorDecisionNameField");
     name->setPlaceholderText(text("editorDecisionName"));layout->addWidget(name);
     auto* help=new QLabel(text("editorDecisionHelp"),&dialog);help->setWordWrap(true);layout->addWidget(help);
@@ -36,7 +39,9 @@ void EditorWindow::editDecision(const std::string& id) {
     for(const auto& l:network.links)
         place->addItem(QString::fromStdString(l.name.empty()?l.id:l.name),QString::fromStdString(l.id));
     if(const int at=place->findData(QString::fromStdString(value.linkId));at>=0)place->setCurrentIndex(at);
-    auto* placeRow=new QFormLayout;placeRow->addRow(text("editorDecisionLinkLabel"),place);layout->addLayout(placeRow);
+    auto* placeRow=new QFormLayout;placeRow->setContentsMargins(0,0,0,0);
+    placeRow->setHorizontalSpacing(editorDesign::space2);placeRow->setVerticalSpacing(editorDesign::space1);
+    placeRow->addRow(text("editorDecisionLinkLabel"),place);layout->addLayout(placeRow);
     // M2.1.2: counted turning volumes per interval, pasted per row as they come off a count sheet,
     // over intervals of one length from a start time -- the M2.2 input dialog's convention.
     auto* start=new QDoubleSpinBox(&dialog);start->setObjectName("editorDecisionIntervalStart");
@@ -61,11 +66,12 @@ void EditorWindow::editDecision(const std::string& id) {
     const auto addRow=[&](const QString& label,const std::string& route,const std::string& link,double flow,
                           const std::vector<double>& stored){
         const int n=flows->rowCount();flows->insertRow(n);
-        auto* cell=new QTableWidgetItem(label);cell->setFlags(Qt::ItemIsEnabled);flows->setItem(n,0,cell);
+        auto* cell=new QTableWidgetItem(label);cell->setFlags(Qt::ItemIsEnabled);editorDesign::setNumericText(cell);flows->setItem(n,0,cell);
         auto* field=new QDoubleSpinBox(flows);field->setObjectName(QString("editorDecisionFlow%1").arg(n));
         field->setRange(0,1000000);field->setDecimals(3);field->setValue(flow);
         flows->setCellWidget(n,1,field);
         auto* counts=new QLineEdit(flows);counts->setObjectName(QString("editorDecisionCounts%1").arg(n));
+        counts->setFont(editorDesign::numericFont());counts->setProperty("numeric",true);
         counts->setPlaceholderText(text("editorDecisionCountsPlaceholder"));
         if(regular&&!stored.empty()){
             QStringList items;for(double f:stored)items<<QString::number(f,'g',12);

@@ -143,7 +143,10 @@ int main(int argc, char** argv) {
         act(w, "editorUndo")->trigger(); QApplication::processEvents();
         require(priority(w, first.id) == ConflictPriority::secondYields && w.history().revision() == revision, "The click was not one Undo step");
         click(w, {115, 15});
-        require(w.history().revision() == revision && c->highlightedConflict() == first.id, "A click on empty space changed something");
+        require(w.history().revision() == revision && c->highlightedConflict().empty(), "An empty click did not clear the area without editing it");
+        require(table->selectedItems().empty() && table->currentRow() == -1, "An empty click left the conflict row selected");
+        click(w, inside);
+        require(c->highlightedConflict() == first.id && w.history().revision() == revision, "Reselecting the area changed its priority");
 
         // Both sides stay readable: the one that gives way is hatched and drawn above the other.
         const auto items = sides(w, first.id);

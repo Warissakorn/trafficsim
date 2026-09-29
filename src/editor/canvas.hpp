@@ -9,8 +9,6 @@
 #include <optional>
 #include <map>
 
-class QTimer;
-
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
 public:
@@ -47,6 +45,8 @@ public:
     void redraw();
     void fitNetwork();
     void cancel();                                        // forget the gesture AND repaint
+    void clearSelection(bool cancelGesture = true);       // includes table-owned highlights
+    std::function<void()> selectionCleared;
     void finishDrawing();
     void removeVertex();
     bool snap{true};
@@ -98,10 +98,6 @@ public:
     std::function<void(std::vector<MeasurementLine>)> counterDraftCommitted;
     const std::vector<MeasurementLine>& counterDraft() const { return counterDraft_; }
     void commitCounterDraft();
-    // Paint state only, advanced by a timer. Tests set it directly: waiting on wall clock for
-    // an animation is how a suite becomes flaky, and no measured number depends on it.
-    void setAnimationPhase(int phase);
-    int animationPhase() const { return animationPhase_; }
     std::function<void(Point)> duplicateRequested;
     std::function<void(Point)> translateRequested;
     std::function<void(Point,double)> rotateRequested;
@@ -128,6 +124,7 @@ protected:
     void wheelEvent(QWheelEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
+    void leaveEvent(QEvent*) override;
     void drawBackground(QPainter*, const QRectF&) override;
     bool focusNextPrevChild(bool) override;
 private:
@@ -174,15 +171,10 @@ private:
     bool demandHover(QMouseEvent*);
     void clearRouteDraft();
     void reject();
-    void animate();
-    bool animating() const;
     std::vector<std::string> routeDraft_;
-    std::vector<std::vector<Point>> pulseGeometry_;
     std::string hoverSegment_, highlightedRoute_;
     bool hoverReachable_{};
     Point hoverPoint_{};
-    int animationPhase_{}, commitPulse_{}, rejectPulse_{};
-    QTimer* animation_{};
     // Connector geometry is the most expensive thing a frame does, and a frame recomputed all
     // of it even when nothing had moved. What `connectorPaths` and `connectorBoundaries` read is
     // exactly the Connector, the two Links it names and the driving side -- nothing else in the
@@ -264,8 +256,19 @@ private:
     // cancel() without the repaint, for callers that redraw for their own reasons anyway.
     void resetGesture();
     void drawConnectors();
-    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; };
+    void clearSelectionState();
+    void clearHighlights();
+    void clearHover();
+    void updateHover(QPoint);
+    void drawObjectFeedback(const std::string&, const QPainterPath&, double z);
+    void drawGeometryHandles(const std::string&, const std::vector<Point>&, bool connector);
+    std::string hoverObject_, hoverConflict_, hoverAutomatic_, hoverWaitingLine_;
+    int hoverVertex_{-1}, hoverLaneKind_{}, hoverLaneLocation_{-1};
+    struct LaneHandle { Point position, anchor, direction; double width; int kind, count, maximum; int location{1}; double tabLength{}; };
     std::vector<LaneHandle> laneHandles() const;
+    void previewLinkLanes(Link&) const;
+    QPainterPath laneHandlePath(const LaneHandle&, double padding = 0) const;
+    std::optional<LaneHandle> laneHandleAt(QPoint) const;
     bool startLaneResize(QPoint);
     void updateLaneResize(QPoint);
     void drawLaneHandles();

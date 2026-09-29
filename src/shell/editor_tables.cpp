@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QApplication>
 #include <QDockWidget>
@@ -23,6 +24,7 @@ QTableWidget* table(QWidget* parent, const char* name, int columns) {
 void fill(QTableWidget* view,int row,const QStringList& values,const QString& id) {
     for (int column=0; column<values.size(); ++column) {
         auto* cell=new QTableWidgetItem(values[column]);
+        if(column==0||column>=2)editorDesign::setNumericText(cell,column>=2);
         // Every row carries the object id it names; nothing reads a row back out of its text.
         cell->setData(Qt::UserRole,id);
         view->setItem(row,column,cell);
@@ -34,7 +36,8 @@ void EditorWindow::buildObjectTables() {
     auto* dock=new QDockWidget(this); dock->setObjectName("editorObjectsDock"); texts_["editorObjectsDock"]=dock;
     dock->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetClosable);
     auto* body=new QWidget(dock); auto* layout=new QVBoxLayout(body);
-    layout->setContentsMargins(6,2,6,6);layout->setSpacing(4);
+    layout->setContentsMargins(editorDesign::space1,editorDesign::space1,editorDesign::space1,editorDesign::space1);
+    layout->setSpacing(editorDesign::space1);
     objects_=new QTabWidget(body); objects_->setObjectName("editorObjectTabs"); layout->addWidget(objects_);
     linkTable_=table(objects_,"editorLinkTable",5);
     connectorTable_=table(objects_,"editorConnectorTable",5);
