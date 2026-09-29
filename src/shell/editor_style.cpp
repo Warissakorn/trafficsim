@@ -113,7 +113,7 @@ QString editorStyleSheet() {
         QTabBar::tab:focus { border: 2px solid palette(highlight); }
         QLineEdit, QComboBox, QAbstractSpinBox { min-height: @fieldContentpx; max-height: @fieldContentpx; background: palette(base); border: 1px solid palette(dark); border-radius: @radiuspx; padding: 0 @space2px; selection-background-color: palette(highlight); selection-color: palette(highlighted-text); }
         QAbstractSpinBox, QLineEdit[numeric="true"], QComboBox[numeric="true"] { font-size: @fontNumericpx; }
-        QAbstractSpinBox, QLineEdit[numeric="true"] { qproperty-alignment: AlignRight; }
+        QAbstractSpinBox, QLineEdit[numeric="true"] { qproperty-alignment: 'AlignRight | AlignVCenter'; }
         QLineEdit:hover, QComboBox:hover, QAbstractSpinBox:hover { border-color: palette(text); }
         QLineEdit:focus, QComboBox:focus, QAbstractSpinBox:focus { border: 2px solid palette(highlight); padding: 0 7px; min-height: @fieldFocuspx; max-height: @fieldFocuspx; }
         QLineEdit:read-only { background: palette(midlight); color: palette(window-text); }

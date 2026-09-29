@@ -18,6 +18,9 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <cmath>
+#include <QImage>
+#include <utility>
+#include <vector>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -101,6 +104,22 @@ void boxModel() {
         require(height()==editorDesign::controlHeight,
                 std::string(control->metaObject()->className())+" changes height when invalid: "+std::to_string(control->height()));
         control->setProperty("validationState",QVariant());control->style()->unpolish(control);control->style()->polish(control);
+    }
+    // One vertical pattern: the same digits sit at the same rows in every kind of control, and
+    // centred to the pixel (a 9 px cap in 24 px leaves 15 px, so 7 above and 8 below is centred).
+    button->setFocus();QApplication::processEvents(); // no text cursor in the line edit
+    edit->setText("0000");spin->setValue(0);combo->setItemText(0,"0000");button->setText("0000");
+    std::vector<std::pair<int,int>> gaps;
+    for(QWidget* control:{static_cast<QWidget*>(edit),static_cast<QWidget*>(spin),static_cast<QWidget*>(combo),static_cast<QWidget*>(button)}) {
+        QApplication::processEvents();
+        const QImage image=control->grab().toImage();int top=-1,bottom=-1;
+        for(int y=2;y<image.height()-2;++y)for(int x=4;x<image.width()-24;++x)
+            if(image.pixelColor(x,y).lightness()<110){if(top<0)top=y;bottom=y;break;}
+        require(top>=0,std::string(control->metaObject()->className())+" drew no text");
+        gaps.push_back({top,image.height()-1-bottom});
+        require(std::abs(gaps.back().first-gaps.back().second)<=1,
+                std::string(control->metaObject()->className())+" text is not centred: "+std::to_string(gaps.back().first)+" above, "+std::to_string(gaps.back().second)+" below");
+        require(gaps.back()==gaps.front(),std::string(control->metaObject()->className())+" places text differently from a line edit");
     }
     // Same configuration as the editor's toolbars (editor_workspace.cpp): icon-only 16 px buttons.
     // Without it the button shows its text beside the icon and is 27 px, which is a test artefact.
