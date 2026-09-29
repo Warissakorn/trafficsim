@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace trafficsim {
 namespace {

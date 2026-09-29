@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <stdexcept>
 
 namespace trafficsim {
 namespace {

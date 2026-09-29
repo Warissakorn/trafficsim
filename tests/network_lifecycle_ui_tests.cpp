@@ -11,6 +11,7 @@
 #include <QPainterPathStroker>
 #include <numbers>
 #include <iostream>
+#include <stdexcept>
 using namespace trafficsim;
 namespace {
 void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}

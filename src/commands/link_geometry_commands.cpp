@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <set>
+#include <stdexcept>
 
 namespace trafficsim {
 void straightenLink(ProjectDocument& d,const std::string& id) {

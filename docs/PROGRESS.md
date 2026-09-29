@@ -60,6 +60,10 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   (neither ccache nor sccache caches MSVC `/Yu`), and the same `actions/cache` scheme as Linux.
   `/MP` is gone: Ninja already runs one file per core. `package.yml` keeps the Visual Studio
   generator and its PCH; it builds release artifacts, where a cache buys nothing.
+  First run (364) failed on MSVC: `history.cpp` and `split_link.cpp` throw `std::invalid_argument`
+  without `<stdexcept>`, which libstdc++ and libc++ reach through `<string>` and MSVC does not.
+  An include check over `src/ tools/ tests/` (each `std::` symbol against the file's own
+  include closure) found the same class in twelve files; all now include `<stdexcept>`.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 

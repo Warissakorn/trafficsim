@@ -15,6 +15,7 @@
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include <array>
+#include <stdexcept>
 #include <string>
 
 namespace trafficsim::fixture {

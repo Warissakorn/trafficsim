@@ -1,6 +1,7 @@
 #include "history.hpp"
 #include <algorithm>
 #include <limits>
+#include <stdexcept>
 
 namespace trafficsim {
 std::vector<History::State> History::states() const {

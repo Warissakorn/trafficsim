@@ -2,6 +2,7 @@
 #include "detail.hpp"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace trafficsim {
 AuthoringDefinition& demand(ProjectDocument& d) {
