@@ -44,6 +44,11 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   windows-core 4:41/3:41 → 3:55 (within noise); linux desktop 4:12/4:14 → 3:30; headless
   2:31/2:08 → 1:57; **release 3:09/3:37 → 4:01, slower** — one sample, taken while ccache was
   writing its first cache, so not yet attributed. The next run is the first warm-cache one.
+  **Warm cache (run 361):** Linux build steps release 0:08, headless 0:07, desktop 0:24; the
+  release slowdown is gone. Windows is now the whole critical path: windows-desktop build 5:40
+  (4:31 in run 360; baseline 6:17/6:16, so −10 to −28%), windows-core 3:45 (no change); whole
+  run 8:03 against 8:27. Getting Windows down means the Ninja generator plus a compiler cache
+  there — a separate change, not made here.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 
