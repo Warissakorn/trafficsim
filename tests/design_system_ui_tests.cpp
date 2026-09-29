@@ -98,8 +98,9 @@ void boxModel() {
                 std::string(control->metaObject()->className())+" changes height when invalid: "+std::to_string(control->sizeHint().height()));
     }
     QToolBar bar;bar.setStyleSheet(editorStyleSheet());bar.setIconSize(QSize(editorDesign::iconSize,editorDesign::iconSize));
-    bar.addAction(editorIcon(EditorIcon::select),"Select");bar.show();QApplication::processEvents();
-    const auto* toolButton=bar.findChild<QToolButton*>();
+    auto* selectAction=bar.addAction(editorIcon(EditorIcon::select),"Select");bar.show();QApplication::processEvents();
+    // widgetForAction, not findChild: the first QToolButton child is the 12 px overflow extension.
+    const auto* toolButton=qobject_cast<QToolButton*>(bar.widgetForAction(selectAction));
     require(toolButton&&toolButton->sizeHint().height()==editorDesign::iconSize+8,
             "Toolbar button is "+std::to_string(toolButton?toolButton->sizeHint().height():-1)+" px, not 24");
     require(bar.sizeHint().height()==editorDesign::toolbarHeight,
