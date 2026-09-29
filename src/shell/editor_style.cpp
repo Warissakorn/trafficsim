@@ -71,6 +71,9 @@ QIcon editorIcon(EditorIcon icon) {
 // Every colour is a palette(role) reference, so the QSS holds no hex literal and follows the one
 // editorPalette(). Box model: a control is 1 px border + 4 px padding + 18 px content = 28 px, and
 // the 2 px focus / invalid border takes 1 px of padding back so a control never changes height.
+// Qt's stylesheet style adds 3 px to a QToolButton's content before the box model, so a toolbar
+// button is 16 icon + 3 + 3 padding + 2 border = 24 px. The odd pixel of padding sits top/left
+// because Qt centres the icon in the 19 px content box with the extra pixel below/right.
 // Qt Style Sheets have no letter-spacing, transition or shadow property; tracking is set on the
 // label QFont (styleGroupLabel), and nothing here animates.
 QString editorStyleSheet() {
@@ -87,11 +90,11 @@ QString editorStyleSheet() {
         QToolBar { background: palette(base); border: 0; spacing: @space1px; padding: @space1px; }
         QToolBar::separator { background: palette(mid); width: 1px; margin: @space1px; }
         QToolButton, QPushButton { min-height: @controlContentpx; padding: @space1px @space2px; border: 1px solid palette(dark); border-radius: @radiuspx; background: palette(button); }
-        QToolBar QToolButton { min-width: @iconpx; min-height: @iconpx; border-color: transparent; background: transparent; padding: 3px; }
+        QToolBar QToolButton { min-width: @iconpx; min-height: @iconpx; border-color: transparent; background: transparent; padding: 2px 1px 1px 2px; }
         QToolButton:hover, QPushButton:hover { background: palette(midlight); border-color: palette(window-text); }
         QToolButton:pressed, QPushButton:pressed, QToolButton:checked { background: palette(mid); border-color: palette(highlight); }
         QToolButton:focus, QPushButton:focus { border: 2px solid palette(highlight); padding: 3px 7px; }
-        QToolBar QToolButton:focus { padding: 2px; }
+        QToolBar QToolButton:focus { padding: 1px 0 0 1px; }
         QToolButton:disabled, QPushButton:disabled { color: palette(window-text); background: palette(midlight); border-color: palette(mid); }
         QToolButton#editorRunButton { background: palette(midlight); border-color: palette(highlight); color: palette(text); font-weight: 600; }
         QDockWidget { border: 1px solid palette(mid); }

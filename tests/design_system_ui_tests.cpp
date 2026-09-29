@@ -176,6 +176,10 @@ void window(const std::filesystem::path& data) {
         ++buddies;require(field->focusPolicy()!=Qt::NoFocus,"Buddy field cannot take focus: "+field->objectName().toStdString());
     }
     require(buddies>5,"Inspector labels lost their buddies");
+    // QMainWindow's layout still builds a zero-length geometry animation per re-laid-out widget and
+    // deletes it later; flush those so only an animation the editor keeps can fail this.
+    require(!w.isAnimated(),"The main window animates dock and toolbar moves");
+    QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
     require(w.findChildren<QAbstractAnimation*>().isEmpty(),"The editor owns an animation");
     require(w.palette().color(QPalette::Highlight)==QColor("#2F6FED"),"Window did not take the editor palette");
 }
