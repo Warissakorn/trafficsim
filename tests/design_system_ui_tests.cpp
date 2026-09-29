@@ -97,7 +97,10 @@ void boxModel() {
         require(control->sizeHint().height()==editorDesign::controlHeight,
                 std::string(control->metaObject()->className())+" changes height when invalid: "+std::to_string(control->sizeHint().height()));
     }
+    // Same configuration as the editor's toolbars (editor_workspace.cpp): icon-only 16 px buttons.
+    // Without it the button shows its text beside the icon and is 27 px, which is a test artefact.
     QToolBar bar;bar.setStyleSheet(editorStyleSheet());bar.setIconSize(QSize(editorDesign::iconSize,editorDesign::iconSize));
+    bar.setToolButtonStyle(Qt::ToolButtonIconOnly);
     auto* selectAction=bar.addAction(editorIcon(EditorIcon::select),"Select");bar.show();QApplication::processEvents();
     // widgetForAction, not findChild: the first QToolButton child is the 12 px overflow extension.
     const auto* toolButton=qobject_cast<QToolButton*>(bar.widgetForAction(selectAction));
