@@ -139,15 +139,8 @@ void EditorCanvas::redraw() {
             auto* mark=scene_.addPath(path(marking.geometry),pen);
             mark->setZValue(z+2);mark->setData(0,QStringLiteral("road-marking"));mark->setData(1,QString::fromStdString(link.id));
         }
-        drawObjectFeedback(link.id,surface,z+2.5);
-        // Direction triangle follows the centreline. Constant pixel size makes it readable when zoomed out.
-        if (polylineLength(link.geometry) <= 0) continue;
-        const auto mid=pointAlong(road,polylineLength(road)/2);
-        const auto ahead=pointAlong(road,polylineLength(road)/2+0.05);
-        const auto angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x); const double r=5/std::abs(transform().m11());
-        QPolygonF arrow;
-        for (double offset : {0.0,2.5,-2.5}) arrow << QPointF(mid.x+r*std::cos(angle+offset),mid.y+r*std::sin(angle+offset));
-        scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(editorDesign::role(QPalette::Base)))->setZValue(z+3);
+        // Direction of travel is shown on the selection outline (drawObjectFeedback), not mid-road.
+        drawObjectFeedback(link.id,surface,z+2.5,{left,right});
         drawGeometryHandles(link.id,road,false);
     }
     drawConnectors();

@@ -3,10 +3,12 @@
 #include "../project/load.hpp"
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QLocale>
 #include <QMessageBox>
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
+    QLocale::setDefault(QLocale::c()); // Latin digits in every widget, before any is built
     QCoreApplication::setApplicationName("TrafficSim");
     QCoreApplication::setApplicationVersion(TRAFFICSIM_VERSION);
     QCommandLineParser parser;

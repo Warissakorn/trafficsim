@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "../src/editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
@@ -43,7 +44,7 @@ int main(int argc,char** argv) {
         auto* history=item<QDockWidget>(window,"editorHistoryDock");
         require(palette->isVisible()&&inspector->isVisible()&&objects->isVisible(),"Default panels missing");
         require(toolTree->topLevelItemCount()==3,"Tool tree categories missing");
-        require(item<QTableWidget>(window,"editorLinkTable")->verticalHeader()->defaultSectionSize()==28,"Object row density changed");
+        require(item<QTableWidget>(window,"editorLinkTable")->verticalHeader()->defaultSectionSize()==editorDesign::tableRowHeight,"Object row density changed");
         auto* laneCount=item<QSpinBox>(window,"editorLaneCount");
         require(laneCount->font().fixedPitch()&&laneCount->font().pixelSize()==12,"Numeric control is not tabular monospace");
         auto* laneCountEdit=laneCount->findChild<QLineEdit*>();require(laneCountEdit,"Lane count editor missing");

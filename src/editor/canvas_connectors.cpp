@@ -112,7 +112,7 @@ void EditorCanvas::drawConnectors() {
         const QColor colour(QString::fromStdString(style(c.displayType).connectorColor));
         auto preview=c;
         if(c.id==primary && !preview_.empty()){preview.geometry=preview_;preview.laneBlend.clear();}
-        if(c.id==primary && rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4);
+        if(c.id==primary && rangeCorner_)resizeConnectorEdges(document_->network,preview,previewFromCount_,previewToCount_,rangeCorner_>4,true);
         // Preview the re-attachment the same way the command will perform it, so what the
         // pointer shows is what one release commits. An impossible drop shows the original.
         if(c.id==primary && endpointDraft_ && endpointDrag_) try {
@@ -122,7 +122,6 @@ void EditorCanvas::drawConnectors() {
                               *endpointDrag_?moved.to:*endpointDraft_);
             preview=std::move(moved);
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
-        const auto& geometry=preview.geometry;
         const auto& drawing=cachedSurface(preview);
         const QColor boundaryColour=canvasStyle::connectorBoundaryColor(colour);
         auto surface=path(drawing.outline);
@@ -149,16 +148,10 @@ void EditorCanvas::drawConnectors() {
             item->setData(1,QString::fromStdString(c.id));item->setData(2,QString::fromLatin1(end));
         };
         mouthEdge(drawing.source,"source");mouthEdge(drawing.target,"target");
-        drawObjectFeedback(c.id,drawing.outline.empty()?objectShape(c.id):surface,z+4.75);
-        const double length=polylineLength(geometry);
-        if (length>0) {
-            const auto mid=pointAlong(geometry,length/2), ahead=pointAlong(geometry,length/2+length/100);
-            const double angle=std::atan2(ahead.y-mid.y,ahead.x-mid.x);
-            QPolygonF arrow;
-            for (double offset : {0.0,2.5,-2.5})
-                arrow<<QPointF(mid.x+radius*1.5*std::cos(angle+offset),mid.y+radius*1.5*std::sin(angle+offset));
-            scene_.addPolygon(arrow,QPen(Qt::NoPen),QBrush(editorDesign::role(QPalette::Base)))->setZValue(z+5);
-        }
+        // The rails run from the source end to the target end, so they carry the direction.
+        std::vector<std::vector<Point>> edges;
+        if(drawing.boundaries.size()>=2)edges={drawing.boundaries.front(),drawing.boundaries.back()};
+        drawObjectFeedback(c.id,drawing.outline.empty()?objectShape(c.id):surface,z+4.75,edges);
         if(c.id==primary && tool_==Tool::select && selection_.size()==1)
             drawGeometryHandles(c.id,connectorGrips(document_->network,preview),true);
     }

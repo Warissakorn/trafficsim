@@ -8,6 +8,45 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-29 — D83: editor polish from owner feedback
+
+- **Latin digits everywhere.** The workspace set `QLocale::c()` on the spin boxes that existed at
+  construction; a dialog built later (the Link dialog's lane count, the range dialog, every
+  signal/input/decision dialog, `QInputDialog`) took the system locale, which on the owner's
+  Windows shows Thai digits. `EditorWindow` now sets the default locale and its own locale to C
+  first thing (the window has already resolved the system locale by its constructor body, and
+  children inherit the window's), and `main` sets the default before any widget. Test forces
+  `ar_EG`, not `th_TH`: CLDR's default numbering for Thai is Latin, so it would force nothing.
+- **Controls 28 → 24 px.** 1 border + 2 padding + 18 content; the 2 px focus/invalid border
+  still takes 1 px of padding back. Tabs, dock titles, menu items, header sections, list/table
+  items and table rows follow the same padding. Toolbar icon buttons stay 24 px / toolbar 32 px.
+  Measured (Linux Qt 6.10, offscreen): a styled spin box adds 3 px on top of a 16 px text floor,
+  so it was already 31 px against the other controls' 28 before this change. It now has its own
+  padding, 1 px top / 2 px bottom (focus/invalid 0 / 1), and measures 24 like the rest.
+- **Taper follows the tab (D83).** A lane-tab drag on a Connector that makes a one-lane
+  difference sets `laneChangeSide` to the edge the tab changed: from equal counts the far tab's
+  lane is the taper (far side), the kerb tab's is the kerb default; from a two-lane difference
+  the dragged edge pairs up and the other edge keeps the taper. A count typed in the Inspector
+  says nothing about an edge and keeps the kerb default. `resizeConnectorEdges`/
+  `changeConnectorRange` take `fromTab`; the canvas preview passes it too, so the preview is the
+  commit. Schema unchanged (17). The middle tab's drag step was the mean of the outer path's two
+  end widths; with the taper now able to be the outer path (zero at one end) a one-lane drag
+  dropped two lanes, so the step is the full lane width.
+- **Nothing lags behind a move.** Lane tabs are computed from the committed document, not the
+  drag preview, so they stayed at the old place during a move. `movingGeometry()` hides them
+  (and skips computing them) while a move is visibly under way; a body, group or copy move also
+  hides the geometry points. A vertex/end drag keeps its grips, which already follow the pointer.
+- **Pointer.** Hover over a road or a conflict area stays the arrow (was open hand / pointing
+  hand). Once a drag passes the start distance the pointer becomes an arrow with a small hand
+  beside it (drawn cursor, `moveCursor()`); panning keeps the closed hand; a lane-tab drag keeps
+  its resize cursor.
+- **Direction on the selection outline.** The white mid-road triangles on Links and Connectors
+  are gone. A selected object's outline carries filled arrowheads on its two long edges, one per
+  ~72 screen px (at least one per edge), in travel order — Link boundaries run with the Link,
+  Connector rails from source to target. `drawRouteArrows` now shares the arrowhead helper.
+- Verified in WSL (Linux, Qt 6.10, offscreen): desktop build, 69/69 CTest, `check`. Not run on
+  Windows MSVC; that is the CI job and the owner review.
+
 ## 2026-09-29 — Measured optimization pass: docs headroom, CI (D82)
 
 - **Docs headroom.** Four live docs sat at 494–499 of the 500-line limit, and a three-line note
@@ -262,6 +301,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D83 | 2026-09-29 | **A lane-tab drag that makes a one-lane Connector difference puts the taper on the edge the tab changed (far tab from equal counts → far side; from a two-lane difference the other edge keeps it); an Inspector count keeps the kerb default. Editor widgets use the C locale; controls are 24 px; direction shows as arrowheads on the selection outline; a carried object shows an arrow-with-hand pointer** | Owner feedback: the taper was always on the left whichever tab was dragged; Thai digits appeared in dialogs; controls used too much space; mid-road arrows cluttered the road. The tab knows which edge it changed, a typed count does not | Owner review on Windows |
 | D82 | 2026-09-29 | **Live docs keep headroom under the 500-line limit by moving dated blocks whole into `docs/archive/`, indexed in `archive/README.md`; a current reference doc that outgrows the limit is split, not archived** | The size check fails CI on a one-line overrun; four docs at 494–499 lines made every session's closing note a CI risk. The index had itself grown to 50 lines of this file | — |
 | D81 | 2026-09-29 | **All editor colour is a `QPalette` role; the accent is `#2F6FED`; semantic colour reuses `BrightText`/`LinkVisited`/`Link`/`Shadow`; tool overlays use the accent; tracking is set on `QFont`, not QSS** | Owner brief: precision-tool look, one accent, semantic colour reserved. Qt Style Sheets have no `letter-spacing`, so the earlier tracking never rendered. The four semantic roles are ones the editor never paints with (no shadows are drawn). Accent text is 4.1:1 on the hover grey, so the accent is fill/border only. Verification is the CI UI suites; nothing was compiled or measured in the authoring session. |
 | D80 | 2026-09-28 | **Derive a centred whole-carriageway axis; pair both mouths by lane index at every angle; remove square/slide/reach fallbacks** | Owner instructions in this session. Preserve file/runtime lane geometry through a central derived reference. Distinct parallel lines remain undefined; retain and diagnose folds rather than erase P1–P4 | Windows desktop owner review; no Vissim fidelity claim |

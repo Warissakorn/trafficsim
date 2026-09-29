@@ -91,7 +91,7 @@ void boxModel() {
     host.show();QApplication::processEvents();
     for(QWidget* control:{static_cast<QWidget*>(edit),static_cast<QWidget*>(spin),static_cast<QWidget*>(combo),static_cast<QWidget*>(button)}) {
         require(control->sizeHint().height()==editorDesign::controlHeight,
-                std::string(control->metaObject()->className())+" is "+std::to_string(control->sizeHint().height())+" px, not 28");
+                std::string(control->metaObject()->className())+" is "+std::to_string(control->sizeHint().height())+" px, not "+std::to_string(editorDesign::controlHeight));
         // The invalid state swaps a 1 px border for 2 px; padding gives 1 px back so height holds.
         control->setProperty("validationState","invalid");control->style()->unpolish(control);control->style()->polish(control);
         require(control->sizeHint().height()==editorDesign::controlHeight,

@@ -135,8 +135,12 @@ internal lane boundaries are dashed. There is no dashed line down a lane centre.
 whose ends carry different lane counts, an interior divider is drawn only over the stretch where
 the two lanes it separates are genuinely side by side — at least half their full spacing apart —
 and stops where they converge, rather than continuing down the middle of the single lane they
-merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. The
-small centre arrows show travel direction; small white squares are editable geometry handles, shown for a single object in Select.
+merge into. `connectorMarkings` decides this once for the editor and the diagnostic view. Travel
+direction shows only on a selected object: its selection outline's two long edges carry an
+arrowhead every ~72 screen px (D83); there is no arrow in the middle of the road. Small round
+grips are editable geometry points, shown for a single object in Select. While a body is being
+moved its geometry points and lane tabs are hidden and return on release; the pointer stays an
+arrow when pointing and shows an arrow with a hand beside it only while something is carried.
 
 **A Connector may carry its own lane widths and divider markings** (Vissim's `Lanes` tab). The
 Properties fields take comma-separated metres, one per lane, and comma-separated `solid`/`dashed`

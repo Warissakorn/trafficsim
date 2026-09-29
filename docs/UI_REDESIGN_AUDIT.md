@@ -15,7 +15,7 @@ benchmarked, and the grid now draws fewer lines than before only by arithmetic (
 |---|---|---|---|
 | 1 | All colour through QPalette roles | QSS coloured everything through `@gray*` hex substitution; canvas used a dozen literals (`#de8618`, `#167b98`, `#b33f8d`, `#7c3aed`, `#dc2626`, …) | QSS is `palette(role)` only (test: no hex in QSS); canvas reads `editorPalette()` roles through `canvasStyle::*()`; the only hex literals live in `ui_design_tokens.hpp` |
 | 2 | One accent `#2F6FED`; semantic reserved | Accent `#0F766E`; orange/teal/magenta/violet used for tools | Accent `#2F6FED` = `Highlight`; every tool overlay uses it; error/warning/advisory/ok are the only other hues |
-| 3 | 4 px scale, 28 px rows/controls, 32 px toolbar, 16 px 1.5 px icons | Controls 30 px (content 20 + padding + border), focus border changed height, icons 20 px / 1.6 | Box model 1 + 4 + 18 + 4 + 1 = 28; 2 px focus/invalid border takes 1 px of padding back; toolbar 24 + 2×4 = 32; icons 16 px, 1.5 px stroke |
+| 3 | 4 px scale, 28 px rows/controls (24 px since D83), 32 px toolbar, 16 px 1.5 px icons | Controls 30 px (content 20 + padding + border), focus border changed height, icons 20 px / 1.6 | Box model 1 + 4 + 18 + 4 + 1 = 28; 2 px focus/invalid border takes 1 px of padding back; toolbar 24 + 2×4 = 32; icons 16 px, 1.5 px stroke |
 | 4 | Five type sizes; 11 px tracked uppercase labels | Sizes right, but `letter-spacing` in QSS is not a Qt property — tracking never applied | Tracking set on `QFont` (`styleGroupLabel`, English only; Thai untracked); QSS banned from using it |
 | 5 | Tabular, right-aligned, fixed decimals, unit, QLocale | Monospace font yes; `QString::number(…,'f')` (C locale) for lengths/coordinates; trimmed decimals in range hints | `formatValue(value, decimals, unit, locale)`; numeric spin boxes/edits right-aligned; range hints use the field's own locale and decimals |
 | 6 | Hairlines: cosmetic, 0.5 px offset, devicePixelRatio | Grid: cosmetic pen of width 1 (2 device px at 2x), unsnapped | `hairlinePen` = 1/dpr wide cosmetic; `snapHairline` centres each line on a device pixel (+0.5) from `painter->deviceTransform()` |
@@ -52,7 +52,7 @@ Roles the editor does not name keep no hue (test: only the accent and the four s
 |---|---|
 | Spacing | 4 / 8 / 12 / 16 / 20 / 24 px |
 | Type | 11 / 12 / 13 / 14 / 18 px |
-| Control / row | 28 px (18 content + 2×4 padding + 2×1 border) |
+| Control / row | 24 px (18 content + 2×2 padding + 2×1 border; was 28 px until D83) |
 | Toolbar | 32 px (24 button + 2×4 padding) |
 | Icon | 16 px logical, 1.5 px stroke, rastered 1×/2×/3× |
 | Radius | 2 px (cap 3) |

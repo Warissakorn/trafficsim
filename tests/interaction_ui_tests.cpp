@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
+#include <QGraphicsPolygonItem>
 #include <QGraphicsSimpleTextItem>
 #include <QLineEdit>
 #include <QLineF>
@@ -91,6 +92,38 @@ void selectionWorkflow(EditorCanvas& c) {
     QEvent leave(QEvent::Leave);QApplication::sendEvent(&c,&leave);
     require(!feedback(c,"a","hover"),"Hover remained after leaving canvas");
     c.editGeometry={};c.deleteRequested={};c.creationRejected={};c.selectionCleared={};c.setDocument(nullptr);
+}
+void moveFeedback(EditorCanvas& c) {
+    auto d=fixture();c.setDocument(&d);c.setTransform(QTransform::fromScale(4,-4));c.centerOn(0,0);
+    int edits=0;c.editGeometry=[&](const auto&,const auto&){++edits;};
+    // Pointing at a road is still pointing: the arrow, never a hand.
+    QTest::mouseMove(c.viewport(),pixel(c,{-65,0}));
+    require(feedback(c,"a","hover") && c.cursor().shape()==Qt::ArrowCursor,"Hovering a road changed the pointer");
+    require(count(c,"direction-arrow")==0,"Hover alone drew direction arrows");
+    click(c,{-65,0});require(c.selected()=="a","Fixture selection failed");
+    // Direction rides the selection outline: arrowheads on both long edges, pointing +x here.
+    int arrows=0;
+    for(auto* item:c.scene()->items())if(item->data(0).toString()=="direction-arrow") {
+        const auto* head=dynamic_cast<QGraphicsPolygonItem*>(item);require(head,"Direction arrow is not a polygon");
+        const auto tip=head->polygon().at(0),back=(head->polygon().at(1)+head->polygon().at(2))/2;
+        require(tip.x()>back.x() && std::abs(tip.y()-back.y())<1e-6,"Direction arrow points against travel");
+        ++arrows;
+    }
+    require(arrows>=2 && arrows%2==0,"Selected road has no arrowheads on its two long edges");
+    for(auto* item:c.scene()->items())if(dynamic_cast<QGraphicsPolygonItem*>(item))
+        require(item->data(0).toString()=="direction-arrow","A mid-road direction triangle is still drawn");
+    // While the road is carried the tabs and grips, which follow the committed document, hide.
+    const auto start=pixel(c,{-65,0}),end=pixel(c,{-65,10});
+    QTest::mousePress(c.viewport(),Qt::LeftButton,{},start);
+    require(count(c,"lane-resize")==6 && count(c,"geometry-point")==3,"Press alone hid the grips");
+    QTest::mouseMove(c.viewport(),end);
+    require(count(c,"lane-resize")==0 && count(c,"geometry-point")==0,"Grips stayed behind during a move");
+    require(c.cursor().shape()==Qt::BitmapCursor,"A move did not show the carrying pointer");
+    QTest::mouseRelease(c.viewport(),Qt::LeftButton,{},end);
+    require(edits==1,"The move did not commit once");
+    require(count(c,"lane-resize")==6 && count(c,"geometry-point")==3,"Grips did not return on release");
+    require(c.cursor().shape()==Qt::ArrowCursor,"The carrying pointer outlived the move");
+    c.editGeometry={};c.setDocument(nullptr);
 }
 void laneTabs(EditorCanvas& c) {
     History h;int commits=0;
@@ -322,7 +355,7 @@ int main(int argc,char** argv) {
         require(argc>1,"Data directory required");EditorCanvas c;
         c.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}});
         c.resize(1000,650);c.show();QTest::qWait(20);
-        selectionWorkflow(c);laneTabs(c);connectorEndTabs(c);markings(c);c.hide();
+        selectionWorkflow(c);moveFeedback(c);laneTabs(c);connectorEndTabs(c);markings(c);c.hide();
         windowWorkflow(std::filesystem::path(argv[1]),argc>2?QString::fromUtf8(argv[2]):QString{});
         std::cout<<"PASS selection workflow, hover, rectangular edge tabs and 10 cm markings\n";return 0;
     } catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

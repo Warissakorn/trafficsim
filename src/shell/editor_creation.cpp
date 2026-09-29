@@ -14,7 +14,7 @@ void EditorWindow::createLinkDialog(const std::vector<Point>& points) {
     auto* form=new QFormLayout(&dialog);auto* count=new QSpinBox(&dialog);count->setObjectName("editorGestureLaneCount");
     form->setContentsMargins(editorDesign::space3,editorDesign::space3,editorDesign::space3,editorDesign::space3);
     form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
-    count->setRange(1,12);count->setValue(count_->value());form->addRow(text("editorLaneCount"),count);
+    count->setFont(editorDesign::numericFont());count->setRange(1,12);count->setValue(count_->value());form->addRow(text("editorLaneCount"),count);
     auto* width=new QDoubleSpinBox(&dialog);width->setRange(.1,20);width->setValue(width_->value());form->addRow(text("editorDefaultWidth"),width);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
@@ -38,6 +38,7 @@ void EditorWindow::createRangeDialog(LaneReference from,LaneReference to,const s
     target->setCurrentIndex(target->findData(QString::fromStdString(to.laneId)));
     auto* fromCount=new QSpinBox(&dialog);fromCount->setObjectName("editorRangeFromCount");
     auto* toCount=new QSpinBox(&dialog);toCount->setObjectName("editorRangeToCount");
+    fromCount->setFont(editorDesign::numericFont());toCount->setFont(editorDesign::numericFont());
     // Each box stops at the lanes left on its Link and at two lanes from the other end (D73).
     const auto ranges=[&]{
         const int a=std::max(1,source->count()-source->currentIndex()),b=std::max(1,target->count()-target->currentIndex());

@@ -52,10 +52,10 @@ std::string addConnectorRange(ProjectDocument& d,const LaneReference& from,const
     c.level=editableLink(d,from.linkId).level;c.displayType=editableLink(d,from.linkId).displayType;
     (void)connectorPaths(d.network,c);return id;
 }
-void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount,int toCount,bool leading) {
+void changeConnectorRange(ProjectDocument& d,const std::string& id,int fromCount,int toCount,bool leading,bool fromTab) {
     auto& c=editableConnector(d,id);if(c.fromLaneCount==fromCount && c.toLaneCount==toCount)return;
     if(connectorReferenced(d,c))throw std::invalid_argument("EDIT_REFERENCED_CONNECTOR");
-    resizeConnectorEdges(d.network,c,fromCount,toCount,leading);
+    resizeConnectorEdges(d.network,c,fromCount,toCount,leading,fromTab);
 }
 void changeConnectorLanes(ProjectDocument& d,const std::string& id,
                           const std::vector<double>& widths,const std::vector<MarkingType>& markings) {

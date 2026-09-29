@@ -84,7 +84,7 @@ bool EditorCanvas::startHeadDrag(const std::string& id, QPoint press) {
 void EditorCanvas::updateHeadDrag(QPoint position) {
     if (!headDrag_) return;
     if ((position - dragPress_).manhattanLength() < QApplication::startDragDistance() && !headDrag_->moved) return;
-    headDrag_->moved = true;
+    headDrag_->moved = true; showMoveCursor();
     // Along its own lane only: moving a stop line to another lane is a different object, and
     // the dialog is where that is chosen.
     const double length = polylineLength(headDrag_->geometry);

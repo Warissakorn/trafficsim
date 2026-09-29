@@ -128,3 +128,30 @@ TEST(lane_correspondence, the_side_is_saved_undone_and_refused_before_schema_17)
     json.at("schemaVersion")=16;
     test::throws([&]{parseDocument(json);});
 }
+TEST(lane_correspondence, a_dragged_tab_puts_the_taper_on_its_own_edge) {
+    // D83: widening 2 -> 2 by the far-edge tab adds the far lane, so that lane is the taper.
+    for(const auto side:{DrivingSide::left,DrivingSide::right}) {
+        const auto far=side==DrivingSide::left?LaneSide::right:LaneSide::left;
+        auto d=roads(side);const auto id=addConnectorRange(d,{"a","a2"},{"b","b2"},2,2);
+        changeConnectorRange(d,id,2,3,false,true);
+        CHECK(d.network.connectors.front().laneChangeSide==far);
+        CHECK(connectorLaneWidths(d.network,d.network.connectors.front()).source==std::vector<double>({3,3,0}));
+        CHECK(pairing(d)==Pairs({{1,1},{2,2},{2,3}}));
+        // The kerb-edge tab adds the kerb lane, which is the kerb default.
+        auto e=roads(side);const auto other=addConnectorRange(e,{"a","a2"},{"b","b2"},2,2);
+        changeConnectorRange(e,other,2,3,true,true);
+        CHECK(!e.network.connectors.front().laneChangeSide);
+        CHECK(connectorLaneWidths(e.network,e.network.connectors.front()).source==std::vector<double>({0,3,3}));
+        CHECK(pairing(e)==Pairs({{1,0},{1,1},{2,2}}));
+        // From a two-lane difference the far tab drops the far extra lane; the kerb one is left.
+        auto f=roads(side);const auto wide=addConnectorRange(f,{"a","a2"},{"b","b1"},2,4);
+        const auto before=pairing(f);
+        changeConnectorRange(f,wide,2,3,false,true);
+        CHECK(!f.network.connectors.front().laneChangeSide);
+        CHECK(pairing(f)==Pairs({before[0],before[1],before[2]}));
+        // A count typed into the Inspector says nothing about an edge: the kerb default stays.
+        auto g=roads(side);const auto typed=addConnectorRange(g,{"a","a2"},{"b","b2"},2,2);
+        changeConnectorRange(g,typed,2,3);
+        CHECK(!g.network.connectors.front().laneChangeSide);
+    }
+}
