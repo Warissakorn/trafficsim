@@ -23,6 +23,9 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
   `VISSIM_PARITY.md` §3 still said levels and display types do not exist and named `src/render/`
   (removed in M1.24); it is now marked dated like §1 and §6. The remaining ~99 "broken" paths the
   audit script reports are lane ids, branch names and archived history, not references.
+- **CI runs once per commit.** Runs 355 and 356 were both the full five-job suite on `1a702eb`
+  (`push` and `pull_request`). `push` now fires only on `main`, `workflow_dispatch` covers a
+  branch without a pull request, and a newer push to a pull request cancels the older run.
 
 ## 2026-09-29 — D81: precision-tool restyle through palette roles
 

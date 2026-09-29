@@ -1,7 +1,16 @@
 name: Native C++
+# A push to a branch with an open pull request used to run every job twice (push and
+# pull_request on the same commit). Branches are covered by their pull request; main by push.
+# Run it by hand from the Actions tab for a branch without one.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+# A newer push to the same pull request supersedes the run still going for the old commit.
+concurrency:
+  group: native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
