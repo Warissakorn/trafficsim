@@ -1,4 +1,5 @@
 #include "history.hpp"
+#include "conflict_follow.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -31,6 +32,7 @@ void History::reset(ProjectDocument document) {
 bool History::execute(const std::string& name, const std::function<void(ProjectDocument&)>& change) {
     auto candidate = document_;
     change(candidate);
+    followGeometry(candidate, document_.network); // D85: authored areas stay on their overlap
     validateDocument(candidate); // Failed commands leave model, history, saved state untouched.
     // Value comparison, not serialisation: documentJson-ing both documents on every edit cost
     // more than the command and its validation together on a large network.

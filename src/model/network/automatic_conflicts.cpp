@@ -24,16 +24,8 @@ void bound(Path& p, const std::vector<Point>& g, double margin) {
         p.hi = {std::max(p.hi.x, q.x + margin), std::max(p.hi.y, q.y + margin)};
     }
 }
-bool meets(double from, double to, StationInterval i) { return from <= i.to && i.from <= to; }
-// An authored area covers the piece it lies over, not every piece of the pair (D72).
-bool covered(const Network& n, const ControlPathRef& a, const ControlPathRef& b, const SurfaceOverlap& o) {
-    return std::any_of(n.rightOfWay.conflictAreas.begin(), n.rightOfWay.conflictAreas.end(), [&](const auto& x) {
-        if (x.first.path == a && x.second.path == b)
-            return meets(x.first.entryStation, x.first.exitStation, o.first) && meets(x.second.entryStation, x.second.exitStation, o.second);
-        if (x.first.path == b && x.second.path == a)
-            return meets(x.first.entryStation, x.first.exitStation, o.second) && meets(x.second.entryStation, x.second.exitStation, o.first);
-        return false; });
-}
+// Holds the piece's middle, so a stale area that merely touches a piece does not hide it (D85).
+bool holds(double from, double to, StationInterval i) { const double m = (i.from + i.to) / 2; return from <= m && m <= to; }
 // Pairs whose overlap is not a crossing. One place, so a later case (a diverge) is lifted here.
 bool sharedMouth(const Path& a, const Path& b) {
     if (a.owner == b.owner || a.level != b.level) return true;
@@ -79,6 +71,15 @@ MergeSide mergeSide(const Network& n, const RuntimeSections& table, const std::s
     }
     throw std::invalid_argument("EDIT_UNKNOWN_OBJECT");
 }
+// An authored area covers the piece it lies over, not every piece of the pair (D72).
+bool authoredCovers(const Network& n, const ControlPathRef& a, const ControlPathRef& b, const SurfaceOverlap& o) {
+    return std::any_of(n.rightOfWay.conflictAreas.begin(), n.rightOfWay.conflictAreas.end(), [&](const auto& x) {
+        if (x.first.path == a && x.second.path == b)
+            return holds(x.first.entryStation, x.first.exitStation, o.first) && holds(x.second.entryStation, x.second.exitStation, o.second);
+        if (x.first.path == b && x.second.path == a)
+            return holds(x.first.entryStation, x.first.exitStation, o.second) && holds(x.second.entryStation, x.second.exitStation, o.first);
+        return false; });
+}
 std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
     std::vector<AutomaticConflict> result;
     std::vector<Path> paths;
@@ -106,7 +107,7 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
             for (std::size_t k = 0; k < pieces.size(); ++k) {
                 const auto& o = pieces[k];
                 if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
-                if (covered(n, a.ref, b.ref, o)) continue;
+                if (authoredCovers(n, a.ref, b.ref, o)) continue;
                 result.push_back({ConflictKind::crossing, {a.ref, o.first.from, o.first.to, ""}, {b.ref, o.second.from, o.second.to, ""},
                                   ConflictPriority::undetermined,
                                   "auto/" + a.key + "|" + b.key + (k ? "#" + std::to_string(k) : std::string{}), ""});

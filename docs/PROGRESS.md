@@ -8,6 +8,35 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-30 — D85: authored conflict areas follow the drawing
+
+Owner report on `t-junction-priority`: dragging a Link or Connector so the roads overlap
+somewhere new left the **set** conflict area where it was, while passive areas moved. Cause:
+an authored area stores its entry/exit stations and its waiting line stores a station; only
+delete, split, reverse and copy ever rewrote them, so a move or reshape left a stale area that
+Run then refused (`CONFLICT_EXTENT_UNCOVERED`/`CONFLICT_NO_OVERLAP`). Reproduced first with
+`tests/conflict_follow_tests.cpp` (5 of 6 red on the old code, each for the predicted reason).
+
+- **One pass, one place.** `followGeometry` (`src/commands/conflict_follow.cpp`) runs in
+  `History::execute` after every change, and does nothing unless Links, Connectors or the driving
+  side changed. So no geometry command needs its own hook, and Undo restores whole documents.
+- A crossing takes the piece of its pair's current overlap that shares the most length with its
+  old extents, then the nearest middle; two areas of one pair never take the same piece. A merge
+  takes the join of a merge group holding both its paths, nearest the old join. Waiting lines
+  move by the change of the first entry they stand before (D63), so a dragged line keeps its
+  distance.
+- **No overlap any more → the area is removed** with its rule, Stop/Yield and unused lines
+  (owner ruling, as Vissim does). Unmeasurable geometry (folded, crossing twice for one area)
+  leaves the area unchanged for the resolver to report.
+- Passive areas were hidden by any authored area of the pair whose extents merely touched a
+  piece; an authored area now hides a piece only if it holds the piece's middle on both paths.
+- *Add crossing areas* on a pair whose every overlap is already set now refuses with
+  `EDIT_CROSSING_EXISTS` instead of doubling the areas.
+
+Verified on Linux (WSL2, GCC 15.2, headless 49/49; desktop Qt suite offscreen). **Not looked
+at on Windows or by the owner.** Considered and not changed: `refreshConflicts` could in theory
+see `mergeSide` throw, but no reachable state was found that does, so it stays unguarded.
+
 ## 2026-09-29 — D84: one gesture rule, one face, visible arrows
 
 Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) and in CI
@@ -334,6 +363,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D85 | 2026-09-30 | **An authored conflict area follows its overlap after any edit that changes the drawing (re-derived in `History::execute`), its lines keep their distance, and it is removed with its rule and Stop/Yield when its pair no longer overlaps** | Owner report and ruling (Vissim removes such areas). One choke point instead of a hook per geometry command (rule 3); stored extents were only ever derived, so re-deriving loses no authoring. Fails if an author needs an area deliberately wider than the overlap to survive a geometry edit |
 | D84 | 2026-09-29 | **In every canvas tool a plain left click only selects; Ctrl+right-click or Ctrl+right-drag creates or changes (Measure/Calibrate excepted). Fusion is the application style; combo and spin arrows are palette-drawn images; one bundled face (Noto Sans Thai, static 400/600) for words and numbers; fields pinned at 24 px** | Owner: Links needed Ctrl but conflict areas changed on a plain click, so a stray click could author; the dropdown arrow was invisible (QSS drop-down without an image); numbers used a second face on another baseline | Owner review on Windows; a Vissim user finding Ctrl+right slower than click for heavy route/counter authoring |
 | D83 | 2026-09-29 | **A lane-tab drag that makes a one-lane Connector difference puts the taper on the edge the tab changed (far tab from equal counts → far side; from a two-lane difference the other edge keeps it); an Inspector count keeps the kerb default. Editor widgets use the C locale; controls are 24 px; direction shows as arrowheads on the selection outline; a carried object shows an arrow-with-hand pointer** | Owner feedback: the taper was always on the left whichever tab was dragged; Thai digits appeared in dialogs; controls used too much space; mid-road arrows cluttered the road. The tab knows which edge it changed, a typed count does not | Owner review on Windows |
 | D82 | 2026-09-29 | **Live docs keep headroom under the 500-line limit by moving dated blocks whole into `docs/archive/`, indexed in `archive/README.md`; a current reference doc that outgrows the limit is split, not archived** | The size check fails CI on a one-line overrun; four docs at 494–499 lines made every session's closing note a CI risk. The index had itself grown to 50 lines of this file | — |

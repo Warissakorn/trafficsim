@@ -203,7 +203,8 @@ widths, delete many as one transaction, change driving side, opposite carriagewa
 or without a downstream lane), add/delete connector, change connector geometry or endpoints,
 reset curve, reanchor.
 
-**Present in Vissim, absent here:** conflict areas · priority rules · stop signs · reduced
+**Present in Vissim, absent here** (as of this dated assessment; conflict areas, priority rules,
+stop signs and queue counters have existed since M3.2 — see §2b)**:** conflict areas · priority rules · stop signs · reduced
 speed areas · desired speed decisions · vehicle routes as first-class objects · parking lots ·
 pedestrian areas and links · public transport stops and lines · data collection points ·
 queue counters · travel time sections · nodes · levels · display types · link behaviour types.
