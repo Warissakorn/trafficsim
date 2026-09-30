@@ -49,6 +49,7 @@ void EditorCanvas::drawRunItems() {
         const auto location=locateVehicle(*runFrame_.scenario,v);
         marker(location.segmentId,location.position,QColor(QString::fromStdString(styleOf(location.segmentId).vehicleColor)),radius,11);
     }
-    viewport()->update();
+    // No viewport()->update() here: adding and removing items already invalidates their own
+    // rectangles, and a whole-viewport repaint per frame was 7 of scenario-run-ui's 9.5 s.
 }
 }
