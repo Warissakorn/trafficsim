@@ -9,8 +9,12 @@ namespace trafficsim {
 struct LaneChangeRow {
     std::string name;
     std::uint64_t changes{}, changedVehicles{};
-    // Per change: metres from the vehicle's front to its stub's dead end at the change.
-    std::vector<double> beforeDeadEnd;
+    // Per change, from the pre-step snapshot it was decided on: metres from the vehicle's front to
+    // its stub's dead end, and its front's distance along the stub route (from the network edge,
+    // where every stub starts). A change needs the rear inside a span, so none happens in the
+    // insertion tick and every change has a previous snapshot; `unplaced` counts any that did not.
+    std::vector<double> beforeDeadEnd, atDistance;
+    std::uint64_t unplaced{};
     // Waiting is the engine's own test (waitingAtDeadEnd); seconds are whole ticks observed.
     std::uint64_t waitingVehicles{};
     double waitSeconds{}, longestWait{};
@@ -28,7 +32,7 @@ public:
     void observe(const SimState& state);
     LaneChangeReport report() const;
 private:
-    struct Tally { std::uint64_t changes{}; std::vector<double> before; double wait{}, run{}, longest{}; };
+    struct Tally { std::uint64_t changes{}, unplaced{}; std::vector<double> before, at; double wait{}, run{}, longest{}; };
     void bind(const SimState& state);
     const Scenario* bound_{};
     std::map<std::string, std::size_t> movementOfRoute_, slotOfRoute_;

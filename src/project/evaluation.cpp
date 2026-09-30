@@ -164,19 +164,21 @@ Json laneChangeJson(const LaneChangeReport& r) {
     j["measure"] = "mandatory lane changes and dead-end waits, by the movement a vehicle arrived on; one run";
     j["rows"] = Json::array();
     for (const auto& row : r.rows) {
-        auto before = row.beforeDeadEnd;
-        std::sort(before.begin(), before.end());
-        const auto rank = [&](double q) {
-            if (before.empty()) return Json(nullptr);
-            const auto k = static_cast<std::size_t>(std::ceil(q * static_cast<double>(before.size())));
-            return Json(before[std::clamp<std::size_t>(k, 1, before.size()) - 1]);
+        // Nearest-rank quantiles, and the share of changes at most 20 m from the reference.
+        const auto spread = [](std::vector<double> values) {
+            if (values.empty()) return Json(nullptr);
+            std::sort(values.begin(), values.end());
+            const auto rank = [&](double q) {
+                const auto k = static_cast<std::size_t>(std::ceil(q * static_cast<double>(values.size())));
+                return values[std::clamp<std::size_t>(k, 1, values.size()) - 1];
+            };
+            const auto near = std::count_if(values.begin(), values.end(), [](double d) { return d <= 20; });
+            return Json{{"min", rank(0)}, {"p10", rank(0.1)}, {"median", rank(0.5)}, {"p90", rank(0.9)},
+                        {"max", rank(1)}, {"within20m", static_cast<double>(near) / static_cast<double>(values.size())}};
         };
-        const auto near = std::count_if(before.begin(), before.end(), [](double d) { return d <= 20; });
         j["rows"].push_back({{"movement", row.name}, {"changes", row.changes}, {"changedVehicles", row.changedVehicles},
-                             {"beforeDeadEnd", {{"min", rank(0)}, {"p10", rank(0.1)}, {"median", rank(0.5)},
-                                                {"p90", rank(0.9)}, {"max", rank(1)},
-                                                {"within20m", before.empty() ? Json(nullptr)
-                                                     : Json(static_cast<double>(near) / static_cast<double>(before.size()))}}},
+                             {"positions", row.beforeDeadEnd.size()}, {"unplaced", row.unplaced},
+                             {"beforeDeadEnd", spread(row.beforeDeadEnd)}, {"fromNetworkEdge", spread(row.atDistance)},
                              {"waitingVehicles", row.waitingVehicles}, {"waitSeconds", row.waitSeconds},
                              {"longestWait", row.longestWait}});
     }

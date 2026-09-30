@@ -23,8 +23,9 @@ std::vector<std::string> replacedApproaches(const Network&, const AuthoredQueueC
 // The report as JSON (CLI), with the same honesty labels.
 Json movementJson(const MovementReport&);
 // M3.2.8c step 1: the lane-change diagnostic as JSON (CLI --lane-changes). Per row the change
-// count and where the changes happened, in metres before the dead end (min, p10, median, p90,
-// max by nearest rank, and the share within 20 m), plus the dead-end waits.
+// count and where the changes happened -- metres before the dead end and metres from the network
+// edge, each as min, p10, median, p90, max by nearest rank and the share within 20 m -- plus
+// `positions` and `unplaced` (changes with no known position), and the dead-end waits.
 Json laneChangeJson(const LaneChangeReport&);
 // The report as CSV. The first line states what the numbers are not.
 std::string movementCsv(const MovementReport&);

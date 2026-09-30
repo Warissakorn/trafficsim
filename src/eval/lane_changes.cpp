@@ -7,6 +7,8 @@ void fold(LaneChangeRow& row, const auto& tally) {
     row.changes += tally.changes;
     row.changedVehicles += tally.changes > 0;
     row.beforeDeadEnd.insert(row.beforeDeadEnd.end(), tally.before.begin(), tally.before.end());
+    row.atDistance.insert(row.atDistance.end(), tally.at.begin(), tally.at.end());
+    row.unplaced += tally.unplaced;
     row.waitingVehicles += tally.wait > 0;
     row.waitSeconds += tally.wait;
     row.longestWait = std::max(row.longestWait, tally.longest);
@@ -33,8 +35,9 @@ void LaneChangeAccumulator::observe(const SimState& state) {
             ++tally.changes;
             const auto was = previous_.find(change->vehicleId);
             const auto from = slotOfRoute_.find(change->fromRouteId);
-            if (was != previous_.end() && from != slotOfRoute_.end())
-                tally.before.push_back(index.deadEndOfRoute[from->second] - was->second.second);
+            if (was == previous_.end() || from == slotOfRoute_.end()) { ++tally.unplaced; continue; }
+            tally.before.push_back(index.deadEndOfRoute[from->second] - was->second.second);
+            tally.at.push_back(was->second.second);
         } else if (const auto* arrived = std::get_if<ArrivedEvent>(&event)) {
             const auto tally = open_.find(arrived->vehicleId);
             if (tally == open_.end()) continue;

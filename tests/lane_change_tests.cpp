@@ -216,7 +216,7 @@ namespace {
 LaneChangeReport diagnose(SimState s) {
     LaneChangeAccumulator changes(EvaluationSpec{{"through"}, {{"full", 0}}, {}, {}});
     changes.observe(s);
-    while (!s.vehicles.empty() && s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); changes.observe(s); }
+    while (s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); changes.observe(s); }
     return changes.report();
 }
 }
@@ -249,4 +249,37 @@ TEST(lanechange, the_diagnostic_records_a_dead_end_wait_and_the_late_change) { /
     CHECK(row.waitSeconds > 10 && row.longestWait > 10 && row.longestWait <= row.waitSeconds + 1e-9);
     CHECK(row.beforeDeadEnd.size() == 1 && row.beforeDeadEnd[0] >= 0 && row.beforeDeadEnd[0] < 10);
     CHECK(r.rows[1].waitingVehicles == 0 && r.rows[2].waitingVehicles == 0);
+}
+TEST(lanechange, the_diagnostic_places_every_change_of_an_inserted_vehicle) {
+    // The diagnostic reads a change's place off the previous snapshot. That holds because a change
+    // needs the rear inside a span, and an arrival enters with its rear behind the route's start,
+    // so no vehicle changes in the tick it is inserted, although insertion comes first in a tick.
+    auto scenario = lanes();
+    scenario.inputs = {{"inA", "stubA", "car", 600, 0, 110}}; // seed 42 first arrives near 56 s
+    const auto s = createSimulation(scenario, 42);
+    std::uint64_t changes = 0; bool sameTick = false;
+    for (auto probe = s; probe.tick < totalTicks(*s.scenario); ) {
+        probe = stepSimulation(probe);
+        for (const auto& e : probe.events) {
+            changes += std::holds_alternative<LaneChangeEvent>(e);
+            if (const auto* d = std::get_if<DepartedEvent>(&e)) sameTick = sameTick || changed(probe, d->vehicleId);
+        }
+    }
+    CHECK(changes >= 3); // the forcing: inserted stub vehicles do change
+    CHECK(!sameTick);
+    // Late arrivals are still on the road at the end, so their changes are "unfinished": pool the rows.
+    LaneChangeRow row;
+    for (const auto& r : diagnose(s).rows) {
+        row.changes += r.changes; row.unplaced += r.unplaced;
+        row.beforeDeadEnd.insert(row.beforeDeadEnd.end(), r.beforeDeadEnd.begin(), r.beforeDeadEnd.end());
+        row.atDistance.insert(row.atDistance.end(), r.atDistance.begin(), r.atDistance.end());
+    }
+    CHECK(row.changes == changes && row.unplaced == 0);
+    CHECK(row.beforeDeadEnd.size() == changes && row.atDistance.size() == changes);
+    const auto& types = s.scenario->vehicleTypes;
+    const double car = std::find_if(types.begin(), types.end(), [](const auto& v) { return v.id == "car"; })->length;
+    for (std::size_t k = 0; k < changes; ++k) {
+        CHECK(row.atDistance[k] >= car - 1e-9); // its rear had cleared the route's start
+        test::near(row.atDistance[k] + row.beforeDeadEnd[k], 200);
+    }
 }

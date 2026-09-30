@@ -74,7 +74,7 @@ the Windows time in the next CI run; do not infer it from the Linux number.
     seeds 44 and 45;
   - right turns rose on **South and North only** (+7.3, +7.5 s, every seed); West and East are
     within the seed spread;
-  - right-turners change in the tick they enter and almost never wait at a dead end, so
+  - right-turners change a car length (4.5 m) past the network edge, the first tick the rules allow, and almost never wait at a dead end, so
     **`laneChangeDistance` is not the next piece** (D87). The long waits are on the West and East
     left turns (35 vehicles, 865 s), whose delay did not rise.
 - Linux/GCC replays the M3.2.8b Windows evidence digit for digit (recorded in its file).
