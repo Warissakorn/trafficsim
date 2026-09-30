@@ -33,7 +33,8 @@ LaneReference dropLane(const Network& n,Point p,int count,int level) {
         if(distance<=l.lanes[i].width/2+.01 && distance<best)
             {best=distance;result=LaneReference{l.id,l.lanes[i].id,matchedStation(g,l.geometry,station)};}
     }
-    if(!result)throw std::invalid_argument("EDIT_COPY_TARGET");return *result;
+    if(!result)throw std::invalid_argument("EDIT_COPY_TARGET");
+    return *result;
 }
 int linkLevel(const Network& n,const std::string& id) {
     for(const auto& l:n.links)if(l.id==id)return l.level;

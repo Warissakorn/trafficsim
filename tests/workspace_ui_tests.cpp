@@ -135,7 +135,8 @@ int main(int argc,char** argv) {
             for(int i=0;i<tabs->count();++i){tabs->setCurrentIndex(i);settle();require(tabs->isVisible(),"Tab navigation disappeared");}
         }
         require(item<QAction>(window,"editorFocusCanvas")->text().contains(QString::fromUtf8("แผนที่")),"Thai focus label missing");
-        for(int i=0;i<100;++i)item<QAction>(window,"editorStep")->trigger();settle();
+        for(int i=0;i<100;++i)item<QAction>(window,"editorStep")->trigger();
+        settle();
         auto* info=item<QLabel>(window,"editorRunInfo");
         require(info->wordWrap()&&info->isVisible()&&window.runState().tick==100,"Run summary or stepping regressed");
         const auto tick=window.runState().tick;
