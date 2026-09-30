@@ -1,6 +1,9 @@
 #pragma once
 #include "run.hpp"
+#include "../eval/lane_changes.hpp"
 #include "../eval/movement.hpp"
+#include "../eval/segment_times.hpp"
+#include "../eval/stop_lines.hpp"
 #include "json.hpp"
 #include <filesystem>
 
@@ -21,6 +24,15 @@ std::string queueRowName(const AuthoredQueueCounter&);
 std::vector<std::string> replacedApproaches(const Network&, const AuthoredQueueCounter&);
 // The report as JSON (CLI), with the same honesty labels.
 Json movementJson(const MovementReport&);
+// M3.2.8c step 1: the lane-change diagnostic as JSON (CLI --lane-changes). Per row the change
+// count and where the changes happened -- metres before the dead end and metres from the network
+// edge, each as min, p10, median, p90, max by nearest rank and the share within 20 m -- plus
+// `positions` and `unplaced` (changes with no known position), and the dead-end waits.
+Json laneChangeJson(const LaneChangeReport&);
+// M3.2.8c step 2: the per-segment timing as JSON (CLI --segment-times).
+Json segmentTimeJson(const SegmentTimeReport&);
+// M3.2.8c step 3: each signal head's stop-line discharge as JSON (CLI --stop-lines).
+Json stopLineJson(const StopLineReport&);
 // The report as CSV. The first line states what the numbers are not.
 std::string movementCsv(const MovementReport&);
 }

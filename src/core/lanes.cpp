@@ -79,6 +79,11 @@ const RouteLaneChange* targetOf(const ScenarioIndex& index, std::size_t route, d
 // Walking pace: a stub vehicle this slow, at its dead end, is waiting for a gap (cooperation).
 constexpr double kWaitingSpeed = 0.5;
 }
+bool waitingAtDeadEnd(const ScenarioIndex& index, std::size_t route, const Vehicle& vehicle,
+                      const DriverBehaviour& behaviour) {
+    return index.remainingOfRoute[route] != 0 && vehicle.speed < kWaitingSpeed &&
+           index.deadEndOfRoute[route] - vehicle.distance <= stopLineReach(behaviour, vehicle.driverFactor);
+}
 std::vector<std::uint32_t> laneChangesRemaining(const Scenario& s) {
     std::vector<std::uint32_t> remaining(s.routes.size(), 0);
     for (const auto& dead : s.routeDeadEnds) {
@@ -221,13 +226,9 @@ std::vector<double> courtesyHolds(const Scenario& s, const ScenarioIndex& index,
     std::vector<double> holds(vehicles.size(), std::numeric_limits<double>::infinity());
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto route = refs[v].route;
-        if (index.remainingOfRoute[route] == 0) continue;
         const auto& vehicle = vehicles[v];
         const auto& type = s.vehicleTypes[refs[v].type];
-        const auto& behaviour = s.behaviours[refs[v].behaviour];
-        // Waiting: at walking pace, and as close to its dead end as car-following brings it.
-        if (vehicle.speed >= kWaitingSpeed ||
-            index.deadEndOfRoute[route] - vehicle.distance > stopLineReach(behaviour, vehicle.driverFactor)) continue;
+        if (!waitingAtDeadEnd(index, route, vehicle, s.behaviours[refs[v].behaviour])) continue;
         const auto* change = targetOf(index, route, vehicle.distance, vehicle.distance - type.length);
         if (!change) continue;
         const double at = mapped(*change, vehicle.distance), atRear = at - type.length;

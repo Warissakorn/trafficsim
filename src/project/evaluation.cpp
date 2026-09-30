@@ -158,6 +158,61 @@ Json movementJson(const MovementReport& r) {
     j["laneChanges"] = r.laneChanges;
     return j;
 }
+Json laneChangeJson(const LaneChangeReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "mandatory lane changes and dead-end waits, by the movement a vehicle arrived on; one run";
+    j["rows"] = Json::array();
+    for (const auto& row : r.rows) {
+        // Nearest-rank quantiles, and the share of changes at most 20 m from the reference.
+        const auto spread = [](std::vector<double> values) {
+            if (values.empty()) return Json(nullptr);
+            std::sort(values.begin(), values.end());
+            const auto rank = [&](double q) {
+                const auto k = static_cast<std::size_t>(std::ceil(q * static_cast<double>(values.size())));
+                return values[std::clamp<std::size_t>(k, 1, values.size()) - 1];
+            };
+            const auto near = std::count_if(values.begin(), values.end(), [](double d) { return d <= 20; });
+            return Json{{"min", rank(0)}, {"p10", rank(0.1)}, {"median", rank(0.5)}, {"p90", rank(0.9)},
+                        {"max", rank(1)}, {"within20m", static_cast<double>(near) / static_cast<double>(values.size())}};
+        };
+        j["rows"].push_back({{"movement", row.name}, {"changes", row.changes}, {"changedVehicles", row.changedVehicles},
+                             {"positions", row.beforeDeadEnd.size()}, {"unplaced", row.unplaced},
+                             {"beforeDeadEnd", spread(row.beforeDeadEnd)}, {"fromNetworkEdge", spread(row.atDistance)},
+                             {"waitingVehicles", row.waitingVehicles}, {"waitSeconds", row.waitSeconds},
+                             {"longestWait", row.longestWait}});
+    }
+    return j;
+}
+Json segmentTimeJson(const SegmentTimeReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "mean time from departure to entering each runtime segment, by the movement a vehicle arrived on; one run";
+    j["unassigned"] = r.unassigned; j["undeparted"] = r.undeparted;
+    j["rows"] = Json::array();
+    for (const auto& row : r.rows) {
+        Json segments = Json::array();
+        for (const auto& s : row.segments)
+            segments.push_back({{"segmentId", s.segmentId}, {"vehicles", s.vehicles}, {"meanSinceDeparture", s.meanSinceDeparture}});
+        j["rows"].push_back({{"movement", row.name}, {"vehicles", row.vehicles},
+                             {"meanDepartureDelay", row.meanDepartureDelay}, {"meanTravelTime", row.meanTravelTime},
+                             {"meanFreeFlowTime", row.meanFreeFlowTime}, {"segments", std::move(segments)}});
+    }
+    return j;
+}
+Json stopLineJson(const StopLineReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "stop-line discharge per signal head: standing upstream in red and green, greens held through; one run";
+    j["rows"] = Json::array();
+    for (const auto& h : r.rows)
+        j["rows"].push_back({{"head", h.headId}, {"crossed", h.crossed}, {"greens", h.greens},
+                             {"meanStandRed", h.meanStandRed}, {"meanStandGreen", h.meanStandGreen},
+                             {"heldShare", h.heldShare}, {"meanHeld", h.meanHeld},
+                             {"meanDischarged", h.meanDischarged}, {"meanHeadway", h.meanHeadway},
+                             {"meanResidual", h.meanResidual}});
+    return j;
+}
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";

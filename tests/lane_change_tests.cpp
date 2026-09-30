@@ -2,6 +2,8 @@
 #include "../src/core/following.hpp"
 #include "../src/core/lanes.hpp"
 #include "../src/core/routes.hpp"
+#include "../src/eval/lane_changes.hpp"
+#include "../src/eval/segment_times.hpp"
 #include "../src/project/run.hpp"
 #include "../tools/four_leg_network.hpp"
 #include <algorithm>
@@ -208,4 +210,129 @@ TEST(lanechange, the_four_leg_turns_compile_to_a_stub_per_other_lane) { // A34
     test::near(deadEnd(right + "/lane-1"), length(right + "/lane-2", 1));
     // Through reaches from both lanes: no stub.
     CHECK(deadEnd(built.routes[0] + "/lane-1") < 0 && deadEnd(built.routes[0] + "/lane-2") < 0);
+}
+// M3.2.8c step 1: the lane-change diagnostic reads where a change happened and how long a stub
+// vehicle waited at its dead end, and books both on the movement the vehicle arrived on.
+namespace {
+LaneChangeReport diagnose(SimState s) {
+    LaneChangeAccumulator changes(EvaluationSpec{{"through"}, {{"full", 0}}, {}, {}});
+    changes.observe(s);
+    while (s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); changes.observe(s); }
+    return changes.report();
+}
+}
+TEST(lanechange, the_diagnostic_records_an_early_change_and_no_wait) { // A27's road
+    const auto s = test::withVehicles(lanes(), {on(1, "stubA", 20, 10)});
+    CHECK(s.index->remainingOfRoute[find(s, 1)->routeIndex] == 1); // the forcing: it is on a stub
+    const auto r = diagnose(s);
+    CHECK(r.rows.size() == 3 && r.rows[0].name == "through" && r.rows[1].name == "unfinished");
+    CHECK(r.rows[0].changes == 1 && r.rows[0].changedVehicles == 1 && r.rows[0].beforeDeadEnd.size() == 1);
+    test::near(r.rows[0].beforeDeadEnd[0], 180); // changed where it stood, 180 m before the dead end
+    CHECK(r.rows[0].waitingVehicles == 0 && r.rows[0].waitSeconds == 0);
+    CHECK(r.rows[1].changes == 0 && r.rows[2].changes == 0);
+}
+TEST(lanechange, the_diagnostic_records_a_dead_end_wait_and_the_late_change) { // A30's road
+    auto scenario = lanes();
+    scenario.signalPrograms = {{"red-then-green", 0, {{40, SignalColor::red}, {80, SignalColor::green}}}};
+    scenario.signalHeads = {{"head", "b", 199, "red-then-green"}};
+    std::vector<test::Placement> queue{on(1, "stubA", 100, 10)};
+    for (std::uint64_t k = 0; k < 15; ++k) queue.push_back(on(10 + k, "full", 198 - 7 * static_cast<double>(k), 0));
+    auto s = test::withVehicles(scenario, queue);
+    auto probe = s;
+    for (int i = 0; i < 380; ++i) probe = stepSimulation(probe);
+    const auto& waiting = *find(probe, 1);
+    // The forcing: the engine's own test says it is waiting at its dead end.
+    CHECK(waitingAtDeadEnd(*probe.index, waiting.routeIndex, waiting,
+                           probe.scenario->behaviours[probe.index->behaviourOfType[waiting.typeIndex]]));
+    const auto r = diagnose(s);
+    const auto& row = r.rows[0];
+    CHECK(row.changes == 1 && row.waitingVehicles == 1);
+    CHECK(row.waitSeconds > 10 && row.longestWait > 10 && row.longestWait <= row.waitSeconds + 1e-9);
+    CHECK(row.beforeDeadEnd.size() == 1 && row.beforeDeadEnd[0] >= 0 && row.beforeDeadEnd[0] < 10);
+    CHECK(r.rows[1].waitingVehicles == 0 && r.rows[2].waitingVehicles == 0);
+}
+TEST(lanechange, the_diagnostic_places_every_change_of_an_inserted_vehicle) {
+    // The diagnostic reads a change's place off the previous snapshot. That holds because a change
+    // needs the rear inside a span, and an arrival enters with its rear behind the route's start,
+    // so no vehicle changes in the tick it is inserted, although insertion comes first in a tick.
+    auto scenario = lanes();
+    scenario.inputs = {{"inA", "stubA", "car", 600, 0, 110}}; // seed 42 first arrives near 56 s
+    const auto s = createSimulation(scenario, 42);
+    std::uint64_t changes = 0; bool sameTick = false;
+    for (auto probe = s; probe.tick < totalTicks(*s.scenario); ) {
+        probe = stepSimulation(probe);
+        for (const auto& e : probe.events) {
+            changes += std::holds_alternative<LaneChangeEvent>(e);
+            if (const auto* d = std::get_if<DepartedEvent>(&e)) sameTick = sameTick || changed(probe, d->vehicleId);
+        }
+    }
+    CHECK(changes >= 3); // the forcing: inserted stub vehicles do change
+    CHECK(!sameTick);
+    // Late arrivals are still on the road at the end, so their changes are "unfinished": pool the rows.
+    LaneChangeRow row;
+    for (const auto& r : diagnose(s).rows) {
+        row.changes += r.changes; row.unplaced += r.unplaced;
+        row.beforeDeadEnd.insert(row.beforeDeadEnd.end(), r.beforeDeadEnd.begin(), r.beforeDeadEnd.end());
+        row.atDistance.insert(row.atDistance.end(), r.atDistance.begin(), r.atDistance.end());
+    }
+    CHECK(row.changes == changes && row.unplaced == 0);
+    CHECK(row.beforeDeadEnd.size() == changes && row.atDistance.size() == changes);
+    const auto& types = s.scenario->vehicleTypes;
+    const double car = std::find_if(types.begin(), types.end(), [](const auto& v) { return v.id == "car"; })->length;
+    for (std::size_t k = 0; k < changes; ++k) {
+        CHECK(row.atDistance[k] >= car - 1e-9); // its rear had cleared the route's start
+        test::near(row.atDistance[k] + row.beforeDeadEnd[k], 200);
+    }
+}
+// M3.2.8c step 2: the per-segment timing, on released vehicles (a DepartedEvent is its clock).
+namespace {
+SegmentTimeReport timeSegments(const Scenario& scenario) {
+    auto s = createSimulation(scenario, 42);
+    SegmentTimeAccumulator times(EvaluationSpec{{"through"}, {{"full", 0}}, {}, {}});
+    times.observe(s);
+    while (s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); times.observe(s); }
+    return times.report();
+}
+// Every arrival's own event, for the figures the timing must reproduce.
+std::vector<ArrivedEvent> arrivedEvents(const Scenario& scenario) {
+    std::vector<ArrivedEvent> out;
+    for (auto s = createSimulation(scenario, 42); s.tick < totalTicks(*s.scenario); ) {
+        s = stepSimulation(s);
+        for (const auto& e : s.events) if (const auto* a = std::get_if<ArrivedEvent>(&e)) out.push_back(*a);
+    }
+    return out;
+}
+std::uint64_t arrivals(const Scenario& scenario) { return arrivedEvents(scenario).size(); }
+}
+TEST(lanechange, segment_times_clock_each_segment_from_departure) {
+    auto scenario = lanes();
+    scenario.inputs = {{"inB", "full", "car", 600, 0, 110}}; // seed 42 first arrives near 56 s
+    const auto n = arrivals(scenario);
+    CHECK(n >= 3); // the forcing: released vehicles reach the end
+    const auto r = timeSegments(scenario);
+    const auto& row = r.rows.at(0);
+    CHECK(row.vehicles == n && r.undeparted == 0 && r.unassigned == 0);
+    CHECK(row.segments.size() == 1 && row.segments[0].segmentId == "turn" && row.segments[0].vehicles == n);
+    const auto& types = scenario.vehicleTypes;
+    const auto& car = *std::find_if(types.begin(), types.end(), [](const auto& v) { return v.id == "car"; });
+    // 200 m of "b" from a standing start: no faster than at top speed, and not far slower.
+    CHECK(row.segments[0].meanSinceDeparture >= 200 / car.desiredSpeed.max);
+    CHECK(row.segments[0].meanSinceDeparture <= 200 / car.desiredSpeed.min + 10);
+    // The means are the arrivals' own figures (bunched arrivals do wait to be inserted).
+    double delay = 0, travel = 0;
+    for (const auto& a : arrivedEvents(scenario)) { delay += a.departureDelay; travel += a.travelTime; }
+    test::near(row.meanDepartureDelay, delay / static_cast<double>(n));
+    test::near(row.meanTravelTime, travel / static_cast<double>(n));
+    CHECK(row.meanTravelTime > row.segments[0].meanSinceDeparture);
+}
+TEST(lanechange, segment_times_book_a_stub_vehicle_on_the_chain_it_finished) {
+    auto scenario = lanes();
+    scenario.inputs = {{"inA", "stubA", "car", 600, 0, 110}};
+    const auto n = arrivals(scenario);
+    CHECK(n >= 3); // the forcing: stub vehicles change and arrive
+    const auto r = timeSegments(scenario);
+    const auto& row = r.rows.at(0);
+    CHECK(row.vehicles == n && r.undeparted == 0 && r.unassigned == 0);
+    // Its first segment ("a") is never entered and the change emits no entry: "turn" is the one.
+    CHECK(row.segments.size() == 1 && row.segments[0].segmentId == "turn" && row.segments[0].vehicles == n);
 }

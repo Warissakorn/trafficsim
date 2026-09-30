@@ -212,6 +212,8 @@ before.
 - Left-turn delay was not expected to fall, since a through vehicle in the shared kerb lane still
   blocks a Thai left turn. **Measured, it fell on all four M2.6 approaches** (by 1.7–11.1 s), with
   the lane changes and cooperation together. That is reported, not explained: no controlled case
-  isolates why.
+  isolates why. **That was seed 42 only.** Over seeds 42–46 left turns fell on East and North
+  only, the right turns rose on South and North in every seed, and mean delay rose in every seed
+  (`docs/evidence/m3.2.8c-right-turns.md`).
 - A turning vehicle held at a dead end blocks its own lane. That is real, and it is reported.
 - The single-lane frozen baselines must stay byte-identical. They do.
