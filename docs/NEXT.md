@@ -48,7 +48,7 @@ Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outst
    Conflict extents use the new rails, so existing authored extents can require review.
 
 The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was mostly a
-whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.5 s → 2.6 s). Confirm
+whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
 the Windows time in the next CI run; do not infer it from the Linux number.
 
 ## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
@@ -132,8 +132,10 @@ no gate result is inferred.
   after the D70 pass: the M2.6 template's one-hour run is 4.35G instructions, median 0.45 s wall
   (0.44–0.66 s, five runs; one outlier). What is left there: `stepSimulation` 66%, `observe` 26% (mostly the
   per-line queue walk itself), `compileDocument` 4%.
-- **`ctest -j` wall time is `m26study` (≈17 s Debug)**: split that group before chasing any other
-  test, and add every new test group to `TRAFFICSIM_TEST_GROUPS` or `all-model-tests` fails (D70).
+- **`ctest -j` wall time:** `m26study` was split on 2026-09-30 (its merge case, which runs the
+  hour twice, is `m26study_merge`); Linux Debug `-j4` went 35.9 s → 16.3 s median with the
+  repaint fix. The longest test is now `m26study_merge` (≈6 s). Add every new test group to
+  `TRAFFICSIM_TEST_GROUPS` or `all-model-tests` fails (D70).
 
 ## Standing — the owner's items
 

@@ -129,7 +129,7 @@ if(BUILD_TESTING)
     # serial wall time and repeated every named group.
     set(TRAFFICSIM_TEST_GROUPS core network reference project editor connectors mouths points
         diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement
-        routeless signals m26study rightofway rightofway_lifecycle rightofway_resolution
+        routeless signals m26study m26study_merge rightofway rightofway_lifecycle rightofway_resolution
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict
         rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep)
