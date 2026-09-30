@@ -43,12 +43,17 @@ std::vector<std::string> addCrossingAreas(ProjectDocument& d, const std::string&
     const auto a = lanesOf(d.network, first), b = lanesOf(d.network, second);
     struct Found { std::size_t i, j; SurfaceOverlap o; };
     std::vector<Found> found;
+    bool authored = false;
     for (std::size_t i = 0; i < a.size(); ++i)
         for (std::size_t j = 0; j < b.size(); ++j) {
-            for (const auto& o : surfaceOverlaps(d.network, a[i], b[j])) // every piece its own area (D72)
-                if (o.status == SurfaceOverlap::Status::overlap) found.push_back({i, j, o}); // no guessed area (§1)
+            for (const auto& o : surfaceOverlaps(d.network, a[i], b[j])) { // every piece its own area (D72)
+                if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
+                // A piece already authored keeps its area: a second Add crossing does not double it.
+                if (authoredCovers(d.network, a[i], b[j], o)) authored = true;
+                else found.push_back({i, j, o});
+            }
         }
-    if (found.empty()) throw std::invalid_argument("EDIT_NO_CROSSING");
+    if (found.empty()) throw std::invalid_argument(authored ? "EDIT_CROSSING_EXISTS" : "EDIT_NO_CROSSING");
     // One line per lane, before the FIRST area that lane meets (D63): a line per area put the far
     // lane's line inside the near lane's area, where a Stop would halt a vehicle mid-crossing.
     // The areas behind one line are admitted together (A15), exactly as before.

@@ -9,7 +9,19 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — owner looks at D83/D84 on Windows (PR #78)
+## Immediate — owner checks D86 (conflict areas follow the drawing) on Windows
+
+Open `data/projects/t-junction-priority.traffic.json`, Conflict area tool (`A`). Drag Major
+eastbound a few metres along and across: "Minor crosses eastbound" and its waiting line move
+with the overlap, the status column stays "runs", no grey passive copy appears. Drag it clear of
+the turn: the area, its Yield and its line go; Ctrl+Z brings them back. Reshape the crossing
+turn: same. Verified on Linux only (headless and offscreen Qt). If an author ever needs an area
+deliberately wider than the overlap to survive an edit, that is D86's failure condition.
+Later, not booked: a branching (diverge) kind, red-red status, front/rear gap and visibility, and
+`sharedMouth` treating a different `level` as no crossing although M3_CONTRACT says drawing level
+is not separation — decide that one before touching it.
+
+## Then — owner looks at D83/D84 on Windows (PR #78)
 
 D81–D84 compile and pass on Linux (Qt 6.10) and in CI (Qt 6.5.3, Linux and Windows); nobody has
 looked at them on the owner's Windows machine. Check at 100/150/200 % scaling: the dropdown

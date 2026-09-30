@@ -86,7 +86,7 @@ that would change nothing at Run must not be accepted and then written back as i
 | §3.2 Curve | `curveType`, `splineTension`, `controlReach`, `smoothingAngle`, `minRadius`, `sampleDensity` | Absent; no such member on `Connector` |
 | §5 Behavior | `desiredSpeed`, `speedFactor`, `acceleration`, `deceleration`, `maxDeceleration`, `minHeadway`, `reactionTime`, `lookAheadDistance`, `lateralBehavior`, `cooperative`, `yieldToPedestrians` | Absent. `desiredSpeed` exists only as a vehicle-type property (`core/demand.cpp:29`), never per Connector |
 | §6 Lane change | `laneChangeDistance`, `emergencyStopDistance`, `cooperativeLaneChange`, `aggressiveLaneChange`, `blockingTimeout` | Absent |
-| §7.1 Conflict areas | `autoConflictArea`, `conflictPriority`, `conflictFrontGap`, `conflictRearGap`, `conflictVisibility` | Absent — **there is no ConflictArea object anywhere in the model** |
+| §7.1 Conflict areas | `autoConflictArea`, `conflictPriority`, `conflictFrontGap`, `conflictRearGap`, `conflictVisibility` | Partial since M3.2 (D54–D72, D86): `ConflictArea` with `firstYields`/`secondYields`/undetermined, `gapTime`/`headway`, Stop/Yield, automatic passive areas that follow the drawing. No front/rear gap, visibility, red-red status or branching kind |
 | §7.2 Priority | `priorityRuleType`, `minGap`, `maxWaitTime`, `stopLinePosition`, `visibilityDistance` | Absent; only `gapTime`/`headway` exist, and only on a derived rule |
 | §7.3 | The ladder signal → priority rule → conflict area | Partially realisable; the third rung does not exist |
 | §8 Signal | `signalGroupId`, `signalControllerId`, `stopLineOffset`, `signalHeadType`, actuated/adaptive | Absent. Heads do mount on Connector paths (`sections.cpp:221`), which is the §8.3 part that exists |

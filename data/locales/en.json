@@ -456,6 +456,7 @@
   "CONFLICT_WAITING_LINE_NOT_UPSTREAM": "The waiting line is not upstream of its conflict area.",
   "DUPLICATE_PRIORITY_RULE": "A conflict area has more than one priority rule.",
   "EDIT_ALREADY_EXPLICIT": "This merge already has authored priority.",
+  "EDIT_CROSSING_EXISTS": "Every overlap of these two objects already has a conflict area.",
   "EDIT_NO_CROSSING": "No lane of the two selected objects overlaps a lane of the other.",
   "EDIT_NO_MERGE": "There is no automatic merge here to take over or restore.",
   "EDIT_REFERENCED": "A conflict area still uses this waiting line.",
