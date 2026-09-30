@@ -200,6 +200,19 @@ Json segmentTimeJson(const SegmentTimeReport& r) {
     }
     return j;
 }
+Json stopLineJson(const StopLineReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "stop-line discharge per signal head: standing upstream in red and green, greens held through; one run";
+    j["rows"] = Json::array();
+    for (const auto& h : r.rows)
+        j["rows"].push_back({{"head", h.headId}, {"crossed", h.crossed}, {"greens", h.greens},
+                             {"meanStandRed", h.meanStandRed}, {"meanStandGreen", h.meanStandGreen},
+                             {"heldShare", h.heldShare}, {"meanHeld", h.meanHeld},
+                             {"meanDischarged", h.meanDischarged}, {"meanHeadway", h.meanHeadway},
+                             {"meanResidual", h.meanResidual}});
+    return j;
+}
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";

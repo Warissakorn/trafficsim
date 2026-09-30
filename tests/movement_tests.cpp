@@ -1,5 +1,6 @@
 #include "test.hpp"
 #include "../src/eval/movement.hpp"
+#include "../src/eval/stop_lines.hpp"
 #include "../src/project/evaluation.hpp"
 #include "../src/project/run.hpp"
 #include <fstream>
@@ -147,4 +148,46 @@ TEST(movement, queue_definition_is_data) {
     const auto empty = test::root() / "tests";
     CHECK(!std::filesystem::exists(empty / "evaluation" / "queue-counter.json"));
     test::throws([&] { loadQueueDefinition(empty); }, "EDIT_CATALOG_READ");
+}
+// M3.2.8c step 3: stop-line discharge per head, on standing queues placed at the line.
+namespace {
+SimState queueAt(Scenario s, int vehicles) {
+    s.duration = 120;
+    std::vector<test::Placement> queue;
+    for (int k = 0; k < vehicles; ++k) queue.push_back({static_cast<std::uint64_t>(k + 1), "route", 99 - 7.0 * k, 0});
+    return test::withVehicles(s, queue);
+}
+StopLineRow stopLine(SimState state) {
+    StopLineAccumulator lines(oneLane()); lines.observe(state);
+    while (state.tick < totalTicks(*state.scenario)) { state = stepSimulation(state); lines.observe(state); }
+    const auto rows = lines.report().rows;
+    CHECK(rows.size() == 1 && rows[0].headId == "h");
+    return rows.at(0);
+}
+}
+TEST(movement, stop_line_one_green_clears_a_queue_that_stood_through_red) {
+    auto s = queueAt(redRoad(40), 5);
+    auto probe = s;
+    while (probe.time < 39) probe = stepSimulation(probe);
+    for (const auto& v : probe.vehicles) CHECK(v.speed < 5 * kmh); // the forcing: all stand at red
+    const auto row = stopLine(s);
+    CHECK(row.crossed == 5 && row.greens == 1 && row.meanDischarged == 5);
+    CHECK(row.meanStandRed > 35 && row.meanStandRed <= 40 + 1e-9); // the queue stood through the red
+    CHECK(row.heldShare == 0 && row.meanHeld == 0);
+    CHECK(row.meanHeadway > 0.5 && row.meanHeadway < 5);
+}
+TEST(movement, stop_line_a_short_green_leaves_vehicles_held_through_it) {
+    auto road = redRoad(0);
+    road.signalPrograms[0].phases = {{20, SignalColor::red}, {3, SignalColor::green}};
+    auto s = queueAt(road, 10);
+    auto probe = s;
+    while (probe.time < 23.05) probe = stepSimulation(probe);
+    // The forcing: at the first green's end some vehicle still stands short of the line.
+    CHECK(std::any_of(probe.vehicles.begin(), probe.vehicles.end(),
+                      [](const auto& v) { return v.distance < 100 && v.speed < 5 * kmh; }));
+    const auto row = stopLine(s);
+    // Greens start at 20, 43, 66, 89 and 112 s; a 3 s green passes about one vehicle each.
+    CHECK(row.greens == 5 && row.crossed >= 2 && row.crossed < 10);
+    CHECK(row.heldShare > 0 && row.meanHeld > 0 && row.meanResidual > 0);
+    CHECK(row.meanStandGreen > 0 && row.meanDischarged < 10);
 }

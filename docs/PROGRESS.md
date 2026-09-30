@@ -8,6 +8,25 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-30 — M3.2.8c step 3: the right-turn rise is red time, and "before" beat random
+
+Step 3 of NEXT, measurement only. `StopLineAccumulator` (`src/eval/stop_lines.{hpp,cpp}`, CLI
+`--stop-lines`) measures each signal head's discharge. Per crossing vehicle: time standing
+upstream at red and at green, and green ends stood through. Per green: crossings, headway, and
+the residual left standing. It reads only `SignalEvent`, positions and speeds, so it was copied
+into a `b472e05` worktree for the "before" runs, like `segment_times`.
+
+- **The hypothesis NEXT stated is falsified.** Right-turners are not held through their green:
+  about 0% before and after, and discharge per green and headway barely move. The +7 s is all
+  standing at red, in all ten seed-approach pairs (`docs/evidence/m3.2.8c-pocket-discharge.md`).
+- **After M3.2.8b the red wait matches uniform random arrival** over the 120 s cycle
+  (R²/2C ≈ 38–41 s). Before, it was about 7 s better. So the open question is what timed
+  right-turners to their green under lane-fixed entry. If that was an artefact, the rise is
+  M3.2.8b being more realistic, and whether to call it so is the owner's ruling.
+- Tests: a queue that stands through a 40 s red clears in one green with nobody held; a 3 s
+  green, repeating, leaves vehicles held (5 greens in 120 s, about one crossing each). The first
+  draft expected all ten to cross, which the engine rightly did not do.
+
 ## 2026-09-30 — M3.2.8c step 2: the right-turn rise is spent in the pocket
 
 Step 2 of NEXT, measurement only. `SegmentTimeAccumulator` (`src/eval/segment_times.{hpp,cpp}`,

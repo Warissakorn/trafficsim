@@ -3,6 +3,7 @@
 #include "../eval/lane_changes.hpp"
 #include "../eval/movement.hpp"
 #include "../eval/segment_times.hpp"
+#include "../eval/stop_lines.hpp"
 #include "json.hpp"
 #include <filesystem>
 
@@ -30,6 +31,8 @@ Json movementJson(const MovementReport&);
 Json laneChangeJson(const LaneChangeReport&);
 // M3.2.8c step 2: the per-segment timing as JSON (CLI --segment-times).
 Json segmentTimeJson(const SegmentTimeReport&);
+// M3.2.8c step 3: each signal head's stop-line discharge as JSON (CLI --stop-lines).
+Json stopLineJson(const StopLineReport&);
 // The report as CSV. The first line states what the numbers are not.
 std::string movementCsv(const MovementReport&);
 }

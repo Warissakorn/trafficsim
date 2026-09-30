@@ -49,7 +49,7 @@ add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/routing.cpp src/model/network/lane_family.cpp src/model/network/routeless.cpp src/model/network/right_of_way.cpp
     src/model/network/conflict_coverage.cpp src/model/network/automatic_conflicts.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
-add_library(trafficsim_eval STATIC src/eval/summary.cpp src/eval/movement.cpp src/eval/lane_changes.cpp src/eval/segment_times.cpp)
+add_library(trafficsim_eval STATIC src/eval/summary.cpp src/eval/movement.cpp src/eval/lane_changes.cpp src/eval/segment_times.cpp src/eval/stop_lines.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
     src/project/document.cpp src/project/signal_migration.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp

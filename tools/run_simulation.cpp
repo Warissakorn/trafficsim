@@ -11,7 +11,7 @@ namespace {
 using namespace trafficsim;
 // A project run steps the engine itself so the movement evaluation sees every state.
 int runProject(const std::filesystem::path& file, const std::filesystem::path& csvFile,
-               const std::filesystem::path& data, std::uint32_t seed, bool laneChanges, bool segmentTimes) {
+               const std::filesystem::path& data, std::uint32_t seed, bool laneChanges, bool segmentTimes, bool stopLines) {
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
     const auto document = parseDocument(Json::parse(stream));
@@ -25,11 +25,14 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     if (laneChanges) changes.emplace(spec);
     std::optional<SegmentTimeAccumulator> segments;
     if (segmentTimes) segments.emplace(spec);
+    std::optional<StopLineAccumulator> lines;
+    if (stopLines) lines.emplace(spec);
     auto state = createSimulation(snapshot.scenario, seed);
     const auto observe = [&] {
         movements.observe(state);
         if (changes) changes->observe(state);
         if (segments) segments->observe(state);
+        if (lines) lines->observe(state);
     };
     observe();
     const auto ticks = totalTicks(snapshot.scenario);
@@ -46,6 +49,7 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     result["seed"] = seed;
     if (changes) result["laneChangeDiagnostics"] = laneChangeJson(changes->report());
     if (segments) result["segmentTimes"] = segmentTimeJson(segments->report());
+    if (lines) result["stopLines"] = stopLineJson(lines->report());
     std::cout << result.dump(2) << '\n';
     return std::cout ? 0 : 1;
 }
@@ -54,22 +58,25 @@ int main(int argc, char** argv) {
     try {
         std::uint32_t seed = 42;
         std::filesystem::path data, scenarioFile, eventsFile, projectFile, csvFile;
-        bool seedSet = false, laneChanges = false, segmentTimes = false;
+        bool seedSet = false, laneChanges = false, segmentTimes = false, stopLines = false;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
             if (arg == "--help" || arg == "-h") {
                 std::cout << "TrafficSim (not yet validated)\n"
                              "Usage: trafficsim-cli [seed] [--seed N] [--data-dir DIR]\n"
                              "       [--scenario FILE] [--events FILE]\n"
-                             "       [--project FILE.traffic.json [--csv FILE] [--lane-changes] [--segment-times]]\n"
+                             "       [--project FILE.traffic.json [--csv FILE] [--lane-changes] [--segment-times]\n"
+                             "        [--stop-lines]]\n"
                              "Outputs completed-trip diagnostics, not HCM control delay or LOS.\n"
                              "--project adds simulated movement delay and approach queues (M2.5).\n"
                              "--lane-changes adds where lane changes happen and dead-end waits (M3.2.8c).\n"
-                             "--segment-times adds each movement's mean time to every segment (M3.2.8c).\n";
+                             "--segment-times adds each movement's mean time to every segment (M3.2.8c).\n"
+                             "--stop-lines adds each signal head's stop-line discharge (M3.2.8c).\n";
                 return 0;
             }
             if (arg == "--lane-changes") { laneChanges = true; continue; }
             if (arg == "--segment-times") { segmentTimes = true; continue; }
+            if (arg == "--stop-lines") { stopLines = true; continue; }
             if (arg == "--seed" || arg == "--data-dir" || arg == "--scenario" || arg == "--events" ||
                 arg == "--project" || arg == "--csv") {
                 if (++i == argc) throw std::invalid_argument("Missing value for " + arg);
@@ -90,10 +97,11 @@ int main(int argc, char** argv) {
         if (!csvFile.empty() && projectFile.empty()) throw std::invalid_argument("--csv needs --project");
         if (laneChanges && projectFile.empty()) throw std::invalid_argument("--lane-changes needs --project");
         if (segmentTimes && projectFile.empty()) throw std::invalid_argument("--segment-times needs --project");
+        if (stopLines && projectFile.empty()) throw std::invalid_argument("--stop-lines needs --project");
         if (!projectFile.empty()) {
             if (!scenarioFile.empty() || !eventsFile.empty())
                 throw std::invalid_argument("--project cannot be combined with --scenario or --events");
-            return runProject(projectFile, csvFile, data, seed, laneChanges, segmentTimes);
+            return runProject(projectFile, csvFile, data, seed, laneChanges, segmentTimes, stopLines);
         }
         if (scenarioFile.empty()) scenarioFile = data / "scenarios" / "crossing.json";
         const auto loaded = loadScenario(scenarioFile, data);
