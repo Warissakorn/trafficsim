@@ -9,14 +9,14 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Immediate — owner checks D85 (conflict areas follow the drawing) on Windows
+## Immediate — owner checks D86 (conflict areas follow the drawing) on Windows
 
 Open `data/projects/t-junction-priority.traffic.json`, Conflict area tool (`A`). Drag Major
 eastbound a few metres along and across: "Minor crosses eastbound" and its waiting line move
 with the overlap, the status column stays "runs", no grey passive copy appears. Drag it clear of
 the turn: the area, its Yield and its line go; Ctrl+Z brings them back. Reshape the crossing
 turn: same. Verified on Linux only (headless and offscreen Qt). If an author ever needs an area
-deliberately wider than the overlap to survive an edit, that is D85's failure condition.
+deliberately wider than the overlap to survive an edit, that is D86's failure condition.
 Later, not booked: a branching (diverge) kind, red-red status, front/rear gap and visibility, and
 `sharedMouth` treating a different `level` as no crossing although M3_CONTRACT says drawing level
 is not separation — decide that one before touching it.
@@ -34,15 +34,12 @@ that is D84's stated failure condition — record it, do not quietly restore lef
 Open gaps: `docs/UI_REDESIGN_AUDIT.md` §6 (dock-title tracking, remaining C-locale cell formats;
 tabular digits are solved by the face, D84).
 
-## Then — review the editor interaction cleanup (PR #73)
+## Then — owner looks at the editor interaction cleanup (merged: PRs #73–#75, 2026-09-28/29)
 
-The implementation and regression tests are on `codex/editor-interaction-polish`; check its
-latest Native C++ workflow before merging. Linux/Windows screenshot artifacts have been
-inspected. The UI suite covers hover, empty-space/table clearing, mode changes, Escape,
-tabs at all Link stations, Connector end tabs staying inside the mouth and following angled rails,
-visible P3–P4 boundaries, curved resize previews, Undo and 10 cm markings.
-Review curved/overlapping roads and the tabs at working zoom levels in the desktop. The local
-coding workspace has no Qt/CMake toolchain; the workflow runs Linux and Windows builds/tests.
+The UI suite covers hover, empty-space/table clearing, mode changes, Escape, tabs at all Link
+stations, Connector end tabs inside the mouth and following angled rails, visible P3–P4
+boundaries, curved resize previews, Undo and 10 cm markings. Still by eye, in the desktop:
+curved/overlapping roads and the tabs at working zoom levels.
 
 ## Then — review D80 central axis and four-point mouths
 
@@ -62,8 +59,9 @@ Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outst
 4. Runtime paths remain the stored first-lane-derived paths; schema-17 files are compatible.
    Conflict extents use the new rails, so existing authored extents can require review.
 
-The prior Windows `scenario-run-ui` timeout remains a separate known issue (97–99 s Debug).
-Do not infer Windows verification from a Linux test run.
+The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was mostly a
+whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
+the Windows time in the next CI run; do not infer it from the Linux number.
 
 ## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
 
@@ -82,18 +80,14 @@ Do not infer Windows verification from a Linux test run.
   D54–D67; the evidence is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
 
 **D72 (conflict areas on every overlap, 0.3 m inset)** is built and green on Windows desktop
-(MSVC 14.51, Qt 6.8.3, 64/64). Still to do: the owner looks at it in the editor (T-junction,
-Conflict tool), and a Linux run.
+(MSVC 14.51, Qt 6.8.3, 64/64) and on Linux desktop (2026-09-30, GCC, Debug, 69/69 at d605fb2).
+Still to do: the owner looks at it in the editor (T-junction, Conflict tool).
 
-**Then (M3.2.8b was verified on Windows headless only):**
-1. `cmake --preset desktop && cmake --build --preset desktop && ctest --preset desktop` on Linux.
-   `src/shell/editor_demand.cpp` (input row: `routeLaneFamily(...).size()`) and
-   `src/shell/editor_input.cpp` (share count: `routeLaneShareCount`) were edited but **never
-   compiled**. Fix anything red before other work.
-2. Re-run `trafficsim-cli 42 --project data/projects/m2.6-study-template.traffic.json` on
+**Then (M3.2.8b's code now compiles and passes on Linux desktop, 69/69 on 2026-09-30):**
+1. Re-run `trafficsim-cli 42 --project data/projects/m2.6-study-template.traffic.json` on
    Linux/GCC and compare with the evidence tables. A difference in the last digits is the
    toolchain. Record it in the evidence file either way.
-3. Callgrind the M2.6 one-hour run (baseline 4.35G instructions, D70) and record the cost of
+2. Callgrind the M2.6 one-hour run (baseline 4.35G instructions, D70) and record the cost of
    `decideLaneChanges`, `courtesyHolds` and the span rebuild on a tick with a change.
 
 **Then M3.2.8c** (ROADMAP row). Write its rows in `docs/M3_ACCEPTANCE.md` and its contract as
@@ -150,8 +144,10 @@ no gate result is inferred.
   after the D70 pass: the M2.6 template's one-hour run is 4.35G instructions, median 0.45 s wall
   (0.44–0.66 s, five runs; one outlier). What is left there: `stepSimulation` 66%, `observe` 26% (mostly the
   per-line queue walk itself), `compileDocument` 4%.
-- **`ctest -j` wall time is `m26study` (≈17 s Debug)**: split that group before chasing any other
-  test, and add every new test group to `TRAFFICSIM_TEST_GROUPS` or `all-model-tests` fails (D70).
+- **`ctest -j` wall time:** `m26study` was split on 2026-09-30 (its merge case, which runs the
+  hour twice, is `m26study_merge`); Linux Debug `-j4` went 35.9 s → 16.3 s median with the
+  repaint fix. The longest test is now `m26study_merge` (≈6 s). Add every new test group to
+  `TRAFFICSIM_TEST_GROUPS` or `all-model-tests` fails (D70).
 
 ## Standing — the owner's items
 

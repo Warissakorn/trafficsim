@@ -17,7 +17,10 @@ target_compile_definitions(trafficsim_options INTERFACE
 if(MSVC)
     target_compile_options(trafficsim_options INTERFACE /W4 /permissive- /utf-8 /fp:strict)
 else()
-    target_compile_options(trafficsim_options INTERFACE -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off)
+    target_compile_options(trafficsim_options INTERFACE -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off
+        # Aggregates are built with trailing members left to their defaults on purpose; the
+        # warning for that was 1120 of 1151 lines and hid the ones that mean something.
+        -Wno-missing-field-initializers)
     if(TRAFFICSIM_SANITIZERS)
         target_compile_options(trafficsim_options INTERFACE -fsanitize=address,undefined -fno-omit-frame-pointer)
         target_link_options(trafficsim_options INTERFACE -fsanitize=address,undefined)
@@ -130,7 +133,7 @@ if(BUILD_TESTING)
     # serial wall time and repeated every named group.
     set(TRAFFICSIM_TEST_GROUPS core network reference project editor connectors mouths points
         diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement
-        routeless signals m26study rightofway rightofway_lifecycle rightofway_resolution
+        routeless signals m26study m26study_merge rightofway rightofway_lifecycle rightofway_resolution
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict
         rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep conflict_follow)

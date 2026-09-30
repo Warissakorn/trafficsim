@@ -24,7 +24,7 @@ void bound(Path& p, const std::vector<Point>& g, double margin) {
         p.hi = {std::max(p.hi.x, q.x + margin), std::max(p.hi.y, q.y + margin)};
     }
 }
-// Holds the piece's middle, so a stale area that merely touches a piece does not hide it (D85).
+// Holds the piece's middle, so a stale area that merely touches a piece does not hide it (D86).
 bool holds(double from, double to, StationInterval i) { const double m = (i.from + i.to) / 2; return from <= m && m <= to; }
 // Pairs whose overlap is not a crossing. One place, so a later case (a diverge) is lifted here.
 bool sharedMouth(const Path& a, const Path& b) {

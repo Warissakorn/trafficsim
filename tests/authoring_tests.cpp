@@ -31,7 +31,7 @@ bool hasIssue(const Network& n,const std::string& code,const std::string& path) 
 }
 TEST(authoring, imported_connector_cross_sections_cannot_bypass_commands) {
     const auto good=documentJson(connected());
-    for(const auto widths:{Json::array({3}),Json::array({3,4,5})}) {
+    for(const auto& widths:{Json::array({3}),Json::array({3,4,5})}) {
         auto j=good;j["network"]["connectors"][0]["laneWidths"]=widths;
         test::throws([&]{parseDocument(j);},"EDIT_LANES");
     }
@@ -67,7 +67,7 @@ TEST(authoring, schema_eight_roundtrip_and_legacy_marking_defaults) {
         for(auto& link:legacy["network"]["links"])link.erase("boundaryMarkings");
         CHECK(parseDocument(Json::parse(legacy.dump()))==old);
     }
-    for(const auto invalid:{Json(nullptr),Json("solid"),Json::array({"solid"}),Json::array({"solid",3,"solid"})}) {
+    for(const auto& invalid:{Json(nullptr),Json("solid"),Json::array({"solid"}),Json::array({"solid",3,"solid"})}) {
         j=documentJson(d);j["network"]["links"][0]["boundaryMarkings"]=invalid;
         test::throws([&]{parseDocument(j);});
     }

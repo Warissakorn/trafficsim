@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <fstream>
 using namespace trafficsim;
 // Split out of connector_tests.cpp, which passed the 500-line guard (hard rule 6). That file keeps
 // connector TOPOLOGY -- creation, references, retargeting, deletion, history. This one keeps its
@@ -18,17 +17,6 @@ ProjectDocument roads(DrivingSide side = DrivingSide::left) {
         {"out",{{30,30},{30,100}},{{"out-1",4},{"out-2",3}}},
         {"other",{{40,0},{100,0}},{{"other-1",3.5}}}};
     return d;
-}
-ProjectDocument crossing() {
-    std::ifstream file(test::root()/"data/scenarios/crossing.json");Json j;file>>j;return parseDocument(j);
-}
-void anchored(ProjectDocument d) {   // on the lane middle AT ITS STATION; see connector_tests.cpp
-    CHECK(validateNetwork(d.network).empty());
-    for (const auto& c : d.network.connectors) {
-        const auto a=laneAttachment(d.network,c.from,true),b=laneAttachment(d.network,c.to,false);
-        test::near(c.geometry.front().x,a.x,1e-9);test::near(c.geometry.front().y,a.y,1e-9);
-        test::near(c.geometry.back().x,b.x,1e-9);test::near(c.geometry.back().y,b.y,1e-9);
-    }
 }
 }
 namespace {
@@ -77,10 +65,6 @@ double mouthLine(const std::vector<std::vector<Point>>& boundaries,bool start) {
 // The mouth is cut on the Link's cross-section now, so that measure is deliberately non-zero and
 // has been replaced by `mouthFlush` in `connector_mouth_tests.cpp`, which measures the thing that
 // matters instead: how far the ends are from the Link's own cross-section line.
-// How far a boundary end stands from the Link lane edge it attaches to. Since M1.18 the mouth is
-// cut on the Link's cross-section, so a boundary end lands ALONG that cut at width/cos(arrival)
-// rather than on the Link's own lane edge: this distance is the spread, not an error.
-double stepTo(Point end,Point edge){return std::hypot(end.x-edge.x,end.y-edge.y);}
 // An edge continued straight off both of its ends, so a point near a mouth still has a leg of the
 // far edge to measure against. Needed because the mouth slide leaves the two edges ending at
 // different stations: measured against the edge as stored, a point past its end would report the
@@ -94,21 +78,9 @@ std::vector<Point> extended(const std::vector<Point>& edge) {
 }
 // The carriageway between two boundaries at one sample, square to the road, with the far edge
 // extended so a mouth sample has something to measure against. Correct wherever the two edges are
-// parallel; where the far one leans -- a lane tapering closed -- use `mouthWidth` below instead.
+// parallel.
 double squareWidth(const std::vector<Point>& a,const std::vector<Point>& b,std::size_t j) {
     return perpendicular(extended(b),a[j]);
-}
-// The same width at a mouth where the FAR edge leans -- a lane tapering closed converges on its
-// neighbour, so a perpendicular dropped onto it reads short by construction (2.945 m of a 3 m
-// lane here) and always did. Resolving the two ends' separation onto the ribbon's own normal
-// instead removes the mouth's spread without asking the far edge to be parallel.
-double mouthWidth(const std::vector<Point>& a,const std::vector<Point>& b,bool start) {
-    const Point p=start?a.front():a.back(),q=start?a[1]:a[a.size()-2];
-    const Point along{start?q.x-p.x:p.x-q.x,start?q.y-p.y:p.y-q.y};
-    const double length=std::hypot(along.x,along.y);
-    if(length<1e-12)return 0;
-    const Point end=start?b.front():b.back();
-    return std::abs((end.x-p.x)*(-along.y/length)+(end.y-p.y)*(along.x/length));
 }
 // Measured square to the road. The two end samples are excluded when `body`: a mouth cut on the
 // link is a wedge on purpose, so its corner is nearer the far edge than a full width, and

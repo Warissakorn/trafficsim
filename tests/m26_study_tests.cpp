@@ -61,7 +61,8 @@ TEST(m26study, runs_an_hour_with_every_movement_delivering) {
     for (const auto& [route, count] : out.arrived) if (count > 0) movements[route]++;
     CHECK(movements.size() >= 12);
 }
-TEST(m26study, a_minor_vehicle_held_at_the_join_itself_blocks_the_merge) {
+// Its own group: it runs the hour twice, so ctest -j runs it beside the other m26study cases.
+TEST(m26study_merge, a_minor_vehicle_held_at_the_join_itself_blocks_the_merge) {
     // Why a derived rule's stop line sits short of the join (sections.cpp, kYieldClearance). The
     // forcing: put every derived stop line back ON the join, and check it moved.
     const auto committedFile = compileDocument(parseDocument(committed()), test::root() / "data").scenario;

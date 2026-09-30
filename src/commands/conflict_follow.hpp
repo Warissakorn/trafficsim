@@ -2,7 +2,7 @@
 #include "../project/document.hpp"
 
 namespace trafficsim {
-// D85: an authored conflict area is a setting on an overlap, not a place. After an edit that
+// D86: an authored conflict area is a setting on an overlap, not a place. After an edit that
 // changed the drawing (Links, Connectors, driving side), each area's extents are re-derived from
 // the overlap its pair has now -- the piece nearest where it was -- and its waiting lines keep
 // their distance to it. An area whose pair no longer overlaps, or whose merge is gone, is removed
