@@ -3,6 +3,7 @@
 #include "../src/core/lanes.hpp"
 #include "../src/core/routes.hpp"
 #include "../src/eval/lane_changes.hpp"
+#include "../src/eval/segment_times.hpp"
 #include "../src/project/run.hpp"
 #include "../tools/four_leg_network.hpp"
 #include <algorithm>
@@ -282,4 +283,56 @@ TEST(lanechange, the_diagnostic_places_every_change_of_an_inserted_vehicle) {
         CHECK(row.atDistance[k] >= car - 1e-9); // its rear had cleared the route's start
         test::near(row.atDistance[k] + row.beforeDeadEnd[k], 200);
     }
+}
+// M3.2.8c step 2: the per-segment timing, on released vehicles (a DepartedEvent is its clock).
+namespace {
+SegmentTimeReport timeSegments(const Scenario& scenario) {
+    auto s = createSimulation(scenario, 42);
+    SegmentTimeAccumulator times(EvaluationSpec{{"through"}, {{"full", 0}}, {}, {}});
+    times.observe(s);
+    while (s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); times.observe(s); }
+    return times.report();
+}
+// Every arrival's own event, for the figures the timing must reproduce.
+std::vector<ArrivedEvent> arrivedEvents(const Scenario& scenario) {
+    std::vector<ArrivedEvent> out;
+    for (auto s = createSimulation(scenario, 42); s.tick < totalTicks(*s.scenario); ) {
+        s = stepSimulation(s);
+        for (const auto& e : s.events) if (const auto* a = std::get_if<ArrivedEvent>(&e)) out.push_back(*a);
+    }
+    return out;
+}
+std::uint64_t arrivals(const Scenario& scenario) { return arrivedEvents(scenario).size(); }
+}
+TEST(lanechange, segment_times_clock_each_segment_from_departure) {
+    auto scenario = lanes();
+    scenario.inputs = {{"inB", "full", "car", 600, 0, 110}}; // seed 42 first arrives near 56 s
+    const auto n = arrivals(scenario);
+    CHECK(n >= 3); // the forcing: released vehicles reach the end
+    const auto r = timeSegments(scenario);
+    const auto& row = r.rows.at(0);
+    CHECK(row.vehicles == n && r.undeparted == 0 && r.unassigned == 0);
+    CHECK(row.segments.size() == 1 && row.segments[0].segmentId == "turn" && row.segments[0].vehicles == n);
+    const auto& types = scenario.vehicleTypes;
+    const auto& car = *std::find_if(types.begin(), types.end(), [](const auto& v) { return v.id == "car"; });
+    // 200 m of "b" from a standing start: no faster than at top speed, and not far slower.
+    CHECK(row.segments[0].meanSinceDeparture >= 200 / car.desiredSpeed.max);
+    CHECK(row.segments[0].meanSinceDeparture <= 200 / car.desiredSpeed.min + 10);
+    // The means are the arrivals' own figures (bunched arrivals do wait to be inserted).
+    double delay = 0, travel = 0;
+    for (const auto& a : arrivedEvents(scenario)) { delay += a.departureDelay; travel += a.travelTime; }
+    test::near(row.meanDepartureDelay, delay / static_cast<double>(n));
+    test::near(row.meanTravelTime, travel / static_cast<double>(n));
+    CHECK(row.meanTravelTime > row.segments[0].meanSinceDeparture);
+}
+TEST(lanechange, segment_times_book_a_stub_vehicle_on_the_chain_it_finished) {
+    auto scenario = lanes();
+    scenario.inputs = {{"inA", "stubA", "car", 600, 0, 110}};
+    const auto n = arrivals(scenario);
+    CHECK(n >= 3); // the forcing: stub vehicles change and arrive
+    const auto r = timeSegments(scenario);
+    const auto& row = r.rows.at(0);
+    CHECK(row.vehicles == n && r.undeparted == 0 && r.unassigned == 0);
+    // Its first segment ("a") is never entered and the change emits no entry: "turn" is the one.
+    CHECK(row.segments.size() == 1 && row.segments[0].segmentId == "turn" && row.segments[0].vehicles == n);
 }

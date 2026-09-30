@@ -184,6 +184,22 @@ Json laneChangeJson(const LaneChangeReport& r) {
     }
     return j;
 }
+Json segmentTimeJson(const SegmentTimeReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "mean time from departure to entering each runtime segment, by the movement a vehicle arrived on; one run";
+    j["unassigned"] = r.unassigned; j["undeparted"] = r.undeparted;
+    j["rows"] = Json::array();
+    for (const auto& row : r.rows) {
+        Json segments = Json::array();
+        for (const auto& s : row.segments)
+            segments.push_back({{"segmentId", s.segmentId}, {"vehicles", s.vehicles}, {"meanSinceDeparture", s.meanSinceDeparture}});
+        j["rows"].push_back({{"movement", row.name}, {"vehicles", row.vehicles},
+                             {"meanDepartureDelay", row.meanDepartureDelay}, {"meanTravelTime", row.meanTravelTime},
+                             {"meanFreeFlowTime", row.meanFreeFlowTime}, {"segments", std::move(segments)}});
+    }
+    return j;
+}
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";

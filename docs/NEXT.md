@@ -63,7 +63,7 @@ The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was
 whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
 the Windows time in the next CI run; do not infer it from the Linux number.
 
-## Then — M3.2.8c: decompose the right-turn rise; the owner's M3.2.7d
+## Then — M3.2.8c: why right-turners miss their green; the owner's M3.2.7d
 
 **Done:**
 - **M3.2.8c step 1, measurement (D87, 2026-09-30, Linux/GCC 15.2 only).**
@@ -77,6 +77,12 @@ the Windows time in the next CI run; do not infer it from the Linux number.
   - right-turners change a car length (4.5 m) past the network edge, the first tick the rules allow, and almost never wait at a dead end, so
     **`laneChangeDistance` is not the next piece** (D87). The long waits are on the West and East
     left turns (35 vehicles, 865 s), whose delay did not rise.
+- **M3.2.8c step 2, stages (2026-09-30, Linux only).** `--segment-times` gives each movement's
+  mean time from departure to every segment (`src/eval/segment_times.hpp`; it reads only
+  pre-8b events, so it was also run on `b472e05`). The whole South → East and North → West rise
+  (+7.7, +7.4 s) is **in the pocket, before its stop line**: the pocket is reached as early as
+  before, and nothing grows after the stop line (`docs/evidence/m3.2.8c-right-turn-stages.md`).
+  The M2.6 plan is split-phase, so there is no opposing stream at a right-turner's green.
 - Linux/GCC replays the M3.2.8b Windows evidence digit for digit (recorded in its file).
 - **M3.2.8b (D71, contract §2, A27–A35)** and **M3.2.8a (D69, contract §1)**. Without cooperation
   M2.6 was 61.6 s with a 404 s wait: **do not remove the courtesy without a new measurement.**
@@ -85,13 +91,17 @@ the Windows time in the next CI run; do not infer it from the Linux number.
   `docs/M3_ACCEPTANCE.md` and `docs/evidence/`. D72 is green on both platforms; the owner still
   looks at it in the editor (T-junction, Conflict tool).
 
-**Next session (M3.2.8c step 2, measurement again, no behaviour change):**
-1. **Decompose the South → East and North → West right-turn delay**, before (engine `b472e05`,
-   its own copy of the template — the only file difference is `schemaVersion`) and after, seeds
-   42–46: departure delay at insertion (`ArrivedEvent::departureDelay`), time on the entry Link,
-   and time from the pocket to the exit. Build `b472e05` in a scratch `git worktree`; its CLI
-   has no `--lane-changes`. Whichever part grew is the lead; then write that fix's rows
-   (`M3_ACCEPTANCE.md`, A36+) and `M3_8_CONTRACT.md` §3 before any code.
+**Next session (M3.2.8c step 3, measurement, no behaviour change):**
+1. **Why do more South/North right-turners miss their green after M3.2.8b?** Per right-turner
+   in the pocket (`lane-31`, `lane-43`), before (`b472e05`) and after, seeds 42–46: time
+   standing during red vs during its own green, the number of greens it waits through, and the
+   pocket's discharge headways at the stop line. A new eval diagnostic needs the signal state:
+   `SignalEvent` gives it, so it can also be copied into a `b472e05` worktree the way
+   `segment_times` was: copy its two files in, add the source to `trafficsim_eval`, patch that
+   tree's `runProject` loop to observe it and print it, uncommitted; build `trafficsim-cli` only,
+   and first `cmp` its default output against an unpatched run. Look for what stands in front of the right-turners during green. Once the cause is
+   known, write the fix's rows (`M3_ACCEPTANCE.md`, A36+) and `M3_8_CONTRACT.md` §3 before any
+   code.
 2. Why clamps doubled at seeds 44 and 45 (11 → 22, 16 → 33): classify them the way the 8b
    evidence classified seed 42's (amber-as-red, follow-on, merge, lane change, dead end).
 3. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for

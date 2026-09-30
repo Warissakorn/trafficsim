@@ -2,6 +2,7 @@
 #include "run.hpp"
 #include "../eval/lane_changes.hpp"
 #include "../eval/movement.hpp"
+#include "../eval/segment_times.hpp"
 #include "json.hpp"
 #include <filesystem>
 
@@ -27,6 +28,8 @@ Json movementJson(const MovementReport&);
 // edge, each as min, p10, median, p90, max by nearest rank and the share within 20 m -- plus
 // `positions` and `unplaced` (changes with no known position), and the dead-end waits.
 Json laneChangeJson(const LaneChangeReport&);
+// M3.2.8c step 2: the per-segment timing as JSON (CLI --segment-times).
+Json segmentTimeJson(const SegmentTimeReport&);
 // The report as CSV. The first line states what the numbers are not.
 std::string movementCsv(const MovementReport&);
 }

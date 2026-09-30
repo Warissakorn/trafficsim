@@ -8,6 +8,27 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-30 — M3.2.8c step 2: the right-turn rise is spent in the pocket
+
+Step 2 of NEXT, measurement only. `SegmentTimeAccumulator` (`src/eval/segment_times.{hpp,cpp}`,
+CLI `--segment-times`) times each movement from departure to every runtime segment it enters.
+Eval cannot tell a segment's Link (segment ids are lane ids), and it does not need to. The
+right-turn full chain is the same route before and after M3.2.8b, so per-segment times compare
+directly; the write-up labels segments from the project file.
+
+- **Built to run on the old engine too.** It reads only `DepartedEvent`, `SegmentEnteredEvent`
+  and `ArrivedEvent`, which all predate M3.2.8b. So its two files were copied into a scratch
+  `b472e05` worktree for the "before" runs. Both binaries' default output stayed identical.
+- **Finding** (`docs/evidence/m3.2.8c-right-turn-stages.md`): South → East +7.7 s and
+  North → West +7.4 s, all between entering the pocket and entering the junction connector at
+  its stop line. Departure delay, the entry Link and everything after the stop line are unchanged.
+- **Step 1 corrected.** Its candidate "gap acceptance against the opposing stream" does not
+  apply: the M2.6 timing plan is split-phase. What is left is right-turners missing their own
+  green; step 3 measures why.
+- Tests pinned two facts the first drafts got wrong: an arrival can wait more than a tick to be
+  inserted on an empty road, when Poisson arrivals bunch; and seed 42's first arrival comes near
+  56 s. Both tests now check against the arrivals' own events.
+
 ## 2026-09-30 — M3.2.8c step 1: lane-change diagnostic, five-seed measurement (D87)
 
 NEXT's M3.2.8c step 1 was *measure before changing anything*. Nothing reported where a change
