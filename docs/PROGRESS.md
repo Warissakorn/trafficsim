@@ -8,6 +8,36 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-30 — Measured optimization pass: run repaint, test wall time, warnings (D85)
+
+Measured on Linux (WSL Ubuntu, GCC, system Qt, Debug, `QT_QPA_PLATFORM=offscreen`), three runs
+each; raw notes were kept outside the repo. Nothing here was run on Windows.
+
+- **Run frames repainted the whole viewport (D85).** `scenario-run-ui` (1800 Steps) took
+  9.2–9.8 s alone. Skipping the Results-tab refresh changed nothing (9.2–9.8 s), so that
+  suspect is ruled out; skipping `drawRunItems` gave 1.5–1.7 s, and keeping it but dropping its
+  `viewport()->update()` gave 2.6–2.7 s. The markers are scene items, so adding and removing them
+  already invalidates their own rectangles; the explicit update forced the whole network to
+  repaint once per frame. Removed: 3.4–4.1 s. `redraw()` keeps its update because it rebuilds
+  the scene. This is also the likely cause of Windows' 97–99 s against `TIMEOUT 90`; the next CI
+  run confirms it or does not.
+- **`m26study` split.** It ran the one-hour template three times; the merge case (two of the
+  runs) is now group `m26study_merge`. `ctest -j4`: 35.9 s → median 16.3 s with both changes,
+  70/70; longest entry 6.4 s.
+- **Warnings 1151 → 22.** 1120 were `-Wmissing-field-initializers` on aggregates left to their
+  defaults on purpose; now off for GCC/Clang. Fixed what it hid: two Json range-for copies, three
+  one-line statements that read as guarded, four unused helpers in `connector_shape_tests.cpp`.
+  Left: `QApplication::setActiveWindow` in UI tests (its replacement is asynchronous; changing it
+  needs a Windows run) and five `-Wdangling-reference` in model tests, not checked yet.
+  `attachment_tests.cpp:338` asserts `any_of(..., return true)`, i.e. only that the list is non-empty.
+- **Selection hints.** Shift-click toggles and Ctrl-click adds (canvas_input.cpp), and
+  `NETWORK_EDITOR.md` says so, but the Select hint named only Shift and the F1/help text only Ctrl.
+  Both locales now name both. The Vissim Ctrl+click = duplicate collision (VISSIM_PARITY §2) is
+  unchanged and still the owner's call.
+- `NEXT.md`: the PR #73 "review before merging" item was stale (merged 2026-09-28).
+- Environment, not code: WSL here has 3.7 GB, and ninja's default 12 jobs on Qt/json sources ran
+  out of memory. `-j4` from the WSL filesystem built in 7 min 55 s.
+
 ## 2026-09-29 — D84: one gesture rule, one face, visible arrows
 
 Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) and in CI
@@ -334,6 +364,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D85 | 2026-09-30 | **A run frame updates only the markers it adds and removes; it does not repaint the whole viewport** | The explicit `viewport()->update()` in `drawRunItems` was ~60% of `scenario-run-ui` (9.7 s → 3.8 s median, Linux Debug); scene items already invalidate their own rectangles | If a vehicle or signal marker is left on screen during a run (at zoom, pan or level change), restore an update bounded to the old and new marker rectangles, not the whole viewport |
 | D84 | 2026-09-29 | **In every canvas tool a plain left click only selects; Ctrl+right-click or Ctrl+right-drag creates or changes (Measure/Calibrate excepted). Fusion is the application style; combo and spin arrows are palette-drawn images; one bundled face (Noto Sans Thai, static 400/600) for words and numbers; fields pinned at 24 px** | Owner: Links needed Ctrl but conflict areas changed on a plain click, so a stray click could author; the dropdown arrow was invisible (QSS drop-down without an image); numbers used a second face on another baseline | Owner review on Windows; a Vissim user finding Ctrl+right slower than click for heavy route/counter authoring |
 | D83 | 2026-09-29 | **A lane-tab drag that makes a one-lane Connector difference puts the taper on the edge the tab changed (far tab from equal counts → far side; from a two-lane difference the other edge keeps it); an Inspector count keeps the kerb default. Editor widgets use the C locale; controls are 24 px; direction shows as arrowheads on the selection outline; a carried object shows an arrow-with-hand pointer** | Owner feedback: the taper was always on the left whichever tab was dragged; Thai digits appeared in dialogs; controls used too much space; mid-road arrows cluttered the road. The tab knows which edge it changed, a typed count does not | Owner review on Windows |
 | D82 | 2026-09-29 | **Live docs keep headroom under the 500-line limit by moving dated blocks whole into `docs/archive/`, indexed in `archive/README.md`; a current reference doc that outgrows the limit is split, not archived** | The size check fails CI on a one-line overrun; four docs at 494–499 lines made every session's closing note a CI risk. The index had itself grown to 50 lines of this file | — |
