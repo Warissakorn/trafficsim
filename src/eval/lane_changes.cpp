@@ -1,0 +1,68 @@
+#include "lane_changes.hpp"
+#include <algorithm>
+
+namespace trafficsim {
+namespace {
+void fold(LaneChangeRow& row, const auto& tally) {
+    row.changes += tally.changes;
+    row.changedVehicles += tally.changes > 0;
+    row.beforeDeadEnd.insert(row.beforeDeadEnd.end(), tally.before.begin(), tally.before.end());
+    row.waitingVehicles += tally.wait > 0;
+    row.waitSeconds += tally.wait;
+    row.longestWait = std::max(row.longestWait, tally.longest);
+}
+}
+LaneChangeAccumulator::LaneChangeAccumulator(const EvaluationSpec& spec)
+    : movementOfRoute_(spec.movementOfRoute) {
+    for (const auto& name : spec.movementNames) rows_.push_back({name});
+    rows_.push_back({"unassigned"});
+}
+void LaneChangeAccumulator::bind(const SimState& state) {
+    if (bound_ == state.scenario.get()) return;
+    bound_ = state.scenario.get();
+    slotOfRoute_.clear();
+    for (std::size_t r = 0; r < bound_->routes.size(); ++r) slotOfRoute_[bound_->routes[r].id] = r;
+}
+void LaneChangeAccumulator::observe(const SimState& state) {
+    bind(state);
+    const auto& s = *state.scenario;
+    const auto& index = *state.index;
+    for (const auto& event : state.events) {
+        if (const auto* change = std::get_if<LaneChangeEvent>(&event)) {
+            auto& tally = open_[change->vehicleId];
+            ++tally.changes;
+            const auto was = previous_.find(change->vehicleId);
+            const auto from = slotOfRoute_.find(change->fromRouteId);
+            if (was != previous_.end() && from != slotOfRoute_.end())
+                tally.before.push_back(index.deadEndOfRoute[from->second] - was->second.second);
+        } else if (const auto* arrived = std::get_if<ArrivedEvent>(&event)) {
+            const auto tally = open_.find(arrived->vehicleId);
+            if (tally == open_.end()) continue;
+            const auto m = movementOfRoute_.find(arrived->routeId);
+            fold(m == movementOfRoute_.end() ? rows_.back() : rows_[m->second], tally->second);
+            open_.erase(tally);
+        }
+    }
+    previous_.clear();
+    for (const auto& v : state.vehicles) {
+        previous_[v.id] = {v.routeIndex, v.distance};
+        const auto& behaviour = s.behaviours[index.behaviourOfType[v.typeIndex]];
+        if (!waitingAtDeadEnd(index, v.routeIndex, v, behaviour)) {
+            if (const auto tally = open_.find(v.id); tally != open_.end()) tally->second.run = 0;
+            continue;
+        }
+        auto& tally = open_[v.id];
+        tally.wait += s.timeStep; tally.run += s.timeStep;
+        tally.longest = std::max(tally.longest, tally.run);
+    }
+}
+LaneChangeReport LaneChangeAccumulator::report() const {
+    LaneChangeReport r;
+    r.rows.assign(rows_.begin(), rows_.end() - 1);
+    LaneChangeRow unfinished{"unfinished"};
+    for (const auto& [id, tally] : open_) fold(unfinished, tally);
+    r.rows.push_back(std::move(unfinished));
+    r.rows.push_back(rows_.back());
+    return r;
+}
+}

@@ -2,6 +2,7 @@
 #include "../src/core/following.hpp"
 #include "../src/core/lanes.hpp"
 #include "../src/core/routes.hpp"
+#include "../src/eval/lane_changes.hpp"
 #include "../src/project/run.hpp"
 #include "../tools/four_leg_network.hpp"
 #include <algorithm>
@@ -208,4 +209,44 @@ TEST(lanechange, the_four_leg_turns_compile_to_a_stub_per_other_lane) { // A34
     test::near(deadEnd(right + "/lane-1"), length(right + "/lane-2", 1));
     // Through reaches from both lanes: no stub.
     CHECK(deadEnd(built.routes[0] + "/lane-1") < 0 && deadEnd(built.routes[0] + "/lane-2") < 0);
+}
+// M3.2.8c step 1: the lane-change diagnostic reads where a change happened and how long a stub
+// vehicle waited at its dead end, and books both on the movement the vehicle arrived on.
+namespace {
+LaneChangeReport diagnose(SimState s) {
+    LaneChangeAccumulator changes(EvaluationSpec{{"through"}, {{"full", 0}}, {}, {}});
+    changes.observe(s);
+    while (!s.vehicles.empty() && s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); changes.observe(s); }
+    return changes.report();
+}
+}
+TEST(lanechange, the_diagnostic_records_an_early_change_and_no_wait) { // A27's road
+    const auto s = test::withVehicles(lanes(), {on(1, "stubA", 20, 10)});
+    CHECK(s.index->remainingOfRoute[find(s, 1)->routeIndex] == 1); // the forcing: it is on a stub
+    const auto r = diagnose(s);
+    CHECK(r.rows.size() == 3 && r.rows[0].name == "through" && r.rows[1].name == "unfinished");
+    CHECK(r.rows[0].changes == 1 && r.rows[0].changedVehicles == 1 && r.rows[0].beforeDeadEnd.size() == 1);
+    test::near(r.rows[0].beforeDeadEnd[0], 180); // changed where it stood, 180 m before the dead end
+    CHECK(r.rows[0].waitingVehicles == 0 && r.rows[0].waitSeconds == 0);
+    CHECK(r.rows[1].changes == 0 && r.rows[2].changes == 0);
+}
+TEST(lanechange, the_diagnostic_records_a_dead_end_wait_and_the_late_change) { // A30's road
+    auto scenario = lanes();
+    scenario.signalPrograms = {{"red-then-green", 0, {{40, SignalColor::red}, {80, SignalColor::green}}}};
+    scenario.signalHeads = {{"head", "b", 199, "red-then-green"}};
+    std::vector<test::Placement> queue{on(1, "stubA", 100, 10)};
+    for (std::uint64_t k = 0; k < 15; ++k) queue.push_back(on(10 + k, "full", 198 - 7 * static_cast<double>(k), 0));
+    auto s = test::withVehicles(scenario, queue);
+    auto probe = s;
+    for (int i = 0; i < 380; ++i) probe = stepSimulation(probe);
+    const auto& waiting = *find(probe, 1);
+    // The forcing: the engine's own test says it is waiting at its dead end.
+    CHECK(waitingAtDeadEnd(*probe.index, waiting.routeIndex, waiting,
+                           probe.scenario->behaviours[probe.index->behaviourOfType[waiting.typeIndex]]));
+    const auto r = diagnose(s);
+    const auto& row = r.rows[0];
+    CHECK(row.changes == 1 && row.waitingVehicles == 1);
+    CHECK(row.waitSeconds > 10 && row.longestWait > 10 && row.longestWait <= row.waitSeconds + 1e-9);
+    CHECK(row.beforeDeadEnd.size() == 1 && row.beforeDeadEnd[0] >= 0 && row.beforeDeadEnd[0] < 10);
+    CHECK(r.rows[1].waitingVehicles == 0 && r.rows[2].waitingVehicles == 0);
 }

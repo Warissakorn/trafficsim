@@ -8,6 +8,30 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-09-30 — M3.2.8c step 1: lane-change diagnostic, five-seed measurement (D87)
+
+NEXT's M3.2.8c step 1 was *measure before changing anything*. Nothing reported where a change
+happened or who waited at a dead end: `LaneChangeEvent` carries no position and `--project`
+refuses `--events`. So this session added one measurement and changed no behaviour.
+
+- **`LaneChangeAccumulator`** (`src/eval/lane_changes.{hpp,cpp}`), fed by snapshots like
+  `MovementAccumulator`. Per movement a vehicle arrived on: changes, metres before the dead end
+  at each change (from the previous snapshot, since a change is decided on the pre-step one),
+  and dead-end waits. CLI: `trafficsim-cli N --project FILE --lane-changes` adds
+  `laneChangeDiagnostics`; default output byte-identical (six runs, `cmp`).
+- **One waiting test.** The cooperation rule's "who is waiting" was inline in `courtesyHolds`.
+  It is now `waitingAtDeadEnd`, defined in `lanes.cpp` and **declared in `core/types.hpp`**,
+  because the architecture guard lets `eval` include only that header. The engine and the report
+  cannot disagree about who waits (rule 3). `courtesyHolds` is otherwise unchanged; every run
+  compared is identical.
+- **Findings** (`docs/evidence/m3.2.8c-right-turns.md`, Linux/GCC 15.2 only): GCC replays the
+  8b Windows evidence digit for digit. Over seeds 42–46, seed 42 was the mild one: mean delay
+  rose in every seed (up to +3.3 s) and clamps doubled at two. The right-turn rise holds on South
+  and North (+7.3, +7.5 s, 5/5 seeds), not West/East. Those right-turners change at insertion and
+  almost never wait at a dead end; the long waits are on the West and East left turns, whose
+  delay did not rise. The 8b "14 vehicles, 406 s" wait count was ad hoc and is not reproduced
+  (13 vehicles, 299 s by the engine's test).
+
 ## 2026-09-30 — D86: authored conflict areas follow the drawing
 
 Owner report on `t-junction-priority`: dragging a Link or Connector so the roads overlap
@@ -396,6 +420,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D87 | 2026-09-30 | **`laneChangeDistance` is not the next M3.2.8c piece; the South and North right-turn rise is decomposed first** | NEXT asked for measurement before choosing. Over seeds 42–46 the right-turners change in the tick they enter and hardly wait at a dead end (North → West: none), so a look-ahead that starts changes earlier cannot remove their added delay. The rise's cause is not found; departure delay, entry-Link time and pocket-to-exit time are the next measurement (`docs/evidence/m3.2.8c-right-turns.md`) | A measurement showing right-turn changes late or waits at dead ends, e.g. on a network whose stubs do not start at the network edge |
 | D86 | 2026-09-30 | **An authored conflict area follows its overlap after any edit that changes the drawing (re-derived in `History::execute`), its lines keep their distance, and it is removed with its rule and Stop/Yield when its pair no longer overlaps** | Owner report and ruling (Vissim removes such areas). One choke point instead of a hook per geometry command (rule 3); stored extents were only ever derived, so re-deriving loses no authoring. Fails if an author needs an area deliberately wider than the overlap to survive a geometry edit |
 | D85 | 2026-09-30 | **A run frame updates only the markers it adds and removes; it does not repaint the whole viewport** | The explicit `viewport()->update()` in `drawRunItems` was ~60% of `scenario-run-ui` (9.7 s → 3.8 s median, Linux Debug); scene items already invalidate their own rectangles. On the M2.6 template the same change is ≈8%, within noise: it is not a live-run speed-up on real networks | If a vehicle or signal marker is left on screen during a run (at zoom, pan or level change), restore an update bounded to the old and new marker rectangles, not the whole viewport |
 | D84 | 2026-09-29 | **In every canvas tool a plain left click only selects; Ctrl+right-click or Ctrl+right-drag creates or changes (Measure/Calibrate excepted). Fusion is the application style; combo and spin arrows are palette-drawn images; one bundled face (Noto Sans Thai, static 400/600) for words and numbers; fields pinned at 24 px** | Owner: Links needed Ctrl but conflict areas changed on a plain click, so a stray click could author; the dropdown arrow was invisible (QSS drop-down without an image); numbers used a second face on another baseline | Owner review on Windows; a Vissim user finding Ctrl+right slower than click for heavy route/counter authoring |

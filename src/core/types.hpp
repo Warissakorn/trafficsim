@@ -298,4 +298,9 @@ struct ValidationIssue {
     std::string code, path;
     bool operator==(const ValidationIssue&) const = default;
 };
+// M3.2.8b, cooperation's "who is waiting" (M3_8_CONTRACT.md §2): a vehicle on a stub route at
+// walking pace, as close to its dead end as car-following brings it. Declared with the contract,
+// not in lanes.hpp, because evaluation (M3.2.8c step 1) reports the same waits and may see only
+// this header: one definition for the engine and for the report. Defined in lanes.cpp.
+bool waitingAtDeadEnd(const ScenarioIndex&, std::size_t route, const Vehicle&, const DriverBehaviour&);
 }

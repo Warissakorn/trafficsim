@@ -5,12 +5,13 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <iostream>
+#include <optional>
 
 namespace {
 using namespace trafficsim;
 // A project run steps the engine itself so the movement evaluation sees every state.
 int runProject(const std::filesystem::path& file, const std::filesystem::path& csvFile,
-               const std::filesystem::path& data, std::uint32_t seed) {
+               const std::filesystem::path& data, std::uint32_t seed, bool laneChanges) {
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
     const auto document = parseDocument(Json::parse(stream));
@@ -18,11 +19,15 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     // Refuse to overwrite before spending the run, as --events does.
     if (!csvFile.empty() && std::filesystem::exists(csvFile))
         throw std::invalid_argument("CSV output already exists: " + csvFile.string());
-    MovementAccumulator movements(evaluationSpec(document, snapshot, data));
+    const auto spec = evaluationSpec(document, snapshot, data);
+    MovementAccumulator movements(spec);
+    std::optional<LaneChangeAccumulator> changes;
+    if (laneChanges) changes.emplace(spec);
     auto state = createSimulation(snapshot.scenario, seed);
-    movements.observe(state);
+    const auto observe = [&] { movements.observe(state); if (changes) changes->observe(state); };
+    observe();
     const auto ticks = totalTicks(snapshot.scenario);
-    while (state.tick < ticks) { state = stepSimulation(state); movements.observe(state); }
+    while (state.tick < ticks) { state = stepSimulation(state); observe(); }
     const auto report = movements.report(state);
     if (!csvFile.empty()) {
         std::ofstream csv(csvFile);
@@ -33,6 +38,7 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     result["engineVersion"] = std::string(TRAFFICSIM_VERSION) + "-cpp-m0";
     result["compiler"] = TRAFFICSIM_COMPILER;
     result["seed"] = seed;
+    if (changes) result["laneChangeDiagnostics"] = laneChangeJson(changes->report());
     std::cout << result.dump(2) << '\n';
     return std::cout ? 0 : 1;
 }
@@ -41,18 +47,20 @@ int main(int argc, char** argv) {
     try {
         std::uint32_t seed = 42;
         std::filesystem::path data, scenarioFile, eventsFile, projectFile, csvFile;
-        bool seedSet = false;
+        bool seedSet = false, laneChanges = false;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
             if (arg == "--help" || arg == "-h") {
                 std::cout << "TrafficSim (not yet validated)\n"
                              "Usage: trafficsim-cli [seed] [--seed N] [--data-dir DIR]\n"
                              "       [--scenario FILE] [--events FILE]\n"
-                             "       [--project FILE.traffic.json [--csv FILE]]\n"
+                             "       [--project FILE.traffic.json [--csv FILE] [--lane-changes]]\n"
                              "Outputs completed-trip diagnostics, not HCM control delay or LOS.\n"
-                             "--project adds simulated movement delay and approach queues (M2.5).\n";
+                             "--project adds simulated movement delay and approach queues (M2.5).\n"
+                             "--lane-changes adds where lane changes happen and dead-end waits (M3.2.8c).\n";
                 return 0;
             }
+            if (arg == "--lane-changes") { laneChanges = true; continue; }
             if (arg == "--seed" || arg == "--data-dir" || arg == "--scenario" || arg == "--events" ||
                 arg == "--project" || arg == "--csv") {
                 if (++i == argc) throw std::invalid_argument("Missing value for " + arg);
@@ -71,10 +79,11 @@ int main(int argc, char** argv) {
         }
         if (data.empty()) data = findDataDirectory(argv[0]);
         if (!csvFile.empty() && projectFile.empty()) throw std::invalid_argument("--csv needs --project");
+        if (laneChanges && projectFile.empty()) throw std::invalid_argument("--lane-changes needs --project");
         if (!projectFile.empty()) {
             if (!scenarioFile.empty() || !eventsFile.empty())
                 throw std::invalid_argument("--project cannot be combined with --scenario or --events");
-            return runProject(projectFile, csvFile, data, seed);
+            return runProject(projectFile, csvFile, data, seed, laneChanges);
         }
         if (scenarioFile.empty()) scenarioFile = data / "scenarios" / "crossing.json";
         const auto loaded = loadScenario(scenarioFile, data);

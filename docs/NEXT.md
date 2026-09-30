@@ -63,46 +63,52 @@ The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was
 whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
 the Windows time in the next CI run; do not infer it from the Linux number.
 
-## Then — verify M3.2.8b on Linux/Qt, then M3.2.8c; the owner's M3.2.7d
+## Then — M3.2.8c: decompose the right-turn rise; the owner's M3.2.7d
 
 **Done:**
-- **M3.2.8b, mandatory lane changing with minimal cooperation (D71, `docs/M3_8_CONTRACT.md` §2,
-  A27–A35).** Volume enters on every lane of the entry Link. A lane that cannot reach the end is
-  a stub route that changes before its dead end. The nearest target-lane vehicle that can stop
-  comfortably holds back for one waiting there. M2.6: all drained, mean delay 50.14 → 50.16 s,
-  left turns down on all four approaches, right turns up on all four
-  (`docs/evidence/m3.2.8b-mandatory.md`). **Without cooperation it was 61.6 s with a 404 s wait:
-  do not remove the courtesy without a new measurement.**
-- **M3.2.8a, commitment (D69, contract §1).** The owner's first choice, `comfortableDeceleration`,
-  clamped the major road and was replaced by `maxDeceleration`: do not retry it without a new
-  measurement.
-- Conflict areas are automatic (M3.2.4c, D68), derived and never stored. M3.2.2a–M3.2.7c are
-  D54–D67; the evidence is in `docs/M3_ACCEPTANCE.md` and `docs/evidence/`.
+- **M3.2.8c step 1, measurement (D87, 2026-09-30, Linux/GCC 15.2 only).**
+  `trafficsim-cli N --project FILE --lane-changes` reports, per movement, where changes happen
+  and dead-end waits (`src/eval/lane_changes.hpp`; the waiting test is the engine's own
+  `waitingAtDeadEnd`). Over M2.6 seeds 42–46 (`docs/evidence/m3.2.8c-right-turns.md`):
+  - seed 42 was the mild one: mean delay rose in every seed (up to +3.3 s), clamps doubled at
+    seeds 44 and 45;
+  - right turns rose on **South and North only** (+7.3, +7.5 s, every seed); West and East are
+    within the seed spread;
+  - right-turners change in the tick they enter and almost never wait at a dead end, so
+    **`laneChangeDistance` is not the next piece** (D87). The long waits are on the West and East
+    left turns (35 vehicles, 865 s), whose delay did not rise.
+- Linux/GCC replays the M3.2.8b Windows evidence digit for digit (recorded in its file).
+- **M3.2.8b (D71, contract §2, A27–A35)** and **M3.2.8a (D69, contract §1)**. Without cooperation
+  M2.6 was 61.6 s with a 404 s wait: **do not remove the courtesy without a new measurement.**
+  `comfortableDeceleration` for commitment clamped the major road: do not retry it either.
+- Conflict areas are automatic (M3.2.4c, D68). M3.2.2a–M3.2.7c are D54–D67; the evidence is in
+  `docs/M3_ACCEPTANCE.md` and `docs/evidence/`. D72 is green on both platforms; the owner still
+  looks at it in the editor (T-junction, Conflict tool).
 
-**D72 (conflict areas on every overlap, 0.3 m inset)** is built and green on Windows desktop
-(MSVC 14.51, Qt 6.8.3, 64/64) and on Linux desktop (2026-09-30, GCC, Debug, 69/69 at d605fb2).
-Still to do: the owner looks at it in the editor (T-junction, Conflict tool).
+**Next session (M3.2.8c step 2, measurement again, no behaviour change):**
+1. **Decompose the South → East and North → West right-turn delay**, before (engine `b472e05`,
+   its own copy of the template — the only file difference is `schemaVersion`) and after, seeds
+   42–46: departure delay at insertion (`ArrivedEvent::departureDelay`), time on the entry Link,
+   and time from the pocket to the exit. Build `b472e05` in a scratch `git worktree`; its CLI
+   has no `--lane-changes`. Whichever part grew is the lead; then write that fix's rows
+   (`M3_ACCEPTANCE.md`, A36+) and `M3_8_CONTRACT.md` §3 before any code.
+2. Why clamps doubled at seeds 44 and 45 (11 → 22, 16 → 33): classify them the way the 8b
+   evidence classified seed 42's (amber-as-red, follow-on, merge, lane change, dead end).
+3. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for
+   `decideLaneChanges`, `courtesyHolds` and the span rebuild. **Valgrind is not installed in
+   the WSL Ubuntu here** (`sudo apt install valgrind` is the owner's call).
 
-**Then (M3.2.8b's code now compiles and passes on Linux desktop, 69/69 on 2026-09-30):**
-1. Re-run `trafficsim-cli 42 --project data/projects/m2.6-study-template.traffic.json` on
-   Linux/GCC and compare with the evidence tables. A difference in the last digits is the
-   toolchain. Record it in the evidence file either way.
-2. Callgrind the M2.6 one-hour run (baseline 4.35G instructions, D70) and record the cost of
-   `decideLaneChanges`, `courtesyHolds` and the span rebuild on a tick with a change.
-
-**Then M3.2.8c** (ROADMAP row). Write its rows in `docs/M3_ACCEPTANCE.md` and its contract as
-`M3_8_CONTRACT.md` §3 before the code. It is several systems, so pick one per session. In the
-order the evidence argues for:
-1. **Right turns rose on all four M2.6 approaches** (up to +13 s East). A right-turning vehicle
-   entering on the kerb lane must now cross into the pocket lane. Measure first, before changing
-   anything: dead-end waits per movement, and where on the Link the changes happen. Then decide
-   whether `laneChangeDistance` (Vissim's look-ahead for a mandatory change) is the next piece.
-2. Cooperation with a deceleration parameter and look-ahead, so a vehicle that is not yet
-   stopped is helped too (today only a waiting vehicle is).
-3. Lane changes after the entry Link: free-walk paths and placed decisions are still lane-fixed
+**The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
+1. Cooperation with a deceleration parameter and look-ahead, so a vehicle that is not yet
+   stopped is helped too. The West/East left-turn dead-end waits (up to 98 s) are its evidence.
+2. Lane changes after the entry Link: free-walk paths and placed decisions are still lane-fixed
    (SIMULATION.md, "No lane changing downstream").
-4. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
+3. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
    instantaneous, which the contract records as a limit.
+4. `laneChangeDistance`, only on a network where changes are measured late (D87).
+
+**Build on this machine:** no MSVC or CMake on the Windows side; build in WSL
+(`wsl -d Ubuntu`, GCC 15.2, Qt 6 present) — that is Linux evidence, not Windows.
 
 **Open item from M3.2.8a:** five minor vehicles standing or at walking pace within 1 m of the
 T-junction's merge line are still clamped in the congested headway arm (seeds 42 and 43). They
