@@ -133,7 +133,8 @@ void EditorWindow::resetWorkspace() {
     for(auto* panel:{palette,inspector,objects,history}){panel->setFloating(false);removeDockWidget(panel);}
     addDockWidget(Qt::LeftDockWidgetArea,palette);addDockWidget(Qt::RightDockWidgetArea,inspector);
     addDockWidget(Qt::RightDockWidgetArea,history);tabifyDockWidget(inspector,history);addDockWidget(Qt::BottomDockWidgetArea,objects);
-    for(auto* panel:{palette,inspector,objects})panel->show();history->hide();inspector->raise();
+    for(auto* panel:{palette,inspector,objects})panel->show();
+    history->hide();inspector->raise();
     resizeDocks({palette,inspector},{180,310},Qt::Horizontal);resizeDocks({objects},{185},Qt::Vertical);
     layoutToolbars();changingWorkspace_=false;canvas_->setFocus();
 }

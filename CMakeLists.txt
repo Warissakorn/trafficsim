@@ -17,7 +17,10 @@ target_compile_definitions(trafficsim_options INTERFACE
 if(MSVC)
     target_compile_options(trafficsim_options INTERFACE /W4 /permissive- /utf-8 /fp:strict)
 else()
-    target_compile_options(trafficsim_options INTERFACE -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off)
+    target_compile_options(trafficsim_options INTERFACE -Wall -Wextra -Wpedantic -fno-fast-math -ffp-contract=off
+        # Aggregates are built with trailing members left to their defaults on purpose; the
+        # warning for that was 1120 of 1151 lines and hid the ones that mean something.
+        -Wno-missing-field-initializers)
     if(TRAFFICSIM_SANITIZERS)
         target_compile_options(trafficsim_options INTERFACE -fsanitize=address,undefined -fno-omit-frame-pointer)
         target_link_options(trafficsim_options INTERFACE -fsanitize=address,undefined)
