@@ -59,9 +59,17 @@ before its code:
 | A37 | .8c | A36's run, every tick | No vehicle brakes harder than `maxDecelerationCooperativeBraking` (acceleration below its negative), and nobody is clamped |
 | A38 | .8c | A stub vehicle far from its dead end (outside its look-ahead) beside a stream | No cooperative hold is issued for it |
 | A39 | .8c | A35's road with the field cleared | Identical event stream to the D71 rule; a copied state replays exactly with the field set |
+| A40 | .8c | Downstream decision (D93): an entry Link feeds a two-lane Link D by Connector; a decision on D sends to a destination only lane 1 reaches and one only lane 2 reaches, and both lanes receive vehicles | The compiled volume of each destination equals its typed share of the vehicles reaching D exactly (no shift towards what the lanes allow) |
+| A41 | .8c | A40's network, a vehicle drawn to the destination its arrival lane cannot reach | It changes lanes on D before its dead end, with no clamp, and arrives on the full route, reported under (entry Link, destination Link). The forcing is asserted first: it is on a stub |
+| A42 | .8c | A40's network, a stub vehicle still on the entry Link beside an open gap in the adjacent entry lane | No change before D: no span lies upstream of its arrival on D |
+| A43 | .8c | A Link D whose adjacent lane no walk from the entry reaches | No stub is kept; that lane keeps the lane-fixed draw and the decision reports `ROUTING_DECISION_LANE_FIXED`. The forcing is asserted first: the adjacent lane has no arriving path |
+| A44 | .8c | Every shipped project and frozen fixture (none has a downstream decision) | Byte-identical CLI output, four TS baselines and published reports; free walk with no decision stays lane-fixed |
+| A45 | .8c | A40's network, a copied state branched during changes | Exact replay; no new `SimState` field |
+| A46 | .8c | A30's and A36's cases built on D | Waiting cooperation and cooperative braking act on a downstream stub as on an entry stub |
 
-Cooperative braking is A36–A39 (M3.2.8c). Visibility, discretionary changes, `laneChangeDistance` and any further cooperation are
-**M3.2.8c** and get their rows before their code. Passing A01–A39 alone does not close M3.2.
+Cooperative braking is A36–A39 (M3.2.8c). Downstream routing decisions are A40–A46 (D93), rows
+agreed and **not implemented**. Visibility, discretionary changes, `laneChangeDistance` and any further cooperation are
+**M3.2.8c** and get their rows before their code. Passing A01–A46 alone does not close M3.2.
 
 ## 2. T-junction fixture specification
 

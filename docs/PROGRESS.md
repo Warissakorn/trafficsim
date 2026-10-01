@@ -8,6 +8,30 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — M3.2.8c: downstream routing decisions, contract and rows (D93)
+
+Docs only, no code. D92 left cooperation spent as a lever on M2.6, so the next row is lane
+changes after the entry Link. The owner ruled on two things.
+- **Scope:** contract and rows this session, implementation the next.
+- **Rule:** a routing decision placed downstream works like an entry decision (Vissim's way, as
+  in D71). Free walk with no decision stays lane-fixed, because a vehicle with no destination
+  has no mandatory change.
+
+Written: `M3_8_CONTRACT.md` §2 "Downstream routing decisions" (rules 1–7) and rows A40–A46
+in `M3_ACCEPTANCE.md`. SIMULATION.md and ROADMAP say "not implemented", and NEXT.md lists the
+implementation order. The code facts the contract rests on:
+- `appendLaneChanges` already spans any two routes of a family on adjacent lanes of any shared
+  Link, by route distance. It would therefore also span the shared prefix Links upstream of D,
+  which rule 5 clips.
+- Movements group by (first Link, last Link). That is why a target route must come from the
+  same entry Link and none is synthesised (rule 4).
+- No shipped project has a downstream decision: M2.6's one decision is on its entry Link. So A44
+  expects every published result byte-identical.
+
+Caught while writing: an entry-stub vehicle joins the entry family's lowest-slot full route,
+which already carries one downstream destination. It therefore skips the downstream draw.
+That is §2's existing limit, recorded in rule 7, not fixed.
+
 ## 2026-10-01 — M3.2.8c: why the remaining dead-end waits wait (D92)
 
 NEXT.md option 1, a measurement with no engine behaviour change.
@@ -435,6 +459,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D93 | 2026-10-01 | **A routing decision downstream of the entry Link works like an entry decision (contract §2 "Downstream routing decisions", A40–A46; not implemented): the destination is drawn by weight among those the arrival lane serves, full or kept stub; a stub is kept only with a same-entry full route on a run of adjacent lanes of the decision Link; changes only at or after arrival on that Link. Free walk with no decision stays lane-fixed** | Owner's ruling, extending D71. The typed proportions then hold where lanes are served. A same-entry target keeps movement reporting (first Link, last Link) right without synthetic routes. The clip is needed because `appendLaneChanges` would otherwise span prefix Links before the decision is known | A study needing changes before the decision point (the decision station is not modelled), or networks where no same-entry path reaches the adjacent lane, so most lanes fall back to lane-fixed |
 | D92 | 2026-10-01 | **A dead-end wait's cause is decided once, at its first snapshot, in the order noMovingApproach (never moved at ≥ walking pace inside a span and its look-ahead on this route), outsideSpan, targetStanding (alongside or nearest-behind target vehicle below walking pace, placed by its front), movingStream. `maxDecelerationCooperativeBraking` stays 3: the 2/3/4 sweep is evidence, not calibration** | The question was whether more cooperation would help. Own-queue standing was tried as a cause and took all 118 waits, so it does not separate them; never-helped takes none. What separates is the target lane at the wait's start: 93% of wait time is beside a standing lane, which no helper can open, and the parameter moves only the other 7% | A run where noMovingApproach or outsideSpan is not ~0, or where a front-only placement misreads a body straddling a segment boundary at the place |
 | D91 | 2026-10-01 | **`stepSimulation` has `SimState&&` overloads that take the previous state over; the `const&` ones copy and forward. Hot loops step with `std::move`** | The value copy was 9.1% of an M2.6 hour (callgrind, GCC 15.2) and only fed a clear and a rebuild. Moving keeps the value API and output byte-identical (MSVC, 3 projects × 3 seeds + events); M2.6 run 625 → 557 ms median. Copying only `vehicles`/`inputs` field by field was rejected: a later `SimState` field would be silently dropped | A step that reads a field of the previous state after it is overwritten — the clock and Stop service are taken before the move for that reason |
 | D90 | 2026-10-01 | **Cooperative braking (M3.2.8c): a stub vehicle still moving is helped once its dead end governs its car-following; the helper is the nearest target-lane vehicle with `maxDecelerationCooperativeBraking` (3 m/s², default behaviour) that can fall in behind it, braking behind a virtual leader at the changer's speed, bounded by that deceleration, with no cap; absent the field, only D71 runs** | The owner chose the look-ahead ("when it must begin braking for its dead end", no length parameter) and Vissim's name and 3 m/s². D89 placed M3.2.8b's cost in the dead-end waits. Measured over seeds 42–81: waits 9,034 → 4,222 s, East → West −2.3 ± 0.6 s, network mean +2.4 → +1.3 ± 0.5 s against `b472e05`, clamps not up. The look-ahead is the model's own reaction, because a comfortable-stop formula fired only as the changer stopped (`docs/evidence/m3.2.8c-cooperative-braking.md`) | Clamps or held-through-green rising with it, or a measured cooperative-braking deceleration that differs from 3 m/s² |

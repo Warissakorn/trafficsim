@@ -107,7 +107,9 @@ routes `link:<id>/path-k` and one input per complete path, at volume × probabil
   hold exactly and the input's lane weights are unused (D43, D71).
 - **No lane changing downstream:** free-walk paths and placed decisions after the entry Link stay
   lane-fixed, so a vehicle's lane fixes its reachable destinations there, and the proportions
-  shift towards what the lanes allow (M3.2.8c).
+  shift towards what the lanes allow. A decision placed downstream is to work like an entry
+  decision (contract and rows A40–A46 agreed, D93, **not implemented**); free walk with no
+  decision stays lane-fixed.
 - **Refused on Run:** a revisited lane (`ROUTELESS_CYCLE`), more than 256 paths, an unknown Link,
   two decisions on one Link, or a destination no lane can reach. Inputs still start only on
   entry Links (`UNSUPPORTED_INTERNAL_INPUT`), as for routes.

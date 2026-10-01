@@ -117,15 +117,41 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — pick one, one system (M3.2.8c).** Cooperation is spent as a lever on M2.6
-(D92): what is left of the dead-end waits is the target lane's own red and queue.
-1. **The next row: lane changes after the entry Link.** Free-walk paths and placed decisions
-   are still lane-fixed (SIMULATION.md, "No lane changing downstream"). Contract and rows first.
-2. **Or split targetStanding (measurement only):** is the target lane standing at its own red,
-   or in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row
-   needs the split. That would be one that changes lanes earlier, before the queue reaches
-   the stub's span. No row needs it yet.
-3. Engine cost after D90 (from 8b): a callgrind of the M2.6 hour on Linux/GCC 15.2 (another
+**Next session — implement D93: lane changes at a downstream routing decision (M3.2.8c).**
+The contract is `M3_8_CONTRACT.md` §2, "Downstream routing decisions"; the rows are A40–A46 in
+`M3_ACCEPTANCE.md`. Both were agreed with the owner, and no code exists yet. Free walk with no
+decision stays lane-fixed. In order:
+1. **Fixture first** (`tools/`, beside `t_junction_network.hpp`): an entry Link feeding a two-lane
+   Link D by Connector, both lanes receiving vehicles. A decision on D sends to one destination
+   only lane 1 reaches and one only lane 2 reaches. Also build A43's variant, where no path
+   reaches the adjacent lane of D.
+2. **`src/model/network/routeless.cpp` `Walk::decide`:** for a decision that is not on the entry
+   Link, give each destination a leg from the arrival lane. That is the full chain, or else the
+   stub from `routeLaneFamily`, as `entryDecision`'s `pick` does. Set `family`
+   (`"<decision>><destination>"`, within this walk) and `stub` on what `finish` emits. Draw among
+   the destinations the lane serves, by weight.
+3. **Kept stubs, rule 4:** keep a stub only when the walk also produced a full route of the same
+   family on a run of adjacent lanes of D. Otherwise fall back to today's lane-fixed draw for that
+   lane, and add the advisory `ROUTING_DECISION_LANE_FIXED` (en/th strings in
+   `data/locales/`). This needs the whole walk, so decide it after the walk, in `expandRouteless`
+   or a pass at the end of `routelessChains`.
+4. **`src/project/demand_paths.cpp` `expandRouteless`:** families per input × decision ×
+   destination, as M3.2.8b keys entry families. Hand each family to `appendLaneChanges`.
+5. **Rule 5, clip:** drop spans that end before the stub route reaches D, and clip one that
+   starts earlier to D's first section. Do it either in `appendLaneChanges`
+   (`src/model/network/lane_family.cpp`), with an optional per-route "earliest distance", or in
+   its caller. The dead end is recomputed from what remains.
+6. **Tests A40–A46**, every forcing asserted first. Then the D91 byte-identical recipe on the three
+   projects, seeds 42–44 with every diagnostic, plus `--events` (A44).
+7. **Docs:** in SIMULATION.md (the "No lane changing downstream" bullet), ROADMAP and
+   M3_ACCEPTANCE, change "not implemented" to "implemented".
+
+**Not booked, for later sessions:**
+- **Split targetStanding (measurement only):** is the target lane standing at its own red, or
+  in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row needs the
+  split. That would be one that changes lanes earlier, before the queue reaches the stub's
+  span. No row needs it yet.
+- **Engine cost after D90 (from 8b):** a callgrind of the M2.6 hour on Linux/GCC 15.2 (another
    machine, 2026-10-01) put lane-change work at ≈3% (`courtesyHolds` 1.9%, `decideLaneChanges`
    1.0%) — not where the time goes. The 9.1% state copy is gone (D91). Still open: a
    **same-compiler** callgrind at `b472e05`, `f9964f1` and HEAD before any new baseline replaces
@@ -140,7 +166,7 @@ lane-1 vehicle behind slows to let them in, without stopping dead, and the long 
 the dead end should be rarer. Verified on Linux headless only.
 
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
-1. Lane changes after the entry Link (item 2 above).
+1. Downstream decisions: contract D93 and rows A40–A46 agreed; implementation is above.
 2. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
    instantaneous, which the contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
