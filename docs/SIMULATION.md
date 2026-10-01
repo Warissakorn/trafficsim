@@ -268,21 +268,47 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
 - The timestep is in `(0, 0.5]` seconds and duration must be an integer number of ticks.
   Duration and signal timing are validated before any simulation starts.
 
-## Step and motion
+## Step and motion: a vehicle's input, process and output
 
-1. Generate all arrivals due at the current tick, retaining their sampled properties.
-2. Attempt safe source insertion in scheduled-arrival/vehicle-ID order. An arrival that
-   cannot enter stays in an external queue. At most one entry per source lane per tick.
-3. Build occupied lane intervals from the same pre-step vehicle state. A vehicle's rear
-   continues to occupy upstream segments after its front enters a connector.
-4. Find the nearest leader or red/amber head anywhere ahead along the route.
-5. Compute acceleration, then integrate ballistic displacement. A stop within a step
-   uses stopping distance, avoiding negative speed and backwards movement.
-6. Apply a conservative displacement cap at the old leader rear or stop line. This
-   ensures numerical non-overlap on supported longitudinal paths; it may override the
-   configured deceleration in an emergency, emitting `safety-clamp` for inspection.
-7. Carry residual travel through every crossed segment, remove front bumpers that reach
-   the route sink, and emit events. Vehicle front distance never resets at a connector.
+**What a vehicle carries** (`Vehicle`, `types.hpp`): input, route and type slots;
+`scheduledTime`, `enteredTime`; `desiredSpeed` and `driverFactor`, drawn once at generation; and
+`distance` along its route, `speed`, `acceleration`, `mode`. It has no lane, no x/y and no memory
+of past decisions: only `distance`, `speed` and `routeIndex` are read back next tick
+(`acceleration` and `mode` are outputs only). Admission grants, commitment and courtesy are
+re-derived from each snapshot. The one carried table is `SimState::stopService`, outside the vehicle.
+`driverFactor` scales only the safety distance (below and `stopLineReach`); gap acceptance,
+acceleration and lane changing are the same for every driver of a type.
+
+**Birth.** In: a `VehicleInput`, the state's PRNG. Process: Poisson arrival times; then
+insertion in scheduled-time/id order, the queue front of each input only, at most one entry per
+source segment per tick, and only with at least `standstillDistance` to the vehicle ahead.
+Out: a `Vehicle` at `distance` 0, speed 0, and `departed`; a blocked arrival waits in its
+input's queue (departure delay). Starting from rest is the ≈3 s of entry acceleration in delay.
+
+**Each tick** (`stepSimulation`). In: the pre-step snapshot, the same for every vehicle. Process:
+1. Insert arrivals, then build occupied intervals; a rear keeps occupying upstream segments.
+2. Mandatory lane changes (M3.2.8b): `decideLaneChanges` moves a stub vehicle to its target
+   route, then `courtesyHolds` names who holds back for a waiting one. Nothing changes in its
+   insertion tick: its rear is still behind the span start.
+3. Every constraint becomes the **nearest standing obstacle** and a cap, `allowedDistance`: the
+   vehicle ahead (`closestVehicle`); a red or amber head; a stub's dead end; a priority rule
+   it must give way at (gap time/headway, M3.1; commitment, M3.2.8a); a conflict zone that does
+   not admit it (`zoneHold`, M3.2.3, with Stop service). Courtesy is a **second** obstacle,
+   since a nearer moving leader would otherwise hide it.
+4. `followingAcceleration` behind that obstacle, then ballistic integration (no negative
+   speed), with speed capped at `desiredSpeed`.
+5. A move beyond `allowedDistance` is cut to it and stops: `safety-clamp`.
+6. A vehicle resting at a Stop line is held at zero (`restsAtStop`), which is not a clamp.
+7. Phase 2, only with zones: `resolveRequests` (swept check, shared receiving space) can only
+   shorten a move.
+8. Publish in id order: residual travel crosses segments, `segment-entered` and `moved`.
+
+Out: new `distance`, `speed`, `acceleration`, `mode` and events. Front distance never resets at
+a connector.
+
+**Death.** In: front at the route's end, not on a stub. Out: `arrived` with `travelTime` (from
+`enteredTime`), `departureDelay` (`enteredTime − scheduledTime`) and `freeFlowTime` (route
+length ÷ `desiredSpeed`, no acceleration term).
 
 A runtime vehicle identifies its input, route and vehicle type by **index into the canonical
 `Scenario`**, not by id (D29). `createSimulation` sorts the scenario once and never changes it
@@ -345,6 +371,7 @@ Native replay tests compare every event exactly on the same build. See `MIGRATIO
 | `segment-entered` | Every segment boundary crossed during a step |
 | `safety-clamp` | Numerical overlap prevention changed the proposed displacement |
 | `arrived` | Sink reached; actual travel time, source delay and free-flow reference |
+| `lane-change` | A stub vehicle moved to another route of its movement at the start of a step (M3.2.8b) |
 
 Movement and arrival times are quantized to the ending tick. Signals for movement are
 evaluated at the starting tick. `state.events` contains only the latest step; callers
