@@ -40,7 +40,7 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     };
     observe();
     const auto ticks = totalTicks(snapshot.scenario);
-    while (state.tick < ticks) { state = stepSimulation(state); observe(); }
+    while (state.tick < ticks) { state = stepSimulation(std::move(state)); observe(); }
     const auto report = movements.report(state);
     if (!csvFile.empty()) {
         std::ofstream csv(csvFile);

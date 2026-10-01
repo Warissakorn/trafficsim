@@ -8,6 +8,26 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — stepSimulation takes the previous state over (D91)
+
+A callgrind of the M2.6 hour (Linux/GCC 15.2, another machine) put 9.1% in `SimState`'s value
+copy at the top of `stepSimulation`: every vehicle and last tick's events, strings included,
+copied only for the events to be cleared and the vehicles rebuilt. `stepSimulation(SimState&&)`
+(and the `dt` form) now moves the old state into `next`; the `const&` overloads copy and call
+it, so every existing caller and test keeps its meaning. The step reads the previous tick, time
+and Stop service from locals taken before the move (`next.tick`/`time`/`stopService` are only
+written at the end). The hot loops move: `runSimulation`, `trafficsim-cli`, the T-junction
+sweep, the engine benchmark and the editor's run (`editor_run.cpp`). Tests still step by copy.
+
+Windows/MSVC 14.51 Release: byte-identical output before/after for the three projects at seeds
+42–44 with every `--project` diagnostic, and the seed-42 `--events` stream. Wall clock (not
+callgrind; none on Windows): M2.6 project run median 625 → 557 ms (7 runs), engine benchmark
+(8 intersections, 1 h) 0.21 → 0.18 µs per vehicle-tick. Desktop Debug CTest 71/71 and `check`.
+Not run on Linux/GCC.
+
+Also: CLAUDE.md's "Where it stands" Gates bullet (one 1,204-character line restating NEXT.md)
+is cut to the gates and a pointer to NEXT/PROGRESS — hard rule 3.
+
 ## 2026-10-01 — M3.2.8c: cooperative braking with look-ahead (D90)
 
 The first behaviour change since M3.2.8b, built on D89's measurement. The contract and rows came
@@ -428,6 +448,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D91 | 2026-10-01 | **`stepSimulation` has `SimState&&` overloads that take the previous state over; the `const&` ones copy and forward. Hot loops step with `std::move`** | The value copy was 9.1% of an M2.6 hour (callgrind, GCC 15.2) and only fed a clear and a rebuild. Moving keeps the value API and output byte-identical (MSVC, 3 projects × 3 seeds + events); M2.6 run 625 → 557 ms median. Copying only `vehicles`/`inputs` field by field was rejected: a later `SimState` field would be silently dropped | A step that reads a field of the previous state after it is overwritten — the clock and Stop service are taken before the move for that reason |
 | D90 | 2026-10-01 | **Cooperative braking (M3.2.8c): a stub vehicle still moving is helped once its dead end governs its car-following; the helper is the nearest target-lane vehicle with `maxDecelerationCooperativeBraking` (3 m/s², default behaviour) that can fall in behind it, braking behind a virtual leader at the changer's speed, bounded by that deceleration, with no cap; absent the field, only D71 runs** | The owner chose the look-ahead ("when it must begin braking for its dead end", no length parameter) and Vissim's name and 3 m/s². D89 placed M3.2.8b's cost in the dead-end waits. Measured over seeds 42–81: waits 9,034 → 4,222 s, East → West −2.3 ± 0.6 s, network mean +2.4 → +1.3 ± 0.5 s against `b472e05`, clamps not up. The look-ahead is the model's own reaction, because a comfortable-stop formula fired only as the changer stopped (`docs/evidence/m3.2.8c-cooperative-braking.md`) | Clamps or held-through-green rising with it, or a measured cooperative-braking deceleration that differs from 3 m/s² |
 | D89 | 2026-10-01 | **The next M3.2.8c system is cooperation with a deceleration parameter and look-ahead; its success measure is East → South dead-end wait seconds and East → West delay against `b472e05`, seeds 42–81** | Over 40 seeds the East-approach rise accrues on the entry Link the left-turn stubs dead-end on. Per seed it is +0.1 + 0.047 s per second of East → South dead-end wait (r = 0.56), which gives the whole +6.0 s at the mean wait and none without waits. West is the same at a third of the size (`docs/evidence/m3.2.8c-east-approach.md`). Left-turners change at the first tick allowed, so it is not `laneChangeDistance` (D87) | A run where the waits fall but East → West delay does not, which would mean the courtesy hold, not the wait, costs the time |
 | D88 | 2026-10-01 | **A before/after comparison of one movement's delay uses at least 40 seeds; the M3.2.8b right-turn rise is withdrawn as a finding, and M3.2.8c's next measurement is the East approach** | Seeds 42–46 showed South → East +7.3 s and North → West +7.5 s, up in 5/5. Over seeds 42–81 they are −1.0 ± 1.1 and +2.7 ± 1.2 s, and pocket arrivals are uniform in the cycle in both engines. Their timing is fixed at departure, i.e. by the Poisson draw, which M3.2.8b re-orders by adding an input per lane. A right-turn movement's per-seed change has an SD of about 7 s. The rise that persists is East → West +6.0 ± 1.7 s, East → South +6.8 ± 2.6 s and the network mean +2.4 ± 0.5 s (`docs/evidence/m3.2.8c-arrival-phases.md`) | A movement whose per-seed SD is small enough that fewer seeds give an SE under about 1 s |

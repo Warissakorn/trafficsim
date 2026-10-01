@@ -119,10 +119,14 @@ output first.
    default stays 3 unless the owner rules otherwise.
 2. **Or the next row: lane changes after the entry Link.** Free-walk paths and placed decisions
    are still lane-fixed (SIMULATION.md, "No lane changing downstream"). Contract and rows first.
-3. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for
-   `decideLaneChanges`, `courtesyHolds` (now also run for moving changers) and the span rebuild.
-   **Valgrind is not installed in the WSL Ubuntu here** (`sudo apt install valgrind` is the
-   owner's call).
+3. Engine cost after D90 (from 8b): a callgrind of the M2.6 hour on Linux/GCC 15.2 (another
+   machine, 2026-10-01) put lane-change work at ≈3% (`courtesyHolds` 1.9%, `decideLaneChanges`
+   1.0%) — not where the time goes. The 9.1% state copy is gone (D91). Still open: a
+   **same-compiler** callgrind at `b472e05`, `f9964f1` and HEAD before any new baseline replaces
+   4.35G (the 4.01G measured was GCC 15.2 against D70's 13.3, not comparable). Next candidates by
+   that profile: the per-tick span rebuild (8.5%, `appendSpans` 6.8%) and `observe` (20%) —
+   measure whether `observe` is the per-line walk over every vehicle or `queueLength` and its
+   per-line `behind` allocation before changing it.
 
 **The owner looks at D90 on Windows:** run M2.6 (Run in the desktop) and watch the East
 approach. Left-turners on lanes 2/3 should slip into lane 1 as they approach the dead end. The
@@ -180,6 +184,12 @@ no gate result is inferred.
   after the D70 pass: the M2.6 template's one-hour run is 4.35G instructions, median 0.45 s wall
   (0.44–0.66 s, five runs; one outlier). What is left there: `stepSimulation` 66%, `observe` 26% (mostly the
   per-line queue walk itself), `compileDocument` 4%.
+- **Linux/WSL build (not done; WSL is not installed on the owner's Windows machine):** on the
+  machine that measured it, a one-file edit waited 150 s, 134 s of it linking the Debug
+  `trafficsim-tests` (101 MB) on `/mnt/c`, and an unbounded `-j` hung a 3 GB WSL. There: a build
+  tree on ext4 via an untracked `CMakeUserPresets.json`, `CMAKE_JOB_POOLS=link=1` with
+  `CMAKE_JOB_POOL_LINK=link`, `-j2`, and `--target` only what the change needs; lld only if
+  that is not enough. Measure before and after.
 - **`ctest -j` wall time:** `m26study` was split on 2026-09-30 (its merge case, which runs the
   hour twice, is `m26study_merge`); Linux Debug `-j4` went 35.9 s → 16.3 s median with the
   repaint fix. The longest test is now `m26study_merge` (≈6 s). Add every new test group to

@@ -106,7 +106,7 @@ inline SweepRow runOne(const std::filesystem::path& data, std::uint32_t seed, do
     MovementAccumulator m(evaluationSpec(t.document, snapshot, data));
     auto s = createSimulation(snapshot.scenario, seed);
     m.observe(s);
-    while (s.tick < totalTicks(snapshot.scenario)) { s = stepSimulation(s); m.observe(s); }
+    while (s.tick < totalTicks(snapshot.scenario)) { s = stepSimulation(std::move(s)); m.observe(s); }
     return {seed, gapTime, headway, m.report(s)};
 }
 }
