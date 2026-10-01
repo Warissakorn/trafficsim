@@ -8,6 +8,39 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — M3.2.8c: cooperative braking with look-ahead (D90)
+
+The first behaviour change since M3.2.8b, built on D89's measurement. The contract and rows came
+first: `M3_8_CONTRACT.md` §2, "Cooperative braking", and rows A36–A39.
+
+- **The rule.** A stub vehicle still moving gets help once its dead end, taken as a standing
+  obstacle, already governs its car-following. The helper is the nearest target-lane vehicle
+  behind its target place whose behaviour has `maxDecelerationCooperativeBraking` (Vissim's name;
+  3 m/s² in `data/driver-behaviour/default.json`) and that can fall in behind it at that
+  deceleration. The helper brakes behind a virtual leader moving at the changer's speed, bounded
+  by that deceleration and with no move cap. The changer still needs rules 1–5. The D71 waiting
+  rule is unchanged. **Without the field, only D71 runs** (A39).
+- **Owner choices (this session):** help starts when the changer must begin braking for its dead
+  end, with no new length parameter; the parameter is named after Vissim's and set to 3 m/s².
+- **The look-ahead was re-derived once.** The first draft used
+  `v²/(2·comfortableDeceleration) + stopLineReach`. The model starts braking earlier and more
+  gently than that (its approach test adds following time and the safety gap), so a changer only
+  entered the window as it stopped, and A36 failed with no moving hold at all. Asking the model
+  itself, whether the dead end has taken it out of free mode, is the owner's "must begin braking"
+  in the model's own terms. That is about 50 m at 10 m/s.
+- **Result, seeds 42–81 (`docs/evidence/m3.2.8c-cooperative-braking.md`):**
+  - all dead-end wait time 9,034 → 4,222 s; East → South 126.8 → 51.7 s per seed;
+  - East → West −2.3 ± 0.6 s against 8b, about two thirds of D89's predicted 3.5 s. D89's failure
+    condition did not fire;
+  - network mean +2.4 → +1.3 ± 0.5 s against `b472e05`; clamps −0.8 ± 0.5;
+  - North → West's +2.7 s, never linked to the waits, is unchanged.
+- **The archived T-junction metadata** hashes `driver-behaviour/default.json`. The two guard
+  tests restore the old hash only when the new field is the catalog's sole change and the fixture
+  has no lane-change spans, so the archived sweeps' results still stand
+  (`sweep::restoreArchivedBehaviour`, `docs/evidence/m3.2.7-original-driver-behaviour.json`).
+  This follows D80's precedent for the project file.
+- Linux/GCC 15.2 headless only: 50/50 tests. No Windows or desktop build.
+
 ## 2026-10-01 — M3.2.8c step 5: the East-approach rise is the left-turn dead-end waits (D89)
 
 Step 5 of NEXT, measurement only, with no new code: `--segment-times`, `--stop-lines` and
@@ -274,67 +307,6 @@ Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) an
 - Verified in WSL (Linux, Qt 6.10, offscreen): desktop build, 69/69 CTest, `check`. Not run on
   Windows MSVC; that is the CI job and the owner review.
 
-## 2026-09-29 — Measured optimization pass: docs headroom, CI (D82)
-
-- **Docs headroom.** Four live docs sat at 494–499 of the 500-line limit, and a three-line note
-  had just turned CI red. Moved whole, never deleted: M3.2.8b–M3.2.9g out of this file; the
-  2026-09-15..21 follow-ups out of `VISSIM_PARITY.md`; the M1.11/M1.11.1/M1.12/M3.1 bodies out of
-  `ROADMAP.md` (each keeps its heading and a status line). The archive index moved from the top
-  of this file to `archive/README.md`. `NETWORK_EDITOR.md`'s two Connector sections became
-  `NETWORK_EDITOR_CONNECTORS.md` (current, not archived). Lines: PROGRESS 497→214, ROADMAP
-  499→424, NETWORK_EDITOR 498→406, VISSIM_PARITY 494→328. PROGRESS ≈25.2k→18.6k tokens (the
-  decision log is most of what remains). No other doc referenced a moved section by anchor.
-- **Stale references.** `CLAUDE.md` and `VISSIM_PARITY.md` §7 sent readers to `NETWORK_EDITOR.md`
-  §"Two file kinds", which does not exist; the table is under §"Save, recovery and formats".
-  `VISSIM_PARITY.md` §3 still said levels and display types do not exist and named `src/render/`
-  (removed in M1.24); it is now marked dated like §1 and §6. The remaining ~99 "broken" paths the
-  audit script reports are lane ids, branch names and archived history, not references.
-- **CI runs once per commit.** Runs 355 and 356 were both the full five-job suite on `1a702eb`
-  (`push` and `pull_request`). `push` now fires only on `main`, `workflow_dispatch` covers a
-  branch without a pull request, and a newer push to a pull request cancels the older run.
-- **CI uses the runner's 4 vCPUs.** `--parallel 2` became 4; the Windows jobs set `CL=/MP`,
-  because the Visual Studio generator's `--parallel` only runs projects side by side and
-  `trafficsim-tests` compiled its files one at a time. Baseline (run 355): build steps
-  windows-desktop 6:17, windows-core 4:41, linux desktop 4:12, release 3:09, headless 2:31.
-- **vcpkg applocal off on Windows.** Package run 68 failed in `z-applocal` with exit 32 (a
-  sharing violation between parallel targets). nlohmann-json is header-only and Qt ships through
-  `windeployqt`, so the copy step had nothing to copy; `-DVCPKG_APPLOCAL_DEPS=OFF` removes the
-  race before more parallelism makes it likelier.
-- **ccache on the Linux jobs.** Measured locally on a clean `release` build, 4 cores: 196 s
-  cold, 8 s warm, 177/177 hits; `CCACHE_SLOPPINESS` (pch_defines, time_macros, include-file
-  times) is what lets the PCH targets hit. The cache is `actions/cache` keyed per preset and
-  commit, restored by prefix; ~120 MB for `release`, capped at 500 MB. Windows is not covered:
-  ccache with MSVC needs the Ninja generator, which would change how those jobs build.
-- **Measured in CI** (build step; baseline runs 355/356 → run 360, items 3–4 with ccache cold):
-  windows-desktop 6:17/6:16 → 4:31 (−28%; the run's critical path, whole run 8:27 → 6:33);
-  windows-core 4:41/3:41 → 3:55 (within noise); linux desktop 4:12/4:14 → 3:30; headless
-  2:31/2:08 → 1:57; **release 3:09/3:37 → 4:01, slower** — one sample, taken while ccache was
-  writing its first cache, so not yet attributed. The next run is the first warm-cache one.
-  **Warm cache (run 361):** Linux build steps release 0:08, headless 0:07, desktop 0:24; the
-  release slowdown is gone. Windows is now the whole critical path: windows-desktop build 5:40
-  (4:31 in run 360; baseline 6:17/6:16, so −10 to −28%), windows-core 3:45 (no change); whole
-  run 8:03 against 8:27. Getting Windows down means the Ninja generator plus a compiler cache
-  there — a separate change, not made here.
-- **Eleven files no longer lean on a PCH for `nlohmann/json.hpp`.** D27 says a file that builds
-  or reads a `Json` includes the definition itself; six `src/project` sources, three tools and
-  every `tests/` file (through `test.hpp`) compiled only because their target precompiles it.
-  `-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON` now builds and passes 69/69; with the PCH on nothing
-  changes (the header is already precompiled there), and `trafficsim-cli 42` is byte-identical.
-- **Windows jobs on Ninja + ccache.** The Visual Studio generator takes no compiler launcher,
-  so both Windows jobs configure with Ninja inside the vcvars64 environment (`cl` named
-  explicitly, since the runner's PATH also carries MinGW), ccache from Chocolatey, PCH off
-  (neither ccache nor sccache caches MSVC `/Yu`), and the same `actions/cache` scheme as Linux.
-  `/MP` is gone: Ninja already runs one file per core. `package.yml` keeps the Visual Studio
-  generator and its PCH; it builds release artifacts, where a cache buys nothing.
-  First run (364) failed on MSVC: `history.cpp` and `split_link.cpp` throw `std::invalid_argument`
-  without `<stdexcept>`, which libstdc++ and libc++ reach through `<string>` and MSVC does not.
-  An include check over `src/ tools/ tests/` (each `std::` symbol against the file's own
-  include closure) found the same class in twelve files; all now include `<stdexcept>`.
-  **Measured:** Windows build steps, VS + PCH 4:31/5:40 (desktop) and 3:45/3:55 (core) →
-  Ninja cold 7:44/7:31 and 5:04/4:57 (PCH off, empty cache) → **warm (run 367) 0:09 and 0:05**.
-  Whole run 8:27 before this pass → 2:55 warm. A pull request restores `main`'s cache, so only
-  a change to many sources, or a new cache key, pays the cold price.
-
 ---
 
 ## Backlog (M0, in order)
@@ -456,6 +428,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D90 | 2026-10-01 | **Cooperative braking (M3.2.8c): a stub vehicle still moving is helped once its dead end governs its car-following; the helper is the nearest target-lane vehicle with `maxDecelerationCooperativeBraking` (3 m/s², default behaviour) that can fall in behind it, braking behind a virtual leader at the changer's speed, bounded by that deceleration, with no cap; absent the field, only D71 runs** | The owner chose the look-ahead ("when it must begin braking for its dead end", no length parameter) and Vissim's name and 3 m/s². D89 placed M3.2.8b's cost in the dead-end waits. Measured over seeds 42–81: waits 9,034 → 4,222 s, East → West −2.3 ± 0.6 s, network mean +2.4 → +1.3 ± 0.5 s against `b472e05`, clamps not up. The look-ahead is the model's own reaction, because a comfortable-stop formula fired only as the changer stopped (`docs/evidence/m3.2.8c-cooperative-braking.md`) | Clamps or held-through-green rising with it, or a measured cooperative-braking deceleration that differs from 3 m/s² |
 | D89 | 2026-10-01 | **The next M3.2.8c system is cooperation with a deceleration parameter and look-ahead; its success measure is East → South dead-end wait seconds and East → West delay against `b472e05`, seeds 42–81** | Over 40 seeds the East-approach rise accrues on the entry Link the left-turn stubs dead-end on. Per seed it is +0.1 + 0.047 s per second of East → South dead-end wait (r = 0.56), which gives the whole +6.0 s at the mean wait and none without waits. West is the same at a third of the size (`docs/evidence/m3.2.8c-east-approach.md`). Left-turners change at the first tick allowed, so it is not `laneChangeDistance` (D87) | A run where the waits fall but East → West delay does not, which would mean the courtesy hold, not the wait, costs the time |
 | D88 | 2026-10-01 | **A before/after comparison of one movement's delay uses at least 40 seeds; the M3.2.8b right-turn rise is withdrawn as a finding, and M3.2.8c's next measurement is the East approach** | Seeds 42–46 showed South → East +7.3 s and North → West +7.5 s, up in 5/5. Over seeds 42–81 they are −1.0 ± 1.1 and +2.7 ± 1.2 s, and pocket arrivals are uniform in the cycle in both engines. Their timing is fixed at departure, i.e. by the Poisson draw, which M3.2.8b re-orders by adding an input per lane. A right-turn movement's per-seed change has an SD of about 7 s. The rise that persists is East → West +6.0 ± 1.7 s, East → South +6.8 ± 2.6 s and the network mean +2.4 ± 0.5 s (`docs/evidence/m3.2.8c-arrival-phases.md`) | A movement whose per-seed SD is small enough that fewer seeds give an SE under about 1 s |
 | D87 | 2026-09-30 | **`laneChangeDistance` is not the next M3.2.8c piece; the South and North right-turn rise is decomposed first** | NEXT asked for measurement before choosing. Over seeds 42–46 the right-turners change at the first tick the rules allow, 4.5 m past the network edge, and hardly wait at a dead end (North → West: none), so a look-ahead that starts changes earlier cannot remove their added delay. The rise's cause is not found; departure delay, entry-Link time and pocket-to-exit time are the next measurement (`docs/evidence/m3.2.8c-right-turns.md`) | A measurement showing right-turn changes late or waits at dead ends, e.g. on a network whose stubs do not start at the network edge |

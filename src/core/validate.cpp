@@ -231,6 +231,8 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         number(b.additiveSafetyDistance, p + ".additiveSafetyDistance", true);
         number(b.multiplicativeSafetyDistance, p + ".multiplicativeSafetyDistance", true);
         number(b.followingTime, p + ".followingTime"); number(b.speedThreshold, p + ".speedThreshold");
+        if (b.maxDecelerationCooperativeBraking)
+            number(*b.maxDecelerationCooperativeBraking, p + ".maxDecelerationCooperativeBraking");
     }
     for (std::size_t i = 0; i < s.vehicleTypes.size(); ++i) {
         const auto& t = s.vehicleTypes[i];

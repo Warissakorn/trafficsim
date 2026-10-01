@@ -184,7 +184,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     }
     // Cooperation, from the post-change snapshot: who holds back for a vehicle waiting to change.
     const auto courtesy = index.laneChanges ? courtesyHolds(scenario, index, vehicles, refs, spans, buckets)
-                                            : std::vector<double>{};
+                                            : std::vector<CourtesyHold>{};
     // Signal colour depends only on the tick's time, so it is the same for every vehicle.
     std::vector<SignalColor> headColors;
     headColors.reserve(scenario.signalHeads.size());
@@ -234,8 +234,10 @@ SimState stepSimulation(const SimState& state, double dt) {
             }
         // Holding back for a waiting changer, as behind a standing vehicle -- even when a moving
         // leader is nearer, so it is a second obstacle rather than a replacement leader (below).
-        const bool yields = !courtesy.empty() && std::isfinite(courtesy[v]);
-        if (yields) allowedDistance = std::min(allowedDistance, std::max(0.0, courtesy[v] - behaviour.standstillDistance));
+        // A moving changer (cooperative braking) is a virtual leader, so it caps nothing.
+        const bool yields = !courtesy.empty() && std::isfinite(courtesy[v].gap);
+        if (yields && !courtesy[v].moving)
+            allowedDistance = std::min(allowedDistance, std::max(0.0, courtesy[v].gap - behaviour.standstillDistance));
         // Priority rules, after the signal heads and by the same mechanism: a vehicle that must
         // give way is held at its stop line exactly as a red head holds one. Car-following past
         // the merge already works without any of this, because spans are bucketed by GLOBAL
@@ -282,10 +284,14 @@ SimState stepSimulation(const SimState& state, double dt) {
         }
         auto following = followingAcceleration(vehicle.speed, vehicle.desiredSpeed,
                                                  vehicle.driverFactor, type, behaviour, leader);
-        if (yields)
-            if (const auto held = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type,
-                                                        behaviour, Leader{courtesy[v], 0});
-                held.acceleration < following.acceleration) following = held;
+        if (yields) {
+            auto held = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type,
+                                              behaviour, Leader{courtesy[v].gap, courtesy[v].speed});
+            // Cooperative braking never asks for more than the behaviour's maximum (M3.2.8c).
+            if (courtesy[v].moving)
+                held.acceleration = std::max(held.acceleration, -*behaviour.maxDecelerationCooperativeBraking);
+            if (held.acceleration < following.acceleration) following = held;
+        }
         const auto motion = integrate(vehicle.speed, following.acceleration, dt);
         auto& move = moves[v];
         move = {motion.distance, std::min(vehicle.desiredSpeed, motion.speed), following.acceleration, following.mode, false};

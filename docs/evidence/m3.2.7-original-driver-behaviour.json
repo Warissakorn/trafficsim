@@ -4,6 +4,5 @@
   "additiveSafetyDistance": 2,
   "multiplicativeSafetyDistance": 3,
   "followingTime": 1.5,
-  "speedThreshold": 0.2,
-  "maxDecelerationCooperativeBraking": 3
+  "speedThreshold": 0.2
 }

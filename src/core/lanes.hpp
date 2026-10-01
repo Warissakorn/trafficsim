@@ -4,6 +4,7 @@
 // when both the gap ahead and the gap behind are safe there. Everything is read off the tick's
 // pre-step snapshot and decided in vehicle-id order, with no random draw, so replay is exact.
 #include "routes.hpp"
+#include <limits>
 
 namespace trafficsim {
 // Validation of the compiled spans and dead ends; called by validateScenario.
@@ -20,10 +21,20 @@ struct LaneChange { std::size_t vehicle{}; std::uint32_t route{}; double distanc
 std::vector<LaneChange> decideLaneChanges(const Scenario&, const ScenarioIndex&, const std::vector<Vehicle>&,
                                           const std::vector<VehicleRefs>&, const std::vector<OccupiedSpan>&,
                                           const SpanBuckets&, const std::vector<StopService>& stopService);
-// Cooperation (contract §2): for each vehicle, the gap to a place it holds back from so that a
-// stub vehicle waiting at its dead end can change in ahead of it; +infinity for none. The nearest
-// vehicle behind the waiting one's target place that can stop there comfortably and without a
-// clamp holds back; any nearer pass first. Read off the snapshot; nothing is stored.
-std::vector<double> courtesyHolds(const Scenario&, const ScenarioIndex&, const std::vector<Vehicle>&,
-                                  const std::vector<VehicleRefs>&, const std::vector<OccupiedSpan>&, const SpanBuckets&);
+// A place a vehicle holds back from so that a changer can come in ahead of it. Waiting (D71): a
+// standing obstacle that caps the move. Moving (cooperative braking, M3.2.8c): a leader at the
+// changer's speed that the vehicle brakes behind at no more than its
+// maxDecelerationCooperativeBraking, with no cap.
+struct CourtesyHold {
+    double gap{std::numeric_limits<double>::infinity()}, speed{};
+    bool moving{};
+};
+// Cooperation (contract §2): for each vehicle, the nearest place it holds back from; gap
+// +infinity for none. For a stub vehicle waiting at its dead end, the nearest vehicle behind its
+// target place that can stop there comfortably and without a clamp holds back. For one still
+// moving inside its look-ahead (it must brake for its dead end), the nearest whose behaviour has
+// maxDecelerationCooperativeBraking and can fall in behind it at that deceleration. Any nearer
+// pass first. Read off the snapshot; nothing is stored.
+std::vector<CourtesyHold> courtesyHolds(const Scenario&, const ScenarioIndex&, const std::vector<Vehicle>&,
+                                        const std::vector<VehicleRefs>&, const std::vector<OccupiedSpan>&, const SpanBuckets&);
 }

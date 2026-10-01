@@ -272,9 +272,13 @@ PriorityDefaults parsePriorityDefaults(const Json& value) {
     return {field<double>(value, "gapTime"), field<double>(value, "headway")};
 }
 DriverBehaviour parseBehaviour(const Json& b) {
-    return {field<std::string>(b, "id"), field<double>(b, "standstillDistance"),
+    DriverBehaviour behaviour{field<std::string>(b, "id"), field<double>(b, "standstillDistance"),
         field<double>(b, "additiveSafetyDistance"), field<double>(b, "multiplicativeSafetyDistance"),
-        field<double>(b, "followingTime"), field<double>(b, "speedThreshold")};
+        field<double>(b, "followingTime"), field<double>(b, "speedThreshold"), std::nullopt};
+    // Optional (M3.2.8c): absent, the behaviour does not brake cooperatively.
+    if (b.contains("maxDecelerationCooperativeBraking"))
+        behaviour.maxDecelerationCooperativeBraking = field<double>(b, "maxDecelerationCooperativeBraking");
+    return behaviour;
 }
 VehicleType parseVehicleType(const Json& t) {
     const auto& range = member(t, "desiredSpeed");
