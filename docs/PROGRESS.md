@@ -8,6 +8,35 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — M3.2.8c step 4: the right-turn rise was a five-seed sample (D88)
+
+Step 4 of NEXT, measurement only. `ArrivalPhaseAccumulator` (`src/eval/arrival_phases.{hpp,cpp}`,
+CLI `--arrival-phases [--phase-bin S]`) histograms the cycle phase at which each movement's
+vehicles enter every segment (departure counts as entering the first segment) and first stand
+on it. It was copied into a `b472e05` worktree for "before", like steps 2–3.
+
+- **What timed right-turners before M3.2.8b was their departure.** The departure phase plus
+  step 2's 22 s predicts the pocket-entry wait within about 1 s in both engines. Right-turners
+  cross the entry Link without standing, and departure delay is 0.2 s, so the phase is the
+  input's Poisson draw. M3.2.8b adds one input per entry lane, which re-orders the draws from the
+  single random stream. The same seed therefore draws a different arrival sequence.
+- **Over seeds 42–81 the rise is gone.** South → East is −1.0 ± 1.1 s and North → West
+  +2.7 ± 1.2 s, with pocket arrivals uniform in the cycle before and after. What persists is the
+  East approach: through +6.0 ± 1.7 s, left +6.8 ± 2.6 s, and the network mean +2.4 ± 0.5 s (up
+  in 34/40). The clamp increase is not systematic (+1.4 ± 1.3). Evidence:
+  `docs/evidence/m3.2.8c-arrival-phases.md`. Steps 1–3's files carry a note pointing there.
+- **Why this is a decision (D88), not just a result:** steps 1–3 read five seeds as M3.2.8b's
+  effect on one movement. Its per-seed change has an SD of about 7 s, so five seeds give a
+  standard error of about 3 s. The owner ruling NEXT reserved ("artefact or behaviour to
+  restore") has no subject left.
+- First-stop needs hysteresis. Vehicles enter at rest, so the first draft counted every
+  insertion as a stop on the entry Link. A stop now counts only after the vehicle has once
+  reached the queue counter's `endSpeed`. A test pins it (a vehicle started from rest records no
+  stop there).
+- Tests (`tests/arrival_phase_tests.cpp`, `movement` group): a queue standing at red first stops
+  in the red bins; phases wrap the cycle; departure counts as entering the first segment;
+  programs with different cycles give cycle 0 and no rows.
+
 ## 2026-10-01 — SIMULATION.md "Step and motion" rewritten as a vehicle's input/process/output
 
 The section still listed the seven pre-M3 steps: no priority rules, zones, Stop service,
@@ -304,59 +333,6 @@ Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) an
   `2px 1px 1px 2px` for 24 px (icon centred); `EditorWindow::setAnimated(false)` stops dock motion,
   and the test flushes Qt's zero-length geometry animators before asserting none remain.
 
-## 2026-09-28 — Editor selection and visual cleanup (owner request)
-
-- Unified subtle hover/selection outlines, preserving display-type road colours. Geometry
-  grips are small squares only for a single object in Select. Hover clears on leave/focus loss.
-- Lane tabs are 24 × 8 logical-pixel rectangles directly on both road edges, without stems or
-  counts. Link tabs appear at start/middle/end; Connector end tabs follow the rendered rails.
-  Picking follows the rectangular target, with nearest-centre arbitration against geometry grips.
-  Connector end tabs now use the painted edge and its tangent, including angled Link joints.
-  End tabs inset by half their length and shrink to fit short Connectors; P3–P4 draws as a solid boundary.
-  Resizing tabs use preview geometry, keeping Link tabs on curved edges throughout the drag.
-- Lane markings use a non-cosmetic 0.10 m pen; dashed markings use 3 m dashes and gaps.
-- Empty clicks clear canvas and table-owned selections; mode changes cancel gestures and clear
-  selection. Empty clicks preserve multi-click drafts. Escape cancels a gesture first, then
-  clears selection when idle. Tab/Delete cannot accidentally edit roads in authoring tools.
-- Added interaction regressions, bilingual Select guidance and CI screenshot artifacts.
-- Initial Linux/Windows UI tests exposed teardown repainting after History destruction; detaching
-  the canvas fixed it. Legacy inspector/Conflict tests now reselect after deselection.
-- Local architecture, file-size and diff checks pass. Existing Linux/Windows screenshots were
-  inspected; precision UI is added to PR #73. Local CMake/Qt unavailable, new CI pending.
-
----
-
-## 2026-09-28 — D80: central reference and one P1–P4 pipeline
-
-- Owner requested a whole-carriageway reference, fixed source/target lane pairing, removal of
-  all steep-angle square caps, and investigation of the near-180-degree missing mouths.
-- Reproduced the source reversal: at 120/150 degrees a 4 m source shoulder was 1.155/0.536 m,
-  versus target 3.464/7.464 m. The rail-derived normal inherited the old strip's reversed order.
-  A separate four-width reach guard rejected target mouths above 151.044976 degrees; it was
-  not caused solely by the 75.522488-degree square fallback. Both legacy paths are removed.
-- `geometry` retains schema-17 first-lane semantics for files/runtime. The derived construction
-  axis is now the whole range centre, computed BEFORE edges. Widths stack symmetrically around
-  it. P1/P4 and dividers pair by lane index with handedness-fixed normals at both ends.
-- Mouth displacements share original-axis station weights. This removes the already-mutated
-  distance bug and keeps symmetric rails centred. Grips use the axis; inverse bisection makes
-  pointer position survive preview, commit, save/reopen and Undo/Redo.
-- No reach cutoff or two-mouth reset on a fold. Undefined parallel intersections have no closed
-  fill, but open rails remain selectable; a fold retains its computed mouths and is reported.
-  Diagnostics now read the surface; the obsolete `connectorMouthFit` API is removed.
-- Conflict strips now use the same final rails. Waiting bars intersect those rails at the
-  authored path normal. The generated T-junction example updates measured area/line stations;
-  frozen core trajectory baselines and runtime lane paths are unchanged.
-- Regression tests distinguish centred body width from P1–P4 cuts, check signed lane order,
-  both ends through 179.9 degrees, all retained cap points, undefined/fold cases and real
-  command round trips. Old tests requiring a square cap are replaced by the owner’s contract.
-- Verification: Linux/GCC 13.3 Debug headless build and CTest passed 48/48, including frozen
-  core references, architecture/file-size gates and CLI checks (nlohmann/json 3.12).
-  Desktop/Windows verification is pending; the local Qt SDK installation was blocked.
-- Original M3.2.7 simulation evidence remains tied to its archived project snapshot
-  (`docs/evidence/m3.2.7-original-project.traffic.json`), not the regenerated example geometry.
-- Prior D79 implementation/history moved intact to
-  [archive/PROGRESS-2026-09-28-d79-mouth.md](archive/PROGRESS-2026-09-28-d79-mouth.md).
-
 ---
 
 ## Backlog (M0, in order)
@@ -478,6 +454,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D88 | 2026-10-01 | **A before/after comparison of one movement's delay uses at least 40 seeds; the M3.2.8b right-turn rise is withdrawn as a finding, and M3.2.8c's next measurement is the East approach** | Seeds 42–46 showed South → East +7.3 s and North → West +7.5 s, up in 5/5. Over seeds 42–81 they are −1.0 ± 1.1 and +2.7 ± 1.2 s, and pocket arrivals are uniform in the cycle in both engines. Their timing is fixed at departure, i.e. by the Poisson draw, which M3.2.8b re-orders by adding an input per lane. A right-turn movement's per-seed change has an SD of about 7 s. The rise that persists is East → West +6.0 ± 1.7 s, East → South +6.8 ± 2.6 s and the network mean +2.4 ± 0.5 s (`docs/evidence/m3.2.8c-arrival-phases.md`) | A movement whose per-seed SD is small enough that fewer seeds give an SE under about 1 s |
 | D87 | 2026-09-30 | **`laneChangeDistance` is not the next M3.2.8c piece; the South and North right-turn rise is decomposed first** | NEXT asked for measurement before choosing. Over seeds 42–46 the right-turners change at the first tick the rules allow, 4.5 m past the network edge, and hardly wait at a dead end (North → West: none), so a look-ahead that starts changes earlier cannot remove their added delay. The rise's cause is not found; departure delay, entry-Link time and pocket-to-exit time are the next measurement (`docs/evidence/m3.2.8c-right-turns.md`) | A measurement showing right-turn changes late or waits at dead ends, e.g. on a network whose stubs do not start at the network edge |
 | D86 | 2026-09-30 | **An authored conflict area follows its overlap after any edit that changes the drawing (re-derived in `History::execute`), its lines keep their distance, and it is removed with its rule and Stop/Yield when its pair no longer overlaps** | Owner report and ruling (Vissim removes such areas). One choke point instead of a hook per geometry command (rule 3); stored extents were only ever derived, so re-deriving loses no authoring. Fails if an author needs an area deliberately wider than the overlap to survive a geometry edit |
 | D85 | 2026-09-30 | **A run frame updates only the markers it adds and removes; it does not repaint the whole viewport** | The explicit `viewport()->update()` in `drawRunItems` was ~60% of `scenario-run-ui` (9.7 s → 3.8 s median, Linux Debug); scene items already invalidate their own rectangles. On the M2.6 template the same change is ≈8%, within noise: it is not a live-run speed-up on real networks | If a vehicle or signal marker is left on screen during a run (at zoom, pan or level change), restore an update bounded to the old and new marker rectangles, not the whole viewport |

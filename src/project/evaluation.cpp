@@ -213,6 +213,17 @@ Json stopLineJson(const StopLineReport& r) {
                              {"meanResidual", h.meanResidual}});
     return j;
 }
+Json arrivalPhaseJson(const ArrivalPhaseReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "cycle phase (time mod cycle) at which vehicles entered each segment and first stood on it, by movement; one run";
+    j["cycle"] = r.cycle; j["binWidth"] = r.binWidth; j["unassigned"] = r.unassigned;
+    j["rows"] = Json::array();
+    for (const auto& row : r.rows)
+        j["rows"].push_back({{"movement", row.movement}, {"segmentId", row.segmentId}, {"entered", row.entered},
+                             {"stopped", row.stopped}, {"enteredAt", row.enteredAt}, {"firstStopAt", row.firstStopAt}});
+    return j;
+}
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";
