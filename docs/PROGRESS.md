@@ -8,6 +8,16 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — SIMULATION.md "Step and motion" rewritten as a vehicle's input/process/output
+
+The section still listed the seven pre-M3 steps: no priority rules, zones, Stop service,
+commitment, lane changes, courtesy or Phase 2, and no `lane-change` event. It was rewritten in
+place, not appended to, so the tick has one description. Each claim was traced in
+`simulation.cpp` first. Two are easy to get wrong. `driverFactor` scales only the safety
+distance, so gap acceptance and lane changing are the same for every driver of a type. And a
+vehicle carries only `distance`, `speed` and `routeIndex` across ticks; `acceleration` and
+`mode` are outputs only.
+
 ## 2026-09-30 — M3.2.8c step 3: the right-turn rise is red time, and "before" beat random
 
 Step 3 of NEXT, measurement only. `StopLineAccumulator` (`src/eval/stop_lines.{hpp,cpp}`, CLI
