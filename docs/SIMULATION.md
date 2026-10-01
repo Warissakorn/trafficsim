@@ -143,8 +143,10 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   inside a span and both it and its new follower can accept the gap at `comfortableDeceleration`
   without a clamp; nothing alongside, never inside a conflict area. It is instantaneous and
   deterministic (vehicle-id order, no RNG); a stub vehicle is held at its dead end and never
-  arrives. One cooperation rule: the nearest target-lane vehicle that can stop comfortably holds
-  back for a vehicle waiting at its dead end. Results count `laneChanges`; a stub is never a
+  arrives. Cooperation: the nearest target-lane vehicle that can stop comfortably holds back for a
+  vehicle waiting at its dead end (D71). With `maxDecelerationCooperativeBraking` on its behaviour,
+  one also brakes, at no more than that, for a changer still moving once its dead end governs its
+  car-following (M3.2.8c, D90). Results count `laneChanges`; a stub is never a
   movement row.
 - Sources must begin on segments with no predecessor. They are Poisson processes with
   a rate in vehicles/hour over `[startTime, endTime)`. Zero-rate inputs generate no cars.
@@ -288,13 +290,16 @@ input's queue (departure delay). Starting from rest is the ≈3 s of entry accel
 **Each tick** (`stepSimulation`). In: the pre-step snapshot, the same for every vehicle. Process:
 1. Insert arrivals, then build occupied intervals; a rear keeps occupying upstream segments.
 2. Mandatory lane changes (M3.2.8b): `decideLaneChanges` moves a stub vehicle to its target
-   route, then `courtesyHolds` names who holds back for a waiting one. Nothing changes in its
+   route, then `courtesyHolds` names who holds back for a waiting one, or brakes cooperatively for
+   a moving one. Nothing changes in its
    insertion tick: its rear is still behind the span start.
 3. Every constraint becomes the **nearest standing obstacle** and a cap, `allowedDistance`: the
    vehicle ahead (`closestVehicle`); a red or amber head; a stub's dead end; a priority rule
    it must give way at (gap time/headway, M3.1; commitment, M3.2.8a); a conflict zone that does
    not admit it (`zoneHold`, M3.2.3, with Stop service). Courtesy is a **second** obstacle,
-   since a nearer moving leader would otherwise hide it.
+   since a nearer moving leader would otherwise hide it. Cooperative braking is a second leader
+   at the changer's speed, with no cap, and its braking is bounded by
+   `maxDecelerationCooperativeBraking`.
 4. `followingAcceleration` behind that obstacle, then ballistic integration (no negative
    speed), with speed capped at `desiredSpeed`.
 5. A move beyond `allowedDistance` is cut to it and stops: `safety-clamp`.

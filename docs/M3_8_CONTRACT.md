@@ -186,7 +186,44 @@ smallest cooperation rule comes with this slice.
   waives a safety test.
 
 This is not Vissim's cooperative lane change: it has no deceleration parameter and no look-ahead,
-and a vehicle not yet stopped is not helped. Those are M3.2.8c.
+and a vehicle not yet stopped is not helped. Those are M3.2.8c, below.
+
+### Cooperative braking: helping a vehicle before it stops (M3.2.8c)
+
+M3.2.8c step 5 showed that the time M3.2.8b costs is the left-turn dead-end waits
+(`docs/evidence/m3.2.8c-east-approach.md`, D89). The owner chose the look-ahead and the
+parameter (2026-10-01).
+
+- **The parameter.** `maxDecelerationCooperativeBraking` (m/s², positive) on the driver
+  behaviour. It is named after Vissim's "Maximum deceleration for cooperative braking" and is
+  data (`data/driver-behaviour/default.json`: 3). **A behaviour without it does not brake
+  cooperatively**, and a scenario whose behaviours all lack it runs exactly the D71 rule above.
+- **Who needs help.** A stub vehicle that is not waiting (the rule above serves that one), wholly
+  inside a span with a target (rule 1's), and inside its **look-ahead**. It is inside its
+  look-ahead once its dead end, taken as a standing obstacle, already governs its car-following:
+  `followingAcceleration` behind `Leader{deadEnd − front, 0}` is not in free mode. So help
+  starts when the dead end starts to make it brake, in its own type and behaviour. The model's
+  approach test already includes `v² / (2 · comfortableDeceleration)` plus its following time
+  and safety gap; at 10 m/s with the default behaviour that is about 50 m. No length parameter
+  is added. The first draft used `v² / (2 · comfortableDeceleration) + stopLineReach` alone.
+  The model brakes earlier and more gently than that, so the vehicle only reached that window
+  as it stopped, and no moving changer was ever helped (A36 failed).
+- **Who helps.** Among the vehicles behind its target place on the target route, nearest first,
+  the first whose behaviour has the parameter `c` and that can fall in behind it. With
+  `room = gap − standstillDistance`, that means `room ≥ 0`, and, when it is faster than the
+  changer, `(v − v_changer)² ≤ 2 · c · room`. Nearer vehicles that cannot pass first. A vehicle
+  alongside is not asked.
+- **How.** The helper treats the changer's target place as a second leader moving at the
+  changer's speed. Its acceleration behind that leader is bounded below by `−c`, and it takes the
+  lower of that and its ordinary acceleration. Its move is not capped, since the obstacle is not a
+  vehicle on its lane. When one vehicle is asked by several changers, the nearest place counts.
+  The waiting rule above keeps its standing obstacle and its cap.
+- **Stateless and ordered** as the rule above: read off the post-change snapshot, nothing
+  stored, and replay is unaffected. The changer still changes only when rules 1–5 hold.
+  Cooperative braking opens the gap; it never waives a safety test, and the follower's rule 4 test
+  stays at `comfortableDeceleration`.
+- Vissim also has a cooperative lane change, in which a vehicle moves out of the way. That is not
+  modelled.
 
 ### Replay
 

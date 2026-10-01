@@ -8,7 +8,8 @@
 #include "../tools/four_leg_network.hpp"
 #include <algorithm>
 using namespace trafficsim;
-// M3.2.8b (docs/M3_8_CONTRACT.md §2, A27-A33): mandatory lane changes, on hand-built scenarios.
+// M3.2.8b (docs/M3_8_CONTRACT.md §2, A27-A35) and M3.2.8c cooperative braking (A36-A39): mandatory
+// lane changes, on hand-built scenarios.
 // One 200 m Link of three lanes: "a" | "b" | "c". The movement leaves from lane b only, so a
 // vehicle on a or c is on a stub that must change to b before its dead end at 200.
 namespace {
@@ -160,8 +161,8 @@ TEST(lanechange, a_waiting_vehicle_is_let_in_by_the_stream_it_waits_beside) { //
     // are too close to stop there comfortably; one further back is asked to hold back.
     CHECK(decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans, buckets, {}).empty());
     const auto holds = courtesyHolds(*s.scenario, *s.index, s.vehicles, refs, spans, buckets);
-    CHECK(std::count_if(holds.begin(), holds.end(), [](double h) { return std::isfinite(h); }) == 1);
-    CHECK(!std::isfinite(holds[1])); // not the nearest (vehicle 10)
+    CHECK(std::count_if(holds.begin(), holds.end(), [](const auto& h) { return std::isfinite(h.gap) && !h.moving; }) == 1);
+    CHECK(!std::isfinite(holds[1].gap)); // not the nearest (vehicle 10)
     Tally t;
     double changedAt = -1;
     for (int i = 0; i < 300 && changedAt < 0; ++i) {
@@ -172,6 +173,73 @@ TEST(lanechange, a_waiting_vehicle_is_let_in_by_the_stream_it_waits_beside) { //
     // nobody brakes beyond the model or is clamped.
     CHECK(changedAt > 0 && find(s, 24) && find(s, 24)->distance < find(s, 1)->distance);
     CHECK(t.clamps == 0);
+}
+// M3.2.8c (contract §2, "Cooperative braking", A36-A39): a changer still moving is let in before it
+// stops, by a target-lane vehicle braking at no more than maxDecelerationCooperativeBraking.
+namespace {
+Scenario cooperative(bool set) {
+    auto s = lanes();
+    for (auto& b : s.behaviours) b.maxDecelerationCooperativeBraking = set ? std::optional<double>(3) : std::nullopt;
+    return s;
+}
+// A changer at 10 m/s, 80 m short of its dead end, alongside a 10 m/s stream with 7.5 m gaps.
+SimState approaching(bool set, double at = 120) {
+    std::vector<test::Placement> placed{on(1, "stubA", at, 10)};
+    for (std::uint64_t k = 0; k < 15; ++k) placed.push_back(on(10 + k, "full", 190 - 12 * static_cast<double>(k), 10));
+    return test::withVehicles(cooperative(set), placed);
+}
+std::vector<CourtesyHold> holdsOf(const SimState& s) {
+    const auto refs = resolveRefs(*s.scenario, s.vehicles, *s.index);
+    const auto spans = occupiedSpans(*s.scenario, s.vehicles, *s.index, refs);
+    return courtesyHolds(*s.scenario, *s.index, s.vehicles, refs, spans, bucketSpans(spans, s.scenario->segments.size()));
+}
+bool anyMoving(const std::vector<CourtesyHold>& holds) {
+    return std::any_of(holds.begin(), holds.end(), [](const auto& h) { return h.moving; });
+}
+// Steps until vehicle 1 leaves the stub (or 60 s pass); its slowest speed while still on the stub.
+struct Approach { double slowest{1e9}; bool changedLanes{}, movingHold{}; double hardestStream{}; Tally t; };
+Approach drive(SimState s) {
+    Approach a;
+    for (int i = 0; i < 600 && find(s, 1) && routeOf(s, 1) == "stubA"; ++i) {
+        a.slowest = std::min(a.slowest, find(s, 1)->speed);
+        a.movingHold = a.movingHold || anyMoving(holdsOf(s));
+        s = stepSimulation(s); count(s, a.t);
+        for (const auto& v : s.vehicles) if (v.id >= 10) a.hardestStream = std::min(a.hardestStream, v.acceleration);
+    }
+    a.changedLanes = find(s, 1) && routeOf(s, 1) == "full";
+    return a;
+}
+}
+TEST(lanechange, a_moving_changer_is_let_in_before_it_stops) { // A36
+    // The forcing: without the parameter, the same vehicle comes to a stand at its dead end.
+    const auto off = drive(approaching(false));
+    CHECK(off.slowest < 0.5);
+    const auto with = drive(approaching(true));
+    CHECK(with.changedLanes && with.slowest >= 0.5 && with.t.clamps == 0);
+}
+TEST(lanechange, a_cooperative_helper_never_brakes_beyond_its_maximum) { // A37
+    const auto with = drive(approaching(true));
+    CHECK(with.movingHold); // the forcing: somebody really braked cooperatively
+    CHECK(with.hardestStream >= -3 - 1e-9 && with.t.clamps == 0);
+}
+TEST(lanechange, no_cooperative_braking_outside_the_look_ahead) { // A38
+    const auto s = approaching(true, 40);
+    // The forcing: it is on a stub, and the stream refuses its change.
+    const auto refs = resolveRefs(*s.scenario, s.vehicles, *s.index);
+    const auto spans = occupiedSpans(*s.scenario, s.vehicles, *s.index, refs);
+    CHECK(s.index->remainingOfRoute[find(s, 1)->routeIndex] == 1);
+    CHECK(decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans,
+                            bucketSpans(spans, s.scenario->segments.size()), {}).empty());
+    // 160 m from its dead end at 10 m/s: far outside the 25 m it needs to stop comfortably.
+    CHECK(!anyMoving(holdsOf(s)));
+}
+TEST(lanechange, without_the_parameter_only_the_waiting_rule_runs_and_replay_is_exact) { // A39
+    CHECK(!drive(approaching(false)).movingHold);
+    auto a = approaching(true);
+    for (int i = 0; i < 50; ++i) a = stepSimulation(a);
+    auto b = a; // a copied state
+    for (int i = 0; i < 150; ++i) { a = stepSimulation(a); b = stepSimulation(b); }
+    CHECK(a.vehicles == b.vehicles && a.events == b.events && a.time == b.time);
 }
 TEST(lanechange, the_four_leg_turns_compile_to_a_stub_per_other_lane) { // A34
     const auto built = fixture::fourLegIntersection();

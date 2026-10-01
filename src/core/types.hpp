@@ -18,6 +18,9 @@ struct DriverBehaviour {
     std::string id;
     double standstillDistance{}, additiveSafetyDistance{}, multiplicativeSafetyDistance{};
     double followingTime{}, speedThreshold{};
+    // M3.2.8c: Vissim's "Maximum deceleration for cooperative braking" (m/s², positive). Without
+    // it the behaviour does not brake cooperatively for a changer that is still moving (D90).
+    std::optional<double> maxDecelerationCooperativeBraking;
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };

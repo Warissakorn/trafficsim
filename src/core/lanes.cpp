@@ -220,15 +220,28 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
     }
     return accepted;
 }
-std::vector<double> courtesyHolds(const Scenario& s, const ScenarioIndex& index, const std::vector<Vehicle>& vehicles,
-                                  const std::vector<VehicleRefs>& refs, const std::vector<OccupiedSpan>& spans,
-                                  const SpanBuckets& buckets) {
-    std::vector<double> holds(vehicles.size(), std::numeric_limits<double>::infinity());
+std::vector<CourtesyHold> courtesyHolds(const Scenario& s, const ScenarioIndex& index, const std::vector<Vehicle>& vehicles,
+                                        const std::vector<VehicleRefs>& refs, const std::vector<OccupiedSpan>& spans,
+                                        const SpanBuckets& buckets) {
+    std::vector<CourtesyHold> holds(vehicles.size());
+    // Without the parameter on any behaviour, only the D71 rule runs, exactly as before.
+    const bool cooperative = std::any_of(s.behaviours.begin(), s.behaviours.end(),
+                                         [](const auto& b) { return b.maxDecelerationCooperativeBraking.has_value(); });
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto route = refs[v].route;
+        if (index.remainingOfRoute[route] == 0) continue;
         const auto& vehicle = vehicles[v];
         const auto& type = s.vehicleTypes[refs[v].type];
-        if (!waitingAtDeadEnd(index, route, vehicle, s.behaviours[refs[v].behaviour])) continue;
+        const auto& behaviour = s.behaviours[refs[v].behaviour];
+        const bool waiting = waitingAtDeadEnd(index, route, vehicle, behaviour);
+        if (!waiting) {
+            // Cooperative braking: only inside the look-ahead, once its dead end, taken as a
+            // standing obstacle, already governs its car-following (contract §2).
+            if (!cooperative) continue;
+            const double toDeadEnd = index.deadEndOfRoute[route] - vehicle.distance;
+            if (followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour,
+                                      Leader{toDeadEnd, 0}).mode == FollowingMode::free) continue;
+        }
         const auto* change = targetOf(index, route, vehicle.distance, vehicle.distance - type.length);
         if (!change) continue;
         const double at = mapped(*change, vehicle.distance), atRear = at - type.length;
@@ -242,20 +255,30 @@ std::vector<double> courtesyHolds(const Scenario& s, const ScenarioIndex& index,
                     behind.emplace_back(atRear - (part.start + span.front), span.vehicleId);
             }
         std::sort(behind.begin(), behind.end());
-        // The nearest that can stop short of the place comfortably and without a clamp holds back;
-        // any nearer than it cannot, and passes first.
+        // The nearest that can hold back holds back; any nearer than it cannot, and passes first.
         for (const auto& [gap, id] : behind) {
             const auto f = slotOfId(vehicles, id);
             if (f == vehicles.size()) continue;
             const auto& other = vehicles[f];
             const auto& fType = s.vehicleTypes[refs[f].type];
             const auto& fBehaviour = s.behaviours[refs[f].behaviour];
-            // Kinematic, not the model's commanded braking: once it holds back, its stopping
-            // distance only shrinks, so the same vehicle keeps holding back tick after tick.
             const double room = gap - fBehaviour.standstillDistance;
-            if (room < 0 || other.speed * other.speed > 2 * fType.comfortableDeceleration * room ||
-                other.speed * s.timeStep > room) continue;
-            holds[f] = std::min(holds[f], gap);
+            if (room < 0) continue;
+            CourtesyHold hold{gap, 0, false};
+            if (waiting) {
+                // Kinematic, not the model's commanded braking: once it holds back, its stopping
+                // distance only shrinks, so the same vehicle keeps holding back tick after tick.
+                if (other.speed * other.speed > 2 * fType.comfortableDeceleration * room ||
+                    other.speed * s.timeStep > room) continue;
+            } else {
+                // Falls in behind the moving changer at no more than its cooperative deceleration.
+                if (!fBehaviour.maxDecelerationCooperativeBraking) continue;
+                const double closing = other.speed - vehicle.speed;
+                if (closing > 0 && closing * closing > 2 * *fBehaviour.maxDecelerationCooperativeBraking * room) continue;
+                hold = {gap, vehicle.speed, true};
+            }
+            // The nearest place counts; at equal gaps a waiting changer's standing one wins.
+            if (hold.gap < holds[f].gap || (hold.gap == holds[f].gap && holds[f].moving)) holds[f] = hold;
             break;
         }
     }

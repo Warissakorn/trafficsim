@@ -134,6 +134,9 @@ TEST(tjunction, the_archived_sweep_metadata_keeps_its_original_geometry) {
     auto current=sweep::fixtureMetadata(test::root());
     CHECK(current.at("projectHash")!=oldHash); // the geometry really changed
     current["projectHash"]=oldHash;
+    const auto behaviour = std::string("driver-behaviour/default.json");
+    CHECK(current.at("catalogs").at(behaviour) != archived.at("catalogs").at(behaviour)); // the catalog really changed
+    CHECK(sweep::restoreArchivedBehaviour(test::root(), current)); // D90: that field only, and no spans here
     CHECK(archived==current); // timing, volumes, catalogs, seeds and rules still agree
     // A changed catalog would be caught: the hash reads the file, not its name.
     CHECK(sweep::fnv1a(test::root() / "data/vehicle-types/car.json") != sweep::fnv1a(test::root() / "data/vehicle-types/heavy-vehicle.json"));

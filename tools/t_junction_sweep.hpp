@@ -76,6 +76,24 @@ inline nlohmann::ordered_json congestedMetadata(const std::filesystem::path& roo
     for (const auto& [gap, headway] : kHeadwayRules) j["rules"].push_back({{"gapTime", gap}, {"headway", headway}});
     return j;
 }
+// D90 added maxDecelerationCooperativeBraking to the behaviour catalog after the sweeps ran. It
+// acts only through lane-change spans, which the T-junction has none of, so the sweeps' results
+// still stand. When that holds, and the field is the catalog's only change against the archived
+// copy, `current` gets the archived hash back. False otherwise, leaving `current` as it is.
+inline bool restoreArchivedBehaviour(const std::filesystem::path& root, nlohmann::ordered_json& current) {
+    const auto archivedFile = root / "docs/evidence/m3.2.7-original-driver-behaviour.json";
+    std::ifstream a(archivedFile), n(root / "data/driver-behaviour/default.json");
+    auto archived = nlohmann::json::parse(a), now = nlohmann::json::parse(n);
+    if (!now.contains("maxDecelerationCooperativeBraking")) return false;
+    now.erase("maxDecelerationCooperativeBraking");
+    if (now != archived) return false;
+    for (const bool congested : {false, true}) {
+        fixture::TJunctionOptions o; o.congestedMajor = congested;
+        if (!compileDocument(fixture::tJunction(o).document, root / "data").scenario.laneChanges.empty()) return false;
+    }
+    current["catalogs"]["driver-behaviour/default.json"] = fnv1a(archivedFile);
+    return true;
+}
 struct SweepRow {
     std::uint32_t seed{}; double gapTime{}, headway{};
     MovementReport report;

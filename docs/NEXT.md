@@ -44,7 +44,7 @@ curved/overlapping roads and the tabs at working zoom levels.
 ## Then — review D80 central axis and four-point mouths
 
 D80 replaces the legacy square/slide mouth system. Read CONNECTOR_FOUR_POINT_MOUTH.md and the
-latest PROGRESS entry before changing it. The owner explicitly requested fixed lane-index
+D80 entry (`archive/PROGRESS-2026-09-28-d80-selection.md`) before changing it. The owner explicitly requested fixed lane-index
 pairing on both ends, including obtuse arrivals, and a central construction reference.
 Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outstanding.
 
@@ -63,32 +63,37 @@ The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was
 whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
 the Windows time in the next CI run; do not infer it from the Linux number.
 
-## Then — M3.2.8c: what timed right-turners to their green before M3.2.8b; the owner's M3.2.7d
+## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
 **Done:**
-- **M3.2.8c step 1, measurement (D87, 2026-09-30, Linux/GCC 15.2 only).**
-  `trafficsim-cli N --project FILE --lane-changes` reports, per movement, where changes happen
-  and dead-end waits (`src/eval/lane_changes.hpp`; the waiting test is the engine's own
-  `waitingAtDeadEnd`). Over M2.6 seeds 42–46 (`docs/evidence/m3.2.8c-right-turns.md`):
-  - seed 42 was the mild one: mean delay rose in every seed (up to +3.3 s), clamps doubled at
-    seeds 44 and 45;
-  - right turns rose on **South and North only** (+7.3, +7.5 s, every seed); West and East are
-    within the seed spread;
-  - right-turners change a car length (4.5 m) past the network edge, the first tick the rules allow, and almost never wait at a dead end, so
-    **`laneChangeDistance` is not the next piece** (D87). The long waits are on the West and East
-    left turns (35 vehicles, 865 s), whose delay did not rise.
-- **M3.2.8c step 2, stages (2026-09-30, Linux only).** `--segment-times` gives each movement's
-  mean time from departure to every segment (`src/eval/segment_times.hpp`; it reads only
-  pre-8b events, so it was also run on `b472e05`). The whole South → East and North → West rise
-  (+7.7, +7.4 s) is **in the pocket, before its stop line**: the pocket is reached as early as
-  before, and nothing grows after the stop line (`docs/evidence/m3.2.8c-right-turn-stages.md`).
-  The M2.6 plan is split-phase, so there is no opposing stream at a right-turner's green.
-- **M3.2.8c step 3, stop lines (2026-09-30, Linux only).** `--stop-lines` measures each head's
-  discharge (`src/eval/stop_lines.hpp`, also run on `b472e05`). **Right-turners are not held
-  through their green** (about 0% before and after). The rise is all standing at red, +6.9 s
-  South and +7.0 s North, up in 10 of 10 seed-approach pairs. After M3.2.8b the red wait
-  matches random arrival over the 120 s cycle (about 39 s). **Before, it was about 7 s better
-  than random** (`docs/evidence/m3.2.8c-pocket-discharge.md`).
+- **Cooperative braking with look-ahead (D90, 2026-10-01, Linux only; contract §2, A36–A39).**
+  A stub vehicle still moving is helped once its dead end governs its car-following. The helper
+  brakes at no more than `maxDecelerationCooperativeBraking` (3 m/s², default behaviour; absent
+  the field, only D71 runs). Over seeds 42–81: dead-end waits 9,034 → 4,222 s, East → South
+  126.8 → 51.7 s per seed, East → West −2.3 ± 0.6 s against 8b, network mean +2.4 → +1.3 ± 0.5 s
+  against `b472e05`, clamps not up (`docs/evidence/m3.2.8c-cooperative-braking.md`). The
+  T-junction metadata guards restore the pre-D90 behaviour hash only when the field is the sole
+  change and the fixture has no spans.
+- **M3.2.8c step 5 (D89, 2026-10-01, Linux only): the East-approach rise is the left-turn
+  dead-end waits.** Over seeds 42–81 the East through and left delay accrues on the entry Link
+  the stubs dead-end on (+5.0/+4.3 s by `connector-23`). Per seed, East → West Δdelay =
+  +0.1 + 0.047 × East → South wait-seconds (r = 0.56), which gives the whole +6.0 s at the mean
+  wait of 127 s/seed. West shows the same at a third of the size
+  (`docs/evidence/m3.2.8c-east-approach.md`). Blocking versus courtesy hold is not separated.
+- **M3.2.8c step 4 (D88, 2026-10-01, Linux/GCC 15.2 only): the right-turn rise was a five-seed
+  sample.** `--arrival-phases [--phase-bin S]` (`src/eval/arrival_phases.hpp`) gives each
+  movement's cycle phase at segment entry and first stop. A right-turner's pocket timing is fixed
+  at departure, i.e. by the Poisson draw, which M3.2.8b re-orders. **Over seeds 42–81** South →
+  East is −1.0 ± 1.1 s and North → West +2.7 ± 1.2 s. What persists: **East → West through
+  +6.0 ± 1.7 s, East → South left +6.8 ± 2.6 s, network mean +2.4 ± 0.5 s**. Clamps +1.4 ± 1.3,
+  not systematic (`docs/evidence/m3.2.8c-arrival-phases.md`). No owner ruling on the right turns
+  is needed any more.
+- **Steps 1–3 (D87, 2026-09-30):** `--lane-changes`, `--segment-times`, `--stop-lines`
+  (`src/eval/`). Their measurements stand; their five-seed reading of the right turns as
+  M3.2.8b's effect does not (D88). One finding still holds and points at the East rise:
+  right-turners change lanes at the first tick the rules allow and almost never wait at a dead
+  end, while **the long dead-end waits are on the West and East left turns** (35 vehicles, 865 s
+  over five seeds).
 - Linux/GCC replays the M3.2.8b Windows evidence digit for digit (recorded in its file).
 - **M3.2.8b (D71, contract §2, A27–A35)** and **M3.2.8a (D69, contract §1)**. Without cooperation
   M2.6 was 61.6 s with a 404 s wait: **do not remove the courtesy without a new measurement.**
@@ -97,32 +102,40 @@ the Windows time in the next CI run; do not infer it from the Linux number.
   `docs/M3_ACCEPTANCE.md` and `docs/evidence/`. D72 is green on both platforms; the owner still
   looks at it in the editor (T-junction, Conflict tool).
 
-**Next session (M3.2.8c step 4, measurement, no behaviour change):**
-1. **What timed right-turners to their green before M3.2.8b?** Before (`b472e05`) and after,
-   seeds 42–46: the cycle phase (time mod 120 s) at which each South/North right-turner enters
-   its pocket (`lane-31`, `lane-43`) and first stops. Also the same for the vehicles in the
-   approach's median lane (`lane-27`, `lane-39`), which the right-turners share with through
-   traffic until the pocket entry. A bunching into or just before the green, before only, would
-   point at platoons released from the approach queue. Copy any new diagnostic into a `b472e05`
-   worktree as before: add its two files and the `trafficsim_eval` source line, patch
-   `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
-   output first. Only when the mechanism is known, decide with the owner whether the "before"
-   timing was an artefact of lane-fixed entry (then the rise is M3.2.8b being more realistic,
-   not a defect) or behaviour to restore. That is the owner's ruling, not a session's.
-2. Why clamps doubled at seeds 44 and 45 (11 → 22, 16 → 33): classify them the way the 8b
-   evidence classified seed 42's (amber-as-red, follow-on, merge, lane change, dead end).
+**Use at least 40 seeds (42–81) for any before/after comparison of one movement (D88).** A
+right-turn movement's per-seed change has an SD of about 7 s. The `b472e05` "before" recipe: a
+scratch worktree, copy the diagnostic's two files, add its source to `trafficsim_eval`, patch
+`runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
+output first.
+
+**Next session — pick one, one system (M3.2.8c):**
+1. **Why 43 East → South vehicles still wait (measurement, no behaviour change).** Over seeds
+   42–81, classify each remaining dead-end wait by the state at its start: the target lane
+   standing (at a red, or in a queue), a stream no helper could slow at 3 m/s², or the changer
+   stopped behind its own lane's queue before its look-ahead began. Add the smallest diagnostic
+   (eval reads snapshots only; it may include only `core/types.hpp`), with a test whose forcing
+   is asserted first. Measure whether `maxDecelerationCooperativeBraking` at 2/3/4 m/s² moves
+   the waits, East → West and clamps. That sensitivity is evidence, not a calibration. The
+   default stays 3 unless the owner rules otherwise.
+2. **Or the next row: lane changes after the entry Link.** Free-walk paths and placed decisions
+   are still lane-fixed (SIMULATION.md, "No lane changing downstream"). Contract and rows first.
 3. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for
-   `decideLaneChanges`, `courtesyHolds` and the span rebuild. **Valgrind is not installed in
-   the WSL Ubuntu here** (`sudo apt install valgrind` is the owner's call).
+   `decideLaneChanges`, `courtesyHolds` (now also run for moving changers) and the span rebuild.
+   **Valgrind is not installed in the WSL Ubuntu here** (`sudo apt install valgrind` is the
+   owner's call).
+
+**The owner looks at D90 on Windows:** run M2.6 (Run in the desktop) and watch the East
+approach. Left-turners on lanes 2/3 should slip into lane 1 as they approach the dead end. The
+lane-1 vehicle behind slows to let them in, without stopping dead, and the long standing waits at
+the dead end should be rarer. Verified on Linux headless only.
 
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
-1. Cooperation with a deceleration parameter and look-ahead, so a vehicle that is not yet
-   stopped is helped too. The West/East left-turn dead-end waits (up to 98 s) are its evidence.
-2. Lane changes after the entry Link: free-walk paths and placed decisions are still lane-fixed
-   (SIMULATION.md, "No lane changing downstream").
-3. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
+1. Lane changes after the entry Link (item 2 above).
+2. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
    instantaneous, which the contract records as a limit.
-4. `laneChangeDistance`, only on a network where changes are measured late (D87).
+3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
+   left-turners also change at the first tick allowed).
+4. Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.
 
 **Build on this machine:** no MSVC or CMake on the Windows side; build in WSL
 (`wsl -d Ubuntu`, GCC 15.2, Qt 6 present) — that is Linux evidence, not Windows.

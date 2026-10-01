@@ -87,10 +87,13 @@ Json definitionJson(const AuthoringDefinition& d) {
     }
     if (!d.externalBehaviours) {
         j["behaviours"] = Json::array();
-        for (const auto& b : d.behaviours)
-            j["behaviours"].push_back({{"id",b.id},{"standstillDistance",b.standstillDistance},
+        for (const auto& b : d.behaviours) {
+            Json item{{"id",b.id},{"standstillDistance",b.standstillDistance},
                 {"additiveSafetyDistance",b.additiveSafetyDistance},{"multiplicativeSafetyDistance",b.multiplicativeSafetyDistance},
-                {"followingTime",b.followingTime},{"speedThreshold",b.speedThreshold}});
+                {"followingTime",b.followingTime},{"speedThreshold",b.speedThreshold}};
+            if (b.maxDecelerationCooperativeBraking) item["maxDecelerationCooperativeBraking"] = *b.maxDecelerationCooperativeBraking;
+            j["behaviours"].push_back(std::move(item));
+        }
     }
     return j;
 }
