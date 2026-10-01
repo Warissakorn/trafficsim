@@ -66,10 +66,20 @@ before its code:
 | A44 | .8c | Every shipped project and frozen fixture (none has a downstream decision) | Byte-identical CLI output, four TS baselines and published reports; free walk with no decision stays lane-fixed |
 | A45 | .8c | A40's network, a copied state branched during changes | Exact replay; no new `SimState` field |
 | A46 | .8c | A30's and A36's cases built on D | Waiting cooperation and cooperative braking act on a downstream stub as on an entry stub |
+| A47 | .8c | Discretionary (D95): a two-lane Link, one authored route full on both lanes; a slow vehicle ahead on lane 1, a faster one behind it, lane 2 empty | The follower changes to lane 2 with no clamp, emits a `LaneChangeEvent` and arrives under the same movement. The forcing is asserted first: it was in following mode behind the slow vehicle |
+| A48 | .8c | A47 with a vehicle behind on lane 2 that would have to brake harder than `acceptedDecelerationTrailingVehicle` but no harder than `comfortableDeceleration` | No change. The forcing is asserted first: §2's mandatory rules 3–4 accept the same placement |
+| A49 | .8c | A47 with lane 2 better by less than `discretionaryLaneChangeThreshold` | No change. The forcing is asserted first: `a_there > a_here` |
+| A50 | .8c | The four-leg and M2.6 drawings compiled | No span leads from a full route to a stub; every discretionary span joins full routes with equal family sets ending on the same Link; movement rows and compiled volumes are unchanged, and A40 still holds exactly |
+| A51 | .8c | Every behaviour without `discretionaryLaneChangeThreshold` | No discretionary change: with the field removed, the three projects' CLI output equals D94's byte for byte. With it present, the single-lane T-junction output and the four TS baselines are unchanged |
+| A52 | .8c | A47's road, a copied state branched during discretionary changes | Exact replay; no new `SimState` field |
+| A53 | .8c | A47's road under a steady two-lane stream | No vehicle changes twice within 3 s. Over M2.6 seeds 42–81 the count is reported, and a non-zero count is D95's failure condition |
+| A54 | .8c | A47's incentive inside a conflict area, or while holding a Stop service | No discretionary change (§2 rule 2) |
+| A55 | .8c | Four-leg and M2.6, seeds 42–81, threshold 0.25 / 0.5 / 1.0 | Per-movement Δdelay ± SE against D94, discretionary change counts and clamps, in `docs/evidence/m3.2.8c-discretionary.md`; the published reports are re-published. Clamps rising goes back to the owner |
 
 Cooperative braking is A36–A39 (M3.2.8c). Downstream routing decisions are A40–A46 (D93),
-implemented 2026-10-01. Visibility, discretionary changes, `laneChangeDistance` and any further cooperation are
-**M3.2.8c** and get their rows before their code. Passing A01–A46 alone does not close M3.2.
+implemented 2026-10-01. Discretionary lane changes are A47–A55 (D95), rows agreed and **not
+implemented**. Visibility, `laneChangeDistance` and any further cooperation are **M3.2.8c** and
+get their rows before their code. Passing A01–A55 alone does not close M3.2.
 
 ## 2. T-junction fixture specification
 

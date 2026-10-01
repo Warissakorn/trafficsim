@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — M3.2.8c: discretionary lane changes, contract and rows (D95)
+
+Docs only; no code. The owner chose discretionary changes as the next M3.2.8c row and ruled on
+four points. Contract: `M3_8_CONTRACT.md` §2 "Discretionary lane changes". Rows: A47–A55.
+- **Incentive:** change when the adjacent lane's `followingAcceleration` beats the current one by
+  `discretionaryLaneChangeThreshold`. It reuses the car-following model, so one test covers a slow
+  leader and a shorter queue.
+- **Free lane selection:** no side rule, no pull back to the kerb lane.
+- **Safety:** §2's rules plus the trailing vehicle's acceleration at least
+  `−acceptedDecelerationTrailingVehicle`.
+- **On by default** in `default.json`, measured over seeds 42–81 when implemented. The four-leg
+  and M2.6 reports will move.
+- **Only between full routes** with equal family sets and the same last Link, so a choice never
+  alters a destination, a movement or a compiled proportion.
+
 ## 2026-10-01 — M3.2.8c: downstream routing decisions implemented (D93, D94)
 
 D93's contract is now code; core is untouched.
@@ -296,39 +311,6 @@ Verified on Linux (WSL2, GCC 15.2, headless 49/49; desktop Qt suite offscreen). 
 at on Windows or by the owner.** Considered and not changed: `refreshConflicts` could in theory
 see `mergeSide` throw, but no reachable state was found that does, so it stays unguarded.
 
-## 2026-09-30 — Measured optimization pass: run repaint, test wall time, warnings (D85)
-
-Measured on Linux (WSL Ubuntu, GCC, system Qt, Debug, `QT_QPA_PLATFORM=offscreen`), three runs
-each; raw notes were kept outside the repo. Nothing here was run on Windows.
-
-- **Run frames repainted the whole viewport (D85).** `scenario-run-ui` (1800 Steps) took
-  9.2–9.8 s alone. Skipping the Results-tab refresh changed nothing (9.2–9.8 s), so that
-  suspect is ruled out; skipping `drawRunItems` gave 1.5–1.7 s, and keeping it but dropping its
-  `viewport()->update()` gave 2.6–2.7 s. The markers are scene items, so adding and removing them
-  already invalidates their own rectangles; the explicit update forced the whole network to
-  repaint once per frame. Removed: 3.4–4.1 s. `redraw()` keeps its update because it rebuilds
-  the scene. This is also the likely cause of Windows' 97–99 s against `TIMEOUT 90`; the next CI
-  run confirms it or does not. **The gain is the small scenario's, not a faster live run:** on
-  the M2.6 template (52 vehicles, 1280×860, 1800 Steps, 3 runs each) it was 4.59–4.64 s before
-  and 4.10–4.71 s after — about 8%, inside the noise. A slow run on a real network is not fixed
-  by D85; measure that case on its own before attributing it to painting.
-- **`m26study` split.** It ran the one-hour template three times; the merge case (two of the
-  runs) is now group `m26study_merge`. `ctest -j4`: 35.9 s → median 16.3 s with both changes,
-  70/70; longest entry 6.4 s.
-- **Warnings 1151 → 22.** 1120 were `-Wmissing-field-initializers` on aggregates left to their
-  defaults on purpose; now off for GCC/Clang. Fixed what it hid: two Json range-for copies, three
-  one-line statements that read as guarded, four unused helpers in `connector_shape_tests.cpp`.
-  Left: `QApplication::setActiveWindow` in UI tests (its replacement is asynchronous; changing it
-  needs a Windows run) and five `-Wdangling-reference` in model tests, not checked yet.
-  `attachment_tests.cpp:338` asserts `any_of(..., return true)`, i.e. only that the list is non-empty.
-- **Selection hints.** Shift-click toggles and Ctrl-click adds (canvas_input.cpp), and
-  `NETWORK_EDITOR.md` says so, but the Select hint named only Shift and the F1/help text only Ctrl.
-  Both locales now name both. The Vissim Ctrl+click = duplicate collision (VISSIM_PARITY §2) is
-  unchanged and still the owner's call.
-- `NEXT.md`: the PR #73 "review before merging" item was stale (merged 2026-09-28).
-- Environment, not code: WSL here has 3.7 GB, and ninja's default 12 jobs on Qt/json sources ran
-  out of memory. `-j4` from the WSL filesystem built in 7 min 55 s.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -448,6 +430,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D95 | 2026-10-02 | **Discretionary lane changes (owner's rulings): a full-route vehicle changes to an adjacent full route of the same families and last Link when its `followingAcceleration` there beats here by `discretionaryLaneChangeThreshold`; free lane selection; §2's safety rules plus the trailing vehicle at no worse than `−acceptedDecelerationTrailingVehicle` (changer's behaviour); mandatory candidates first; no cooperation; stateless; on in `default.json`** | The acceleration gain reuses the unvalidated car-following model and covers overtaking and queue choice with one test; free lane selection is Vissim's urban default and the smallest rule; a change nobody needs should cost the trailing driver less than a mandatory one; restricting targets to full routes of the same families keeps every destination, movement and compiled proportion exact | Back-and-forth changes within 3 s (A53); clamps rising over seeds 42–81 (A55); a Thai multilane study that needs a keep-left rule |
 | D94 | 2026-10-01 | **D93's rule 4 is a fixed point: walk, drop the downstream stubs that no run of adjacent lanes with family paths connects to a full one, walk again until none is dropped. A path carries every family it belongs to (`FamilyTag` stack); a merged full path keeps the union** | Whether a stub is kept depends on which lanes the whole walk reaches, and dropping one can strand another, so one pass cannot decide it; each pass drops at least one, so it ends, and with no downstream decision it is the one pass it always was. An entry family's full route can also enter a downstream family, so one `family` string could not say both | A network where the reruns are slow (each is a full walk), or where a full path should belong to a family it merged into but was not walked as |
 | D93 | 2026-10-01 | **A routing decision downstream of the entry Link works like an entry decision (contract §2 "Downstream routing decisions", A40–A46; not implemented): the destination is drawn by weight among those the arrival lane serves, full or kept stub; a stub is kept only with a same-entry full route on a run of adjacent lanes of the decision Link; changes only at or after arrival on that Link. Free walk with no decision stays lane-fixed** | Owner's ruling, extending D71. The typed proportions then hold where lanes are served. A same-entry target keeps movement reporting (first Link, last Link) right without synthetic routes. The clip is needed because `appendLaneChanges` would otherwise span prefix Links before the decision is known | A study needing changes before the decision point (the decision station is not modelled), or networks where no same-entry path reaches the adjacent lane, so most lanes fall back to lane-fixed |
 | D92 | 2026-10-01 | **A dead-end wait's cause is decided once, at its first snapshot, in the order noMovingApproach (never moved at ≥ walking pace inside a span and its look-ahead on this route), outsideSpan, targetStanding (alongside or nearest-behind target vehicle below walking pace, placed by its front), movingStream. `maxDecelerationCooperativeBraking` stays 3: the 2/3/4 sweep is evidence, not calibration** | The question was whether more cooperation would help. Own-queue standing was tried as a cause and took all 118 waits, so it does not separate them; never-helped takes none. What separates is the target lane at the wait's start: 93% of wait time is beside a standing lane, which no helper can open, and the parameter moves only the other 7% | A run where noMovingApproach or outsideSpan is not ~0, or where a front-only placement misreads a body straddling a segment boundary at the place |

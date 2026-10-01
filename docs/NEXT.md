@@ -66,6 +66,12 @@ the Windows time in the next CI run; do not infer it from the Linux number.
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
 **Done:**
+- **Discretionary lane changes, contract and rows (D95, 2026-10-02, docs only).** The owner's
+  rulings:
+  - the acceleration-gain threshold;
+  - free lane selection;
+  - a trailing vehicle accepted deceleration, stricter than mandatory changes;
+  - on by default.
 - **Lane changes at a downstream routing decision (D93 contract, D94 implementation,
   2026-10-01, Windows/MSVC only).** A decision past the entry Link draws by destination, and a
   lane that cannot reach one becomes a stub that changes lanes on the decision's Link, and only
@@ -122,15 +128,46 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — pick one, one system (M3.2.8c).** D93 is in (D94), so a routing decision
-anywhere now holds its proportions where the lanes are served.
-1. **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
-   decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
-   watch pocket-lane vehicles change towards their turn. Problems shows no LANE_UNSERVED.
-   Verified headless and in the Debug test suite on Windows only; nothing was looked at.
-2. **The next M3.2.8c row, contract and rows first:** discretionary changes, visibility at
-   areas, or a between-lanes state. Each needs an owner ruling before rows.
-3. **Linux replay of D91–D94:** the CI run is the evidence. No WSL here.
+**Next session — implement D95: discretionary lane changes (M3.2.8c).** The contract is
+`M3_8_CONTRACT.md` §2 "Discretionary lane changes", and the rows are A47–A55. Both were agreed on
+2026-10-02, and there is no code yet. One system, in this order:
+1. **Data.**
+   - `discretionaryLaneChangeThreshold` and `acceptedDecelerationTrailingVehicle` go in
+     `DriverBehaviour` (`src/core/types.hpp`, next to `maxDecelerationCooperativeBraking`).
+   - Each needs its parse/definition/validate lines, as that field has. Validation refuses one
+     without the other.
+   - `data/driver-behaviour/default.json` gets 0.5 and 1.
+2. **Compile.** In `appendLaneChanges` (`src/model/network/lane_family.cpp`; stubs only today,
+   lines 43 and 66), also emit full↔full spans in both directions between adjacent-lane full
+   routes.
+   - Only between routes with equal family-name sets and the same last Link.
+   - `FamilyRoute` may need the full set of names: `expandRouteless` in
+     `src/project/demand_paths.cpp` adds one `FamilyRoute` per tag.
+   - Keep the stub spans' order, so a project with the field absent is byte-identical (A51).
+3. **Core.** In `src/core/lanes.cpp`, add a discretionary pass after `decideLaneChanges`'s
+   mandatory one (it skips `remainingOfRoute == 0` at line 178).
+   - The incentive `a_there − a_here ≥ threshold` (behind vehicles only).
+   - Rules 1–5 as they are, plus the trailing vehicle at no worse than `−accepted`.
+   - The larger gain wins; a tie goes to the lower slot.
+   - Test each candidate against the moves accepted this tick.
+   - Make sure `laneChangeIssues`, `remainingOfRoute` and the cooperation code ignore
+     full↔full spans: they are not dead ends.
+4. **Tests.** A47–A54 in a new `tests/discretionary_tests.cpp`, on a two-lane Link with one
+   authored route and `test::withVehicles`.
+   - Assert each forcing first.
+   - Add the file to `CMakeLists.txt`, and the group to `TRAFFICSIM_TEST_GROUPS` if it is new.
+5. **A55 measurement.** Four-leg and M2.6, seeds 42–81, threshold 0.25/0.5/1.0, against D94
+   (use the `b472e05` recipe below for the "before").
+   - Write `docs/evidence/m3.2.8c-discretionary.md`.
+   - If clamps rise or A53 counts back-and-forth changes, stop and report: those are D95's
+     failure conditions, and the owner rules.
+
+Also open, not this session's work:
+- **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
+  decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
+  watch pocket-lane vehicles change towards their turn. Problems should show no
+  LANE_UNSERVED. Nothing was looked at.
+- **Linux replay of D91–D94:** the CI run is the evidence. There is no WSL here.
 
 **Not booked, for later sessions:**
 - **Split targetStanding (measurement only):** is the target lane standing at its own red, or
@@ -154,8 +191,9 @@ the dead end should be rarer. Verified on Linux headless only.
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
 1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the
    decision station is not modelled (contract §2, rule 7).
-2. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
-   instantaneous, which the contract records as a limit.
+2. Discretionary changes: contract D95, rows A47–A55, implementation above. Visibility at areas
+   and a between-lanes state are still unwritten. Today a change is instantaneous, which the
+   contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
    left-turners also change at the first tick allowed).
 4. Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.

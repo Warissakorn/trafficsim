@@ -4,7 +4,7 @@ M3.2.8 adds driver behaviour on top of the M3.2 right-of-way runtime
 ([`M3_CONTRACT.md`](M3_CONTRACT.md)). It is two systems, each with its own section here:
 **M3.2.8a**, a commitment rule at waiting lines (§1), and **M3.2.8b**, mandatory lane
 changing, with the one cooperation rule it could not run without (§2). Visibility,
-discretionary changes and the rest of cooperation are **M3.2.8c**, not yet written. Nothing here is calibration: the
+discretionary changes (contract D95 below, not implemented) and the rest of cooperation are **M3.2.8c**. Nothing here is calibration: the
 not-yet-validated marker stays, and gap acceptance remains a deterministic threshold until M6
 evidence exists.
 
@@ -87,8 +87,8 @@ One predicate (`committed`, `src/core/conflicts.hpp`) serves both runtime paths.
 The owner's ruling (D71): **Vissim's way**. A movement's volume enters on every lane of its
 entry Link, and a vehicle on a lane that cannot reach its destination changes lanes before it
 has to. One cooperation rule came with it, by a second owner ruling in the same session, because
-the measurement without it was not usable (§2, "Cooperation"). Visibility, discretionary changes,
-`laneChangeDistance` and any further cooperation are M3.2.8c.
+the measurement without it was not usable (§2, "Cooperation"). Visibility, discretionary changes
+(D95, below), `laneChangeDistance` and any further cooperation are M3.2.8c.
 
 ### Why
 
@@ -233,7 +233,7 @@ decision was lane-fixed: a vehicle drew only among the destinations its lane rea
 proportions shifted towards what the lanes allow. It is `Walk::decideDownstream` in
 `routeless.cpp` now; rule 4 is `unkeptStubs`, and rule 5 is `FamilyRoute::after`. Free walk with no
 decision stays lane-fixed. A vehicle with no destination has no mandatory change, and anything
-else is discretionary, a later row.
+else is discretionary (D95, below).
 
 1. **Where it acts.** The decision acts when a vehicle comes onto D, as in M2.1: its station along
    D is not modelled.
@@ -272,6 +272,65 @@ else is discretionary, a later row.
      those proportions shift. This is §2's recorded limit, now reached through a decision.
    - A downstream stub vehicle that never finds a gap waits at its dead end and blocks its lane,
      as an entry stub does.
+
+### Discretionary lane changes (M3.2.8c, D95 — contract and rows, not implemented)
+
+The owner's rulings (2026-10-02): a vehicle changes lanes **by choice** when the adjacent lane
+lets it accelerate harder by at least a threshold. Lanes are chosen freely, as in Vissim's
+"Free lane selection". The trailing vehicle is protected more strictly than for a mandatory
+change. The default behaviour has it on, and the published reports move. Before D95, a vehicle on
+a full route never changes lanes: spans are emitted from stubs only (`appendLaneChanges`), and
+`decideLaneChanges` skips a route with no changes remaining.
+
+1. **Where a vehicle may change (compiled, never authored).** A **discretionary span** joins two
+   **full** routes on adjacent lanes of one Link, over the stretch both travel, by the same
+   mapping as §2 (`matchedStation`).
+   - Both routes belong to the same families (equal sets of family names, so any downstream
+     destination is the same too) and end on the same Link.
+   - Spans run in both directions. D93's rule 5 clip applies to downstream families.
+   - The target is never a stub. A stub vehicle changes only by §2's rule, never by choice.
+   - A discretionary change therefore never alters a destination or a movement row, and every
+     compiled proportion (A40) holds.
+   - Free walk with no decision has no family, so it makes no discretionary changes.
+2. **Incentive.** `a_here` is the vehicle's `followingAcceleration` behind the nearest vehicle
+   ahead on its own route. `a_there` is the same behind the nearest vehicle ahead of the mapped
+   position on the target route. Both use the vehicle's own speed, type and behaviour.
+   - It wants to change when `a_there − a_here ≥ discretionaryLaneChangeThreshold` (m/s², a
+     behaviour field). The name is ours: Vissim has no such parameter.
+   - Only vehicles are compared, not signals, lines or dead ends. Both routes share the
+     destination, and the target is never a stub.
+   - This one test covers overtaking a slower vehicle and picking the shorter queue at a red.
+   - With a candidate on each side, the larger gain wins, and a tie goes to the lower route slot.
+     There is no side preference and no pull back to the kerb lane.
+3. **Safety.** Rules 1–5 of §2 hold unchanged, plus one stricter test. The trailing vehicle's
+   acceleration behind the changer must be at least `−acceptedDecelerationTrailingVehicle`, a
+   field on the **changer's** behaviour.
+   - The field is named after Vissim's "Accepted deceleration" for the trailing vehicle, but its
+     value is ours and unmeasured.
+   - The forward test keeps `comfortableDeceleration`: the incentive already requires a gain.
+4. **Order within a tick.** Mandatory candidates are decided first, in vehicle-id order. Then
+   discretionary candidates, in vehicle-id order, each tested against the moves already accepted
+   this tick. The change is instantaneous, as in §2.
+5. **No cooperation.** Nobody holds back or brakes for a discretionary changer: D71 and D90 serve
+   stubs only. Nothing waives a safety test.
+6. **Enablement and data.**
+   - A behaviour without `discretionaryLaneChangeThreshold` makes no discretionary changes.
+   - The threshold field needs `acceptedDecelerationTrailingVehicle`, and validation refuses one
+     without the other.
+   - `data/driver-behaviour/default.json` gets both. The proposed values are 0.5 m/s² and 1 m/s².
+     The implementation session fixes them by measurement, trying the threshold at 0.25, 0.5 and
+     1.0 (A55).
+7. **Stateless.** Nothing is stored and `SimState` gets no field, so a copied state replays
+   exactly.
+   - Only the threshold guards against changing back and forth.
+   - A measured back-and-forth (A53) is this rule's failure condition. A hold time would be state,
+     and it goes back to the owner.
+8. **Limits, recorded and not modelled.**
+   - No between-lanes state.
+   - No change into a stub, which Vissim allows.
+   - Signals are not compared.
+   - No cooperative lane change.
+   - Nothing is calibrated.
 
 ### Replay
 
