@@ -5,6 +5,7 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-09-29-d81.md`](PROGRESS-2026-09-29-d81.md) — 2026-09-29, D81 precision-tool restyle through palette roles; moved out 2026-10-01 as the oldest live entry
 - [`PROGRESS-2026-09-28-d80-selection.md`](PROGRESS-2026-09-28-d80-selection.md) — 2026-09-28, D80 central reference and four-point mouths, editor selection and visual cleanup; moved out 2026-10-01 as the oldest live entries
 - [`PROGRESS-2026-09-27-m3.2.8b-m3.2.9g.md`](PROGRESS-2026-09-27-m3.2.8b-m3.2.9g.md) — 2026-09-27, M3.2.8b (D71), conflict areas on every overlap (D72), four-point display mouths, M3.2.9a–g; moved out 2026-09-29 as the oldest live entries
 - [`PROGRESS-2026-09-26-optimization-d70.md`](PROGRESS-2026-09-26-optimization-d70.md) — 2026-09-26, measured optimization pass (D70); moved out 2026-09-29 as the oldest live entry

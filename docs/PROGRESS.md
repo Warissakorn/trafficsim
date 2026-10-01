@@ -8,6 +8,27 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — M3.2.8c step 5: the East-approach rise is the left-turn dead-end waits (D89)
+
+Step 5 of NEXT, measurement only, with no new code: `--segment-times`, `--stop-lines` and
+`--lane-changes` over seeds 42–81. The first two were copied into a `b472e05` worktree for
+"before". In all 80 runs the default output is unchanged with the diagnostics on.
+
+- **Where:** East → West and East → South have lost +5.0 and +4.3 s of their +6.2/+6.9 s by
+  `connector-23`, the end of the entry Link the left-turn stubs dead-end on. Departure delay and
+  discharge per green do not move. The East heads' added time is standing upstream (+4.0,
+  +3.7 s at red), not greens missed.
+- **Why:** East → South has 128 dead-end waits and 5,073 s over 40 seeds, more than half of all.
+  Per seed, East → West Δdelay = +0.1 + 0.047 × (East → South wait-s), with r = 0.56. At the
+  mean wait this gives +6.0 s, the whole rise, and with no waits it predicts none. West is the same
+  mechanism at a third of the size (predicted +1.6, measured +1.7). Evidence:
+  `docs/evidence/m3.2.8c-east-approach.md`.
+- **Decision (D89):** the next M3.2.8c system is cooperation with a deceleration parameter and
+  look-ahead. Its success measure is fixed now, before its code: East → South dead-end wait
+  seconds and East → West delay against `b472e05`, seeds 42–81.
+- Not separated: the waiting vehicle blocking its own lane, against the courtesy hold in lane 1.
+  No diagnostic counts courtesy holds yet.
+
 ## 2026-10-01 — M3.2.8c step 4: the right-turn rise was a five-seed sample (D88)
 
 Step 4 of NEXT, measurement only. `ArrivalPhaseAccumulator` (`src/eval/arrival_phases.{hpp,cpp}`,
@@ -314,25 +335,6 @@ Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) an
   Whole run 8:27 before this pass → 2:55 warm. A pull request restores `main`'s cache, so only
   a change to many sources, or a new cache key, pays the cold price.
 
-## 2026-09-29 — D81: precision-tool restyle through palette roles
-
-- Presentation only. Every colour is a `QPalette` role from `editorDesign::editorPalette()`; QSS
-  is `palette(role)` only; canvas overlays read `canvasStyle::*()`. Accent `#2F6FED`; error /
-  warning / advisory / ok are `BrightText` / `LinkVisited` / `Link` / `Shadow`. Tool overlays that
-  were orange, teal, magenta and violet are now the accent.
-- Box model fixed: controls are 28 px and no longer grow on focus/invalid; toolbar 32 px; icons
-  16 px with a 1.5 px stroke. `letter-spacing` was never a Qt Style Sheet property, so tracking now
-  lives on the label `QFont`.
-- Grid: two tiers from the view's level of detail, 1-device-pixel cosmetic lines snapped to pixel
-  centres from `painter->deviceTransform()`.
-- Lengths, coordinates and range hints format through `QLocale` (`formatValue`).
-- **Not compiled where it was written** (no Qt toolchain in the session): the new `design-system-ui`
-  test and the existing UI suites on the Native C++ workflow are the verification. No performance
-  claim. Gaps are listed in `docs/UI_REDESIGN_AUDIT.md` §6.
-- CI fix (Linux-verified): Qt's QSS adds 3 px to a `QToolButton`'s content, so toolbar padding is
-  `2px 1px 1px 2px` for 24 px (icon centred); `EditorWindow::setAnimated(false)` stops dock motion,
-  and the test flushes Qt's zero-length geometry animators before asserting none remain.
-
 ---
 
 ## Backlog (M0, in order)
@@ -454,6 +456,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D89 | 2026-10-01 | **The next M3.2.8c system is cooperation with a deceleration parameter and look-ahead; its success measure is East → South dead-end wait seconds and East → West delay against `b472e05`, seeds 42–81** | Over 40 seeds the East-approach rise accrues on the entry Link the left-turn stubs dead-end on. Per seed it is +0.1 + 0.047 s per second of East → South dead-end wait (r = 0.56), which gives the whole +6.0 s at the mean wait and none without waits. West is the same at a third of the size (`docs/evidence/m3.2.8c-east-approach.md`). Left-turners change at the first tick allowed, so it is not `laneChangeDistance` (D87) | A run where the waits fall but East → West delay does not, which would mean the courtesy hold, not the wait, costs the time |
 | D88 | 2026-10-01 | **A before/after comparison of one movement's delay uses at least 40 seeds; the M3.2.8b right-turn rise is withdrawn as a finding, and M3.2.8c's next measurement is the East approach** | Seeds 42–46 showed South → East +7.3 s and North → West +7.5 s, up in 5/5. Over seeds 42–81 they are −1.0 ± 1.1 and +2.7 ± 1.2 s, and pocket arrivals are uniform in the cycle in both engines. Their timing is fixed at departure, i.e. by the Poisson draw, which M3.2.8b re-orders by adding an input per lane. A right-turn movement's per-seed change has an SD of about 7 s. The rise that persists is East → West +6.0 ± 1.7 s, East → South +6.8 ± 2.6 s and the network mean +2.4 ± 0.5 s (`docs/evidence/m3.2.8c-arrival-phases.md`) | A movement whose per-seed SD is small enough that fewer seeds give an SE under about 1 s |
 | D87 | 2026-09-30 | **`laneChangeDistance` is not the next M3.2.8c piece; the South and North right-turn rise is decomposed first** | NEXT asked for measurement before choosing. Over seeds 42–46 the right-turners change at the first tick the rules allow, 4.5 m past the network edge, and hardly wait at a dead end (North → West: none), so a look-ahead that starts changes earlier cannot remove their added delay. The rise's cause is not found; departure delay, entry-Link time and pocket-to-exit time are the next measurement (`docs/evidence/m3.2.8c-right-turns.md`) | A measurement showing right-turn changes late or waits at dead ends, e.g. on a network whose stubs do not start at the network edge |
 | D86 | 2026-09-30 | **An authored conflict area follows its overlap after any edit that changes the drawing (re-derived in `History::execute`), its lines keep their distance, and it is removed with its rule and Stop/Yield when its pair no longer overlaps** | Owner report and ruling (Vissim removes such areas). One choke point instead of a hook per geometry command (rule 3); stored extents were only ever derived, so re-deriving loses no authoring. Fails if an author needs an area deliberately wider than the overlap to survive a geometry edit |

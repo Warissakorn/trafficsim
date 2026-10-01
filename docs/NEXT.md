@@ -63,9 +63,15 @@ The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was
 whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
 the Windows time in the next CI run; do not infer it from the Linux number.
 
-## Then — M3.2.8c: where M3.2.8b's East-approach delay comes from; the owner's M3.2.7d
+## Then — M3.2.8c: cooperation with look-ahead; the owner's M3.2.7d
 
 **Done:**
+- **M3.2.8c step 5 (D89, 2026-10-01, Linux only): the East-approach rise is the left-turn
+  dead-end waits.** Over seeds 42–81 the East through and left delay accrues on the entry Link
+  the stubs dead-end on (+5.0/+4.3 s by `connector-23`). Per seed, East → West Δdelay =
+  +0.1 + 0.047 × East → South wait-seconds (r = 0.56), which gives the whole +6.0 s at the mean
+  wait of 127 s/seed. West shows the same at a third of the size
+  (`docs/evidence/m3.2.8c-east-approach.md`). Blocking versus courtesy hold is not separated.
 - **M3.2.8c step 4 (D88, 2026-10-01, Linux/GCC 15.2 only): the right-turn rise was a five-seed
   sample.** `--arrival-phases [--phase-bin S]` (`src/eval/arrival_phases.hpp`) gives each
   movement's cycle phase at segment entry and first stop. A right-turner's pocket timing is fixed
@@ -94,26 +100,35 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session (M3.2.8c step 5, measurement, no behaviour change):**
-1. **Place the East-approach rise**, seeds 42–81, before (`b472e05`) and after. East → West
-   (through) and East → South (left): `--segment-times` for the stage it is in, and
-   `--lane-changes` for dead-end waits and where changes happen. Test whether the rise is the
-   left-turn dead-end waits and the courtesy holds that block the through lane. If it is, it is
-   the evidence for the next row (cooperation with look-ahead). If not, say what it is.
-   `--segment-times` and `--stop-lines` run on `b472e05` by the recipe above. `--lane-changes`
-   has no "before", since there were no lane changes then.
-2. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for
+**Next session (M3.2.8c, cooperation with look-ahead — contract and rows first, then code):**
+1. **Contract:** extend `docs/M3_8_CONTRACT.md` §2 "Cooperation". Today only the nearest
+   target-lane vehicle that can stop comfortably holds back, and only for a vehicle already
+   *waiting* at its dead end. The new rule lets a stub vehicle in before it has to stop. It needs a
+   look-ahead distance to the dead end in which a changer counts as needing help, a deceleration
+   parameter the helper may use (data, in the behaviour presets, never a constant in `core/`),
+   and which target-lane vehicle helps. Read Vissim's "cooperative lane change" and
+   "Cooperative braking" (max. deceleration for cooperative braking) before choosing names:
+   **parameter names follow Vissim**. Keep it deterministic and id-ordered (A31).
+2. **Rows A36+** in `docs/M3_ACCEPTANCE.md` before code, with the forcing asserted first: a
+   changer approaching its dead end beside a stream is let in *before* it stops; a helper never
+   brakes beyond the new deceleration (and never clamps); no help outside the look-ahead; A35
+   still holds; replay is exact.
+3. **Success measure, fixed now (D89):** East → South dead-end wait seconds (127 s/seed today)
+   and East → West delay against `b472e05` (+6.0 ± 1.7 s), seeds 42–81, with the
+   `docs/evidence/m3.2.8c-east-approach.md` scripts' measures. D89's failure condition: if the
+   waits fall and East → West does not, the courtesy hold is the cost, not the wait.
+4. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for
    `decideLaneChanges`, `courtesyHolds` and the span rebuild. **Valgrind is not installed in
    the WSL Ubuntu here** (`sudo apt install valgrind` is the owner's call).
 
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
-1. Cooperation with a deceleration parameter and look-ahead, so a vehicle that is not yet
-   stopped is helped too. The West/East left-turn dead-end waits (up to 98 s) are its evidence.
+1. Cooperation with a deceleration parameter and look-ahead — the session above.
 2. Lane changes after the entry Link: free-walk paths and placed decisions are still lane-fixed
    (SIMULATION.md, "No lane changing downstream").
 3. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
    instantaneous, which the contract records as a limit.
-4. `laneChangeDistance`, only on a network where changes are measured late (D87).
+4. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
+   left-turners also change at the first tick allowed).
 
 **Build on this machine:** no MSVC or CMake on the Windows side; build in WSL
 (`wsl -d Ubuntu`, GCC 15.2, Qt 6 present) — that is Linux evidence, not Windows.
