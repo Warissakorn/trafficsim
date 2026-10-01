@@ -225,12 +225,13 @@ parameter (2026-10-01).
 - Vissim also has a cooperative lane change, in which a vehicle moves out of the way. That is not
   modelled.
 
-### Downstream routing decisions (M3.2.8c, D93 — contract and rows, not implemented)
+### Downstream routing decisions (M3.2.8c, D93 — implemented 2026-10-01, Windows only)
 
 The owner's ruling (2026-10-01): a routing decision placed on a Link **D** downstream of the
-entry Link works like an entry decision. This is Vissim's way, as in D71. Today such a decision
-is lane-fixed: a vehicle draws only among the destinations its lane reaches, so the proportions
-shift towards what the lanes allow (`Walk::decide` in `routeless.cpp`). Free walk with no
+entry Link works like an entry decision. This is Vissim's way, as in D71. Before D93 such a
+decision was lane-fixed: a vehicle drew only among the destinations its lane reaches, so the
+proportions shifted towards what the lanes allow. It is `Walk::decideDownstream` in
+`routeless.cpp` now; rule 4 is `unkeptStubs`, and rule 5 is `FamilyRoute::after`. Free walk with no
 decision stays lane-fixed. A vehicle with no destination has no mandatory change, and anything
 else is discretionary, a later row.
 

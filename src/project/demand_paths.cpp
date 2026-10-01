@@ -120,8 +120,9 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
     // route serves a path in every slice; and each slice's share of each path.
     // M3.2.8b: `stub` and `family` per path, so an entry decision's destination gets its lateral
     // spans; a stub is a path of its own family only, never merged with a full one.
+    // D93: a path can belong to several families (an entry decision's, then a downstream one's).
     struct Walks { std::vector<std::vector<std::string>> paths; std::vector<std::size_t> lanes;
-                   std::vector<std::vector<double>> share; std::vector<bool> stub; std::vector<std::string> family;
+                   std::vector<std::vector<double>> share; std::vector<bool> stub; std::vector<std::vector<FamilyTag>> families;
                    bool byDestination{}; bool failed{}; };
     std::map<std::string, Walks> walks;
     std::vector<VehicleInput> inputs;
@@ -137,12 +138,15 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 for (const auto& c : walk.chains) {
                     std::size_t at = 0;
                     while (at < w.paths.size() && !(w.paths[at] == c.laneChain && w.stub[at] == c.stub &&
-                                                     (!c.stub || w.family[at] == c.family))) ++at;
+                                                     (!c.stub || w.families[at] == c.families))) ++at;
                     if (at == w.paths.size()) {
                         w.paths.push_back(c.laneChain); w.lanes.push_back(c.lane);
                         w.share.emplace_back(placed.size(), 0.0);
-                        w.stub.push_back(c.stub); w.family.push_back(c.family);
-                    }
+                        w.stub.push_back(c.stub); w.families.push_back(c.families);
+                    } else // a merged full path is a full member of every family either belongs to
+                        for (const auto& tag : c.families)
+                            if (std::find(w.families[at].begin(), w.families[at].end(), tag) == w.families[at].end())
+                                w.families[at].push_back(tag);
                     w.share[at][s] += c.share;
                 }
             }
@@ -150,7 +154,11 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 std::map<std::string, std::vector<FamilyRoute>> families;
                 for (std::size_t k = 0; k < w.paths.size(); ++k) {
                     Route route{routelessRouteId(input.linkId, k, w.paths.size()), expandRouteSegments(table, w.paths[k])};
-                    if (!w.family[k].empty()) families[w.family[k]].push_back({route.id, route.segmentIds, w.stub[k]});
+                    for (std::size_t f = 0; f < w.families[k].size(); ++f) {
+                        const auto& tag = w.families[k][f];
+                        const bool stub = w.stub[k] && f + 1 == w.families[k].size();
+                        families[tag.name].push_back({route.id, route.segmentIds, stub, tag.linkId == input.linkId ? std::string{} : tag.linkId});
+                    }
                     resolved.routes.push_back(std::move(route));
                 }
                 for (const auto& [name, members] : families)

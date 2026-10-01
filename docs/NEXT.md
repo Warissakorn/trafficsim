@@ -66,6 +66,11 @@ the Windows time in the next CI run; do not infer it from the Linux number.
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
 **Done:**
+- **Lane changes at a downstream routing decision (D93 contract, D94 implementation,
+  2026-10-01, Windows/MSVC only).** A decision past the entry Link draws by destination, and a
+  lane that cannot reach one becomes a stub that changes lanes on the decision's Link, and only
+  there. A40–A46 are in `tests/downstream_decision_tests.cpp`. Every shipped project's output is
+  byte-identical. The four-leg pocket-decision test now holds 3:1 exactly, by the contract.
 - **Why the remaining waits wait (D92, 2026-10-01, Windows/MSVC only).** `--wait-causes`
   (`src/eval/dead_end_waits.hpp`) classifies each dead-end wait at its start. Over seeds 42–81
   at 3 m/s², **93% of the 4,222 s (96 of 118 waits) start beside a standing target lane**, a
@@ -117,34 +122,15 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — implement D93: lane changes at a downstream routing decision (M3.2.8c).**
-The contract is `M3_8_CONTRACT.md` §2, "Downstream routing decisions"; the rows are A40–A46 in
-`M3_ACCEPTANCE.md`. Both were agreed with the owner, and no code exists yet. Free walk with no
-decision stays lane-fixed. In order:
-1. **Fixture first** (`tools/`, beside `t_junction_network.hpp`): an entry Link feeding a two-lane
-   Link D by Connector, both lanes receiving vehicles. A decision on D sends to one destination
-   only lane 1 reaches and one only lane 2 reaches. Also build A43's variant, where no path
-   reaches the adjacent lane of D.
-2. **`src/model/network/routeless.cpp` `Walk::decide`:** for a decision that is not on the entry
-   Link, give each destination a leg from the arrival lane. That is the full chain, or else the
-   stub from `routeLaneFamily`, as `entryDecision`'s `pick` does. Set `family`
-   (`"<decision>><destination>"`, within this walk) and `stub` on what `finish` emits. Draw among
-   the destinations the lane serves, by weight.
-3. **Kept stubs, rule 4:** keep a stub only when the walk also produced a full route of the same
-   family on a run of adjacent lanes of D. Otherwise fall back to today's lane-fixed draw for that
-   lane, and add the advisory `ROUTING_DECISION_LANE_FIXED` (en/th strings in
-   `data/locales/`). This needs the whole walk, so decide it after the walk, in `expandRouteless`
-   or a pass at the end of `routelessChains`.
-4. **`src/project/demand_paths.cpp` `expandRouteless`:** families per input × decision ×
-   destination, as M3.2.8b keys entry families. Hand each family to `appendLaneChanges`.
-5. **Rule 5, clip:** drop spans that end before the stub route reaches D, and clip one that
-   starts earlier to D's first section. Do it either in `appendLaneChanges`
-   (`src/model/network/lane_family.cpp`), with an optional per-route "earliest distance", or in
-   its caller. The dead end is recomputed from what remains.
-6. **Tests A40–A46**, every forcing asserted first. Then the D91 byte-identical recipe on the three
-   projects, seeds 42–44 with every diagnostic, plus `--events` (A44).
-7. **Docs:** in SIMULATION.md (the "No lane changing downstream" bullet), ROADMAP and
-   M3_ACCEPTANCE, change "not implemented" to "implemented".
+**Next session — pick one, one system (M3.2.8c).** D93 is in (D94), so a routing decision
+anywhere now holds its proportions where the lanes are served.
+1. **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
+   decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
+   watch pocket-lane vehicles change towards their turn. Problems shows no LANE_UNSERVED.
+   Verified headless and in the Debug test suite on Windows only; nothing was looked at.
+2. **The next M3.2.8c row, contract and rows first:** discretionary changes, visibility at
+   areas, or a between-lanes state. Each needs an owner ruling before rows.
+3. **Linux replay of D91–D94:** the CI run is the evidence. No WSL here.
 
 **Not booked, for later sessions:**
 - **Split targetStanding (measurement only):** is the target lane standing at its own red, or
@@ -166,7 +152,8 @@ lane-1 vehicle behind slows to let them in, without stopping dead, and the long 
 the dead end should be rarer. Verified on Linux headless only.
 
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
-1. Downstream decisions: contract D93 and rows A40–A46 agreed; implementation is above.
+1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the
+   decision station is not modelled (contract §2, rule 7).
 2. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
    instantaneous, which the contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
