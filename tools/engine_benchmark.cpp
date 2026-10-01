@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         std::uint64_t vehicleTicks = 0, peak = 0;
         const auto start = std::chrono::steady_clock::now();
         for (std::uint64_t t = 0; t < ticks; ++t) {
-            state = stepSimulation(state);
+            state = stepSimulation(std::move(state));
             vehicleTicks += state.vehicles.size();
             peak = std::max<std::uint64_t>(peak, state.vehicles.size());
         }

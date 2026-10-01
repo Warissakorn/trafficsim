@@ -8,6 +8,100 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — M3.2.8c: downstream routing decisions implemented (D93, D94)
+
+D93's contract is now code; core is untouched.
+- **The walk (`routeless.cpp`):**
+  - A decision off the walk's entry Link goes to `decideDownstream`. Each destination takes the
+    arrival lane's full chain, or else its stub (`routeLaneFamily`, through `legFrom`, which
+    `entryDecision` now shares), and the draw is by weight over those.
+  - A path carries a stack of `FamilyTag`s (name, decision Link, lane there), because an entry
+    family's full route can also enter a downstream family.
+  - `unkeptStubs` applies rule 4, and the walk reruns without the unkept stubs until stable. The
+    advisory is `ROUTING_DECISION_LANE_FIXED`, in en and th.
+- **The compile:**
+  - `expandRouteless` gives each path's every tag a family member. A merged full path takes the
+    union of tags.
+  - `FamilyRoute::after` makes `appendLaneChanges` drop any span piece before a route reaches
+    the decision's Link (rule 5).
+- **Tests:** A40–A46 in `tests/downstream_decision_tests.cpp`. One existing test changed, by the
+  contract and not by regeneration: the four-leg pocket decision is now exact 3:1.
+- **Results:** default CLI output is byte-identical on all three projects (A44). Windows/MSVC
+  only; not run on Linux.
+
+## 2026-10-01 — M3.2.8c: downstream routing decisions, contract and rows (D93)
+
+Docs only, no code. D92 left cooperation spent as a lever on M2.6, so the next row is lane
+changes after the entry Link. The owner ruled on two things.
+- **Scope:** contract and rows this session, implementation the next.
+- **Rule:** a routing decision placed downstream works like an entry decision (Vissim's way, as
+  in D71). Free walk with no decision stays lane-fixed, because a vehicle with no destination
+  has no mandatory change.
+
+Written: `M3_8_CONTRACT.md` §2 "Downstream routing decisions" (rules 1–7) and rows A40–A46
+in `M3_ACCEPTANCE.md`. SIMULATION.md and ROADMAP say "not implemented", and NEXT.md lists the
+implementation order. The code facts the contract rests on:
+- `appendLaneChanges` already spans any two routes of a family on adjacent lanes of any shared
+  Link, by route distance. It would therefore also span the shared prefix Links upstream of D,
+  which rule 5 clips.
+- Movements group by (first Link, last Link). That is why a target route must come from the
+  same entry Link and none is synthesised (rule 4).
+- No shipped project has a downstream decision: M2.6's one decision is on its entry Link. So A44
+  expects every published result byte-identical.
+
+Caught while writing: an entry-stub vehicle joins the entry family's lowest-slot full route,
+which already carries one downstream destination. It therefore skips the downstream draw.
+That is §2's existing limit, recorded in rule 7, not fixed.
+
+## 2026-10-01 — M3.2.8c: why the remaining dead-end waits wait (D92)
+
+NEXT.md option 1, a measurement with no engine behaviour change.
+- `--wait-causes` (`src/eval/dead_end_waits.{hpp,cpp}`, `DeadEndWaitAccumulator`) decides each
+  dead-end wait's cause once, from the snapshot that starts it: noMovingApproach, outsideSpan,
+  targetStanding, movingStream (definitions in the header and in D92).
+- A wait is `waitingAtDeadEnd`, so its seconds reconcile with `--lane-changes`. The tests check
+  that reconciliation, and it holds on every M2.6 movement.
+- Eval may include only `core/types.hpp`, so three lane helpers moved there beside
+  `waitingAtDeadEnd`, one definition each: `deadEndGoverns` (cooperative braking's look-ahead,
+  previously inline in `courtesyHolds`), `laneChangeTargetOf` and `mappedOnto` (previously
+  `targetOf`/`mapped` in `lanes.cpp`), plus `kWaitingSpeed`. The default CLI output is
+  byte-identical (D91's recipe).
+- `<array>` joins the architecture check's reviewed standard headers (a fixed-size container,
+  no I/O or state), for the per-cause counts.
+- The three-lane test road moved to `tests/lane_fixture.hpp`, shared by the lane-change and
+  wait-cause tests.
+
+**Finding (MSVC Release, seeds 42–81, 3 m/s²; `docs/evidence/m3.2.8c-wait-causes.md`).**
+- 93% of the 4,222 s of waiting (96 of 118 waits) starts beside a standing target lane, and
+  7% beside a moving stream.
+- The first definition tried for NEXT's "stopped behind its own lane's queue before its
+  look-ahead began" (stood while the dead end did not yet govern) took all 118 waits. The
+  stricter one (never moved inside its look-ahead) takes none. Every waiting vehicle did both,
+  so own-queue standing is common to all and is not a cause. A test holds that.
+- 2/3/4 m/s² moves only the moving-stream share. No delay change reaches two standard errors,
+  and clamps do not rise.
+- MSVC reproduces D90's GCC 15.2 numbers exactly at 3 m/s².
+
+## 2026-10-01 — stepSimulation takes the previous state over (D91)
+
+A callgrind of the M2.6 hour (Linux/GCC 15.2, another machine) put 9.1% in `SimState`'s value
+copy at the top of `stepSimulation`: every vehicle and last tick's events, strings included,
+copied only for the events to be cleared and the vehicles rebuilt. `stepSimulation(SimState&&)`
+(and the `dt` form) now moves the old state into `next`; the `const&` overloads copy and call
+it, so every existing caller and test keeps its meaning. The step reads the previous tick, time
+and Stop service from locals taken before the move (`next.tick`/`time`/`stopService` are only
+written at the end). The hot loops move: `runSimulation`, `trafficsim-cli`, the T-junction
+sweep, the engine benchmark and the editor's run (`editor_run.cpp`). Tests still step by copy.
+
+Windows/MSVC 14.51 Release: byte-identical output before/after for the three projects at seeds
+42–44 with every `--project` diagnostic, and the seed-42 `--events` stream. Wall clock (not
+callgrind; none on Windows): M2.6 project run median 625 → 557 ms (7 runs), engine benchmark
+(8 intersections, 1 h) 0.21 → 0.18 µs per vehicle-tick. Desktop Debug CTest 71/71 and `check`.
+Not run on Linux/GCC.
+
+Also: CLAUDE.md's "Where it stands" Gates bullet (one 1,204-character line restating NEXT.md)
+is cut to the gates and a pointer to NEXT/PROGRESS — hard rule 3.
+
 ## 2026-10-01 — M3.2.8c: cooperative braking with look-ahead (D90)
 
 The first behaviour change since M3.2.8b, built on D89's measurement. The contract and rows came
@@ -235,80 +329,6 @@ each; raw notes were kept outside the repo. Nothing here was run on Windows.
 - Environment, not code: WSL here has 3.7 GB, and ninja's default 12 jobs on Qt/json sources ran
   out of memory. `-j4` from the WSL filesystem built in 7 min 55 s.
 
-## 2026-09-29 — D84: one gesture rule, one face, visible arrows
-
-Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) and in CI
-(Qt 6.5.3 Linux and Windows); **not yet looked at by the owner on Windows**.
-
-- **Dropdown arrow was invisible everywhere**, not only on the owner's machine: a style sheet
-  that styles `QComboBox::drop-down` paints the arrow only from `image:`, and none was set.
-  Chevrons are now drawn once from palette roles into 1x/2x PNGs (`editor_appearance.cpp`,
-  temp dir) and referenced by the QSS; spin boxes get flat stacked 16 px buttons with the same
-  chevrons. Fusion is the application style, so controls draw and measure alike on every OS
-  and Qt version CI runs (a proxy style was tried first: Fusion never calls it for these).
-- **One face.** The monospace numeric face is gone: bundled Noto Sans Thai's digits are
-  tabular (all 572 units) and it covers every glyph the UI uses (ASCII, `° × − – …`, NBSP),
-  while a second face put numbers on a different baseline from their labels. The variable
-  font is replaced by static 400/600 cuts (`fontTools.varLib.instancer`, recipe in
-  `data/fonts/README.md`), because weight axes are not honoured on every Qt/platform; bold is
-  600 everywhere. The limit: Thai needs taller line boxes than Latin (20 px at 13 px), and
-  weights other than 400/600 need another cut.
-- **Heights and centring.** Measured with the real face, fields were 26–28 px, not the 24 the
-  D83 test claimed (it measured the system font). Fields and buttons are now pinned
-  (min = max height), which retires the runtime spin-box probe. Digits and capitals sit 7 px
-  above / 8 px below in every 24 px control; a test renders line edit, spin box, combo box and
-  button and requires equal gaps (mutation-checked against a 3 px shift).
-- **Gesture rule (D84).** Plain left click selects in every tool; Ctrl+right-click or
-  Ctrl+right-drag creates or changes. This removes the left-click Link polyline, the two
-  left-click Connector, left-click split, head, input, route and queue-counter placement, and
-  the conflict tool's plain click that authored a passive area and cycled priority (the only
-  place a plain click changed an existing object). Dragging a selected object stays a left
-  drag; Measure/Calibrate keep left clicks because they author nothing. Every click-to-create
-  UI test moved to Ctrl+right (`tests/ui_gestures.hpp`) and each tool gained an assertion
-  that a left click leaves the document unchanged. Hints in both catalogs say the rule.
-
-## 2026-09-29 — D83: editor polish from owner feedback
-
-- **Latin digits everywhere.** The workspace set `QLocale::c()` on the spin boxes that existed at
-  construction; a dialog built later (the Link dialog's lane count, the range dialog, every
-  signal/input/decision dialog, `QInputDialog`) took the system locale, which on the owner's
-  Windows shows Thai digits. `EditorWindow` now sets the default locale and its own locale to C
-  first thing (the window has already resolved the system locale by its constructor body, and
-  children inherit the window's), and `main` sets the default before any widget. Test forces
-  `ar_EG`, not `th_TH`: CLDR's default numbering for Thai is Latin, so it would force nothing.
-- **Controls 28 → 24 px.** 1 border + 2 padding + 18 content; the 2 px focus/invalid border
-  still takes 1 px of padding back. Tabs, dock titles, menu items, header sections, list/table
-  items and table rows follow the same padding. Toolbar icon buttons stay 24 px / toolbar 32 px.
-  Measured (Linux Qt 6.10, offscreen): a styled spin box adds 3 px on top of a 16 px text floor,
-  so it was already 31 px against the other controls' 28 before this change; Qt 6.5.3 (CI) does
-  not add them. The spin box padding is therefore measured once at runtime (what is left of 24 px
-  after an unpadded spin box, split top/bottom, focus/invalid 1 px less each side).
-- **Taper follows the tab (D83).** A lane-tab drag on a Connector that makes a one-lane
-  difference sets `laneChangeSide` to the edge the tab changed: from equal counts the far tab's
-  lane is the taper (far side), the kerb tab's is the kerb default; from a two-lane difference
-  the dragged edge pairs up and the other edge keeps the taper. A count typed in the Inspector
-  says nothing about an edge and keeps the kerb default. `resizeConnectorEdges`/
-  `changeConnectorRange` take `fromTab`; the canvas preview passes it too, so the preview is the
-  commit. Schema unchanged (17). The middle tab's drag step was the mean of the outer path's two
-  end widths; with the taper now able to be the outer path (zero at one end) a one-lane drag
-  dropped two lanes, so the step is the full lane width.
-- **Nothing lags behind a move.** Lane tabs are computed from the committed document, not the
-  drag preview, so they stayed at the old place during a move. `movingGeometry()` hides them
-  (and skips computing them) while a move is visibly under way; a body, group or copy move also
-  hides the geometry points. A vertex/end drag keeps its grips, which already follow the pointer.
-- **Pointer.** Hover over a road or a conflict area stays the arrow (was open hand / pointing
-  hand). Once a drag passes the start distance the pointer becomes an arrow with a small hand
-  beside it (drawn cursor, `moveCursor()`); panning keeps the closed hand; a lane-tab drag keeps
-  its resize cursor.
-- **Direction on the selection outline.** The white mid-road triangles on Links and Connectors
-  are gone. A selected object's outline carries filled arrowheads on its two long edges, one per
-  ~72 screen px (at least one per edge), in travel order — Link boundaries run with the Link,
-  Connector rails from source to target. `drawRouteArrows` now shares the arrowhead helper.
-- Verified in WSL (Linux, Qt 6.10, offscreen): desktop build, 69/69 CTest, `check`. Not run on
-  Windows MSVC; that is the CI job and the owner review.
-
----
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -428,6 +448,10 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D94 | 2026-10-01 | **D93's rule 4 is a fixed point: walk, drop the downstream stubs that no run of adjacent lanes with family paths connects to a full one, walk again until none is dropped. A path carries every family it belongs to (`FamilyTag` stack); a merged full path keeps the union** | Whether a stub is kept depends on which lanes the whole walk reaches, and dropping one can strand another, so one pass cannot decide it; each pass drops at least one, so it ends, and with no downstream decision it is the one pass it always was. An entry family's full route can also enter a downstream family, so one `family` string could not say both | A network where the reruns are slow (each is a full walk), or where a full path should belong to a family it merged into but was not walked as |
+| D93 | 2026-10-01 | **A routing decision downstream of the entry Link works like an entry decision (contract §2 "Downstream routing decisions", A40–A46; not implemented): the destination is drawn by weight among those the arrival lane serves, full or kept stub; a stub is kept only with a same-entry full route on a run of adjacent lanes of the decision Link; changes only at or after arrival on that Link. Free walk with no decision stays lane-fixed** | Owner's ruling, extending D71. The typed proportions then hold where lanes are served. A same-entry target keeps movement reporting (first Link, last Link) right without synthetic routes. The clip is needed because `appendLaneChanges` would otherwise span prefix Links before the decision is known | A study needing changes before the decision point (the decision station is not modelled), or networks where no same-entry path reaches the adjacent lane, so most lanes fall back to lane-fixed |
+| D92 | 2026-10-01 | **A dead-end wait's cause is decided once, at its first snapshot, in the order noMovingApproach (never moved at ≥ walking pace inside a span and its look-ahead on this route), outsideSpan, targetStanding (alongside or nearest-behind target vehicle below walking pace, placed by its front), movingStream. `maxDecelerationCooperativeBraking` stays 3: the 2/3/4 sweep is evidence, not calibration** | The question was whether more cooperation would help. Own-queue standing was tried as a cause and took all 118 waits, so it does not separate them; never-helped takes none. What separates is the target lane at the wait's start: 93% of wait time is beside a standing lane, which no helper can open, and the parameter moves only the other 7% | A run where noMovingApproach or outsideSpan is not ~0, or where a front-only placement misreads a body straddling a segment boundary at the place |
+| D91 | 2026-10-01 | **`stepSimulation` has `SimState&&` overloads that take the previous state over; the `const&` ones copy and forward. Hot loops step with `std::move`** | The value copy was 9.1% of an M2.6 hour (callgrind, GCC 15.2) and only fed a clear and a rebuild. Moving keeps the value API and output byte-identical (MSVC, 3 projects × 3 seeds + events); M2.6 run 625 → 557 ms median. Copying only `vehicles`/`inputs` field by field was rejected: a later `SimState` field would be silently dropped | A step that reads a field of the previous state after it is overwritten — the clock and Stop service are taken before the move for that reason |
 | D90 | 2026-10-01 | **Cooperative braking (M3.2.8c): a stub vehicle still moving is helped once its dead end governs its car-following; the helper is the nearest target-lane vehicle with `maxDecelerationCooperativeBraking` (3 m/s², default behaviour) that can fall in behind it, braking behind a virtual leader at the changer's speed, bounded by that deceleration, with no cap; absent the field, only D71 runs** | The owner chose the look-ahead ("when it must begin braking for its dead end", no length parameter) and Vissim's name and 3 m/s². D89 placed M3.2.8b's cost in the dead-end waits. Measured over seeds 42–81: waits 9,034 → 4,222 s, East → West −2.3 ± 0.6 s, network mean +2.4 → +1.3 ± 0.5 s against `b472e05`, clamps not up. The look-ahead is the model's own reaction, because a comfortable-stop formula fired only as the changer stopped (`docs/evidence/m3.2.8c-cooperative-braking.md`) | Clamps or held-through-green rising with it, or a measured cooperative-braking deceleration that differs from 3 m/s² |
 | D89 | 2026-10-01 | **The next M3.2.8c system is cooperation with a deceleration parameter and look-ahead; its success measure is East → South dead-end wait seconds and East → West delay against `b472e05`, seeds 42–81** | Over 40 seeds the East-approach rise accrues on the entry Link the left-turn stubs dead-end on. Per seed it is +0.1 + 0.047 s per second of East → South dead-end wait (r = 0.56), which gives the whole +6.0 s at the mean wait and none without waits. West is the same at a third of the size (`docs/evidence/m3.2.8c-east-approach.md`). Left-turners change at the first tick allowed, so it is not `laneChangeDistance` (D87) | A run where the waits fall but East → West delay does not, which would mean the courtesy hold, not the wait, costs the time |
 | D88 | 2026-10-01 | **A before/after comparison of one movement's delay uses at least 40 seeds; the M3.2.8b right-turn rise is withdrawn as a finding, and M3.2.8c's next measurement is the East approach** | Seeds 42–46 showed South → East +7.3 s and North → West +7.5 s, up in 5/5. Over seeds 42–81 they are −1.0 ± 1.1 and +2.7 ± 1.2 s, and pocket arrivals are uniform in the cycle in both engines. Their timing is fixed at departure, i.e. by the Poisson draw, which M3.2.8b re-orders by adding an input per lane. A right-turn movement's per-seed change has an SD of about 7 s. The rise that persists is East → West +6.0 ± 1.7 s, East → South +6.8 ± 2.6 s and the network mean +2.4 ± 0.5 s (`docs/evidence/m3.2.8c-arrival-phases.md`) | A movement whose per-seed SD is small enough that fewer seeds give an SE under about 1 s |

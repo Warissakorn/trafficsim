@@ -115,17 +115,28 @@ TEST(routeless, a_placed_decision_splits_by_destination) {
     CHECK(placed.size() == 1); CHECK(placed[0].destinations.size() == 2);
     const auto r = routelessChains(w.d.network, w.upstream, placed);
     std::map<std::string, double> byExit;
-    for (const auto& c : r.chains)
+    std::size_t stubs = 0;
+    for (const auto& c : r.chains) {
+        // A stub ends short of its destination, which its family names (D93).
+        if (c.stub) {
+            ++stubs;
+            const auto& family = c.families.back().name;
+            byExit[family.substr(family.find('>') + 1)] += 0.5 * c.share;
+            continue;
+        }
         for (const auto& link : w.d.network.links)
             for (const auto& lane : link.lanes) if (lane.id == c.laneChain.back()) byExit[link.id] += 0.5 * c.share;
-    // Pocket lane 0 reaches both (3:1); lane 1 only East; lane 2 neither, so it carries on
-    // routeless to the South exit and the decision says so.
-    CHECK(byExit.size() == 3);
-    test::near(byExit[w.eastExit], 0.5 * 0.75 + 0.25); test::near(byExit[w.northExit], 0.5 * 0.25);
-    test::near(byExit[w.southExit], 0.25);
-    CHECK(r.advisories.size() == 1); CHECK(r.advisories[0].code == "ROUTING_DECISION_LANE_UNSERVED");
+    }
+    // D93: the pocket is past the entry Link, so its decision draws by destination. Pocket lane 0
+    // reaches both; lane 1 reaches East and changes towards lane 0 for North; lane 2 reaches
+    // neither and changes for both. So 3:1 holds exactly, and no vehicle carries on to the South
+    // exit. Before D93 the draw was lane-fixed: East 0.625, North 0.125, South 0.25.
+    CHECK(stubs > 0); // the forcing: some of the draw really rides a stub
+    CHECK(byExit.size() == 2);
+    test::near(byExit[w.eastExit], 0.75); test::near(byExit[w.northExit], 0.25);
+    CHECK(r.advisories.empty());
     const auto issues = routelessIssues(w.d.network, def);
-    CHECK(issues.blocking.empty()); CHECK(issues.advisory.size() == 1);
+    CHECK(issues.blocking.empty()); CHECK(issues.advisory.empty());
     // An input naming a placed decision is a routeless input on its Link. The pocket Link is fed
     // from upstream, and the engine starts no input part way into the network, so this uses a
     // decision on the approach itself.

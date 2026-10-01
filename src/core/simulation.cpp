@@ -74,31 +74,43 @@ SimState createSimulation(const Scenario& scenario, std::uint32_t seed) {
 }
 SimState stepSimulation(const SimState& state) {
     if (!state.scenario) throw std::invalid_argument("Simulation must be initialized");
-    return stepSimulation(state, state.scenario->timeStep);
+    return stepSimulation(SimState(state), state.scenario->timeStep);
 }
-SimState stepSimulation(const SimState& state, double dt) {
+SimState stepSimulation(const SimState& state, double dt) { return stepSimulation(SimState(state), dt); }
+SimState stepSimulation(SimState&& state) {
+    if (!state.scenario) throw std::invalid_argument("Simulation must be initialized");
+    const double dt = state.scenario->timeStep;
+    return stepSimulation(std::move(state), dt);
+}
+// Takes the previous state over rather than copying it: a value copy re-copied every vehicle and
+// last tick's events (strings included) only to discard them, 9% of an M2.6 hour (2026-10-01).
+SimState stepSimulation(SimState&& state, double dt) {
     if (!state.scenario) throw std::invalid_argument("Simulation must be initialized");
     if (dt != state.scenario->timeStep) throw std::invalid_argument("dt must equal scenario.timeStep");
     // A vehicle's inputIndex is a position in BOTH vectors, so a hand-built state that does not
     // hold one entry per scenario input must say so here rather than index past the end later.
     if (state.inputs.size() != state.scenario->inputs.size())
         throw std::invalid_argument("state.inputs must be parallel to scenario.inputs");
-    if (state.tick >= totalTicks(*state.scenario)) return state;
+    if (state.tick >= totalTicks(*state.scenario)) return std::move(state);
     const auto& scenario = *state.scenario;
     // States built by createSimulation always carry an index; tolerate a hand-built one.
     const auto indexOwner = state.index ? state.index
                                         : std::make_shared<const ScenarioIndex>(buildScenarioIndex(scenario));
     const auto& index = *indexOwner;
-    SimState next = state; // Value copy of state; scenario alone is shared and const.
+    // The previous tick's clock. next.tick, next.time and next.stopService keep the previous
+    // tick's values until the end of this step writes the new ones, so they are read as such.
+    const auto startTick = state.tick;
+    const double startTime = state.time;
+    SimState next = std::move(state); // scenario (shared, const) stays alive through next.
     next.index = indexOwner;
     next.events.clear();
+    const auto& startService = next.stopService;
     detail::generateArrivals(next); // At START of tick, before insertion or movement.
-    const auto tick = state.tick + 1;
+    const auto tick = startTick + 1;
     const double time = static_cast<double>(tick) * dt;
     auto& events = next.events;
-    // The state copy above already deep-copied the vehicle list, and next.vehicles is rebuilt from
-    // scratch below, so take that buffer as this tick's working copy rather than copying the list a
-    // second time. Nothing reads next.vehicles between here and the rebuild.
+    // next.vehicles is rebuilt from scratch below, so take its buffer as this tick's working copy
+    // rather than copying the list. Nothing reads next.vehicles between here and the rebuild.
     auto vehicles = std::move(next.vehicles);
     next.vehicles.clear();
     std::vector<PendingVehicle> candidates;
@@ -132,7 +144,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         }
         Vehicle vehicle;
         static_cast<PendingVehicle&>(vehicle) = pending;
-        vehicle.enteredTime = state.time;
+        vehicle.enteredTime = startTime;
         const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route), candidateSpans,
                                            candidateBuckets);
         if (leader && leader->gap < behaviour.standstillDistance) continue;
@@ -146,7 +158,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         next.inputs[pending.inputIndex].queue.erase(next.inputs[pending.inputIndex].queue.begin());
         // Events still carry the route's NAME: they are the run's output, read by the evaluator
         // and by every frozen fixture, and a slot would mean nothing outside this Scenario.
-        events.emplace_back(DepartedEvent{state.time, vehicle.id, route.id,
+        events.emplace_back(DepartedEvent{startTime, vehicle.id, route.id,
                                          vehicle.scheduledTime, vehicle.desiredSpeed});
     }
     // Two sorted runs, not an unsorted list: the survivors in id order, then this tick's
@@ -169,10 +181,10 @@ SimState stepSimulation(const SimState& state, double dt) {
     // moves; the rest of the tick then runs on the post-change snapshot, shared by every vehicle.
     // Free without a stub: the scenario then has no span at all.
     if (index.laneChanges) {
-        const auto changes = decideLaneChanges(scenario, index, vehicles, refs, spans, buckets, state.stopService);
+        const auto changes = decideLaneChanges(scenario, index, vehicles, refs, spans, buckets, startService);
         for (const auto& change : changes) {
             auto& vehicle = vehicles[change.vehicle];
-            events.emplace_back(LaneChangeEvent{state.time, vehicle.id, scenario.routes[vehicle.routeIndex].id,
+            events.emplace_back(LaneChangeEvent{startTime, vehicle.id, scenario.routes[vehicle.routeIndex].id,
                                                 scenario.routes[change.route].id});
             vehicle.routeIndex = change.route; vehicle.distance = change.distance;
         }
@@ -189,13 +201,13 @@ SimState stepSimulation(const SimState& state, double dt) {
     std::vector<SignalColor> headColors;
     headColors.reserve(scenario.signalHeads.size());
     for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h)
-        headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], state.time));
+        headColors.push_back(signalColorAt(scenario.signalPrograms[index.programOfHead[h]], startTime));
     // Conflict zones (M3.2.3a), read from the same snapshot. Empty -- and free -- without one.
     const auto zones = summarizeZones(scenario, index, vehicles, refs);
     // Stop service (M3.2.5), from the same snapshot and only when some zone is a Stop.
     // Kept out of the per-vehicle loop entirely when no zone is a Stop: that loop is the engine's
     // hot path, and a branch per vehicle there measured +1% of stepSimulation.
-    auto service = index.stopZones ? refreshStops(scenario, index, vehicles, refs, state.stopService, state.tick)
+    auto service = index.stopZones ? refreshStops(scenario, index, vehicles, refs, startService, startTick)
                                    : std::vector<StopService>{};
     std::vector<const StopService*> stopOf(service.empty() ? 0 : vehicles.size(), nullptr);
     for (std::size_t v = 0, s = 0; v < stopOf.size() && s < service.size(); ++v) {
@@ -278,7 +290,7 @@ SimState stepSimulation(const SimState& state, double dt) {
         // Conflict zones hold a vehicle by the same stop-line mechanism once more.
         if (const auto hold = index.routeZones[refs[v].route].empty() ? std::nullopt
                               : zoneHold(scenario, index, zones, vehicle, refs[v], vehicleLeader,
-                                         stopOf.empty() ? nullptr : stopOf[v], state.tick)) {
+                                         stopOf.empty() ? nullptr : stopOf[v], startTick)) {
             allowedDistance = std::min(allowedDistance, *hold);
             if (!leader || *hold < leader->gap) leader = Leader{*hold, 0};
         }
@@ -303,7 +315,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     // A Stop finishes the stop the model only approaches (M3.2.5): from below walking pace, so at
     // most kStoppedSpeed/dt of ordinary braking -- not an emergency clamp.
     for (std::size_t v = 0; v < stopOf.size(); ++v)
-        if (restsAtStop(stopOf[v], state.tick)) moves[v] = {0, 0, -vehicles[v].speed / dt, FollowingMode::braking, false};
+        if (restsAtStop(stopOf[v], startTick)) moves[v] = {0, 0, -vehicles[v].speed / dt, FollowingMode::braking, false};
     // Phase 2: requests resolved across all candidates at once -- the swept check and shared
     // receiving space. A cap only ever shortens a move.
     if (!zones.empty()) {
@@ -347,7 +359,7 @@ SimState stepSimulation(const SimState& state, double dt) {
     for (const auto& head : scenario.signalHeads) {
         const auto& program = detail::byId(scenario.signalPrograms, head.programId);
         const auto color = signalColorAt(program, time);
-        if (color != signalColorAt(program, state.time)) events.emplace_back(SignalEvent{time, head.id, color});
+        if (color != signalColorAt(program, startTime)) events.emplace_back(SignalEvent{time, head.id, color});
     }
     next.tick = tick; next.time = time;
     next.stopService = std::move(service);
@@ -363,7 +375,7 @@ SimState runSimulation(const Scenario& scenario, std::uint32_t seed,
             if (includeMovementEvents || !std::holds_alternative<MovedEvent>(event)) sink(event);
     };
     emit();
-    while (state.tick < totalTicks(*state.scenario)) { state = stepSimulation(state); emit(); }
+    while (state.tick < totalTicks(*state.scenario)) { state = stepSimulation(std::move(state)); emit(); }
     return state;
 }
 }

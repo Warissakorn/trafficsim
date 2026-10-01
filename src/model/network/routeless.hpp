@@ -16,22 +16,31 @@ struct PlacedDecision {
     struct Destination { std::vector<std::vector<std::string>> chains; double weight{}; };
     std::vector<Destination> destinations;
 };
+// M3.2.8b/D93: a decision's destination is a family -- one chain per lane of the decision's Link,
+// and a lane that cannot reach it is a stub whose vehicles change lanes there. `name` is
+// "<decision>><destination>", `linkId` the decision's Link and `lane` this path's lane on it.
+struct FamilyTag {
+    std::string name, linkId;
+    std::size_t lane{};
+    bool operator==(const FamilyTag&) const = default;
+};
 struct WeightedChain {
     std::vector<std::string> laneChain; // lane and connector-path ids, as routeLaneChains gives
     std::size_t lane{};                 // index of the starting lane in the Link's lanes
     // Probability of this path for a vehicle in that lane -- or, when the result is
     // `byDestination`, the fraction of the Link's whole input.
     double share{};
-    // M3.2.8b: an entry decision's destination is a family -- one chain per lane of the entry
-    // Link -- and a lane that cannot reach it is a stub whose vehicles change lanes. `family`
-    // names the destination ("<decision>><destination Link>"); empty for a free-walk path.
+    // Every family the path belongs to, outermost first: an entry decision's full route can
+    // also pass a downstream decision (D93). Empty for a free-walk path. `stub` is its role in
+    // the last one; in every earlier one it is full.
     bool stub{};
-    std::string family;
+    std::vector<FamilyTag> families;
 };
 struct RoutelessResult {
     std::vector<WeightedChain> chains;
     // Blocking: ROUTELESS_CYCLE / ROUTELESS_TOO_MANY_PATHS carry an empty path (the caller names
-    // the input); UNKNOWN_LINK likewise. Advisory: ROUTING_DECISION_LANE_UNSERVED at a decision.
+    // the input); UNKNOWN_LINK likewise. Advisory at a decision: ROUTING_DECISION_LANE_UNSERVED,
+    // and ROUTING_DECISION_LANE_FIXED when a downstream stub could not be kept (D93 rule 4).
     std::vector<ValidationIssue> issues, advisories;
     // A decision placed on the entry Link itself splits each destination's flow equally over the
     // Link's lanes (M3.2.8b); a lane that cannot reach it enters on a stub and changes lanes. So

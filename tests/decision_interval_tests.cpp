@@ -59,7 +59,7 @@ TEST(routeless, a_placed_decision_on_the_entry_follows_each_intervals_counts) {
     for (std::size_t k = 0; k < first.chains.size(); ++k) {
         const auto& c = first.chains[k];
         const auto id = routelessRouteId(w.upstream, k, first.chains.size());
-        if (c.stub) { exitOf[id] = c.family.substr(c.family.find('>') + 1); continue; }
+        if (c.stub) { const auto& family = c.families.back().name; exitOf[id] = family.substr(family.find('>') + 1); continue; }
         for (const auto& link : w.d.network.links) for (const auto& lane : link.lanes)
             if (lane.id == c.laneChain.back()) exitOf[id] = link.id;
     }

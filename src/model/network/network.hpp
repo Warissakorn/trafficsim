@@ -317,7 +317,10 @@ std::size_t routeLaneShareCount(const Network&, const std::vector<std::string>& 
 // each stub to each other chain on an adjacent lane of the same Link, over the stretch both
 // travel, in route distances. A stub's dead end is its last span end. One with no span keeps its
 // route length as a dead end and gets no span, which core validation refuses rather than lose volume.
-struct FamilyRoute { std::string id; std::vector<std::string> segments; bool stub{}; };
+// D93 rule 5: a downstream decision's family names its Link in `after`, and only spans on or past
+// where each route reaches that Link are kept -- before the decision no vehicle knows its
+// destination. Empty: anywhere, as for an entry family (whose routes start there anyway).
+struct FamilyRoute { std::string id; std::vector<std::string> segments; bool stub{}; std::string after; };
 void appendLaneChanges(const Network&, const RuntimeSections&, const std::vector<FamilyRoute>&,
                        std::vector<LaneChangeSpan>& spans, std::vector<RouteDeadEnd>& deadEnds);
 // The centreline of one Link or Connector, for drawing what the pointer is over. Empty for an

@@ -2,16 +2,32 @@
 #include <algorithm>
 #include <map>
 #include <optional>
+#include <set>
 
 namespace trafficsim {
 namespace {
+using Fixed = std::set<std::pair<std::string, std::size_t>>; // (family, lane on its decision Link)
+// A destination's chain from `laneId`: full if the lane reaches it, else its stub; null if neither.
+const FamilyChain* legFrom(const std::vector<std::vector<FamilyChain>>& families, const std::string& laneId, bool stub) {
+    for (const auto& family : families)
+        for (const auto& chain : family)
+            if (chain.stub == stub && !chain.ids.empty() && chain.ids.front() == laneId) return &chain;
+    return nullptr;
+}
+std::string familyName(const PlacedDecision& d, const PlacedDecision::Destination& destination) {
+    const auto& objects = destination.chains.front();
+    return d.id + ">" + (objects.empty() ? std::string{} : objects.back());
+}
 struct Walk {
     const Network& network;
     const std::vector<PlacedDecision>& decisions;
-    std::vector<ConnectorPath> paths; // every connector path in the drawing, in connector order
+    const std::vector<ConnectorPath>& paths; // every connector path in the drawing, in connector order
+    std::string start;                       // the Link the walk enters on
+    const Fixed& fixed;                      // D93 rule 4: downstream stubs not kept
     RoutelessResult result;
     bool stopped{};
-    std::string family; // the entry decision's destination being walked (M3.2.8b)
+    std::vector<FamilyTag> families;               // the families being walked (M3.2.8b, D93)
+    std::map<std::string, std::string> decisionOf; // family -> its decision's path
     const Link* link(const std::string& id) const {
         for (const auto& l : network.links) if (l.id == id) return &l;
         return nullptr;
@@ -29,7 +45,7 @@ struct Walk {
             if (!stopped) result.issues.push_back({"ROUTELESS_TOO_MANY_PATHS", {}});
             stopped = true; return;
         }
-        result.chains.push_back({std::move(chain), lane, share, stub, family});
+        result.chains.push_back({std::move(chain), lane, share, stub, families});
     }
     void cycle() {
         if (std::none_of(result.issues.begin(), result.issues.end(), [](const auto& i) { return i.code == "ROUTELESS_CYCLE"; }))
@@ -44,10 +60,54 @@ struct Walk {
         if (entered) if (const auto* d = decisionOn(linkId)) if (decide(*d, chain, laneId, lane, share)) return;
         free(std::move(chain), laneId, arrived, lane, share);
     }
+    // D93 (contract §2, "Downstream routing decisions"): a decision past the entry Link draws
+    // among the destinations the arrival lane serves -- with its full chain, or with a stub its
+    // vehicles change lanes from on this Link -- by relative flow, as an entry decision does.
+    bool decideDownstream(const PlacedDecision& d, const std::vector<std::string>& chain, const std::string& laneId,
+                          std::size_t lane, double share) {
+        const auto* on = link(d.linkId);
+        std::size_t k = 0;
+        while (on && k < on->lanes.size() && on->lanes[k].id != laneId) ++k;
+        struct Leg { FamilyChain chain; double weight; std::string name; };
+        std::vector<Leg> legs;
+        double sum = 0;
+        for (const auto& destination : d.destinations) {
+            std::vector<std::vector<FamilyChain>> family;
+            for (const auto& objects : destination.chains) family.push_back(routeLaneFamily(network, objects));
+            const auto name = familyName(d, destination);
+            decisionOf[name] = d.path;
+            const auto* leg = legFrom(family, laneId, false);
+            if (!leg && !fixed.contains({name, k})) leg = legFrom(family, laneId, true);
+            if (leg) { legs.push_back({*leg, destination.weight, name}); sum += destination.weight; }
+        }
+        if (legs.empty() || !(sum > 0)) {
+            if (std::none_of(result.advisories.begin(), result.advisories.end(),
+                             [&](const auto& i) { return i.path == d.path; }))
+                result.advisories.push_back({"ROUTING_DECISION_LANE_UNSERVED", d.path});
+            return false; // it carries on as if the decision were not there
+        }
+        for (const auto& leg : legs) {
+            families.push_back({leg.name, d.linkId, k});
+            const double each = share * leg.weight / sum;
+            if (!leg.chain.stub) follow(chain, leg.chain.ids, d.linkId, lane, each);
+            else {
+                auto stub = chain;
+                bool looped = false;
+                for (std::size_t i = 1; i < leg.chain.ids.size() && !looped; ++i) {
+                    looped = std::find(stub.begin(), stub.end(), leg.chain.ids[i]) != stub.end();
+                    stub.push_back(leg.chain.ids[i]);
+                }
+                if (looped) cycle(); else finish(std::move(stub), lane, each, true);
+            }
+            families.pop_back();
+        }
+        return true;
+    }
     bool decide(const PlacedDecision& d, const std::vector<std::string>& chain, const std::string& laneId,
                 std::size_t lane, double share) {
-        // Only the destinations this lane can reach: with no lane changing, a vehicle in the
-        // wrong lane for one cannot get there, so the others share its flow.
+        if (d.linkId != start) return decideDownstream(d, chain, laneId, lane, share);
+        // On the entry Link, reached only when entryDecision served nothing: only the
+        // destinations this lane can reach, as before M3.2.8b.
         std::vector<std::pair<std::vector<std::string>, double>> legs;
         double sum = 0;
         for (const auto& destination : d.destinations) {
@@ -94,33 +154,26 @@ struct Walk {
         std::vector<Served> served;
         double sum = 0;
         for (const auto& destination : d->destinations) {
-            const auto& objects0 = destination.chains.front();
-            Served s{destination.weight, d->id + ">" + (objects0.empty() ? std::string{} : objects0.back()), {}};
-            std::vector<std::vector<FamilyChain>> families;
-            for (const auto& objects : destination.chains) families.push_back(routeLaneFamily(network, objects));
+            Served s{destination.weight, familyName(*d, destination), {}};
+            std::vector<std::vector<FamilyChain>> family;
+            for (const auto& objects : destination.chains) family.push_back(routeLaneFamily(network, objects));
             for (std::size_t k = 0; k < start.lanes.size(); ++k) {
-                const auto pick = [&](bool stub) {
-                    for (const auto& family : families)
-                        for (const auto& chain : family)
-                            if (chain.stub == stub && !chain.ids.empty() && chain.ids.front() == start.lanes[k].id) {
-                                s.legs.push_back({k, chain}); return true;
-                            }
-                    return false;
-                };
-                if (!pick(false)) pick(true);
+                const auto* leg = legFrom(family, start.lanes[k].id, false);
+                if (!leg) leg = legFrom(family, start.lanes[k].id, true);
+                if (leg) s.legs.push_back({k, *leg});
             }
             if (!s.legs.empty() && destination.weight > 0) { sum += destination.weight; served.push_back(std::move(s)); }
         }
         if (!(sum > 0)) return false;
         result.byDestination = true;
         for (const auto& s : served) {
-            family = s.family;
             for (const auto& leg : s.legs) {
+                families.push_back({s.family, start.id, leg.lane});
                 const double share = s.weight / sum / static_cast<double>(s.legs.size());
                 if (leg.chain.stub) finish(leg.chain.ids, leg.lane, share, true);
                 else follow({start.lanes[leg.lane].id}, leg.chain.ids, start.id, leg.lane, share);
+                families.pop_back();
             }
-            family.clear();
         }
         return true;
     }
@@ -151,19 +204,58 @@ struct Walk {
         if (!fromEnd) finish(std::move(chain), lane, each);
     }
 };
+// D93 rule 4: a downstream stub is kept only when a run of adjacent lanes of its decision Link,
+// each with a path of its family, leads from its lane to one with a full path of the family.
+Fixed unkeptStubs(const RoutelessResult& r, const std::string& start) {
+    std::map<std::string, std::pair<std::set<std::size_t>, std::set<std::size_t>>> lanes; // any, full
+    for (const auto& c : r.chains)
+        for (std::size_t i = 0; i < c.families.size(); ++i) {
+            const auto& tag = c.families[i];
+            if (tag.linkId == start) continue;
+            lanes[tag.name].first.insert(tag.lane);
+            if (!(c.stub && i + 1 == c.families.size())) lanes[tag.name].second.insert(tag.lane);
+        }
+    Fixed unkept;
+    for (const auto& c : r.chains) {
+        if (!c.stub || c.families.empty() || c.families.back().linkId == start) continue;
+        const auto& tag = c.families.back();
+        const auto& [any, full] = lanes[tag.name];
+        bool kept = false;
+        for (std::size_t k = tag.lane; !kept && any.contains(k); ++k) kept = full.contains(k);
+        for (std::size_t k = tag.lane; !kept && k > 0 && any.contains(k - 1); --k) kept = full.contains(k - 1);
+        if (!kept) unkept.insert({tag.name, tag.lane});
+    }
+    return unkept;
+}
 }
 RoutelessResult routelessChains(const Network& network, const std::string& linkId,
                                 const std::vector<PlacedDecision>& decisions) {
-    Walk walk{network, decisions, {}, {}, false, {}};
+    std::vector<ConnectorPath> paths;
     for (const auto& connector : network.connectors) {
-        try { for (auto& p : connectorPaths(network, connector)) walk.paths.push_back(std::move(p)); }
+        try { for (auto& p : connectorPaths(network, connector)) paths.push_back(std::move(p)); }
         catch (const std::exception&) {} // a broken Connector is reported by its own diagnostics
     }
-    const auto* start = walk.link(linkId);
-    if (!start) { walk.result.issues.push_back({"UNKNOWN_LINK", {}}); return walk.result; }
-    if (walk.entryDecision(*start)) return walk.result;
-    for (std::size_t k = 0; k < start->lanes.size(); ++k)
-        walk.at({start->lanes[k].id}, linkId, start->lanes[k].id, std::nullopt, true, k, 1.0);
-    return walk.result;
+    // Walk, drop the downstream stubs rule 4 does not keep, and walk again until none is dropped.
+    // Each pass drops at least one, so this ends; with no downstream decision it is one pass.
+    Fixed fixed;
+    for (;;) {
+        Walk walk{network, decisions, paths, linkId, fixed, {}, false, {}, {}};
+        const auto* start = walk.link(linkId);
+        if (!start) { walk.result.issues.push_back({"UNKNOWN_LINK", {}}); return walk.result; }
+        if (!walk.entryDecision(*start))
+            for (std::size_t k = 0; k < start->lanes.size(); ++k)
+                walk.at({start->lanes[k].id}, linkId, start->lanes[k].id, std::nullopt, true, k, 1.0);
+        const auto unkept = walk.result.issues.empty() ? unkeptStubs(walk.result, linkId) : Fixed{};
+        if (unkept.empty()) {
+            for (const auto& [name, lane] : fixed) {
+                const auto& path = walk.decisionOf[name];
+                if (std::none_of(walk.result.advisories.begin(), walk.result.advisories.end(), [&](const auto& i) {
+                        return i.code == "ROUTING_DECISION_LANE_FIXED" && i.path == path; }))
+                    walk.result.advisories.push_back({"ROUTING_DECISION_LANE_FIXED", path});
+            }
+            return walk.result;
+        }
+        fixed.insert(unkept.begin(), unkept.end());
+    }
 }
 }

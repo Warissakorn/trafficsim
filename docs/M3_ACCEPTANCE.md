@@ -59,9 +59,17 @@ before its code:
 | A37 | .8c | A36's run, every tick | No vehicle brakes harder than `maxDecelerationCooperativeBraking` (acceleration below its negative), and nobody is clamped |
 | A38 | .8c | A stub vehicle far from its dead end (outside its look-ahead) beside a stream | No cooperative hold is issued for it |
 | A39 | .8c | A35's road with the field cleared | Identical event stream to the D71 rule; a copied state replays exactly with the field set |
+| A40 | .8c | Downstream decision (D93): an entry Link feeds a two-lane Link D by Connector; a decision on D sends to a destination only lane 1 reaches and one only lane 2 reaches, and both lanes receive vehicles | The compiled volume of each destination equals its typed share of the vehicles reaching D exactly (no shift towards what the lanes allow) |
+| A41 | .8c | A40's network, a vehicle drawn to the destination its arrival lane cannot reach | It changes lanes on D before its dead end, with no clamp, and arrives on the full route, reported under (entry Link, destination Link). The forcing is asserted first: it is on a stub |
+| A42 | .8c | A40's network, a stub vehicle still on the entry Link beside an open gap in the adjacent entry lane | No change before D: no span lies upstream of its arrival on D |
+| A43 | .8c | A Link D whose adjacent lane no walk from the entry reaches | No stub is kept; that lane keeps the lane-fixed draw and the decision reports `ROUTING_DECISION_LANE_FIXED`. The forcing is asserted first: the adjacent lane has no arriving path |
+| A44 | .8c | Every shipped project and frozen fixture (none has a downstream decision) | Byte-identical CLI output, four TS baselines and published reports; free walk with no decision stays lane-fixed |
+| A45 | .8c | A40's network, a copied state branched during changes | Exact replay; no new `SimState` field |
+| A46 | .8c | A30's and A36's cases built on D | Waiting cooperation and cooperative braking act on a downstream stub as on an entry stub |
 
-Cooperative braking is A36–A39 (M3.2.8c). Visibility, discretionary changes, `laneChangeDistance` and any further cooperation are
-**M3.2.8c** and get their rows before their code. Passing A01–A39 alone does not close M3.2.
+Cooperative braking is A36–A39 (M3.2.8c). Downstream routing decisions are A40–A46 (D93),
+implemented 2026-10-01. Visibility, discretionary changes, `laneChangeDistance` and any further cooperation are
+**M3.2.8c** and get their rows before their code. Passing A01–A46 alone does not close M3.2.
 
 ## 2. T-junction fixture specification
 
@@ -219,6 +227,27 @@ Command station, canvas slot and runtime point agree within 1e-6.
 **A27–A35** (M3.2.8b, D71): `tests/lane_change_tests.cpp` (`lanechange.*`) — A27 empty road (one change, completes on the full chain, no clamp, no stub arrival); A28 a vehicle alongside refuses, the change follows once it clears; A29 a fast close follower refuses (its braking beyond `comfortableDeceleration` asserted first); A30 a blocked target holds the vehicle at its dead end with zero clamps, then it changes and completes; A31 two changers at one gap, only the lower id goes; A32 no change inside a zone; A33 a copied state replays exactly, completed + active + pending conserved; A34 the four-leg family (left stub two spans, dead end where the left turn leaves; right stub one span); A35 a waiting vehicle beside a steady 10 m/s stream is let in mid-stream with no clamp; validation of unknown routes, bad ranges and an unreachable dead end. Four-leg and M2.6 re-published in `docs/evidence/m3.2.8b-mandatory.md`. **Verified on Windows headless only** — no Qt build locally, and the two shell edits were not compiled here; Linux and Windows CI pending.
 
 **A36–A39** (M3.2.8c, D90): `tests/lane_change_tests.cpp` (`lanechange.*`). A36: a changer at 10 m/s, 80 m short of its dead end beside a 10 m/s stream, goes in before slowing to walking pace, with no clamp. The forcing is the same run without the parameter, where it comes to a stand. A37: in that run some vehicle holds cooperatively (asserted first), and no stream vehicle brakes below −3 m/s². A38: 160 m short of its dead end, refused and outside its look-ahead, no cooperative hold. A39: no moving hold without the parameter, and a copied state replays exactly with it. The T-junction archived-metadata tests restore the pre-D90 behaviour hash only when the new field is the sole change and the fixture has no spans (`sweep::restoreArchivedBehaviour`). **Linux/GCC headless only.**
+
+**A40–A46** (M3.2.8c, D93): `tests/downstream_decision_tests.cpp` (`routeless.*`), on a drawing
+where a two-lane entry Link A feeds a two-lane Link D whose lanes leave for L and R, with a
+decision on D of 60:40.
+- **A40:** the compiled volumes are 360 to L and 240 to R exactly. The forcing: some volume
+  rides a stub.
+- **A41/A42:** every span starts at or past D on both routes. The forcing: the stub and its
+  target start side by side on A, so unclipped spans would reach back. Disabling the clip fails
+  this test. On a run: no arrival on a stub, no clamp, both movements carried, and every change
+  past A's 100 m.
+- **A43:** with a one-lane entry into D lane 1, no chain touches D lane 2, `ROUTING_DECISION_LANE_FIXED`
+  is reported, and all 600 go to L.
+- **A44:** the three projects, seeds 42–44 with every diagnostic, plus `--events 42`, are
+  byte-identical before and after. All 71 CTest entries pass.
+- **A45:** a copied state replays identically.
+- **A46:** A36 on D. Without the parameter the changer stands and is then let in with no clamp;
+  with it, it goes in before it stops.
+- **Changed with D93, not regenerated:** `routeless.a_placed_decision_splits_by_destination`.
+  The four-leg pocket decision now holds 3:1 exactly, with no South leak and no advisory; it was
+  East 0.625, North 0.125, South 0.25.
+- **Windows/MSVC only.**
 
 **A24 partial** (M3.2.4a, D60): `tests/right_of_way_editor_tests.cpp` (`rightofway_editor.*`) — lane-pair expansion, one-step edits, take over/restore, delete keeping shared lines, drawn geometry equals the resolver's, every right-of-way code in en/th; `tests/priority_ui_tests.cpp` (`priority-ui`) — add via dialog, Enter-to-edit, Undo, take over/restore, Problems → area, Run note, Thai. M3.2.4b (D61): `tests/priority_canvas_tests.cpp` (`priority-canvas`) — the Conflict area tool picks and cycles by pointer and `P`, each one Undo step, Select still picks the Link; a waiting-line drag along its lane is one step; the two sides are told apart; Save and reopen keep every edit and still run. M3.2.5b (D63): the same suite sets Stop from the dialog, one Undo step, listed and drawn, disabled for an undetermined area, and kept through Save and reopen. M3.2.6c (D65): `tests/queue_counter_ui_tests.cpp` (`queue-counter-ui`) — the Queue counter tool builds a counter from stop lines and a lane place and commits it on Enter as one Undo step (Esc, Backspace, a refused click), the tab adds one over heads selected by keyboard, renames and deletes it (each one step), the Results tab lists the authored row in place of the derived one with the same row count and restores it on delete, Thai headers, and Save and reopen keep, draw and still run it. A24 stays partial until the Windows run and the owner's attempt below. A18–A23, A25–A26 need M3.2.5+ |
 | Linux headless/desktop and Windows native CI | Pending |

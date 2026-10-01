@@ -18,8 +18,9 @@ repository, or any package until the owner decides.
 
 - **Gates:** M1 usability accepted by owner ruling (D49; `docs/M1_ACCEPTANCE.md` keeps what the
   attempt did not show). M2's gate passed by the owner's judgment (D51–D53, `docs/M2_GATE.md`).
-  **M0 plausibility is still open.** M3.2.2a–c, M3.2.3a–c, M3.2.4a–c, M3.2.5a–b, M3.2.6a–c, M3.2.7a–c, M3.2.8a and M3.2.8b are done (D54–D71): authored crossings and merges run on
-  the admission solver with Stop/Yield, all authorable in the editor, where conflict areas now appear automatically (passive until set, D68); queue counters are place-based and authorable; the T-junction evidence (fixture, controlled cases, sweeps, signal composition) is in; a driver who cannot stop at its line goes instead of being clamped (M3.2.8a, `docs/M3_8_CONTRACT.md`); volume enters on every entry lane and a vehicle changes lanes before its dead end, with one cooperation rule (M3.2.8b, Windows headless only); the owner exercise is M3.2.7d (owner, Windows); M3.2.8b replays on Linux/GCC; M3.2.8c steps 1–3 measured the lane changes and the South/North right-turn rise (D87, `--lane-changes`, `--segment-times`, `--stop-lines`), and step 4 (`--arrival-phases`) showed that rise was a five-seed sample: over 40 seeds what M3.2.8b costs is the East approach and +2.4 s network mean (D88; before/after per movement needs 40 seeds); step 5 placed that East rise in the left-turn dead-end waits on the entry Link (D89); cooperative braking with look-ahead (D90, A36–A39, `maxDecelerationCooperativeBraking`) halved those waits and recovered about half the network cost; next — `docs/NEXT.md`.
+  **M0 plausibility is still open.** M3.2.2a–M3.2.8b are done (D54–D71) and M3.2.8c is under
+  way (D87–D90); the owner exercise M3.2.7d is open. What each step found and what is next live
+  in `docs/NEXT.md` and `docs/PROGRESS.md` — not here, so there is one copy.
 - **Engine:** C++ core, reduced Wiedemann-inspired car-following (unvalidated), fixed-time signals,
   derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50),
   authored crossing and merge areas admitted by gap time/headway with whole-area reservation

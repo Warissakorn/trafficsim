@@ -53,7 +53,15 @@ void appendLaneChanges(const Network& network, const RuntimeSections& table, con
         return lanes.emplace(laneId, std::move(found)).first->second;
     };
     std::vector<std::vector<Stretch>> routes;
-    for (const auto& route : family) routes.push_back(stretches(table, sections, route.segments));
+    std::vector<double> from; // where each route reaches its family's decision Link (D93 rule 5)
+    for (const auto& route : family) {
+        routes.push_back(stretches(table, sections, route.segments));
+        double at = 0;
+        if (!route.after.empty())
+            for (const auto& stretch : routes.back())
+                if (stretch.section->linkId == route.after) { at = stretch.at; break; }
+        from.push_back(at);
+    }
     for (std::size_t s = 0; s < family.size(); ++s) {
         if (!family[s].stub) continue;
         const auto first = spans.size();
@@ -63,6 +71,7 @@ void appendLaneChanges(const Network& network, const RuntimeSections& table, con
             for (const auto& a : routes[s])
                 for (const auto& b : routes[t]) {
                     if (a.section->linkId != b.section->linkId) continue;
+                    if (a.at < from[s] - 1e-9 || b.at < from[t] - 1e-9) continue; // before the decision
                     const auto& la = laneOf(a.section->laneId);
                     const auto& lb = laneOf(b.section->laneId);
                     if (!la.link || !lb.link || (la.index + 1 != lb.index && lb.index + 1 != la.index)) continue;

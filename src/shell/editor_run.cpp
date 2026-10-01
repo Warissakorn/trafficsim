@@ -73,7 +73,7 @@ void EditorWindow::toggleRun(){
 }
 void EditorWindow::stepRun(){
     if(!prepareRun())return;
-    if(runState_.tick<totalTicks(*runState_.scenario)){runState_=stepSimulation(runState_);observeRun();}
+    if(runState_.tick<totalTicks(*runState_.scenario)){runState_=stepSimulation(std::move(runState_));observeRun();}
     if(runState_.tick>=totalTicks(*runState_.scenario))runTimer_.stop();
     canvas_->setRunFrame(runState_);refreshRun();
 }
@@ -84,7 +84,7 @@ void EditorWindow::tickRun(){
     int budget=200;
     while(runCredit_>=runState_.scenario->timeStep && runTimer_.isActive() && budget-->0) {
         runCredit_-=runState_.scenario->timeStep;
-        runState_=stepSimulation(runState_);observeRun();
+        runState_=stepSimulation(std::move(runState_));observeRun();
         if(runState_.tick>=totalTicks(*runState_.scenario))runTimer_.stop();
     }
     runCredit_=std::min(runCredit_,5.);

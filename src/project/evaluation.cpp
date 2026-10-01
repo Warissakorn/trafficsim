@@ -184,6 +184,19 @@ Json laneChangeJson(const LaneChangeReport& r) {
     }
     return j;
 }
+Json waitCauseJson(const WaitCauseReport& r) {
+    Json j;
+    j["validated"] = false;
+    j["measure"] = "dead-end waits by the cause found at each wait's start, by the movement a vehicle arrived on; one run";
+    j["rows"] = Json::array();
+    for (const auto& row : r.rows) {
+        Json causes = Json::object();
+        for (std::size_t c = 0; c < kWaitCauses; ++c)
+            causes[waitCauseName(static_cast<WaitCause>(c))] = {{"waits", row.waits[c]}, {"seconds", row.seconds[c]}};
+        j["rows"].push_back({{"movement", row.name}, {"causes", causes}});
+    }
+    return j;
+}
 Json segmentTimeJson(const SegmentTimeReport& r) {
     Json j;
     j["validated"] = false;

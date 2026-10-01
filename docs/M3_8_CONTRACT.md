@@ -225,6 +225,54 @@ parameter (2026-10-01).
 - Vissim also has a cooperative lane change, in which a vehicle moves out of the way. That is not
   modelled.
 
+### Downstream routing decisions (M3.2.8c, D93 — implemented 2026-10-01, Windows only)
+
+The owner's ruling (2026-10-01): a routing decision placed on a Link **D** downstream of the
+entry Link works like an entry decision. This is Vissim's way, as in D71. Before D93 such a
+decision was lane-fixed: a vehicle drew only among the destinations its lane reaches, so the
+proportions shifted towards what the lanes allow. It is `Walk::decideDownstream` in
+`routeless.cpp` now; rule 4 is `unkeptStubs`, and rule 5 is `FamilyRoute::after`. Free walk with no
+decision stays lane-fixed. A vehicle with no destination has no mandatory change, and anything
+else is discretionary, a later row.
+
+1. **Where it acts.** The decision acts when a vehicle comes onto D, as in M2.1: its station along
+   D is not modelled.
+2. **The draw.** A lane of D **serves** a destination when it has a full chain to it, or a kept
+   stub (rule 4). A vehicle arriving on lane k draws among the destinations lane k serves, by
+   their relative flows. When every lane that receives vehicles serves every destination, the
+   typed proportions hold exactly, whatever the arrival lanes. Otherwise they hold exactly for
+   the lanes that serve all of them and shift, as today, on the others.
+3. **The family.** One destination of one downstream decision, within one input's walk, is a
+   family. Its routes are each walked prefix up to D, followed by the destination's chain from
+   the arrival lane on D (`routeLaneFamily`, full or stub). Every route of a family starts on the
+   input's entry Link. Movement reporting, which groups by (first Link, last Link), is therefore
+   unchanged: a vehicle that changes lanes still arrives under its own origin.
+4. **A kept stub.** A stub on lane k of D is kept only when a run of neighbouring lanes of D, each
+   with a route of the same family, leads from it to a **full** route of the family, as in §2.
+   - A target route's prefix may differ from the stub's, since a change maps route distances on
+     D. No route is synthesised for a lane that no walk from the entry reaches: a target needs
+     the same entry Link, or the movement would be misreported.
+   - When no stub is kept, lane k keeps today's lane-fixed draw for that destination, and the
+     decision gets the advisory `ROUTING_DECISION_LANE_FIXED`.
+5. **Where it may change.** Only at or after its arrival on D. The vehicle does not know its
+   destination before the decision. `appendLaneChanges` would also find spans on Links the
+   prefixes share (two prefixes on adjacent lanes of the entry Link, say), so spans that end
+   before the stub route reaches D are dropped, and one that starts before D is clipped to it.
+   The dead end is the last span end that remains, as in §2.
+6. **Behaviour unchanged.** Rules 1–5, the same-tick order, the instantaneous change, the
+   Stop/zone exclusions, waiting cooperation and cooperative braking are exactly the ones above.
+   There is no new parameter. Core gets ordinary spans and dead ends and sees nothing new.
+7. **Limits, recorded and not modelled.**
+   - Because the decision station is not modelled, a change may begin at D's upstream end even
+     when the decision is drawn further along.
+   - Stubs add paths, and the 256-path limit (`ROUTELESS_TOO_MANY_PATHS`) still applies.
+   - An entry decision followed by a downstream one: a vehicle that changes on an entry stub
+     joins the lowest-slot full route of the entry family (§2's rule), and that route already
+     carries one downstream destination. That vehicle therefore skips the downstream draw, and
+     those proportions shift. This is §2's recorded limit, now reached through a decision.
+   - A downstream stub vehicle that never finds a gap waits at its dead end and blocks its lane,
+     as an entry stub does.
+
 ### Replay
 
 There is no RNG draw and nothing new in `SimState`. A change rewrites the vehicle's

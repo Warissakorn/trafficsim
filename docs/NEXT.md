@@ -66,6 +66,20 @@ the Windows time in the next CI run; do not infer it from the Linux number.
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
 **Done:**
+- **Lane changes at a downstream routing decision (D93 contract, D94 implementation,
+  2026-10-01, Windows/MSVC only).** A decision past the entry Link draws by destination, and a
+  lane that cannot reach one becomes a stub that changes lanes on the decision's Link, and only
+  there. A40–A46 are in `tests/downstream_decision_tests.cpp`. Every shipped project's output is
+  byte-identical. The four-leg pocket-decision test now holds 3:1 exactly, by the contract.
+- **Why the remaining waits wait (D92, 2026-10-01, Windows/MSVC only).** `--wait-causes`
+  (`src/eval/dead_end_waits.hpp`) classifies each dead-end wait at its start. Over seeds 42–81
+  at 3 m/s², **93% of the 4,222 s (96 of 118 waits) start beside a standing target lane**, a
+  red or a queue, which no cooperation rule reaches; 7% (309 s) start beside a moving stream.
+  East → South is 1,925 s of 2,067. Every waiting vehicle had stood in its own lane's queue
+  first, so that does not separate waits. `maxDecelerationCooperativeBraking` 2/3/4 moves only
+  the moving-stream share. East → West is +1.1 ± 0.9 / −0.1 ± 0.1 s against 3, and clamps do
+  not rise (`docs/evidence/m3.2.8c-wait-causes.md`). MSVC reproduces D90's GCC numbers at 3.
+  The default stays 3.
 - **Cooperative braking with look-ahead (D90, 2026-10-01, Linux only; contract §2, A36–A39).**
   A stub vehicle still moving is helped once its dead end governs its car-following. The helper
   brakes at no more than `maxDecelerationCooperativeBraking` (3 m/s², default behaviour; absent
@@ -108,21 +122,29 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — pick one, one system (M3.2.8c):**
-1. **Why 43 East → South vehicles still wait (measurement, no behaviour change).** Over seeds
-   42–81, classify each remaining dead-end wait by the state at its start: the target lane
-   standing (at a red, or in a queue), a stream no helper could slow at 3 m/s², or the changer
-   stopped behind its own lane's queue before its look-ahead began. Add the smallest diagnostic
-   (eval reads snapshots only; it may include only `core/types.hpp`), with a test whose forcing
-   is asserted first. Measure whether `maxDecelerationCooperativeBraking` at 2/3/4 m/s² moves
-   the waits, East → West and clamps. That sensitivity is evidence, not a calibration. The
-   default stays 3 unless the owner rules otherwise.
-2. **Or the next row: lane changes after the entry Link.** Free-walk paths and placed decisions
-   are still lane-fixed (SIMULATION.md, "No lane changing downstream"). Contract and rows first.
-3. Still open from 8b: callgrind the M2.6 one-hour run (baseline 4.35G, D70) for
-   `decideLaneChanges`, `courtesyHolds` (now also run for moving changers) and the span rebuild.
-   **Valgrind is not installed in the WSL Ubuntu here** (`sudo apt install valgrind` is the
-   owner's call).
+**Next session — pick one, one system (M3.2.8c).** D93 is in (D94), so a routing decision
+anywhere now holds its proportions where the lanes are served.
+1. **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
+   decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
+   watch pocket-lane vehicles change towards their turn. Problems shows no LANE_UNSERVED.
+   Verified headless and in the Debug test suite on Windows only; nothing was looked at.
+2. **The next M3.2.8c row, contract and rows first:** discretionary changes, visibility at
+   areas, or a between-lanes state. Each needs an owner ruling before rows.
+3. **Linux replay of D91–D94:** the CI run is the evidence. No WSL here.
+
+**Not booked, for later sessions:**
+- **Split targetStanding (measurement only):** is the target lane standing at its own red, or
+  in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row needs the
+  split. That would be one that changes lanes earlier, before the queue reaches the stub's
+  span. No row needs it yet.
+- **Engine cost after D90 (from 8b):** a callgrind of the M2.6 hour on Linux/GCC 15.2 (another
+   machine, 2026-10-01) put lane-change work at ≈3% (`courtesyHolds` 1.9%, `decideLaneChanges`
+   1.0%) — not where the time goes. The 9.1% state copy is gone (D91). Still open: a
+   **same-compiler** callgrind at `b472e05`, `f9964f1` and HEAD before any new baseline replaces
+   4.35G (the 4.01G measured was GCC 15.2 against D70's 13.3, not comparable). Next candidates by
+   that profile: the per-tick span rebuild (8.5%, `appendSpans` 6.8%) and `observe` (20%) —
+   measure whether `observe` is the per-line walk over every vehicle or `queueLength` and its
+   per-line `behind` allocation before changing it.
 
 **The owner looks at D90 on Windows:** run M2.6 (Run in the desktop) and watch the East
 approach. Left-turners on lanes 2/3 should slip into lane 1 as they approach the dead end. The
@@ -130,7 +152,8 @@ lane-1 vehicle behind slows to let them in, without stopping dead, and the long 
 the dead end should be rarer. Verified on Linux headless only.
 
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
-1. Lane changes after the entry Link (item 2 above).
+1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the
+   decision station is not modelled (contract §2, rule 7).
 2. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
    instantaneous, which the contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
@@ -180,6 +203,12 @@ no gate result is inferred.
   after the D70 pass: the M2.6 template's one-hour run is 4.35G instructions, median 0.45 s wall
   (0.44–0.66 s, five runs; one outlier). What is left there: `stepSimulation` 66%, `observe` 26% (mostly the
   per-line queue walk itself), `compileDocument` 4%.
+- **Linux/WSL build (not done; WSL is not installed on the owner's Windows machine):** on the
+  machine that measured it, a one-file edit waited 150 s, 134 s of it linking the Debug
+  `trafficsim-tests` (101 MB) on `/mnt/c`, and an unbounded `-j` hung a 3 GB WSL. There: a build
+  tree on ext4 via an untracked `CMakeUserPresets.json`, `CMAKE_JOB_POOLS=link=1` with
+  `CMAKE_JOB_POOL_LINK=link`, `-j2`, and `--target` only what the change needs; lld only if
+  that is not enough. Measure before and after.
 - **`ctest -j` wall time:** `m26study` was split on 2026-09-30 (its merge case, which runs the
   hour twice, is `m26study_merge`); Linux Debug `-j4` went 35.9 s → 16.3 s median with the
   repaint fix. The longest test is now `m26study_merge` (≈6 s). Add every new test group to
