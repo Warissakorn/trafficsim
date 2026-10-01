@@ -5,6 +5,7 @@
 #include "../eval/segment_times.hpp"
 #include "../eval/stop_lines.hpp"
 #include "../eval/arrival_phases.hpp"
+#include "../eval/dead_end_waits.hpp"
 #include "json.hpp"
 #include <filesystem>
 
@@ -36,6 +37,8 @@ Json segmentTimeJson(const SegmentTimeReport&);
 Json stopLineJson(const StopLineReport&);
 // M3.2.8c step 4: cycle phase of segment entries and first stops as JSON (CLI --arrival-phases).
 Json arrivalPhaseJson(const ArrivalPhaseReport&);
+// M3.2.8c (D92): each movement's dead-end waits by cause, count and seconds (CLI --wait-causes).
+Json waitCauseJson(const WaitCauseReport&);
 // The report as CSV. The first line states what the numbers are not.
 std::string movementCsv(const MovementReport&);
 }

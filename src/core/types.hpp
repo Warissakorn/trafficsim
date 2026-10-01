@@ -301,9 +301,20 @@ struct ValidationIssue {
     std::string code, path;
     bool operator==(const ValidationIssue&) const = default;
 };
+// Walking pace: a stub vehicle this slow, at its dead end, is waiting for a gap (cooperation).
+inline constexpr double kWaitingSpeed = 0.5;
 // M3.2.8b, cooperation's "who is waiting" (M3_8_CONTRACT.md §2): a vehicle on a stub route at
 // walking pace, as close to its dead end as car-following brings it. Declared with the contract,
 // not in lanes.hpp, because evaluation (M3.2.8c step 1) reports the same waits and may see only
 // this header: one definition for the engine and for the report. Defined in lanes.cpp.
 bool waitingAtDeadEnd(const ScenarioIndex&, std::size_t route, const Vehicle&, const DriverBehaviour&);
+// M3.2.8c (D90/D92), for the same reason -- cooperative braking and the wait-cause diagnostic:
+// - deadEndGoverns: a stub vehicle's look-ahead -- its dead end, taken as a standing obstacle,
+//   already governs its car-following. Cooperative braking helps a moving changer only then.
+// - laneChangeTargetOf: the first span target a vehicle with this front and rear may change to,
+//   in the index's order (fewest changes left, then the lower slot); null inside no span.
+// - mappedOnto: a distance along a span's source, as a distance along its target.
+bool deadEndGoverns(const ScenarioIndex&, std::size_t route, const Vehicle&, const VehicleType&, const DriverBehaviour&);
+const RouteLaneChange* laneChangeTargetOf(const ScenarioIndex&, std::size_t route, double front, double rear);
+double mappedOnto(const RouteLaneChange&, double at);
 }

@@ -8,6 +8,35 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-01 — M3.2.8c: why the remaining dead-end waits wait (D92)
+
+NEXT.md option 1, a measurement with no engine behaviour change.
+- `--wait-causes` (`src/eval/dead_end_waits.{hpp,cpp}`, `DeadEndWaitAccumulator`) decides each
+  dead-end wait's cause once, from the snapshot that starts it: noMovingApproach, outsideSpan,
+  targetStanding, movingStream (definitions in the header and in D92).
+- A wait is `waitingAtDeadEnd`, so its seconds reconcile with `--lane-changes`. The tests check
+  that reconciliation, and it holds on every M2.6 movement.
+- Eval may include only `core/types.hpp`, so three lane helpers moved there beside
+  `waitingAtDeadEnd`, one definition each: `deadEndGoverns` (cooperative braking's look-ahead,
+  previously inline in `courtesyHolds`), `laneChangeTargetOf` and `mappedOnto` (previously
+  `targetOf`/`mapped` in `lanes.cpp`), plus `kWaitingSpeed`. The default CLI output is
+  byte-identical (D91's recipe).
+- `<array>` joins the architecture check's reviewed standard headers (a fixed-size container,
+  no I/O or state), for the per-cause counts.
+- The three-lane test road moved to `tests/lane_fixture.hpp`, shared by the lane-change and
+  wait-cause tests.
+
+**Finding (MSVC Release, seeds 42–81, 3 m/s²; `docs/evidence/m3.2.8c-wait-causes.md`).**
+- 93% of the 4,222 s of waiting (96 of 118 waits) starts beside a standing target lane, and
+  7% beside a moving stream.
+- The first definition tried for NEXT's "stopped behind its own lane's queue before its
+  look-ahead began" (stood while the dead end did not yet govern) took all 118 waits. The
+  stricter one (never moved inside its look-ahead) takes none. Every waiting vehicle did both,
+  so own-queue standing is common to all and is not a cause. A test holds that.
+- 2/3/4 m/s² moves only the moving-stream share. No delay change reaches two standard errors,
+  and clamps do not rise.
+- MSVC reproduces D90's GCC 15.2 numbers exactly at 3 m/s².
+
 ## 2026-10-01 — stepSimulation takes the previous state over (D91)
 
 A callgrind of the M2.6 hour (Linux/GCC 15.2, another machine) put 9.1% in `SimState`'s value
@@ -287,48 +316,6 @@ Owner UX pass (five complaints). Verified on Linux (WSL2, Qt 6.10, offscreen) an
   UI test moved to Ctrl+right (`tests/ui_gestures.hpp`) and each tool gained an assertion
   that a left click leaves the document unchanged. Hints in both catalogs say the rule.
 
-## 2026-09-29 — D83: editor polish from owner feedback
-
-- **Latin digits everywhere.** The workspace set `QLocale::c()` on the spin boxes that existed at
-  construction; a dialog built later (the Link dialog's lane count, the range dialog, every
-  signal/input/decision dialog, `QInputDialog`) took the system locale, which on the owner's
-  Windows shows Thai digits. `EditorWindow` now sets the default locale and its own locale to C
-  first thing (the window has already resolved the system locale by its constructor body, and
-  children inherit the window's), and `main` sets the default before any widget. Test forces
-  `ar_EG`, not `th_TH`: CLDR's default numbering for Thai is Latin, so it would force nothing.
-- **Controls 28 → 24 px.** 1 border + 2 padding + 18 content; the 2 px focus/invalid border
-  still takes 1 px of padding back. Tabs, dock titles, menu items, header sections, list/table
-  items and table rows follow the same padding. Toolbar icon buttons stay 24 px / toolbar 32 px.
-  Measured (Linux Qt 6.10, offscreen): a styled spin box adds 3 px on top of a 16 px text floor,
-  so it was already 31 px against the other controls' 28 before this change; Qt 6.5.3 (CI) does
-  not add them. The spin box padding is therefore measured once at runtime (what is left of 24 px
-  after an unpadded spin box, split top/bottom, focus/invalid 1 px less each side).
-- **Taper follows the tab (D83).** A lane-tab drag on a Connector that makes a one-lane
-  difference sets `laneChangeSide` to the edge the tab changed: from equal counts the far tab's
-  lane is the taper (far side), the kerb tab's is the kerb default; from a two-lane difference
-  the dragged edge pairs up and the other edge keeps the taper. A count typed in the Inspector
-  says nothing about an edge and keeps the kerb default. `resizeConnectorEdges`/
-  `changeConnectorRange` take `fromTab`; the canvas preview passes it too, so the preview is the
-  commit. Schema unchanged (17). The middle tab's drag step was the mean of the outer path's two
-  end widths; with the taper now able to be the outer path (zero at one end) a one-lane drag
-  dropped two lanes, so the step is the full lane width.
-- **Nothing lags behind a move.** Lane tabs are computed from the committed document, not the
-  drag preview, so they stayed at the old place during a move. `movingGeometry()` hides them
-  (and skips computing them) while a move is visibly under way; a body, group or copy move also
-  hides the geometry points. A vertex/end drag keeps its grips, which already follow the pointer.
-- **Pointer.** Hover over a road or a conflict area stays the arrow (was open hand / pointing
-  hand). Once a drag passes the start distance the pointer becomes an arrow with a small hand
-  beside it (drawn cursor, `moveCursor()`); panning keeps the closed hand; a lane-tab drag keeps
-  its resize cursor.
-- **Direction on the selection outline.** The white mid-road triangles on Links and Connectors
-  are gone. A selected object's outline carries filled arrowheads on its two long edges, one per
-  ~72 screen px (at least one per edge), in travel order — Link boundaries run with the Link,
-  Connector rails from source to target. `drawRouteArrows` now shares the arrowhead helper.
-- Verified in WSL (Linux, Qt 6.10, offscreen): desktop build, 69/69 CTest, `check`. Not run on
-  Windows MSVC; that is the CI job and the owner review.
-
----
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -448,6 +435,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D92 | 2026-10-01 | **A dead-end wait's cause is decided once, at its first snapshot, in the order noMovingApproach (never moved at ≥ walking pace inside a span and its look-ahead on this route), outsideSpan, targetStanding (alongside or nearest-behind target vehicle below walking pace, placed by its front), movingStream. `maxDecelerationCooperativeBraking` stays 3: the 2/3/4 sweep is evidence, not calibration** | The question was whether more cooperation would help. Own-queue standing was tried as a cause and took all 118 waits, so it does not separate them; never-helped takes none. What separates is the target lane at the wait's start: 93% of wait time is beside a standing lane, which no helper can open, and the parameter moves only the other 7% | A run where noMovingApproach or outsideSpan is not ~0, or where a front-only placement misreads a body straddling a segment boundary at the place |
 | D91 | 2026-10-01 | **`stepSimulation` has `SimState&&` overloads that take the previous state over; the `const&` ones copy and forward. Hot loops step with `std::move`** | The value copy was 9.1% of an M2.6 hour (callgrind, GCC 15.2) and only fed a clear and a rebuild. Moving keeps the value API and output byte-identical (MSVC, 3 projects × 3 seeds + events); M2.6 run 625 → 557 ms median. Copying only `vehicles`/`inputs` field by field was rejected: a later `SimState` field would be silently dropped | A step that reads a field of the previous state after it is overwritten — the clock and Stop service are taken before the move for that reason |
 | D90 | 2026-10-01 | **Cooperative braking (M3.2.8c): a stub vehicle still moving is helped once its dead end governs its car-following; the helper is the nearest target-lane vehicle with `maxDecelerationCooperativeBraking` (3 m/s², default behaviour) that can fall in behind it, braking behind a virtual leader at the changer's speed, bounded by that deceleration, with no cap; absent the field, only D71 runs** | The owner chose the look-ahead ("when it must begin braking for its dead end", no length parameter) and Vissim's name and 3 m/s². D89 placed M3.2.8b's cost in the dead-end waits. Measured over seeds 42–81: waits 9,034 → 4,222 s, East → West −2.3 ± 0.6 s, network mean +2.4 → +1.3 ± 0.5 s against `b472e05`, clamps not up. The look-ahead is the model's own reaction, because a comfortable-stop formula fired only as the changer stopped (`docs/evidence/m3.2.8c-cooperative-braking.md`) | Clamps or held-through-green rising with it, or a measured cooperative-braking deceleration that differs from 3 m/s² |
 | D89 | 2026-10-01 | **The next M3.2.8c system is cooperation with a deceleration parameter and look-ahead; its success measure is East → South dead-end wait seconds and East → West delay against `b472e05`, seeds 42–81** | Over 40 seeds the East-approach rise accrues on the entry Link the left-turn stubs dead-end on. Per seed it is +0.1 + 0.047 s per second of East → South dead-end wait (r = 0.56), which gives the whole +6.0 s at the mean wait and none without waits. West is the same at a third of the size (`docs/evidence/m3.2.8c-east-approach.md`). Left-turners change at the first tick allowed, so it is not `laneChangeDistance` (D87) | A run where the waits fall but East → West delay does not, which would mean the courtesy hold, not the wait, costs the time |

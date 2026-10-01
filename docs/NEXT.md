@@ -66,6 +66,15 @@ the Windows time in the next CI run; do not infer it from the Linux number.
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
 **Done:**
+- **Why the remaining waits wait (D92, 2026-10-01, Windows/MSVC only).** `--wait-causes`
+  (`src/eval/dead_end_waits.hpp`) classifies each dead-end wait at its start. Over seeds 42–81
+  at 3 m/s², **93% of the 4,222 s (96 of 118 waits) start beside a standing target lane**, a
+  red or a queue, which no cooperation rule reaches; 7% (309 s) start beside a moving stream.
+  East → South is 1,925 s of 2,067. Every waiting vehicle had stood in its own lane's queue
+  first, so that does not separate waits. `maxDecelerationCooperativeBraking` 2/3/4 moves only
+  the moving-stream share. East → West is +1.1 ± 0.9 / −0.1 ± 0.1 s against 3, and clamps do
+  not rise (`docs/evidence/m3.2.8c-wait-causes.md`). MSVC reproduces D90's GCC numbers at 3.
+  The default stays 3.
 - **Cooperative braking with look-ahead (D90, 2026-10-01, Linux only; contract §2, A36–A39).**
   A stub vehicle still moving is helped once its dead end governs its car-following. The helper
   brakes at no more than `maxDecelerationCooperativeBraking` (3 m/s², default behaviour; absent
@@ -108,17 +117,14 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — pick one, one system (M3.2.8c):**
-1. **Why 43 East → South vehicles still wait (measurement, no behaviour change).** Over seeds
-   42–81, classify each remaining dead-end wait by the state at its start: the target lane
-   standing (at a red, or in a queue), a stream no helper could slow at 3 m/s², or the changer
-   stopped behind its own lane's queue before its look-ahead began. Add the smallest diagnostic
-   (eval reads snapshots only; it may include only `core/types.hpp`), with a test whose forcing
-   is asserted first. Measure whether `maxDecelerationCooperativeBraking` at 2/3/4 m/s² moves
-   the waits, East → West and clamps. That sensitivity is evidence, not a calibration. The
-   default stays 3 unless the owner rules otherwise.
-2. **Or the next row: lane changes after the entry Link.** Free-walk paths and placed decisions
+**Next session — pick one, one system (M3.2.8c).** Cooperation is spent as a lever on M2.6
+(D92): what is left of the dead-end waits is the target lane's own red and queue.
+1. **The next row: lane changes after the entry Link.** Free-walk paths and placed decisions
    are still lane-fixed (SIMULATION.md, "No lane changing downstream"). Contract and rows first.
+2. **Or split targetStanding (measurement only):** is the target lane standing at its own red,
+   or in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row
+   needs the split. That would be one that changes lanes earlier, before the queue reaches
+   the stub's span. No row needs it yet.
 3. Engine cost after D90 (from 8b): a callgrind of the M2.6 hour on Linux/GCC 15.2 (another
    machine, 2026-10-01) put lane-change work at ≈3% (`courtesyHolds` 1.9%, `decideLaneChanges`
    1.0%) — not where the time goes. The 9.1% state copy is gone (D91). Still open: a

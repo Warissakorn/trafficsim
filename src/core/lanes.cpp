@@ -22,11 +22,6 @@ std::size_t slotOf(const Scenario& s, const std::string& id) {
     const auto it = std::find_if(s.routes.begin(), s.routes.end(), [&](const auto& r) { return r.id == id; });
     return static_cast<std::size_t>(it - s.routes.begin());
 }
-// Distance along the target for a distance along the source, by the span's linear map.
-double mapped(const RouteLaneChange& c, double at) {
-    const double from = c.fromEnd - c.fromStart;
-    return from > 0 ? c.toStart + (at - c.fromStart) * (c.toEnd - c.toStart) / from : c.toStart;
-}
 // Between a zone's waiting line (or entry, for a major route) and its exit, anywhere along
 // [rear, front]: no lane change there, on either route (contract §2, rule 2).
 bool inConflictArea(const ScenarioIndex& index, std::size_t route, double rear, double front) {
@@ -67,17 +62,24 @@ std::size_t slotOfId(const std::vector<Vehicle>& vehicles, std::uint64_t id) {
                                      [](const Vehicle& v, std::uint64_t at) { return v.id < at; });
     return it != vehicles.end() && it->id == id ? static_cast<std::size_t>(it - vehicles.begin()) : vehicles.size();
 }
-// The first target a vehicle on `route` with this front and rear may change to, in the index's
-// order (fewest changes left, then the lower slot); null when it is inside no span.
-const RouteLaneChange* targetOf(const ScenarioIndex& index, std::size_t route, double front, double rear) {
+}
+double mappedOnto(const RouteLaneChange& c, double at) {
+    const double from = c.fromEnd - c.fromStart;
+    return from > 0 ? c.toStart + (at - c.fromStart) * (c.toEnd - c.toStart) / from : c.toStart;
+}
+const RouteLaneChange* laneChangeTargetOf(const ScenarioIndex& index, std::size_t route, double front, double rear) {
     for (const auto& change : index.laneChangesOfRoute[route]) {
         if (index.remainingOfRoute[change.target] >= index.remainingOfRoute[route]) break;
         if (rear >= change.fromStart - 1e-9 && front <= change.fromEnd + 1e-9) return &change;
     }
     return nullptr;
 }
-// Walking pace: a stub vehicle this slow, at its dead end, is waiting for a gap (cooperation).
-constexpr double kWaitingSpeed = 0.5;
+bool deadEndGoverns(const ScenarioIndex& index, std::size_t route, const Vehicle& vehicle, const VehicleType& type,
+                    const DriverBehaviour& behaviour) {
+    if (index.remainingOfRoute[route] == 0) return false;
+    const double toDeadEnd = index.deadEndOfRoute[route] - vehicle.distance;
+    return followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour,
+                                 Leader{toDeadEnd, 0}).mode != FollowingMode::free;
 }
 bool waitingAtDeadEnd(const ScenarioIndex& index, std::size_t route, const Vehicle& vehicle,
                       const DriverBehaviour& behaviour) {
@@ -183,7 +185,7 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
         for (const auto& change : index.laneChangesOfRoute[route]) {
             if (index.remainingOfRoute[change.target] >= index.remainingOfRoute[route]) break;
             if (rear < change.fromStart - 1e-9 || front > change.fromEnd + 1e-9) continue;
-            const double at = mapped(change, front), atRear = at - type.length;
+            const double at = mappedOnto(change, front), atRear = at - type.length;
             if (inConflictArea(index, change.target, atRear, at)) continue;
             // Nearest vehicle ahead of and behind the mapped place, over this tick's snapshot and
             // the changes already accepted; anything alongside refuses the change (rule 5).
@@ -237,14 +239,11 @@ std::vector<CourtesyHold> courtesyHolds(const Scenario& s, const ScenarioIndex& 
         if (!waiting) {
             // Cooperative braking: only inside the look-ahead, once its dead end, taken as a
             // standing obstacle, already governs its car-following (contract §2).
-            if (!cooperative) continue;
-            const double toDeadEnd = index.deadEndOfRoute[route] - vehicle.distance;
-            if (followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour,
-                                      Leader{toDeadEnd, 0}).mode == FollowingMode::free) continue;
+            if (!cooperative || !deadEndGoverns(index, route, vehicle, type, behaviour)) continue;
         }
-        const auto* change = targetOf(index, route, vehicle.distance, vehicle.distance - type.length);
+        const auto* change = laneChangeTargetOf(index, route, vehicle.distance, vehicle.distance - type.length);
         if (!change) continue;
-        const double at = mapped(*change, vehicle.distance), atRear = at - type.length;
+        const double at = mappedOnto(*change, vehicle.distance), atRear = at - type.length;
         // Every vehicle behind the target place, nearest first. One alongside is not asked: it is
         // already past. A vehicle in two segments has two spans; its nearer one counts.
         std::vector<std::pair<double, std::uint64_t>> behind;

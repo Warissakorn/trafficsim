@@ -11,7 +11,7 @@ namespace {
 // reviewed set of standard headers. Macro includes and modules fail closed.
 bool check(const std::string& source, const std::filesystem::path& directory) {
     static const std::set<std::string> standard{
-        "algorithm", "cmath", "cstdint", "functional", "limits", "map", "memory", "numbers",
+        "algorithm", "array", "cmath", "cstdint", "functional", "limits", "map", "memory", "numbers",
         "optional", "set", "stdexcept", "string", "utility", "variant", "vector", "type_traits"};
     const std::regex directive(R"(^\s*#\s*(include|include_next)\b.*)");
     const std::regex literal(R"(^\s*#\s*include\s*([<"])([^>"\r\n]+)[>"]\s*(//.*)?$)");

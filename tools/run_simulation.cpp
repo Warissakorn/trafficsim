@@ -12,7 +12,7 @@ using namespace trafficsim;
 // A project run steps the engine itself so the movement evaluation sees every state.
 int runProject(const std::filesystem::path& file, const std::filesystem::path& csvFile,
                const std::filesystem::path& data, std::uint32_t seed, bool laneChanges, bool segmentTimes, bool stopLines,
-               double phaseBin) { // phaseBin 0: no --arrival-phases
+               double phaseBin, bool waitCauses) { // phaseBin 0: no --arrival-phases
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
     const auto document = parseDocument(Json::parse(stream));
@@ -30,6 +30,8 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     if (stopLines) lines.emplace(spec);
     std::optional<ArrivalPhaseAccumulator> phases;
     if (phaseBin > 0) phases.emplace(spec, phaseBin);
+    std::optional<DeadEndWaitAccumulator> waits;
+    if (waitCauses) waits.emplace(spec);
     auto state = createSimulation(snapshot.scenario, seed);
     const auto observe = [&] {
         movements.observe(state);
@@ -37,6 +39,7 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
         if (segments) segments->observe(state);
         if (lines) lines->observe(state);
         if (phases) phases->observe(state);
+        if (waits) waits->observe(state);
     };
     observe();
     const auto ticks = totalTicks(snapshot.scenario);
@@ -55,6 +58,7 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     if (segments) result["segmentTimes"] = segmentTimeJson(segments->report());
     if (lines) result["stopLines"] = stopLineJson(lines->report());
     if (phases) result["arrivalPhases"] = arrivalPhaseJson(phases->report());
+    if (waits) result["waitCauses"] = waitCauseJson(waits->report());
     std::cout << result.dump(2) << '\n';
     return std::cout ? 0 : 1;
 }
@@ -64,7 +68,7 @@ int main(int argc, char** argv) {
         std::uint32_t seed = 42;
         std::filesystem::path data, scenarioFile, eventsFile, projectFile, csvFile;
         bool seedSet = false, laneChanges = false, segmentTimes = false, stopLines = false;
-        bool arrivalPhases = false;
+        bool arrivalPhases = false, waitCauses = false;
         double binWidth = 10;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
@@ -73,20 +77,22 @@ int main(int argc, char** argv) {
                              "Usage: trafficsim-cli [seed] [--seed N] [--data-dir DIR]\n"
                              "       [--scenario FILE] [--events FILE]\n"
                              "       [--project FILE.traffic.json [--csv FILE] [--lane-changes] [--segment-times]\n"
-                             "        [--stop-lines] [--arrival-phases [--phase-bin S]]]\n"
+                             "        [--stop-lines] [--arrival-phases [--phase-bin S]] [--wait-causes]]\n"
                              "Outputs completed-trip diagnostics, not HCM control delay or LOS.\n"
                              "--project adds simulated movement delay and approach queues (M2.5).\n"
                              "--lane-changes adds where lane changes happen and dead-end waits (M3.2.8c).\n"
                              "--segment-times adds each movement's mean time to every segment (M3.2.8c).\n"
                              "--stop-lines adds each signal head's stop-line discharge (M3.2.8c).\n"
                              "--arrival-phases adds the cycle phase of segment entries and first stops (M3.2.8c),\n"
-                             "  in --phase-bin S second bins (default 10).\n";
+                             "  in --phase-bin S second bins (default 10).\n"
+                             "--wait-causes adds each dead-end wait's cause at its start (M3.2.8c).\n";
                 return 0;
             }
             if (arg == "--lane-changes") { laneChanges = true; continue; }
             if (arg == "--segment-times") { segmentTimes = true; continue; }
             if (arg == "--stop-lines") { stopLines = true; continue; }
             if (arg == "--arrival-phases") { arrivalPhases = true; continue; }
+            if (arg == "--wait-causes") { waitCauses = true; continue; }
             if (arg == "--seed" || arg == "--data-dir" || arg == "--scenario" || arg == "--events" ||
                 arg == "--project" || arg == "--csv" || arg == "--phase-bin") {
                 if (++i == argc) throw std::invalid_argument("Missing value for " + arg);
@@ -114,11 +120,12 @@ int main(int argc, char** argv) {
         if (segmentTimes && projectFile.empty()) throw std::invalid_argument("--segment-times needs --project");
         if (stopLines && projectFile.empty()) throw std::invalid_argument("--stop-lines needs --project");
         if (arrivalPhases && projectFile.empty()) throw std::invalid_argument("--arrival-phases needs --project");
+        if (waitCauses && projectFile.empty()) throw std::invalid_argument("--wait-causes needs --project");
         if (binWidth != 10 && !arrivalPhases) throw std::invalid_argument("--phase-bin needs --arrival-phases");
         if (!projectFile.empty()) {
             if (!scenarioFile.empty() || !eventsFile.empty())
                 throw std::invalid_argument("--project cannot be combined with --scenario or --events");
-            return runProject(projectFile, csvFile, data, seed, laneChanges, segmentTimes, stopLines, arrivalPhases ? binWidth : 0);
+            return runProject(projectFile, csvFile, data, seed, laneChanges, segmentTimes, stopLines, arrivalPhases ? binWidth : 0, waitCauses);
         }
         if (scenarioFile.empty()) scenarioFile = data / "scenarios" / "crossing.json";
         const auto loaded = loadScenario(scenarioFile, data);
