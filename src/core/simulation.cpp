@@ -181,11 +181,12 @@ SimState stepSimulation(SimState&& state, double dt) {
     // moves; the rest of the tick then runs on the post-change snapshot, shared by every vehicle.
     // Free without a stub: the scenario then has no span at all.
     if (index.laneChanges) {
-        const auto changes = decideLaneChanges(scenario, index, vehicles, refs, spans, buckets, startService);
+        const auto changes = decideLaneChanges(scenario, index, vehicles, refs, spans, buckets, startService, startTick);
         for (const auto& change : changes) {
             auto& vehicle = vehicles[change.vehicle];
             events.emplace_back(LaneChangeEvent{startTime, vehicle.id, scenario.routes[vehicle.routeIndex].id,
                                                 scenario.routes[change.route].id});
+            vehicle.lastLaneChange = LastLaneChange{startTick, vehicle.routeIndex};
             vehicle.routeIndex = change.route; vehicle.distance = change.distance;
         }
         if (!changes.empty()) {

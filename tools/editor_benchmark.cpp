@@ -67,5 +67,9 @@ int main(int argc, char** argv) {
         canvas.select(first ? network.links.front().id : other.id);
         first = !first;
     }, frames));
+    // Ctrl+A: centre lines only. A readability feature; this row keeps "not slower" measured.
+    canvas.clearSelection(); canvas.setWireframe(true);
+    row("redraw (wireframe)", millis([&] { canvas.redraw(); }, frames));
+    row("hitObjects (wireframe)", millis([&] { (void)canvas.hitObjects(pointer); }, frames));
     return 0;
 }

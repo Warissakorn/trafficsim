@@ -47,7 +47,7 @@ void EditorWindow::buildWorkspace() {
     for(const auto* key:{"editorRecover","editorEmbedCatalogs"})files->removeAction(actions_.at(key));
     menu("editorFileMenu",{"editorNew","editorOpen","editorSave","editorSaveAs","","editorRecover","editorEmbedCatalogs"});
     menu("editorEditMenu",{"editorUndo","editorRedo","","editorRotate","editorDeleteVertex","editorDeleteLink","editorDeleteSelected"});
-    menu("editorViewMenu",{"editorFit","editorSnap","editorToggleBackground","","editorNetworkObjects","editorInspector","editorObjects","editorHistory","","editorFocusCanvas","editorResetLayout"});
+    menu("editorViewMenu",{"editorFit","editorSnap","editorToggleBackground","editorToggleWireframe","","editorNetworkObjects","editorInspector","editorObjects","editorHistory","","editorFocusCanvas","editorResetLayout"});
     menu("editorSimulationMenu",{"editorRun","editorStep","editorReset","editorRunSettings","editorRecheck"});
     menu("editorHelpMenu",{"editorCommandPalette","editorShortcuts"});
     // Menu alternatives keep widget controls reachable even at extreme toolbar widths.

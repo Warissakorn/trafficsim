@@ -25,6 +25,9 @@ struct LaneChangeRow {
     // The repeats by kind, summing to quickRepeats: back to the route the previous change left
     // (A to B to A), right after a mandatory change, or onward to a third route.
     std::uint64_t quickBack{}, quickAfterMandatory{}, quickOnward{};
+    // A53 as D101 rewrote it: changes by choice straight back to the route the previous change
+    // left, within 10 s of it -- a window longer than any hold, so a hold cannot pass it by itself.
+    std::uint64_t returns{};
     bool operator==(const LaneChangeRow&) const = default;
 };
 // One row per movement in the spec's order, then "unfinished" for vehicles still in the network
@@ -40,7 +43,7 @@ public:
     LaneChangeReport report() const;
 private:
     struct Tally { std::uint64_t changes{}, unplaced{}; std::vector<double> before, at; double wait{}, run{}, longest{};
-                   std::uint64_t discretionary{}, quickRepeats{}, quickBack{}, quickAfterMandatory{}, quickOnward{};
+                   std::uint64_t discretionary{}, quickRepeats{}, quickBack{}, quickAfterMandatory{}, quickOnward{}, returns{};
                    std::optional<double> lastChange; std::string lastFrom; bool lastMandatory{}; };
     void bind(const SimState& state);
     const Scenario* bound_{};

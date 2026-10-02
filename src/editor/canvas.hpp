@@ -20,6 +20,10 @@ public:
     // level filter instead drops hidden selections before they can be edited.
     std::function<void(std::optional<int>)> visibleLevelChanged;
     void setBackgroundVisible(bool visible) { backgroundVisible_=visible; redraw(); }
+    // Vissim's simple link display (Ctrl+A): Links and Connectors draw, hit and select as their
+    // centre line only. View state, never saved; vehicles keep their lane positions.
+    void setWireframe(bool on) { wireframe_=on; redraw(); }
+    bool wireframe() const { return wireframe_; }
     void cycleOverlap();
     std::vector<std::pair<std::string,double>> hitObjects(Point,bool connectors = true) const;
     void setDocument(const ProjectDocument* document);
@@ -133,7 +137,7 @@ private:
     double cachedGrid_{1};
     DisplayCatalog display_;
     std::optional<int> visibleLevel_;
-    bool backgroundVisible_{true}, creating_{};
+    bool backgroundVisible_{true}, creating_{}, wireframe_{};
     Tool creationTool_{Tool::draw};
     QPoint creationStart_, copyStart_;
     std::string copyPick_;
@@ -268,6 +272,10 @@ private:
     void drawObjectFeedback(const std::string&, const QPainterPath&, double z,
                             const std::vector<std::vector<Point>>& edges = {});
     void drawGeometryHandles(const std::string&, const std::vector<Point>&, bool connector);
+    // Wireframe: a centre line `pixels` wide on screen as a region, and the drawn line itself
+    // (tagged "centre-line") with its selection feedback riding it.
+    QPainterPath centreStroke(const std::vector<Point>&, double pixels) const;
+    void drawCentreLine(const std::string& id, const std::vector<Point>&, const QColor&, double z);
     // A filled arrowhead of constant screen size, centred on `at` and pointing along `angle`.
     void addArrowhead(Point at, double angle, double pixels, QColor, double z, const QString& tag);
     // True once a move is visibly under way: the lane tabs, which follow the committed document,

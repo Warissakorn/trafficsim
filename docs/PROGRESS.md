@@ -8,6 +8,81 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — D95 stays off (owner, option ii); lane changes drawn as a slide (D102)
+
+The owner chose option (ii): D95 and D101's hold stay implemented and off; a better incentive (i)
+waits for a later session. **Run view (D102):** for 3 s after a change, `drawRunItems` draws the
+vehicle easing (smoothstep) from the lane it left to its own, found as the sideways part of the
+nearest point on `lastLaneChange.fromRoute`'s geometry, so no lane mapping is copied from the core.
+Only the sideways part, because past a stub's dead end the nearest point lies behind the vehicle.
+The nose turns by sideways over forward speed, forward floored at 5 m/s so a queued changer does
+not swing across. Each `run-vehicle` item now carries its vehicle id (`data(2)`). Test
+`lane-change-display-ui` (lab, one changer frame by frame): the first frame 3.49 m off, closer every
+frame, turned 0.5°–30° mid-slide, on its lane from 3 s; disabling the slide and removing the yaw
+each fail it. Desktop 75/75 on Windows.
+
+## 2026-10-02 — D101 implemented: the last-change record and the hold; A53 fails
+
+The owner confirmed D101 step 2. **Contract:** item 7 of D95 is replaced (M3_8_CONTRACT.md):
+`Vehicle::lastLaneChange` `{tick, fromRoute}` is written by every change, inside `SimState`, and
+read only by the hold; `discretionaryLaneChangeHoldTime` (s, behaviour field, absent = no hold)
+blocks discretionary changes, never mandatory ones. **Rows:** A52 and A53 rewritten; A56 (the hold
+delays a change back until it has passed), A57 (never a mandatory change), A58 (no hold: the
+record is never read -- a run that forgets every record matches change for change). Mutating
+the hold check off fails A56. **Code:** `types.hpp`, `lanes.cpp` (the hold check;
+`decideLaneChanges` now takes the tick), `simulation.cpp` (writes the record), validation,
+parse/definition, the evaluator's `returns` (back to the route left, within 10 s) and the sweep's
+`--hold` and returns columns. Desktop 74/74 on Windows.
+
+**A53 fails** (`docs/evidence/m3.2.8c-discretionary.md`): four-leg and M2.6, seeds 42–81,
+threshold 1.5, hold 3 s, 4.85% / 5.09% of discretionary changes return within 10 s against the
+proposed 1% cap; without the hold 5.19% / 5.44%. A hold of 3 s or more zeroes the old 3 s count
+by construction and moves the rest past it. Only the lab passes, at threshold 1.5 (0.92%), giving
+up most of the gain. D95 stays off; the choice goes back to the owner (NEXT).
+
+## 2026-10-02 — Why D95's changes reverse (D101 step 1)
+
+Reproduced with `trafficsim-lane-change-sweep` (Release, seeds 42–51, threshold 0.5): lab 4,817
+changes, 112 back-and-forth; four-leg-signalised 2,850 changes, 289, all back. A temporary probe in
+`decideLaneChanges` (removed, never committed) logged each accepted change's leaders and modes.
+**Two causes, both in the incentive, which compares one tick of `followingAcceleration`:**
+1. **The car-following regimes have hard edges** (`following.cpp:25–30`). Past `speedThreshold`
+   (0.2) and inside the approach horizon (`room < closing²/(2b) + v·T`) the result is
+   approaching (≈0 or braking); just outside either it is free (up to `maxAcceleration`).
+   One lane flips by >1 m/s² for a 0.05 m/s or 1.5 m difference: lab vehicle 184 changed every
+   tick; four-leg vehicle 67 saw a leader 95.3 m ahead as free, 93.8 m ahead as approaching
+   (−1.43). A regime edge is crossed in 110/112 lab reversals and 127/138 four-leg ones within 1 s.
+2. **Myopia at queues:** a moving leader looks better than a standing one while it is still
+   braking into its own queue; 1–3 s later the lane just left looks better. Most four-leg
+   reversals of 1.1–3 s are this (only 52/160 cross a regime edge).
+
+**Stateless fixes tried (probes):** E1, the worst of the first three vehicles ahead; E3, one
+continuous approach expression for the incentive only. Back-and-forth, lab / four-leg: current
+112/289; E1 110/212; E3 47/94; E1+E3 28/54. But the **current incentive at threshold 1.0 gives
+28/43 and keeps more of the delay gain** (lab 6.72 s vs 8.17, no-D95 8.83; four-leg 46.81 vs
+47.21, no-D95 50.11). No stateless variant reached zero. Windows only; development evidence.
+Side finding, not acted on: the same edges shape ordinary car-following (unvalidated prototype).
+
+## 2026-10-02 — Wireframe display, Ctrl+A (D100)
+
+The owner-ruled Vissim simple link display. `EditorCanvas::setWireframe` (view state, like
+`setBackgroundVisible`; never saved) makes `redraw()` draw each Link's `linkCentreline` and each
+Connector's `connectorCentreline` as one cosmetic line tagged `centre-line`, with no surface,
+markings or mouth edges. `drawCentreLine` puts the selection band and direction arrows on the
+line. `objectShape` returns the stroked centre line in wireframe, so hit-testing, band select and
+framing pick what is drawn. `laneHandles()` returns none, because the tabs sit on rails that are
+not drawn. The owner chose to keep vehicles on their lane positions (`canvas_run.cpp` unchanged).
+The shell adds `editorToggleWireframe` (Ctrl+A, View menu, command palette, en/th). A focused
+text field keeps Ctrl+A as select-all; a focused table was not checked.
+
+`wireframe-ui` covers the Ctrl+A toggle, item tags, hit on the line and miss on the lane (asserted
+off-mode first; a mutant without the `objectShape` branch fails it), the selection band, lane tabs
+(asserted present normally first), identical vehicle poses either way, the unchanged revision and
+the text field. Editor benchmark, 40 crossings, Release, Windows: wireframe `redraw()` 1.10–1.25 ms
+against 2.99–3.91 ms. `hitObjects` in wireframe is 1.21–1.52 ms against 0.72–0.89 ms, because the
+connector axis is recomputed per call. That is well inside a mouse move, so no cache (D28).
+Desktop 74/74 on Windows (offscreen). Not run on Linux.
+
 ## 2026-10-02 — Run view paint cost, measured on Windows (D99)
 
 `trafficsim-run-view-benchmark` (new, `tools/run_view_benchmark.cpp`) steps the M2.6 template
@@ -217,88 +292,6 @@ Caught while writing: an entry-stub vehicle joins the entry family's lowest-slot
 which already carries one downstream destination. It therefore skips the downstream draw.
 That is §2's existing limit, recorded in rule 7, not fixed.
 
-## 2026-10-01 — M3.2.8c: why the remaining dead-end waits wait (D92)
-
-NEXT.md option 1, a measurement with no engine behaviour change.
-- `--wait-causes` (`src/eval/dead_end_waits.{hpp,cpp}`, `DeadEndWaitAccumulator`) decides each
-  dead-end wait's cause once, from the snapshot that starts it: noMovingApproach, outsideSpan,
-  targetStanding, movingStream (definitions in the header and in D92).
-- A wait is `waitingAtDeadEnd`, so its seconds reconcile with `--lane-changes`. The tests check
-  that reconciliation, and it holds on every M2.6 movement.
-- Eval may include only `core/types.hpp`, so three lane helpers moved there beside
-  `waitingAtDeadEnd`, one definition each: `deadEndGoverns` (cooperative braking's look-ahead,
-  previously inline in `courtesyHolds`), `laneChangeTargetOf` and `mappedOnto` (previously
-  `targetOf`/`mapped` in `lanes.cpp`), plus `kWaitingSpeed`. The default CLI output is
-  byte-identical (D91's recipe).
-- `<array>` joins the architecture check's reviewed standard headers (a fixed-size container,
-  no I/O or state), for the per-cause counts.
-- The three-lane test road moved to `tests/lane_fixture.hpp`, shared by the lane-change and
-  wait-cause tests.
-
-**Finding (MSVC Release, seeds 42–81, 3 m/s²; `docs/evidence/m3.2.8c-wait-causes.md`).**
-- 93% of the 4,222 s of waiting (96 of 118 waits) starts beside a standing target lane, and
-  7% beside a moving stream.
-- The first definition tried for NEXT's "stopped behind its own lane's queue before its
-  look-ahead began" (stood while the dead end did not yet govern) took all 118 waits. The
-  stricter one (never moved inside its look-ahead) takes none. Every waiting vehicle did both,
-  so own-queue standing is common to all and is not a cause. A test holds that.
-- 2/3/4 m/s² moves only the moving-stream share. No delay change reaches two standard errors,
-  and clamps do not rise.
-- MSVC reproduces D90's GCC 15.2 numbers exactly at 3 m/s².
-
-## 2026-10-01 — stepSimulation takes the previous state over (D91)
-
-A callgrind of the M2.6 hour (Linux/GCC 15.2, another machine) put 9.1% in `SimState`'s value
-copy at the top of `stepSimulation`: every vehicle and last tick's events, strings included,
-copied only for the events to be cleared and the vehicles rebuilt. `stepSimulation(SimState&&)`
-(and the `dt` form) now moves the old state into `next`; the `const&` overloads copy and call
-it, so every existing caller and test keeps its meaning. The step reads the previous tick, time
-and Stop service from locals taken before the move (`next.tick`/`time`/`stopService` are only
-written at the end). The hot loops move: `runSimulation`, `trafficsim-cli`, the T-junction
-sweep, the engine benchmark and the editor's run (`editor_run.cpp`). Tests still step by copy.
-
-Windows/MSVC 14.51 Release: byte-identical output before/after for the three projects at seeds
-42–44 with every `--project` diagnostic, and the seed-42 `--events` stream. Wall clock (not
-callgrind; none on Windows): M2.6 project run median 625 → 557 ms (7 runs), engine benchmark
-(8 intersections, 1 h) 0.21 → 0.18 µs per vehicle-tick. Desktop Debug CTest 71/71 and `check`.
-Not run on Linux/GCC.
-
-Also: CLAUDE.md's "Where it stands" Gates bullet (one 1,204-character line restating NEXT.md)
-is cut to the gates and a pointer to NEXT/PROGRESS — hard rule 3.
-
-## 2026-10-01 — M3.2.8c: cooperative braking with look-ahead (D90)
-
-The first behaviour change since M3.2.8b, built on D89's measurement. The contract and rows came
-first: `M3_8_CONTRACT.md` §2, "Cooperative braking", and rows A36–A39.
-
-- **The rule.** A stub vehicle still moving gets help once its dead end, taken as a standing
-  obstacle, already governs its car-following. The helper is the nearest target-lane vehicle
-  behind its target place whose behaviour has `maxDecelerationCooperativeBraking` (Vissim's name;
-  3 m/s² in `data/driver-behaviour/default.json`) and that can fall in behind it at that
-  deceleration. The helper brakes behind a virtual leader moving at the changer's speed, bounded
-  by that deceleration and with no move cap. The changer still needs rules 1–5. The D71 waiting
-  rule is unchanged. **Without the field, only D71 runs** (A39).
-- **Owner choices (this session):** help starts when the changer must begin braking for its dead
-  end, with no new length parameter; the parameter is named after Vissim's and set to 3 m/s².
-- **The look-ahead was re-derived once.** The first draft used
-  `v²/(2·comfortableDeceleration) + stopLineReach`. The model starts braking earlier and more
-  gently than that (its approach test adds following time and the safety gap), so a changer only
-  entered the window as it stopped, and A36 failed with no moving hold at all. Asking the model
-  itself, whether the dead end has taken it out of free mode, is the owner's "must begin braking"
-  in the model's own terms. That is about 50 m at 10 m/s.
-- **Result, seeds 42–81 (`docs/evidence/m3.2.8c-cooperative-braking.md`):**
-  - all dead-end wait time 9,034 → 4,222 s; East → South 126.8 → 51.7 s per seed;
-  - East → West −2.3 ± 0.6 s against 8b, about two thirds of D89's predicted 3.5 s. D89's failure
-    condition did not fire;
-  - network mean +2.4 → +1.3 ± 0.5 s against `b472e05`; clamps −0.8 ± 0.5;
-  - North → West's +2.7 s, never linked to the waits, is unchanged.
-- **The archived T-junction metadata** hashes `driver-behaviour/default.json`. The two guard
-  tests restore the old hash only when the new field is the catalog's sole change and the fixture
-  has no lane-change spans, so the archived sweeps' results still stand
-  (`sweep::restoreArchivedBehaviour`, `docs/evidence/m3.2.7-original-driver-behaviour.json`).
-  This follows D80's precedent for the project file.
-- Linux/GCC 15.2 headless only: 50/50 tests. No Windows or desktop build.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -418,6 +411,9 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D102 | 2026-10-02 | **D95 stays off (owner, option ii). The Run view draws a lane change as a 3 s smoothstep slide from the lane left (from `lastLaneChange`) with the nose turned along the path; display only, the engine change stays one tick** | Owner asked that a change not "warp"; the record D101 added already says where the vehicle came from, so the view needs no new engine state and no measurement moves. Finding the old lane by nearest point reuses the drawn geometry instead of copying the core's lane mapping (rule 3). 3 s and the 5 m/s yaw floor are display values, not driver parameters | A between-lanes state enters the engine (then the view draws the engine's lateral position instead), or a curved lane makes the nearest point jump visibly |
+| D101 | 2026-10-02 | **D95's back-and-forth: find the cause before adding state. A stateless fix keeps contract item 7 and A53; only if a stateless rule oscillates by nature, `Vehicle` carries one last-change record `{tick, fromRoute}` in `SimState`, a driver-behaviour hold time (absent = none), and A53 is rewritten to count returns beyond the hold** (owner's ruling) | Every change within 3 s on four-leg and M2.6 is A→B→A, which points at an incentive that flips after the move rather than at noise; a hold time would hide that. Option (b) also needs state and bans a later overtake back. A record inside `SimState` is copied with it, so replay stays exact, which is what item 7 protects. A hold of 3 s or more passes A53 by construction, so the criterion must move past the hold. One record also serves the lane-change animation and a later between-lanes state | The lab shows reversals with no flip in the incentive (genuine oscillation), so (a) applies directly; or the owner wants the D95 numbers before the cause is known |
+| D100 | 2026-10-02 | **Ctrl+A wireframe draws, hits and selects Links and Connectors as their centre line; vehicles keep their lane positions; view state only** | Owner ruling (NEXT, VISSIM_PARITY): Vissim's simple link display. One flag on the canvas switches drawing and `objectShape` together, so what is seen is what is hit. Lane tabs hang off rails that are not drawn, so they are withdrawn rather than left grabbable. Vehicles stay in lanes by the owner's choice: the display must not misstate where the engine put them. Not saved, like Ctrl+B | The owner wants vehicles on the line (map stations onto the centre line in `drawRunItems`); a network large enough that `hitObjects`' per-call `connectorCentreline` is felt on mouse move (then cache it beside `cachedSurface`, after D28) |
 | D99 | 2026-10-02 | **The editor canvas caches its grid background; the Results tab is rebuilt only while visible** | Measured on the Run view (Windows, Release, M2.6, `trafficsim-run-view-benchmark`): painting was 93% of a Step and the grid ≈3.3 ms of the 4.5 ms canvas paint; caching it took events 7.4 → 3.8 ms/Step. The grid depends only on transform, `grid` and pixel ratio, and the palette is constant, so the cache is reset on exactly those. The Results tables were rebuilt every Step while hidden (−11% total when skipped); refreshing on the page's Show event covers tab, dock and window. Setting the Run icon only on change saved nothing: the run label's relayout already pays for the toolbar's | A live theme or palette switch, or a grid that reads other state, without `resetCachedContent()` there; anything reading the Results widgets (not `runReport()`) while the tab is hidden |
 | D98 | 2026-10-02 | **Lane-change work iterates on a dedicated lab project (four isolated scenes: overtaking, three lanes, lane drop, diverge) and an in-process sweep that sets the D95 fields on the compiled scenario; the lab is a development bed, not an acceptance fixture, and A55 is still judged on four-leg and M2.6** | The A55 drawings mix lane changes with signals and conflict areas and take minutes per pass; isolated scenes name the situation a number moved in, and the in-process variant reproduced the data-dir A55 exactly on four-leg (seeds 42–81) | A lab result that four-leg/M2.6 contradicts, or a lane-change situation the four scenes cannot show |
 | D97 | 2026-10-02 | **A Run-view vehicle is one borderless path item at its type's true length × width, front bumper at its station, along the rear-to-front chord; windshield and cab gap are odd-even holes shown from 14 px; floored at 4 × 2.5 px; colour per vehicle type from `data/vehicle-appearance/`, falling back to the road's display-type colour** | Owner request and choices (shape, colour by type). One item per vehicle keeps D85's per-frame cost; colour is display data, so it stays out of `core::VehicleType` and out of the vehicle-type files the engine compiles and the sweep evidence hashes | A measured `scenario-run-ui` regression against D85; a need for 3-D models or colour distributions within a type |

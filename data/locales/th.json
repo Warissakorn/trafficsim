@@ -272,6 +272,7 @@
   "editorApplyDisplay": "ใช้ระดับและรูปแบบแสดงผล",
   "editorMissingStyle": "(ไม่พบ ใช้รูปแบบทั่วไป)",
   "editorToggleBackground": "ภาพพื้นหลัง (Ctrl+B)",
+  "editorToggleWireframe": "แสดงแบบเส้นกลาง (Ctrl+A)",
   "editorDuplicate": "ทำสำเนาวัตถุที่เลือก",
   "editorFromLaneCount": "จำนวนเลนต้นทาง (fromLaneCount)",
   "editorConnectorWidths": "ความกว้างเลน (เมตร คั่นด้วยจุลภาค; เว้นว่าง = ใช้ค่าจาก Link)",

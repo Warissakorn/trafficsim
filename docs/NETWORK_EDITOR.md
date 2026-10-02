@@ -68,6 +68,7 @@ is in metres, and Snap affects drawing/dragging. Measuring and calibration bypas
 | Tab on the canvas | Cycle objects overlapping the last click position |
 | Delete / Ctrl+Delete | Delete objects / remove selected geometry point |
 | Ctrl+B / Ctrl+I / Ctrl+Shift+O | Toggle background / Properties / object tables |
+| Ctrl+A | Wireframe display: Links and Connectors as centre lines only (a focused text field keeps select-all) |
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
 | Platform Undo/Redo; Ctrl+Y | Undo/Redo; additional Redo binding |
 | F5 / F6 | Run or Pause / Step |
@@ -339,6 +340,12 @@ its road's display-type vehicle colour). A windshield, and on a vehicle over 7 m
 once the body is about 14 px long; zoomed far out a vehicle is floored at 4 × 2.5 px so it never
 vanishes (D97).
 
+A lane change is drawn as a 3 s slide (D102): the engine moves the vehicle to its new lane in one
+tick, and the Run view draws it easing across from the lane it left, nose turned toward the new
+lane by its sideways over forward speed (forward floored at 5 m/s). Display only — nothing the
+engine decides or the results measure changes; a second change inside the 3 s restarts the slide
+from the lane it left.
+
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
@@ -360,6 +367,12 @@ The image origin is its top-left pixel; positive rotation is counter-clockwise.
 Import, transform, calibration and removal are undoable. History shares immutable
 background bytes, and the canvas caches the decoded image. Ctrl+B changes visibility
 without modifying the saved image.
+
+Ctrl+A (View → Wireframe display) draws every Link and Connector as its centre line, as
+Vissim's simple link display. It is view state like Ctrl+B: not saved, and off in a new window.
+What is drawn is what is hit, band-selected and framed; the lane tabs are hidden because their
+rails are not drawn (lane count stays in Properties). In the Run view vehicles keep their real
+lane positions, so on a multi-lane road they sit either side of the line (D100).
 
 ## Save, recovery and formats
 

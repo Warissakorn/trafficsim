@@ -272,6 +272,7 @@
   "editorApplyDisplay": "Apply level and display type",
   "editorMissingStyle": "(unavailable; using Default)",
   "editorToggleBackground": "Background image (Ctrl+B)",
+  "editorToggleWireframe": "Wireframe display (Ctrl+A)",
   "editorDuplicate": "Duplicate selection",
   "editorFromLaneCount": "Source lane count (fromLaneCount)",
   "editorConnectorWidths": "Lane widths (m, comma-separated; blank = from links)",

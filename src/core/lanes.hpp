@@ -20,7 +20,8 @@ struct LaneChange { std::size_t vehicle{}; std::uint32_t route{}; double distanc
 // vehicle serving a Stop line does not change lanes, since its line is a distance on its route.
 std::vector<LaneChange> decideLaneChanges(const Scenario&, const ScenarioIndex&, const std::vector<Vehicle>&,
                                           const std::vector<VehicleRefs>&, const std::vector<OccupiedSpan>&,
-                                          const SpanBuckets&, const std::vector<StopService>& stopService);
+                                          const SpanBuckets&, const std::vector<StopService>& stopService,
+                                          std::uint64_t tick);
 // A place a vehicle holds back from so that a changer can come in ahead of it. Waiting (D71): a
 // standing obstacle that caps the move. Moving (cooperative braking, M3.2.8c): a leader at the
 // changer's speed that the vehicle brakes behind at no more than its

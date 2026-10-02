@@ -5,6 +5,7 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-01-d90-d92.md`](PROGRESS-2026-10-01-d90-d92.md) — 2026-10-01, D90 cooperative braking with look-ahead, D91 `stepSimulation` takes the previous state, D92 why the dead-end waits wait; moved out 2026-10-02 as the oldest live entries
 - [`PROGRESS-2026-10-01-m3.2.8c-steps-4-5.md`](PROGRESS-2026-10-01-m3.2.8c-steps-4-5.md) — 2026-10-01, M3.2.8c steps 4–5 (D88 five-seed sample, D89 left-turn dead-end waits) and the SIMULATION.md "Step and motion" rewrite; moved out 2026-10-02 as the oldest live entries
 - [`PROGRESS-2026-09-30-m3.2.8c-steps-1-3-d86.md`](PROGRESS-2026-09-30-m3.2.8c-steps-1-3-d86.md) — 2026-09-30, M3.2.8c steps 1–3 (lane-change diagnostic, D87) and D86 authored conflict areas follow the drawing; moved out 2026-10-02 as the oldest live entries
 - [`PROGRESS-2026-09-30-d85.md`](PROGRESS-2026-09-30-d85.md) — 2026-09-30, D85 measured optimization pass (run repaint, test wall time, warnings); moved out 2026-10-02 as the oldest live entry
