@@ -54,7 +54,7 @@ std::vector<LaneChange> decide(const SimState& s, const std::vector<StopService>
     const auto refs = resolveRefs(*s.scenario, s.vehicles, *s.index);
     const auto spans = occupiedSpans(*s.scenario, s.vehicles, *s.index, refs);
     const auto buckets = bucketSpans(spans, s.scenario->segments.size());
-    return decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans, buckets, service);
+    return decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans, buckets, service, s.tick);
 }
 }
 TEST(discretionary, a_follower_overtakes_a_slow_vehicle_on_the_empty_lane) { // A47
@@ -142,8 +142,10 @@ TEST(discretionary, validation_takes_both_fields_or_neither_and_full_to_full_spa
     CHECK(std::any_of(c.begin(), c.end(), [](const auto& i) {
         return i.code == "INVALID_NUMBER" && i.path == "behaviours[0].discretionaryLaneChangeThreshold"; }));
 }
-TEST(discretionary, a_copied_state_replays_exactly) { // A52
+TEST(discretionary, a_copied_state_replays_exactly) { // A52, with and without D101's hold
+  for (const std::optional<double> hold : {std::optional<double>{}, std::optional<double>{3.0}}) {
     auto scenario = road();
+    for (auto& b : scenario.behaviours) b.discretionaryLaneChangeHoldTime = hold;
     scenario.inputs = {{"in1", "L1", "car", 1100, 0, 240}, {"in2", "L2", "car", 700, 0, 240}};
     scenario.duration = 300;
     auto s = createSimulation(scenario, 42);
@@ -155,11 +157,13 @@ TEST(discretionary, a_copied_state_replays_exactly) { // A52
                                                   [](const auto& e) { return std::holds_alternative<LaneChangeEvent>(e); }));
     }
     CHECK(changes > 0); // the forcing: discretionary changes are under way when the state is branched
+    CHECK(std::any_of(s.vehicles.begin(), s.vehicles.end(), [](const auto& v) { return v.lastLaneChange.has_value(); }));
     auto copy = s;
     for (int i = 0; i < 300; ++i) {
         s = stepSimulation(s); copy = stepSimulation(copy);
         CHECK(s.vehicles == copy.vehicles && s.events == copy.events);
     }
+  }
 }
 TEST(discretionary, a_steady_two_lane_stream_never_changes_back_within_three_seconds) { // A53
     auto scenario = road();
@@ -198,10 +202,70 @@ TEST(discretionary, the_diagnostic_sorts_repeats_within_three_seconds_by_kind) {
     };
     feed({{1.0, 1, "L1", "L2"}, {1.0, 2, "L1", "L2"}});
     feed({{2.0, 1, "L2", "L1"}, {2.5, 2, "L2", "L3"}}); // back within 1 s; onward within 1.5 s
-    feed({{6.0, 1, "L1", "L2"}});                       // 4 s later: not a repeat
+    feed({{6.0, 1, "L1", "L2"}});                       // 4 s later: not a repeat, but a return
+    feed({{17.0, 1, "L2", "L1"}});                      // 11 s later: neither
     const auto row = changes.report().rows[1];          // "unfinished": nobody arrived
-    CHECK(row.discretionaryChanges == 5 && row.changes == 0);
+    CHECK(row.discretionaryChanges == 6 && row.changes == 0);
     CHECK(row.quickRepeats == 2 && row.quickBack == 1 && row.quickOnward == 1 && row.quickAfterMandatory == 0);
+    // D101's A53: straight back within 10 s -- 1 s and 4 s count; onward and 11 s do not.
+    CHECK(row.returns == 2);
+}
+// D101 (A56-A58): a hold after a vehicle's last change, of either kind, delays discretionary changes only.
+namespace {
+// A47 mirrored onto L2, so changing BACK to L1 is what pays; the follower changed from L1 at tick 0.
+SimState justChanged(std::optional<double> hold, std::uint64_t tick) {
+    auto scenario = road();
+    for (auto& b : scenario.behaviours) b.discretionaryLaneChangeHoldTime = hold;
+    auto s = test::withVehicles(scenario, {on(1, "L2", 60, 3), on(2, "L2", 40, 12)});
+    std::uint32_t l1 = 0;
+    while (s.scenario->routes[l1].id != "L1") ++l1;
+    for (auto& v : s.vehicles) if (v.id == 2) v.lastLaneChange = LastLaneChange{0, l1};
+    s.tick = tick; s.time = static_cast<double>(tick) * s.scenario->timeStep;
+    return s;
+}
+}
+TEST(discretionary, a_hold_delays_the_change_back_until_it_has_passed) { // A56
+    // The forcing: with no hold, the follower changes back to L1 at once, 1 s after its change.
+    const auto free = decide(justChanged(std::nullopt, 10));
+    CHECK(free.size() == 1);
+    CHECK(decide(justChanged(3.0, 10)).empty());  // 1 s into a 3 s hold
+    CHECK(decide(justChanged(3.0, 29)).empty());  // 2.9 s
+    const auto after = decide(justChanged(3.0, 30)); // 3 s: the hold has passed
+    CHECK(after.size() == 1 && after.front().route == free.front().route);
+}
+TEST(discretionary, a_hold_never_delays_a_mandatory_change) { // A57
+    auto scenario = road();
+    for (auto& b : scenario.behaviours) b.discretionaryLaneChangeHoldTime = 60.0;
+    scenario.segments.push_back({"l0", 200, {}});
+    scenario.routes.push_back({"S", {"l0"}});
+    scenario.routeDeadEnds = {{"S", 150}};
+    scenario.laneChanges.push_back({"S", "L1", 0, 150, 0, 150});
+    auto s = test::withVehicles(scenario, {on(2, "S", 100, 10)});
+    std::uint32_t l1 = 0;
+    while (s.scenario->routes[l1].id != "L1") ++l1;
+    s.vehicles.front().lastLaneChange = LastLaneChange{0, l1};
+    s.tick = 10;
+    // The forcing: the stub vehicle's last change is 1 s old, well inside the 60 s hold.
+    CHECK(s.index->remainingOfRoute[s.vehicles.front().routeIndex] > 0);
+    CHECK(static_cast<double>(s.tick - s.vehicles.front().lastLaneChange->tick) * s.scenario->timeStep < 60);
+    const auto changes = decide(s);
+    CHECK(changes.size() == 1 && s.scenario->routes[changes.front().route].id == "L1");
+}
+TEST(discretionary, without_a_hold_the_record_is_never_read) { // A58
+    auto scenario = road();
+    scenario.inputs = {{"in1", "L1", "car", 1100, 0, 240}, {"in2", "L2", "car", 700, 0, 240}};
+    scenario.duration = 240;
+    auto s = createSimulation(scenario, 42), blind = s;
+    int changes = 0;
+    while (s.tick < totalTicks(*s.scenario)) {
+        // `blind` forgets every record before each step; with no hold that must change nothing.
+        for (auto& v : blind.vehicles) v.lastLaneChange.reset();
+        s = stepSimulation(s); blind = stepSimulation(blind);
+        CHECK(s.events == blind.events);
+        changes += static_cast<int>(std::count_if(s.events.begin(), s.events.end(),
+                                                  [](const auto& e) { return std::holds_alternative<LaneChangeEvent>(e); }));
+    }
+    CHECK(changes > 0); // the forcing: there were changes whose records the blind run dropped
 }
 TEST(discretionary, no_change_inside_a_conflict_area_or_while_serving_a_stop) { // A54
     auto scenario = road();

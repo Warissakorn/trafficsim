@@ -240,6 +240,8 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
             number(*b.discretionaryLaneChangeThreshold, p + ".discretionaryLaneChangeThreshold");
         if (b.acceptedDecelerationTrailingVehicle)
             number(*b.acceptedDecelerationTrailingVehicle, p + ".acceptedDecelerationTrailingVehicle");
+        if (b.discretionaryLaneChangeHoldTime)
+            number(*b.discretionaryLaneChangeHoldTime, p + ".discretionaryLaneChangeHoldTime");
         if (b.discretionaryLaneChangeThreshold && !b.acceptedDecelerationTrailingVehicle)
             add("INCOMPLETE_DISCRETIONARY_BEHAVIOUR", p + ".acceptedDecelerationTrailingVehicle");
         if (!b.discretionaryLaneChangeThreshold && b.acceptedDecelerationTrailingVehicle)

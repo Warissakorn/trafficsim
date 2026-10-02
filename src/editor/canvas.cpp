@@ -22,6 +22,9 @@ QPainterPath path(const std::vector<Point>& points) {
 EditorCanvas::EditorCanvas(QWidget* parent) : QGraphicsView(parent), scene_(this) {
     setScene(&scene_); setObjectName("editorCanvas");
     setRenderHint(QPainter::Antialiasing); setMouseTracking(true);
+    // The grid is ≈3.3 ms of every Run frame repainted (Windows, 1600x1000, 2026-10-02) and
+    // changes only with zoom, pan, `grid` or the screen's pixel ratio; the palette is constant.
+    setCacheMode(CacheBackground);
     setFocusPolicy(Qt::StrongFocus); setTransformationAnchor(NoAnchor); setResizeAnchor(AnchorViewCenter);
     setTransform(QTransform::fromScale(4, -4));
     scene_.setSceneRect(-10000, -10000, 20000, 20000); centerOn(0, 0);
@@ -102,6 +105,7 @@ std::pair<std::string, double> EditorCanvas::hit(Point p,bool connectors) const 
 }
 void EditorCanvas::redraw() {
     runItems_.clear();scene_.clear();pruneConnectorCache();
+    if (grid != cachedGrid_) { cachedGrid_ = grid; resetCachedContent(); }
     if (!document_) return;
     const auto& bg=document_->background;
     if (backgroundVisible_ && !bg.pngBase64->empty()) {
@@ -128,6 +132,7 @@ void EditorCanvas::redraw() {
             QPen invalid(canvasStyle::error(),2,Qt::DashLine);invalid.setCosmetic(true);
             scene_.addPath(path(link.geometry),invalid)->setZValue(z+5);continue;
         }
+        if (wireframe_) { drawCentreLine(link.id,road,colour,z+2);drawGeometryHandles(link.id,road,false);continue; }
         // Drawn lines only: an edge offset round a bend tighter than the lane can loop back on
         // itself, which fills as a hole and reads as a tear in the road.
         const auto left=trimSelfIntersections(laneBoundaryGeometry(link,0,document_->network.drivingSide));
@@ -189,6 +194,14 @@ void EditorCanvas::drawBackground(QPainter* painter,const QRectF& rect) {
     };
     lines(tiers.minor,editorDesign::role(QPalette::Midlight),true);
     lines(tiers.major,editorDesign::role(QPalette::Mid),false);
+}
+bool EditorCanvas::event(QEvent* e) {
+#if QT_VERSION >= QT_VERSION_CHECK(6,6,0)
+    // drawBackground() snaps its hairlines to device pixels, so a cache drawn at another
+    // pixel ratio would blur them.
+    if (e->type()==QEvent::DevicePixelRatioChange) resetCachedContent();
+#endif
+    return QGraphicsView::event(e);
 }
 void EditorCanvas::wheelEvent(QWheelEvent* e) {
     clearHover();

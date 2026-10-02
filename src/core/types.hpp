@@ -26,6 +26,9 @@ struct DriverBehaviour {
     // trailing vehicle there brakes at no more than the accepted deceleration (m/s², positive).
     // Both or neither: without them the behaviour makes no discretionary change.
     std::optional<double> discretionaryLaneChangeThreshold, acceptedDecelerationTrailingVehicle;
+    // D101: seconds after a vehicle's last lane change (either kind) during which it makes no
+    // discretionary change. Ours; Vissim has none. Without it there is no hold.
+    std::optional<double> discretionaryLaneChangeHoldTime;
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };
@@ -237,9 +240,16 @@ struct PendingVehicle {
     double scheduledTime{}, desiredSpeed{}, driverFactor{};
     bool operator==(const PendingVehicle&) const = default;
 };
+// D101: a vehicle's last lane change, of either kind -- the tick it started and the route it left.
+// Inside SimState, so a copied state replays exactly; read only by the discretionary hold.
+struct LastLaneChange {
+    std::uint64_t tick{}; std::uint32_t fromRoute{};
+    bool operator==(const LastLaneChange&) const = default;
+};
 struct Vehicle : PendingVehicle {
     double enteredTime{}, distance{}, speed{}, acceleration{};
     FollowingMode mode{FollowingMode::free};
+    std::optional<LastLaneChange> lastLaneChange;
     bool operator==(const Vehicle&) const = default;
 };
 // Parallel to Scenario::inputs, one entry each and in that order: createSimulation builds it

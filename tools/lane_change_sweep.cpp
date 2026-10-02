@@ -2,7 +2,7 @@
 // process, printed as markdown. Not in `check`: development evidence, like the other sweeps.
 //
 //   trafficsim-lane-change-sweep <repo root> [--project FILE] [--seeds 42-51]
-//                                [--thresholds absent,0.25,0.5,1.0] [--accepted 1]
+//                                [--thresholds absent,0.25,0.5,1.0] [--accepted 1] [--hold 3]
 //
 // The project defaults to the lane-change lab; A55 runs four-leg and M2.6 through the same tool.
 // Deltas are paired by seed against the first variant, so list `absent` first to read them as A55.
@@ -18,10 +18,10 @@
 using namespace trafficsim;
 namespace {
 struct Variant { std::string name; std::optional<double> threshold; };
-struct Totals { std::uint64_t mandatory{}, discretionary{}, quick{}, back{}, afterMandatory{}, onward{}; };
+struct Totals { std::uint64_t mandatory{}, discretionary{}, quick{}, back{}, afterMandatory{}, onward{}, returns{}; };
 void add(Totals& t, const LaneChangeRow& r) {
     t.mandatory += r.changes; t.discretionary += r.discretionaryChanges; t.quick += r.quickRepeats;
-    t.back += r.quickBack; t.afterMandatory += r.quickAfterMandatory; t.onward += r.quickOnward;
+    t.back += r.quickBack; t.afterMandatory += r.quickAfterMandatory; t.onward += r.quickOnward; t.returns += r.returns;
 }
 std::vector<std::string> split(const std::string& text) {
     std::vector<std::string> out; std::stringstream in(text);
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     try {
         if (argc < 2 || argc % 2) {
             std::cerr << "usage: trafficsim-lane-change-sweep <repo root> [--project FILE] [--seeds 42-51]\n"
-                         "       [--thresholds absent,0.25,0.5,1.0] [--accepted 1]\n";
+                         "       [--thresholds absent,0.25,0.5,1.0] [--accepted 1] [--hold 3]\n";
             return 2;
         }
         const std::filesystem::path root = argv[1];
@@ -42,6 +42,7 @@ int main(int argc, char** argv) {
         std::uint32_t first = 42, last = 51;
         std::vector<Variant> variants;
         double accepted = 1;
+        std::optional<double> hold; // D101: the discretionary hold, on every variant with a threshold
         for (int i = 2; i < argc; i += 2) {
             const std::string flag = argv[i], value = argv[i + 1];
             if (flag == "--project") project = value;
@@ -52,6 +53,7 @@ int main(int argc, char** argv) {
             } else if (flag == "--thresholds") {
                 for (const auto& v : split(value)) variants.push_back({v, v == "absent" ? std::nullopt : std::optional{std::stod(v)}});
             } else if (flag == "--accepted") accepted = std::stod(value);
+            else if (flag == "--hold") hold = std::stod(value);
             else throw std::invalid_argument("unknown option " + flag);
         }
         if (variants.empty()) variants = {{"absent", {}}, {"0.25", 0.25}, {"0.5", 0.5}, {"1.0", 1.0}};
@@ -67,15 +69,16 @@ int main(int argc, char** argv) {
         std::vector<std::vector<sweep::LaneChangeRun>> runs(variants.size());
         for (std::size_t v = 0; v < variants.size(); ++v)
             for (auto seed = first; seed <= last; ++seed)
-                runs[v].push_back(sweep::runLaneChanges(document, snapshot, data, seed, variants[v].threshold, accepted));
+                runs[v].push_back(sweep::runLaneChanges(document, snapshot, data, seed, variants[v].threshold, accepted, hold));
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
 
         std::cout << "## " << project.filename().string() << ", seeds " << first << "-" << last
-                  << ", acceptedDecelerationTrailingVehicle " << accepted << "\n\n"
+                  << ", acceptedDecelerationTrailingVehicle " << accepted
+                  << ", hold " << (hold ? fixed(*hold, 1) + " s" : std::string("none")) << "\n\n"
                   << "Not validated; development evidence (D98). " << fixed(seconds, 1) << " s for "
                   << variants.size() * (last - first + 1) << " runs.\n\n"
-                  << "| variant | mean delay (s) | completed | mandatory | discretionary | quick repeats | back | afterMandatory | onward | safety clamps |\n"
-                  << "|---|---|---|---|---|---|---|---|---|---|\n";
+                  << "| variant | mean delay (s) | completed | mandatory | discretionary | quick repeats | back | afterMandatory | onward | returns 10 s | returns % | safety clamps |\n"
+                  << "|---|---|---|---|---|---|---|---|---|---|---|---|\n";
         for (std::size_t v = 0; v < variants.size(); ++v) {
             Totals t; double delay = 0, completed = 0; std::uint64_t clamps = 0;
             for (const auto& r : runs[v]) {
@@ -86,7 +89,9 @@ int main(int argc, char** argv) {
             const auto n = static_cast<double>(runs[v].size());
             std::cout << "| " << variants[v].name << " | " << fixed(delay / n) << " | " << fixed(completed / n, 1) << " | "
                       << t.mandatory << " | " << t.discretionary << " | " << t.quick << " | " << t.back << " | "
-                      << t.afterMandatory << " | " << t.onward << " | " << clamps << " |\n";
+                      << t.afterMandatory << " | " << t.onward << " | " << t.returns << " | "
+                      << (t.discretionary ? fixed(100. * static_cast<double>(t.returns) / static_cast<double>(t.discretionary)) : std::string("-"))
+                      << " | " << clamps << " |\n";
         }
 
         std::cout << "\nPer movement, summed over seeds: discretionary changes / back-and-forth repeats.\n\n| movement |";

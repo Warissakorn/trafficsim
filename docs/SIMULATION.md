@@ -2,8 +2,9 @@
 
 M0 implementation reference. **Not yet validated.** This engine is a reduced,
 Wiedemann-inspired prototype, not an implementation of W74/W99 and not calibrated to
-Vissim. Only mandatory lane changing exists (M3.2.8b, below); discretionary changes (contract D95,
-not implemented), general
+Vissim. Mandatory lane changing exists (M3.2.8b, below). Discretionary changes (D95) and their
+hold (D101) are implemented but **off**: no shipped behaviour carries the fields, because A53
+fails (vehicles change back within 10 s). General
 priority control and LOS are not implemented. **Merge arbitration exists only as M3.1**: a deterministic gap-time/headway threshold,
 described below — not a calibrated critical-gap model. M0 remains open until the
 owner reviews the live traffic behaviour against its plausibility gate.
@@ -156,7 +157,7 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   An authored input's volume is the **Link total** and is divided **equally** (or by
   `laneShares`, one weight per lane of the entry Link) across that Link's lanes at compile time.
   That split is an authoring convenience, not a lane-choice model — there are no discretionary
-  changes yet (contract D95, not implemented) — and like every figure here it is unvalidated.
+  changes in any shipped behaviour (D95 is off; see above) — and like every figure here it is unvalidated.
   **Since M2.2 an input may carry counted `intervals`** (start, end, veh/h), ordered without
   overlap; each becomes its own core input (`id/int-k`), so the core still sees one Poisson
   process per `[startTime, endTime)`. Restarting a Poisson stream at a boundary changes no

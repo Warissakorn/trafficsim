@@ -64,8 +64,10 @@ QStringList column(QTableWidget* t, int c) {
     return values;
 }
 QStringList queueRows(EditorWindow& w) {
-    act(w, "editorStep")->trigger(); QApplication::processEvents();
     auto* t = w.findChild<QTableWidget*>("editorQueueTable"); require(t, "No queue table");
+    // The Results tab is rebuilt only while it can be seen, so read it open.
+    w.findChild<QTabWidget*>("editorObjectTabs")->setCurrentWidget(t->parentWidget());
+    act(w, "editorStep")->trigger(); QApplication::processEvents();
     return column(t, 0);
 }
 }

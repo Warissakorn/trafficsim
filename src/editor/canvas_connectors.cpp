@@ -122,6 +122,13 @@ void EditorCanvas::drawConnectors() {
                               *endpointDrag_?moved.to:*endpointDraft_);
             preview=std::move(moved);
         } catch(const std::exception&) { /* Keep drawing the connector that still exists. */ }
+        if(wireframe_) {
+            try { drawCentreLine(c.id,connectorCentreline(document_->network,preview),colour,z+4); }
+            catch(const std::exception&) { /* A transient preview without an axis draws nothing. */ }
+            if(c.id==primary && tool_==Tool::select && selection_.size()==1)
+                drawGeometryHandles(c.id,connectorGrips(document_->network,preview),true);
+            continue;
+        }
         const auto& drawing=cachedSurface(preview);
         const QColor boundaryColour=canvasStyle::connectorBoundaryColor(colour);
         auto surface=path(drawing.outline);
