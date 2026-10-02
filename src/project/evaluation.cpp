@@ -183,7 +183,11 @@ Json laneChangeJson(const LaneChangeReport& r) {
                              {"longestWait", row.longestWait}});
         // D95, written only when there is one, so a run without discretionary changes reads as before.
         if (row.discretionaryChanges) j["rows"].back()["discretionaryChanges"] = row.discretionaryChanges;
-        if (row.quickRepeats) j["rows"].back()["quickRepeats"] = row.quickRepeats;
+        if (row.quickRepeats) {
+            j["rows"].back()["quickRepeats"] = row.quickRepeats;
+            j["rows"].back()["quickRepeatsByKind"] = {{"back", row.quickBack}, {"afterMandatory", row.quickAfterMandatory},
+                                                      {"onward", row.quickOnward}};
+        }
     }
     return j;
 }

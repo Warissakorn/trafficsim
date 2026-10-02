@@ -3,6 +3,7 @@
 #include "../src/core/following.hpp"
 #include "../src/core/lanes.hpp"
 #include "../src/core/routes.hpp"
+#include "../src/eval/lane_changes.hpp"
 #include "../src/project/document.hpp"
 #include "../src/project/run.hpp"
 #include <algorithm>
@@ -181,6 +182,26 @@ TEST(discretionary, a_steady_two_lane_stream_never_changes_back_within_three_sec
     CHECK(changes > 0); // the forcing: the stream does change lanes by choice
     CHECK(repeats == 0);
     CHECK(clamps == 0);
+}
+TEST(discretionary, the_diagnostic_sorts_repeats_within_three_seconds_by_kind) { // A53's counter
+    auto scenario = road();
+    scenario.segments.push_back({"l3", 200, {}});
+    scenario.routes.push_back({"L3", {"l3"}});
+    scenario.laneChanges.push_back({"L2", "L3", 0, 200, 0, 200});
+    auto s = test::withVehicles(scenario, {on(1, "L1", 50, 10), on(2, "L1", 80, 10)});
+    LaneChangeAccumulator changes(EvaluationSpec{{"through"}, {{"L1", 0}, {"L2", 0}, {"L3", 0}}, {}, {}});
+    changes.observe(s);
+    const auto feed = [&](std::vector<LaneChangeEvent> events) {
+        s.events.clear();
+        for (auto& e : events) s.events.emplace_back(std::move(e));
+        changes.observe(s);
+    };
+    feed({{1.0, 1, "L1", "L2"}, {1.0, 2, "L1", "L2"}});
+    feed({{2.0, 1, "L2", "L1"}, {2.5, 2, "L2", "L3"}}); // back within 1 s; onward within 1.5 s
+    feed({{6.0, 1, "L1", "L2"}});                       // 4 s later: not a repeat
+    const auto row = changes.report().rows[1];          // "unfinished": nobody arrived
+    CHECK(row.discretionaryChanges == 5 && row.changes == 0);
+    CHECK(row.quickRepeats == 2 && row.quickBack == 1 && row.quickOnward == 1 && row.quickAfterMandatory == 0);
 }
 TEST(discretionary, no_change_inside_a_conflict_area_or_while_serving_a_stop) { // A54
     auto scenario = road();
