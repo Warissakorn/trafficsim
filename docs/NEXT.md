@@ -212,6 +212,10 @@ no gate result is inferred.
   12,000 steps of M2.6 is the vehicle count warming up, not a leak — after Reset the cost restarts
   low and climbs the same way; scene items stay ≈270, the BSP index and the pending queue are
   ruled out, and ≈67% is Qt widget painting (callgrind). Play paints once per 16 ms frame.
+- **One `refreshRun()` per Step instead of two (2026-10-02, Linux):** F6/Space call `pauseRun()`
+  then `stepRun()`, both refreshing. Removing the first measured 2,169 → 2,342 ms per 1,000 Steps
+  (medians of 5, spreads overlapping) — no effect, reverted. Qt paints once per event-loop pass,
+  so the repeat only rebuilds a few table items.
 - **`redraw()` copying only the primary Link** (item 6 of the 2026-09-23 pass): −1.2% of
   `redraw()`, inside the clock's spread; a frame is dominated by `QGraphicsItem` construction.
   What is left in a frame is M1.23's culling and LOD.
