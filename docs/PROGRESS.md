@@ -8,6 +8,16 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-03 — Scope text says what lane changing there is
+
+The owner approved new wording for `editorScope`, `editorScopeCompact` and `editorInputSplitHelp`
+(en/th). Each "no lane changing" becomes "lane changes only where a route requires one". That is
+what the engine does: mandatory changes (D71, D93), with discretionary ones off (D95). "Not yet validated",
+"no LOS" and "conflicts resolved only where authored" stay, since they are still true. The split
+help also mentions lane shares, which the same dialog sets (M1.26.1). At a 1360 px window the
+English banner now wraps to two lines, about 20 px of canvas; `workspace-ui`'s size floors still
+pass. Desktop 75/75 on Windows.
+
 ## 2026-10-02 — The owner's Windows items, session-checked (no code change)
 
 At the user's request, a session ran NEXT's owner checks on the owner's Windows machine. It used

@@ -9,20 +9,17 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Session-checked on Windows, 2026-10-02 — two defects found; the owner's look is still open
+## Session-checked on Windows, 2026-10-02 — one defect left; the owner's look is still open
 
 A session ran every owner item below on this Windows machine. It used the UI suites on the real
 `windows` platform at 100/150/200 %, screenshots and the CLI. It could not drive the live desktop.
 Results: `docs/evidence/windows-session-check-2026-10-02.md`. **No owner item is closed by it.**
-Two defects for a session to fix, one system each:
-1. **Stale scope text.** `editorScope`, `editorScopeCompact` (en/th) say "no lane changing", and
-   `editorInputSplitHelp` says "this engine has no lane changing". The engine has done this since
-   D71/D93. Keep "not yet validated", "no LOS" and "conflicts resolved only where authored", which
-   are still true. It is a UI string in both catalogs, so show the owner the new wording.
-2. **`QLineEdit` text ≈1 logical px high at 150/200 %.** `design-system-ui` fails at
-   `QT_SCALE_FACTOR=1.5` (10 above / 12 below) and `2` (13/16), offscreen too. Spin boxes,
-   dropdowns and buttons pass. D84's centring holds at 100 % only. Add the scale factors to the test
-   before fixing the style.
+One defect left for a session to fix (the stale "no lane changing" text was reworded with the owner
+2026-10-03):
+**`QLineEdit` text ≈1 logical px high at 150/200 %.** `design-system-ui` fails at
+`QT_SCALE_FACTOR=1.5` (10 above / 12 below) and `2` (13/16), offscreen too. Spin boxes, dropdowns
+and buttons pass. D84's centring holds at 100 % only. Add the scale factors to the test before
+fixing the style.
 
 Also measured: `scenario-run-ui` alone is 28 s CPU on Windows Debug. It reached 76–82 s CPU while
 another process ran, so the 90 s timeout is a load problem, not the test's own cost. D90's 40-seed
