@@ -8,6 +8,80 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — The lane-change lab, and where D95 stands (D98)
+
+### D95's A55 result
+
+D95 is implemented (`1f8fe26`) and stays **off**: `default.json` carries neither field, because
+A55 hit A53's failure condition.
+
+On four-leg and M2.6, seeds 42–81, clamps do not rise. But the A53 diagnostic counts thousands of
+changes within 3 s. Splitting them by kind (`191f0b1`; `quickRepeatsByKind` in
+`--lane-changes`) shows **every one is back-and-forth (A→B→A)**, at thresholds 0.25, 0.5 and
+1.0, in both projects. The owner rules (NEXT).
+
+### Implementation notes not in the D95 contract
+
+- **The threshold must be above 0.** Zero would change on any tie, which invites ping-pong.
+- **Missing fields.** One field without the other is `INCOMPLETE_DISCRETIONARY_BEHAVIOUR`,
+  reported on the missing field.
+- **Span building.** Discretionary spans come from `appendDiscretionaryLaneChanges` over
+  `DiscretionaryRoute` (names, last Link, and the D93 `after` clip). This replaced the
+  `FamilyRoute.names` the plan had.
+- **Counting.** `quickRepeats` counts discretionary changes only.
+- **D96 is not closed.** The run does not spread vehicles onto a lane drop's downstream second lane:
+  no route covers that lane, so no span reaches it.
+
+### The lane-change lab (D98)
+
+**The problem.** Iterating on D95 meant 40 seeds × 4 thresholds of four-leg and M2.6, through
+scratchpad scripts and `--data-dir` copies. Those drawings mix lane changes with signals and
+conflict areas.
+
+**The lab.** `data/projects/lane-change-lab.traffic.json` holds four independent scenes, built by
+`tools/lane_change_network.hpp` through the editor's commands:
+
+| Scene | Drawing |
+|---|---|
+| Overtaking | 2 lanes |
+| Three lanes | 3 lanes |
+| Lane drop | 2 → 1 → 2 |
+| Diverge | 3 lanes → a 1-lane and a 2-lane exit |
+
+**`lanelab`** checks three things:
+- the file is the builder's output;
+- what each scene compiles to:
+  - the lane drop has no discretionary span (the D96 gap, pinned);
+  - Diverge has none across exits;
+  - no conflict zone anywhere;
+- the catalog makes no discretionary change, and a threshold does.
+
+**The sweep tool.** `trafficsim-lane-change-sweep` runs any project across seeds and variants in
+one process. It sets the D95 fields on the compiled scenario's behaviours, then prints
+per-variant and per-movement tables.
+
+**Cross-check.** On four-leg, seeds 42–81, it reproduces the scratchpad A55 exactly:
+- delay 49.97 / 47.06 / 47.07 / 47.15;
+- clamps 220 / 183 / 179 / 185;
+- discretionary changes 13480 / 11116 / 7818;
+- back 2161 / 1104 / 172.
+
+**Lab, seeds 42–51 (58 s for 40 Debug runs, WSL).**
+
+| Threshold | Repeats within 3 s | back | afterMandatory | onward |
+|---|---|---|---|---|
+| 0.25 | 491 | 200 | 72 | 219 |
+| 0.5 | 330 | 112 | 67 | 151 |
+| 1.0 | 171 | 28 | 61 | 82 |
+
+- Unlike four-leg, the lab produces all three kinds. Onward comes mostly from Three lanes, and
+  afterMandatory from Diverge.
+- Overtaking delay falls 2.8 s, Three lanes 3.5 s, and Diverge → Exit B 2.0 s.
+- Lane drop is unchanged (+0.00).
+- Clamps are 5 / 2 / 2 / 5.
+
+Linux only.
+
 ## 2026-10-02 — The route overlay draws every lane of its Links (D96)
 
 Owner report from the editor: a route from a 2-lane Link through a 1-lane Connector to a 2-lane
@@ -452,6 +526,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D98 | 2026-10-02 | **Lane-change work iterates on a dedicated lab project (four isolated scenes: overtaking, three lanes, lane drop, diverge) and an in-process sweep that sets the D95 fields on the compiled scenario; the lab is a development bed, not an acceptance fixture, and A55 is still judged on four-leg and M2.6** | The A55 drawings mix lane changes with signals and conflict areas and take minutes per pass; isolated scenes name the situation a number moved in, and the in-process variant reproduced the data-dir A55 exactly on four-leg (seeds 42–81) | A lab result that four-leg/M2.6 contradicts, or a lane-change situation the four scenes cannot show |
 | D96 | 2026-10-02 | **The route overlay draws every lane of every Link the route names: full chains first, stubs on their own lane, and lanes no chain reaches from the cross-section where the route enters that Link; the run is unchanged** | A route names Links whole (D25; NETWORK_EDITOR "covers every lane of them"). Drawing only full chains hid lanes the run uses and contradicted the docs; starting at the entry cross-section keeps the rule that no line runs upstream of a mid-body arrival | An owner report that the drawing claims lanes vehicles do not use, before D95 lands |
 | D95 | 2026-10-02 | **Discretionary lane changes (owner's rulings): a full-route vehicle changes to an adjacent full route of the same families and last Link when its `followingAcceleration` there beats here by `discretionaryLaneChangeThreshold`; free lane selection; §2's safety rules plus the trailing vehicle at no worse than `−acceptedDecelerationTrailingVehicle` (changer's behaviour); mandatory candidates first; no cooperation; stateless; on in `default.json`** | The acceleration gain reuses the unvalidated car-following model and covers overtaking and queue choice with one test; free lane selection is Vissim's urban default and the smallest rule; a change nobody needs should cost the trailing driver less than a mandatory one; restricting targets to full routes of the same families keeps every destination, movement and compiled proportion exact | Back-and-forth changes within 3 s (A53); clamps rising over seeds 42–81 (A55); a Thai multilane study that needs a keep-left rule |
 | D94 | 2026-10-01 | **D93's rule 4 is a fixed point: walk, drop the downstream stubs that no run of adjacent lanes with family paths connects to a full one, walk again until none is dropped. A path carries every family it belongs to (`FamilyTag` stack); a merged full path keeps the union** | Whether a stub is kept depends on which lanes the whole walk reaches, and dropping one can strand another, so one pass cannot decide it; each pass drops at least one, so it ends, and with no downstream decision it is the one pass it always was. An entry family's full route can also enter a downstream family, so one `family` string could not say both | A network where the reruns are slow (each is a full walk), or where a full path should belong to a family it merged into but was not walked as |

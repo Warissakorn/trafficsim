@@ -128,39 +128,52 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — implement D95: discretionary lane changes (M3.2.8c).** The contract is
-`M3_8_CONTRACT.md` §2 "Discretionary lane changes", and the rows are A47–A55. Both were agreed on
-2026-10-02, and there is no code yet. One system, in this order:
-1. **Data.**
-   - `discretionaryLaneChangeThreshold` and `acceptedDecelerationTrailingVehicle` go in
-     `DriverBehaviour` (`src/core/types.hpp`, next to `maxDecelerationCooperativeBraking`).
-   - Each needs its parse/definition/validate lines, as that field has. Validation refuses one
-     without the other.
-   - `data/driver-behaviour/default.json` gets 0.5 and 1.
-2. **Compile.** In `appendLaneChanges` (`src/model/network/lane_family.cpp`; stubs only today,
-   lines 43 and 66), also emit full↔full spans in both directions between adjacent-lane full
-   routes.
-   - Only between routes with equal family-name sets and the same last Link.
-   - `FamilyRoute` may need the full set of names: `expandRouteless` in
-     `src/project/demand_paths.cpp` adds one `FamilyRoute` per tag.
-   - Keep the stub spans' order, so a project with the field absent is byte-identical (A51).
-3. **Core.** In `src/core/lanes.cpp`, add a discretionary pass after `decideLaneChanges`'s
-   mandatory one (it skips `remainingOfRoute == 0` at line 178).
-   - The incentive `a_there − a_here ≥ threshold` (behind vehicles only).
-   - Rules 1–5 as they are, plus the trailing vehicle at no worse than `−accepted`.
-   - The larger gain wins; a tie goes to the lower slot.
-   - Test each candidate against the moves accepted this tick.
-   - Make sure `laneChangeIssues`, `remainingOfRoute` and the cooperation code ignore
-     full↔full spans: they are not dead ends.
-4. **Tests.** A47–A54 in a new `tests/discretionary_tests.cpp`, on a two-lane Link with one
-   authored route and `test::withVehicles`.
-   - Assert each forcing first.
-   - Add the file to `CMakeLists.txt`, and the group to `TRAFFICSIM_TEST_GROUPS` if it is new.
-5. **A55 measurement.** Four-leg and M2.6, seeds 42–81, threshold 0.25/0.5/1.0, against D94
-   (use the `b472e05` recipe below for the "before").
-   - Write `docs/evidence/m3.2.8c-discretionary.md`.
-   - If clamps rise or A53 counts back-and-forth changes, stop and report: those are D95's
-     failure conditions, and the owner rules.
+**Blocked on the owner — D95 hit its A53 failure condition (2026-10-02, Linux only).**
+
+**State of the code.**
+- D95 is implemented: `1f8fe26`, plus the by-kind diagnostic `191f0b1`.
+- It is **off**: `default.json` carries neither field.
+- With the fields absent, every shipped project's output is byte-identical (A51).
+
+**A55 (four-leg and M2.6, seeds 42–81).**
+
+| | Four-leg | M2.6 |
+|---|---|---|
+| Mean delay, fields absent → set | 49.97 → ≈47.1 s | 51.14 → ≈47.0 s |
+| Clamps, absent / 0.25 / 0.5 / 1.0 | 220 / 183 / 179 / 185 | 947 / 827 / 780 / 827 |
+| Changes within 3 s, at 0.25 / 0.5 / 1.0 | 2161 / 1104 / 172 | 8107 / 4083 / 782 |
+
+- Clamps do not rise.
+- **Every** change within 3 s is back-and-forth (A→B→A).
+
+**The owner rules.** The options:
+- **(a) a hold time after a change.** Needs `SimState` per vehicle, which contract item 7 forbids
+  today.
+- **(b) no change back to the route just left.** Also needs a contract change.
+- **(c) leave D95 off** and record the result.
+
+**After the ruling:**
+1. Implement it.
+2. Measure it on the lab first:
+   ```
+   trafficsim-lane-change-sweep . --seeds 42-51
+   ```
+   It takes about 1 min in Debug. On the lab, repeats are back, afterMandatory and onward all
+   non-zero, unlike four-leg.
+3. Then A55 through the same tool, `--project data/projects/<four-leg|m2.6>.traffic.json --seeds
+   42-81`, which replaces the scratchpad scripts.
+4. Write `docs/evidence/m3.2.8c-discretionary.md`.
+5. Set `default.json` only if A53 passes.
+
+**The lane-change lab (D98).** `data/projects/lane-change-lab.traffic.json`, built from
+`tools/lane_change_network.hpp` and tested by `lanelab`. Its four scenes:
+- Overtaking
+- Three lanes
+- Lane drop: the D96 case. It has **no** discretionary span, and the downstream second lane stays
+  empty, so D95 does not close D96's run-side gap.
+- Diverge
+
+Any lane-change work iterates there first.
 
 Also open, not this session's work:
 - **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a

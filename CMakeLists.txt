@@ -109,6 +109,14 @@ target_precompile_headers(trafficsim-t-junction-fixture REUSE_FROM trafficsim-fo
 add_executable(trafficsim-t-junction-sweep tools/t_junction_sweep.cpp)
 target_link_libraries(trafficsim-t-junction-sweep PRIVATE trafficsim_commands trafficsim_options)
 target_precompile_headers(trafficsim-t-junction-sweep REUSE_FROM trafficsim-four-leg-fixture)
+# D98: the lane-change lab, regenerated from tools/lane_change_network.hpp, and its sweep
+# (development evidence, not part of `check`).
+add_executable(trafficsim-lane-change-fixture tools/lane_change_fixture.cpp)
+target_link_libraries(trafficsim-lane-change-fixture PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-lane-change-fixture REUSE_FROM trafficsim-four-leg-fixture)
+add_executable(trafficsim-lane-change-sweep tools/lane_change_sweep.cpp)
+target_link_libraries(trafficsim-lane-change-sweep PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-lane-change-sweep REUSE_FROM trafficsim-four-leg-fixture)
 
 add_executable(trafficsim-check-architecture tools/check_architecture.cpp)
 add_executable(trafficsim-check-file-sizes tools/check_file_sizes.cpp)
@@ -124,7 +132,7 @@ add_custom_target(check
 if(BUILD_TESTING)
     add_executable(trafficsim-tests tests/main.cpp tests/core_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp tests/lane_change_lab_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
@@ -137,7 +145,7 @@ if(BUILD_TESTING)
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict
         rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep conflict_follow
-        discretionary)
+        discretionary lanelab)
     foreach(group ${TRAFFICSIM_TEST_GROUPS})
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
