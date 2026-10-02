@@ -126,7 +126,11 @@ protected:
     void leaveEvent(QEvent*) override;
     void drawBackground(QPainter*, const QRectF&) override;
     bool focusNextPrevChild(bool) override;
+    bool event(QEvent*) override;
 private:
+    // The grid spacing the cached background was drawn with; redraw() drops the cache when
+    // `grid` no longer matches it. Zoom and pan invalidate the cache inside QGraphicsView.
+    double cachedGrid_{1};
     DisplayCatalog display_;
     std::optional<int> visibleLevel_;
     bool backgroundVisible_{true}, creating_{};
