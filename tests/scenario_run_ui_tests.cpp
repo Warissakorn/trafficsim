@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QStandardPaths>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTest>
 #include <algorithm>
@@ -69,6 +70,12 @@ int main(int argc, char** argv) {
         std::uint64_t trips = 0; for (const auto& m : report->movements) trips += m.vehicles;
         require(trips + report->unassigned == 31, "Movement trips do not add up to the run's completed trips");
         auto* movements = item<QTableWidget>(w, "editorMovementTable");
+        // The Results tab is rebuilt only while it can be seen (a Run-view cost, 2026-10-02):
+        // hidden through the whole run, it is still empty, and showing it fills it.
+        require(!movements->isVisible(), "Results tab already open; the hidden case is not exercised");
+        require(movements->rowCount() == 0, "Hidden Results tab was rebuilt during the run");
+        item<QTabWidget>(w, "editorObjectTabs")->setCurrentWidget(movements->parentWidget());
+        require(movements->isVisible(), "Results tab did not open");
         require(movements->rowCount() == static_cast<int>(report->movements.size()), "Results table rows differ from the report");
         require(movements->item(0, 0)->text() == QString::fromStdString(report->movements[0].name), "Movement name missing");
         require(item<QTableWidget>(w, "editorQueueTable")->rowCount() == static_cast<int>(report->queues.size()), "Queue rows differ");
