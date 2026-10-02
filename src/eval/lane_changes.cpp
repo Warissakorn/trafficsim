@@ -19,6 +19,7 @@ void fold(LaneChangeRow& row, const auto& tally) {
     row.quickBack += tally.quickBack;
     row.quickAfterMandatory += tally.quickAfterMandatory;
     row.quickOnward += tally.quickOnward;
+    row.returns += tally.returns;
 }
 }
 LaneChangeAccumulator::LaneChangeAccumulator(const EvaluationSpec& spec)
@@ -50,6 +51,8 @@ void LaneChangeAccumulator::observe(const SimState& state) {
             // route the previous change left, right after a mandatory change, or onward.
             if (discretionary) {
                 ++tally.discretionary;
+                if (previousChange && change->time - *previousChange < 10 - 1e-9 && change->toRouteId == previousFrom)
+                    ++tally.returns;
                 if (previousChange && change->time - *previousChange < 3 - 1e-9) {
                     ++tally.quickRepeats;
                     if (change->toRouteId == previousFrom) ++tally.quickBack;

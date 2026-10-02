@@ -283,6 +283,9 @@ DriverBehaviour parseBehaviour(const Json& b) {
         behaviour.discretionaryLaneChangeThreshold = field<double>(b, "discretionaryLaneChangeThreshold");
     if (b.contains("acceptedDecelerationTrailingVehicle"))
         behaviour.acceptedDecelerationTrailingVehicle = field<double>(b, "acceptedDecelerationTrailingVehicle");
+    // Optional (D101): absent, a discretionary change is never held.
+    if (b.contains("discretionaryLaneChangeHoldTime"))
+        behaviour.discretionaryLaneChangeHoldTime = field<double>(b, "discretionaryLaneChangeHoldTime");
     return behaviour;
 }
 VehicleType parseVehicleType(const Json& t) {

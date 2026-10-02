@@ -147,7 +147,7 @@ TEST(lanechange, a_waiting_vehicle_is_let_in_by_the_stream_it_waits_beside) { //
     const auto buckets = bucketSpans(spans, s.scenario->segments.size());
     // The forcing: unaided, the change is refused. The nearest vehicles behind the target place
     // are too close to stop there comfortably; one further back is asked to hold back.
-    CHECK(decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans, buckets, {}).empty());
+    CHECK(decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans, buckets, {}, s.tick).empty());
     const auto holds = courtesyHolds(*s.scenario, *s.index, s.vehicles, refs, spans, buckets);
     CHECK(std::count_if(holds.begin(), holds.end(), [](const auto& h) { return std::isfinite(h.gap) && !h.moving; }) == 1);
     CHECK(!std::isfinite(holds[1].gap)); // not the nearest (vehicle 10)
@@ -217,7 +217,7 @@ TEST(lanechange, no_cooperative_braking_outside_the_look_ahead) { // A38
     const auto spans = occupiedSpans(*s.scenario, s.vehicles, *s.index, refs);
     CHECK(s.index->remainingOfRoute[find(s, 1)->routeIndex] == 1);
     CHECK(decideLaneChanges(*s.scenario, *s.index, s.vehicles, refs, spans,
-                            bucketSpans(spans, s.scenario->segments.size()), {}).empty());
+                            bucketSpans(spans, s.scenario->segments.size()), {}, s.tick).empty());
     // 160 m from its dead end at 10 m/s: far outside the 25 m it needs to stop comfortably.
     CHECK(!anyMoving(holdsOf(s)));
 }

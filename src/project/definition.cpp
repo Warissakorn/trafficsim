@@ -94,6 +94,7 @@ Json definitionJson(const AuthoringDefinition& d) {
             if (b.maxDecelerationCooperativeBraking) item["maxDecelerationCooperativeBraking"] = *b.maxDecelerationCooperativeBraking;
             if (b.discretionaryLaneChangeThreshold) item["discretionaryLaneChangeThreshold"] = *b.discretionaryLaneChangeThreshold;
             if (b.acceptedDecelerationTrailingVehicle) item["acceptedDecelerationTrailingVehicle"] = *b.acceptedDecelerationTrailingVehicle;
+            if (b.discretionaryLaneChangeHoldTime) item["discretionaryLaneChangeHoldTime"] = *b.discretionaryLaneChangeHoldTime;
             j["behaviours"].push_back(std::move(item));
         }
     }

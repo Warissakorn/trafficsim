@@ -12,11 +12,13 @@ namespace trafficsim::sweep {
 struct LaneChangeRun { MovementReport movements; LaneChangeReport changes; };
 // `threshold` absent leaves the behaviours as the catalog compiled them.
 inline LaneChangeRun runLaneChanges(const ProjectDocument& document, RunSnapshot snapshot, const std::filesystem::path& data,
-                                    std::uint32_t seed, std::optional<double> threshold, double accepted = 1) {
+                                    std::uint32_t seed, std::optional<double> threshold, double accepted = 1,
+                                    std::optional<double> hold = std::nullopt) {
     if (threshold)
         for (auto& b : snapshot.scenario.behaviours) {
             b.discretionaryLaneChangeThreshold = threshold;
             b.acceptedDecelerationTrailingVehicle = accepted;
+            b.discretionaryLaneChangeHoldTime = hold; // D101; absent, no hold
         }
     const auto spec = evaluationSpec(document, snapshot, data);
     MovementAccumulator m(spec);
