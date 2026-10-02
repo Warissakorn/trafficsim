@@ -76,8 +76,8 @@ inline nlohmann::ordered_json congestedMetadata(const std::filesystem::path& roo
     for (const auto& [gap, headway] : kHeadwayRules) j["rules"].push_back({{"gapTime", gap}, {"headway", headway}});
     return j;
 }
-// D90 added maxDecelerationCooperativeBraking to the behaviour catalog after the sweeps ran. It
-// acts only through lane-change spans, which the T-junction has none of, so the sweeps' results
+// D90 added maxDecelerationCooperativeBraking to the behaviour catalog after the sweeps ran, and
+// D95 its two discretionary fields. They act only through lane-change spans, which the T-junction has none of, so the sweeps' results
 // still stand. When that holds, and the field is the catalog's only change against the archived
 // copy, `current` gets the archived hash back. False otherwise, leaving `current` as it is.
 inline bool restoreArchivedBehaviour(const std::filesystem::path& root, nlohmann::ordered_json& current) {
@@ -86,6 +86,8 @@ inline bool restoreArchivedBehaviour(const std::filesystem::path& root, nlohmann
     auto archived = nlohmann::json::parse(a), now = nlohmann::json::parse(n);
     if (!now.contains("maxDecelerationCooperativeBraking")) return false;
     now.erase("maxDecelerationCooperativeBraking");
+    // D95's two fields act only through lane-change spans too.
+    now.erase("discretionaryLaneChangeThreshold"); now.erase("acceptedDecelerationTrailingVehicle");
     if (now != archived) return false;
     for (const bool congested : {false, true}) {
         fixture::TJunctionOptions o; o.congestedMajor = congested;

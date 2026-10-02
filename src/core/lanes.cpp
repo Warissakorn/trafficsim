@@ -5,6 +5,7 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <optional>
 
 namespace trafficsim {
 namespace {
@@ -61,6 +62,38 @@ std::size_t slotOfId(const std::vector<Vehicle>& vehicles, std::uint64_t id) {
     const auto it = std::lower_bound(vehicles.begin(), vehicles.end(), id,
                                      [](const Vehicle& v, std::uint64_t at) { return v.id < at; });
     return it != vehicles.end() && it->id == id ? static_cast<std::size_t>(it - vehicles.begin()) : vehicles.size();
+}
+// Rules 3-5 at a mapped place, for both kinds of change: nothing alongside, and the car-following
+// model itself accepts the change ahead and behind. Safe: the follower's acceleration behind the
+// changer (+infinity without one), for a discretionary change's stricter test. Unsafe: nullopt.
+std::optional<double> safeAt(const Scenario& s, const std::vector<Vehicle>& vehicles, const std::vector<VehicleRefs>& refs,
+                             std::size_t v, const Around& near) {
+    if (near.alongside) return std::nullopt;
+    const auto& vehicle = vehicles[v];
+    const auto& type = s.vehicleTypes[refs[v].type];
+    const auto& behaviour = s.behaviours[refs[v].behaviour];
+    // Forward safety (rule 3), by the car-following model itself: braking it would accept,
+    // and this tick's move inside the room the leader leaves, so the change never clamps.
+    if (const auto& leader = near.leader) {
+        const double a = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor,
+                                               type, behaviour, leader).acceleration;
+        if (a < -type.comfortableDeceleration ||
+            integrate(vehicle.speed, a, s.timeStep).distance > leader->gap - behaviour.standstillDistance) return std::nullopt;
+    }
+    // Rearward safety (rule 4): the follower's own reaction to the changer ahead of it.
+    if (const auto& follower = near.follower) {
+        const auto f = slotOfId(vehicles, near.followerId);
+        if (f == vehicles.size()) return std::nullopt; // never: every span is a vehicle of this snapshot
+        const auto& fType = s.vehicleTypes[refs[f].type];
+        const auto& fBehaviour = s.behaviours[refs[f].behaviour];
+        const auto& other = vehicles[f];
+        const double a = followingAcceleration(other.speed, other.desiredSpeed, other.driverFactor, fType,
+                                               fBehaviour, Leader{follower->gap, vehicle.speed}).acceleration;
+        if (a < -fType.comfortableDeceleration ||
+            integrate(other.speed, a, s.timeStep).distance > follower->gap - fBehaviour.standstillDistance) return std::nullopt;
+        return a;
+    }
+    return std::numeric_limits<double>::infinity();
 }
 }
 double mappedOnto(const RouteLaneChange& c, double at) {
@@ -130,9 +163,11 @@ std::vector<ValidationIssue> laneChangeIssues(const Scenario& s) {
         if (from == lengths.end()) issues.push_back({"UNKNOWN_ROUTE", p + ".fromRouteId"});
         if (to == lengths.end()) issues.push_back({"UNKNOWN_ROUTE", p + ".toRouteId"});
         if (from == lengths.end() || to == lengths.end()) continue;
-        // Only a stub changes lanes (§2): a span from a full route would be a discretionary change.
+        // A span leaves a stub (mandatory, §2) or joins two full routes (discretionary, D95). A full
+        // route never leads into a stub: the target of a choice is never a dead end.
         const auto dead = deadEnds.find(span.fromRouteId);
-        if (span.fromRouteId == span.toRouteId || dead == deadEnds.end())
+        const bool discretionary = dead == deadEnds.end() && !deadEnds.contains(span.toRouteId);
+        if (span.fromRouteId == span.toRouteId || (dead == deadEnds.end() && !discretionary))
             issues.push_back({"INVALID_RANGE", p + ".fromRouteId"});
         if (!finite(span.fromStart) || !finite(span.fromEnd) || span.fromStart > span.fromEnd ||
             span.fromEnd > from->second + 1e-9 || (dead != deadEnds.end() && span.fromEnd > dead->second + 1e-9))
@@ -155,11 +190,21 @@ void indexLaneChanges(const Scenario& s, ScenarioIndex& index) {
     index.remainingOfRoute = laneChangesRemaining(s);
     for (const auto& dead : s.routeDeadEnds)
         if (const auto r = slotOf(s, dead.routeId); r < s.routes.size()) index.deadEndOfRoute[r] = dead.at;
+    index.discretionaryOfRoute.assign(s.routes.size(), {});
+    bool anyDiscretionary = false;
     for (const auto& span : s.laneChanges) {
         const auto from = slotOf(s, span.fromRouteId), to = slotOf(s, span.toRouteId);
         if (from >= s.routes.size() || to >= s.routes.size()) continue;
-        index.laneChangesOfRoute[from].push_back({to, span.fromStart, span.fromEnd, span.toStart, span.toEnd});
+        const RouteLaneChange change{to, span.fromStart, span.fromEnd, span.toStart, span.toEnd};
+        // Full to full is a discretionary span (D95); the mandatory paths never see one.
+        if (!std::isfinite(index.deadEndOfRoute[from]) && !std::isfinite(index.deadEndOfRoute[to])) {
+            index.discretionaryOfRoute[from].push_back(change); anyDiscretionary = true;
+        } else index.laneChangesOfRoute[from].push_back(change);
     }
+    for (auto& spans : index.discretionaryOfRoute)
+        std::stable_sort(spans.begin(), spans.end(), [](const auto& a, const auto& b) { return a.target < b.target; });
+    index.discretionary = anyDiscretionary && std::any_of(s.behaviours.begin(), s.behaviours.end(),
+        [](const auto& b) { return b.discretionaryLaneChangeThreshold.has_value(); });
     // The order a vehicle tries its targets in: fewest changes left, then the lower slot (§2).
     for (auto& spans : index.laneChangesOfRoute)
         std::stable_sort(spans.begin(), spans.end(), [&](const auto& a, const auto& b) {
@@ -178,7 +223,6 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
         if (index.remainingOfRoute[route] == 0) continue;
         const auto& vehicle = vehicles[v];
         const auto& type = s.vehicleTypes[refs[v].type];
-        const auto& behaviour = s.behaviours[refs[v].behaviour];
         const double front = vehicle.distance, rear = front - type.length;
         if (std::any_of(stopService.begin(), stopService.end(), [&](const auto& x) { return x.vehicleId == vehicle.id; })) continue;
         if (inConflictArea(index, route, rear, front)) continue;
@@ -190,35 +234,52 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
             // Nearest vehicle ahead of and behind the mapped place, over this tick's snapshot and
             // the changes already accepted; anything alongside refuses the change (rule 5).
             const auto near = around(index, change.target, at, atRear, vehicle.id, spans, buckets, moved);
-            const auto& leader = near.leader;
-            const auto& follower = near.follower;
-            if (near.alongside) continue;
-            // Forward safety (rule 3), by the car-following model itself: braking it would accept,
-            // and this tick's move inside the room the leader leaves, so the change never clamps.
-            if (leader) {
-                const double a = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor,
-                                                       type, behaviour, leader).acceleration;
-                if (a < -type.comfortableDeceleration ||
-                    integrate(vehicle.speed, a, s.timeStep).distance > leader->gap - behaviour.standstillDistance) continue;
-            }
-            // Rearward safety (rule 4): the follower's own reaction to the changer ahead of it.
-            if (follower) {
-                const auto f = slotOfId(vehicles, near.followerId);
-                if (f == vehicles.size()) continue; // never: every span is a vehicle of this snapshot
-                const auto& fType = s.vehicleTypes[refs[f].type];
-                const auto& fBehaviour = s.behaviours[refs[f].behaviour];
-                const auto& other = vehicles[f];
-                const double a = followingAcceleration(other.speed, other.desiredSpeed, other.driverFactor, fType,
-                                                       fBehaviour, Leader{follower->gap, vehicle.speed}).acceleration;
-                if (a < -fType.comfortableDeceleration ||
-                    integrate(other.speed, a, s.timeStep).distance > follower->gap - fBehaviour.standstillDistance) continue;
-            }
+            if (!safeAt(s, vehicles, refs, v, near)) continue;
             accepted.push_back({v, static_cast<std::uint32_t>(change.target), at});
             auto placed = vehicle;
             placed.routeIndex = static_cast<std::uint32_t>(change.target); placed.distance = at;
             appendVehicleSpans(moved, s, index, placed, {change.target, refs[v].type, refs[v].behaviour});
             break;
         }
+    }
+    // D95: changes by choice, after every mandatory one, in vehicle-id order, each against the same
+    // snapshot and the moves accepted so far (contract §2 "Discretionary lane changes").
+    if (!index.discretionary) return accepted;
+    for (std::size_t v = 0; v < vehicles.size(); ++v) {
+        const auto route = refs[v].route;
+        const auto& options = index.discretionaryOfRoute[route];
+        const auto& behaviour = s.behaviours[refs[v].behaviour];
+        if (options.empty() || !behaviour.discretionaryLaneChangeThreshold || !behaviour.acceptedDecelerationTrailingVehicle) continue;
+        const auto& vehicle = vehicles[v];
+        const auto& type = s.vehicleTypes[refs[v].type];
+        const double front = vehicle.distance, rear = front - type.length;
+        if (std::any_of(stopService.begin(), stopService.end(), [&](const auto& x) { return x.vehicleId == vehicle.id; })) continue;
+        if (inConflictArea(index, route, rear, front)) continue;
+        // The incentive compares vehicles only, never signals, lines or dead ends: both routes end
+        // on the same Link with the same destinations, and neither is a stub.
+        const auto acceleration = [&](const std::optional<Leader>& leader) {
+            return followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour, leader).acceleration;
+        };
+        const double here = acceleration(around(index, route, front, rear, vehicle.id, spans, buckets, moved).leader);
+        std::optional<LaneChange> best;
+        double bestGain = 0;
+        for (const auto& change : options) { // target-slot order, so a tie keeps the lower slot
+            if (rear < change.fromStart - 1e-9 || front > change.fromEnd + 1e-9) continue;
+            const double at = mappedOnto(change, front), atRear = at - type.length;
+            if (inConflictArea(index, change.target, atRear, at)) continue;
+            const auto near = around(index, change.target, at, atRear, vehicle.id, spans, buckets, moved);
+            const double gain = acceleration(near.leader) - here;
+            if (gain < *behaviour.discretionaryLaneChangeThreshold) continue;
+            // §2's rules 3-5, plus the trailing vehicle at no worse than the CHANGER's accepted value.
+            const auto trailing = safeAt(s, vehicles, refs, v, near);
+            if (!trailing || *trailing < -*behaviour.acceptedDecelerationTrailingVehicle) continue;
+            if (!best || gain > bestGain) { best = LaneChange{v, static_cast<std::uint32_t>(change.target), at}; bestGain = gain; }
+        }
+        if (!best) continue;
+        accepted.push_back(*best);
+        auto placed = vehicle;
+        placed.routeIndex = best->route; placed.distance = best->distance;
+        appendVehicleSpans(moved, s, index, placed, {best->route, refs[v].type, refs[v].behaviour});
     }
     return accepted;
 }

@@ -45,6 +45,8 @@ const Route& routeOf(const Scenario& s, const std::string& id) {
 std::string arrivesOn(const Scenario& s, std::string id) {
     for (bool stub = true; stub;) {
         stub = false;
+        // Only a stub's spans: a full route's (D95) lead to another full route, not an arrival.
+        if (std::none_of(s.routeDeadEnds.begin(), s.routeDeadEnds.end(), [&](const auto& d) { return d.routeId == id; })) break;
         for (const auto& span : s.laneChanges) if (span.fromRouteId == id) { id = span.toRouteId; stub = true; break; }
     }
     return id;

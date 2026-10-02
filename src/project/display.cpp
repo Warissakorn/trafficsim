@@ -44,6 +44,13 @@ DisplayCatalog loadDisplayCatalog(const std::filesystem::path& data) {
             catalog.types.push_back({id,name(j),color(j,"linkColor"),color(j,"connectorColor"),color(j,"laneColor"),color(j,"vehicleColor")});
         }
         if(!orders.contains(0) || !ids.contains("default"))throw std::runtime_error("EDIT_DISPLAY_CATALOG");
+        // D97: a vehicle type's colour is display data, so it lives here and not in
+        // data/vehicle-types, whose files the engine compiles and the sweep evidence hashes.
+        // Optional: a data directory without the folder draws every vehicle in its road's colour.
+        if(std::filesystem::is_directory(data/"vehicle-appearance"))for(const auto& j:files(data/"vehicle-appearance")) {
+            const auto id=j.at("vehicleTypeId").get<std::string>();
+            if(id.empty() || !catalog.vehicleColors.emplace(id,color(j,"color")).second)throw std::runtime_error("EDIT_DISPLAY_CATALOG");
+        }
         return catalog;
     }catch(const std::exception&){throw std::runtime_error("EDIT_DISPLAY_CATALOG");}
 }

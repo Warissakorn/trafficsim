@@ -66,6 +66,12 @@ the Windows time in the next CI run; do not infer it from the Linux number.
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
 **Done:**
+- **Discretionary lane changes, contract and rows (D95, 2026-10-02, docs only).** The owner's
+  rulings:
+  - the acceleration-gain threshold;
+  - free lane selection;
+  - a trailing vehicle accepted deceleration, stricter than mandatory changes;
+  - on by default.
 - **Lane changes at a downstream routing decision (D93 contract, D94 implementation,
   2026-10-01, Windows/MSVC only).** A decision past the entry Link draws by destination, and a
   lane that cannot reach one becomes a stub that changes lanes on the decision's Link, and only
@@ -122,17 +128,67 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Next session — pick one, one system (M3.2.8c).** D93 is in (D94), so a routing decision
-anywhere now holds its proportions where the lanes are served.
-1. **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
-   decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
-   watch pocket-lane vehicles change towards their turn. Problems shows no LANE_UNSERVED.
-   Verified headless and in the Debug test suite on Windows only; nothing was looked at.
-2. **The next M3.2.8c row, contract and rows first:** discretionary changes, visibility at
-   areas, or a between-lanes state. Each needs an owner ruling before rows.
-3. **Linux replay of D91–D94:** the CI run is the evidence. No WSL here.
+**Blocked on the owner — D95 hit its A53 failure condition (2026-10-02, Linux only).**
+
+**State of the code.**
+- D95 is implemented: `1f8fe26`, plus the by-kind diagnostic `191f0b1`.
+- It is **off**: `default.json` carries neither field.
+- With the fields absent, every shipped project's output is byte-identical (A51).
+
+**A55 (four-leg and M2.6, seeds 42–81).**
+
+| | Four-leg | M2.6 |
+|---|---|---|
+| Mean delay, fields absent → set | 49.97 → ≈47.1 s | 51.14 → ≈47.0 s |
+| Clamps, absent / 0.25 / 0.5 / 1.0 | 220 / 183 / 179 / 185 | 947 / 827 / 780 / 827 |
+| Changes within 3 s, at 0.25 / 0.5 / 1.0 | 2161 / 1104 / 172 | 8107 / 4083 / 782 |
+
+- Clamps do not rise.
+- **Every** change within 3 s is back-and-forth (A→B→A).
+
+**The owner rules.** The options:
+- **(a) a hold time after a change.** Needs `SimState` per vehicle, which contract item 7 forbids
+  today.
+- **(b) no change back to the route just left.** Also needs a contract change.
+- **(c) leave D95 off** and record the result.
+
+**After the ruling:**
+1. Implement it.
+2. Measure it on the lab first:
+   ```
+   trafficsim-lane-change-sweep . --seeds 42-51
+   ```
+   It takes about 1 min in Debug. On the lab, repeats are back, afterMandatory and onward all
+   non-zero, unlike four-leg.
+3. Then A55 through the same tool, `--project data/projects/<four-leg|m2.6>.traffic.json --seeds
+   42-81`, which replaces the scratchpad scripts.
+4. Write `docs/evidence/m3.2.8c-discretionary.md`.
+5. Set `default.json` only if A53 passes.
+
+**The lane-change lab (D98).** `data/projects/lane-change-lab.traffic.json`, built from
+`tools/lane_change_network.hpp` and tested by `lanelab`. Its four scenes:
+- Overtaking
+- Three lanes
+- Lane drop: the D96 case. It has **no** discretionary span, and the downstream second lane stays
+  empty, so D95 does not close D96's run-side gap.
+- Diverge
+
+Any lane-change work iterates there first.
+
+Also open, not this session's work:
+- **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
+  decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
+  watch pocket-lane vehicles change towards their turn. Problems should show no
+  LANE_UNSERVED. Nothing was looked at.
+- **The owner looks at D96 in the editor:** draw a route 2-lane Link → 1-lane Connector → 2-lane
+  Link, once with the Connector on the end and once mid-body. The overlay should show both lanes
+  of both Links, with nothing upstream of a mid-body arrival.
+- **Linux replay of D91–D94:** the CI run is the evidence. WSL Ubuntu exists here now (3.7 GB);
+  `ar` on `/mnt/c` can fail with "Cannot allocate memory" at full parallelism, so build with `-j 4`.
 
 **Not booked, for later sessions:**
+- **Route table length over a stub (from D96):** `editor_demand.cpp` takes the length from the
+  first `r.id` or `r.id/lane-*` route, which can be a stub's short distance. Prefer a full chain.
 - **Split targetStanding (measurement only):** is the target lane standing at its own red, or
   in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row needs the
   split. That would be one that changes lanes earlier, before the queue reaches the stub's
@@ -154,8 +210,9 @@ the dead end should be rarer. Verified on Linux headless only.
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
 1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the
    decision station is not modelled (contract §2, rule 7).
-2. Discretionary changes, visibility at areas, and a between-lanes state. Today a change is
-   instantaneous, which the contract records as a limit.
+2. Discretionary changes: contract D95, rows A47–A55, implementation above. Visibility at areas
+   and a between-lanes state are still unwritten. Today a change is instantaneous, which the
+   contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
    left-turners also change at the first tick allowed).
 4. Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.

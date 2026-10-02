@@ -233,6 +233,17 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         number(b.followingTime, p + ".followingTime"); number(b.speedThreshold, p + ".speedThreshold");
         if (b.maxDecelerationCooperativeBraking)
             number(*b.maxDecelerationCooperativeBraking, p + ".maxDecelerationCooperativeBraking");
+        // D95: the two discretionary fields come together; one alone is refused on the other's path.
+        // A zero threshold is refused: two free lanes would then tie at a gain of 0, and every
+        // vehicle on them would change back and forth each tick.
+        if (b.discretionaryLaneChangeThreshold)
+            number(*b.discretionaryLaneChangeThreshold, p + ".discretionaryLaneChangeThreshold");
+        if (b.acceptedDecelerationTrailingVehicle)
+            number(*b.acceptedDecelerationTrailingVehicle, p + ".acceptedDecelerationTrailingVehicle");
+        if (b.discretionaryLaneChangeThreshold && !b.acceptedDecelerationTrailingVehicle)
+            add("INCOMPLETE_DISCRETIONARY_BEHAVIOUR", p + ".acceptedDecelerationTrailingVehicle");
+        if (!b.discretionaryLaneChangeThreshold && b.acceptedDecelerationTrailingVehicle)
+            add("INCOMPLETE_DISCRETIONARY_BEHAVIOUR", p + ".discretionaryLaneChangeThreshold");
     }
     for (std::size_t i = 0; i < s.vehicleTypes.size(); ++i) {
         const auto& t = s.vehicleTypes[i];

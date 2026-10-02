@@ -1,6 +1,7 @@
 #pragma once
 #include "movement.hpp"
 #include <map>
+#include <optional>
 
 namespace trafficsim {
 // M3.2.8c, step 1: where mandatory lane changes happen and how long stub vehicles wait at their
@@ -18,6 +19,12 @@ struct LaneChangeRow {
     // Waiting is the engine's own test (waitingAtDeadEnd); seconds are whole ticks observed.
     std::uint64_t waitingVehicles{};
     double waitSeconds{}, longestWait{};
+    // D95: changes from a FULL route (by choice), which the counts and positions above leave out,
+    // and those of them made within 3 s of the same vehicle's previous change, of either kind (A53).
+    std::uint64_t discretionaryChanges{}, quickRepeats{};
+    // The repeats by kind, summing to quickRepeats: back to the route the previous change left
+    // (A to B to A), right after a mandatory change, or onward to a third route.
+    std::uint64_t quickBack{}, quickAfterMandatory{}, quickOnward{};
     bool operator==(const LaneChangeRow&) const = default;
 };
 // One row per movement in the spec's order, then "unfinished" for vehicles still in the network
@@ -32,7 +39,9 @@ public:
     void observe(const SimState& state);
     LaneChangeReport report() const;
 private:
-    struct Tally { std::uint64_t changes{}, unplaced{}; std::vector<double> before, at; double wait{}, run{}, longest{}; };
+    struct Tally { std::uint64_t changes{}, unplaced{}; std::vector<double> before, at; double wait{}, run{}, longest{};
+                   std::uint64_t discretionary{}, quickRepeats{}, quickBack{}, quickAfterMandatory{}, quickOnward{};
+                   std::optional<double> lastChange; std::string lastFrom; bool lastMandatory{}; };
     void bind(const SimState& state);
     const Scenario* bound_{};
     std::map<std::string, std::size_t> movementOfRoute_, slotOfRoute_;

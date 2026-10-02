@@ -21,6 +21,11 @@ struct DriverBehaviour {
     // M3.2.8c: Vissim's "Maximum deceleration for cooperative braking" (m/s², positive). Without
     // it the behaviour does not brake cooperatively for a changer that is still moving (D90).
     std::optional<double> maxDecelerationCooperativeBraking;
+    // M3.2.8c (D95): a vehicle on a full route changes to an adjacent one by choice when it can
+    // accelerate harder there by at least the threshold (m/s², ours; Vissim has none), and the
+    // trailing vehicle there brakes at no more than the accepted deceleration (m/s², positive).
+    // Both or neither: without them the behaviour makes no discretionary change.
+    std::optional<double> discretionaryLaneChangeThreshold, acceptedDecelerationTrailingVehicle;
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };
@@ -192,6 +197,10 @@ struct ScenarioIndex {
     std::vector<std::vector<RouteLaneChange>> laneChangesOfRoute;
     std::vector<double> deadEndOfRoute;
     std::vector<std::uint32_t> remainingOfRoute;
+    // D95: the full-to-full spans, apart from `laneChangesOfRoute` (stub spans only), in target-slot
+    // order. `discretionary` is set only when some span exists AND some behaviour has the threshold.
+    bool discretionary{};
+    std::vector<std::vector<RouteLaneChange>> discretionaryOfRoute;
     std::vector<std::vector<RouteZone>> routeZones;  // parallel to Scenario::routes, in conflictZones order
     bool stopZones{};                                // any zone is a Stop: only then is service tracked
     std::vector<std::size_t> programOfHead;          // parallel to Scenario::signalHeads

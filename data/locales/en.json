@@ -167,6 +167,7 @@
   "EMPTY_ROUTE": "This route has no steps.",
   "INVALID_NUMBER": "This value must be a finite number greater than zero.",
   "INVALID_RANGE": "The lower bound of this range must not exceed the upper bound.",
+  "INCOMPLETE_DISCRETIONARY_BEHAVIOUR": "discretionaryLaneChangeThreshold and acceptedDecelerationTrailingVehicle go together. Set both, or neither.",
   "INVALID_INTERVAL": "The interval ends before it starts. Check startTime and endTime.",
   "TIMESTEP_TOO_LARGE": "timeStep must be 0.5 s or less for car-following to remain stable.",
   "OFF_TIME_GRID": "This time is not a whole multiple of timeStep.",

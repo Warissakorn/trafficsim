@@ -132,3 +132,31 @@ See [NETWORK_EDITOR.md](../docs/NETWORK_EDITOR.md) for the editing workflow and 
 `trafficsim-m26-study <output>` regenerates `data/projects/m2.6-study-template.traffic.json` from
 `m26_study_network.hpp` — the M2.6 study template with placeholder volumes. `m26study` in
 `trafficsim-tests` fails when the two differ.
+
+`trafficsim-lane-change-fixture <output>` regenerates `data/projects/lane-change-lab.traffic.json`
+from `lane_change_network.hpp` (D98). It has four independent scenes, each isolating one
+lane-change situation:
+
+| Scene | What it isolates |
+|---|---|
+| Overtaking | a two-lane road |
+| Three lanes | a three-lane road |
+| Lane drop | the D96 case |
+| Diverge | a three-lane road splitting to a one-lane and a two-lane exit |
+
+`lanelab` fails when the file and the builder differ, and pins what each scene compiles to.
+
+`trafficsim-lane-change-sweep <repo root> [--project FILE] [--seeds 42-51]
+[--thresholds absent,0.25,0.5,1.0] [--accepted 1]` runs the project (the lab by default) for every
+seed and variant in one process:
+
+- **Variants.** For each variant it sets the two D95 fields on the compiled scenario's behaviours.
+  No catalog copy is needed.
+- **Output.** Markdown tables:
+  - per variant: delay, mandatory and discretionary changes, quick repeats by kind, and safety
+    clamps;
+  - per movement: changes, and Δdelay paired by seed against the first variant.
+- **A55.** Run it with `--project data/projects/four-leg-signalised.traffic.json` (or the M2.6
+  template) and `--seeds 42-81`.
+
+It is development evidence, not part of `check`.

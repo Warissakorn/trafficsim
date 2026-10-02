@@ -92,6 +92,8 @@ Json definitionJson(const AuthoringDefinition& d) {
                 {"additiveSafetyDistance",b.additiveSafetyDistance},{"multiplicativeSafetyDistance",b.multiplicativeSafetyDistance},
                 {"followingTime",b.followingTime},{"speedThreshold",b.speedThreshold}};
             if (b.maxDecelerationCooperativeBraking) item["maxDecelerationCooperativeBraking"] = *b.maxDecelerationCooperativeBraking;
+            if (b.discretionaryLaneChangeThreshold) item["discretionaryLaneChangeThreshold"] = *b.discretionaryLaneChangeThreshold;
+            if (b.acceptedDecelerationTrailingVehicle) item["acceptedDecelerationTrailingVehicle"] = *b.acceptedDecelerationTrailingVehicle;
             j["behaviours"].push_back(std::move(item));
         }
     }

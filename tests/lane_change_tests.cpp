@@ -126,7 +126,7 @@ TEST(lanechange, a_copied_state_replays_exactly_and_congested_demand_is_conserve
     CHECK(s.vehicles.empty() && pending == 0 && s.completed > 0);
     CHECK(std::count(t.arrivedOn.begin(), t.arrivedOn.end(), "full") == static_cast<long>(s.completed));
 }
-TEST(lanechange, validation_refuses_a_span_from_a_full_route_and_an_unreachable_dead_end) {
+TEST(lanechange, validation_refuses_a_span_from_a_full_route_into_a_stub_and_an_unreachable_dead_end) {
     auto fromFull = lanes();
     fromFull.laneChanges.push_back({"full", "stubA", 0, 200, 0, 200});
     const auto a = validateScenario(fromFull);

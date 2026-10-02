@@ -3,9 +3,11 @@
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include "../src/commands/network_commands.hpp"
+#include <algorithm>
 #include <fstream>
 #include <cmath>
 #include <limits>
+#include <optional>
 using namespace trafficsim;
 namespace {
 ProjectDocument sample() {
@@ -402,4 +404,35 @@ TEST(editor, the_drawn_route_starts_where_the_traffic_joins) {
     const auto other=routeGeometries(mirrored,route);
     CHECK(other.size()==1);
     test::near(polylineLength(other.front()),polylineLength(drawn.front()),1e-6);
+}
+TEST(editor, a_route_over_a_lane_drop_draws_every_lane_of_its_links) {
+    // 2 lanes -> a 1-lane Connector -> 2 lanes. The route names the Links whole, so the drawing
+    // covers both lanes of both: the West lane the Connector does not leave is a stub, and the
+    // East lane it does not reach is drawn from where the route enters that Link.
+    for(const std::optional<double> station:{std::optional<double>{},std::optional<double>{35.0}}) {
+        ProjectDocument d;
+        const auto west=addLink(d,{{-100,0},{-10,0}},2,3.5);
+        const auto east=addLink(d,{{0,0},{90,0}},2,3.5);
+        const auto westLanes=d.network.links[0].lanes;
+        const auto eastLanes=d.network.links[1].lanes;
+        const auto connector=addConnector(d,{west,westLanes[0].id},{east,eastLanes[0].id,station});
+        const std::vector<std::string> route{west,connector,east};
+        // The forcing: one full chain and one stub, so the narrowing really is there.
+        CHECK(connectorPaths(d.network,d.network.connectors.front()).size()==1);
+        const auto family=routeLaneFamily(d.network,route);
+        CHECK(family.size()==2);
+        CHECK(std::count_if(family.begin(),family.end(),[](const auto& c){return c.stub;})==1);
+        CHECK(routeLaneChains(d.network,route).size()==1);
+        const auto drawn=routeGeometries(d.network,route);
+        CHECK(drawn.size()==3);
+        // Full chain first: the input chevron draws on drawn.front().
+        const auto westOther=laneGeometry(d.network.links[0],westLanes[1].id,d.network.drivingSide);
+        test::near(polylineLength(drawn[1]),polylineLength(westOther),1e-6);
+        const auto eastOther=laneGeometry(d.network.links[1],eastLanes[1].id,d.network.drivingSide);
+        const auto from=matchedStation(d.network.links[1].geometry,eastOther,station.value_or(0));
+        const auto start=pointAlong(eastOther,from),end=eastOther.back();
+        test::near(std::hypot(drawn[2].front().x-start.x,drawn[2].front().y-start.y),0,1e-6);
+        test::near(std::hypot(drawn[2].back().x-end.x,drawn[2].back().y-end.y),0,1e-6);
+        test::near(polylineLength(drawn[2]),90-station.value_or(0),1e-6);
+    }
 }

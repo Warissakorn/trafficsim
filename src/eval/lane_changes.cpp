@@ -1,5 +1,7 @@
 #include "lane_changes.hpp"
 #include <algorithm>
+#include <cmath>
+#include <utility>
 
 namespace trafficsim {
 namespace {
@@ -12,6 +14,11 @@ void fold(LaneChangeRow& row, const auto& tally) {
     row.waitingVehicles += tally.wait > 0;
     row.waitSeconds += tally.wait;
     row.longestWait = std::max(row.longestWait, tally.longest);
+    row.discretionaryChanges += tally.discretionary;
+    row.quickRepeats += tally.quickRepeats;
+    row.quickBack += tally.quickBack;
+    row.quickAfterMandatory += tally.quickAfterMandatory;
+    row.quickOnward += tally.quickOnward;
 }
 }
 LaneChangeAccumulator::LaneChangeAccumulator(const EvaluationSpec& spec)
@@ -32,9 +39,27 @@ void LaneChangeAccumulator::observe(const SimState& state) {
     for (const auto& event : state.events) {
         if (const auto* change = std::get_if<LaneChangeEvent>(&event)) {
             auto& tally = open_[change->vehicleId];
+            const auto previousChange = std::exchange(tally.lastChange, change->time);
+            const auto previousFrom = std::exchange(tally.lastFrom, change->fromRouteId);
+            const auto from = slotOfRoute_.find(change->fromRouteId);
+            const bool discretionary = from != slotOfRoute_.end() && !std::isfinite(index.deadEndOfRoute[from->second]);
+            const bool previousMandatory = std::exchange(tally.lastMandatory, !discretionary);
+            // From a full route, no dead end: a change by choice (D95), counted apart. A repeat
+            // within 3 s counts only when this change is one: a stub's chain of mandatory changes
+            // is not a back-and-forth. Each repeat is one of three kinds: straight back to the
+            // route the previous change left, right after a mandatory change, or onward.
+            if (discretionary) {
+                ++tally.discretionary;
+                if (previousChange && change->time - *previousChange < 3 - 1e-9) {
+                    ++tally.quickRepeats;
+                    if (change->toRouteId == previousFrom) ++tally.quickBack;
+                    else if (previousMandatory) ++tally.quickAfterMandatory;
+                    else ++tally.quickOnward;
+                }
+                continue;
+            }
             ++tally.changes;
             const auto was = previous_.find(change->vehicleId);
-            const auto from = slotOfRoute_.find(change->fromRouteId);
             if (was == previous_.end() || from == slotOfRoute_.end()) { ++tally.unplaced; continue; }
             tally.before.push_back(index.deadEndOfRoute[from->second] - was->second.second);
             tally.at.push_back(was->second.second);
