@@ -109,6 +109,7 @@ Vissim users work with one hand on the keyboard. **Rewritten 2026-09-22 (M1.27.3
 | Choose a tool | `S` select · `L` link · `C` connector · `R` route · `V` input · `H` head · `A` conflict area · `X` split · `M` measure · `K` calibrate | `editor_palette.cpp` |
 | Run · step · stop | `F5` · `F6` or `Space` · `Esc` | `editor_run.cpp` |
 | Background image | `Ctrl+B` | `editor_palette.cpp` |
+| Wireframe (simple link display): centre lines only, vehicles stay in their lanes | `Ctrl+A` | `editor_palette.cpp`, D100 |
 | Properties · Objects and problems · History docks | `Ctrl+I` · `Ctrl+Shift+O` · `Ctrl+Shift+H` | `editor_inspector.cpp`, `editor_tables.cpp`, `editor_history.cpp` |
 | Fit network | `F` | `editor_window.cpp` |
 | Cycle the objects under the pointer (with the Conflict area tool: the areas) | `Tab` | `canvas_display.cpp` |
@@ -132,13 +133,14 @@ editor was changed to match: `Ctrl+B` is the background image, the Objects dock 
 
 **Owner correction (2026-09-22).** An earlier revision listed `Ctrl+N` as Vissim's *simple
 network display* toggle and called it a Medium collision with New. **It is not: the display
-toggle is `Ctrl+A`.** `Ctrl+N` = New collides with nothing, and `Ctrl+A` is unbound here.
+toggle is `Ctrl+A`.** `Ctrl+N` = New collides with nothing. `Ctrl+A` is the wireframe toggle
+since D100 (2026-10-02); the supplied `docs/specs/network-editor` text that reads it as Select all
+is superseded by this correction and left as supplied.
 
 ### Absent, and worth taking
 
 | Vissim ✔ | Purpose | Where it belongs |
 |---|---|---|
-| `Ctrl+A` | Toggle wireframe / simple link display | Unbound and free — but there is no simplified display to toggle until M1.23's culling and LOD work builds one |
 | `Ctrl+C` / `Ctrl+V` | Copy / paste network objects | Not booked — needs an ID-allocation policy for pasted objects |
 | `Ctrl+Q` | Quick mode (draw less, simulate faster) | Not booked — revisit when a run is slow enough to need it |
 

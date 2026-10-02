@@ -8,6 +8,26 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — Wireframe display, Ctrl+A (D100)
+
+The owner-ruled Vissim simple link display. `EditorCanvas::setWireframe` (view state, like
+`setBackgroundVisible`; never saved) makes `redraw()` draw each Link's `linkCentreline` and each
+Connector's `connectorCentreline` as one cosmetic line tagged `centre-line`, with no surface,
+markings or mouth edges. `drawCentreLine` puts the selection band and direction arrows on the
+line. `objectShape` returns the stroked centre line in wireframe, so hit-testing, band select and
+framing pick what is drawn. `laneHandles()` returns none, because the tabs sit on rails that are
+not drawn. The owner chose to keep vehicles on their lane positions (`canvas_run.cpp` unchanged).
+The shell adds `editorToggleWireframe` (Ctrl+A, View menu, command palette, en/th). A focused
+text field keeps Ctrl+A as select-all; a focused table was not checked.
+
+`wireframe-ui` covers the Ctrl+A toggle, item tags, hit on the line and miss on the lane (asserted
+off-mode first; a mutant without the `objectShape` branch fails it), the selection band, lane tabs
+(asserted present normally first), identical vehicle poses either way, the unchanged revision and
+the text field. Editor benchmark, 40 crossings, Release, Windows: wireframe `redraw()` 1.10–1.25 ms
+against 2.99–3.91 ms. `hitObjects` in wireframe is 1.21–1.52 ms against 0.72–0.89 ms, because the
+connector axis is recomputed per call. That is well inside a mouse move, so no cache (D28).
+Desktop 74/74 on Windows (offscreen). Not run on Linux.
+
 ## 2026-10-02 — Run view paint cost, measured on Windows (D99)
 
 `trafficsim-run-view-benchmark` (new, `tools/run_view_benchmark.cpp`) steps the M2.6 template
@@ -418,6 +438,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D100 | 2026-10-02 | **Ctrl+A wireframe draws, hits and selects Links and Connectors as their centre line; vehicles keep their lane positions; view state only** | Owner ruling (NEXT, VISSIM_PARITY): Vissim's simple link display. One flag on the canvas switches drawing and `objectShape` together, so what is seen is what is hit. Lane tabs hang off rails that are not drawn, so they are withdrawn rather than left grabbable. Vehicles stay in lanes by the owner's choice: the display must not misstate where the engine put them. Not saved, like Ctrl+B | The owner wants vehicles on the line (map stations onto the centre line in `drawRunItems`); a network large enough that `hitObjects`' per-call `connectorCentreline` is felt on mouse move (then cache it beside `cachedSurface`, after D28) |
 | D99 | 2026-10-02 | **The editor canvas caches its grid background; the Results tab is rebuilt only while visible** | Measured on the Run view (Windows, Release, M2.6, `trafficsim-run-view-benchmark`): painting was 93% of a Step and the grid ≈3.3 ms of the 4.5 ms canvas paint; caching it took events 7.4 → 3.8 ms/Step. The grid depends only on transform, `grid` and pixel ratio, and the palette is constant, so the cache is reset on exactly those. The Results tables were rebuilt every Step while hidden (−11% total when skipped); refreshing on the page's Show event covers tab, dock and window. Setting the Run icon only on change saved nothing: the run label's relayout already pays for the toolbar's | A live theme or palette switch, or a grid that reads other state, without `resetCachedContent()` there; anything reading the Results widgets (not `runReport()`) while the tab is hidden |
 | D98 | 2026-10-02 | **Lane-change work iterates on a dedicated lab project (four isolated scenes: overtaking, three lanes, lane drop, diverge) and an in-process sweep that sets the D95 fields on the compiled scenario; the lab is a development bed, not an acceptance fixture, and A55 is still judged on four-leg and M2.6** | The A55 drawings mix lane changes with signals and conflict areas and take minutes per pass; isolated scenes name the situation a number moved in, and the in-process variant reproduced the data-dir A55 exactly on four-leg (seeds 42–81) | A lab result that four-leg/M2.6 contradicts, or a lane-change situation the four scenes cannot show |
 | D97 | 2026-10-02 | **A Run-view vehicle is one borderless path item at its type's true length × width, front bumper at its station, along the rear-to-front chord; windshield and cab gap are odd-even holes shown from 14 px; floored at 4 × 2.5 px; colour per vehicle type from `data/vehicle-appearance/`, falling back to the road's display-type colour** | Owner request and choices (shape, colour by type). One item per vehicle keeps D85's per-frame cost; colour is display data, so it stays out of `core::VehicleType` and out of the vehicle-type files the engine compiles and the sweep evidence hashes | A measured `scenario-run-ui` regression against D85; a need for 3-D models or colour distributions within a type |

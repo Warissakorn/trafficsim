@@ -187,12 +187,8 @@ no gate result is inferred.
 
 ## Engineering work that can proceed without the owner, if asked
 
-- **Wireframe display, `Ctrl+A` (owner ruled 2026-10-02):** a toggle that draws every Link and
-  Connector as its centre line only — no lane surfaces, edges or markings — in the editor **and
-  in the Run view**, as Vissim's simple link display (`VISSIM_PARITY.md` shortcut table). It is a
-  readability feature, not a performance fix: `redraw()` is ≈0.9 ms on the 40-link benchmark.
-  One system: decide where the flag lives (view state, not the project file) and keep selection,
-  hit-testing and vehicles working on the centre lines.
+- **Owner looks at Ctrl+A wireframe (D100) on Windows:** is the link-colour line readable on the
+  grid, and do vehicles beside the line on multi-lane roads read well, or should they snap to it?
 - Derive an input's interval volumes from its entry decision's turning counts, so a count sheet
   is typed once; today the two are entered separately.
 - In-editor CSV export of the Results tab (the CLI has one).

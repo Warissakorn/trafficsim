@@ -68,6 +68,7 @@ is in metres, and Snap affects drawing/dragging. Measuring and calibration bypas
 | Tab on the canvas | Cycle objects overlapping the last click position |
 | Delete / Ctrl+Delete | Delete objects / remove selected geometry point |
 | Ctrl+B / Ctrl+I / Ctrl+Shift+O | Toggle background / Properties / object tables |
+| Ctrl+A | Wireframe display: Links and Connectors as centre lines only (a focused text field keeps select-all) |
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
 | Platform Undo/Redo; Ctrl+Y | Undo/Redo; additional Redo binding |
 | F5 / F6 | Run or Pause / Step |
@@ -360,6 +361,12 @@ The image origin is its top-left pixel; positive rotation is counter-clockwise.
 Import, transform, calibration and removal are undoable. History shares immutable
 background bytes, and the canvas caches the decoded image. Ctrl+B changes visibility
 without modifying the saved image.
+
+Ctrl+A (View → Wireframe display) draws every Link and Connector as its centre line, as
+Vissim's simple link display. It is view state like Ctrl+B: not saved, and off in a new window.
+What is drawn is what is hit, band-selected and framed; the lane tabs are hidden because their
+rails are not drawn (lane count stays in Properties). In the Run view vehicles keep their real
+lane positions, so on a multi-lane road they sit either side of the line (D100).
 
 ## Save, recovery and formats
 
