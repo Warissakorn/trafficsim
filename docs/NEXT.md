@@ -82,7 +82,7 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Blocked on the owner — D95 hit its A53 failure condition (2026-10-02, Linux only).**
+**D95 — owner ruled 2026-10-02 (D101): find the cause of the reversals first.** It stays off.
 
 **State of the code.**
 - D95 is implemented: `1f8fe26`, plus the by-kind diagnostic `191f0b1`.
@@ -100,24 +100,22 @@ output first.
 - Clamps do not rise.
 - **Every** change within 3 s is back-and-forth (A→B→A).
 
-**The owner rules.** The options:
-- **(a) a hold time after a change.** Needs `SimState` per vehicle, which contract item 7 forbids
-  today.
-- **(b) no change back to the route just left.** Also needs a contract change.
-- **(c) leave D95 off** and record the result.
-
-**After the ruling:**
-1. Implement it.
-2. Measure it on the lab first:
-   ```
-   trafficsim-lane-change-sweep . --seeds 42-51
-   ```
-   It takes about 1 min in Debug. On the lab, repeats are back, afterMandatory and onward all
-   non-zero, unlike four-leg.
-3. Then A55 through the same tool, `--project data/projects/<four-leg|m2.6>.traffic.json --seeds
-   42-81`, which replaces the scratchpad scripts.
-4. Write `docs/evidence/m3.2.8c-discretionary.md`.
-5. Set `default.json` only if A53 passes.
+**The ruling (D101).** (b) is rejected: it is per-vehicle state too, and it forbids a later
+overtake back for ever. (c) is today's state, not the answer. In order:
+1. **One session finds why changes reverse (A→B→A), on the lab** (`Overtaking` first), without a
+   contract change. If the incentive itself flips after a move (e.g. the lane just left looks
+   better once the changer is out of it), fix it statelessly; contract item 7 and A53 stand.
+2. **Only if a stateless rule oscillates by nature: (a), narrowly.** `Vehicle` may carry one record
+   of its last change (`{tick, fromRoute}`), inside `SimState`, so a copied state still replays
+   exactly. The hold time is a driver-behaviour field; absent means no hold and byte-identical
+   output (A51). **A53 is rewritten**, because a hold of 3 s or more passes it by construction:
+   count returns to the route just left within a window longer than the hold (say 10 s), capped as
+   a share of discretionary changes. The same record later serves the Run view's lane-change
+   animation and an engine between-lanes state, so the change is recorded in one place.
+3. Then, for whichever fix: lab sweep `trafficsim-lane-change-sweep . --seeds 42-51` (≈1 min in
+   Debug), A55 with `--project data/projects/<four-leg|m2.6>.traffic.json --seeds 42-81`, write
+   `docs/evidence/m3.2.8c-discretionary.md`, and set `default.json` only if A53 (or its rewrite)
+   passes.
 
 **The lane-change lab (D98).** `data/projects/lane-change-lab.traffic.json`, built from
 `tools/lane_change_network.hpp` and tested by `lanelab`. Its four scenes:
