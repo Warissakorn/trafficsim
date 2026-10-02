@@ -107,20 +107,13 @@ void EditorWindow::refreshDemand() {
         const auto& def=*history_.document().definition;
         const auto scenario=buildScenario(history_.document().network,def);
         for(const auto& r:def.routes) {
-            double length=0;QStringList ids;
+            QStringList ids;
             for(const auto& id:r.segmentIds)ids<<QString::fromStdString(id);
             // The author sees the ids they stored; the length comes from the COMPILED route,
             // which is the expanded chain of sections. Summing the authored ids instead would
-            // charge a route that turns off part way along a lane for the whole lane.
-            // A route covers every lane, so the compiled id is the authored one only when it
-            // expanded to a single lane; otherwise the lanes carry "/lane-k" and the row shows
-            // the first of them -- one lane's distance, not the sum of all of them.
-            const auto prefix=r.id+"/lane-";
-            for(const auto& compiled:scenario.routes) {
-                if(compiled.id!=r.id && compiled.id.rfind(prefix,0)!=0) continue;
-                for(const auto& id:compiled.segmentIds)for(const auto& s:scenario.segments)if(s.id==id)length+=s.length;
-                break;
-            }
+            // charge a route that turns off part way along a lane for the whole lane. One full
+            // lane chain's distance, never a stub's (authoredRouteLength).
+            const double length=authoredRouteLength(scenario,r.id);
             const int n=routeTable_->rowCount();routeTable_->insertRow(n);
             row(routeTable_,n,{QString::fromStdString(r.id),ids.join(" → "),QString::number(length,'f',2)},r.id);
         }

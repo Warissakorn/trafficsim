@@ -357,4 +357,8 @@ void assertValidNetwork(const Network& network);
 // Unchecked assembly, for diagnostics that must not throw. Requires an already-valid network.
 Scenario buildScenario(const Network& network, const ScenarioDefinition& definition);
 Scenario compileScenario(const Network& network, const ScenarioDefinition& definition);
+// One lane's distance along an authored route, from its compiled chains: the route itself when it
+// expanded to one lane, else the first "/lane-k" chain that is not a stub, so a lane that ends at
+// its dead end never stands for the route. 0 when nothing compiled under the id.
+double authoredRouteLength(const Scenario& scenario, const std::string& routeId);
 }

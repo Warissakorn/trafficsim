@@ -8,6 +8,18 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — The route table's Length is a full chain, not a stub
+
+The bug NEXT booked from D96. The Demand tab's route row took its length from the first compiled
+`r.id` or `r.id/lane-k` route. When lane 1 cannot reach the route's turn it compiles first as a
+stub (M3.2.8b), so a 2-lane Link → Connector from lane 2 → Link showed 100 m instead of 220 m.
+`authoredRouteLength` (`src/model/network/compile.cpp`) now picks the first chain that is not in
+`routeDeadEnds` — the same test `evaluation.cpp` uses to drop stubs from movements — and falls back
+to the first chain only if every one is a stub. The editor calls it instead of its own loop, so the
+choice is tested headless (`demand.a_route_length_is_a_full_chain_not_the_first_lane_stub`, which
+first asserts lane 1 really is a stub). Verified on Linux (WSL, GCC); display only, no run output
+changes.
+
 ## 2026-10-02 — The lane-change lab, and where D95 stands (D98)
 
 ### D95's A55 result

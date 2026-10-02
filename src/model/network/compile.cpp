@@ -285,4 +285,22 @@ Scenario compileScenario(const Network& network, const ScenarioDefinition& defin
     assertValidScenario(scenario);
     return scenario;
 }
+double authoredRouteLength(const Scenario& scenario, const std::string& routeId) {
+    const auto prefix = routeId + "/lane-";
+    const auto stub = [&](const std::string& id) {
+        return std::any_of(scenario.routeDeadEnds.begin(), scenario.routeDeadEnds.end(),
+                           [&](const auto& d) { return d.routeId == id; });
+    };
+    const Route* chosen = nullptr;
+    for (const auto& route : scenario.routes) {
+        if (route.id != routeId && route.id.rfind(prefix, 0) != 0) continue;
+        if (!chosen) chosen = &route; // only if every chain is a stub
+        if (!stub(route.id)) { chosen = &route; break; }
+    }
+    double length = 0;
+    if (chosen)
+        for (const auto& id : chosen->segmentIds)
+            for (const auto& s : scenario.segments) if (s.id == id) length += s.length;
+    return length;
+}
 }

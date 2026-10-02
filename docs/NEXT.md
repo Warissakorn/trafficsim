@@ -65,62 +65,16 @@ the Windows time in the next CI run; do not infer it from the Linux number.
 
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
-**Done:**
-- **Discretionary lane changes, contract and rows (D95, 2026-10-02, docs only).** The owner's
-  rulings:
-  - the acceleration-gain threshold;
-  - free lane selection;
-  - a trailing vehicle accepted deceleration, stricter than mandatory changes;
-  - on by default.
-- **Lane changes at a downstream routing decision (D93 contract, D94 implementation,
-  2026-10-01, Windows/MSVC only).** A decision past the entry Link draws by destination, and a
-  lane that cannot reach one becomes a stub that changes lanes on the decision's Link, and only
-  there. A40–A46 are in `tests/downstream_decision_tests.cpp`. Every shipped project's output is
-  byte-identical. The four-leg pocket-decision test now holds 3:1 exactly, by the contract.
-- **Why the remaining waits wait (D92, 2026-10-01, Windows/MSVC only).** `--wait-causes`
-  (`src/eval/dead_end_waits.hpp`) classifies each dead-end wait at its start. Over seeds 42–81
-  at 3 m/s², **93% of the 4,222 s (96 of 118 waits) start beside a standing target lane**, a
-  red or a queue, which no cooperation rule reaches; 7% (309 s) start beside a moving stream.
-  East → South is 1,925 s of 2,067. Every waiting vehicle had stood in its own lane's queue
-  first, so that does not separate waits. `maxDecelerationCooperativeBraking` 2/3/4 moves only
-  the moving-stream share. East → West is +1.1 ± 0.9 / −0.1 ± 0.1 s against 3, and clamps do
-  not rise (`docs/evidence/m3.2.8c-wait-causes.md`). MSVC reproduces D90's GCC numbers at 3.
-  The default stays 3.
-- **Cooperative braking with look-ahead (D90, 2026-10-01, Linux only; contract §2, A36–A39).**
-  A stub vehicle still moving is helped once its dead end governs its car-following. The helper
-  brakes at no more than `maxDecelerationCooperativeBraking` (3 m/s², default behaviour; absent
-  the field, only D71 runs). Over seeds 42–81: dead-end waits 9,034 → 4,222 s, East → South
-  126.8 → 51.7 s per seed, East → West −2.3 ± 0.6 s against 8b, network mean +2.4 → +1.3 ± 0.5 s
-  against `b472e05`, clamps not up (`docs/evidence/m3.2.8c-cooperative-braking.md`). The
-  T-junction metadata guards restore the pre-D90 behaviour hash only when the field is the sole
-  change and the fixture has no spans.
-- **M3.2.8c step 5 (D89, 2026-10-01, Linux only): the East-approach rise is the left-turn
-  dead-end waits.** Over seeds 42–81 the East through and left delay accrues on the entry Link
-  the stubs dead-end on (+5.0/+4.3 s by `connector-23`). Per seed, East → West Δdelay =
-  +0.1 + 0.047 × East → South wait-seconds (r = 0.56), which gives the whole +6.0 s at the mean
-  wait of 127 s/seed. West shows the same at a third of the size
-  (`docs/evidence/m3.2.8c-east-approach.md`). Blocking versus courtesy hold is not separated.
-- **M3.2.8c step 4 (D88, 2026-10-01, Linux/GCC 15.2 only): the right-turn rise was a five-seed
-  sample.** `--arrival-phases [--phase-bin S]` (`src/eval/arrival_phases.hpp`) gives each
-  movement's cycle phase at segment entry and first stop. A right-turner's pocket timing is fixed
-  at departure, i.e. by the Poisson draw, which M3.2.8b re-orders. **Over seeds 42–81** South →
-  East is −1.0 ± 1.1 s and North → West +2.7 ± 1.2 s. What persists: **East → West through
-  +6.0 ± 1.7 s, East → South left +6.8 ± 2.6 s, network mean +2.4 ± 0.5 s**. Clamps +1.4 ± 1.3,
-  not systematic (`docs/evidence/m3.2.8c-arrival-phases.md`). No owner ruling on the right turns
-  is needed any more.
-- **Steps 1–3 (D87, 2026-09-30):** `--lane-changes`, `--segment-times`, `--stop-lines`
-  (`src/eval/`). Their measurements stand; their five-seed reading of the right turns as
-  M3.2.8b's effect does not (D88). One finding still holds and points at the East rise:
-  right-turners change lanes at the first tick the rules allow and almost never wait at a dead
-  end, while **the long dead-end waits are on the West and East left turns** (35 vehicles, 865 s
-  over five seeds).
-- Linux/GCC replays the M3.2.8b Windows evidence digit for digit (recorded in its file).
-- **M3.2.8b (D71, contract §2, A27–A35)** and **M3.2.8a (D69, contract §1)**. Without cooperation
-  M2.6 was 61.6 s with a 404 s wait: **do not remove the courtesy without a new measurement.**
-  `comfortableDeceleration` for commitment clamped the major road: do not retry it either.
-- Conflict areas are automatic (M3.2.4c, D68). M3.2.2a–M3.2.7c are D54–D67; the evidence is in
-  `docs/M3_ACCEPTANCE.md` and `docs/evidence/`. D72 is green on both platforms; the owner still
-  looks at it in the editor (T-junction, Conflict tool).
+**Done** (the reasoning and numbers are in `PROGRESS.md` under each D-number, the evidence in
+`docs/evidence/`):
+- D95 discretionary lane changes: contract, rows and implementation; off (see below).
+- D93/D94 lane changes at a downstream routing decision (Windows/MSVC only).
+- D92 `--wait-causes`: 93% of dead-end wait time starts beside a standing target lane.
+- D90 cooperative braking with look-ahead; `maxDecelerationCooperativeBraking` default 3 (D92).
+- D87–D89 diagnostics: the right-turn rise was a five-seed sample; the East rise is the left-turn
+  dead-end waits.
+- D71 (M3.2.8b), D69 (M3.2.8a), D68 automatic conflict areas, D54–D67 (M3.2.2a–M3.2.7c).
+- **Still open from these:** the owner looks at D72 in the editor (T-junction, Conflict tool).
 
 **Use at least 40 seeds (42–81) for any before/after comparison of one movement (D88).** A
 right-turn movement's per-seed change has an SD of about 7 s. The `b472e05` "before" recipe: a
@@ -187,8 +141,6 @@ Also open, not this session's work:
   `ar` on `/mnt/c` can fail with "Cannot allocate memory" at full parallelism, so build with `-j 4`.
 
 **Not booked, for later sessions:**
-- **Route table length over a stub (from D96):** `editor_demand.cpp` takes the length from the
-  first `r.id` or `r.id/lane-*` route, which can be a stub's short distance. Prefer a full chain.
 - **Split targetStanding (measurement only):** is the target lane standing at its own red, or
   in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row needs the
   split. That would be one that changes lanes earlier, before the queue reaches the stub's
@@ -235,6 +187,12 @@ no gate result is inferred.
 
 ## Engineering work that can proceed without the owner, if asked
 
+- **Wireframe display, `Ctrl+A` (owner ruled 2026-10-02):** a toggle that draws every Link and
+  Connector as its centre line only — no lane surfaces, edges or markings — in the editor **and
+  in the Run view**, as Vissim's simple link display (`VISSIM_PARITY.md` shortcut table). It is a
+  readability feature, not a performance fix: `redraw()` is ≈0.9 ms on the 40-link benchmark.
+  One system: decide where the flag lives (view state, not the project file) and keep selection,
+  hit-testing and vehicles working on the centre lines.
 - Derive an input's interval volumes from its entry decision's turning counts, so a count sheet
   is typed once; today the two are entered separately.
 - In-editor CSV export of the Results tab (the CLI has one).
@@ -248,6 +206,16 @@ no gate result is inferred.
 
 ## Do not retry without a new measurement
 
+- **Removing the M3.2.8b courtesy (D71):** without cooperation M2.6 was 61.6 s with a 404 s wait.
+- **`comfortableDeceleration` for commitment (D69):** it clamped the major road.
+- **The Run view "slowing down" over a run (2026-10-02, Linux):** per manual Step 1.9 → ~3.8 ms over
+  12,000 steps of M2.6 is the vehicle count warming up, not a leak — after Reset the cost restarts
+  low and climbs the same way; scene items stay ≈270, the BSP index and the pending queue are
+  ruled out, and ≈67% is Qt widget painting (callgrind). Play paints once per 16 ms frame.
+- **One `refreshRun()` per Step instead of two (2026-10-02, Linux):** F6/Space call `pauseRun()`
+  then `stepRun()`, both refreshing. Removing the first measured 2,169 → 2,342 ms per 1,000 Steps
+  (medians of 5, spreads overlapping) — no effect, reverted. Qt paints once per event-loop pass,
+  so the repeat only rebuilds a few table items.
 - **`redraw()` copying only the primary Link** (item 6 of the 2026-09-23 pass): −1.2% of
   `redraw()`, inside the clock's spread; a frame is dominated by `QGraphicsItem` construction.
   What is left in a frame is M1.23's culling and LOD.
