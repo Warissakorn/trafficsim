@@ -181,6 +181,9 @@ Json laneChangeJson(const LaneChangeReport& r) {
                              {"beforeDeadEnd", spread(row.beforeDeadEnd)}, {"fromNetworkEdge", spread(row.atDistance)},
                              {"waitingVehicles", row.waitingVehicles}, {"waitSeconds", row.waitSeconds},
                              {"longestWait", row.longestWait}});
+        // D95, written only when there is one, so a run without discretionary changes reads as before.
+        if (row.discretionaryChanges) j["rows"].back()["discretionaryChanges"] = row.discretionaryChanges;
+        if (row.quickRepeats) j["rows"].back()["quickRepeats"] = row.quickRepeats;
     }
     return j;
 }

@@ -152,17 +152,25 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
             }
             if (!w.failed) {
                 std::map<std::string, std::vector<FamilyRoute>> families;
+                std::vector<DiscretionaryRoute> full; // D95: every full path, with all its families
                 for (std::size_t k = 0; k < w.paths.size(); ++k) {
                     Route route{routelessRouteId(input.linkId, k, w.paths.size()), expandRouteSegments(table, w.paths[k])};
+                    if (!w.stub[k]) full.push_back({route.id, route.segmentIds, {}, {}});
                     for (std::size_t f = 0; f < w.families[k].size(); ++f) {
                         const auto& tag = w.families[k][f];
                         const bool stub = w.stub[k] && f + 1 == w.families[k].size();
-                        families[tag.name].push_back({route.id, route.segmentIds, stub, tag.linkId == input.linkId ? std::string{} : tag.linkId});
+                        const auto after = tag.linkId == input.linkId ? std::string{} : tag.linkId;
+                        families[tag.name].push_back({route.id, route.segmentIds, stub, after});
+                        if (!w.stub[k]) {
+                            full.back().names.push_back(tag.name);
+                            if (!after.empty()) full.back().after.push_back(after);
+                        }
                     }
                     resolved.routes.push_back(std::move(route));
                 }
                 for (const auto& [name, members] : families)
                     appendLaneChanges(network, table, members, resolved.laneChanges, resolved.routeDeadEnds);
+                appendDiscretionaryLaneChanges(network, table, full, resolved.laneChanges);
             }
         }
         if (w.failed) continue; // routelessIssues names it

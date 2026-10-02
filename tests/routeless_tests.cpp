@@ -163,6 +163,8 @@ TEST(routeless, a_decision_on_the_entry_link_holds_its_proportions_exactly) {
     const auto arrivesOn = [&](std::string id) {
         for (bool stub = true; stub;) {
             stub = false;
+            // Only a stub's spans: a full route's (D95) lead to another full route, not an arrival.
+            if (std::none_of(s.routeDeadEnds.begin(), s.routeDeadEnds.end(), [&](const auto& d) { return d.routeId == id; })) break;
             for (const auto& span : s.laneChanges) if (span.fromRouteId == id) { id = span.toRouteId; stub = true; break; }
         }
         return id;

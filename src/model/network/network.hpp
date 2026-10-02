@@ -323,6 +323,17 @@ std::size_t routeLaneShareCount(const Network&, const std::vector<std::string>& 
 struct FamilyRoute { std::string id; std::vector<std::string> segments; bool stub{}; std::string after; };
 void appendLaneChanges(const Network&, const RuntimeSections&, const std::vector<FamilyRoute>&,
                        std::vector<LaneChangeSpan>& spans, std::vector<RouteDeadEnd>& deadEnds);
+// D95: the spans a vehicle may change along BY CHOICE -- between two FULL routes on adjacent lanes
+// of one Link, in both directions, when both belong to the same families (`names`, any order) and
+// end on the same Link, so a change never alters a destination or a movement. `after` lists the
+// Links of the route's downstream decisions (D93 rule 5): no span before it reaches every one.
+// Routes with no names (free walk without a decision) get none. Never a stub: pass full routes.
+struct DiscretionaryRoute {
+    std::string id; std::vector<std::string> segments;
+    std::vector<std::string> names, after;
+};
+void appendDiscretionaryLaneChanges(const Network&, const RuntimeSections&, const std::vector<DiscretionaryRoute>&,
+                                    std::vector<LaneChangeSpan>& spans);
 // The centreline of one Link or Connector, for drawing what the pointer is over. Empty for an
 // unknown id or geometry that does not build, because a draft is drawn mid-edit.
 std::vector<Point> objectGeometry(const Network&, const std::string& objectId);

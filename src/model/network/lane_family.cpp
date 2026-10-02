@@ -123,4 +123,28 @@ void appendLaneChanges(const Network& network, const RuntimeSections& table, con
         deadEnds.push_back({family[s].id, deadEnd >= 0 ? deadEnd : lanes.lengthOf(family[s].segments)});
     }
 }
+void appendDiscretionaryLaneChanges(const Network& network, const RuntimeSections& table,
+                                    const std::vector<DiscretionaryRoute>& routes, std::vector<LaneChangeSpan>& spans) {
+    if (routes.size() < 2) return;
+    Lanes lanes(network, table);
+    std::vector<std::vector<Stretch>> stretched;
+    std::vector<std::vector<std::string>> names;
+    std::vector<double> from;
+    for (const auto& route : routes) {
+        stretched.push_back(lanes.stretchesOf(route.segments));
+        auto sorted = route.names;
+        std::sort(sorted.begin(), sorted.end());
+        sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
+        names.push_back(std::move(sorted));
+        double at = 0;
+        for (const auto& link : route.after) at = std::max(at, Lanes::reaching(stretched.back(), link));
+        from.push_back(at);
+    }
+    const auto lastLink = [&](std::size_t r) { return stretched[r].empty() ? std::string{} : stretched[r].back().section->linkId; };
+    for (std::size_t s = 0; s < routes.size(); ++s)
+        for (std::size_t t = 0; t < routes.size(); ++t) {
+            if (t == s || names[s].empty() || names[s] != names[t] || lastLink(s).empty() || lastLink(s) != lastLink(t)) continue;
+            lanes.spansBetween(routes[s].id, stretched[s], from[s], routes[t].id, stretched[t], from[t], spans);
+        }
+}
 }

@@ -278,6 +278,11 @@ DriverBehaviour parseBehaviour(const Json& b) {
     // Optional (M3.2.8c): absent, the behaviour does not brake cooperatively.
     if (b.contains("maxDecelerationCooperativeBraking"))
         behaviour.maxDecelerationCooperativeBraking = field<double>(b, "maxDecelerationCooperativeBraking");
+    // Optional (D95): absent, the behaviour makes no discretionary lane change.
+    if (b.contains("discretionaryLaneChangeThreshold"))
+        behaviour.discretionaryLaneChangeThreshold = field<double>(b, "discretionaryLaneChangeThreshold");
+    if (b.contains("acceptedDecelerationTrailingVehicle"))
+        behaviour.acceptedDecelerationTrailingVehicle = field<double>(b, "acceptedDecelerationTrailingVehicle");
     return behaviour;
 }
 VehicleType parseVehicleType(const Json& t) {

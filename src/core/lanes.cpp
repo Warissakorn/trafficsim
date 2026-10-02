@@ -163,9 +163,11 @@ std::vector<ValidationIssue> laneChangeIssues(const Scenario& s) {
         if (from == lengths.end()) issues.push_back({"UNKNOWN_ROUTE", p + ".fromRouteId"});
         if (to == lengths.end()) issues.push_back({"UNKNOWN_ROUTE", p + ".toRouteId"});
         if (from == lengths.end() || to == lengths.end()) continue;
-        // Only a stub changes lanes (§2): a span from a full route would be a discretionary change.
+        // A span leaves a stub (mandatory, §2) or joins two full routes (discretionary, D95). A full
+        // route never leads into a stub: the target of a choice is never a dead end.
         const auto dead = deadEnds.find(span.fromRouteId);
-        if (span.fromRouteId == span.toRouteId || dead == deadEnds.end())
+        const bool discretionary = dead == deadEnds.end() && !deadEnds.contains(span.toRouteId);
+        if (span.fromRouteId == span.toRouteId || (dead == deadEnds.end() && !discretionary))
             issues.push_back({"INVALID_RANGE", p + ".fromRouteId"});
         if (!finite(span.fromStart) || !finite(span.fromEnd) || span.fromStart > span.fromEnd ||
             span.fromEnd > from->second + 1e-9 || (dead != deadEnds.end() && span.fromEnd > dead->second + 1e-9))
@@ -188,11 +190,21 @@ void indexLaneChanges(const Scenario& s, ScenarioIndex& index) {
     index.remainingOfRoute = laneChangesRemaining(s);
     for (const auto& dead : s.routeDeadEnds)
         if (const auto r = slotOf(s, dead.routeId); r < s.routes.size()) index.deadEndOfRoute[r] = dead.at;
+    index.discretionaryOfRoute.assign(s.routes.size(), {});
+    bool anyDiscretionary = false;
     for (const auto& span : s.laneChanges) {
         const auto from = slotOf(s, span.fromRouteId), to = slotOf(s, span.toRouteId);
         if (from >= s.routes.size() || to >= s.routes.size()) continue;
-        index.laneChangesOfRoute[from].push_back({to, span.fromStart, span.fromEnd, span.toStart, span.toEnd});
+        const RouteLaneChange change{to, span.fromStart, span.fromEnd, span.toStart, span.toEnd};
+        // Full to full is a discretionary span (D95); the mandatory paths never see one.
+        if (!std::isfinite(index.deadEndOfRoute[from]) && !std::isfinite(index.deadEndOfRoute[to])) {
+            index.discretionaryOfRoute[from].push_back(change); anyDiscretionary = true;
+        } else index.laneChangesOfRoute[from].push_back(change);
     }
+    for (auto& spans : index.discretionaryOfRoute)
+        std::stable_sort(spans.begin(), spans.end(), [](const auto& a, const auto& b) { return a.target < b.target; });
+    index.discretionary = anyDiscretionary && std::any_of(s.behaviours.begin(), s.behaviours.end(),
+        [](const auto& b) { return b.discretionaryLaneChangeThreshold.has_value(); });
     // The order a vehicle tries its targets in: fewest changes left, then the lower slot (§2).
     for (auto& spans : index.laneChangesOfRoute)
         std::stable_sort(spans.begin(), spans.end(), [&](const auto& a, const auto& b) {
@@ -229,6 +241,45 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
             appendVehicleSpans(moved, s, index, placed, {change.target, refs[v].type, refs[v].behaviour});
             break;
         }
+    }
+    // D95: changes by choice, after every mandatory one, in vehicle-id order, each against the same
+    // snapshot and the moves accepted so far (contract §2 "Discretionary lane changes").
+    if (!index.discretionary) return accepted;
+    for (std::size_t v = 0; v < vehicles.size(); ++v) {
+        const auto route = refs[v].route;
+        const auto& options = index.discretionaryOfRoute[route];
+        const auto& behaviour = s.behaviours[refs[v].behaviour];
+        if (options.empty() || !behaviour.discretionaryLaneChangeThreshold || !behaviour.acceptedDecelerationTrailingVehicle) continue;
+        const auto& vehicle = vehicles[v];
+        const auto& type = s.vehicleTypes[refs[v].type];
+        const double front = vehicle.distance, rear = front - type.length;
+        if (std::any_of(stopService.begin(), stopService.end(), [&](const auto& x) { return x.vehicleId == vehicle.id; })) continue;
+        if (inConflictArea(index, route, rear, front)) continue;
+        // The incentive compares vehicles only, never signals, lines or dead ends: both routes end
+        // on the same Link with the same destinations, and neither is a stub.
+        const auto acceleration = [&](const std::optional<Leader>& leader) {
+            return followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour, leader).acceleration;
+        };
+        const double here = acceleration(around(index, route, front, rear, vehicle.id, spans, buckets, moved).leader);
+        std::optional<LaneChange> best;
+        double bestGain = 0;
+        for (const auto& change : options) { // target-slot order, so a tie keeps the lower slot
+            if (rear < change.fromStart - 1e-9 || front > change.fromEnd + 1e-9) continue;
+            const double at = mappedOnto(change, front), atRear = at - type.length;
+            if (inConflictArea(index, change.target, atRear, at)) continue;
+            const auto near = around(index, change.target, at, atRear, vehicle.id, spans, buckets, moved);
+            const double gain = acceleration(near.leader) - here;
+            if (gain < *behaviour.discretionaryLaneChangeThreshold) continue;
+            // §2's rules 3-5, plus the trailing vehicle at no worse than the CHANGER's accepted value.
+            const auto trailing = safeAt(s, vehicles, refs, v, near);
+            if (!trailing || *trailing < -*behaviour.acceptedDecelerationTrailingVehicle) continue;
+            if (!best || gain > bestGain) { best = LaneChange{v, static_cast<std::uint32_t>(change.target), at}; bestGain = gain; }
+        }
+        if (!best) continue;
+        accepted.push_back(*best);
+        auto placed = vehicle;
+        placed.routeIndex = best->route; placed.distance = best->distance;
+        appendVehicleSpans(moved, s, index, placed, {best->route, refs[v].type, refs[v].behaviour});
     }
     return accepted;
 }

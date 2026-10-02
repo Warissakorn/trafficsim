@@ -16,7 +16,7 @@ void indexLaneChanges(const Scenario&, ScenarioIndex&);
 // route. Shared by the index and by validation, so the two cannot disagree.
 std::vector<std::uint32_t> laneChangesRemaining(const Scenario&);
 struct LaneChange { std::size_t vehicle{}; std::uint32_t route{}; double distance{}; };
-// This tick's accepted changes, in vehicle order. `stopService` is the previous tick's table: a
+// This tick's accepted changes: the mandatory ones in vehicle order, then the discretionary ones (D95). `stopService` is the previous tick's table: a
 // vehicle serving a Stop line does not change lanes, since its line is a distance on its route.
 std::vector<LaneChange> decideLaneChanges(const Scenario&, const ScenarioIndex&, const std::vector<Vehicle>&,
                                           const std::vector<VehicleRefs>&, const std::vector<OccupiedSpan>&,

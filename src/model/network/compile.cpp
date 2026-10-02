@@ -71,6 +71,11 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
             laneOf[route.id].push_back(family[k].lane);
         }
         appendLaneChanges(network, table, members, scenario.laneChanges, scenario.routeDeadEnds);
+        // D95: one authored route is one family, so its full chains may change between each other.
+        std::vector<DiscretionaryRoute> full;
+        for (const auto& member : members)
+            if (!member.stub) full.push_back({member.id, member.segments, {route.id}, {}});
+        appendDiscretionaryLaneChanges(network, table, full, scenario.laneChanges);
         laneCount[route.id] = routeLaneShareCount(network, route.segmentIds);
     }
     for (const auto& input : scenario.inputs) {
