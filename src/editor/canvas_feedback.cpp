@@ -129,6 +129,25 @@ void EditorCanvas::drawObjectFeedback(const std::string& id, const QPainterPath&
         }
     }
 }
+QPainterPath EditorCanvas::centreStroke(const std::vector<Point>& line, double pixels) const {
+    if (line.size() < 2) return {};
+    QPainterPath centre; centre.moveTo(line.front().x, line.front().y);
+    for (std::size_t i = 1; i < line.size(); ++i) centre.lineTo(line[i].x, line[i].y);
+    // A region, not an open path: QPainterPath::contains would close an open one.
+    QPainterPathStroker stroke; stroke.setWidth(pixels / std::abs(transform().m11()));
+    stroke.setCapStyle(Qt::FlatCap); stroke.setJoinStyle(Qt::RoundJoin);
+    return stroke.createStroke(centre);
+}
+void EditorCanvas::drawCentreLine(const std::string& id, const std::vector<Point>& line, const QColor& colour, double z) {
+    if (line.size() < 2) return;
+    QPainterPath centre; centre.moveTo(line.front().x, line.front().y);
+    for (std::size_t i = 1; i < line.size(); ++i) centre.lineTo(line[i].x, line[i].y);
+    QPen pen(colour, 2); pen.setCosmetic(true); pen.setCapStyle(Qt::FlatCap); pen.setJoinStyle(Qt::RoundJoin);
+    auto* item = scene_.addPath(centre, pen); item->setZValue(z);
+    item->setData(0, QStringLiteral("centre-line")); item->setData(1, QString::fromStdString(id));
+    // The highlight is a band a few pixels either side, so a selected line still reads as one.
+    drawObjectFeedback(id, centreStroke(line, 8), z + .5, {line});
+}
 void EditorCanvas::addArrowhead(Point at, double angle, double pixels, QColor colour, double z, const QString& tag) {
     const double r = pixels / std::abs(transform().m11());
     QPolygonF arrow;

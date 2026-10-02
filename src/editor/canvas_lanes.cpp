@@ -16,7 +16,8 @@ void EditorCanvas::previewLinkLanes(Link& link) const {
     replaceLaneBundle(link,std::move(lanes),leading);
 }
 std::vector<EditorCanvas::LaneHandle> EditorCanvas::laneHandles() const {
-    if(!document_ || tool_!=Tool::select || selection_.size()!=1)return {};
+    // Wireframe draws no lane rails to anchor a tab on, so there is no tab to see or grab.
+    if(!document_ || wireframe_ || tool_!=Tool::select || selection_.size()!=1)return {};
     const auto side=document_->network.drivingSide;
     const auto handle=[&](const Link& link,const LaneReference& ref,int count,int kind) {
         auto first=std::find_if(link.lanes.begin(),link.lanes.end(),[&](const auto& l){return l.id==ref.laneId;});

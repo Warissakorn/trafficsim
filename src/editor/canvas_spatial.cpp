@@ -21,6 +21,15 @@ QPainterPath EditorCanvas::objectShape(const std::string& id) const {
         shape.closeSubpath();return shape;
     };
     if(!document_)return {};
+    // Wireframe: what is drawn is what is hit, band-selected and framed -- the centre line.
+    if(wireframe_) {
+        for(const auto& l:document_->network.links)if(l.id==id)
+            return centreStroke(linkCentreline(l,document_->network.drivingSide),1);
+        for(const auto& c:document_->network.connectors)if(c.id==id) {
+            try { return centreStroke(connectorCentreline(document_->network,c),1); }
+            catch(const std::exception&) { return {}; }
+        }
+    }
     for(const auto& l:document_->network.links)if(l.id==id)
         return polygon(laneBoundaryGeometry(l,0,document_->network.drivingSide),laneBoundaryGeometry(l,l.lanes.size(),document_->network.drivingSide));
     for(const auto& c:document_->network.connectors)if(c.id==id) {

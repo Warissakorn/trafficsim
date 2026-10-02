@@ -80,6 +80,11 @@ void EditorWindow::buildPalette() {
     background->setCheckable(true);background->setChecked(true);addAction(background);
     auto* button=new QToolButton(body);button->setObjectName("editorBackgroundButton");button->setDefaultAction(background);
     button->setToolButtonStyle(Qt::ToolButtonTextOnly);layout->addWidget(button);
+    // Vissim's Ctrl+A simple link display; a focused text field keeps Ctrl+A as select-all.
+    auto* wireframe=action("editorToggleWireframe",QKeySequence("Ctrl+A"),[this]{
+        canvas_->setWireframe(actions_.at("editorToggleWireframe")->isChecked());
+    });
+    wireframe->setCheckable(true);addAction(wireframe);
     auto redo=QKeySequence::keyBindings(QKeySequence::Redo);
     if(!redo.contains(QKeySequence("Ctrl+Y")))redo.push_back(QKeySequence("Ctrl+Y"));
     actions_.at("editorRedo")->setShortcuts(redo);

@@ -132,6 +132,7 @@ void EditorCanvas::redraw() {
             QPen invalid(canvasStyle::error(),2,Qt::DashLine);invalid.setCosmetic(true);
             scene_.addPath(path(link.geometry),invalid)->setZValue(z+5);continue;
         }
+        if (wireframe_) { drawCentreLine(link.id,road,colour,z+2);drawGeometryHandles(link.id,road,false);continue; }
         // Drawn lines only: an edge offset round a bend tighter than the lane can loop back on
         // itself, which fills as a hole and reads as a tear in the road.
         const auto left=trimSelfIntersections(laneBoundaryGeometry(link,0,document_->network.drivingSide));
