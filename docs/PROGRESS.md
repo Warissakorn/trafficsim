@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — Run view paint cost, measured on Windows (D99)
+
+`trafficsim-run-view-benchmark` (new, `tools/run_view_benchmark.cpp`) steps the M2.6 template
+through the editor's Step action and splits each Step into the action and the `processEvents`
+after it. Windows 11, MSVC Release, 1600x1000: painting was **93%** of a Step. A per-receiver
+event profile put 4.5 ms/Step on the canvas viewport, ≈3.3 ms of it the grid in `drawBackground`.
+- **Grid cached** (`CacheBackground`; `redraw()` drops it when `grid` changes, a
+  `DevicePixelRatioChange` drops it too): events 7.4 → 3.8 ms/Step.
+- **Results tab rebuilt only while visible** (the page's Show event refreshes it): −11% total,
+  −28% of the action. The two UI tests that read the tables open the tab first.
+- **Run/Pause icon set only on change: no effect, reverted** — see NEXT "Do not retry".
+- 12,000 Steps: 107.3 s → 55.3–57.9 s (three runs). `scenario-run-ui` is not a usable meter on
+  Windows: under ctest it swung 24–90 s on unchanged code; run directly, CPU 25.4–26.1 → 24.0–24.8 s
+  (Debug, the engine dominates). Desktop 73/73 on Windows. Not run on Linux.
+
 ## 2026-10-02 — The route table's Length is a full chain, not a stub
 
 The bug NEXT booked from D96. The Demand tab's route row took its length from the first compiled
@@ -284,66 +299,6 @@ first: `M3_8_CONTRACT.md` §2, "Cooperative braking", and rows A36–A39.
   This follows D80's precedent for the project file.
 - Linux/GCC 15.2 headless only: 50/50 tests. No Windows or desktop build.
 
-## 2026-10-01 — M3.2.8c step 5: the East-approach rise is the left-turn dead-end waits (D89)
-
-Step 5 of NEXT, measurement only, with no new code: `--segment-times`, `--stop-lines` and
-`--lane-changes` over seeds 42–81. The first two were copied into a `b472e05` worktree for
-"before". In all 80 runs the default output is unchanged with the diagnostics on.
-
-- **Where:** East → West and East → South have lost +5.0 and +4.3 s of their +6.2/+6.9 s by
-  `connector-23`, the end of the entry Link the left-turn stubs dead-end on. Departure delay and
-  discharge per green do not move. The East heads' added time is standing upstream (+4.0,
-  +3.7 s at red), not greens missed.
-- **Why:** East → South has 128 dead-end waits and 5,073 s over 40 seeds, more than half of all.
-  Per seed, East → West Δdelay = +0.1 + 0.047 × (East → South wait-s), with r = 0.56. At the
-  mean wait this gives +6.0 s, the whole rise, and with no waits it predicts none. West is the same
-  mechanism at a third of the size (predicted +1.6, measured +1.7). Evidence:
-  `docs/evidence/m3.2.8c-east-approach.md`.
-- **Decision (D89):** the next M3.2.8c system is cooperation with a deceleration parameter and
-  look-ahead. Its success measure is fixed now, before its code: East → South dead-end wait
-  seconds and East → West delay against `b472e05`, seeds 42–81.
-- Not separated: the waiting vehicle blocking its own lane, against the courtesy hold in lane 1.
-  No diagnostic counts courtesy holds yet.
-
-## 2026-10-01 — M3.2.8c step 4: the right-turn rise was a five-seed sample (D88)
-
-Step 4 of NEXT, measurement only. `ArrivalPhaseAccumulator` (`src/eval/arrival_phases.{hpp,cpp}`,
-CLI `--arrival-phases [--phase-bin S]`) histograms the cycle phase at which each movement's
-vehicles enter every segment (departure counts as entering the first segment) and first stand
-on it. It was copied into a `b472e05` worktree for "before", like steps 2–3.
-
-- **What timed right-turners before M3.2.8b was their departure.** The departure phase plus
-  step 2's 22 s predicts the pocket-entry wait within about 1 s in both engines. Right-turners
-  cross the entry Link without standing, and departure delay is 0.2 s, so the phase is the
-  input's Poisson draw. M3.2.8b adds one input per entry lane, which re-orders the draws from the
-  single random stream. The same seed therefore draws a different arrival sequence.
-- **Over seeds 42–81 the rise is gone.** South → East is −1.0 ± 1.1 s and North → West
-  +2.7 ± 1.2 s, with pocket arrivals uniform in the cycle before and after. What persists is the
-  East approach: through +6.0 ± 1.7 s, left +6.8 ± 2.6 s, and the network mean +2.4 ± 0.5 s (up
-  in 34/40). The clamp increase is not systematic (+1.4 ± 1.3). Evidence:
-  `docs/evidence/m3.2.8c-arrival-phases.md`. Steps 1–3's files carry a note pointing there.
-- **Why this is a decision (D88), not just a result:** steps 1–3 read five seeds as M3.2.8b's
-  effect on one movement. Its per-seed change has an SD of about 7 s, so five seeds give a
-  standard error of about 3 s. The owner ruling NEXT reserved ("artefact or behaviour to
-  restore") has no subject left.
-- First-stop needs hysteresis. Vehicles enter at rest, so the first draft counted every
-  insertion as a stop on the entry Link. A stop now counts only after the vehicle has once
-  reached the queue counter's `endSpeed`. A test pins it (a vehicle started from rest records no
-  stop there).
-- Tests (`tests/arrival_phase_tests.cpp`, `movement` group): a queue standing at red first stops
-  in the red bins; phases wrap the cycle; departure counts as entering the first segment;
-  programs with different cycles give cycle 0 and no rows.
-
-## 2026-10-01 — SIMULATION.md "Step and motion" rewritten as a vehicle's input/process/output
-
-The section still listed the seven pre-M3 steps: no priority rules, zones, Stop service,
-commitment, lane changes, courtesy or Phase 2, and no `lane-change` event. It was rewritten in
-place, not appended to, so the tick has one description. Each claim was traced in
-`simulation.cpp` first. Two are easy to get wrong. `driverFactor` scales only the safety
-distance, so gap acceptance and lane changing are the same for every driver of a type. And a
-vehicle carries only `distance`, `speed` and `routeIndex` across ticks; `acceleration` and
-`mode` are outputs only.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -463,6 +418,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D99 | 2026-10-02 | **The editor canvas caches its grid background; the Results tab is rebuilt only while visible** | Measured on the Run view (Windows, Release, M2.6, `trafficsim-run-view-benchmark`): painting was 93% of a Step and the grid ≈3.3 ms of the 4.5 ms canvas paint; caching it took events 7.4 → 3.8 ms/Step. The grid depends only on transform, `grid` and pixel ratio, and the palette is constant, so the cache is reset on exactly those. The Results tables were rebuilt every Step while hidden (−11% total when skipped); refreshing on the page's Show event covers tab, dock and window. Setting the Run icon only on change saved nothing: the run label's relayout already pays for the toolbar's | A live theme or palette switch, or a grid that reads other state, without `resetCachedContent()` there; anything reading the Results widgets (not `runReport()`) while the tab is hidden |
 | D98 | 2026-10-02 | **Lane-change work iterates on a dedicated lab project (four isolated scenes: overtaking, three lanes, lane drop, diverge) and an in-process sweep that sets the D95 fields on the compiled scenario; the lab is a development bed, not an acceptance fixture, and A55 is still judged on four-leg and M2.6** | The A55 drawings mix lane changes with signals and conflict areas and take minutes per pass; isolated scenes name the situation a number moved in, and the in-process variant reproduced the data-dir A55 exactly on four-leg (seeds 42–81) | A lab result that four-leg/M2.6 contradicts, or a lane-change situation the four scenes cannot show |
 | D97 | 2026-10-02 | **A Run-view vehicle is one borderless path item at its type's true length × width, front bumper at its station, along the rear-to-front chord; windshield and cab gap are odd-even holes shown from 14 px; floored at 4 × 2.5 px; colour per vehicle type from `data/vehicle-appearance/`, falling back to the road's display-type colour** | Owner request and choices (shape, colour by type). One item per vehicle keeps D85's per-frame cost; colour is display data, so it stays out of `core::VehicleType` and out of the vehicle-type files the engine compiles and the sweep evidence hashes | A measured `scenario-run-ui` regression against D85; a need for 3-D models or colour distributions within a type |
 | D96 | 2026-10-02 | **The route overlay draws every lane of every Link the route names: full chains first, stubs on their own lane, and lanes no chain reaches from the cross-section where the route enters that Link; the run is unchanged** | A route names Links whole (D25; NETWORK_EDITOR "covers every lane of them"). Drawing only full chains hid lanes the run uses and contradicted the docs; starting at the entry cross-section keeps the rule that no line runs upstream of a mid-body arrival | An owner report that the drawing claims lanes vehicles do not use, before D95 lands |

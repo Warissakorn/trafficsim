@@ -196,7 +196,6 @@ no gate result is inferred.
 - Derive an input's interval volumes from its entry decision's turning counts, so a count sheet
   is typed once; today the two are entered separately.
 - In-editor CSV export of the Results tab (the CLI has one).
-- Results-tab refresh that skips work while hidden — cheap today (16 rows), so measure first.
 - Per-lane shares (D32; one weight per entry-Link lane since D71): no canvas gesture sets one,
   and the input table row (`refreshDemand`, `src/shell/editor_demand.cpp`) shows the equal-split
   figure even when shares are set.
@@ -212,6 +211,15 @@ no gate result is inferred.
   12,000 steps of M2.6 is the vehicle count warming up, not a leak — after Reset the cost restarts
   low and climbs the same way; scene items stay ≈270, the BSP index and the pending queue are
   ruled out, and ≈67% is Qt widget painting (callgrind). Play paints once per 16 ms frame.
+  Windows (D99): painting was 93% of a Step; the grid cache and the hidden-Results skip halved
+  12,000 Steps (107 → 57 s). What is left per Step: canvas ≈1.4 ms, window flush ≈1.1 ms, the
+  run label's relayout ≈0.8 ms. Measure with `trafficsim-run-view-benchmark`, not by hand.
+- **Setting the Run/Pause icon only when it changes (2026-10-02, Windows):** removed the button
+  repaint and toolbar relayout, but total layout time stayed 2,439 → 2,438 ms per 3,000 Steps:
+  the word-wrapped `editorRunInfo` label relayouts the window every Step anyway. Reverted. The
+  lever there is that label's layout (a UI change for the owner), not the action.
+- **`scenario-run-ui` wall time as a meter on Windows:** under ctest it swung 24–90 s on unchanged
+  code (one set timed out at 90 s). Use the benchmark, or the process's CPU time.
 - **One `refreshRun()` per Step instead of two (2026-10-02, Linux):** F6/Space call `pauseRun()`
   then `stepRun()`, both refreshing. Removing the first measured 2,169 → 2,342 ms per 1,000 Steps
   (medians of 5, spreads overlapping) — no effect, reverted. Qt paints once per event-loop pass,
