@@ -9,5 +9,10 @@ struct DisplayType {
     std::map<std::string,std::string> name;
     std::string linkColor,connectorColor,laneColor,vehicleColor;
 };
-struct DisplayCatalog {std::vector<DisplayLevel> levels;std::vector<DisplayType> types;};
+// vehicleColors: vehicle-type id -> #rrggbb, from data/vehicle-appearance (D97). A type with no
+// entry is drawn in its segment's DisplayType::vehicleColor.
+struct DisplayCatalog {
+    std::vector<DisplayLevel> levels;std::vector<DisplayType> types;
+    std::map<std::string,std::string> vehicleColors;
+};
 }

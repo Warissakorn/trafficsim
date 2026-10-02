@@ -1,10 +1,14 @@
 #include "canvas.hpp"
 #include "canvas_style.hpp"
+#include "vehicle_shape.hpp"
 #include "../core/routes.hpp"
 #include "../core/simulation.hpp"
 #include <QGraphicsEllipseItem>
+#include <QGraphicsPathItem>
 #include <QPainter>
 #include <cmath>
+#include <map>
+#include <numbers>
 namespace trafficsim {
 void EditorCanvas::setRunNetwork(const Network& network) {
     runGeometry_.clear();runLevels_.clear();runStyles_.clear();
@@ -45,9 +49,35 @@ void EditorCanvas::drawRunItems() {
         const auto color=signalColorAt(p,runFrame_.time);
         marker(h.segmentId,h.position,color==SignalColor::red?canvasStyle::error():color==SignalColor::green?canvasStyle::ok():canvasStyle::warning(),radius*1.3,12);
     }
+    // D97: each vehicle is its type's true length x width, front bumper at the located station.
+    // Below a few pixels the size is floored so a vehicle never vanishes when zoomed far out, and
+    // the windshield and cab gap appear only once the body is long enough on screen to show them.
+    const double scale=std::abs(transform().m11());
+    std::map<std::uint32_t,QPainterPath> shapes; // per type, shared by every item of that type
     for(const auto& v:runFrame_.vehicles) {
         const auto location=locateVehicle(*runFrame_.scenario,v);
-        marker(location.segmentId,location.position,QColor(QString::fromStdString(styleOf(location.segmentId).vehicleColor)),radius,11);
+        const auto it=runGeometry_.find(location.segmentId);
+        if(it==runGeometry_.end() || !levelVisible(runLevels_.at(location.segmentId)))continue;
+        const auto& type=runFrame_.scenario->vehicleTypes.at(v.typeIndex);
+        auto shape=shapes.find(v.typeIndex);
+        if(shape==shapes.end())shape=shapes.emplace(v.typeIndex,vehicleShape(std::max(type.length,4/scale),
+            std::max(type.width,2.5/scale),type.length*scale>=14)).first;
+        const auto& g=it->second;const double station=location.position;
+        const auto front=pointAlong(g,station);
+        // The body is the chord from rear to front, as a real vehicle sits across a curve; a vehicle
+        // whose rear is still on the previous segment takes the tangent at its front instead.
+        Point heading=directionAlong(g,station,true);
+        if(station>=type.length) {
+            const auto rear=pointAlong(g,station-type.length);
+            if(std::hypot(front.x-rear.x,front.y-rear.y)>1e-6)heading={front.x-rear.x,front.y-rear.y};
+        }
+        const auto colour=display_.vehicleColors.find(type.id);
+        auto* item=new QGraphicsPathItem(shape->second);
+        item->setPen(Qt::NoPen);
+        item->setBrush(QColor(QString::fromStdString(colour!=display_.vehicleColors.end()?colour->second:styleOf(location.segmentId).vehicleColor)));
+        item->setPos(front.x,front.y);item->setRotation(std::atan2(heading.y,heading.x)*180/std::numbers::pi);
+        item->setData(0,"run-vehicle");item->setData(1,QString::fromStdString(type.id));
+        item->setZValue(runLevels_.at(location.segmentId)*100.+11);scene_.addItem(item);runItems_.push_back(item);
     }
     // No viewport()->update() here: adding and removing items already invalidates their own
     // rectangles, and a whole-viewport repaint per frame was 7 of scenario-run-ui's 9.5 s.

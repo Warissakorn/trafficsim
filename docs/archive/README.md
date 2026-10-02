@@ -5,6 +5,7 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-09-30-m3.2.8c-steps-1-3-d86.md`](PROGRESS-2026-09-30-m3.2.8c-steps-1-3-d86.md) — 2026-09-30, M3.2.8c steps 1–3 (lane-change diagnostic, D87) and D86 authored conflict areas follow the drawing; moved out 2026-10-02 as the oldest live entries
 - [`PROGRESS-2026-09-30-d85.md`](PROGRESS-2026-09-30-d85.md) — 2026-09-30, D85 measured optimization pass (run repaint, test wall time, warnings); moved out 2026-10-02 as the oldest live entry
 - [`PROGRESS-2026-09-29-d84.md`](PROGRESS-2026-09-29-d84.md) — 2026-09-29, D84 one gesture rule, one face, visible arrows; moved out 2026-10-01 as the oldest live entry
 - [`PROGRESS-2026-09-29-d83.md`](PROGRESS-2026-09-29-d83.md) — 2026-09-29, D83 editor polish from owner feedback; moved out 2026-10-01 as the oldest live entry

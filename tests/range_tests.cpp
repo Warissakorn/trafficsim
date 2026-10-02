@@ -5,6 +5,8 @@
 #include "../src/commands/network_commands.hpp"
 #include "../src/project/display.hpp"
 #include "../src/project/run.hpp"
+#include <algorithm>
+#include <fstream>
 using namespace trafficsim;
 namespace {
 ProjectDocument roads(DrivingSide side=DrivingSide::left) {
@@ -108,4 +110,23 @@ TEST(ranges, catalogs_are_content_and_schema_one_upgrades_without_losing_ids) {
     CHECK(restored.network.connectors.front().fromLaneCount==1);CHECK(restored.network.links.front().level==0);
     CHECK(restored.network.links.front().displayType=="default");CHECK(documentJson(restored)["schemaVersion"]==17);
     old["schemaVersion"]=999;test::throws([&]{parseDocument(old);},"EDIT_VERSION");
+}
+TEST(ranges, vehicle_colours_are_display_data_for_known_types) {
+    // D97: one colour per vehicle type, read from data/vehicle-appearance and never from the
+    // vehicle-type files the engine compiles.
+    const auto data=test::root()/"data";const auto catalog=loadDisplayCatalog(data);
+    CHECK(catalog.vehicleColors.at("car")!=catalog.vehicleColors.at("heavy-vehicle"));
+    const auto types=loadScenario(data/"scenarios/crossing.json",data).scenario.vehicleTypes;
+    for(const auto& [id,colour]:catalog.vehicleColors)
+        CHECK(std::any_of(types.begin(),types.end(),[&](const auto& t){return t.id==id;}));
+    const auto dir=std::filesystem::temp_directory_path()/"trafficsim-vehicle-appearance";
+    std::filesystem::remove_all(dir);std::filesystem::create_directories(dir);
+    for(const auto* sub:{"levels","display-types"})
+        std::filesystem::copy(data/sub,dir/sub,std::filesystem::copy_options::recursive);
+    CHECK(loadDisplayCatalog(dir).vehicleColors.empty()); // the folder is optional
+    std::filesystem::create_directories(dir/"vehicle-appearance");
+    std::ofstream(dir/"vehicle-appearance/car.json")<<R"({"vehicleTypeId":"car","color":"orange"})";
+    CHECK(std::filesystem::exists(dir/"vehicle-appearance/car.json")); // the forcing worked
+    test::throws([&]{loadDisplayCatalog(dir);},"EDIT_DISPLAY_CATALOG");
+    std::filesystem::remove_all(dir);
 }

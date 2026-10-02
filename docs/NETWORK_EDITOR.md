@@ -333,6 +333,12 @@ plays fixed steps on the canvas. Pause keeps the state; Step advances one timeSt
 the initial state for the same seed. Playback speed changes scheduling only. Status shows revision,
 seed, time and active/pending/completed counts; seeded arrivals may leave the view empty at first.
 
+Each vehicle is drawn at its type's true length × width, front bumper at its position and turned
+along the road, in its type's colour from `data/vehicle-appearance/` (a type with no entry takes
+its road's display-type vehicle colour). A windshield, and on a vehicle over 7 m a cab gap, appear
+once the body is about 14 px long; zoomed far out a vehicle is floored at 4 × 2.5 px so it never
+vanishes (D97).
+
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.

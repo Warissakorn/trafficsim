@@ -82,6 +82,32 @@ per-variant and per-movement tables.
 
 Linux only.
 
+## 2026-10-02 — Vehicles drawn at true size in the Run view (D97)
+
+Owner request: the Run view drew every vehicle as the same 3 px dot in the road's vehicle colour,
+so a car and a 12 m heavy vehicle looked alike, queues read as dotted lines and heading was
+invisible. Asked this session, the owner chose a rounded body with a windshield (and a cab gap on a
+long vehicle), and colour by vehicle type.
+
+- `src/editor/vehicle_shape.{hpp,cpp}`: `vehicleShape(length, width, detailed)` returns one
+  `QPainterPath` in a local frame (front bumper at the origin, body along −x). The windshield and
+  cab gap are odd-even holes, so the road shows through and each vehicle stays **one** one-colour
+  scene item — `drawRunItems` rebuilds items every frame and was D85's hot spot.
+- `canvas_run.cpp`: the item sits at the located station (the front bumper, as `routes.cpp`
+  reads it), turned along the chord from rear to front, or along the tangent while the rear is
+  still on the previous segment. Paths are built once per type per frame and shared.
+- Size: true `length × width` from the scenario's `VehicleType`; floored at 4 × 2.5 px when
+  zoomed far out; detail only from 14 px of body length.
+- Colour: `data/vehicle-appearance/*.json` (`vehicleTypeId`, `color`), read by
+  `loadDisplayCatalog` into `DisplayCatalog::vehicleColors`; a type without one keeps the
+  road's display-type `vehicleColor`. The approved plan put `color` in `data/vehicle-types/`;
+  that changes the hashes the archived M3.2.7 sweep metadata pins (`t_junction_tests`), so it
+  moved before anything was committed. `core/` is untouched.
+
+Tests: `interaction_ui_tests` `runVehicles` (size, front position, 45° heading, type colour,
+fallback colour, zoomed-out floor, clear), `ranges.vehicle_colours_are_display_data_for_known_types`.
+Not measured: `scenario-run-ui` timing against D85's band.
+
 ## 2026-10-02 — The route overlay draws every lane of its Links (D96)
 
 Owner report from the editor: a route from a 2-lane Link through a 1-lane Connector to a 2-lane
@@ -306,107 +332,6 @@ distance, so gap acceptance and lane changing are the same for every driver of a
 vehicle carries only `distance`, `speed` and `routeIndex` across ticks; `acceleration` and
 `mode` are outputs only.
 
-## 2026-09-30 — M3.2.8c step 3: the right-turn rise is red time, and "before" beat random
-
-Step 3 of NEXT, measurement only. `StopLineAccumulator` (`src/eval/stop_lines.{hpp,cpp}`, CLI
-`--stop-lines`) measures each signal head's discharge. Per crossing vehicle: time standing
-upstream at red and at green, and green ends stood through. Per green: crossings, headway, and
-the residual left standing. It reads only `SignalEvent`, positions and speeds, so it was copied
-into a `b472e05` worktree for the "before" runs, like `segment_times`.
-
-- **The hypothesis NEXT stated is falsified.** Right-turners are not held through their green:
-  about 0% before and after, and discharge per green and headway barely move. The +7 s is all
-  standing at red, in all ten seed-approach pairs (`docs/evidence/m3.2.8c-pocket-discharge.md`).
-- **After M3.2.8b the red wait matches uniform random arrival** over the 120 s cycle
-  (R²/2C ≈ 38–41 s). Before, it was about 7 s better. So the open question is what timed
-  right-turners to their green under lane-fixed entry. If that was an artefact, the rise is
-  M3.2.8b being more realistic, and whether to call it so is the owner's ruling.
-- Tests: a queue that stands through a 40 s red clears in one green with nobody held; a 3 s
-  green, repeating, leaves vehicles held (5 greens in 120 s, about one crossing each). The first
-  draft expected all ten to cross, which the engine rightly did not do.
-
-## 2026-09-30 — M3.2.8c step 2: the right-turn rise is spent in the pocket
-
-Step 2 of NEXT, measurement only. `SegmentTimeAccumulator` (`src/eval/segment_times.{hpp,cpp}`,
-CLI `--segment-times`) times each movement from departure to every runtime segment it enters.
-Eval cannot tell a segment's Link (segment ids are lane ids), and it does not need to. The
-right-turn full chain is the same route before and after M3.2.8b, so per-segment times compare
-directly; the write-up labels segments from the project file.
-
-- **Built to run on the old engine too.** It reads only `DepartedEvent`, `SegmentEnteredEvent`
-  and `ArrivedEvent`, which all predate M3.2.8b. So its two files were copied into a scratch
-  `b472e05` worktree for the "before" runs. Both binaries' default output stayed identical.
-- **Finding** (`docs/evidence/m3.2.8c-right-turn-stages.md`): South → East +7.7 s and
-  North → West +7.4 s, all between entering the pocket and entering the junction connector at
-  its stop line. Departure delay, the entry Link and everything after the stop line are unchanged.
-- **Step 1 corrected.** Its candidate "gap acceptance against the opposing stream" does not
-  apply: the M2.6 timing plan is split-phase. What is left is right-turners missing their own
-  green; step 3 measures why.
-- Tests pinned two facts the first drafts got wrong: an arrival can wait more than a tick to be
-  inserted on an empty road, when Poisson arrivals bunch; and seed 42's first arrival comes near
-  56 s. Both tests now check against the arrivals' own events.
-
-## 2026-09-30 — M3.2.8c step 1: lane-change diagnostic, five-seed measurement (D87)
-
-NEXT's M3.2.8c step 1 was *measure before changing anything*. Nothing reported where a change
-happened or who waited at a dead end: `LaneChangeEvent` carries no position and `--project`
-refuses `--events`. So this session added one measurement and changed no behaviour.
-
-- **`LaneChangeAccumulator`** (`src/eval/lane_changes.{hpp,cpp}`), fed by snapshots like
-  `MovementAccumulator`. Per movement a vehicle arrived on: changes, metres before the dead end
-  at each change (from the previous snapshot, since a change is decided on the pre-step one),
-  and dead-end waits. CLI: `trafficsim-cli N --project FILE --lane-changes` adds
-  `laneChangeDiagnostics`; default output byte-identical (six runs, `cmp`).
-- **One waiting test.** The cooperation rule's "who is waiting" was inline in `courtesyHolds`.
-  It is now `waitingAtDeadEnd`, defined in `lanes.cpp` and **declared in `core/types.hpp`**,
-  because the architecture guard lets `eval` include only that header. The engine and the report
-  cannot disagree about who waits (rule 3). `courtesyHolds` is otherwise unchanged; every run
-  compared is identical.
-- **Findings** (`docs/evidence/m3.2.8c-right-turns.md`, Linux/GCC 15.2 only): GCC replays the
-  8b Windows evidence digit for digit. Over seeds 42–46, seed 42 was the mild one: mean delay
-  rose in every seed (up to +3.3 s) and clamps doubled at two. The right-turn rise holds on South
-  and North (+7.3, +7.5 s, 5/5 seeds), not West/East. Those right-turners change 4.5 m past the network edge (the first tick their rear is on the Link) and
-  almost never wait at a dead end; the long waits are on the West and East left turns, whose
-  delay did not rise. The 8b "14 vehicles, 406 s" wait count was ad hoc and is not reproduced
-  (13 vehicles, 299 s by the engine's test).
-- **Scrutiny, same day.** Suspected: insertion comes before lane changes in a tick, so a change
-  in a vehicle's insertion tick would have no previous snapshot and lose its position. Falsified:
-  rule 1 needs the rear inside a span, so no vehicle can change in its insertion tick. That is now
-  pinned by `the_diagnostic_places_every_change_of_an_inserted_vehicle`, and the report carries
-  `positions` and `unplaced` (0 on every row of every run). It did show that "before dead end"
-  alone hid the place: the report now adds `fromNetworkEdge`, and the evidence's "changes in the
-  tick it enters" became "4.5 m past the edge". Conclusions unchanged. Attribution checked: this
-  branch's default output is byte-identical to `d046c2c`'s on all six runs.
-
-## 2026-09-30 — D86: authored conflict areas follow the drawing
-
-Owner report on `t-junction-priority`: dragging a Link or Connector so the roads overlap
-somewhere new left the **set** conflict area where it was, while passive areas moved. Cause:
-an authored area stores its entry/exit stations and its waiting line stores a station; only
-delete, split, reverse and copy ever rewrote them, so a move or reshape left a stale area that
-Run then refused (`CONFLICT_EXTENT_UNCOVERED`/`CONFLICT_NO_OVERLAP`). Reproduced first with
-`tests/conflict_follow_tests.cpp` (5 of 6 red on the old code, each for the predicted reason).
-
-- **One pass, one place.** `followGeometry` (`src/commands/conflict_follow.cpp`) runs in
-  `History::execute` after every change, and does nothing unless Links, Connectors or the driving
-  side changed. So no geometry command needs its own hook, and Undo restores whole documents.
-- A crossing takes the piece of its pair's current overlap that shares the most length with its
-  old extents, then the nearest middle; two areas of one pair never take the same piece. A merge
-  takes the join of a merge group holding both its paths, nearest the old join. Waiting lines
-  move by the change of the first entry they stand before (D63), so a dragged line keeps its
-  distance.
-- **No overlap any more → the area is removed** with its rule, Stop/Yield and unused lines
-  (owner ruling, as Vissim does). Unmeasurable geometry (folded, crossing twice for one area)
-  leaves the area unchanged for the resolver to report.
-- Passive areas were hidden by any authored area of the pair whose extents merely touched a
-  piece; an authored area now hides a piece only if it holds the piece's middle on both paths.
-- *Add crossing areas* on a pair whose every overlap is already set now refuses with
-  `EDIT_CROSSING_EXISTS` instead of doubling the areas.
-
-Verified on Linux (WSL2, GCC 15.2, headless 49/49; desktop Qt suite offscreen). **Not looked
-at on Windows or by the owner.** Considered and not changed: `refreshConflicts` could in theory
-see `mergeSide` throw, but no reachable state was found that does, so it stays unguarded.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -527,6 +452,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
 | D98 | 2026-10-02 | **Lane-change work iterates on a dedicated lab project (four isolated scenes: overtaking, three lanes, lane drop, diverge) and an in-process sweep that sets the D95 fields on the compiled scenario; the lab is a development bed, not an acceptance fixture, and A55 is still judged on four-leg and M2.6** | The A55 drawings mix lane changes with signals and conflict areas and take minutes per pass; isolated scenes name the situation a number moved in, and the in-process variant reproduced the data-dir A55 exactly on four-leg (seeds 42–81) | A lab result that four-leg/M2.6 contradicts, or a lane-change situation the four scenes cannot show |
+| D97 | 2026-10-02 | **A Run-view vehicle is one borderless path item at its type's true length × width, front bumper at its station, along the rear-to-front chord; windshield and cab gap are odd-even holes shown from 14 px; floored at 4 × 2.5 px; colour per vehicle type from `data/vehicle-appearance/`, falling back to the road's display-type colour** | Owner request and choices (shape, colour by type). One item per vehicle keeps D85's per-frame cost; colour is display data, so it stays out of `core::VehicleType` and out of the vehicle-type files the engine compiles and the sweep evidence hashes | A measured `scenario-run-ui` regression against D85; a need for 3-D models or colour distributions within a type |
 | D96 | 2026-10-02 | **The route overlay draws every lane of every Link the route names: full chains first, stubs on their own lane, and lanes no chain reaches from the cross-section where the route enters that Link; the run is unchanged** | A route names Links whole (D25; NETWORK_EDITOR "covers every lane of them"). Drawing only full chains hid lanes the run uses and contradicted the docs; starting at the entry cross-section keeps the rule that no line runs upstream of a mid-body arrival | An owner report that the drawing claims lanes vehicles do not use, before D95 lands |
 | D95 | 2026-10-02 | **Discretionary lane changes (owner's rulings): a full-route vehicle changes to an adjacent full route of the same families and last Link when its `followingAcceleration` there beats here by `discretionaryLaneChangeThreshold`; free lane selection; §2's safety rules plus the trailing vehicle at no worse than `−acceptedDecelerationTrailingVehicle` (changer's behaviour); mandatory candidates first; no cooperation; stateless; on in `default.json`** | The acceleration gain reuses the unvalidated car-following model and covers overtaking and queue choice with one test; free lane selection is Vissim's urban default and the smallest rule; a change nobody needs should cost the trailing driver less than a mandatory one; restricting targets to full routes of the same families keeps every destination, movement and compiled proportion exact | Back-and-forth changes within 3 s (A53); clamps rising over seeds 42–81 (A55); a Thai multilane study that needs a keep-left rule |
 | D94 | 2026-10-01 | **D93's rule 4 is a fixed point: walk, drop the downstream stubs that no run of adjacent lanes with family paths connects to a full one, walk again until none is dropped. A path carries every family it belongs to (`FamilyTag` stack); a merged full path keeps the union** | Whether a stub is kept depends on which lanes the whole walk reaches, and dropping one can strand another, so one pass cannot decide it; each pass drops at least one, so it ends, and with no downstream decision it is the one pass it always was. An entry family's full route can also enter a downstream family, so one `family` string could not say both | A network where the reruns are slow (each is a full walk), or where a full path should belong to a family it merged into but was not walked as |

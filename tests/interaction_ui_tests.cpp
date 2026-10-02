@@ -1,5 +1,7 @@
 #include "../src/shell/editor_window.hpp"
 #include "../src/editor/canvas_style.hpp"
+#include "../src/core/simulation.hpp"
+#include "../src/project/load.hpp"
 #include <nlohmann/json.hpp>
 #include <QAction>
 #include <QApplication>
@@ -328,6 +330,49 @@ void connectorEndTabs(EditorCanvas& c) {
     }
     c.setDocument(nullptr);
 }
+// D97: a vehicle in the Run view is its type's true length x width, front bumper at its station,
+// turned to the road, in its type's colour -- or its road's when the type has none.
+void runVehicles(EditorCanvas& c,const std::filesystem::path& data) {
+    Network n;n.links={{"d",{{0,0},{60,60}},{{"d1",3.5}}}};
+    const auto source=loadScenario(data/"scenarios/crossing.json",data).scenario;
+    Scenario s;s.duration=60;s.timeStep=.1;
+    s.segments={{"d1",std::hypot(60.,60.),{}}};s.routes={{"route",{"d1"}}};
+    s.vehicleTypes=source.vehicleTypes;s.behaviours=source.behaviours;
+    auto van=s.vehicleTypes.front();van.id="van";van.length=6;van.width=2;s.vehicleTypes.push_back(van);
+    auto state=createSimulation(s,42);
+    const std::map<std::string,double> front{{"car",20},{"heavy-vehicle",50},{"van",80}};
+    for(std::uint32_t i=0;i<state.scenario->vehicleTypes.size();++i) {
+        Vehicle v;v.id=i+1;v.typeIndex=i;v.distance=front.at(state.scenario->vehicleTypes[i].id);state.vehicles.push_back(v);
+    }
+    c.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}},
+                         {{"car","#38bdf8"},{"heavy-vehicle","#f59e0b"}}});
+    c.setTransform(QTransform::fromScale(8,-8));c.setRunNetwork(n);c.setRunFrame(state);
+    std::map<std::string,QGraphicsPathItem*> drawn;
+    for(auto* item:c.scene()->items())if(item->data(0).toString()=="run-vehicle")
+        drawn[item->data(1).toString().toStdString()]=dynamic_cast<QGraphicsPathItem*>(item);
+    require(drawn.size()==3,"Each placed vehicle is not drawn once"); // the forcing worked
+    for(const auto& type:state.scenario->vehicleTypes) {
+        const auto* item=drawn.at(type.id);require(item,"A vehicle is not a path item");
+        const auto box=item->path().boundingRect();
+        require(std::abs(box.width()-type.length)<.01 && std::abs(box.height()-type.width)<.01 && std::abs(box.right())<.01,
+                "Vehicle body is not its type's length x width ending at the front bumper");
+        const double at=front.at(type.id)/std::sqrt(2.);
+        require(std::abs(item->pos().x()-at)<1e-6 && std::abs(item->pos().y()-at)<1e-6,"Vehicle front is not at its station");
+        require(std::abs(item->rotation()-45)<1e-6,"Vehicle does not follow the road's heading");
+        require(item->pen().style()==Qt::NoPen,"Vehicle has an outline");
+    }
+    require(drawn["car"]->brush().color()==QColor("#38bdf8") && drawn["heavy-vehicle"]->brush().color()==QColor("#f59e0b"),
+            "Vehicle does not take its type's colour");
+    require(drawn["van"]->brush().color()==QColor("#facc15"),"A type with no colour does not fall back to its road's");
+    // Zoomed far out, a vehicle keeps a visible size instead of shrinking to nothing.
+    c.setTransform(QTransform::fromScale(.1,-.1));c.setRunFrame(state);
+    for(auto* item:c.scene()->items())if(item->data(1).toString()=="car") {
+        const auto box=static_cast<QGraphicsPathItem*>(item)->path().boundingRect();
+        require(box.width()*.1>=4-1e-9 && box.height()*.1>=2.5-1e-9,"A zoomed-out vehicle vanished");
+    }
+    c.clearRunFrame();require(count(c,"run-vehicle")==0,"Clearing the run left vehicles");
+    c.setTransform(QTransform::fromScale(4,-4));
+}
 void markings(EditorCanvas& c) {
     auto d=fixture();c.setDocument(&d);
     for(double zoom:{2.,10.,40.}) {
@@ -367,7 +412,7 @@ int main(int argc,char** argv) {
         require(argc>1,"Data directory required");EditorCanvas c;
         c.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}});
         c.resize(1000,650);c.show();QTest::qWait(20);
-        selectionWorkflow(c);moveFeedback(c);laneTabs(c);connectorEndTabs(c);markings(c);c.hide();
+        selectionWorkflow(c);moveFeedback(c);laneTabs(c);connectorEndTabs(c);markings(c);runVehicles(c,argv[1]);c.hide();
         windowWorkflow(std::filesystem::path(argv[1]),argc>2?QString::fromUtf8(argv[2]):QString{});
         std::cout<<"PASS selection workflow, hover, rectangular edge tabs and 10 cm markings\n";return 0;
     } catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
