@@ -340,6 +340,12 @@ its road's display-type vehicle colour). A windshield, and on a vehicle over 7 m
 once the body is about 14 px long; zoomed far out a vehicle is floored at 4 × 2.5 px so it never
 vanishes (D97).
 
+A lane change is drawn as a 3 s slide (D102): the engine moves the vehicle to its new lane in one
+tick, and the Run view draws it easing across from the lane it left, nose turned toward the new
+lane by its sideways over forward speed (forward floored at 5 m/s). Display only — nothing the
+engine decides or the results measure changes; a second change inside the 3 s restarts the slide
+from the lane it left.
+
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
