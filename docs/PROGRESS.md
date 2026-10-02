@@ -8,6 +8,28 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-02 — The route overlay draws every lane of its Links (D96)
+
+Owner report from the editor: a route from a 2-lane Link through a 1-lane Connector to a 2-lane
+Link was drawn as one lane, the Connector's, on both Links. The stored route was right
+(`{fromLink, connector, toLink}`, no lanes). The drawing was not:
+- `routeGeometries` drew `routeLaneChains`, which drops stubs, so the from-Link lane the
+  Connector does not leave was never drawn. The run does use it (`compile.cpp` takes
+  `routeLaneFamily`).
+- `routeLaneFamily` continues a chain only on the lane the Connector arrives on, so nothing drew
+  the to-Link's other lane.
+
+`routeGeometries` now draws full chains first (an input's chevron sits on the front one), then
+stubs on their own lane, then every lane of a later Link that no chain arrives on, from the
+cross-section where the route enters that Link: the smallest arrival station of the route's paths
+onto it, mapped onto the lane with `matchedStation`. A mid-body arrival still draws nothing
+upstream of the arrival. Repro and guard: `editor.a_route_over_a_lane_drop_draws_every_lane_of_its_links`,
+at the Link end and mid-body.
+
+The run is unchanged: a vehicle on the to-Link stays on its arrival lane. Spreading onto the other
+lanes there is a discretionary change, which is D95's. The route table's length can still come
+from a stub's `/lane-1` (`editor_demand.cpp`); booked in NEXT, not fixed here.
+
 ## 2026-10-02 — M3.2.8c: discretionary lane changes, contract and rows (D95)
 
 Docs only; no code. The owner chose discretionary changes as the next M3.2.8c row and ruled on
@@ -430,6 +452,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D96 | 2026-10-02 | **The route overlay draws every lane of every Link the route names: full chains first, stubs on their own lane, and lanes no chain reaches from the cross-section where the route enters that Link; the run is unchanged** | A route names Links whole (D25; NETWORK_EDITOR "covers every lane of them"). Drawing only full chains hid lanes the run uses and contradicted the docs; starting at the entry cross-section keeps the rule that no line runs upstream of a mid-body arrival | An owner report that the drawing claims lanes vehicles do not use, before D95 lands |
 | D95 | 2026-10-02 | **Discretionary lane changes (owner's rulings): a full-route vehicle changes to an adjacent full route of the same families and last Link when its `followingAcceleration` there beats here by `discretionaryLaneChangeThreshold`; free lane selection; §2's safety rules plus the trailing vehicle at no worse than `−acceptedDecelerationTrailingVehicle` (changer's behaviour); mandatory candidates first; no cooperation; stateless; on in `default.json`** | The acceleration gain reuses the unvalidated car-following model and covers overtaking and queue choice with one test; free lane selection is Vissim's urban default and the smallest rule; a change nobody needs should cost the trailing driver less than a mandatory one; restricting targets to full routes of the same families keeps every destination, movement and compiled proportion exact | Back-and-forth changes within 3 s (A53); clamps rising over seeds 42–81 (A55); a Thai multilane study that needs a keep-left rule |
 | D94 | 2026-10-01 | **D93's rule 4 is a fixed point: walk, drop the downstream stubs that no run of adjacent lanes with family paths connects to a full one, walk again until none is dropped. A path carries every family it belongs to (`FamilyTag` stack); a merged full path keeps the union** | Whether a stub is kept depends on which lanes the whole walk reaches, and dropping one can strand another, so one pass cannot decide it; each pass drops at least one, so it ends, and with no downstream decision it is the one pass it always was. An entry family's full route can also enter a downstream family, so one `family` string could not say both | A network where the reruns are slow (each is a full walk), or where a full path should belong to a family it merged into but was not walked as |
 | D93 | 2026-10-01 | **A routing decision downstream of the entry Link works like an entry decision (contract §2 "Downstream routing decisions", A40–A46; not implemented): the destination is drawn by weight among those the arrival lane serves, full or kept stub; a stub is kept only with a same-entry full route on a run of adjacent lanes of the decision Link; changes only at or after arrival on that Link. Free walk with no decision stays lane-fixed** | Owner's ruling, extending D71. The typed proportions then hold where lanes are served. A same-entry target keeps movement reporting (first Link, last Link) right without synthetic routes. The clip is needed because `appendLaneChanges` would otherwise span prefix Links before the decision is known | A study needing changes before the decision point (the decision station is not modelled), or networks where no same-entry path reaches the adjacent lane, so most lanes fall back to lane-fixed |

@@ -218,8 +218,11 @@ std::vector<Point> objectGeometry(const Network& network, const std::string& obj
 std::vector<std::vector<Point>> routeGeometries(const Network& network,
                                                 const std::vector<std::string>& objectIds) {
     const auto table = runtimeSections(network);
+    auto family = routeLaneFamily(network, objectIds);
+    // Full chains first: an input's chevron is drawn on the front one, and a stub ends at a dead end.
+    std::stable_partition(family.begin(), family.end(), [](const auto& chain) { return !chain.stub; });
     std::vector<std::vector<Point>> result;
-    for (const auto& chain : routeLaneChains(network, objectIds)) {
+    for (const auto& chain : family) {
         std::vector<Point> drawn;
         const auto append = [&](const std::vector<Point>& part) {
             for (const auto& point : part)
@@ -229,11 +232,36 @@ std::vector<std::vector<Point>> routeGeometries(const Network& network,
         // The COMPILED chain, not the whole lane: a Connector arriving part way along a Link
         // means the vehicle never travels the stretch upstream of the arrival, and drawing that
         // stretch put a line on the road running against the traffic on it.
-        for (const auto& id : expandRouteSegments(table, chain)) {
+        for (const auto& id : expandRouteSegments(table, chain.ids)) {
             for (const auto& section : table.sections) if (section.id == id) append(section.geometry);
             for (const auto& path : table.paths) if (path.id == id) append(path.geometry);
         }
         if (drawn.size() > 1) result.push_back(std::move(drawn));
+    }
+    if (family.empty()) return result;
+    // The route names Links whole (D96). A lane of a later Link that no chain arrives on is still
+    // the route's, so it is drawn too -- from the cross-section where the route enters that Link,
+    // for the same reason as above. The run is unchanged: its vehicles stay on their arrival lane.
+    for (std::size_t i = 1; i < objectIds.size(); ++i) {
+        const auto* link = linkById(network, objectIds[i]);
+        if (!link) continue;
+        std::optional<double> entry;
+        for (const auto& path : table.paths)
+            if (path.to.linkId == link->id
+                && std::any_of(family.begin(), family.end(), [&](const auto& c) {
+                       return std::find(c.ids.begin(), c.ids.end(), path.id) != c.ids.end(); }))
+                entry = std::min(entry.value_or(path.to.station.value_or(0)), path.to.station.value_or(0));
+        if (!entry) continue;
+        for (const auto& lane : link->lanes) {
+            if (std::any_of(family.begin(), family.end(), [&](const auto& c) {
+                    return std::find(c.ids.begin(), c.ids.end(), lane.id) != c.ids.end(); }))
+                continue;
+            std::vector<Point> geometry;
+            try { geometry = laneGeometry(*link, lane.id, network.drivingSide); } catch (const std::exception&) { continue; }
+            auto drawn = polylineSpan(geometry, matchedStation(link->geometry, geometry, *entry),
+                                      polylineLength(geometry));
+            if (drawn.size() > 1) result.push_back(std::move(drawn));
+        }
     }
     return result;
 }
