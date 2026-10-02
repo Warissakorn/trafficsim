@@ -82,46 +82,23 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**D95 — owner ruled 2026-10-02 (D101); step 1 done the same day.** It stays off. The cause is
-in the incentive: hard regime edges in `followingAcceleration` and myopia at queues (PROGRESS
-"Why D95's changes reverse"). No stateless variant reached zero; raising the threshold to 1.0 did
-as well as the continuous incentive and kept more gain. **Next: the owner confirms that step 2
-applies** (a narrow (a), A53 rewritten); then contract text, rows, implementation, all on the lab
-first. Whether to also smooth the regime edges in the incentive is open (E3 cut reversals 58–67%
-at 0.5 but cost gain).
-
-**State of the code.**
-- D95 is implemented: `1f8fe26`, plus the by-kind diagnostic `191f0b1`.
-- It is **off**: `default.json` carries neither field.
-- With the fields absent, every shipped project's output is byte-identical (A51).
-
-**A55 (four-leg and M2.6, seeds 42–81).**
-
-| | Four-leg | M2.6 |
-|---|---|---|
-| Mean delay, fields absent → set | 49.97 → ≈47.1 s | 51.14 → ≈47.0 s |
-| Clamps, absent / 0.25 / 0.5 / 1.0 | 220 / 183 / 179 / 185 | 947 / 827 / 780 / 827 |
-| Changes within 3 s, at 0.25 / 0.5 / 1.0 | 2161 / 1104 / 172 | 8107 / 4083 / 782 |
-
-- Clamps do not rise.
-- **Every** change within 3 s is back-and-forth (A→B→A).
-
-**The ruling (D101).** (b) is rejected: it is per-vehicle state too, and it forbids a later
-overtake back for ever. (c) is today's state, not the answer. In order:
-1. **One session finds why changes reverse (A→B→A), on the lab** (`Overtaking` first), without a
-   contract change. If the incentive itself flips after a move (e.g. the lane just left looks
-   better once the changer is out of it), fix it statelessly; contract item 7 and A53 stand.
-2. **Only if a stateless rule oscillates by nature: (a), narrowly.** `Vehicle` may carry one record
-   of its last change (`{tick, fromRoute}`), inside `SimState`, so a copied state still replays
-   exactly. The hold time is a driver-behaviour field; absent means no hold and byte-identical
-   output (A51). **A53 is rewritten**, because a hold of 3 s or more passes it by construction:
-   count returns to the route just left within a window longer than the hold (say 10 s), capped as
-   a share of discretionary changes. The same record later serves the Run view's lane-change
-   animation and an engine between-lanes state, so the change is recorded in one place.
-3. Then, for whichever fix: lab sweep `trafficsim-lane-change-sweep . --seeds 42-51` (≈1 min in
-   Debug), A55 with `--project data/projects/<four-leg|m2.6>.traffic.json --seeds 42-81`, write
-   `docs/evidence/m3.2.8c-discretionary.md`, and set `default.json` only if A53 (or its rewrite)
-   passes.
+**D95 / D101 — back to the owner (2026-10-02, Windows).** Both are implemented and **off**: no
+shipped behaviour carries `discretionaryLaneChangeThreshold`, `acceptedDecelerationTrailingVehicle`
+or `discretionaryLaneChangeHoldTime`, and every shipped output is unchanged (A51, A58).
+- **A53 (rewritten by D101) fails.** Four-leg and M2.6, seeds 42–81, threshold 1.5, hold 3 s:
+  4.85% and 5.09% of discretionary changes return within 10 s, against a 1% cap. The hold removes
+  only 7–12% of returns; vehicles change back once it ends. Table:
+  `docs/evidence/m3.2.8c-discretionary.md`.
+- **The cause is the incentive** (PROGRESS "Why D95's changes reverse"): one tick of a
+  car-following model with hard regime edges, and blind to a leader braking into its queue.
+- **The owner rules next.** The options:
+  - **(i) a better incentive** (contract §2 item 2): look past the nearest vehicle (E1 cut
+    four-leg's 3 s reversals 27%) and drop the regime edges for the comparison only (E3, 58–67%).
+    Not yet measured against the 10 s returns. One session: contract, rows, lab, then A53.
+  - **(ii) keep D95 off** and move on; the record and the hold stay, unused.
+  - **(iii) move the cap** (it is a proposal): at threshold 1.5 returns are ≈5%.
+- **Unaffected:** the Run view's lane-change animation can be built now from `lastLaneChange`
+  (display only; the engine change stays instantaneous, contract §2).
 
 **The lane-change lab (D98).** `data/projects/lane-change-lab.traffic.json`, built from
 `tools/lane_change_network.hpp` and tested by `lanelab`. Its four scenes:
