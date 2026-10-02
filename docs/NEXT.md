@@ -82,42 +82,19 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**Blocked on the owner — D95 hit its A53 failure condition (2026-10-02, Linux only).**
+**D95 / D101 — off, by the owner's choice (ii), 2026-10-02.** Both are implemented and **off**:
+no shipped behaviour carries `discretionaryLaneChangeThreshold`, `acceptedDecelerationTrailingVehicle`
+or `discretionaryLaneChangeHoldTime`, and every shipped output is unchanged (A51, A58). A53 (as
+D101 rewrote it) fails: 4.85% / 5.09% returns within 10 s at threshold 1.5, hold 3 s, against a
+proposed 1% cap (`docs/evidence/m3.2.8c-discretionary.md`). The cause is the incentive (PROGRESS
+"Why D95's changes reverse"). **When the owner reopens it,** the booked route is (i): look past
+the nearest vehicle (E1) and drop the regime edges for the comparison only (E3) — contract §2
+item 2, rows, the lab, then A53. Moving the cap (iii) is the other option on record.
 
-**State of the code.**
-- D95 is implemented: `1f8fe26`, plus the by-kind diagnostic `191f0b1`.
-- It is **off**: `default.json` carries neither field.
-- With the fields absent, every shipped project's output is byte-identical (A51).
-
-**A55 (four-leg and M2.6, seeds 42–81).**
-
-| | Four-leg | M2.6 |
-|---|---|---|
-| Mean delay, fields absent → set | 49.97 → ≈47.1 s | 51.14 → ≈47.0 s |
-| Clamps, absent / 0.25 / 0.5 / 1.0 | 220 / 183 / 179 / 185 | 947 / 827 / 780 / 827 |
-| Changes within 3 s, at 0.25 / 0.5 / 1.0 | 2161 / 1104 / 172 | 8107 / 4083 / 782 |
-
-- Clamps do not rise.
-- **Every** change within 3 s is back-and-forth (A→B→A).
-
-**The owner rules.** The options:
-- **(a) a hold time after a change.** Needs `SimState` per vehicle, which contract item 7 forbids
-  today.
-- **(b) no change back to the route just left.** Also needs a contract change.
-- **(c) leave D95 off** and record the result.
-
-**After the ruling:**
-1. Implement it.
-2. Measure it on the lab first:
-   ```
-   trafficsim-lane-change-sweep . --seeds 42-51
-   ```
-   It takes about 1 min in Debug. On the lab, repeats are back, afterMandatory and onward all
-   non-zero, unlike four-leg.
-3. Then A55 through the same tool, `--project data/projects/<four-leg|m2.6>.traffic.json --seeds
-   42-81`, which replaces the scratchpad scripts.
-4. Write `docs/evidence/m3.2.8c-discretionary.md`.
-5. Set `default.json` only if A53 passes.
+**The owner looks at D102 on Windows:** open `data/projects/lane-change-lab.traffic.json`, Run
+with Play, watch the Lane drop scene. A changing vehicle should ease across the lane line over
+3 s, nose turned slightly toward its new lane, not jump. Verified offscreen on Windows
+(`lane-change-display-ui`).
 
 **The lane-change lab (D98).** `data/projects/lane-change-lab.traffic.json`, built from
 `tools/lane_change_network.hpp` and tested by `lanelab`. Its four scenes:
@@ -163,14 +140,14 @@ the dead end should be rarer. Verified on Linux headless only.
 1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the
    decision station is not modelled (contract §2, rule 7).
 2. Discretionary changes: contract D95, rows A47–A55, implementation above. Visibility at areas
-   and a between-lanes state are still unwritten. Today a change is instantaneous, which the
-   contract records as a limit.
+   and a between-lanes state are still unwritten. Today a change is instantaneous in the engine
+   (the Run view draws it as a slide, D102), which the contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
    left-turners also change at the first tick allowed).
 4. Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.
 
-**Build on this machine:** no MSVC or CMake on the Windows side; build in WSL
-(`wsl -d Ubuntu`, GCC 15.2, Qt 6 present) — that is Linux evidence, not Windows.
+**Build on this machine:** MSVC 14.51, Ninja and Qt 6.8.3 on D: (vcvars64, then
+`cmake --preset desktop`) — Windows evidence. WSL Ubuntu (GCC 15.2, Qt 6) gives Linux evidence.
 
 **Open item from M3.2.8a:** five minor vehicles standing or at walking pace within 1 m of the
 T-junction's merge line are still clamped in the congested headway arm (seeds 42 and 43). They

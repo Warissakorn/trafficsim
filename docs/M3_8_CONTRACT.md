@@ -273,7 +273,7 @@ else is discretionary (D95, below).
    - A downstream stub vehicle that never finds a gap waits at its dead end and blocks its lane,
      as an entry stub does.
 
-### Discretionary lane changes (M3.2.8c, D95 — contract and rows, not implemented)
+### Discretionary lane changes (M3.2.8c, D95; item 7 amended by D101 — hold time being implemented)
 
 The owner's rulings (2026-10-02): a vehicle changes lanes **by choice** when the adjacent lane
 lets it accelerate harder by at least a threshold. Lanes are chosen freely, as in Vissim's
@@ -320,11 +320,19 @@ a full route never changes lanes: spans are emitted from stubs only (`appendLane
    - `data/driver-behaviour/default.json` gets both. The proposed values are 0.5 m/s² and 1 m/s².
      The implementation session fixes them by measurement, trying the threshold at 0.25, 0.5 and
      1.0 (A55).
-7. **Stateless.** Nothing is stored and `SimState` gets no field, so a copied state replays
-   exactly.
-   - Only the threshold guards against changing back and forth.
-   - A measured back-and-forth (A53) is this rule's failure condition. A hold time would be state,
-     and it goes back to the owner.
+7. **One record per vehicle, and a hold time (D101, owner's ruling 2026-10-02).** The stateless
+   rule failed A53: the incentive compares one tick of a car-following model with hard regime
+   edges, and it is blind to a leader braking into its queue (PROGRESS "Why D95's changes
+   reverse"). No stateless variant reached zero.
+   - Every vehicle carries `lastLaneChange`: the tick of its last change of either kind and the
+     route it left. It lives in `Vehicle`, so it is copied with `SimState` and a copied state
+     still replays exactly. It is written by every change and read by nothing else in the core.
+   - `discretionaryLaneChangeHoldTime` (s, a behaviour field) is the hold: while fewer than that
+     many seconds of ticks have passed since the vehicle's last change, it makes **no
+     discretionary** change. A mandatory change is never held: a stub must still leave its dead
+     end.
+   - Without the field there is no hold, and the decision is exactly D95's.
+   - The name is ours; Vissim has no such parameter. Its value is unmeasured and chosen by A53.
 8. **Limits, recorded and not modelled.**
    - No between-lanes state.
    - No change into a stub, which Vissim allows.
@@ -334,10 +342,9 @@ a full route never changes lanes: spans are emitted from stubs only (`appendLane
 
 ### Replay
 
-There is no RNG draw and nothing new in `SimState`. A change rewrites the vehicle's
-`routeIndex` and `distance`, both already in the state, and emits a `LaneChangeEvent`. A copied
-state therefore replays exactly (A25). A scenario with no spans runs exactly the code it ran
-before.
+There is no RNG draw. A change rewrites the vehicle's `routeIndex` and `distance` and, since
+D101, its `lastLaneChange`, all inside `SimState`, and emits a `LaneChangeEvent`. A copied state
+therefore replays exactly (A25, A52). A scenario with no spans runs exactly the code it ran before.
 
 ### Demand
 

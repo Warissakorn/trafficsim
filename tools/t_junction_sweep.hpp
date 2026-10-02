@@ -88,6 +88,7 @@ inline bool restoreArchivedBehaviour(const std::filesystem::path& root, nlohmann
     now.erase("maxDecelerationCooperativeBraking");
     // D95's two fields act only through lane-change spans too.
     now.erase("discretionaryLaneChangeThreshold"); now.erase("acceptedDecelerationTrailingVehicle");
+    now.erase("discretionaryLaneChangeHoldTime"); // D101, likewise
     if (now != archived) return false;
     for (const bool congested : {false, true}) {
         fixture::TJunctionOptions o; o.congestedMajor = congested;

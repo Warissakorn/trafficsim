@@ -71,10 +71,13 @@ before its code:
 | A49 | .8c | A47 with lane 2 better by less than `discretionaryLaneChangeThreshold` | No change. The forcing is asserted first: `a_there > a_here` |
 | A50 | .8c | The four-leg and M2.6 drawings compiled | No span leads from a full route to a stub; every discretionary span joins full routes with equal family sets ending on the same Link; movement rows and compiled volumes are unchanged, and A40 still holds exactly |
 | A51 | .8c | Every behaviour without `discretionaryLaneChangeThreshold` | No discretionary change: with the field removed, the three projects' CLI output equals D94's byte for byte. With it present, the single-lane T-junction output and the four TS baselines are unchanged |
-| A52 | .8c | A47's road, a copied state branched during discretionary changes | Exact replay; no new `SimState` field |
-| A53 | .8c | A47's road under a steady two-lane stream | No vehicle changes twice within 3 s. Over M2.6 seeds 42–81 the count is reported, and a non-zero count is D95's failure condition |
+| A52 | .8c | A47's road, a copied state branched during discretionary changes, with and without a hold | Exact replay; `lastLaneChange` is the only new `SimState` data (D101) |
+| A53 | .8c | A47's road under a steady two-lane stream; then four-leg and M2.6, seeds 42–81 (rewritten by D101) | A discretionary change straight back to the route the vehicle's previous change left, within 10 s of it, is a return. Returns are reported per project and threshold; D95 passes when they are at most 1% of discretionary changes (cap proposed 2026-10-02, the owner may move it). The hold must be shorter than the 10 s window, or the count tests nothing |
 | A54 | .8c | A47's incentive inside a conflict area, or while holding a Stop service | No discretionary change (§2 rule 2) |
 | A55 | .8c | Four-leg and M2.6, seeds 42–81, threshold 0.25 / 0.5 / 1.0 | Per-movement Δdelay ± SE against D94, discretionary change counts and clamps, in `docs/evidence/m3.2.8c-discretionary.md`; the published reports are re-published. Clamps rising goes back to the owner |
+| A56 | .8c | A47 with `discretionaryLaneChangeHoldTime` H: the follower has just changed (discretionary), and lane 1 becomes better by more than the threshold | No change back before H has passed since its change, and the change is allowed once it has. The forcing is asserted first: the same state with no hold changes back at once |
+| A57 | .8c | A stub vehicle two lanes from its full route, with a hold longer than the time between its two mandatory changes | Both mandatory changes happen as without a hold: the hold delays only discretionary changes. The forcing is asserted first: the two changes are closer together than the hold |
+| A58 | .8c | Behaviours with the D95 fields and without `discretionaryLaneChangeHoldTime` | The run equals D95's without the record, change for change (the record is written but never read) |
 
 Cooperative braking is A36–A39 (M3.2.8c). Downstream routing decisions are A40–A46 (D93),
 implemented 2026-10-01. Discretionary lane changes are A47–A55 (D95), rows agreed and **not

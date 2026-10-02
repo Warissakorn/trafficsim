@@ -215,7 +215,7 @@ void indexLaneChanges(const Scenario& s, ScenarioIndex& index) {
 std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex& index,
                                           const std::vector<Vehicle>& vehicles, const std::vector<VehicleRefs>& refs,
                                           const std::vector<OccupiedSpan>& spans, const SpanBuckets& buckets,
-                                          const std::vector<StopService>& stopService) {
+                                          const std::vector<StopService>& stopService, std::uint64_t tick) {
     std::vector<LaneChange> accepted;
     std::vector<OccupiedSpan> moved; // accepted changers at their new places, this tick
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
@@ -255,6 +255,9 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
         const double front = vehicle.distance, rear = front - type.length;
         if (std::any_of(stopService.begin(), stopService.end(), [&](const auto& x) { return x.vehicleId == vehicle.id; })) continue;
         if (inConflictArea(index, route, rear, front)) continue;
+        // D101: no change by choice while the hold since this vehicle's last change runs.
+        if (const auto& last = vehicle.lastLaneChange; last && behaviour.discretionaryLaneChangeHoldTime &&
+            static_cast<double>(tick - last->tick) * s.timeStep < *behaviour.discretionaryLaneChangeHoldTime - 1e-9) continue;
         // The incentive compares vehicles only, never signals, lines or dead ends: both routes end
         // on the same Link with the same destinations, and neither is a stub.
         const auto acceleration = [&](const std::optional<Leader>& leader) {

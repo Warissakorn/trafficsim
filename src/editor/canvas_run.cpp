@@ -7,9 +7,16 @@
 #include <QGraphicsPathItem>
 #include <QPainter>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <numbers>
+#include <optional>
 namespace trafficsim {
+namespace {
+// D102: how long a lane change is drawn, and how far off the lane it left may be found. Display
+// values, not engine parameters and not measured against any driver.
+constexpr double kLaneChangeShown=3,kLaneChangeReach=8,kLaneChangeYawSpeed=5;
+}
 void EditorCanvas::setRunNetwork(const Network& network) {
     runGeometry_.clear();runLevels_.clear();runStyles_.clear();
     // Keyed by SECTION, from the same table buildScenario compiled the scenario from, so every
@@ -54,6 +61,24 @@ void EditorCanvas::drawRunItems() {
     // the windshield and cab gap appear only once the body is long enough on screen to show them.
     const double scale=std::abs(transform().m11());
     std::map<std::uint32_t,QPainterPath> shapes; // per type, shared by every item of that type
+    // D102, display only: for kLaneChangeShown seconds after a lane change the engine already made
+    // (Vehicle::lastLaneChange), the body is drawn sliding from the lane it left to the one it is on,
+    // eased in and out. The engine moved the vehicle in one tick and still does; nothing it decides
+    // or any measurement reads changes. The lane it left is found as the nearest point on that
+    // route's geometry, so no lane mapping is duplicated here. A second change inside the window
+    // restarts the slide from the lane the second one left.
+    std::map<std::uint32_t,std::vector<RoutePart>> partsOf;
+    const auto onRoute=[&](std::uint32_t route,Point p)->std::optional<Point> {
+        auto parts=partsOf.find(route);
+        if(parts==partsOf.end())parts=partsOf.emplace(route,routeParts(*runFrame_.scenario,runFrame_.scenario->routes.at(route))).first;
+        std::optional<Point> best;double bestDistance=std::numeric_limits<double>::infinity();
+        for(const auto& part:parts->second) {
+            const auto g=runGeometry_.find(part.segmentId);if(g==runGeometry_.end())continue;
+            const auto q=pointAlong(g->second,stationOfClosestPoint(g->second,p));
+            if(const double d=std::hypot(q.x-p.x,q.y-p.y);d<bestDistance){bestDistance=d;best=q;}
+        }
+        return best;
+    };
     for(const auto& v:runFrame_.vehicles) {
         const auto location=locateVehicle(*runFrame_.scenario,v);
         const auto it=runGeometry_.find(location.segmentId);
@@ -71,12 +96,31 @@ void EditorCanvas::drawRunItems() {
             const auto rear=pointAlong(g,station-type.length);
             if(std::hypot(front.x-rear.x,front.y-rear.y)>1e-6)heading={front.x-rear.x,front.y-rear.y};
         }
+        Point at=front;
+        if(const auto& last=v.lastLaneChange) {
+            const double f=static_cast<double>(runFrame_.tick-last->tick)*runFrame_.scenario->timeStep/kLaneChangeShown;
+            const double norm=std::hypot(heading.x,heading.y);
+            // How far sideways the lane it left lies from the front: only the sideways part, since
+            // past a stub's dead end the nearest point is behind the vehicle.
+            const Point along{heading.x/norm,heading.y/norm},side{-along.y,along.x};
+            std::optional<Point> left;
+            if(f<1 && norm>1e-9)left=onRoute(last->fromRoute,front);
+            const double offset=left?(left->x-front.x)*side.x+(left->y-front.y)*side.y:0;
+            if(left && std::abs(offset)<=kLaneChangeReach) {
+                const double rest=offset*(1-f*f*(3-2*f)); // smoothstep: leaves and arrives along the lane
+                at={front.x+side.x*rest,front.y+side.y*rest};
+                // The nose points along the path: sideways speed over forward speed, floored so a
+                // queued changer does not swing across the lane.
+                const double sidewaysSpeed=-offset*6*f*(1-f)/kLaneChangeShown,forward=std::max(v.speed,kLaneChangeYawSpeed);
+                heading={along.x*forward+side.x*sidewaysSpeed,along.y*forward+side.y*sidewaysSpeed};
+            }
+        }
         const auto colour=display_.vehicleColors.find(type.id);
         auto* item=new QGraphicsPathItem(shape->second);
         item->setPen(Qt::NoPen);
         item->setBrush(QColor(QString::fromStdString(colour!=display_.vehicleColors.end()?colour->second:styleOf(location.segmentId).vehicleColor)));
-        item->setPos(front.x,front.y);item->setRotation(std::atan2(heading.y,heading.x)*180/std::numbers::pi);
-        item->setData(0,"run-vehicle");item->setData(1,QString::fromStdString(type.id));
+        item->setPos(at.x,at.y);item->setRotation(std::atan2(heading.y,heading.x)*180/std::numbers::pi);
+        item->setData(0,"run-vehicle");item->setData(1,QString::fromStdString(type.id));item->setData(2,QVariant::fromValue<qulonglong>(v.id));
         item->setZValue(runLevels_.at(location.segmentId)*100.+11);scene_.addItem(item);runItems_.push_back(item);
     }
     // No viewport()->update() here: adding and removing items already invalidates their own
