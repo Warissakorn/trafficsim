@@ -82,7 +82,13 @@ scratch worktree, copy the diagnostic's two files, add its source to `trafficsim
 `runProject` to observe it behind an environment variable, uncommitted, and `cmp` the default
 output first.
 
-**D95 — owner ruled 2026-10-02 (D101): find the cause of the reversals first.** It stays off.
+**D95 — owner ruled 2026-10-02 (D101); step 1 done the same day.** It stays off. The cause is
+in the incentive: hard regime edges in `followingAcceleration` and myopia at queues (PROGRESS
+"Why D95's changes reverse"). No stateless variant reached zero; raising the threshold to 1.0 did
+as well as the continuous incentive and kept more gain. **Next: the owner confirms that step 2
+applies** (a narrow (a), A53 rewritten); then contract text, rows, implementation, all on the lab
+first. Whether to also smooth the regime edges in the incentive is open (E3 cut reversals 58–67%
+at 0.5 but cost gain).
 
 **State of the code.**
 - D95 is implemented: `1f8fe26`, plus the by-kind diagnostic `191f0b1`.
