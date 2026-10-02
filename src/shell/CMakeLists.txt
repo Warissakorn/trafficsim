@@ -17,6 +17,11 @@ target_precompile_headers(trafficsim_shell PRIVATE <QGraphicsView> <QPainterPath
 add_executable(trafficsim-editor-benchmark ../../tools/editor_benchmark.cpp)
 target_link_libraries(trafficsim-editor-benchmark PRIVATE trafficsim_shell trafficsim_options)
 target_precompile_headers(trafficsim-editor-benchmark REUSE_FROM trafficsim_shell)
+# The Run view's per-Step cost on a real project, split into the action and the painting after it.
+find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
+add_executable(trafficsim-run-view-benchmark ../../tools/run_view_benchmark.cpp)
+target_link_libraries(trafficsim-run-view-benchmark PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+target_precompile_headers(trafficsim-run-view-benchmark REUSE_FROM trafficsim_shell)
 
 # The M1.27.3 gate: it counts inputs per authoring task and replays the Vissim reflexes. Not a
 # test and not in `check` -- it reports what happened, the UI suites are what assert it. It needs
