@@ -110,3 +110,23 @@ TEST(demand, priority_defaults_come_from_the_data_catalog_and_do_not_break_porta
     CHECK(bare.priorityDefaults==PriorityDefaults{});
     CHECK(!bare.vehicleTypes.empty());
 }
+// The route table's Length column (from D96). A route covers every lane of its first Link, and a
+// lane that cannot reach the turn is a stub that ends where it must change lanes. The row shows one
+// full chain's distance, never a stub's, whichever lane happens to be compiled first.
+TEST(demand, a_route_length_is_a_full_chain_not_the_first_lane_stub) {
+    ProjectDocument d;
+    d.network.links={{"a",{{0,0},{100,0}},{{"a1",3.5},{"a2",3.5}}},{"b",{{120,0},{220,0}},{{"b1",3.5}}}};
+    const auto turn=addConnector(d,{"a","a2",100},{"b","b1",0});
+    const auto route=putRoute(d,{"",{"a",turn,"b"}});
+    const auto scenario=buildScenario(d.network,*d.definition);
+    // The forcing: lane 1 is compiled first and really is a stub, or the bug has nothing to hit.
+    const auto first=std::find_if(scenario.routes.begin(),scenario.routes.end(),
+        [&](const auto& r){return r.id.rfind(route+"/lane-",0)==0;});
+    CHECK(first!=scenario.routes.end());
+    CHECK(first->id==route+"/lane-1");
+    CHECK(std::any_of(scenario.routeDeadEnds.begin(),scenario.routeDeadEnds.end(),
+                      [&](const auto& e){return e.routeId==first->id;}));
+    double connector=0;
+    for(const auto& s:scenario.segments)if(s.id==turn)connector=s.length;
+    test::near(authoredRouteLength(scenario,route),100+connector+100,1e-9);
+}

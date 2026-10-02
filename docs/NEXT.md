@@ -187,8 +187,6 @@ Also open, not this session's work:
   `ar` on `/mnt/c` can fail with "Cannot allocate memory" at full parallelism, so build with `-j 4`.
 
 **Not booked, for later sessions:**
-- **Route table length over a stub (from D96):** `editor_demand.cpp` takes the length from the
-  first `r.id` or `r.id/lane-*` route, which can be a stub's short distance. Prefer a full chain.
 - **Split targetStanding (measurement only):** is the target lane standing at its own red, or
   in a queue spilling back from it? Add it to `--wait-causes` only if a behaviour row needs the
   split. That would be one that changes lanes earlier, before the queue reaches the stub's
