@@ -5,6 +5,7 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <optional>
 
 namespace trafficsim {
 namespace {
@@ -61,6 +62,38 @@ std::size_t slotOfId(const std::vector<Vehicle>& vehicles, std::uint64_t id) {
     const auto it = std::lower_bound(vehicles.begin(), vehicles.end(), id,
                                      [](const Vehicle& v, std::uint64_t at) { return v.id < at; });
     return it != vehicles.end() && it->id == id ? static_cast<std::size_t>(it - vehicles.begin()) : vehicles.size();
+}
+// Rules 3-5 at a mapped place, for both kinds of change: nothing alongside, and the car-following
+// model itself accepts the change ahead and behind. Safe: the follower's acceleration behind the
+// changer (+infinity without one), for a discretionary change's stricter test. Unsafe: nullopt.
+std::optional<double> safeAt(const Scenario& s, const std::vector<Vehicle>& vehicles, const std::vector<VehicleRefs>& refs,
+                             std::size_t v, const Around& near) {
+    if (near.alongside) return std::nullopt;
+    const auto& vehicle = vehicles[v];
+    const auto& type = s.vehicleTypes[refs[v].type];
+    const auto& behaviour = s.behaviours[refs[v].behaviour];
+    // Forward safety (rule 3), by the car-following model itself: braking it would accept,
+    // and this tick's move inside the room the leader leaves, so the change never clamps.
+    if (const auto& leader = near.leader) {
+        const double a = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor,
+                                               type, behaviour, leader).acceleration;
+        if (a < -type.comfortableDeceleration ||
+            integrate(vehicle.speed, a, s.timeStep).distance > leader->gap - behaviour.standstillDistance) return std::nullopt;
+    }
+    // Rearward safety (rule 4): the follower's own reaction to the changer ahead of it.
+    if (const auto& follower = near.follower) {
+        const auto f = slotOfId(vehicles, near.followerId);
+        if (f == vehicles.size()) return std::nullopt; // never: every span is a vehicle of this snapshot
+        const auto& fType = s.vehicleTypes[refs[f].type];
+        const auto& fBehaviour = s.behaviours[refs[f].behaviour];
+        const auto& other = vehicles[f];
+        const double a = followingAcceleration(other.speed, other.desiredSpeed, other.driverFactor, fType,
+                                               fBehaviour, Leader{follower->gap, vehicle.speed}).acceleration;
+        if (a < -fType.comfortableDeceleration ||
+            integrate(other.speed, a, s.timeStep).distance > follower->gap - fBehaviour.standstillDistance) return std::nullopt;
+        return a;
+    }
+    return std::numeric_limits<double>::infinity();
 }
 }
 double mappedOnto(const RouteLaneChange& c, double at) {
@@ -178,7 +211,6 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
         if (index.remainingOfRoute[route] == 0) continue;
         const auto& vehicle = vehicles[v];
         const auto& type = s.vehicleTypes[refs[v].type];
-        const auto& behaviour = s.behaviours[refs[v].behaviour];
         const double front = vehicle.distance, rear = front - type.length;
         if (std::any_of(stopService.begin(), stopService.end(), [&](const auto& x) { return x.vehicleId == vehicle.id; })) continue;
         if (inConflictArea(index, route, rear, front)) continue;
@@ -190,29 +222,7 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
             // Nearest vehicle ahead of and behind the mapped place, over this tick's snapshot and
             // the changes already accepted; anything alongside refuses the change (rule 5).
             const auto near = around(index, change.target, at, atRear, vehicle.id, spans, buckets, moved);
-            const auto& leader = near.leader;
-            const auto& follower = near.follower;
-            if (near.alongside) continue;
-            // Forward safety (rule 3), by the car-following model itself: braking it would accept,
-            // and this tick's move inside the room the leader leaves, so the change never clamps.
-            if (leader) {
-                const double a = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor,
-                                                       type, behaviour, leader).acceleration;
-                if (a < -type.comfortableDeceleration ||
-                    integrate(vehicle.speed, a, s.timeStep).distance > leader->gap - behaviour.standstillDistance) continue;
-            }
-            // Rearward safety (rule 4): the follower's own reaction to the changer ahead of it.
-            if (follower) {
-                const auto f = slotOfId(vehicles, near.followerId);
-                if (f == vehicles.size()) continue; // never: every span is a vehicle of this snapshot
-                const auto& fType = s.vehicleTypes[refs[f].type];
-                const auto& fBehaviour = s.behaviours[refs[f].behaviour];
-                const auto& other = vehicles[f];
-                const double a = followingAcceleration(other.speed, other.desiredSpeed, other.driverFactor, fType,
-                                                       fBehaviour, Leader{follower->gap, vehicle.speed}).acceleration;
-                if (a < -fType.comfortableDeceleration ||
-                    integrate(other.speed, a, s.timeStep).distance > follower->gap - fBehaviour.standstillDistance) continue;
-            }
+            if (!safeAt(s, vehicles, refs, v, near)) continue;
             accepted.push_back({v, static_cast<std::uint32_t>(change.target), at});
             auto placed = vehicle;
             placed.routeIndex = static_cast<std::uint32_t>(change.target); placed.distance = at;
