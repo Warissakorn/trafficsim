@@ -78,7 +78,10 @@ Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outst
 
 The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was mostly a
 whole-viewport repaint per run frame, removed 2026-09-30. On Windows Debug it now takes 28 s CPU
-alone (2026-10-02, session check), but load from another process pushes it to 76–82 s. Confirm in CI.
+alone (2026-10-02, session check), but load from another process pushes it to 76–82 s. On
+2026-10-03 the same machine took 110–116 s CPU for both an unchanged and a changed build (an A/B
+run alternately), so CPU time is not a stable meter on this laptop either. Compare builds A/B, never
+against a number from another day. Confirm in CI.
 
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
@@ -188,9 +191,8 @@ no gate result is inferred.
 - Derive an input's interval volumes from its entry decision's turning counts, so a count sheet
   is typed once; today the two are entered separately.
 - In-editor CSV export of the Results tab (the CLI has one).
-- Per-lane shares (D32; one weight per entry-Link lane since D71): no canvas gesture sets one,
-  and the input table row (`refreshDemand`, `src/shell/editor_demand.cpp`) shows the equal-split
-  figure even when shares are set.
+- Per-lane shares (D32; one weight per entry-Link lane since D71): no canvas gesture sets one.
+  The input table row shows set weights since 2026-10-03 (`laneSplit`).
 - Keyboard-only equivalents of the route and vehicle-input gestures (M1.25/M1.26) are still open.
 - The entry-acceleration bias in movement delay needs travel-time sections (M5), not a
   correction factor.

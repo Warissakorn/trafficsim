@@ -361,6 +361,22 @@ TEST(editor, m1_26_1_lane_shares_weight_the_split_and_degrade_when_stale) {
         for(const auto& i:scenario.inputs) test::near(i.vehiclesPerHour,600,1e-9);
     }
 }
+TEST(editor, lane_split_is_the_one_rule_for_weights_and_their_fallback) {
+    const auto near=[](const LaneSplit& split,const std::vector<double>& want) {
+        const auto& got=split.fraction;CHECK(got.size()==want.size());
+        for(std::size_t k=0;k<got.size()&&k<want.size();++k) test::near(got[k],want[k],1e-12);
+    };
+    near(laneSplit({0,1,2},3,{1,2,3}),{1./6,2./6,3./6});
+    near(laneSplit({0,1,2},3,{}),{1./3,1./3,1./3});          // none authored
+    near(laneSplit({0,1},2,{1,2,3}),{.5,.5});                 // stale size
+    near(laneSplit({0,1},2,{0,1}),{.5,.5});                   // a weight that cannot divide
+    // Only the lanes the chains start on count: a lane no chain uses takes no weight, and two
+    // chains on one lane each carry that lane's weight.
+    near(laneSplit({0,2},3,{1,5,3}),{.25,.75});
+    near(laneSplit({1,1},2,{1,2}),{.5,.5});
+    CHECK(laneSplit({0,1,2},3,{1,2,3}).weighted);CHECK(!laneSplit({0,1},2,{1,2,3}).weighted);
+    CHECK(laneSplit({},2,{1,1}).fraction.empty());
+}
 TEST(editor, a_single_lane_route_keeps_its_authored_id_and_volume) {
     const auto d=sample();
     // The frozen baselines depend on this: a one-lane expansion must not rename anything.

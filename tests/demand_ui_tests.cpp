@@ -191,6 +191,9 @@ int main(int argc,char** argv) {
         // M1.26.1: reopening the input on its two-lane route shows one weight field per lane,
         // defaulted to equal (1 each) because nothing has set laneShares yet.
         auto* inputTable=item<QTableWidget>(w,"editorInputTable");
+        // The row says what each lane receives: here the equal split of the Link total.
+        require(inputTable->item(0,2)->text().contains(QString::fromUtf8("1800 = 2 × 900.0")),
+            "Unweighted input row does not show the equal split");
         inputTable->selectRow(0);QApplication::processEvents();
         QTimer::singleShot(0,[&]{
             auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
@@ -220,6 +223,9 @@ int main(int argc,char** argv) {
             require(std::abs(first-1200)<1e-6 && std::abs(second-600)<1e-6,
                 "The 2:1 weight did not compile to a 1200/600 split of 1800");
         }
+        // The forcing held (the run gets 1200/600), so the row must say so, not the equal split.
+        require(inputTable->item(0,2)->text().contains("1800 = 1200.0 + 600.0"),
+            "Weighted input row does not show its lanes' volumes");
         // Reopening and leaving the fields alone must not disturb what was just set.
         QTimer::singleShot(0,[&]{
             auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
