@@ -38,6 +38,8 @@ enlarged crop of the 150 % workspace, the plain line edit's "3.5" sits ≈1 logi
 spin boxes' and the dropdown's text is centred. The test measures device pixels with a 1 px
 tolerance, so at 150 % that is ⅔ of a logical pixel. D84's "text centred" holds at 100 % and is not
 met at 150/200 % for `QLineEdit`. Not fixed this session.
+*2026-10-03:* measured further. It is not `QLineEdit`: every 13 px body-font control has the same gaps,
+and the cause is the face's 6 px descent. It is kept as a limit (D103) and tested at 1.5×/2×.
 
 ## 3. What the screenshots show, item by item
 

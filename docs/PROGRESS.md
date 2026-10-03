@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-03 — Field text at 150/200 %: a measured limit, tested (D103)
+
+The Windows session check's `design-system-ui` failure at 150/200 % was measured (`boxModel()`,
+offscreen, 1–2× in 0.25 steps). It is **not** `QLineEdit`. QLineEdit, QComboBox and QPushButton
+share identical gaps at every scale (7/8, 8/10, 10/12, 12/14, 13/16 device px). They all use the
+13 px body face, ascent 14 and descent 6, the descent for Thai below-vowels. Qt centres the line box,
+so digits sit ≈0.5 logical px high at 100 % and ≈1.5 at 2×. The spin box's 12 px numeric face
+(13/5) is within 1 device px everywhere. A QSS shift of 1 px down for body-font fields centred them
+at every scale (8/7, 9/9, 11/11, 15/14). It also put their digits 1 px below the spin box's at 100 %,
+which breaks D84's one row for digits. The owner kept the style (D103). The test now holds 100 % exactly
+as before. Above it, a control is centred within 1.5 logical px, with rows within 1 logical px.
+Two ctest entries, `design-system-ui-1.5x`/`-2x`, run `--box-model-at-scale`. They first assert that
+the scale really applied, and only the box model runs, because `gridIsCrisp` fails at any scale
+other than 100 % (booked in NEXT, not looked at). A 2 px upward shift fails all three scales, and a
+missing scale fails the forcing check. Desktop 77/77 on Windows.
+
 ## 2026-10-03 — Scope text says what lane changing there is
 
 The owner approved new wording for `editorScope`, `editorScopeCompact` and `editorInputSplitHelp`
@@ -439,6 +455,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D103 | 2026-10-03 | **Field text keeps D84's one digit row at 100 %; above it, digits may sit up to 1.5 logical px high (owner)** | The offset is the 13 px Thai-capable face's 6 px descent under Qt's line-box centring, in every body-font control. A 1 px QSS shift centres them but puts body and numeric digits on different rows at 100 %, the scale most use. `design-system-ui-1.5x`/`-2x` hold the limit; reopen with a per-font baseline measurement, not a padding guess |
 | D102 | 2026-10-02 | **D95 stays off (owner, option ii). The Run view draws a lane change as a 3 s smoothstep slide from the lane left (from `lastLaneChange`) with the nose turned along the path; display only, the engine change stays one tick** | Owner asked that a change not "warp"; the record D101 added already says where the vehicle came from, so the view needs no new engine state and no measurement moves. Finding the old lane by nearest point reuses the drawn geometry instead of copying the core's lane mapping (rule 3). 3 s and the 5 m/s yaw floor are display values, not driver parameters | A between-lanes state enters the engine (then the view draws the engine's lateral position instead), or a curved lane makes the nearest point jump visibly |
 | D101 | 2026-10-02 | **D95's back-and-forth: find the cause before adding state. A stateless fix keeps contract item 7 and A53; only if a stateless rule oscillates by nature, `Vehicle` carries one last-change record `{tick, fromRoute}` in `SimState`, a driver-behaviour hold time (absent = none), and A53 is rewritten to count returns beyond the hold** (owner's ruling) | Every change within 3 s on four-leg and M2.6 is A→B→A, which points at an incentive that flips after the move rather than at noise; a hold time would hide that. Option (b) also needs state and bans a later overtake back. A record inside `SimState` is copied with it, so replay stays exact, which is what item 7 protects. A hold of 3 s or more passes A53 by construction, so the criterion must move past the hold. One record also serves the lane-change animation and a later between-lanes state | The lab shows reversals with no flip in the incentive (genuine oscillation), so (a) applies directly; or the owner wants the D95 numbers before the cause is known |
 | D100 | 2026-10-02 | **Ctrl+A wireframe draws, hits and selects Links and Connectors as their centre line; vehicles keep their lane positions; view state only** | Owner ruling (NEXT, VISSIM_PARITY): Vissim's simple link display. One flag on the canvas switches drawing and `objectShape` together, so what is seen is what is hit. Lane tabs hang off rails that are not drawn, so they are withdrawn rather than left grabbable. Vehicles stay in lanes by the owner's choice: the display must not misstate where the engine put them. Not saved, like Ctrl+B | The owner wants vehicles on the line (map stations onto the centre line in `drawRunItems`); a network large enough that `hitObjects`' per-call `connectorCentreline` is felt on mouse move (then cache it beside `cachedSurface`, after D28) |

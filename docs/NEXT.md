@@ -9,17 +9,17 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
-## Session-checked on Windows, 2026-10-02 — one defect left; the owner's look is still open
+## Session-checked on Windows, 2026-10-02 — both findings resolved; the owner's look is still open
 
 A session ran every owner item below on this Windows machine. It used the UI suites on the real
 `windows` platform at 100/150/200 %, screenshots and the CLI. It could not drive the live desktop.
 Results: `docs/evidence/windows-session-check-2026-10-02.md`. **No owner item is closed by it.**
-One defect left for a session to fix (the stale "no lane changing" text was reworded with the owner
-2026-10-03):
-**`QLineEdit` text ≈1 logical px high at 150/200 %.** `design-system-ui` fails at
-`QT_SCALE_FACTOR=1.5` (10 above / 12 below) and `2` (13/16), offscreen too. Spin boxes, dropdowns
-and buttons pass. D84's centring holds at 100 % only. Add the scale factors to the test before
-fixing the style.
+Its two findings are closed. The stale "no lane changing" text was reworded with the owner on
+2026-10-03. Digits sitting high at 150/200 % are a recorded limit (D103): the cause is the 13 px face's
+deep descent, in every body-font control, and the owner kept the 100 % row alignment. The
+`design-system-ui-1.5x`/`-2x` entries hold it to 1.5 logical px.
+**Not booked:** `gridIsCrisp` fails at any scale other than 100 % ("Blended grid pixel"), so the
+canvas grid may be soft on a 125–200 % screen. Look before changing `drawBackground`.
 
 Also measured: `scenario-run-ui` alone is 28 s CPU on Windows Debug. It reached 76–82 s CPU while
 another process ran, so the 90 s timeout is a load problem, not the test's own cost. D90's 40-seed

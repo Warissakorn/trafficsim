@@ -107,6 +107,13 @@ void boxModel() {
     }
     // One vertical pattern: the same digits sit at the same rows in every kind of control, and
     // centred to the pixel (a 9 px cap in 24 px leaves 15 px, so 7 above and 8 below is centred).
+    // Above 100 % the limit is measured, not chosen: Qt centres the font's line box, and the 13 px
+    // face's 6 px descent (Thai below-vowels) leaves its digits up to 1.5 logical px high (13/16
+    // device px at 2x); the 12 px numeric face sits about 0.5 px high. A 1 px shift centred the
+    // digits but put body and numeric digits on different rows at 100 %, which the owner declined
+    // (2026-10-03). So: centred within 1.5 logical px, and rows within one logical px of each other.
+    const double ratio=edit->devicePixelRatioF();
+    const int centring=ratio==1?1:int(std::ceil(1.5*ratio)),rows=ratio==1?0:int(std::ceil(ratio));
     button->setFocus();QApplication::processEvents(); // no text cursor in the line edit
     edit->setText("0000");spin->setValue(0);combo->setItemText(0,"0000");button->setText("0000");
     std::vector<std::pair<int,int>> gaps;
@@ -117,9 +124,10 @@ void boxModel() {
             if(image.pixelColor(x,y).lightness()<110){if(top<0)top=y;bottom=y;break;}
         require(top>=0,std::string(control->metaObject()->className())+" drew no text");
         gaps.push_back({top,image.height()-1-bottom});
-        require(std::abs(gaps.back().first-gaps.back().second)<=1,
+        require(std::abs(gaps.back().first-gaps.back().second)<=centring,
                 std::string(control->metaObject()->className())+" text is not centred: "+std::to_string(gaps.back().first)+" above, "+std::to_string(gaps.back().second)+" below");
-        require(gaps.back()==gaps.front(),std::string(control->metaObject()->className())+" places text differently from a line edit");
+        require(std::abs(gaps.back().first-gaps.front().first)<=rows&&std::abs(gaps.back().second-gaps.front().second)<=rows,
+                std::string(control->metaObject()->className())+" places text differently from a line edit");
     }
     // Same configuration as the editor's toolbars (editor_workspace.cpp): icon-only 16 px buttons.
     // Without it the button shows its text beside the icon and is 27 px, which is a test artefact.
@@ -219,6 +227,16 @@ int main(int argc,char** argv) {
         // The editor's own face, as EditorWindow loads it: heights are measured with the font
         // the user sees, not the test machine's default.
         loadEditorFont(argv[1]);
+        if(argc>=3&&std::string(argv[2])=="--box-model-at-scale") {
+            // The scaled ctest entries: only the box model, which promises the same at every scale.
+            // The forcing first: the window really is at the scale the entry asked for.
+            const double asked=qEnvironmentVariable("QT_SCALE_FACTOR").toDouble();
+            QWidget probe;probe.show();QApplication::processEvents();
+            require(asked>1&&std::abs(probe.devicePixelRatioF()-asked)<1e-6,
+                    "Scale factor not applied: asked "+std::to_string(asked)+", got "+std::to_string(probe.devicePixelRatioF()));
+            boxModel();
+            std::cout<<"24 px box model at "<<asked<<"x passed\n";return 0;
+        }
         palette();stylesheet();boxModel();typography();hairlines();gridTiers();gridIsCrisp();window(argv[1]);
         std::cout<<"Palette roles, QSS rules, 24/32 px box model, formatting, hairlines and grid tiers passed\n";return 0;
     } catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
