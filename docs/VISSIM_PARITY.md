@@ -8,8 +8,8 @@ gesture**, so the gap is a list of decisions rather than a feeling.
 kept as written — their "today" columns describe an editor that no longer exists. **§1a and §2
 are the current state**, §1a measured by `trafficsim-gesture-walkthrough` rather than read off
 the code. Everything M1.1–M1.10 built is listed in [`NETWORK_EDITOR.md`](NETWORK_EDITOR.md);
-group drag (M1.16), rotation (M1.22.2), Connector lane ranges and corner handles, `Tab`
-cycling, tool shortcuts and levels all exist now and §1/§6 say they do not.
+group drag (M1.16), rotation (M1.22.2), Connector lane ranges and corner handles, overlap
+cycling (`Ctrl+Tab` since `ed74268`), tool shortcuts and levels all exist now and §1/§6 say they do not.
 
 **Owner correction (2026-09-15, M1.12):** Ctrl+click adds selection; Ctrl+drag already
 selected objects duplicates them. Lane handles work on both sides without recentering existing
@@ -77,7 +77,7 @@ the **document** did, so a row is a measurement, not a reading of the code. Run 
 | `Alt`+left-drag on the selection | Rotates it (M1.22.2) | transfers |
 | Drag the selection | Moves all of it (M1.16) | transfers |
 | Right-drag | Pans | transfers |
-| `Tab` | Cycles the objects under the pointer (`EditorCanvas::cycleOverlap`) | transfers |
+| `Tab` | Cycled the objects under the pointer when measured; since `ed74268` (2026-09-29) plain `Tab` moves focus and `Ctrl`+`Tab` cycles (`EditorCanvas::cycleOverlap`, `canvas_input.cpp`) | transfers (not re-measured since the chord changed) |
 | Corner drag points on a Connector | Change the lane count at either end | transfers¹ |
 | `Ctrl`+left-click on the selection | **Nothing happens** | dead end |
 
@@ -106,13 +106,16 @@ Vissim users work with one hand on the keyboard. **Rewritten 2026-09-22 (M1.27.3
 |---|---|---|
 | New / Open / Save / Save As | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` | `editor_window.cpp` |
 | Undo / Redo | `Ctrl+Z` / platform default **and `Ctrl+Y`** on every platform | `editor_palette.cpp` |
-| Choose a tool | `S` select · `L` link · `C` connector · `R` route · `V` input · `H` head · `A` conflict area · `X` split · `M` measure · `K` calibrate | `editor_palette.cpp` |
+| Choose a tool | `S` select · `L` link · `C` connector · `R` route · `V` input · `H` head · `A` conflict area · `X` split · `M` measure · `K` calibrate · `Q` queue counter | `editor_palette.cpp` |
 | Run · step · stop | `F5` · `F6` or `Space` · `Esc` | `editor_run.cpp` |
 | Background image | `Ctrl+B` | `editor_palette.cpp` |
 | Wireframe (simple link display): centre lines only, vehicles stay in their lanes | `Ctrl+A` | `editor_palette.cpp`, D100 |
 | Properties · Objects and problems · History docks | `Ctrl+I` · `Ctrl+Shift+O` · `Ctrl+Shift+H` | `editor_inspector.cpp`, `editor_tables.cpp`, `editor_history.cpp` |
 | Fit network | `F` | `editor_window.cpp` |
-| Cycle the objects under the pointer (with the Conflict area tool: the areas) | `Tab` | `canvas_display.cpp` |
+| Cycle the objects under the pointer (with the Conflict area tool: the areas); plain `Tab` moves focus | `Ctrl+Tab` | `canvas_input.cpp` |
+| Command palette · Network Objects dock · focus on network | `Ctrl+K` · `Ctrl+Shift+T` · `Ctrl+Shift+F` | `editor_workspace.cpp` |
+| Keyboard and mouse shortcuts | platform Help key (`F1` on Windows/Linux) | `editor_workspace.cpp` |
+| Run faster · slower | `+` · `-` | `editor_run.cpp` |
 | Conflict area tool · cycle the selected area's priority | `A` · `P` | `editor_palette.cpp`, `editor_priority.cpp` |
 | Delete the selection · delete a geometry point | `Delete` · `Ctrl+Delete` | `canvas_input.cpp` |
 | Nudge the selection by one grid step (`Shift` ×10) | arrow keys | `canvas_input.cpp` |

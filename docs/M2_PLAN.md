@@ -213,7 +213,7 @@ a signal program was confusing. Both sit on M2.6's critical path (a signalised s
 protected phasing), so they are carved here rather than waiting for M4.
 
 - **M2.7a — the head is its stop line · Implemented 2026-09-25** (D47). The head tool places a
-  head with a plain click at the exact station under the pointer, on a Link lane or a Connector
+  head by Ctrl+right-click (a plain click selects, D84) at the exact station under the pointer, on a Link lane or a Connector
   path, one head per lane as Vissim does; the dialog opens on that lane and station, bounded by
   the lane's length. A selected head drags along its own lane (`moveSignalHead`, one Undo). The
   canvas draws every head as a stop line across its lane. The runtime already held vehicles at

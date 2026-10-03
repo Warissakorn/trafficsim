@@ -9,6 +9,18 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
+## Roadmap review, 2026-10-03 — the owner decides what comes next
+
+[`ROADMAP_REVIEW-2026-10-03.md`](ROADMAP_REVIEW-2026-10-03.md) corrected the stale status lines
+and proposes an order; **it changes none.** Its finding: the success sentence's back half (10
+seeds, LOS, a pasteable table) is M5, has no product code, and has had no commit since
+2026-09-25, while the sections below are almost all owner looks. Its §4 asks the owner ten
+questions (O1–O10). **O1** decides whether the next sessions are its S0–S3 (M6 benchmark option
+sheet, then the M5 batch runner, editor batch run and Results export) ahead of what follows here.
+Until the owner answers, this file's order stands. S4 (the input row's lane-share figure) and S5
+(the T-junction clamps, plus the session-fillable `M3_ACCEPTANCE.md` §4 rows) need no answer; the
+first two are already listed below.
+
 ## Session-checked on Windows, 2026-10-02 — both findings resolved; the owner's look is still open
 
 A session ran every owner item below on this Windows machine. It used the UI suites on the real
@@ -32,18 +44,23 @@ Open `data/projects/t-junction-priority.traffic.json`, Conflict area tool (`A`).
 eastbound a few metres along and across: "Minor crosses eastbound" and its waiting line move
 with the overlap, the status column stays "runs", no grey passive copy appears. Drag it clear of
 the turn: the area, its Yield and its line go; Ctrl+Z brings them back. Reshape the crossing
-turn: same. Verified on Linux only (headless and offscreen Qt). If an author ever needs an area
+turn: same. Verified at command level on Linux (headless and offscreen Qt) and on Windows
+(`conflict_follow`, `conflict-auto-ui`; 2026-10-02 session check); not yet seen dragged in the
+desktop. If an author ever needs an area
 deliberately wider than the overlap to survive an edit, that is D86's failure condition.
 Later, not booked: a branching (diverge) kind, red-red status, front/rear gap and visibility, and
 `sharedMouth` treating a different `level` as no crossing although M3_CONTRACT says drawing level
 is not separation — decide that one before touching it.
 
-## Then — owner looks at D83/D84 on Windows (PR #78)
+## Then — owner looks at D83/D84 on Windows (PRs #76–#78)
 
-D81–D84 compile and pass on Linux (Qt 6.10) and in CI (Qt 6.5.3, Linux and Windows); nobody has
-looked at them on the owner's Windows machine. Check at 100/150/200 % scaling: the dropdown
+D81–D84 compile and pass on Linux (Qt 6.10) and in CI (Linux: Ubuntu 24.04's packaged Qt 6;
+Windows: Qt 6.5.3). On 2026-10-02 a session ran their suites and read screenshots on the owner's
+Windows machine (`docs/evidence/windows-session-check-2026-10-02.md`); the owner has not looked.
+Check at 100/150/200 % scaling: the dropdown
 chevron is visible, spin boxes show two small stacked chevrons, Thai and English share one face
-with numbers on the labels' baseline, every field and button is 24 px with its text centred.
+with numbers on the labels' baseline, every field and button is 24 px with its text centred at
+100 %; at 150/200 % digits may sit up to 1.5 logical px high (D103, a recorded limit).
 Then the gesture rule: a plain left click selects in every tool and never authors; Ctrl+right-click
 or Ctrl+right-drag draws Links and Connectors, splits, places heads, inputs, routes and counters,
 and sets conflict-area priority. If the owner finds Ctrl+right slow for heavy route/counter work,
@@ -63,7 +80,9 @@ curved/overlapping roads and the tabs at working zoom levels.
 D80 replaces the legacy square/slide mouth system. Read CONNECTOR_FOUR_POINT_MOUTH.md and the
 D80 entry (`archive/PROGRESS-2026-09-28-d80-selection.md`) before changing it. The owner explicitly requested fixed lane-index
 pairing on both ends, including obtuse arrivals, and a central construction reference.
-Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outstanding.
+Linux/GCC 13.3 headless CTest passed 48/48 when D80 landed; the connector suites have since passed
+on the real `windows` platform at 100 % (2026-10-02 session check). The by-eye review in the
+desktop on Windows remains outstanding.
 
 1. Review in the desktop on Windows: both ends at 45/90/120/150/170/179 degrees; 1–3 lanes,
    kerb/median added or dropped lanes; drag central grips, save/reopen and Undo/Redo.
@@ -132,8 +151,9 @@ Also open, not this session's work:
 - **The owner looks at D96 in the editor:** draw a route 2-lane Link → 1-lane Connector → 2-lane
   Link, once with the Connector on the end and once mid-body. The overlay should show both lanes
   of both Links, with nothing upstream of a mid-body arrival.
-- **Linux replay of D91–D94:** the CI run is the evidence. WSL Ubuntu exists here now (3.7 GB);
-  `ar` on `/mnt/c` can fail with "Cannot allocate memory" at full parallelism, so build with `-j 4`.
+- **Linux replay of D91–D94:** the CI run (`native.yml`) is the evidence. WSL is not installed on
+  this machine (`wsl.exe -l -v`, 2026-10-03). On the 3.7 GB WSL machine that hit it, `ar` on
+  `/mnt/c` failed with "Cannot allocate memory" at full parallelism, so build there with `-j 4`.
 
 **Not booked, for later sessions:**
 - **Split targetStanding (measurement only):** is the target lane standing at its own red, or
@@ -158,7 +178,8 @@ not looked at in the desktop.
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
 1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the
    decision station is not modelled (contract §2, rule 7).
-2. Discretionary changes: contract D95, rows A47–A55, implementation above. Visibility at areas
+2. Discretionary changes: contract D95, rows A47–A55, and the hold after a change (D101, rows
+   A56–A58), implemented above and both off. Visibility at areas
    and a between-lanes state are still unwritten. Today a change is instantaneous in the engine
    (the Run view draws it as a slide, D102), which the contract records as a limit.
 3. `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found the
@@ -166,7 +187,8 @@ not looked at in the desktop.
 4. Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.
 
 **Build on this machine:** MSVC 14.51, Ninja and Qt 6.8.3 on D: (vcvars64, then
-`cmake --preset desktop`) — Windows evidence. WSL Ubuntu (GCC 15.2, Qt 6) gives Linux evidence.
+`cmake --preset desktop`) — Windows evidence. Linux evidence comes from CI (`native.yml`) or
+another Linux/WSL machine; WSL is not installed here.
 
 **Open item from M3.2.8a:** five minor vehicles standing or at walking pace within 1 m of the
 T-junction's merge line are still clamped in the congested headway arm (seeds 42 and 43). They
@@ -183,8 +205,6 @@ no gate result is inferred.
 
 ## Engineering work that can proceed without the owner, if asked
 
-- **Owner looks at Ctrl+A wireframe (D100) on Windows:** is the link-colour line readable on the
-  grid, and do vehicles beside the line on multi-lane roads read well, or should they snap to it?
 - Derive an input's interval volumes from its entry decision's turning counts, so a count sheet
   is typed once; today the two are entered separately.
 - In-editor CSV export of the Results tab (the CLI has one).
@@ -244,8 +264,8 @@ no gate result is inferred.
 1. **Record the M0 plausibility observation** — acceleration, queue at red, discharge at green.
    Owner observation, not calibration or M6 validation; the not-yet-validated marker stays.
 2. **Decide the name (Q5).** D11's trigger ("end of M1") is live. `Velk` is the strongest recorded
-   candidate; `Headway`, `MicroFlow Simulator` and `Veytrix` were rejected (D11 row) — do not
-   re-derive them. The owner's decision, not a session's.
+   candidate; `Headway` and `MicroFlow Simulator` were rejected and `Veytrix` set aside (D11
+   row) — do not re-derive them. The owner's decision, not a session's.
 3. **Drive M1.19/M1.20 in the desktop editor** — measured at model and command level only. Watch
    for a Connector deleted by a Link drag the author did not expect, and whether half a lane width
    is the right "off the Link" distance (`laneContains`). When checking a mouth by eye, every
@@ -256,5 +276,9 @@ no gate result is inferred.
    using it for a real study.
 5. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and Thai
    counts are motorcycle-heavy); a routing decision's station along its Link (M2.1).
+6. **Look at Ctrl+A wireframe (D100) on Windows:** is the link-colour line readable on the grid,
+   and do vehicles beside the line on multi-lane roads read well? Vehicles stay in their lanes by
+   the owner's choice (D100); wanting them on the line is D100's failure condition.
 
-M1.22, M1.23 and M2.1 remain open milestones; `docs/ROADMAP.md` is the authority on each.
+M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's use in M2.6);
+`docs/ROADMAP.md` is the authority on each.

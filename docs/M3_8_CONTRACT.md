@@ -4,7 +4,7 @@ M3.2.8 adds driver behaviour on top of the M3.2 right-of-way runtime
 ([`M3_CONTRACT.md`](M3_CONTRACT.md)). It is two systems, each with its own section here:
 **M3.2.8a**, a commitment rule at waiting lines (§1), and **M3.2.8b**, mandatory lane
 changing, with the one cooperation rule it could not run without (§2). Visibility,
-discretionary changes (contract D95 below, not implemented) and the rest of cooperation are **M3.2.8c**. Nothing here is calibration: the
+discretionary changes (contract D95 below, implemented and off, D102) and the rest of cooperation are **M3.2.8c**. Nothing here is calibration: the
 not-yet-validated marker stays, and gap acceptance remains a deterministic threshold until M6
 evidence exists.
 
@@ -225,7 +225,7 @@ parameter (2026-10-01).
 - Vissim also has a cooperative lane change, in which a vehicle moves out of the way. That is not
   modelled.
 
-### Downstream routing decisions (M3.2.8c, D93 — implemented 2026-10-01, Windows only)
+### Downstream routing decisions (M3.2.8c, D93 — implemented 2026-10-01; tests green in Linux CI since PR #84)
 
 The owner's ruling (2026-10-01): a routing decision placed on a Link **D** downstream of the
 entry Link works like an entry decision. This is Vissim's way, as in D71. Before D93 such a
@@ -273,12 +273,14 @@ else is discretionary (D95, below).
    - A downstream stub vehicle that never finds a gap waits at its dead end and blocks its lane,
      as an entry stub does.
 
-### Discretionary lane changes (M3.2.8c, D95; item 7 amended by D101 — hold time being implemented)
+### Discretionary lane changes (M3.2.8c, D95; item 7 amended by D101 — implemented and off, D102)
 
 The owner's rulings (2026-10-02): a vehicle changes lanes **by choice** when the adjacent lane
 lets it accelerate harder by at least a threshold. Lanes are chosen freely, as in Vissim's
 "Free lane selection". The trailing vehicle is protected more strictly than for a mandatory
-change. The default behaviour has it on, and the published reports move. Before D95, a vehicle on
+change. The default behaviour has it on, and the published reports move. (Superseded
+2026-10-02: A53 failed and the owner kept D95 and the hold off, D102; no shipped behaviour carries
+their fields.) Before D95, a vehicle on
 a full route never changes lanes: spans are emitted from stubs only (`appendLaneChanges`), and
 `decideLaneChanges` skips a route with no changes remaining.
 

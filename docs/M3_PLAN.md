@@ -1,9 +1,9 @@
 # M3 delivery plan
 
 Prepared 2026-09-24 against `aebfee54678481f289125c97bb32af46413045aa`, following the
-owner's request to carry out the agreed sequence. **Preparation only; no M3 runtime work
-has started.** `M2_GATE.md` still records the M2.6 study as not performed. The instruction
-to follow the sequence does not record a gate result or waive the prerequisite in ROADMAP.
+owner's request to carry out the agreed sequence. Written before the M2 gate; the gate passed
+by the owner's judgment on 2026-09-25 (D53, `M2_GATE.md`) and implementation began with M3.2.2a
+(D54). Slice status is in ROADMAP M3.2.
 
 The live next action remains in [NEXT.md](NEXT.md). [ROADMAP.md](ROADMAP.md) owns milestone
 status; this document specifies dependencies, contracts and deliverables. No M0/M1/M2
@@ -31,8 +31,8 @@ validator must keep their accepted cases while refusing contradictory authored c
 
 ## 2. Preconditions and boundaries
 
-Before implementation, the owner completes the unchanged M2.6 study and records evidence
-in [M2_GATE.md](M2_GATE.md): the owner judges C1's study a pass (D51; C2 and C4 withdrawn, D52). Fix and repeat a failed gate
+Met 2026-09-25: the owner judged the M2.6 study a pass (D51, D53; C2 and C4 withdrawn, D52),
+recorded in [M2_GATE.md](M2_GATE.md). Fix and repeat a failed gate
 under ROADMAP's rules; never infer success from an automated test, this plan or a merge.
 
 After that, run the existing desktop build/tests and `check` on the implementation checkout.
@@ -57,7 +57,7 @@ lane-changing, cooperation, visibility or calibration work has disappeared.
 
 | Slice | Prerequisite | Deliverable | Completion evidence |
 |---|---|---|---|
-| M3.2.1 Contract and acceptance design | Owner's planning instruction | `M3_CONTRACT.md`, this sequence and `M3_ACCEPTANCE.md` | Source audit and reviewable contracts; prepared, implementation still gated |
+| M3.2.1 Contract and acceptance design | Owner's planning instruction | `M3_CONTRACT.md`, this sequence and `M3_ACCEPTANCE.md` | Source audit and reviewable contracts; prepared |
 | M3.2.2 Authored model and compiler | M2 gate passes; M3.2.1 | References, validation, codec/migration, command transactions, explicit/fallback resolution | Roundtrips, reference lifecycle, cycles/ties rejected; unsupported runtime capability blocks Run |
 | M3.2.3 Crossing runtime | M3.2.2 | Conflict incidence, swept occupancy, deterministic grants, rear clearance, exit-space checks | Controlled crossing/merge tests and unchanged no-new-control fixtures |
 | M3.2.4 Conflict/priority editor | M3.2.3 | Canvas selection, tables/inspector, gap/headway editing, Problems links, English/Thai text | Mouse/keyboard workflows, cancellation, Undo/Redo, save/reopen, observable runtime effect |

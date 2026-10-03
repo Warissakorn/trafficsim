@@ -92,10 +92,10 @@ Roles the editor does not name keep no hue (test: only the accent and the four s
 
 1. Accent is `#2F6FED`; only accent + semantic roles carry hue; text roles ≥ 4.5:1 on `Base` and `Midlight`; text on accent ≥ 4.5:1; outline ≥ 3:1.
 2. QSS: no hex literal, no gradient/shadow/glow/transition/animation/letter-spacing/rgb(); every `font-size` ∈ {11,12,13,14,18}; every radius ≤ 3; spacing tokens multiples of 4.
-3. Box model: `QLineEdit`, `QDoubleSpinBox`, `QComboBox`, `QPushButton` `sizeHint().height()==28`, and still 28 when `validationState=invalid`; toolbar 32; icon raster ≥ 16.
+3. Box model: `QLineEdit`, `QDoubleSpinBox`, `QComboBox`, `QPushButton` laid out at `editorDesign::controlHeight` (24 px), and still 24 when `validationState=invalid`; toolbar 32; icon raster ≥ 16.
 4. Typography: numbers in the UI face (Noto Sans Thai, tabular digits) at 12 px, D84; English group label 11 px, uppercase, absolute tracking; Thai label untracked.
 5. `formatValue` in German/US locales, fixed decimals, no-break unit.
-6. Hairlines: cosmetic, 1/dpr wide; snapped coordinate lands on `k + 0.5` device px for positive/negative scale and any offset.
+6. Hairlines: cosmetic, width 1 (one device pixel at every scale; `design-system-ui-1.5x`/`-2x` run `gridIsCrisp`); snapped coordinate lands on `k + 0.5` device px for positive/negative scale and any offset.
 7. Grid tiers: LOD of a flipped 4× view is 4; minor jumps to 10 m at 4 px/m; ≥ 8 px at any zoom; bad input yields no grid.
 8. Empty canvas render: every pixel is exactly `Base`, `Midlight` or `Mid` (a blended pixel means a line straddled two device pixels).
 9. `EditorWindow`: labels keep buddies that can take focus; no `QAbstractAnimation` exists; the window carries the editor palette.

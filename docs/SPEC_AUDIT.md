@@ -88,7 +88,9 @@ import-format entry was removed from §18.1 and from the part-04 comparison tabl
 7. Per-Link desired speed contradicts `PROBLEM.md`'s vehicle-owned desired speed. Resolve
    limits/factors versus distribution ownership before implementing runtime overrides.
 8. Automatic crossing conflicts are both promised (Connector §7) and excluded (§17).
-   Keep current merge guards; book crossing conflicts explicitly in M3.
+   Keep current merge guards; book crossing conflicts explicitly in M3. Settled since: crossing
+   areas run in M3.2 (M3.2.3a–c, D57–D59), and conflict areas are automatic and passive until a
+   priority is set (D68).
 9. A signal must not erase physical merge/collision safety. Signal-overrides-priority wording
    needs an explicit conflict policy and tests, not unconditional bypass of gap checks.
 10. Removing blocked vehicles after 30 s would bias delay/throughput results. Any future
@@ -97,6 +99,8 @@ import-format entry was removed from §18.1 and from the part-04 comparison tabl
     nodes and competitor imports are not prerequisites for correcting authoring defects.
 12. Reversing a referenced road needs a topology/routing redesign. The initial reverse action
     applies only to unreferenced Links and rejects the rest atomically with a clear message.
+    Since M1.26 a route names the Link, not its lanes, so it no longer blocks reversal;
+    Connectors, signal heads and authored controls still do (`reverseLink`).
 
 ## Delivery sequence and acceptance
 
