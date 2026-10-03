@@ -121,20 +121,33 @@ void EditorWindow::refreshDemand() {
             // The authored number is the Link total. What the run receives is that total divided
             // across the Link's lanes (M3.2.8b: a lane that cannot reach the end changes lanes), so
             // the row says both -- an author reading only the total would not know what each gets.
-            std::size_t lanes=0;
-            for(const auto& r:def.routes)if(r.id==i.routeId)
-                lanes=routeLaneFamily(history_.document().network,r.segmentIds).size();
+            // The split is laneSplit's, the compiler's own rule, so weights show as they are set.
+            std::vector<std::size_t> chainLanes;std::size_t shareCount=0;
+            for(const auto& r:def.routes)if(r.id==i.routeId) {
+                for(const auto& c:routeLaneFamily(history_.document().network,r.segmentIds))chainLanes.push_back(c.lane);
+                shareCount=routeLaneShareCount(history_.document().network,r.segmentIds);
+            }
             // M2.1.1: a routeless input names its Link, and splits across that Link's lanes.
             auto target=QString::fromStdString(i.routeId.empty()?i.routingDecisionId:i.routeId);
             if(!i.linkId.empty()) {
                 target=text("editorInputLinkItem").arg(QString::fromStdString(i.linkId));
-                for(const auto& l:history_.document().network.links)if(l.id==i.linkId)lanes=l.lanes.size();
-                // A decision placed on this Link chooses the lanes by destination, so no equal split.
-                for(const auto& x:def.routingDecisions)if(x.linkId==i.linkId)lanes=0;
+                chainLanes.clear();
+                for(const auto& l:history_.document().network.links)if(l.id==i.linkId)
+                    for(std::size_t k=0;k<l.lanes.size();++k)chainLanes.push_back(k);
+                shareCount=chainLanes.size();
+                // A decision placed on this Link chooses the lanes by destination, so no split to show.
+                for(const auto& x:def.routingDecisions)if(x.linkId==i.linkId)chainLanes.clear();
             }
             auto volume=QString::number(i.vehiclesPerHour);
-            if(lanes>1)volume+=" = "+QString::number(lanes)+QString::fromUtf8(" \u00d7 ")+
+            const auto split=laneSplit(chainLanes,shareCount,i.laneShares);
+            const auto lanes=split.fraction.size();
+            if(lanes>1&&!split.weighted)volume+=" = "+QString::number(lanes)+QString::fromUtf8(" \u00d7 ")+
                 QString::number(i.vehiclesPerHour/static_cast<double>(lanes),'f',1);
+            else if(lanes>1) {
+                QStringList perLane;
+                for(const double f:split.fraction)perLane<<QString::number(i.vehiclesPerHour*f,'f',1);
+                volume+=" = "+perLane.join(" + ");
+            }
             const int n=inputTable_->rowCount();inputTable_->insertRow(n);
             // With counted intervals (M2.2) the figure is their mean over the span; say so.
             auto period=" ["+QString::number(i.startTime)+", "+QString::number(i.endTime)+"]";

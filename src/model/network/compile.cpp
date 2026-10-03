@@ -9,6 +9,20 @@
 #include <vector>
 
 namespace trafficsim {
+LaneSplit laneSplit(const std::vector<std::size_t>& chainLanes, std::size_t shareCount,
+                    const std::vector<double>& laneShares) {
+    LaneSplit split;
+    split.weighted = !chainLanes.empty() && laneShares.size() == shareCount;
+    double sum = 0; // in chain order, as the compiler always summed
+    if (split.weighted)
+        for (const auto k : chainLanes) {
+            if (k >= laneShares.size() || !(laneShares[k] > 0)) { split.weighted = false; break; }
+            sum += laneShares[k];
+        }
+    for (const auto k : chainLanes)
+        split.fraction.push_back(split.weighted ? laneShares[k] / sum : 1.0 / static_cast<double>(chainLanes.size()));
+    return split;
+}
 namespace {
 // A route already given in lane or section ids, rather than the Links and Connectors an author
 // names. Compiling an already-compiled Scenario has to be a no-op -- callers do it -- so such a
@@ -93,17 +107,8 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
         const auto& lanes = found->second;
         const auto& lane = laneOf[input.routeId];
         // laneShares are weights, one per lane of the route's first Link (M3.2.8b), and `lane`
-        // says which each chain starts on. A stale size -- the network was edited since they were
-        // set -- degrades to the equal split rather than landing on the wrong lane (M1.26.1); so
-        // does any non-positive weight, which would otherwise divide by a zero or negative sum.
-        bool useShares = input.laneShares.size() == laneCount[input.routeId];
-        double weightSum = 0;
-        if (useShares)
-            for (const auto k : lane) {
-                const double w = input.laneShares[k];
-                if (!(w > 0)) { useShares = false; break; }
-                weightSum += w;
-            }
+        // says which each chain starts on (laneSplit has the stale-size fallback).
+        const auto split = laneSplit(lane, laneCount[input.routeId], input.laneShares);
         // One core input per period (M2.2), then per lane. A Poisson stream restarted at each
         // period boundary is still Poisson, so splitting by period changes no statistics -- and
         // one period keeps the plain id, which is what keeps every existing run byte-identical.
@@ -123,8 +128,8 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
                 // lane-choice model: a vehicle entering on a stub changes lanes (M3.2.8b), but
                 // nothing here claims that this is how traffic really distributes itself.
                 const double total = periods[p].vehiclesPerHour;
-                share.vehiclesPerHour = useShares ? total * (input.laneShares[lane[k]] / weightSum)
-                                                  : total / static_cast<double>(lanes.size());
+                share.vehiclesPerHour = split.weighted ? total * split.fraction[k]
+                                                       : total / static_cast<double>(lanes.size());
                 inputs.push_back(std::move(share));
             }
         }

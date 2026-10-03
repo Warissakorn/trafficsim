@@ -177,13 +177,15 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
         // The Link total divided across its lanes, as for a route (M1.26, M1.26.1).
         std::size_t lanes = 0;
         for (const auto& l : network.links) if (l.id == input.linkId) lanes = l.lanes.size();
-        bool weighted = input.laneShares.size() == lanes;
-        double sum = 0;
-        if (weighted) for (double v : input.laneShares) { if (!(v > 0)) { weighted = false; break; } sum += v; }
+        // Weights are per Link lane here, so every lane is a "chain" (laneSplit): a path takes
+        // the fraction of the lane it starts on.
+        std::vector<std::size_t> everyLane(lanes);
+        for (std::size_t k = 0; k < lanes; ++k) everyLane[k] = k;
+        const auto split = laneSplit(everyLane, lanes, input.laneShares);
         const auto pieces = placed.size() > 1 ? cutPeriods(input, cut.points) : std::vector<VolumeInterval>{};
         for (std::size_t k = 0; k < w.paths.size(); ++k) {
             const double lane = w.byDestination ? 1.0
-                : weighted ? input.laneShares[w.lanes[k]] / sum : 1.0 / static_cast<double>(lanes);
+                : w.lanes[k] < split.fraction.size() ? split.fraction[w.lanes[k]] : 1.0 / static_cast<double>(lanes);
             auto part = input;
             part.linkId.clear(); part.laneShares.clear();
             part.routeId = routelessRouteId(input.linkId, k, w.paths.size());
