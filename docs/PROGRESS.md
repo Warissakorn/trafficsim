@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-03 — The canvas grid is crisp at every scale
+
+`gridIsCrisp` failed at every scale other than 100 %. The cause was measured offscreen at
+1.25/1.5/2×, with the cache on and off. Blended pixels were along the whole length of every line
+(7,327 / 8,815 / 11,791 interior pixels, one colour per tier), not at line ends, and identical with
+`CacheNone`. So it was neither the flat caps nor D99's background cache. `hairlinePen` used a
+cosmetic width of 1/dpr, on the belief that cosmetic widths are logical pixels. On Qt 6.8 they are
+**device** pixels: width 1 draws exactly one device pixel at 1.25, 1.5 and 2× (run lengths
+measured in the grab), with no blended pixel. Width 0 did too. `hairlinePen(colour)` is now width 1
+with no dpr argument, and `drawBackground` no longer reads the dpr. The `hairlines()` assertion
+"0.5 at 2×" encoded the wrong belief and now asserts width 1. The D103 mode is renamed
+`--at-scale` and runs `gridIsCrisp()` too, so `design-system-ui-1.5x`/`-2x` failed before the fix
+("Blended grid pixel #f7f8f9 at 3,0") and pass after. CI's Qt 6.5.3 runs the same entries, which
+is the check that 6.5 agrees. Desktop 77/77 on Windows.
+
 ## 2026-10-03 — Field text at 150/200 %: a measured limit, tested (D103)
 
 The Windows session check's `design-system-ui` failure at 150/200 % was measured (`boxModel()`,
@@ -290,51 +305,6 @@ four points. Contract: `M3_8_CONTRACT.md` §2 "Discretionary lane changes". Rows
   and M2.6 reports will move.
 - **Only between full routes** with equal family sets and the same last Link, so a choice never
   alters a destination, a movement or a compiled proportion.
-
-## 2026-10-01 — M3.2.8c: downstream routing decisions implemented (D93, D94)
-
-D93's contract is now code; core is untouched.
-- **The walk (`routeless.cpp`):**
-  - A decision off the walk's entry Link goes to `decideDownstream`. Each destination takes the
-    arrival lane's full chain, or else its stub (`routeLaneFamily`, through `legFrom`, which
-    `entryDecision` now shares), and the draw is by weight over those.
-  - A path carries a stack of `FamilyTag`s (name, decision Link, lane there), because an entry
-    family's full route can also enter a downstream family.
-  - `unkeptStubs` applies rule 4, and the walk reruns without the unkept stubs until stable. The
-    advisory is `ROUTING_DECISION_LANE_FIXED`, in en and th.
-- **The compile:**
-  - `expandRouteless` gives each path's every tag a family member. A merged full path takes the
-    union of tags.
-  - `FamilyRoute::after` makes `appendLaneChanges` drop any span piece before a route reaches
-    the decision's Link (rule 5).
-- **Tests:** A40–A46 in `tests/downstream_decision_tests.cpp`. One existing test changed, by the
-  contract and not by regeneration: the four-leg pocket decision is now exact 3:1.
-- **Results:** default CLI output is byte-identical on all three projects (A44). Windows/MSVC
-  only; not run on Linux.
-
-## 2026-10-01 — M3.2.8c: downstream routing decisions, contract and rows (D93)
-
-Docs only, no code. D92 left cooperation spent as a lever on M2.6, so the next row is lane
-changes after the entry Link. The owner ruled on two things.
-- **Scope:** contract and rows this session, implementation the next.
-- **Rule:** a routing decision placed downstream works like an entry decision (Vissim's way, as
-  in D71). Free walk with no decision stays lane-fixed, because a vehicle with no destination
-  has no mandatory change.
-
-Written: `M3_8_CONTRACT.md` §2 "Downstream routing decisions" (rules 1–7) and rows A40–A46
-in `M3_ACCEPTANCE.md`. SIMULATION.md and ROADMAP say "not implemented", and NEXT.md lists the
-implementation order. The code facts the contract rests on:
-- `appendLaneChanges` already spans any two routes of a family on adjacent lanes of any shared
-  Link, by route distance. It would therefore also span the shared prefix Links upstream of D,
-  which rule 5 clips.
-- Movements group by (first Link, last Link). That is why a target route must come from the
-  same entry Link and none is synthesised (rule 4).
-- No shipped project has a downstream decision: M2.6's one decision is on its entry Link. So A44
-  expects every published result byte-identical.
-
-Caught while writing: an entry-stub vehicle joins the entry family's lowest-slot full route,
-which already carries one downstream destination. It therefore skips the downstream draw.
-That is §2's existing limit, recorded in rule 7, not fixed.
 
 ## Backlog (M0, in order)
 

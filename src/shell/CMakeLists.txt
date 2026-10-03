@@ -63,9 +63,9 @@ if(BUILD_TESTING)
     target_precompile_headers(trafficsim-design-ui-tests REUSE_FROM trafficsim_shell)
     add_test(NAME design-system-ui COMMAND trafficsim-design-ui-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(design-system-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
-    # The box model at 150 % and 200 %, the scales the 2026-10-02 Windows session check failed at.
+    # The box model and the grid at 150 % and 200 %, the scales the 2026-10-02 Windows session check failed at.
     foreach(scale 1.5 2)
-        add_test(NAME design-system-ui-${scale}x COMMAND trafficsim-design-ui-tests "${PROJECT_SOURCE_DIR}/data" --box-model-at-scale)
+        add_test(NAME design-system-ui-${scale}x COMMAND trafficsim-design-ui-tests "${PROJECT_SOURCE_DIR}/data" --at-scale)
         set_tests_properties(design-system-ui-${scale}x PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_SCALE_FACTOR=${scale}" TIMEOUT 60)
     endforeach()
     add_dependencies(check trafficsim-design-ui-tests)

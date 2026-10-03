@@ -170,9 +170,10 @@ void typography() {
     require(editorDesign::formatValue(3,3,QString(),english_)=="3.000","Fixed decimals lost");
 }
 void hairlines() {
-    const auto pen=editorDesign::hairlinePen(QColor("#E5E7EB"),2.);
-    require(pen.isCosmetic()&&std::abs(pen.widthF()-.5)<1e-12,"Hairline is not one device pixel at 2x");
-    require(std::abs(editorDesign::hairlinePen(QColor(),1.).widthF()-1)<1e-12&&std::abs(editorDesign::hairlinePen(QColor(),0.).widthF()-1)<1e-12,"Hairline at 1x/invalid dpr");
+    // A cosmetic width is in device pixels, so one device pixel is width 1 at every scale; the
+    // scaled ctest entries' gridIsCrisp() is what proves it on the running Qt.
+    const auto pen=editorDesign::hairlinePen(QColor("#E5E7EB"));
+    require(pen.isCosmetic()&&std::abs(pen.widthF()-1)<1e-12&&pen.capStyle()==Qt::FlatCap,"Hairline is not a one-device-pixel cosmetic pen");
     // Every snapped coordinate lands on a device-pixel centre, for either axis sign and any offset.
     for(const double scale:{4.,-4.,1.5,-.25,8.})for(const double offset:{0.,3.3,-120.7,401.})for(double scene=-50.3;scene<50;scene+=7.31) {
         const double device=editorDesign::snapHairline(scene,scale,offset)*scale+offset;
@@ -227,15 +228,15 @@ int main(int argc,char** argv) {
         // The editor's own face, as EditorWindow loads it: heights are measured with the font
         // the user sees, not the test machine's default.
         loadEditorFont(argv[1]);
-        if(argc>=3&&std::string(argv[2])=="--box-model-at-scale") {
-            // The scaled ctest entries: only the box model, which promises the same at every scale.
+        if(argc>=3&&std::string(argv[2])=="--at-scale") {
+            // The scaled ctest entries: the box model and the grid, which promise the same at every scale.
             // The forcing first: the window really is at the scale the entry asked for.
             const double asked=qEnvironmentVariable("QT_SCALE_FACTOR").toDouble();
             QWidget probe;probe.show();QApplication::processEvents();
             require(asked>1&&std::abs(probe.devicePixelRatioF()-asked)<1e-6,
                     "Scale factor not applied: asked "+std::to_string(asked)+", got "+std::to_string(probe.devicePixelRatioF()));
-            boxModel();
-            std::cout<<"24 px box model at "<<asked<<"x passed\n";return 0;
+            boxModel();gridIsCrisp();
+            std::cout<<"At "<<asked<<"x: box model and grid passed\n";return 0;
         }
         palette();stylesheet();boxModel();typography();hairlines();gridTiers();gridIsCrisp();window(argv[1]);
         std::cout<<"Palette roles, QSS rules, 24/32 px box model, formatting, hairlines and grid tiers passed\n";return 0;

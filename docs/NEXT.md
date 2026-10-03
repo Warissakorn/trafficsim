@@ -18,8 +18,9 @@ Its two findings are closed. The stale "no lane changing" text was reworded with
 2026-10-03. Digits sitting high at 150/200 % are a recorded limit (D103): the cause is the 13 px face's
 deep descent, in every body-font control, and the owner kept the 100 % row alignment. The
 `design-system-ui-1.5x`/`-2x` entries hold it to 1.5 logical px.
-**Not booked:** `gridIsCrisp` fails at any scale other than 100 % ("Blended grid pixel"), so the
-canvas grid may be soft on a 125–200 % screen. Look before changing `drawBackground`.
+The canvas grid was soft at every scale other than 100 %, and is now crisp (2026-10-03, PROGRESS).
+**The owner looks** at the grid on the 125 % screen: one-device-pixel lines are half as thick, in
+logical terms, at 200 % as at 100 %. If that reads too faint, the fix is the line colour, not the width.
 
 Also measured: `scenario-run-ui` alone is 28 s CPU on Windows Debug. It reached 76–82 s CPU while
 another process ran, so the 90 s timeout is a load problem, not the test's own cost. D90's 40-seed

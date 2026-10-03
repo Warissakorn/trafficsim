@@ -106,10 +106,11 @@ inline void setNumericText(QTableWidgetItem* item,bool rightAligned=false) {
     if(rightAligned)item->setTextAlignment(Qt::AlignRight|Qt::AlignVCenter);
 }
 
-// Hairlines. A cosmetic pen is measured in logical pixels, so one device pixel is 1/dpr wide,
-// and it is centred on the coordinate: the coordinate has to sit on a pixel centre (+0.5).
-inline QPen hairlinePen(const QColor& colour,double devicePixelRatio) {
-    QPen pen(colour,1./std::max(1.,devicePixelRatio));pen.setCosmetic(true);pen.setCapStyle(Qt::FlatCap);
+// Hairlines. A cosmetic pen's width is in device pixels (measured on Qt 6.8, 2026-10-03: width 1
+// draws one device pixel at 1.25x-2x; the earlier 1/dpr drew a blended sub-pixel line), and it is
+// centred on the coordinate: the coordinate has to sit on a pixel centre (+0.5).
+inline QPen hairlinePen(const QColor& colour) {
+    QPen pen(colour,1.);pen.setCosmetic(true);pen.setCapStyle(Qt::FlatCap);
     return pen;
 }
 // Snaps a scene coordinate along one axis to the centre of a device pixel. scale/offset are
