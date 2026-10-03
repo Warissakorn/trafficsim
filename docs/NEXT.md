@@ -9,6 +9,23 @@ the log. Rewrite this file; do not append to it.
 
 ---
 
+## Session-checked on Windows, 2026-10-02 — both findings resolved; the owner's look is still open
+
+A session ran every owner item below on this Windows machine. It used the UI suites on the real
+`windows` platform at 100/150/200 %, screenshots and the CLI. It could not drive the live desktop.
+Results: `docs/evidence/windows-session-check-2026-10-02.md`. **No owner item is closed by it.**
+Its two findings are closed. The stale "no lane changing" text was reworded with the owner on
+2026-10-03. Digits sitting high at 150/200 % are a recorded limit (D103): the cause is the 13 px face's
+deep descent, in every body-font control, and the owner kept the 100 % row alignment. The
+`design-system-ui-1.5x`/`-2x` entries hold it to 1.5 logical px.
+The canvas grid was soft at every scale other than 100 %, and is now crisp (2026-10-03, PROGRESS).
+**The owner looks** at the grid on the 125 % screen: one-device-pixel lines are half as thick, in
+logical terms, at 200 % as at 100 %. If that reads too faint, the fix is the line colour, not the width.
+
+Also measured: `scenario-run-ui` alone is 28 s CPU on Windows Debug. It reached 76–82 s CPU while
+another process ran, so the 90 s timeout is a load problem, not the test's own cost. D90's 40-seed
+M2.6 numbers are identical on MSVC and Linux.
+
 ## Immediate — owner checks D86 (conflict areas follow the drawing) on Windows
 
 Open `data/projects/t-junction-priority.traffic.json`, Conflict area tool (`A`). Drag Major
@@ -60,8 +77,8 @@ Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outst
    Conflict extents use the new rails, so existing authored extents can require review.
 
 The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was mostly a
-whole-viewport repaint per run frame, removed 2026-09-30 (Linux Debug 9.7 s → 3.8 s median). Confirm
-the Windows time in the next CI run; do not infer it from the Linux number.
+whole-viewport repaint per run frame, removed 2026-09-30. On Windows Debug it now takes 28 s CPU
+alone (2026-10-02, session check), but load from another process pushes it to 76–82 s. Confirm in CI.
 
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
@@ -110,7 +127,8 @@ Also open, not this session's work:
 - **The owner looks at D93 on Windows (desktop):** on a copy of the four-leg drawing, put a
   decision on the West pocket Link (East 3, North 1) with a routeless West input. Run it, and
   watch pocket-lane vehicles change towards their turn. Problems should show no
-  LANE_UNSERVED. Nothing was looked at.
+  LANE_UNSERVED. Session-checked by CLI on Windows (2026-10-02): the split is 118 : 41 : 0 and
+  the run completes. Not looked at in the desktop.
 - **The owner looks at D96 in the editor:** draw a route 2-lane Link → 1-lane Connector → 2-lane
   Link, once with the Connector on the end and once mid-body. The overlay should show both lanes
   of both Links, with nothing upstream of a mid-body arrival.
@@ -134,7 +152,8 @@ Also open, not this session's work:
 **The owner looks at D90 on Windows:** run M2.6 (Run in the desktop) and watch the East
 approach. Left-turners on lanes 2/3 should slip into lane 1 as they approach the dead end. The
 lane-1 vehicle behind slows to let them in, without stopping dead, and the long standing waits at
-the dead end should be rarer. Verified on Linux headless only.
+the dead end should be rarer. Its 40-seed numbers are identical on Windows/MSVC (2026-10-02);
+not looked at in the desktop.
 
 **The rest of M3.2.8c** (ROADMAP row), one system per session, rows and contract first:
 1. Downstream decisions: done (D93/D94). Free walk with no decision stays lane-fixed, and the

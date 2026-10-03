@@ -69,8 +69,9 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
         form->addRow(text(key),field);return field;
     };
     auto* volume=number("editorInputVolume",value.vehiclesPerHour);
-    // Rule 4: say what the split is and is not. It divides the Link total equally because the
-    // engine has no lane changing, not because traffic distributes itself that way.
+    // Rule 4: say what the split is and is not. It divides the Link total equally (unless lane
+    // shares are set) as an authoring convenience; the engine changes lanes only where a route
+    // requires it, so the split is not a lane-choice model.
     auto* split=new QLabel(text("editorInputSplitHelp"),&dialog);split->setObjectName("editorInputSplitHelp");
     split->setWordWrap(true);form->addRow(split);
     // M1.26.1: one weight per lane the SELECTED route currently reaches. Rebuilt whenever the

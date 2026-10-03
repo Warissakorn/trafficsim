@@ -8,6 +8,65 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-03 — The canvas grid is crisp at every scale
+
+`gridIsCrisp` failed at every scale other than 100 %. The cause was measured offscreen at
+1.25/1.5/2×, with the cache on and off. Blended pixels were along the whole length of every line
+(7,327 / 8,815 / 11,791 interior pixels, one colour per tier), not at line ends, and identical with
+`CacheNone`. So it was neither the flat caps nor D99's background cache. `hairlinePen` used a
+cosmetic width of 1/dpr, on the belief that cosmetic widths are logical pixels. On Qt 6.8 they are
+**device** pixels: width 1 draws exactly one device pixel at 1.25, 1.5 and 2× (run lengths
+measured in the grab), with no blended pixel. Width 0 did too. `hairlinePen(colour)` is now width 1
+with no dpr argument, and `drawBackground` no longer reads the dpr. The `hairlines()` assertion
+"0.5 at 2×" encoded the wrong belief and now asserts width 1. The D103 mode is renamed
+`--at-scale` and runs `gridIsCrisp()` too, so `design-system-ui-1.5x`/`-2x` failed before the fix
+("Blended grid pixel #f7f8f9 at 3,0") and pass after. CI's Qt 6.5.3 runs the same entries, which
+is the check that 6.5 agrees. Desktop 77/77 on Windows.
+
+## 2026-10-03 — Field text at 150/200 %: a measured limit, tested (D103)
+
+The Windows session check's `design-system-ui` failure at 150/200 % was measured (`boxModel()`,
+offscreen, 1–2× in 0.25 steps). It is **not** `QLineEdit`. QLineEdit, QComboBox and QPushButton
+share identical gaps at every scale (7/8, 8/10, 10/12, 12/14, 13/16 device px). They all use the
+13 px body face, ascent 14 and descent 6, the descent for Thai below-vowels. Qt centres the line box,
+so digits sit ≈0.5 logical px high at 100 % and ≈1.5 at 2×. The spin box's 12 px numeric face
+(13/5) is within 1 device px everywhere. A QSS shift of 1 px down for body-font fields centred them
+at every scale (8/7, 9/9, 11/11, 15/14). It also put their digits 1 px below the spin box's at 100 %,
+which breaks D84's one row for digits. The owner kept the style (D103). The test now holds 100 % exactly
+as before. Above it, a control is centred within 1.5 logical px, with rows within 1 logical px.
+Two ctest entries, `design-system-ui-1.5x`/`-2x`, run `--box-model-at-scale`. They first assert that
+the scale really applied, and only the box model runs, because `gridIsCrisp` fails at any scale
+other than 100 % (booked in NEXT, not looked at). A 2 px upward shift fails all three scales, and a
+missing scale fails the forcing check. Desktop 77/77 on Windows.
+
+## 2026-10-03 — Scope text says what lane changing there is
+
+The owner approved new wording for `editorScope`, `editorScopeCompact` and `editorInputSplitHelp`
+(en/th). Each "no lane changing" becomes "lane changes only where a route requires one". That is
+what the engine does: mandatory changes (D71, D93), with discretionary ones off (D95). "Not yet validated",
+"no LOS" and "conflicts resolved only where authored" stay, since they are still true. The split
+help also mentions lane shares, which the same dialog sets (M1.26.1). At a 1360 px window the
+English banner now wraps to two lines, about 20 px of canvas; `workspace-ui`'s size floors still
+pass. Desktop 75/75 on Windows.
+
+## 2026-10-02 — The owner's Windows items, session-checked (no code change)
+
+At the user's request, a session ran NEXT's owner checks on the owner's Windows machine. It used
+the UI suites on the real `windows` platform and offscreen at 100/150/200 %, the screenshots, and the
+CLI. It could not drive the live desktop. Full results:
+`docs/evidence/windows-session-check-2026-10-02.md`. Desktop 75/75 (MSVC 19.51, Qt 6.8.3, Debug).
+- **Two defects:** the scope banner and the input split help still say "no lane changing", which
+  has been untrue since D71/D93. `QLineEdit` text sits ≈1 logical px high at 150/200 %:
+  `design-system-ui` fails at those scales, offscreen too, so D84's centring holds at 100 % only.
+  Both are booked in NEXT, not fixed here.
+- **Matches:** D90's 40-seed M2.6 dead-end waits and delays are identical on MSVC and Linux. A
+  D93 routeless pocket decision of 3:1 ran 118 : 41 : 0. D102's slide is visible in screenshots.
+- **Method note:** on a real platform the Windows cursor competes with `QTest::mouseMove`
+  (hover assertions fail). At 150/200 % on a 1080p screen, Windows clamps the test window, so the
+  gesture suites are only meaningful offscreen at those scales.
+- **Why nothing is closed:** a suite passing is not the owner's look. D84's and D100's failure
+  conditions are the owner's judgment, and hard rule 8 forbids closing on it.
+
 ## 2026-10-02 — D95 stays off (owner, option ii); lane changes drawn as a slide (D102)
 
 The owner chose option (ii): D95 and D101's hold stay implemented and off; a better incentive (i)
@@ -247,51 +306,6 @@ four points. Contract: `M3_8_CONTRACT.md` §2 "Discretionary lane changes". Rows
 - **Only between full routes** with equal family sets and the same last Link, so a choice never
   alters a destination, a movement or a compiled proportion.
 
-## 2026-10-01 — M3.2.8c: downstream routing decisions implemented (D93, D94)
-
-D93's contract is now code; core is untouched.
-- **The walk (`routeless.cpp`):**
-  - A decision off the walk's entry Link goes to `decideDownstream`. Each destination takes the
-    arrival lane's full chain, or else its stub (`routeLaneFamily`, through `legFrom`, which
-    `entryDecision` now shares), and the draw is by weight over those.
-  - A path carries a stack of `FamilyTag`s (name, decision Link, lane there), because an entry
-    family's full route can also enter a downstream family.
-  - `unkeptStubs` applies rule 4, and the walk reruns without the unkept stubs until stable. The
-    advisory is `ROUTING_DECISION_LANE_FIXED`, in en and th.
-- **The compile:**
-  - `expandRouteless` gives each path's every tag a family member. A merged full path takes the
-    union of tags.
-  - `FamilyRoute::after` makes `appendLaneChanges` drop any span piece before a route reaches
-    the decision's Link (rule 5).
-- **Tests:** A40–A46 in `tests/downstream_decision_tests.cpp`. One existing test changed, by the
-  contract and not by regeneration: the four-leg pocket decision is now exact 3:1.
-- **Results:** default CLI output is byte-identical on all three projects (A44). Windows/MSVC
-  only; not run on Linux.
-
-## 2026-10-01 — M3.2.8c: downstream routing decisions, contract and rows (D93)
-
-Docs only, no code. D92 left cooperation spent as a lever on M2.6, so the next row is lane
-changes after the entry Link. The owner ruled on two things.
-- **Scope:** contract and rows this session, implementation the next.
-- **Rule:** a routing decision placed downstream works like an entry decision (Vissim's way, as
-  in D71). Free walk with no decision stays lane-fixed, because a vehicle with no destination
-  has no mandatory change.
-
-Written: `M3_8_CONTRACT.md` §2 "Downstream routing decisions" (rules 1–7) and rows A40–A46
-in `M3_ACCEPTANCE.md`. SIMULATION.md and ROADMAP say "not implemented", and NEXT.md lists the
-implementation order. The code facts the contract rests on:
-- `appendLaneChanges` already spans any two routes of a family on adjacent lanes of any shared
-  Link, by route distance. It would therefore also span the shared prefix Links upstream of D,
-  which rule 5 clips.
-- Movements group by (first Link, last Link). That is why a target route must come from the
-  same entry Link and none is synthesised (rule 4).
-- No shipped project has a downstream decision: M2.6's one decision is on its entry Link. So A44
-  expects every published result byte-identical.
-
-Caught while writing: an entry-stub vehicle joins the entry family's lowest-slot full route,
-which already carries one downstream destination. It therefore skips the downstream draw.
-That is §2's existing limit, recorded in rule 7, not fixed.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -411,6 +425,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D103 | 2026-10-03 | **Field text keeps D84's one digit row at 100 %; above it, digits may sit up to 1.5 logical px high (owner)** | The offset is the 13 px Thai-capable face's 6 px descent under Qt's line-box centring, in every body-font control. A 1 px QSS shift centres them but puts body and numeric digits on different rows at 100 %, the scale most use. `design-system-ui-1.5x`/`-2x` hold the limit; reopen with a per-font baseline measurement, not a padding guess |
 | D102 | 2026-10-02 | **D95 stays off (owner, option ii). The Run view draws a lane change as a 3 s smoothstep slide from the lane left (from `lastLaneChange`) with the nose turned along the path; display only, the engine change stays one tick** | Owner asked that a change not "warp"; the record D101 added already says where the vehicle came from, so the view needs no new engine state and no measurement moves. Finding the old lane by nearest point reuses the drawn geometry instead of copying the core's lane mapping (rule 3). 3 s and the 5 m/s yaw floor are display values, not driver parameters | A between-lanes state enters the engine (then the view draws the engine's lateral position instead), or a curved lane makes the nearest point jump visibly |
 | D101 | 2026-10-02 | **D95's back-and-forth: find the cause before adding state. A stateless fix keeps contract item 7 and A53; only if a stateless rule oscillates by nature, `Vehicle` carries one last-change record `{tick, fromRoute}` in `SimState`, a driver-behaviour hold time (absent = none), and A53 is rewritten to count returns beyond the hold** (owner's ruling) | Every change within 3 s on four-leg and M2.6 is A→B→A, which points at an incentive that flips after the move rather than at noise; a hold time would hide that. Option (b) also needs state and bans a later overtake back. A record inside `SimState` is copied with it, so replay stays exact, which is what item 7 protects. A hold of 3 s or more passes A53 by construction, so the criterion must move past the hold. One record also serves the lane-change animation and a later between-lanes state | The lab shows reversals with no flip in the incentive (genuine oscillation), so (a) applies directly; or the owner wants the D95 numbers before the cause is known |
 | D100 | 2026-10-02 | **Ctrl+A wireframe draws, hits and selects Links and Connectors as their centre line; vehicles keep their lane positions; view state only** | Owner ruling (NEXT, VISSIM_PARITY): Vissim's simple link display. One flag on the canvas switches drawing and `objectShape` together, so what is seen is what is hit. Lane tabs hang off rails that are not drawn, so they are withdrawn rather than left grabbable. Vehicles stay in lanes by the owner's choice: the display must not misstate where the engine put them. Not saved, like Ctrl+B | The owner wants vehicles on the line (map stations onto the centre line in `drawRunItems`); a network large enough that `hitObjects`' per-call `connectorCentreline` is felt on mouse move (then cache it beside `cachedSurface`, after D28) |

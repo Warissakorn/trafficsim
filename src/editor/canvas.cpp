@@ -181,11 +181,10 @@ void EditorCanvas::drawBackground(QPainter* painter,const QRectF& rect) {
     const auto tiers=editorDesign::gridTiers(grid,editorDesign::levelOfDetail(painter->worldTransform()));
     if (tiers.minor<=0) return;
     const auto device=painter->deviceTransform();
-    const double dpr=painter->device()?painter->device()->devicePixelRatioF():1.;
     const auto snapX=[&](double x){return editorDesign::snapHairline(x,device.m11(),device.dx());};
     const auto snapY=[&](double y){return editorDesign::snapHairline(y,device.m22(),device.dy());};
     const auto lines=[&](double step,const QColor& colour,bool skipMajor) {
-        painter->setPen(editorDesign::hairlinePen(colour,dpr));
+        painter->setPen(editorDesign::hairlinePen(colour));
         const auto major=[&](double v){return std::fmod(std::abs(v)+step/2,step*10)<step;};
         for(double x=std::floor(rect.left()/step)*step;x<=rect.right();x+=step)
             if(!(skipMajor&&major(x))) painter->drawLine(QPointF(snapX(x),rect.top()),QPointF(snapX(x),rect.bottom()));
