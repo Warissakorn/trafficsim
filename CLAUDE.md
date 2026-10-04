@@ -61,6 +61,7 @@ The history behind each of these — and the M1.x milestones — is in `docs/PRO
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | The history and the reasoning, including the **decision log** every `D`-number here points at. Read the entry that touches what you are about to change. |
 | [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1, §3 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
 | [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
+| [`docs/README.md`](docs/README.md) | To find any other document. Every file in `docs/`, grouped by purpose; a new top-level doc gets a row there. |
 
 ## Stack
 

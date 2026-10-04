@@ -1,24 +1,26 @@
 # TrafficSim
 
 A traffic microsimulator with its own **C++20 engine, link-based network model and Qt 6
-Widgets desktop interface**, aimed at the modelling workflow of traffic impact studies.
-`TrafficSim` remains a working name until the end of M1 (D11).
+Widgets desktop interface**, built to the modelling surface PTV Vissim users already know and
+aimed at the movement-level delay and queue output that traffic impact studies need.
+`TrafficSim` is a working name; the name is the owner's decision (D11).
 
-**M0 native implementation available; owner acceptance remains open.** `trafficsim-desktop`
-opens the Network Editor, which runs seeded vehicles accelerating, queueing at fixed-time
-signals and crossing explicit connectors. It has English/Thai controls, Run/Pause/Step/Reset,
-seed and playback speed, and opens both editor projects and bare M0 scenario JSON. The
-separate M0 harness window was retired in M1.24. The Network Editor provides undoable
-Link/Lane drawing, connector lane ranges, image calibration, typed demand and signal
-editing, project recovery, and simulation on the same canvas (M1 implementation).
-The owner's timed M1 acceptance exercise remains open.
-A bundled Noto Sans Thai font provides offline Thai text rendering.
+**Where it stands.** M1 (editor usability) was accepted by owner ruling (D49) and the M2 gate
+passed by the owner's judgment (D51–D53). **M0 plausibility is still open**, and M3 right-of-way
+and driver behaviour are under way. `trafficsim-desktop` opens the Network Editor:
+- Links, Connectors and turn pockets, drawn on an aerial image.
+- Routes, vehicle inputs, routing decisions and fixed-time signal controllers.
+- Conflict areas with priority and Stop/Yield, and queue counters.
+- Run, Pause, Step and Reset on the same canvas, then a Results tab with per-movement delay and
+  per-approach queues, exportable as CSV.
+
+The controls are in English and Thai, with a bundled Noto Sans Thai font. What is next lives in
+[`docs/NEXT.md`](docs/NEXT.md); the milestone sequence is in
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 The supplied Link, Connector and Network Editor target specs are retained in
-[`docs/specs/`](docs/specs/README.md), with a [code audit](docs/SPEC_AUDIT.md).
-[M1.21](docs/AUTHORING_EXTENSIONS.md) adds Link geometry actions, shared boundary markings,
-stricter imported cross-section validation and schema-7 persistence. The remaining target
-features are numbered in the roadmap; these documents are not claims of Vissim parity.
+[`docs/specs/`](docs/specs/README.md), with a [code audit](docs/SPEC_AUDIT.md). These documents
+are not claims of Vissim parity.
 
 **Not yet validated:** the longitudinal model is a reduced Wiedemann-inspired prototype,
 not W74/W99 or a calibrated Vissim equivalent. Diagnostics are completed-trip delay,
@@ -73,15 +75,15 @@ installer — M7 owns installation.
 
 | Part | Entry point | Behaviour |
 |---|---|---|
-| Network model | `src/model/network/network.hpp` | Links, lanes, explicit connectors, driving-side geometry, mid-link signal heads, validation and scenario compilation |
-| Simulation core | `src/core/simulation.hpp` | Detached const scenario, value snapshots, fixed stepping, seeded arrivals, following, signals, blocked-entry queues and event streaming |
-| Desktop | `src/shell/main.cpp` | Qt Widgets controls and passive 2D network view, English/Thai UI |
-| Scenario loading | `src/project/load.hpp` | Strict JSON shape checks, external vehicle/behaviour catalogs and scenario validation |
-| Diagnostic | `tools/run_simulation.cpp` | Single-seed run, completed-trip delay, active/pending counts and optional JSONL events |
+| Simulation core | `src/core/simulation.hpp` | Fixed stepping, seeded arrivals, reduced car-following, fixed-time signals, conflict-area and merge right-of-way, commitment at waiting lines, mandatory lane changes with cooperative braking. Imports nothing. |
+| Network and demand model | `src/model/` | Links, lanes, Connectors, routes, inputs, routing decisions, signal controllers, conflict areas and queue counters, compiled into core inputs |
+| Project files | `src/project/` | Strict load and save of `*.traffic.json` (schema 17) and M0 scenario JSON, validation, movement evaluation and its CSV |
+| Evaluation | `src/eval/` | Per-movement delay and per-approach queue from one run's event stream |
+| Desktop | `src/shell/`, `src/editor/` | The Network Editor, Run view and Results tab, in English and Thai |
+| CLI | `tools/run_simulation.cpp` | One seeded run of a scenario or project; summary JSON, optional events and `--csv` |
 
-The runtime rejects merging paths, internal sources and cyclic routes. Lane changing,
-crossing conflicts, priority rules, batch evaluation and LOS
-are future milestones. Read [`docs/SIMULATION.md`](docs/SIMULATION.md) for numerical behaviour.
+Out of scope today: multi-seed batches, confidence intervals and LOS (M5), and validation
+against field data (M6). Read [`docs/SIMULATION.md`](docs/SIMULATION.md) for numerical behaviour.
 
 ## Migration evidence
 
@@ -97,13 +99,15 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 
 ## Project map
 
+[`docs/README.md`](docs/README.md) lists every document by purpose. The ones to read first:
+
 | Document | Purpose |
 |---|---|
+| [`docs/NEXT.md`](docs/NEXT.md) | The one live to-do |
 | [`docs/PROBLEM.md`](docs/PROBLEM.md) | Audience, scope and why this owns an engine |
 | [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md) | Correctness and working rules |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Modules, dependencies and contracts |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | M0–M7 and acceptance gates |
-| [`docs/NEXT.md`](docs/NEXT.md) | The one live to-do |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Session log and the decision record |
 | [`CLAUDE.md`](CLAUDE.md) | Working instructions |
 
@@ -118,9 +122,9 @@ Reset, seed and playback speed operate on one explicit document revision. Succes
 edits invalidate that run. Save/Open preserves geometry, demand, embedded images,
 levels and display types; locked recovery copies protect unsaved work.
 
-See [the editor guide](docs/NETWORK_EDITOR.md) for controls and file semantics, and
-[the acceptance exercise](docs/M1_ACCEPTANCE.md) for the remaining owner gate.
-M1 implementation does not close M0/M1 owner acceptance or engine validation.
+See [the editor guide](docs/NETWORK_EDITOR.md) for controls and file semantics. M1's acceptance
+record is [`docs/M1_ACCEPTANCE.md`](docs/M1_ACCEPTANCE.md). Accepting the editor does not close M0
+plausibility or engine validation.
 
 ## License
 

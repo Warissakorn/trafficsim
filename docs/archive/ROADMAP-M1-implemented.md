@@ -349,7 +349,7 @@ function is unchanged.
 none/double marking strokes in both renderers, schema-7 persistence, Link insert/midpoint/
 straighten/unreferenced-reverse actions, import cross-section validation and warning severity.
 Unknown schema-7 network-object fields are rejected, so unsupported behavior is never silently
-lost. [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md) defines the actual supported subset.
+lost. [AUTHORING_EXTENSIONS.md](../AUTHORING_EXTENSIONS.md) defines the actual supported subset.
 Owner M1 acceptance remains open. This does not close the supplied target specifications.
 
 ### M1.21.1 — Network lifecycle correctness audit

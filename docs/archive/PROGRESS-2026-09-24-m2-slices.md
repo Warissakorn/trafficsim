@@ -74,7 +74,7 @@ is 8 × `UNSUPPORTED_MERGE`, pinned by a test M3 or M2.0.1 flips. Findings: `M2_
 
 ## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
 
-Owner request; everything is in [`M2_PLAN.md`](M2_PLAN.md), no code changed; `desktop` 36/36 and
+Owner request; everything is in [`M2_PLAN.md`](../M2_PLAN.md), no code changed; `desktop` 36/36 and
 `check` green on Linux. **The criteria stay a draft** because D8 makes pre-registration the
 owner's own act; ROADMAP §M2 only points at it. M2 can only run protected phasing
 honestly, so the gate study is a signalised intersection with protected phasing (D38 later
@@ -138,5 +138,5 @@ one, and M1.27.3 never claimed to close it.
 
 ## Next
 
-Moved to [`NEXT.md`](NEXT.md) on 2026-09-23. A session read this whole file to find twenty
+Moved to [`NEXT.md`](../NEXT.md) on 2026-09-23. A session read this whole file to find twenty
 lines of it; now it reads that one. The owner's standing items live there too.
