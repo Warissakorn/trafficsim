@@ -1,0 +1,84 @@
+{
+  "baselineCommit": "f538a7e3e27a0318aa3ee0a605acbe959e3a1746",
+  "platform": "Linux x86_64",
+  "compiler": "GCC 13.3.0",
+  "build": "Release; -fno-fast-math -ffp-contract=off",
+  "dependencies": {
+    "cmake": "4.4.3",
+    "ninja": "1.13.2",
+    "nlohmann_json": "3.12.0"
+  },
+  "fixtureVariants": [
+    "current D80 geometry",
+    "archived pre-D80 geometry for diagnosis only"
+  ],
+  "gapTime": 5,
+  "headways": [
+    3,
+    7,
+    12
+  ],
+  "diagnosticSeeds": [
+    42,
+    43
+  ],
+  "comparisonSeeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81
+  ],
+  "checks": [
+    "all headless CTest",
+    "same-build replay of full events and snapshots",
+    "generated = completed + active + pending",
+    "swept zone occupancy",
+    "maximum deceleration",
+    "40-seed before/after movement delay"
+  ],
+  "sha256": {
+    "data/driver-behaviour/default.json": "8aca6246993f61865e4b7a67d655cfccf3a0914de123dabf7e45735c336d3cdc",
+    "data/evaluation/queue-counter.json": "04bff220abb06e80db644e1b94afb53f3e0af790ffe2371e06eff5f2b82a1de9",
+    "data/priority-rules/default.json": "133a43fa486ddbc45be23d0f62a100ddd351fabec8996ba01dc2b69ad676da51",
+    "data/projects/t-junction-priority.traffic.json": "2e8cf09d23f370bf82c9d85b4c1d8759ca430df55299421bfb8332c09270a54c",
+    "data/vehicle-types/car.json": "61c43f1b5c0714827def81a506e1d7a7f3d255ad28132db9d2a2fa21f596fa74",
+    "data/vehicle-types/heavy-vehicle.json": "03f2f39ea077085bff7a5e0daa05c6da257e86f5cd6d51abcae5ee2d6119b998",
+    "docs/evidence/m3.2.7-original-project.traffic.json": "6cf3426d94c3abfa0c7af5c91ab1b32a8ef2ed5b04778bca2b428fcb96508208"
+  }
+}
