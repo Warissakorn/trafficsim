@@ -57,7 +57,12 @@ int main(int argc, char** argv) {
         require(refused && !QFile::exists(csvFile), "A part-way run was exported");
         require(w.runState().tick == 1, "Step must advance one tick");
         require(w.runState().seed == 42, "Seed was not applied to the run");
-        for (int i = 1; i < 1800; ++i) action(w, "editorStep");
+        // Stepping and refreshRun() run inside the action; only painting waits for the event loop.
+        // Pumping it every 100 Steps keeps the Run view painting without paying 1,800 frames,
+        // which put this test past its timeout on a loaded or E-core-scheduled machine (2026-10-04).
+        auto* step = item<QAction>(w, "editorStep");
+        for (int i = 1; i < 1800; ++i) { step->trigger(); if (i % 100 == 0) QApplication::processEvents(); }
+        QApplication::processEvents();
         // Same numbers CTest pins on `trafficsim-cli 42`; the engine is shared, so any drift
         // here is a UI stepping bug, not a modelling change.
         require(w.runState().completed == 31, "Editor run differs from the CLI baseline");

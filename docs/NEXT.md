@@ -22,18 +22,12 @@ The canvas grid was soft at every scale other than 100 %, and is now crisp (2026
 **The owner looks** at the grid on the 125 % screen: one-device-pixel lines are half as thick, in
 logical terms, at 200 % as at 100 %. If that reads too faint, the fix is the line colour, not the width.
 
-Also measured: `scenario-run-ui` alone is 28 s CPU on Windows Debug. It reached 76–82 s CPU while
-another process ran, so the 90 s timeout is a load problem, not the test's own cost. D90's 40-seed
-M2.6 numbers are identical on MSVC and Linux.
+Also measured: D90's 40-seed M2.6 numbers are identical on MSVC and Linux. (`scenario-run-ui`'s
+cost on Windows is settled: 2026-10-04, PROGRESS.)
 
-## Found 2026-10-04 — `scenario-run-ui` is ≈100 s CPU on Windows Debug, against 28 s on 2026-10-02
+## Owner looks at D104 (Results → CSV) on Windows
 
-Measured with the process's CPU time, machine idle: 101 s at `eeb9c5c` (main), and the same with
-the D104 export. It times out at `TIMEOUT 90` when run alone. Bisect the commits since 2026-10-02
-by CPU time; `a5a18e5` (grid hairlines, `drawBackground`) and `cc80349` (D103) are the first
-suspects. Fix the cause and keep the grid crisp; do not raise the timeout to hide it.
-
-**The owner looks at D104 on Windows:** Run a project to its end, then Results → Export results
+Run a project to its end, then Results → Export results
 (CSV). The file should open in a spreadsheet with the marker line first, then movements, then
 approaches. The action stays greyed until the run ends.
 
@@ -87,9 +81,8 @@ Linux/GCC 13.3 headless CTest passed 48/48; desktop/Windows review remains outst
 4. Runtime paths remain the stored first-lane-derived paths; schema-17 files are compatible.
    Conflict extents use the new rails, so existing authored extents can require review.
 
-The Windows `scenario-run-ui` timeout (97–99 s Debug against `TIMEOUT 90`) was mostly a
-whole-viewport repaint per run frame, removed 2026-09-30. On Windows Debug it now takes 28 s CPU
-alone (2026-10-02, session check), but load from another process pushes it to 76–82 s. Confirm in CI.
+The Windows `scenario-run-ui` timeout is closed. It now paints every 100th Step, not every Step
+(2026-10-04): 2.8 s CPU on a P-core, 11.8 s on an E-core, Windows Debug.
 
 ## Then — M3.2.8c: after cooperative braking; the owner's M3.2.7d
 
@@ -221,7 +214,10 @@ no gate result is inferred.
   the word-wrapped `editorRunInfo` label relayouts the window every Step anyway. Reverted. The
   lever there is that label's layout (a UI change for the owner), not the action.
 - **`scenario-run-ui` wall time as a meter on Windows:** under ctest it swung 24–90 s on unchanged
-  code (one set timed out at 90 s). Use the benchmark, or the process's CPU time.
+  code (one set timed out at 90 s). Use the benchmark, or the process's CPU time **pinned to one
+  core type**: on this i5-12450H the same Debug run is 26–29 s CPU on P-cores (`ProcessorAffinity`
+  0xFF) and 89–104 s on E-cores (0xF00), 2026-10-04. An unpinned CPU time is not comparable across
+  runs.
 - **One `refreshRun()` per Step instead of two (2026-10-02, Linux):** F6/Space call `pauseRun()`
   then `stepRun()`, both refreshing. Removing the first measured 2,169 → 2,342 ms per 1,000 Steps
   (medians of 5, spreads overlapping) — no effect, reverted. Qt paints once per event-loop pass,
