@@ -9,7 +9,7 @@ the log. Rewrite this file; do not append to it.
 
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 
-[`ROADMAP_REVIEW-2026-10-03.md`](ROADMAP_REVIEW-2026-10-03.md) corrected the stale status lines
+[ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) corrected the stale status lines
 and proposes an order, but **changes none.** Its finding is that the back half of the success
 sentence has no product code and no commit since 2026-09-25: 10 seeds, LOS, and a table to paste
 (M5). Most of the items below are owner looks. Its §4 asks the owner ten questions (O1–O10).
@@ -163,7 +163,7 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
     Before changing `observe`, measure whether its cost is the per-line walk or `queueLength`'s
     per-line `behind` allocation.
 - **Linux replay of D91–D94:** CI (`native.yml`) is the evidence.
-- **`M3_ACCEPTANCE.md` §4:** the rows a session can fill (review S5).
+- **`M3_ACCEPTANCE.md` §4:** the rows a session can fill ([ROADMAP review §7, S5](ROADMAP.md#7-proposed-sequence--owner-free-sessions-after-o1)).
 - The entry-acceleration bias in movement delay needs travel-time sections (M5), not a correction
   factor.
 
