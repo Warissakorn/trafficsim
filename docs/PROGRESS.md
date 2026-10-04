@@ -8,6 +8,31 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-04 — Connector vehicles follow painted lane centres (D106)
+
+Owner requested the measured centreline discrepancy be fixed. The baseline 90-degree
+3 → 3 fixture's first runtime lane is over 1 m off its painted interior midpoint.
+`connectorPaths` now takes final adjacent-rail midpoints at interior vertices, joining
+those to the named Link lane centres with its terminal legs. A taper's zero-width edge
+and a mouth's longitudinal cut are not runtime attachments. Width derivation shares
+independent lane pairing, so surface construction cannot recurse through its paths.
+Waiting bars use the normal at the mapped runtime lane position. Schema-17 geometry,
+authored stations, lane IDs/pairing and all core code remain unchanged. D106 supersedes
+D80's unchanged-runtime-path promise; range edits can re-derive surviving runtime curves.
+
+Inputs were registered in local `c74b3fb` before seeded comparisons (published `addeb738`).
+The three initial centre regressions failed before and pass after. Linux/GCC 13.3 Release
+`check` passes architecture/file-size guards and 53/53 groups. Seven lane-centre tests
+include 240 seeded curve/add/drop runs, replay, accounting, segment-body checks, actual
+interior vehicle positions, control bars/stations and file/Undo/Redo. T-junction's 120
+cases per build have identical trajectory digests/reports and pass its safety checks.
+Four projects × 40 seeds preserve counts/clamps; max delay/travel differences are
+0.000206837/0.000207040 s and max queue difference is 0.000001477 m. Frozen baselines
+are unchanged. [Evidence](evidence/connector-lane-centres.md) records methods and limits.
+Qt/Windows CI and the owner's desktop look are not replaced by headless evidence.
+
+---
+
 ## 2026-10-04 — Five near-standing clamps diagnosed; stopped followers wait (D105)
 
 From `f538a7e`, input metadata registered in local commit `048b541` before observing outputs.
@@ -422,6 +447,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D106 | 2026-10-04 | **Runtime Connector lane interiors follow final adjacent-rail midpoints; terminal legs join named Link lane centres, including taper recipients** | Owner requested the measured >1 m discrepancy be fixed. Topology-only pairing breaks the width/surface/path cycle; compiler/canvas share paths and lengths; bars use mapped runtime normals. Schema-17 geometry/stations remain authoring data. Supersedes D80 runtime compatibility and surviving-runtime-curve invariance, not the axis, miter or P1–P4 contract. Seven regressions and 240 curve/add/drop runs pass; T-junction digests are unchanged; project differences are measured | Terminal transitions or retained extreme mouths need a different driving model; a width/range edit must preserve old runtime curves; a desktop look finds a visual mismatch |
 | D105 | 2026-10-04 | **A follower at exactly zero speed and leader gap ≤ standstillDistance never receives positive following acceleration; moving followers and hard caps stay as before** | The outgoing merge leader's clipped rear gives zero hard clearance but its speed makes the reduced formula propose acceleration. Four of five traced minor clamps were stopped false starts. Waiting before integration removes those events with identical trajectories, delay and queue; all 120 runs replay and preserve accounting/safety. The moving case still needs 9.06 m/s² and remains counted; source insertion with small positive clearance is separate (M3.2.8a.1) | A stopped follower fails to release when the gap opens; a moving clamp disappears without a motion contract; a different toolchain changes trajectories |
 | D104 | 2026-10-04 | **The editor exports Results only for a finished run, as the CLI's CSV unchanged (`movementCsv`); the QFileDialog confirms overwriting, unlike the CLI's refusal** | One format with one writer (rule 3), and the marker line comes with it (rule 4). `movementCsv` has no field for "figures so far, t = …", so a part-way export would be indistinguishable from a full run, and adding that field would change the CLI's output. The CLI refuses to overwrite because nobody is there to ask; the editor can ask | An author needs a part-way export (then an optional context line in `project/`'s writer, used by both), or a study needs the seed and engine version in the file (the same line) |
 | D103 | 2026-10-03 | **Field text keeps D84's one digit row at 100 %; above it, digits may sit up to 1.5 logical px high (owner)** | The offset is the 13 px Thai-capable face's 6 px descent under Qt's line-box centring, in every body-font control. A 1 px QSS shift centres them but puts body and numeric digits on different rows at 100 %, the scale most use. `design-system-ui-1.5x`/`-2x` hold the limit; reopen with a per-font baseline measurement, not a padding guess |

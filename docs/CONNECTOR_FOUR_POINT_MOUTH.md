@@ -12,8 +12,9 @@ minus half the total to plus half the total around that axis, using the existing
 for body corners. A surplus lane has zero width at the narrower end as before.
 
 The serialized schema-17 `geometry` still denotes the first authored lane path. It is not
-silently reinterpreted as a centreline: existing files, lane references, runtime paths and
-path lengths remain compatible. The *derived reference used to construct the road* is now
+silently reinterpreted as a centreline: existing files, lane references and
+authored station references remain compatible. D106 replaces the old runtime lane-path
+derivation; lengths are compiled from the new paths. The *derived reference used to construct the road* is now
 central. Changing lane widths does not move that reference.
 
 Grips use the axis directly. An interior drag solves the inverse blend on [0,1] by 64 fixed
@@ -84,10 +85,22 @@ On curved Link edges the mouth need not be symmetric; P2 remains the attached ra
 
 `ConnectorSurface` supplies the final boundaries, markings and outline. `connectorBoundaries`
 returns those same boundaries for conflict coverage and lane handles. Paint, selection,
-copy/move previews and rotation bounds use the same surface cache. Runtime lane paths remain
-separate and unchanged; lane-strip overlap stations can change with the corrected drawing.
-Waiting-line bars intersect the actual rails with the normal at their authored path station,
-rather than interpolating longitudinally shifted boundary vertices.
+copy/move previews and rotation bounds use the same surface cache. Runtime lane paths (D106) take the midpoint of each adjacent rail pair at every interior
+vertex. Their terminal legs join those midpoints to the named Link lane centres. Mouth
+intersection midpoints can be displaced along the Link, and a zero-width taper ends on a
+boundary, so neither is substituted for a runtime attachment. A two-point Connector remains
+one straight leg between attachments. There is no new smoothing or persisted path.
+
+Lane pairing and width derivation share a topology-only helper, independent of runtime
+geometry; deriving a surface therefore cannot recurse through its own paths. The compiler,
+run canvas and route overlays consume `connectorPaths` and its polyline lengths. Retained
+authoring stations are mapped vertex-for-vertex with `matchedStation` onto these paths.
+Waiting-line bars intersect the actual rails with the normal at that mapped runtime station.
+Symmetric single-lane points within 1e-12 m of the stored vertex retain its exact bits.
+
+The terminal legs are attachment transitions, not rail-midpoint lines. This includes the
+merge into the receiving lane at a taper. D80's unbounded or folded authoring mouths still
+do not establish a drivable turn; there is no new mouth cutoff or lane-change motion model.
 
 ## Verification
 
@@ -99,4 +112,7 @@ rather than interpolating longitudinally shifted boundary vertices.
   each divider is checked against its **own indexed** Link edge and the central-axis normal.
 - Body-width tests measure `connectorBodyBoundaries`; end-intersection tests measure the final
   surface. Old assertions about a perpendicular/square legacy cap are superseded.
+- `connector_lane_centre_tests`: 52 count/width/side combinations, curved body attachments,
+  rotations, frozen weights, control stations/bars, exact single-lane paths, file/Undo/Redo,
+  and 240 seeded curve/add/drop runs with replay, accounting and segment-body checks.
 - Execution results and platform limitations are in PROGRESS.md. Linux is not Windows evidence.

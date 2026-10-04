@@ -27,6 +27,11 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`) |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
+Connector widths and runtime paths share topology-only `connectorLanePairs`; the surface
+does not call `connectorPaths`. D106 derives runtime lane interiors from final divider
+midpoints, with Link-centre terminal transitions. Authoring stations still map through
+`matchedStation`; the run canvas and compiler read the same paths.
+
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
 and test the engine, model and CLI on a machine without Qt.
 

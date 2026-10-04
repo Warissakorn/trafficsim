@@ -61,6 +61,8 @@ struct Connector {
 struct Network;
 struct ConnectorPath { std::string id; LaneReference from, to; std::vector<Point> geometry; };
 std::string connectorPathId(const Connector&, int index);
+// Runtime lane centrelines: midpoints of final adjacent rails at interior vertices, joined
+// to the named Link lane centres by the terminal legs. Authored geometry/stations stay separate.
 std::vector<ConnectorPath> connectorPaths(const Network&, const Connector&);
 struct NetworkSignalHead {
     std::string id; LaneReference lane; double position{};

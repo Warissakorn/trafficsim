@@ -9,6 +9,12 @@ measured. Every claim below cites the file and line it was read from, and every 
 Vissim cites the document it came from. Where the two benchmarks disagree, this file says so
 rather than picking one.
 
+2026-10-04 update (D106): runtime lane paths now use final-rail midpoints at interior
+vertices and Link-centre attachments at the ends. The legacy path derivation described
+below is historical. See [the current geometry contract](CONNECTOR_FOUR_POINT_MOUTH.md)
+and [verification](evidence/connector-lane-centres.md). This establishes internal
+consistency, not measured Vissim fidelity.
+
 ---
 
 ## 0. How to read this — there are two benchmarks, and they give different answers

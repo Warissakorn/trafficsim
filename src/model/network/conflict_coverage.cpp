@@ -22,7 +22,7 @@ double area(const std::vector<Point>& p) {
 }
 // A lane surface: the two boundaries that bound it, point for point with the polyline its
 // stations are authored on.
-struct Strip { std::vector<Point> base, left, right; };
+struct Strip { std::vector<Point> base, left, right; std::vector<Point> runtime{}; };
 std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref) {
     try {
         if (!ref.linkId.empty() && ref.connectorId.empty()) {
@@ -50,7 +50,7 @@ std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref) {
             if (!match) return std::nullopt;
             const auto boundaries = connectorBoundaries(n, c);
             if (boundaries.size() < *match + 2) return Strip{c.geometry, {}, {}}; // reported unsupported
-            return Strip{c.geometry, boundaries[*match], boundaries[*match + 1]};
+            return Strip{c.geometry, boundaries[*match], boundaries[*match + 1], paths[*match].geometry};
         }
     } catch (const std::exception&) {}
     return std::nullopt;
@@ -167,8 +167,10 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
         if(!point.path.connectorId.empty()) {
             // P1-P4 bends boundary vertices longitudinally. Matching their segment parameter
             // no longer puts a waiting bar on the normal at its authored runtime station.
-            const auto origin=pointAlong(strip->base,point.station);
-            const auto u=directionAlong(strip->base,point.station,false);
+            // Authoring stations stay on base; locate the bar on the same lane path as the car.
+            const double station=matchedStation(strip->base,strip->runtime,point.station);
+            const auto origin=pointAlong(strip->runtime,station);
+            const auto u=directionAlong(strip->runtime,station,false);
             const auto meet=[&](const std::vector<Point>& edge)->std::optional<Point> {
                 std::optional<Point> best;double nearest=INFINITY;
                 const auto guess=pointAlong(edge,matchedStation(strip->base,edge,point.station));

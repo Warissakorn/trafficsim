@@ -33,6 +33,9 @@ why nothing was created. Esc and Cancel leave the document and history unchanged
 
 A connector stores a base polyline and source/target lane counts. Its lane paths are
 derived in monotone order, with stable IDs: the first uses the connector ID and subsequent paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference those paths.
+Runtime paths use the midpoints of adjacent painted boundaries at interior vertices, with
+terminal legs anchored to the named Link lane centres (D106). Authored geometry and control
+stations retain their schema-17 meanings; runtime lengths can change after a width or range edit.
 Unequal counts pair lane for lane over the narrower end, with at most one lane added or dropped on each side, so the counts differ by at most 2 (M3.2.9a, D73). For a one-lane difference
 `laneChangeSide` (schema 17, `"left"`/`"right"`, the driver's view; the Inspector's "Lane change side", M3.2.9c) picks the side, absent = kerb side; that lane is the one drawn tapering. Lane tabs stop at a two-lane difference. A Connector asked for across a larger difference (a 2-lane Link dragged onto a 5-lane one) is created narrowed to it: the wider end gets `narrower + 2` lanes, centred on the lane the drag ended on (M3.2.9d, D75). Ranges are limited by the existing lanes, at most 12 per end.
 
@@ -49,8 +52,8 @@ Drag outward to add lanes and inward to remove them; the road geometry previews 
 during the drag. One release is one undo entry. Esc cancels. Each tab changes
 its own edge, leaving the opposite edge fixed. The first-side handles add/remove lanes
 before the current first lane; the other handles change the last lane. Surviving lane
-IDs and positions stay fixed, including on curved Links. Connector paths whose lane pair
-survives a range edit retain their curve; unequal ranges can intentionally change lane mappings.
+IDs and positions stay fixed, including on curved Links. Connector lane pairs retain their references; their runtime curves are re-derived from the
+new painted boundaries (D106). Unequal ranges can intentionally change lane mappings.
 Properties count edits and downstream pocket creation expand the last-lane side.
 
 ## Connector shape: intermediate points and the mouth

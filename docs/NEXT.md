@@ -37,6 +37,11 @@ closed no owner item.
 
 In order:
 
+- **D106 Connector lane centres:** look at a curved 3 → 3 Connector and both taper sides,
+  then run with vehicles. Interior centres follow the painted dividers; terminal legs join
+  the Link lane centres. Inspect an authored-width mouth and conflict waiting bar too.
+  Geometry/round-trip evidence is headless; desktop appearance still needs an owner look.
+
 1. **D104 Results → CSV.** Run a project to its end, then Results → Export results (CSV). It
    should open in a spreadsheet with the marker line first, then movements, then approaches.
    The action stays greyed until the run ends.
