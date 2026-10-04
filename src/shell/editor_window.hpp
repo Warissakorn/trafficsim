@@ -135,6 +135,7 @@ private:
     void buildResults();
     void translateResults();
     void refreshResults();
+    bool runFinished() const;
     void observeRun();
     // M3.2.4, src/shell/editor_priority.cpp: the Conflict areas tab, its dialogs and actions.
     QTableWidget* conflictTable_{};
@@ -176,6 +177,8 @@ public:
     std::optional<MovementReport> runReport() const {
         return runMovements_ ? std::optional(runMovements_->report(runState_)) : std::nullopt;
     }
+    // The finished run's report as the CLI's CSV, replaced atomically; throws before the end.
+    void exportResults(const QString& file) const;
 private:
     QString file_;
     std::map<QString,QJsonObject> locales_;

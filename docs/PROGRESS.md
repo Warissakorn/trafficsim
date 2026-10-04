@@ -8,6 +8,25 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-04 — Results export to CSV from the editor (D104)
+
+The Results tab has an "Export results (CSV)…" action on its own toolbar, also in the
+Simulation menu and the command palette. It writes `movementCsv(*runReport())`, the function
+behind `trafficsim-cli --csv`, so the editor's file is byte for byte the CLI's, with the
+not-yet-validated marker as its first line. It is enabled only once the run has reached its end
+(`runFinished()`, which the partial note in `refreshResults()` now shares). The enabled state is
+set in `refreshRun()`, because `refreshResults()` skips work while its tab is hidden. The write
+goes through a new `writeEditorBytes` (QSaveFile, no direct-write fallback); `writeEditorDocument`
+now calls it. A failed export reports `EDIT_CSV_WRITE` rather than `EDIT_FILE_WRITE`, whose text
+speaks of unsaved project changes. `scenario-run-ui` asserts the action is disabled before a run,
+part way through it and after Reset; that `exportResults` refuses a part-way run and writes
+nothing; and that the finished run's file equals `movementCsv` of the same report. Desktop 77/77
+on Windows (Debug).
+
+Found on the way, not caused by this change: `scenario-run-ui` is now ≈100 s CPU on Windows Debug
+with the machine idle (101 s at `eeb9c5c` without this change, 109 s with it; one run each). The
+2026-10-02 figure was 28 s. It times out at 90 s alone. See NEXT.
+
 ## 2026-10-03 — The canvas grid is crisp at every scale
 
 `gridIsCrisp` failed at every scale other than 100 %. The cause was measured offscreen at
@@ -425,6 +444,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D104 | 2026-10-04 | **The editor exports Results only for a finished run, as the CLI's CSV unchanged (`movementCsv`); the QFileDialog confirms overwriting, unlike the CLI's refusal** | One format with one writer (rule 3), and the marker line comes with it (rule 4). `movementCsv` has no field for "figures so far, t = …", so a part-way export would be indistinguishable from a full run, and adding that field would change the CLI's output. The CLI refuses to overwrite because nobody is there to ask; the editor can ask | An author needs a part-way export (then an optional context line in `project/`'s writer, used by both), or a study needs the seed and engine version in the file (the same line) |
 | D103 | 2026-10-03 | **Field text keeps D84's one digit row at 100 %; above it, digits may sit up to 1.5 logical px high (owner)** | The offset is the 13 px Thai-capable face's 6 px descent under Qt's line-box centring, in every body-font control. A 1 px QSS shift centres them but puts body and numeric digits on different rows at 100 %, the scale most use. `design-system-ui-1.5x`/`-2x` hold the limit; reopen with a per-font baseline measurement, not a padding guess |
 | D102 | 2026-10-02 | **D95 stays off (owner, option ii). The Run view draws a lane change as a 3 s smoothstep slide from the lane left (from `lastLaneChange`) with the nose turned along the path; display only, the engine change stays one tick** | Owner asked that a change not "warp"; the record D101 added already says where the vehicle came from, so the view needs no new engine state and no measurement moves. Finding the old lane by nearest point reuses the drawn geometry instead of copying the core's lane mapping (rule 3). 3 s and the 5 m/s yaw floor are display values, not driver parameters | A between-lanes state enters the engine (then the view draws the engine's lateral position instead), or a curved lane makes the nearest point jump visibly |
 | D101 | 2026-10-02 | **D95's back-and-forth: find the cause before adding state. A stateless fix keeps contract item 7 and A53; only if a stateless rule oscillates by nature, `Vehicle` carries one last-change record `{tick, fromRoute}` in `SimState`, a driver-behaviour hold time (absent = none), and A53 is rewritten to count returns beyond the hold** (owner's ruling) | Every change within 3 s on four-leg and M2.6 is A→B→A, which points at an incentive that flips after the move rather than at noise; a hold time would hide that. Option (b) also needs state and bans a later overtake back. A record inside `SimState` is copied with it, so replay stays exact, which is what item 7 protects. A hold of 3 s or more passes A53 by construction, so the criterion must move past the hold. One record also serves the lane-change animation and a later between-lanes state | The lab shows reversals with no flip in the incentive (genuine oscillation), so (a) applies directly; or the owner wants the D95 numbers before the cause is known |

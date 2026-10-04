@@ -26,6 +26,17 @@ Also measured: `scenario-run-ui` alone is 28 s CPU on Windows Debug. It reached 
 another process ran, so the 90 s timeout is a load problem, not the test's own cost. D90's 40-seed
 M2.6 numbers are identical on MSVC and Linux.
 
+## Found 2026-10-04 — `scenario-run-ui` is ≈100 s CPU on Windows Debug, against 28 s on 2026-10-02
+
+Measured with the process's CPU time, machine idle: 101 s at `eeb9c5c` (main), and the same with
+the D104 export. It times out at `TIMEOUT 90` when run alone. Bisect the commits since 2026-10-02
+by CPU time; `a5a18e5` (grid hairlines, `drawBackground`) and `cc80349` (D103) are the first
+suspects. Fix the cause and keep the grid crisp; do not raise the timeout to hide it.
+
+**The owner looks at D104 on Windows:** Run a project to its end, then Results → Export results
+(CSV). The file should open in a spreadsheet with the marker line first, then movements, then
+approaches. The action stays greyed until the run ends.
+
 ## Immediate — owner checks D86 (conflict areas follow the drawing) on Windows
 
 Open `data/projects/t-junction-priority.traffic.json`, Conflict area tool (`A`). Drag Major
@@ -187,7 +198,6 @@ no gate result is inferred.
   grid, and do vehicles beside the line on multi-lane roads read well, or should they snap to it?
 - Derive an input's interval volumes from its entry decision's turning counts, so a count sheet
   is typed once; today the two are entered separately.
-- In-editor CSV export of the Results tab (the CLI has one).
 - Per-lane shares (D32; one weight per entry-Link lane since D71): no canvas gesture sets one,
   and the input table row (`refreshDemand`, `src/shell/editor_demand.cpp`) shows the equal-split
   figure even when shares are set.

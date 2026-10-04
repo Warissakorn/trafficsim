@@ -7,6 +7,8 @@
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QLabel>
 #include <QLineEdit>
 #include <QStandardPaths>
@@ -41,8 +43,18 @@ int main(int argc, char** argv) {
         require(w.history().document().definition
                 && w.history().document().definition->inputs.size() == 2, "M0 definition did not survive the load");
 
+        auto* exportCsv = item<QAction>(w, "editorExportResults");
+        require(!exportCsv->isEnabled(), "Results export offered before any run");
+        QTemporaryDir csvDir; require(csvDir.isValid(), "No temporary directory");
+        const auto csvFile = csvDir.filePath("results.csv");
         item<QLineEdit>(w, "editorSeed")->setText("42");
         action(w, "editorStep");
+        // A part-way run is not exported: the CSV has no field that would say it is partial.
+        require(w.runReport() && w.runState().tick < totalTicks(*w.runState().scenario), "Run is not part way");
+        require(!exportCsv->isEnabled(), "Results export offered part way through a run");
+        bool refused = false;
+        try { w.exportResults(csvFile); } catch (const std::exception&) { refused = true; }
+        require(refused && !QFile::exists(csvFile), "A part-way run was exported");
         require(w.runState().tick == 1, "Step must advance one tick");
         require(w.runState().seed == 42, "Seed was not applied to the run");
         for (int i = 1; i < 1800; ++i) action(w, "editorStep");
@@ -80,6 +92,13 @@ int main(int argc, char** argv) {
         require(movements->item(0, 0)->text() == QString::fromStdString(report->movements[0].name), "Movement name missing");
         require(item<QTableWidget>(w, "editorQueueTable")->rowCount() == static_cast<int>(report->queues.size()), "Queue rows differ");
         require(item<QLabel>(w, "editorResultsNote")->text().startsWith("Not yet validated"), "Results carry no validation marker");
+        // The editor's export is the CLI's CSV, byte for byte, marker line first.
+        require(exportCsv->isEnabled(), "Results export not offered for a finished run");
+        w.exportResults(csvFile);
+        QFile written(csvFile); require(written.open(QIODevice::ReadOnly), "Exported CSV missing");
+        const auto bytes = written.readAll().toStdString(); written.close();
+        require(bytes == movementCsv(*report), "Exported CSV differs from the CLI's");
+        require(bytes.starts_with("# TrafficSim - not yet validated"), "Exported CSV carries no validation marker");
         // Captured on the finished run, so the artifact shows the figures being asserted.
         if (argc > 2) {
             w.resize(1280, 860); QTest::qWait(50);
@@ -88,6 +107,7 @@ int main(int argc, char** argv) {
 
         action(w, "editorReset");
         require(w.runState().tick == 0 && !w.runSummary().meanDelay, "Reset left a stale run summary");
+        require(!exportCsv->isEnabled(), "Results export still offered after Reset");
         // Reset prepares a fresh run at t = 0: the table is there, and nothing in it is stale.
         const auto fresh = w.runReport();
         require(fresh && std::all_of(fresh->movements.begin(), fresh->movements.end(),
