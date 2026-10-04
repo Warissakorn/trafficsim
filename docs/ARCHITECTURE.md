@@ -10,6 +10,10 @@ The authoring network is the source of truth. `compileScenario` derives a runtim
 it is never persisted as a second editable network. `createSimulation` copies and
 canonicalizes that scenario into `std::shared_ptr<const Scenario>`.
 
+D108 source insertion checks ordinary following/integration from rest against snapshot
+leader clearance before removing a queued arrival. The same sampled record waits until
+its first step fits the unchanged buffer; later safety phases remain authoritative.
+
 The engine cannot access the authoring model, JSON, Qt, files, wall clocks or threads.
 Each step receives a const state and returns a new value; vehicle/input/event vectors
 are independent copies. Old snapshots remain intact. The `SimState&&` overloads (D91) take the

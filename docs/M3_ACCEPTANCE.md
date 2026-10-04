@@ -289,3 +289,19 @@ Three committed projects × 40 seeds keep their CLI reports identical except cla
 counts. Their active/pending traffic is recorded, not silently excluded.
 M3.2.8a.1 carries the remaining moving and source-insertion cases in ROADMAP/NEXT.
 M0 plausibility, M3.2.7d and M6 remain open; owner rows above are not filled by tests.
+
+### 2026-10-04 — D108 source first-step rows (M3.2.8a.1a)
+
+A59–A61 in `tests/source_insertion_tests.cpp` (`core`):
+- **A59:** positive clearance smaller than first motion keeps the identical pending vehicle,
+  emits no clamp, preserves RNG/copy replay and accounting, then departs once room opens.
+  The scheduled time remains original; actual entry is later. Fails before D108.
+- **A60:** exact first-step equality admits without a new margin; just below defers.
+  The below-bound assertion fails before D108.
+- **A61:** exact standstill equality admits at rest without a false clamp; below remains pending.
+
+Linux Release 54/54, frozen references unchanged. Input metadata committed before output.
+120 stress cases pass replay/accounting/body/swept/braking checks; all drain, source clamps
+3 → 0, moving minor clamps 21 → 21. Four projects × 40 seeds preserve counts and delays;
+travel time/queue changes are measured in [the source evidence](evidence/source-first-step.md).
+No moving-merge, cross-path 2D, owner plausibility or M6 gate is closed.
