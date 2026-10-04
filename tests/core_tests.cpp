@@ -322,3 +322,53 @@ TEST(core, a_stop_line_may_stand_on_the_one_approach_before_the_yielding_segment
     CHECK(majorWasApproaching);
     CHECK(distanceOf(free, 1) > 50);
 }
+
+// D105: an outgoing merge leader can already leave less than the desired standstill gap.
+// A stopped follower must wait for that gap rather than try to accelerate into a hard cap.
+TEST(core, stopped_merge_follower_waits_without_an_emergency_clamp_then_releases) {
+    auto s = test::straight();
+    s.segments = {{"major", 150, {"shared"}}, {"minor", 100, {"shared"}}, {"shared", 150, {}}};
+    s.routes = {{"majorRoute", {"major", "shared"}}, {"minorRoute", {"minor", "shared"}}};
+    s.priorityRules = {{"merge", "minor", 100, "major", 150, 3, 10}};
+    const auto state = test::withVehicles(s, {{1, "majorRoute", 151, 12}, {2, "minorRoute", 99.5, 0}});
+    const auto& type = state.scenario->vehicleTypes[state.vehicles.back().typeIndex];
+    const auto& b = state.scenario->behaviours.front();
+    CHECK(type.length > 1); // forcing: the leader's rear has not yet reached the shared segment
+    CHECK(b.standstillDistance > 0.5); // hard movement cap is zero on the follower's route
+    const auto spans = occupiedSpans(*state.scenario, state.vehicles);
+    CHECK(std::any_of(spans.begin(), spans.end(), [&](const auto& span) {
+        return span.vehicleId == 1 && state.scenario->segments[span.segmentIndex].id == "shared" && span.rear == 0;
+    }));
+    auto next = stepSimulation(state);
+    CHECK(next.vehicles.back().distance == 99.5 && next.vehicles.back().speed == 0);
+    CHECK(next.vehicles.back().acceleration == 0);
+    CHECK(std::none_of(next.events.begin(), next.events.end(), [](const auto& e) {
+        return std::holds_alternative<SafetyClampEvent>(e);
+    }));
+    for (int i = 0; i < 20; ++i) next = stepSimulation(std::move(next));
+    CHECK(next.vehicles.back().distance > 100 && next.vehicles.back().speed > 0);
+}
+TEST(core, moving_merge_follower_still_reports_the_impossible_stop) {
+    auto s = test::straight();
+    s.segments = {{"major", 150, {"shared"}}, {"minor", 100, {"shared"}}, {"shared", 150, {}}};
+    s.routes = {{"majorRoute", {"major", "shared"}}, {"minorRoute", {"minor", "shared"}}};
+    s.priorityRules = {{"merge", "minor", 100, "major", 150, 3, 10}};
+    const auto state = test::withVehicles(s, {{1, "majorRoute", 151, 12}, {2, "minorRoute", 99.5, 0.9}});
+    CHECK(state.scenario->behaviours.front().standstillDistance > 0.5);
+    CHECK(state.vehicles.back().speed > 0); // cannot stop in the zero permitted distance
+    const auto next = stepSimulation(state);
+    CHECK(next.vehicles.back().distance == 99.5 && next.vehicles.back().speed == 0);
+    CHECK(std::any_of(next.events.begin(), next.events.end(), [](const auto& e) {
+        const auto* c = std::get_if<SafetyClampEvent>(&e); return c && c->vehicleId == 2;
+    }));
+}
+
+TEST(core, a_stopped_follower_at_the_exact_standstill_boundary_waits_for_room) {
+    const auto s = test::demo().scenario;
+    const auto& type = s.vehicleTypes.front(); const auto& b = s.behaviours.front();
+    CHECK(b.standstillDistance > 0);
+    const auto held = followingAcceleration(0, 15, 0.5, type, b, Leader{b.standstillDistance, 12});
+    CHECK(held.acceleration == 0);
+    CHECK(followingAcceleration(0, 15, 0.5, type, b, Leader{b.standstillDistance + 0.01, 12}).acceleration > 0);
+    CHECK(followingAcceleration(0, 15, 0.5, type, b).acceleration > 0);
+}

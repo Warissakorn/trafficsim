@@ -133,10 +133,13 @@ M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's u
 
 Pick one per session, as the user asks. Rows and contract come first for engine work.
 
-- **Diagnose the M3.2.8a clamps.** Five minor vehicles, standing or at walking pace within 1 m
-  of the T-junction's merge line, are still clamped in the congested headway arm (seeds 42 and
-  43). They are not the commitment case: their stopping distance is about zero. Do not claim the
-  minor road clamp-free until this is diagnosed.
+- **M3.2.8a.1 — remaining merge/source clamps (D105).** The five near-standing events are
+  diagnosed: four stationary false starts are removed, one moving hard-buffer clamp remains.
+  The 40-seed headway sweep has 20 moving minor clamps and two stationary source-insertion
+  clamps. Read [the evidence](evidence/m3.2.8a-clamps.md) and ROADMAP's M3.2.8a.1 first;
+  write an anticipation/first-step contract and failure-first cases before changing motion.
+  Preserve the existing buffer, D50 setback and maximum deceleration. Do not claim clamp-free.
+  Windows CI and the owner's M0/M3 observations remain distinct from Linux headless evidence.
 - **Volumes from turning counts.** Derive an input's interval volumes from its entry decision's
   turning counts, so a count sheet is typed once. Today both are entered separately.
 - **Per-lane shares (D32; one weight per entry-Link lane since D71).** No canvas gesture sets one.

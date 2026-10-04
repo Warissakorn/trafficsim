@@ -32,6 +32,11 @@ FollowingResult followingAcceleration(double speed, double desiredSpeed, double 
             acceleration = following();
         }
     }
+    // A moving merge leader can leave less than the standstill gap at the shared segment's
+    // start. A stopped follower must wait for room, not accelerate into the zero hard cap.
+    // Moving followers keep their existing braking/clamp behaviour (D105).
+    if (speed == 0 && leader && leader->gap <= behaviour.standstillDistance)
+        acceleration = std::min(0.0, acceleration);
     return {std::max(-type.maxDeceleration, acceleration), mode};
 }
 Motion integrate(double speed, double acceleration, double dt) {

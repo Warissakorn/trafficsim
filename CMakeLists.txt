@@ -109,6 +109,10 @@ target_precompile_headers(trafficsim-t-junction-fixture REUSE_FROM trafficsim-fo
 add_executable(trafficsim-t-junction-sweep tools/t_junction_sweep.cpp)
 target_link_libraries(trafficsim-t-junction-sweep PRIVATE trafficsim_commands trafficsim_options)
 target_precompile_headers(trafficsim-t-junction-sweep REUSE_FROM trafficsim-four-leg-fixture)
+# D105: clamp traces and checked 40-seed evidence, not part of check or an M5 batch API.
+add_executable(trafficsim-t-junction-clamps tools/t_junction_clamps.cpp)
+target_link_libraries(trafficsim-t-junction-clamps PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-t-junction-clamps REUSE_FROM trafficsim-four-leg-fixture)
 # D98: the lane-change lab, regenerated from tools/lane_change_network.hpp, and its sweep
 # (development evidence, not part of `check`).
 add_executable(trafficsim-lane-change-fixture tools/lane_change_fixture.cpp)

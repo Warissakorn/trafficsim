@@ -8,6 +8,33 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-04 — Five near-standing clamps diagnosed; stopped followers wait (D105)
+
+From `f538a7e`, input metadata registered in local commit `048b541` before observing outputs.
+The current T-junction reproduces five minor clamps (seeds 42/43, headways 3/7/12).
+Their leader gap is below standstillDistance: a major's rear is clipped at the shared
+segment's origin, while its moving speed makes following propose acceleration.
+Four minor vehicles were already stopped; one was moving at 0.905577 m/s.
+D105 prevents a stopped follower accelerating when no standstill room exists.
+The stopped-merge regression fails before the fix and passes after; the moving
+case still clamps and is reported. The exact standstill boundary and later release
+are tested. No cap, buffer, commitment threshold or frozen fixture was changed.
+Linux headless baseline/final: 52/52. CMake/Ninja/JSON headers were installed in the
+workspace; TMPDIR resolved the environment's missing /tmp. No Qt/Windows claim.
+120 congested runs pass full replay, per-tick accounting, body/swept crossing safety
+and reported braking bounds. Trajectory digests, movement delays/counts and queues
+are identical; total clamps 242 → 225, moving minor 20 → 20. Source insertion has
+two remaining stationary positive-clearance clamps; M3.2.8a.1 is carved in ROADMAP.
+Three committed projects × 40 seeds keep reports identical except fewer clamps;
+unfinished four-leg/M2.6 traffic is recorded. The archived pre-D80 document fails
+current coverage validation; its old evidence is kept, not rewritten as today's.
+Raw traces, sweeps, reproduction and limits: `evidence/m3.2.8a-clamps.md`.
+Session-fillable M3_ACCEPTANCE rows are updated; owner gates remain open.
+NEXT now names the remaining anticipation/first-step contract, not the completed
+diagnosis. No M5 ordering or owner decision changed.
+
+---
+
 ## 2026-10-04 — One roadmap, including its review
 
 At the owner's request, consolidated the roadmap and its 2026-10-03 review into
@@ -395,6 +422,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D105 | 2026-10-04 | **A follower at exactly zero speed and leader gap ≤ standstillDistance never receives positive following acceleration; moving followers and hard caps stay as before** | The outgoing merge leader's clipped rear gives zero hard clearance but its speed makes the reduced formula propose acceleration. Four of five traced minor clamps were stopped false starts. Waiting before integration removes those events with identical trajectories, delay and queue; all 120 runs replay and preserve accounting/safety. The moving case still needs 9.06 m/s² and remains counted; source insertion with small positive clearance is separate (M3.2.8a.1) | A stopped follower fails to release when the gap opens; a moving clamp disappears without a motion contract; a different toolchain changes trajectories |
 | D104 | 2026-10-04 | **The editor exports Results only for a finished run, as the CLI's CSV unchanged (`movementCsv`); the QFileDialog confirms overwriting, unlike the CLI's refusal** | One format with one writer (rule 3), and the marker line comes with it (rule 4). `movementCsv` has no field for "figures so far, t = …", so a part-way export would be indistinguishable from a full run, and adding that field would change the CLI's output. The CLI refuses to overwrite because nobody is there to ask; the editor can ask | An author needs a part-way export (then an optional context line in `project/`'s writer, used by both), or a study needs the seed and engine version in the file (the same line) |
 | D103 | 2026-10-03 | **Field text keeps D84's one digit row at 100 %; above it, digits may sit up to 1.5 logical px high (owner)** | The offset is the 13 px Thai-capable face's 6 px descent under Qt's line-box centring, in every body-font control. A 1 px QSS shift centres them but puts body and numeric digits on different rows at 100 %, the scale most use. `design-system-ui-1.5x`/`-2x` hold the limit; reopen with a per-font baseline measurement, not a padding guess |
 | D102 | 2026-10-02 | **D95 stays off (owner, option ii). The Run view draws a lane change as a 3 s smoothstep slide from the lane left (from `lastLaneChange`) with the nose turned along the path; display only, the engine change stays one tick** | Owner asked that a change not "warp"; the record D101 added already says where the vehicle came from, so the view needs no new engine state and no measurement moves. Finding the old lane by nearest point reuses the drawn geometry instead of copying the core's lane mapping (rule 3). 3 s and the 5 m/s yaw floor are display values, not driver parameters | A between-lanes state enters the engine (then the view draws the engine's lateral position instead), or a curved lane makes the nearest point jump visibly |
