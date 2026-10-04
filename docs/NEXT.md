@@ -19,8 +19,8 @@ sentence has no product code and no commit since 2026-09-25: 10 seeds, LOS, and 
 - **D104 has done part of S3:** a single run's CSV export, with bytes equal to the CLI's. The
   clipboard copy and the batch export are still to do.
 - Until the owner answers, this file's order stands.
-- S4 (the input row's lane-share figure) and S5 (the T-junction clamps, plus the
-  session-fillable `M3_ACCEPTANCE.md` §4 rows) need no answer; both are in §3.
+- S4 (the input row's lane-share figure) is done (2026-10-03, `laneSplit`). S5 (the T-junction
+  clamps, plus the session-fillable `M3_ACCEPTANCE.md` §4 rows) needs no answer; it is in §3.
 
 Sections: [0 Order](#0--the-owner-decides-the-order-roadmap-review-2026-10-03) · [1 Owner checks on Windows](#1--owner-checks-on-windows) ·
 [2 Owner decisions](#2--owner-decisions) · [3 Session work](#3--session-work-without-the-owner) ·
@@ -140,8 +140,7 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
 - **Volumes from turning counts.** Derive an input's interval volumes from its entry decision's
   turning counts, so a count sheet is typed once. Today both are entered separately.
 - **Per-lane shares (D32; one weight per entry-Link lane since D71).** No canvas gesture sets one.
-  The input table row (`refreshDemand`, `src/shell/editor_demand.cpp`) shows the equal split even
-  when shares are set.
+  The input table row shows set weights since 2026-10-03 (`laneSplit`).
 - **Keyboard-only equivalents** of the route and vehicle-input gestures (M1.25/M1.26).
 - **The rest of M3.2.8c** (ROADMAP row):
   - Discretionary changes (D95, rows A47–A55; hold D101, rows A56–A58; both off): visibility at

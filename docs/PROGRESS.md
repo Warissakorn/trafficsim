@@ -97,6 +97,22 @@ skeptic checked each finding, and 87 survived: 63 factual, 17 owner decisions, 7
   engine figures, so the benchmark is not picked by what the engine already matches.
 Desktop 77/77 on Windows before the edits (MSVC, Qt 6.8.3, Debug). This session changed no code.
 
+## 2026-10-03 — The input table shows the lane split the run gets (`laneSplit`)
+
+With per-lane weights set, the Vehicle inputs row still printed the equal split ("1800 = 2 × 900.0"),
+because it had its own copy of the split rule. The rule now lives once, in
+`laneSplit(chainLanes, shareCount, laneShares)` (network.hpp, compile.cpp). It is used by the compiler,
+by routeless inputs (`demand_paths.cpp`, every Link lane a "chain") and by `refreshDemand`, which
+prints "1800 = 1200.0 + 600.0" when weights apply and the old "N × v" when they do not. It returns
+`weighted` as well as the fractions, because the equal split must stay `total / n`: `total * (1/n)`
+can differ in the last bit, which would move a Poisson spawn and break byte-identical replay. Seed 42
+CLI output is `cmp`-identical before and after for the four shipped projects, the D93 scratch case,
+and two scratch cases with weights set (routed {2,1}, routeless {3,1}). Tests: `laneSplit`
+fractions and fallbacks (editor group), and `demand-ui` asserts the row before and after the 2:1
+weight, after asserting that the compiled split really is 1200/600. Desktop 76/77 on Windows:
+`scenario-run-ui` timed out at 90 s under machine load, and an alternating A/B of the unchanged
+and changed builds measured both at 110–116 s CPU (NEXT).
+
 ## 2026-10-03 — The canvas grid is crisp at every scale
 
 `gridIsCrisp` failed at every scale other than 100 %. The cause was measured offscreen at

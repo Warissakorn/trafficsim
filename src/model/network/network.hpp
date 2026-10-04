@@ -313,6 +313,16 @@ std::vector<FamilyChain> routeLaneFamily(const Network&, const std::vector<std::
 // or one per chain for a route starting on a Connector (M3.2.8b). One answer for the compile step
 // and the input dialog, so the two cannot disagree about which weight is which lane.
 std::size_t routeLaneShareCount(const Network&, const std::vector<std::string>& objectIds);
+// How an input's Link total divides over its chains: one fraction per chain, summing to 1.
+// chainLanes[k] is the lane chain k starts on, the index into laneShares. The authored weights
+// apply when there are shareCount of them and every weight a chain uses is positive; otherwise
+// the split is equal (M1.26.1: a stale size must not land a weight on the wrong lane). The one rule
+// for the compiler, routeless inputs and the input table, so the three cannot disagree.
+// `weighted` says which applied: an equal split is applied as total / n, the arithmetic every
+// frozen fixture was made with, not as total * (1 / n), which can differ in the last bit.
+struct LaneSplit { bool weighted{}; std::vector<double> fraction; };
+LaneSplit laneSplit(const std::vector<std::size_t>& chainLanes, std::size_t shareCount,
+                    const std::vector<double>& laneShares);
 // The lateral spans and dead ends between the compiled routes of ONE family (contract §2): from
 // each stub to each other chain on an adjacent lane of the same Link, over the stretch both
 // travel, in route distances. A stub's dead end is its last span end. One with no span keeps its
