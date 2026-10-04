@@ -13,7 +13,7 @@ contract or a dated record. When one of them states a status, its own date appli
 | [`PROBLEM.md`](PROBLEM.md) | Audience and scope. Every feature traces back to a line here. |
 | [`PRINCIPLES.md`](PRINCIPLES.md) | Rules that do not get relitigated. Rules 1–4 are correctness. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Modules, dependencies and contracts between them. |
-| [`ROADMAP.md`](ROADMAP.md) | M0–M7 as a sequence, with each milestone's gate. |
+| [`ROADMAP.md`](ROADMAP.md) | M0–M7, milestone gates, the dated accuracy review, owner decisions O1–O10 and proposed sessions S0–S5. |
 | [`PROGRESS.md`](PROGRESS.md) | Session history, newest first, and the decision log (D-numbers). |
 
 ## How the product works (current reference)
@@ -48,7 +48,6 @@ Dated design and acceptance documents. For what is done, see `ROADMAP.md`.
 
 | File | What it is |
 |---|---|
-| [`ROADMAP_REVIEW-2026-10-03.md`](ROADMAP_REVIEW-2026-10-03.md) | Roadmap accuracy audit and the owner's ten order questions (O1–O10). |
 | [`VISSIM_PARITY.md`](VISSIM_PARITY.md) | Feature-by-feature gap to Vissim's surface. §1a and §2 are current. |
 | [`CONNECTOR_PARITY_AUDIT.md`](CONNECTOR_PARITY_AUDIT.md) | Connector against the supplied spec and against Vissim, kept apart. |
 | [`SPEC_AUDIT.md`](SPEC_AUDIT.md) | The supplied specifications against the code (2026-09-20). |

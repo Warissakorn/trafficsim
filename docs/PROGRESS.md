@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-04 — One roadmap, including its review
+
+At the owner's request, consolidated the roadmap and its 2026-10-03 review into
+`ROADMAP.md` and removed the separate review file. All milestone bodies, gates, review
+findings, O1–O10 options and S0–S5 acceptance criteria are retained. The review is dated
+explicitly; a current-status note records D104's single-run CSV export, completed S4,
+and NEXT's regrouping. No proposal is approved, no order changes and no gate closes.
+NEXT, the documentation map and the historical review pointer now resolve to ROADMAP.
+Prose is reflowed to keep the combined document within the 500-line limit.
+Validation: documentation links/anchors, retained content, file sizes and `git diff --check`.
+CTest could not run: this environment has no `ctest`; no application code changed.
+
+---
+
 ## 2026-10-04 — Docs tidy: a map, no broken links, NEXT regrouped
 
 At the user's request ("tidy the docs"), the owner chose a tidy in place: no file moves, so no
@@ -74,7 +88,7 @@ E-core scheduling, not code.*
 ## 2026-10-03 — Roadmap review: 63 stale statements corrected, the order left to the owner
 
 At the user's request, a session reviewed the roadmap for accuracy and direction. Report:
-`docs/ROADMAP_REVIEW-2026-10-03.md`. Six audit slices compared ROADMAP, NEXT and the status
+[ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) (consolidated 2026-10-04). Six audit slices compared ROADMAP, NEXT and the status
 lines that repeat them against the decision log, archives, code, tests and git. An independent
 skeptic checked each finding, and 87 survived: 63 factual, 17 owner decisions, 7 strategic.
 - **Corrected (docs only):** CLAUDE.md said schema 16 (it is 17) and owner item 4 for the name
