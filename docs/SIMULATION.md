@@ -288,6 +288,12 @@ acceleration and lane changing are the same for every driver of a type.
 **Birth.** In: a `VehicleInput`, the state's PRNG. Process: Poisson arrival times; then
 insertion in scheduled-time/id order, the queue front of each input only, at most one entry per
 source segment per tick, and only with at least `standstillDistance` to the vehicle ahead.
+D108 additionally requires the ordinary first following/integration step from rest to fit
+the snapshot clearance beyond that same standstill buffer. A denied entry keeps its sampled
+vehicle and original scheduled time in the queue; no departure or clamp is emitted.
+Equality admits, including a zero-distance step at the exact standstill boundary. The
+check anticipates the current leader only, before lane changes/signals/conflict decisions;
+those later constraints and genuine moving-vehicle clamps remain enforced.
 Out: a `Vehicle` at `distance` 0, speed 0, and `departed`; a blocked arrival waits in its
 input's queue (departure delay). Starting from rest is the ≈3 s of entry acceleration in delay.
 

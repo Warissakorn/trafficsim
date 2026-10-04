@@ -148,6 +148,13 @@ SimState stepSimulation(SimState&& state, double dt) {
         const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route), candidateSpans,
                                            candidateBuckets);
         if (leader && leader->gap < behaviour.standstillDistance) continue;
+        // D108: a positive source gap can still be smaller than the first ordinary step.
+        // Keep the sampled arrival pending until that step fits the existing buffer;
+        // later lane-change/signal/conflict constraints still use the normal safety checks.
+        if (leader) {
+            const auto first=followingAcceleration(0,vehicle.desiredSpeed,vehicle.driverFactor,type,behaviour,leader);
+            if (integrate(0,first.acceleration,dt).distance > leader->gap-behaviour.standstillDistance) continue;
+        }
         const VehicleRefs inserted{static_cast<std::size_t>(&route - scenario.routes.data()),
                                    static_cast<std::size_t>(&type - scenario.vehicleTypes.data()),
                                    static_cast<std::size_t>(&behaviour - scenario.behaviours.data())};

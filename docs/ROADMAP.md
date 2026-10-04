@@ -237,7 +237,7 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`. Pass
 
 ### M3.2.8a.1 — Remaining moving merge and source-clearance clamps
 
-**Open (D105, 2026-10-04).** The near-standing clamp diagnosis is complete; stationary followers with zero movement allowance now wait before integration. One of the original five current-fixture events remains moving; seeds 42–81 show 20 moving minor clamps and two stationary source-insertion clamps over 120 congested runs. Evidence: [M3.2.8a clamp diagnosis](evidence/m3.2.8a-clamps.md).
+**Open (D105/D108, 2026-10-04).** D105 removed stationary zero-allowance false starts. **M3.2.8a.1a source first-step clearance is implemented (D108):** preserve the sampled arrival in its queue until ordinary following/integration from rest fits the snapshot leader clearance. Three current D107 source clamps disappear in 120 stress runs; 21 moving minor clamps remain. The earlier D105 geometry had different counts, retained as historical evidence. [Original diagnosis](evidence/m3.2.8a-clamps.md); [source verification](evidence/source-first-step.md).
 
 **Scope:** define how a minor approaching a merge anticipates the shared leader's standstill buffer before its span appears, and how a source insertion fits its first acceleration step into a small positive clearance. Keep the 1 m derived setback (D50), buffer and maximum deceleration until an explicit new contract says otherwise; do not suppress events or relax collision checks to remove counts.
 
