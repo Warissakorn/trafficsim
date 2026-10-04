@@ -8,6 +8,32 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-03 — Roadmap review: 63 stale statements corrected, the order left to the owner
+
+At the user's request, a session reviewed the roadmap for accuracy and direction. Report:
+`docs/ROADMAP_REVIEW-2026-10-03.md`. Six audit slices compared ROADMAP, NEXT and the status
+lines that repeat them against the decision log, archives, code, tests and git. An independent
+skeptic checked each finding, and 87 survived: 63 factual, 17 owner decisions, 7 strategic.
+- **Corrected (docs only):** CLAUDE.md said schema 16 (it is 17) and owner item 4 for the name
+  (it is 2). ROADMAP still said "M2.6 is still unperformed" (M3), "back to the owner" (M3.2.8c,
+  ruled by D102), "owner M1 acceptance remains open" (D49), listed fixed-time controllers as open
+  (M4.1), and cited ctest names that do not exist (`attachment-ui`, `gesture-ui`). ARCHITECTURE said
+  schema 8 and called the M3 seam "a design only". NEXT said WSL both exists here and does not
+  (`wsl.exe`: it does not). Overlap cycling has been `Ctrl+Tab` since `ed74268`, and four docs said
+  `Tab`. The full list is in the report's §3.
+- **Not corrected, on purpose:** dated PROGRESS entries and decision rows, which are records of
+  their day; one code comment; and anything that closes, carves or re-orders a milestone. Rule 1
+  and hard rule 8 make those the owner's. The ten owner questions are the report's §4.
+- **Why the order is not changed:** the strategic finding is that M5 (multi-seed runs, CIs, LOS,
+  export) has no product code and no commit since 2026-09-25, while 45 of 122 commits touched the
+  editor or shell. No gate holds M5 back. NEXT's order does, and CLAUDE.md forbids a session to
+  re-plan, so moving M5 up is O1, the owner's.
+- **Critics' corrections kept in the report:** M5 is not "gate-free". The M0 and M5.1 gate lines
+  apply, but neither precedes M5. D88's 7 s SD is a per-seed *change* between engine versions, and
+  does not size a single table's CI. The Q4 option sheet comes before the runner and carries no
+  engine figures, so the benchmark is not picked by what the engine already matches.
+Desktop 77/77 on Windows before the edits (MSVC, Qt 6.8.3, Debug). This session changed no code.
+
 ## 2026-10-03 — The canvas grid is crisp at every scale
 
 `gridIsCrisp` failed at every scale other than 100 %. The cause was measured offscreen at
@@ -268,43 +294,6 @@ long vehicle), and colour by vehicle type.
 Tests: `interaction_ui_tests` `runVehicles` (size, front position, 45° heading, type colour,
 fallback colour, zoomed-out floor, clear), `ranges.vehicle_colours_are_display_data_for_known_types`.
 Not measured: `scenario-run-ui` timing against D85's band.
-
-## 2026-10-02 — The route overlay draws every lane of its Links (D96)
-
-Owner report from the editor: a route from a 2-lane Link through a 1-lane Connector to a 2-lane
-Link was drawn as one lane, the Connector's, on both Links. The stored route was right
-(`{fromLink, connector, toLink}`, no lanes). The drawing was not:
-- `routeGeometries` drew `routeLaneChains`, which drops stubs, so the from-Link lane the
-  Connector does not leave was never drawn. The run does use it (`compile.cpp` takes
-  `routeLaneFamily`).
-- `routeLaneFamily` continues a chain only on the lane the Connector arrives on, so nothing drew
-  the to-Link's other lane.
-
-`routeGeometries` now draws full chains first (an input's chevron sits on the front one), then
-stubs on their own lane, then every lane of a later Link that no chain arrives on, from the
-cross-section where the route enters that Link: the smallest arrival station of the route's paths
-onto it, mapped onto the lane with `matchedStation`. A mid-body arrival still draws nothing
-upstream of the arrival. Repro and guard: `editor.a_route_over_a_lane_drop_draws_every_lane_of_its_links`,
-at the Link end and mid-body.
-
-The run is unchanged: a vehicle on the to-Link stays on its arrival lane. Spreading onto the other
-lanes there is a discretionary change, which is D95's. The route table's length can still come
-from a stub's `/lane-1` (`editor_demand.cpp`); booked in NEXT, not fixed here.
-
-## 2026-10-02 — M3.2.8c: discretionary lane changes, contract and rows (D95)
-
-Docs only; no code. The owner chose discretionary changes as the next M3.2.8c row and ruled on
-four points. Contract: `M3_8_CONTRACT.md` §2 "Discretionary lane changes". Rows: A47–A55.
-- **Incentive:** change when the adjacent lane's `followingAcceleration` beats the current one by
-  `discretionaryLaneChangeThreshold`. It reuses the car-following model, so one test covers a slow
-  leader and a shorter queue.
-- **Free lane selection:** no side rule, no pull back to the kerb lane.
-- **Safety:** §2's rules plus the trailing vehicle's acceleration at least
-  `−acceptedDecelerationTrailingVehicle`.
-- **On by default** in `default.json`, measured over seeds 42–81 when implemented. The four-leg
-  and M2.6 reports will move.
-- **Only between full routes** with equal family sets and the same last Link, so a choice never
-  alters a destination, a movement or a compiled proportion.
 
 ## Backlog (M0, in order)
 

@@ -2,7 +2,7 @@
 
 **Current stack: C++20, CMake, Qt 6 Widgets.** D15 supersedes the initial TypeScript stack.
 M0 core/network functionality has been ported, with the native desktop editor and CLI.
-The traffic-engineering acceptance gate remains open. M1 editing and in-editor simulation are implemented; owner M0/M1 acceptance remains open.
+The traffic-engineering acceptance gate remains open. M1 editing and in-editor simulation are implemented; M1 usability was accepted by owner ruling (D49); owner M0 plausibility acceptance remains open.
 
 ## Boundaries
 
@@ -12,18 +12,19 @@ canonicalizes that scenario into `std::shared_ptr<const Scenario>`.
 
 The engine cannot access the authoring model, JSON, Qt, files, wall clocks or threads.
 Each step receives a const state and returns a new value; vehicle/input/event vectors
-are independent copies. Old snapshots remain intact. States are C++ values, not objects
+are independent copies. Old snapshots remain intact. The `SimState&&` overloads (D91) take the
+previous state over instead; hot loops step with `std::move`, consuming it. States are C++ values, not objects
 with JavaScript-style deep-freeze; callers must treat published states as snapshots.
 
 | CMake target | Location | Dependencies | Status |
 |---|---|---|---|
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
-| `trafficsim_model` | `src/model/network/` | Core contracts/validation | M0 authoring model and compiler implemented; authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
-| `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay and approach queues for one run (M2.5) |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output and schema-8 authoring codec, schema-1–7 migration and revision run snapshots |
+| `trafficsim_model` | `src/model/network/`, `src/model/demand/` | Core contracts/validation | M0 authoring model and compiler implemented; fixed-time Signal Controllers compiled to core programs (`signal_control.*`, M2.7b); authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
+| `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay/travel time and approach queues for one run (M2.5); M3.2.8c diagnostics (lane changes, segment times, stop-line discharge, arrival phases, dead-end waits) |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-17 authoring codec (reads schemas 1–17); evaluation spec and report output; revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
-| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless seed runner, JSONL export, `--project` movement report and CSV |
+| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`) |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
@@ -36,6 +37,8 @@ and test the engine, model and CLI on a machine without Qt.
 SimState createSimulation(const Scenario&, std::uint32_t seed);
 SimState stepSimulation(const SimState&);
 SimState stepSimulation(const SimState&, double dt); // Must equal scenario.timeStep.
+SimState stepSimulation(SimState&&);                 // D91: takes the previous state over
+SimState stepSimulation(SimState&&, double dt);
 SimState runSimulation(const Scenario&, std::uint32_t seed,
                        const EventSink& sink = {}, bool includeMovementEvents = true);
 
@@ -125,7 +128,7 @@ change. Dynamic vehicle/head scene items are ordered by their authored level.
 between Save and recovery. Each editor owns a UUID recovery file and a QLockFile;
 restoration validates before replacing the document and starts untitled and dirty.
 Schema 1 loads with default one-lane connector ranges, level 0 and default display
-type. Schema 1/2 endpoint references retain their default attachments; saves write schema 7.
+type. Schema 1/2 endpoint references retain their default attachments; saves write schema 17.
 `Link::laneOffset` positions the lane bundle independently of its reference polyline.
 `replaceLaneBundle` anchors the edge opposite the edit; model lane geometry and road
 boundaries share that offset, so resizing curved roads does not move surviving lanes.
@@ -174,16 +177,16 @@ with the normal at the authored runtime station. See
 
 ## Remaining systems
 
-M3's proposed right-of-way seam is specified in [M3_CONTRACT.md](M3_CONTRACT.md): authored
-references resolve once into numeric runtime conflict intervals and route incidence; owned
-simulation state holds admission/stop service; evaluation can measure independent control
-lines. This is a design only, behind the M2 gate. No new dependency or runtime API has landed.
-The existing runtime `PriorityRule` member is not yet an authored project codec contract.
+M3's right-of-way seam ([M3_CONTRACT.md](M3_CONTRACT.md)) has landed in slices M3.2.2a–M3.2.6:
+authored waiting lines, conflict areas, priority rules (gap time/headway), Stop/Yield controls and
+queue counters are project-codec objects; `resolveRightOfWay` resolves them once into runtime
+conflict zones and route incidence, admitted by `core/conflicts.*`. Derived merges still run on
+M3.1 `PriorityRule`s (D59).
 
 | System | Location | Required boundary |
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
-| Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 adds compositions and turning proportions |
+| Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 added intervals, compositions, routing decisions with per-interval turning proportions (M2.1.1–M2.4) and fixed-time Signal Controllers (M2.7b); partial/dynamic routing (M2.1) and actuated control (M4) remain |
 | Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); LOS, multi-seed means and travel-time sections remain |
 | Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
 | Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
@@ -199,6 +202,10 @@ Adding a command must never teach `project/` its implementation. The correspondi
 - `data/levels/`, `data/display-types/`: ordered levels and named styles loaded by
   `loadDisplayCatalog`. Model objects store IDs/levels; rendering owns their appearance.
   These values never alter simulation topology or conflict handling.
+- `data/compositions/` (M2.3), `data/priority-rules/` (gap time and headway for derived rules),
+  `data/evaluation/queue-counter.json` (queue-counter conditions), `data/vehicle-appearance/`
+  (display only, D97), `data/fonts/` (the bundled UI face) and `data/projects/` (shipped example
+  projects that tests and the CLI run).
 - `data/locales/`: English key source and Thai UI text, copied with runtime data.
 - LOS packs remain planned and must be jurisdiction-specific data, never compiled constants.
 

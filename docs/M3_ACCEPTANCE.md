@@ -1,8 +1,7 @@
 # M3 acceptance design and evidence record
 
-**Status: M3.2.2a–c automated rows recorded (2026-09-25); owner exercise not performed.** This is a prepared engineering test matrix and owner exercise,
-not a passed gate or a scientific validation result. M2.6 remains the prerequisite for
-implementation. [M3_CONTRACT.md](M3_CONTRACT.md) defines the proposed behavior;
+**Status: automated rows recorded through A46 (M3.2.8c, §4); A47–A58 implemented and off (D102); owner exercise M3.2.7d not performed.** This is a prepared engineering test matrix and owner exercise,
+not a passed gate or a scientific validation result. The M2 gate passed 2026-09-25 (D53). [M3_CONTRACT.md](M3_CONTRACT.md) defines the proposed behavior;
 [M3_PLAN.md](M3_PLAN.md) names the slices. New tests and runnable fixtures are not added by
 this documentation change. Record actual evidence below as each slice is implemented.
 
@@ -80,9 +79,11 @@ before its code:
 | A58 | .8c | Behaviours with the D95 fields and without `discretionaryLaneChangeHoldTime` | The run equals D95's without the record, change for change (the record is written but never read) |
 
 Cooperative braking is A36–A39 (M3.2.8c). Downstream routing decisions are A40–A46 (D93),
-implemented 2026-10-01. Discretionary lane changes are A47–A55 (D95), rows agreed and **not
-implemented**. Visibility, `laneChangeDistance` and any further cooperation are **M3.2.8c** and
-get their rows before their code. Passing A01–A55 alone does not close M3.2.
+implemented 2026-10-01. Discretionary lane changes are A47–A55 (D95) and the hold after a change
+A56–A58 (D101), implemented and off by the owner's choice (D102); A53 fails
+(`docs/evidence/m3.2.8c-discretionary.md`). Visibility, `laneChangeDistance` and any further
+cooperation are **M3.2.8c** and get their rows before their code. Passing A01–A58 alone does not
+close M3.2.
 
 ## 2. T-junction fixture specification
 

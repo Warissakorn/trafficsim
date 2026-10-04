@@ -1,1 +1,1 @@
-Planned editable control model. M0 uses fixed-time SignalProgram contracts; actuated control and detectors are not implemented.
+Placeholder; the control model lives elsewhere. Authored right-of-way controls are in ../network/control.hpp (M3.2.2a, M3.2.5a); fixed-time Signal Controllers and signal groups in ../demand/ (`definition.hpp`, `signal_control.*`, M2.7b, D48). Actuated control and detectors are not implemented (M4).
