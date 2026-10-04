@@ -15,8 +15,8 @@ zoom. Each stroke of a double marking has the same width.
 A plain click on empty space clears selection, Properties and table-owned highlights. Shift
 or Ctrl with an empty click preserves the selection; dragging a box adds its objects. Change
 of tool clears the previous selection and cancels unfinished gestures. Table selection in an
-authoring tool can still show properties, but exposes no geometry/lane grips. Tab cycling and
-canvas Delete operate in Select (conflict areas also support Tab in their own tool).
+authoring tool can still show properties, but exposes no geometry/lane grips. Ctrl+Tab cycling and
+canvas Delete operate in Select (conflict areas also support Ctrl+Tab in their own tool).
 
 Escape first cancels an unfinished gesture/draft; when idle, it clears selection. Empty-space
 clicks in any authoring tool clear selection while keeping an unfinished

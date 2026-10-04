@@ -1,1 +1,1 @@
-Planned editable demand model. M0 uses the minimal core VehicleInput/Route contracts; no OD or composition editor yet.
+Authoring demand: routes, inputs with intervals, compositions, routing decisions with per-interval turning proportions (M2.1.1–M2.4) and fixed-time Signal Controllers (`signal_control.*`, M2.7b). `buildScenario` compiles them into the minimal core VehicleInput/Route/SignalProgram contracts. No OD matrix.

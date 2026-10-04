@@ -65,7 +65,7 @@ is in metres, and Snap affects drawing/dragging. Measuring and calibration bypas
 | Shift+click | Add/remove an object in the selection |
 | Ctrl+left-click | Add an object to the selection |
 | Ctrl+left-drag on a selected object | Duplicate the selection at the drag offset |
-| Tab on the canvas | Cycle objects overlapping the last click position |
+| Ctrl+Tab on the canvas | Cycle objects overlapping the last click position (plain Tab moves focus) |
 | Delete / Ctrl+Delete | Delete objects / remove selected geometry point |
 | Ctrl+B / Ctrl+I / Ctrl+Shift+O | Toggle background / Properties / object tables |
 | Ctrl+A | Wireframe display: Links and Connectors as centre lines only (a focused text field keeps select-all) |
@@ -282,7 +282,7 @@ double-click their rows to edit. Table cells are read-only views of the document
 
 Properties → Level and Display type apply to the primary link/connector. Level orders
 drawing and picking; vehicles and heads use their carrying object's level. The sidebar
-filters to all levels or one catalog level. Tab can reach a lower overlapping object.
+filters to all levels or one catalog level. Ctrl+Tab can reach a lower overlapping object.
 Changing that filter removes hidden selections. Selecting a hidden object explicitly from
 a table or inspector switches to all levels so the edit target is visible.
 
