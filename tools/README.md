@@ -160,3 +160,13 @@ seed and variant in one process:
   template) and `--seeds 42-81`.
 
 It is development evidence, not part of `check`.
+
+### T-junction clamp diagnosis (D105)
+
+`trafficsim-t-junction-clamps --trace <out.jsonl> <repo root>` records seeds 42/43 at
+headways 3/7/12 m; `--trace-all` records seeds 42–81. `--sweep` writes checked per-run
+movement/queue figures and trajectory digests for those 40 seeds at each headway.
+Each run verifies full copied-state replay, vehicle accounting, shared-segment body
+separation, swept crossing safety and explicit reporting of excessive braking.
+Development evidence, not an M5 runner or M6 validation; see
+[`docs/evidence/m3.2.8a-clamps.md`](../docs/evidence/m3.2.8a-clamps.md).

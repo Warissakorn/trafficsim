@@ -336,6 +336,14 @@ The prototype desired gap is:
 
 `standstillDistance + (additiveSafetyDistance + multiplicativeSafetyDistance * driverFactor) * sqrt(speed)`
 
+D105: a vehicle at exactly zero speed with a leader gap at or below `standstillDistance`
+never gets positive following acceleration. It waits until the gap opens, including when a
+moving leader's rear is clipped to the start of a shared merge segment. This prevents an
+unnecessary start followed by a zero-distance safety clamp; moving vehicles still use the
+same acceleration and hard cap, and their emergency clamps remain counted. No tolerance,
+new state, gap relaxation or commitment change is introduced.
+
+
 `driverFactor` is a clipped normal draw with mean 0.5 and standard deviation 0.15, sampled
 once per vehicle. The distance shape is inspired by the
 [PTV Wiedemann 74 parameter documentation](https://cgi.ptvgroup.com/vision-help/VISSIM_2025_ENG/Content/4_BasisdatenSim/FahrverhaltensparameterFolgeverh_Wied74.htm).

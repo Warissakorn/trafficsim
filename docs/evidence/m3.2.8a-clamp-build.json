@@ -1,0 +1,20 @@
+{
+  "baselineCommit": "f538a7e3e27a0318aa3ee0a605acbe959e3a1746",
+  "fixSourceSHA256": {
+    "src/core/following.cpp": "b763cbad614cb979e073d9eb75757d8514fdbd32f6ab8caa27e4f409a91d4622",
+    "tests/core_tests.cpp": "43b827f1935b97b793409c8bfaa2c5c5bc620b44a9bd59b01406da6a02170144",
+    "tools/t_junction_clamps.cpp": "e8bb732f2b417fe316c022a9beb1db319370c32071548fe1fa429b527a87f252",
+    "tools/t_junction_network.hpp": "59e8d985c545ae7bc4803b3ed8a25f0427d18b50c8ee88b48e38e6e723c2b4d2"
+  },
+  "baselineTests": "52/52 Linux headless",
+  "postFixTests": "52/52 Linux headless",
+  "regressionBefore": "stopped-merge case fails no-clamp assertion; moving case passes",
+  "sweepRuns": 120,
+  "projectComparisonRuns": 120,
+  "trajectoryAndReportChanges": "none; signed zero normalized for trajectory digest",
+  "limitations": [
+    "desktop/Windows unverified locally",
+    "M0/M3 owner gates and M6 remain open",
+    "moving/source clamps booked in M3.2.8a.1"
+  ]
+}
