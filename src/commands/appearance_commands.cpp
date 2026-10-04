@@ -138,12 +138,12 @@ std::vector<std::string> duplicateObjects(ProjectDocument& d,const std::vector<s
         if(h.connectorId.empty() && links.contains(h.lane.linkId))h.lane={links.at(h.lane.linkId),lanes.at(h.lane.laneId)};
         else if(paths.contains(h.connectorId))h.connectorId=paths.at(h.connectorId);
         else if(selected) {
-            std::vector<Point> geometry;int level=0;
+            std::vector<Point> geometry;int level=0;std::optional<ConnectorPath> sourcePath;
             if(h.connectorId.empty()) {
                 for(const auto& l:source.links)if(l.id==h.lane.linkId){geometry=laneGeometry(l,h.lane.laneId,source.drivingSide);level=l.level;}
             } else for(const auto& c:source.connectors)for(const auto& path:connectorPaths(source,c))
-                if(path.id==h.connectorId){geometry=path.geometry;level=c.level;}
-            const auto p=pointAlong(geometry,h.position);dropHead(d.network,h,{p.x+offset.x,p.y+offset.y},level);
+                if(path.id==h.connectorId){geometry=path.geometry;level=c.level;sourcePath=path;}
+            const auto p=sourcePath?connectorPathPoint(*sourcePath,h.position):pointAlong(geometry,h.position);dropHead(d.network,h,{p.x+offset.x,p.y+offset.y},level);
         } else continue;
         h.id=allocateId(d,"head");if(selected)created.push_back(h.id);d.network.signalHeads.push_back(std::move(h));
     }

@@ -1,0 +1,3132 @@
+[
+  {
+    "project": "data/projects/four-leg-signalised.traffic.json",
+    "seeds": 40,
+    "changedReports": 40,
+    "beforeClamps": 220,
+    "afterClamps": 220,
+    "maxAbsChangesByField": {
+      "maxLength": 1.9613392595374535e-05,
+      "meanDelay": 3.444865651459864,
+      "meanLength": 0.02341315554343737,
+      "meanTravelTime": 3.4599999999999795,
+      "safetyClamps": 1
+    },
+    "runs": [
+      {
+        "seed": 42,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 7,
+        "afterClamps": 7,
+        "beforeCompleted": 451,
+        "afterCompleted": 451,
+        "beforeActive": 65,
+        "afterActive": 65,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.05082582134025415,
+          "meanTravelTime": 0.06666666666667709,
+          "meanLength": 0.0001299577334918922
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 43,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 6,
+        "afterClamps": 6,
+        "beforeCompleted": 447,
+        "afterCompleted": 447,
+        "beforeActive": 49,
+        "afterActive": 49,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.017265246259697165,
+          "meanTravelTime": 0.030000000000001137,
+          "meanLength": 0.0007125309677746827,
+          "maxLength": 1.9613392595374535e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 44,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 3,
+        "afterClamps": 3,
+        "beforeCompleted": 469,
+        "afterCompleted": 469,
+        "beforeActive": 50,
+        "afterActive": 50,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.019002861845081043,
+          "meanTravelTime": 0.03333333333334565,
+          "meanLength": 0.00011077573147488806
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 45,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 7,
+        "afterClamps": 7,
+        "beforeCompleted": 473,
+        "afterCompleted": 473,
+        "beforeActive": 68,
+        "afterActive": 68,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01518814343645758,
+          "meanTravelTime": 0.030769230769237765,
+          "meanLength": 4.589175607350171e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 46,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 471,
+        "afterCompleted": 471,
+        "beforeActive": 50,
+        "afterActive": 50,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.013836996148928193,
+          "meanTravelTime": 0.022222222222225696,
+          "meanLength": 0.00030867590687222446
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 47,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 8,
+        "afterClamps": 8,
+        "beforeCompleted": 442,
+        "afterCompleted": 442,
+        "beforeActive": 65,
+        "afterActive": 65,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.017206024009261967,
+          "meanTravelTime": 0.025000000000005684,
+          "meanLength": 5.23131041845204e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 48,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 6,
+        "afterClamps": 6,
+        "beforeCompleted": 483,
+        "afterCompleted": 483,
+        "beforeActive": 63,
+        "afterActive": 63,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01049476387073156,
+          "meanTravelTime": 0.025000000000005684,
+          "meanLength": 7.021769608783757e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 49,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 2,
+        "afterClamps": 2,
+        "beforeCompleted": 435,
+        "afterCompleted": 435,
+        "beforeActive": 61,
+        "afterActive": 61,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.013277867270648613,
+          "meanTravelTime": 0.02631578947369917,
+          "meanLength": 2.2011536561450384e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 50,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 9,
+        "afterClamps": 9,
+        "beforeCompleted": 486,
+        "afterCompleted": 486,
+        "beforeActive": 48,
+        "afterActive": 48,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.028178609244690733,
+          "meanTravelTime": 0.04285714285715869,
+          "meanLength": 2.3874075040453135e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 51,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 439,
+        "afterCompleted": 439,
+        "beforeActive": 59,
+        "afterActive": 59,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.017182160734272145,
+          "meanTravelTime": 0.03125,
+          "meanLength": 3.873687440503204e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 52,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 7,
+        "afterClamps": 7,
+        "beforeCompleted": 476,
+        "afterCompleted": 476,
+        "beforeActive": 67,
+        "afterActive": 67,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.015028037459529742,
+          "meanTravelTime": 0.026315789473656537,
+          "meanLength": 2.231453231260616e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 53,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 450,
+        "afterCompleted": 450,
+        "beforeActive": 53,
+        "afterActive": 53,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.022681839051301722,
+          "meanTravelTime": 0.037499999999994316,
+          "meanLength": 7.084319383920956e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 54,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 6,
+        "afterClamps": 6,
+        "beforeCompleted": 460,
+        "afterCompleted": 460,
+        "beforeActive": 57,
+        "afterActive": 57,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.025041350599664725,
+          "meanTravelTime": 0.04000000000000625,
+          "meanLength": 1.4615164442233208e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 55,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 467,
+        "afterCompleted": 467,
+        "beforeActive": 53,
+        "afterActive": 53,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.004699842935924181,
+          "meanTravelTime": 0.020000000000010232,
+          "meanLength": 0.0010697729151729618
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 56,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 465,
+        "afterCompleted": 465,
+        "beforeActive": 54,
+        "afterActive": 54,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.015040869914010102,
+          "meanTravelTime": 0.027777777777785673,
+          "meanLength": 7.033103298326182e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 57,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 431,
+        "afterCompleted": 431,
+        "beforeActive": 60,
+        "afterActive": 60,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01477657670353949,
+          "meanTravelTime": 0.019047619047626085,
+          "meanLength": 9.550790478130011e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 58,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 8,
+        "afterClamps": 8,
+        "beforeCompleted": 451,
+        "afterCompleted": 451,
+        "beforeActive": 80,
+        "afterActive": 80,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.019163542193517458,
+          "meanTravelTime": 0.03333333333331723,
+          "meanLength": 5.4164438431314466e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 59,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 11,
+        "afterClamps": 11,
+        "beforeCompleted": 477,
+        "afterCompleted": 477,
+        "beforeActive": 63,
+        "afterActive": 63,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009219491045534767,
+          "meanTravelTime": 0.01666666666669414,
+          "meanLength": 4.998667126621115e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 60,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 422,
+        "afterCompleted": 422,
+        "beforeActive": 52,
+        "afterActive": 52,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.018575669083801927,
+          "meanTravelTime": 0.03333333333334565,
+          "meanLength": 0.0006963663016605892
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 61,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 10,
+        "afterClamps": 10,
+        "beforeCompleted": 465,
+        "afterCompleted": 465,
+        "beforeActive": 57,
+        "afterActive": 57,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014373671374585228,
+          "meanTravelTime": 0.022222222222211485,
+          "meanLength": 5.553700508187376e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 62,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 8,
+        "afterClamps": 8,
+        "beforeCompleted": 459,
+        "afterCompleted": 459,
+        "beforeActive": 46,
+        "afterActive": 46,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01628195004891353,
+          "meanTravelTime": 0.02400000000000091,
+          "maxLength": 1.6314045012677525e-06,
+          "meanLength": 0.0008685520297575522
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 63,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 3,
+        "afterClamps": 3,
+        "beforeCompleted": 456,
+        "afterCompleted": 456,
+        "beforeActive": 63,
+        "afterActive": 63,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.019200667719758258,
+          "meanTravelTime": 0.028571428571424917,
+          "meanLength": 0.0011913577324271785
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 64,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 7,
+        "afterClamps": 7,
+        "beforeCompleted": 437,
+        "afterCompleted": 437,
+        "beforeActive": 58,
+        "afterActive": 58,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014321501325675001,
+          "meanTravelTime": 0.022222222222225696,
+          "meanLength": 0.000489523077735754
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 65,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 6,
+        "afterClamps": 6,
+        "beforeCompleted": 496,
+        "afterCompleted": 496,
+        "beforeActive": 57,
+        "afterActive": 57,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.015227839971533541,
+          "meanTravelTime": 0.026315789473656537,
+          "maxLength": 5.656686425936641e-07,
+          "meanLength": 3.68289468113403e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 66,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 442,
+        "afterCompleted": 442,
+        "beforeActive": 55,
+        "afterActive": 55,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01365314738188772,
+          "meanTravelTime": 0.02105263157892523,
+          "maxLength": 8.493437633205758e-07,
+          "meanLength": 7.33336692917419e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 67,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 11,
+        "afterClamps": 11,
+        "beforeCompleted": 464,
+        "afterCompleted": 464,
+        "beforeActive": 62,
+        "afterActive": 62,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.016814717350399633,
+          "meanTravelTime": 0.025000000000019895,
+          "meanLength": 0.00013135017413290484
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 68,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 433,
+        "afterCompleted": 433,
+        "beforeActive": 47,
+        "afterActive": 47,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.018608106072818487,
+          "meanTravelTime": 0.03333333333334565,
+          "meanLength": 4.320635119015037e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 69,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 457,
+        "afterCompleted": 457,
+        "beforeActive": 56,
+        "afterActive": 56,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.010194897377800771,
+          "meanTravelTime": 0.024999999999991473,
+          "meanLength": 0.001385989303717139
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 70,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 462,
+        "afterCompleted": 462,
+        "beforeActive": 51,
+        "afterActive": 51,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.016860553466340633,
+          "meanTravelTime": 0.02142857142854382,
+          "maxLength": 7.977973837114405e-11,
+          "meanLength": 1.9976616629335808e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 71,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 3,
+        "afterClamps": 2,
+        "beforeCompleted": 422,
+        "afterCompleted": 422,
+        "beforeActive": 61,
+        "afterActive": 61,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014901417973561593,
+          "meanTravelTime": 0.015384615384633094,
+          "meanLength": 0.00014959633180922083,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 72,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 425,
+        "afterCompleted": 425,
+        "beforeActive": 49,
+        "afterActive": 49,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014635626031285653,
+          "meanTravelTime": 0.021739130434781373,
+          "meanLength": 0.00015403488757570472
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 73,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 7,
+        "afterClamps": 7,
+        "beforeCompleted": 479,
+        "afterCompleted": 479,
+        "beforeActive": 56,
+        "afterActive": 56,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.015238174117506276,
+          "meanTravelTime": 0.019047619047626085,
+          "meanLength": 7.632854214634222e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 74,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 2,
+        "afterClamps": 2,
+        "beforeCompleted": 416,
+        "afterCompleted": 416,
+        "beforeActive": 50,
+        "afterActive": 50,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.025744924520488155,
+          "meanTravelTime": 0.03333333333334565,
+          "meanLength": 5.491610171404204e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 75,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 6,
+        "afterClamps": 6,
+        "beforeCompleted": 435,
+        "afterCompleted": 435,
+        "beforeActive": 55,
+        "afterActive": 55,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.012854109859759433,
+          "meanTravelTime": 0.02727272727273089,
+          "meanLength": 0.0013474206293384583
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 76,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 460,
+        "afterCompleted": 460,
+        "beforeActive": 55,
+        "afterActive": 55,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014755275690085057,
+          "meanTravelTime": 0.01935483870971666,
+          "meanLength": 0.0008160944507622503
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 77,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 8,
+        "afterClamps": 9,
+        "beforeCompleted": 448,
+        "afterCompleted": 448,
+        "beforeActive": 55,
+        "afterActive": 55,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 3.444865651459864,
+          "meanTravelTime": 3.4599999999999795,
+          "meanLength": 0.02341315554343737,
+          "maxLength": 1.0800249583553523e-12,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 78,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 437,
+        "afterCompleted": 437,
+        "beforeActive": 62,
+        "afterActive": 62,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.036253115826895055,
+          "meanTravelTime": 0.05000000000001137,
+          "meanLength": 3.597256524301429e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 79,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 5,
+        "afterClamps": 5,
+        "beforeCompleted": 414,
+        "afterCompleted": 414,
+        "beforeActive": 58,
+        "afterActive": 58,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.03512100853971134,
+          "meanTravelTime": 0.05000000000001137,
+          "meanLength": 7.549405348328264e-05,
+          "maxLength": 4.484468547616416e-07
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 80,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 415,
+        "afterCompleted": 415,
+        "beforeActive": 49,
+        "afterActive": 49,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.03073080781885551,
+          "meanTravelTime": 0.03888888888893405,
+          "meanLength": 4.169957723831885e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 81,
+        "project": "data/projects/four-leg-signalised.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 4,
+        "afterClamps": 4,
+        "beforeCompleted": 461,
+        "afterCompleted": 461,
+        "beforeActive": 59,
+        "afterActive": 59,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014184941403073026,
+          "meanTravelTime": 0.023333333333368955,
+          "maxLength": 3.945035587094026e-08,
+          "meanLength": 4.8319813167552184e-05
+        },
+        "changedAvailability": []
+      }
+    ]
+  },
+  {
+    "project": "data/projects/lane-change-lab.traffic.json",
+    "seeds": 40,
+    "changedReports": 40,
+    "beforeClamps": 19,
+    "afterClamps": 19,
+    "maxAbsChangesByField": {
+      "meanDelay": 0.005017747702105169,
+      "meanTravelTime": 0.006349206349199221
+    },
+    "runs": [
+      {
+        "seed": 42,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 815,
+        "afterCompleted": 815,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013283807727528796
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 43,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 3,
+        "afterClamps": 3,
+        "beforeCompleted": 858,
+        "afterCompleted": 858,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0001643390737822159,
+          "meanTravelTime": 0.001492537313438902
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 44,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 852,
+        "afterCompleted": 852,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013746506257916735
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 45,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 849,
+        "afterCompleted": 849,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00034835198300608994,
+          "meanTravelTime": 0.0016949152542338197
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 46,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 703,
+        "afterCompleted": 703,
+        "beforeActive": 140,
+        "afterActive": 140,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013461015191680303
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 47,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 805,
+        "afterCompleted": 805,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0012860260458262829
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 48,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 897,
+        "afterCompleted": 897,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013375812224447614
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 49,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 818,
+        "afterCompleted": 818,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.005017747702105169,
+          "meanTravelTime": 0.006349206349199221
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 50,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 847,
+        "afterCompleted": 847,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0003595868461054863,
+          "meanTravelTime": 0.0017241379310490856
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 51,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 900,
+        "afterCompleted": 900,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0011242476673576363,
+          "meanTravelTime": 0.0024390243902274733
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 52,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 889,
+        "afterCompleted": 889,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 9.49260115978845e-05,
+          "meanTravelTime": 0.0014084507042326777
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 53,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 877,
+        "afterCompleted": 877,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013259117406123622
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 54,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 857,
+        "afterCompleted": 857,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0014169713268419315,
+          "meanTravelTime": 0.0027777777777515666
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 55,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 2,
+        "afterClamps": 2,
+        "beforeCompleted": 783,
+        "afterCompleted": 783,
+        "beforeActive": 138,
+        "afterActive": 138,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0012916624748040562
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 56,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 748,
+        "afterCompleted": 748,
+        "beforeActive": 102,
+        "afterActive": 102,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013492734986844113
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 57,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 843,
+        "afterCompleted": 843,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0002743612829947395,
+          "meanTravelTime": 0.0015873015873069107
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 58,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 855,
+        "afterCompleted": 855,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0016972328713213969,
+          "meanTravelTime": 0.002985074626877804
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 59,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 2,
+        "afterClamps": 2,
+        "beforeCompleted": 834,
+        "afterCompleted": 834,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0012874519664105577,
+          "meanTravelTime": 0.002631578947372759
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 60,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 845,
+        "afterCompleted": 845,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.003972028678323802,
+          "meanTravelTime": 0.0052631578947170965
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 61,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 834,
+        "afterCompleted": 834,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00183067267786452,
+          "meanTravelTime": 0.0031746031745853998
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 62,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 884,
+        "afterCompleted": 884,
+        "beforeActive": 2,
+        "afterActive": 2,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0016547322730486869,
+          "meanTravelTime": 0.002985074626863593
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 63,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 789,
+        "afterCompleted": 789,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0008540285625890931,
+          "meanTravelTime": 0.002222222222243886
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 64,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 841,
+        "afterCompleted": 841,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00012008703404475796,
+          "meanTravelTime": 0.0014084507042326777
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 65,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 2,
+        "afterClamps": 2,
+        "beforeCompleted": 885,
+        "afterCompleted": 885,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013258404359666187
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 66,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 834,
+        "afterCompleted": 834,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0012477312893333092,
+          "meanTravelTime": 0.002564102564107884
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 67,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 712,
+        "afterCompleted": 712,
+        "beforeActive": 124,
+        "afterActive": 124,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013209210162479224
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 68,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 785,
+        "afterCompleted": 785,
+        "beforeActive": 17,
+        "afterActive": 17,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0030522025560895116,
+          "meanTravelTime": 0.0043478260869704854
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 69,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 933,
+        "afterCompleted": 933,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.001345102637598572
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 70,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 822,
+        "afterCompleted": 822,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0023017704685495133,
+          "meanTravelTime": 0.003636363636360329
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 71,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 2,
+        "afterClamps": 2,
+        "beforeCompleted": 847,
+        "afterCompleted": 847,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.001349733483350768
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 72,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 798,
+        "afterCompleted": 798,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0004101895071224604,
+          "meanTravelTime": 0.0017543859649151727
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 73,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 836,
+        "afterCompleted": 836,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 4.550657040081063e-05,
+          "meanTravelTime": 0.0013513513513458975
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 74,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 849,
+        "afterCompleted": 849,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0016455010306550832,
+          "meanTravelTime": 0.002985074626877804
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 75,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 810,
+        "afterCompleted": 810,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013206505237146615
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 76,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 857,
+        "afterCompleted": 857,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00015599066664506722,
+          "meanTravelTime": 0.0014925373134104802
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 77,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 786,
+        "afterCompleted": 786,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013434542284258555
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 78,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 853,
+        "afterCompleted": 853,
+        "beforeActive": 5,
+        "afterActive": 5,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 9.018206093180936e-05,
+          "meanTravelTime": 0.0014084507042326777
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 79,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 817,
+        "afterCompleted": 817,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00013130784618553548,
+          "meanTravelTime": 0.0014492753623187582
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 80,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 882,
+        "afterCompleted": 882,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013350160295821922
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 81,
+        "project": "data/projects/lane-change-lab.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 809,
+        "afterCompleted": 809,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0013299051723398847
+        },
+        "changedAvailability": []
+      }
+    ]
+  },
+  {
+    "project": "data/projects/m2.6-study-template.traffic.json",
+    "seeds": 40,
+    "changedReports": 40,
+    "beforeClamps": 865,
+    "afterClamps": 858,
+    "maxAbsChangesByField": {
+      "maxLength": 0.00024460387126623573,
+      "meanDelay": 0.2018888035232962,
+      "meanLength": 0.004142374905754309,
+      "meanTravelTime": 0.21896551724137225,
+      "safetyClamps": 1
+    },
+    "runs": [
+      {
+        "seed": 42,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 20,
+        "afterClamps": 20,
+        "beforeCompleted": 1981,
+        "afterCompleted": 1981,
+        "beforeActive": 41,
+        "afterActive": 41,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.012115773400008578,
+          "meanTravelTime": 0.021505376344094884,
+          "maxLength": 1.5126923358366184e-07,
+          "meanLength": 0.00026205877366081154
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 43,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 23,
+        "beforeCompleted": 1973,
+        "afterCompleted": 1973,
+        "beforeActive": 50,
+        "afterActive": 50,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009690423805366777,
+          "meanTravelTime": 0.02471910112360831,
+          "meanLength": 0.00011760720847320272,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 44,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 21,
+        "afterClamps": 20,
+        "beforeCompleted": 1935,
+        "afterCompleted": 1935,
+        "beforeActive": 37,
+        "afterActive": 37,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01942059174536581,
+          "meanTravelTime": 0.023255813953497295,
+          "meanLength": 0.0002365780300941367,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 45,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 19,
+        "afterClamps": 19,
+        "beforeCompleted": 1990,
+        "afterCompleted": 1990,
+        "beforeActive": 41,
+        "afterActive": 41,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.008160793264138988,
+          "meanTravelTime": 0.025619834710724376,
+          "meanLength": 0.00025124916746044335
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 46,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 22,
+        "afterClamps": 22,
+        "beforeCompleted": 1998,
+        "afterCompleted": 1998,
+        "beforeActive": 56,
+        "afterActive": 56,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009402239099600251,
+          "meanTravelTime": 0.02727272727273089,
+          "meanLength": 0.0006190163448209773,
+          "maxLength": 3.399900319323024e-05
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 47,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 24,
+        "beforeCompleted": 1979,
+        "afterCompleted": 1979,
+        "beforeActive": 45,
+        "afterActive": 45,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.007276282867245243,
+          "meanTravelTime": 0.021212121212144552,
+          "meanLength": 0.00030358455212997626
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 48,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 28,
+        "afterClamps": 28,
+        "beforeCompleted": 2029,
+        "afterCompleted": 2029,
+        "beforeActive": 52,
+        "afterActive": 52,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009765919084742336,
+          "meanTravelTime": 0.024242424242416405,
+          "meanLength": 0.00013064720465472135
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 49,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 15,
+        "afterClamps": 14,
+        "beforeCompleted": 2005,
+        "afterCompleted": 2005,
+        "beforeActive": 62,
+        "afterActive": 62,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.006284256817114198,
+          "meanTravelTime": 0.021495327102826423,
+          "meanLength": 0.00031093897025868955,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 50,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 23,
+        "afterClamps": 23,
+        "beforeCompleted": 2000,
+        "afterCompleted": 2000,
+        "beforeActive": 65,
+        "afterActive": 65,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009661661231469054,
+          "meanTravelTime": 0.022499999999993747,
+          "meanLength": 0.0004853996065570243,
+          "maxLength": 2.5636381906224415e-10
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 51,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 24,
+        "beforeCompleted": 1984,
+        "afterCompleted": 1984,
+        "beforeActive": 53,
+        "afterActive": 53,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.011248884506940726,
+          "meanTravelTime": 0.025641025641021997,
+          "meanLength": 0.0005770354545404643,
+          "maxLength": 2.842170943040401e-14
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 52,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 24,
+        "beforeCompleted": 2089,
+        "afterCompleted": 2089,
+        "beforeActive": 58,
+        "afterActive": 58,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.010554812130308733,
+          "meanTravelTime": 0.018978102189805668,
+          "meanLength": 0.0006880958482931021
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 53,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 14,
+        "afterClamps": 14,
+        "beforeCompleted": 1979,
+        "afterCompleted": 1979,
+        "beforeActive": 68,
+        "afterActive": 68,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.008861427034005942,
+          "meanTravelTime": 0.019101123595518743,
+          "maxLength": 2.3764528123138007e-08,
+          "meanLength": 0.0004511522583960925
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 54,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 24,
+        "beforeCompleted": 1956,
+        "afterCompleted": 1956,
+        "beforeActive": 46,
+        "afterActive": 46,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00727084127592903,
+          "meanTravelTime": 0.025000000000005684,
+          "meanLength": 0.00031985211089846644
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 55,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 26,
+        "afterClamps": 25,
+        "beforeCompleted": 1964,
+        "afterCompleted": 1964,
+        "beforeActive": 37,
+        "afterActive": 37,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.004532123516682418,
+          "meanTravelTime": 0.022222222222254118,
+          "maxLength": 1.9672296218686824e-06,
+          "meanLength": 0.000703892554618335,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 56,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 23,
+        "beforeCompleted": 1944,
+        "afterCompleted": 1944,
+        "beforeActive": 43,
+        "afterActive": 43,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.05712714418470455,
+          "meanTravelTime": 0.039603960396036086,
+          "meanLength": 0.0005598499264714007,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 57,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 18,
+        "afterClamps": 18,
+        "beforeCompleted": 1936,
+        "afterCompleted": 1936,
+        "beforeActive": 71,
+        "afterActive": 71,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.011558363785198367,
+          "meanTravelTime": 0.018699186991881334,
+          "meanLength": 0.0008866066317381183,
+          "maxLength": 1.0831513463926967e-10
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 58,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 21,
+        "afterClamps": 21,
+        "beforeCompleted": 2002,
+        "afterCompleted": 2002,
+        "beforeActive": 67,
+        "afterActive": 67,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.021962467045099743,
+          "meanTravelTime": 0.03972602739727904,
+          "meanLength": 0.004142374905754309,
+          "maxLength": 0.00018768547073477748
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 59,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 32,
+        "afterClamps": 32,
+        "beforeCompleted": 2022,
+        "afterCompleted": 2022,
+        "beforeActive": 56,
+        "afterActive": 56,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0063276315527218685,
+          "meanTravelTime": 0.02352941176467027,
+          "meanLength": 0.00028902250057072365,
+          "maxLength": 2.3874235921539366e-12
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 60,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 25,
+        "afterClamps": 25,
+        "beforeCompleted": 1989,
+        "afterCompleted": 1989,
+        "beforeActive": 63,
+        "afterActive": 63,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.008196406127602529,
+          "meanTravelTime": 0.020588235294113133,
+          "meanLength": 0.00024039691571786648
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 61,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 25,
+        "afterClamps": 24,
+        "beforeCompleted": 2032,
+        "afterCompleted": 2032,
+        "beforeActive": 47,
+        "afterActive": 47,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.006936801279884719,
+          "meanTravelTime": 0.018803418803472027,
+          "meanLength": 7.38521071745879e-05,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 62,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 27,
+        "afterClamps": 27,
+        "beforeCompleted": 2033,
+        "afterCompleted": 2033,
+        "beforeActive": 51,
+        "afterActive": 51,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.010488187241918467,
+          "meanTravelTime": 0.027906976744134226,
+          "meanLength": 0.0004318942256738012
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 63,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 22,
+        "afterClamps": 22,
+        "beforeCompleted": 2035,
+        "afterCompleted": 2035,
+        "beforeActive": 55,
+        "afterActive": 55,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.007963951275705483,
+          "meanTravelTime": 0.02285714285713425,
+          "meanLength": 0.002114798669047957,
+          "maxLength": 0.000231389045893593
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 64,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 11,
+        "afterClamps": 10,
+        "beforeCompleted": 1998,
+        "afterCompleted": 1998,
+        "beforeActive": 69,
+        "afterActive": 69,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009768841710723564,
+          "meanTravelTime": 0.022388059701540897,
+          "meanLength": 0.000499866015591266,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 65,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 21,
+        "afterClamps": 21,
+        "beforeCompleted": 2016,
+        "afterCompleted": 2016,
+        "beforeActive": 55,
+        "afterActive": 55,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.010388030165714213,
+          "meanTravelTime": 0.0220338983050965,
+          "maxLength": 9.217214369527937e-08,
+          "meanLength": 0.00028068979373330194
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 66,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 18,
+        "afterClamps": 18,
+        "beforeCompleted": 1989,
+        "afterCompleted": 1989,
+        "beforeActive": 39,
+        "afterActive": 39,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.006423207111659224,
+          "meanTravelTime": 0.024193548387131614,
+          "meanLength": 0.00033446282216331724,
+          "maxLength": 0.00024460387126623573
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 67,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 24,
+        "afterClamps": 24,
+        "beforeCompleted": 1977,
+        "afterCompleted": 1977,
+        "beforeActive": 51,
+        "afterActive": 51,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.04864745131707693,
+          "meanTravelTime": 0.0660000000000025,
+          "meanLength": 0.0004165226524595056,
+          "maxLength": 5.516337182598363e-07
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 68,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 16,
+        "afterClamps": 16,
+        "beforeCompleted": 1950,
+        "afterCompleted": 1950,
+        "beforeActive": 50,
+        "afterActive": 50,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00829778429505268,
+          "meanTravelTime": 0.02545454545460757,
+          "meanLength": 0.0005052515018189041
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 69,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 23,
+        "afterClamps": 23,
+        "beforeCompleted": 2017,
+        "afterCompleted": 2017,
+        "beforeActive": 64,
+        "afterActive": 64,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01833066659499849,
+          "meanTravelTime": 0.03333333333333144,
+          "meanLength": 0.00029494340856217605
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 70,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 15,
+        "afterClamps": 15,
+        "beforeCompleted": 2007,
+        "afterCompleted": 2007,
+        "beforeActive": 69,
+        "afterActive": 69,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00667342458612552,
+          "meanTravelTime": 0.024107142857204167,
+          "maxLength": 1.9302831333334325e-08,
+          "meanLength": 0.00028332581861789663
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 71,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 21,
+        "afterClamps": 21,
+        "beforeCompleted": 1948,
+        "afterCompleted": 1948,
+        "beforeActive": 54,
+        "afterActive": 54,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01186229725662713,
+          "meanTravelTime": 0.018348623853214008,
+          "maxLength": 4.334310688136611e-11,
+          "meanLength": 0.00035218656262969716
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 72,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 25,
+        "afterClamps": 25,
+        "beforeCompleted": 1919,
+        "afterCompleted": 1919,
+        "beforeActive": 43,
+        "afterActive": 43,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01704672790309303,
+          "meanTravelTime": 0.03396226415095782,
+          "meanLength": 0.0002734363335186174,
+          "maxLength": 4.7641225364714046e-07
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 73,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 29,
+        "afterClamps": 30,
+        "beforeCompleted": 2037,
+        "afterCompleted": 2037,
+        "beforeActive": 51,
+        "afterActive": 51,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.03516058574863834,
+          "meanTravelTime": 0.052173913043475295,
+          "meanLength": 0.0002784002885221071,
+          "maxLength": 5.115907697472721e-13,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 74,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 19,
+        "afterClamps": 19,
+        "beforeCompleted": 1917,
+        "afterCompleted": 1917,
+        "beforeActive": 49,
+        "afterActive": 49,
+        "beforePending": 2,
+        "afterPending": 2,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0054901283699919645,
+          "meanTravelTime": 0.022222222222211485,
+          "meanLength": 0.0006203092420644651
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 75,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 21,
+        "afterClamps": 21,
+        "beforeCompleted": 2006,
+        "afterCompleted": 2006,
+        "beforeActive": 41,
+        "afterActive": 41,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0040820639111629475,
+          "meanTravelTime": 0.021259842519683048,
+          "meanLength": 0.000668766518206354,
+          "maxLength": 1.2148331052230787e-07
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 76,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 19,
+        "afterClamps": 19,
+        "beforeCompleted": 1980,
+        "afterCompleted": 1980,
+        "beforeActive": 48,
+        "afterActive": 48,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.00968001142442887,
+          "meanTravelTime": 0.025581395348822866,
+          "maxLength": 1.3062987136436277e-07,
+          "meanLength": 0.0003702778547314267
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 77,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 23,
+        "afterClamps": 23,
+        "beforeCompleted": 2065,
+        "afterCompleted": 2065,
+        "beforeActive": 46,
+        "afterActive": 46,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.007669605022186943,
+          "meanTravelTime": 0.025000000000005684,
+          "maxLength": 7.334260772040579e-07,
+          "meanLength": 0.001058477887664111
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 78,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 20,
+        "afterClamps": 20,
+        "beforeCompleted": 2021,
+        "afterCompleted": 2021,
+        "beforeActive": 56,
+        "afterActive": 56,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.2018888035232962,
+          "meanTravelTime": 0.21896551724137225,
+          "maxLength": 2.1297715932178107e-05,
+          "meanLength": 0.00029510251828313017
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 79,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 25,
+        "afterClamps": 25,
+        "beforeCompleted": 1956,
+        "afterCompleted": 1956,
+        "beforeActive": 37,
+        "afterActive": 37,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.007739371907234727,
+          "meanTravelTime": 0.023015873015822308,
+          "meanLength": 0.0002584072611000465
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 80,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 14,
+        "afterClamps": 13,
+        "beforeCompleted": 1915,
+        "afterCompleted": 1915,
+        "beforeActive": 62,
+        "afterActive": 62,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.07992081672973228,
+          "meanTravelTime": 0.09761904761903395,
+          "meanLength": 0.0005121974730037948,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 81,
+        "project": "data/projects/m2.6-study-template.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 19,
+        "afterClamps": 19,
+        "beforeCompleted": 2020,
+        "afterCompleted": 2020,
+        "beforeActive": 60,
+        "afterActive": 60,
+        "beforePending": 1,
+        "afterPending": 1,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.005772291136970864,
+          "meanTravelTime": 0.020000000000038654,
+          "meanLength": 0.000226145767117103
+        },
+        "changedAvailability": []
+      }
+    ]
+  },
+  {
+    "project": "data/projects/t-junction-priority.traffic.json",
+    "seeds": 40,
+    "changedReports": 40,
+    "beforeClamps": 5,
+    "afterClamps": 4,
+    "maxAbsChangesByField": {
+      "maxLength": 27.777411401419144,
+      "meanDelay": 5.032909952109751,
+      "meanLength": 0.3795335298500615,
+      "meanTravelTime": 5.015789473684201,
+      "safetyClamps": 1
+    },
+    "runs": [
+      {
+        "seed": 42,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 263,
+        "afterCompleted": 263,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.032591573371744786,
+          "meanTravelTime": 0.015384615384618883,
+          "maxLength": 5.2102373357369345,
+          "meanLength": 0.005111735909199
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 43,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 286,
+        "afterCompleted": 286,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014169368518647474,
+          "meanTravelTime": 0.010714285714279015,
+          "maxLength": 0.015022765203710264,
+          "meanLength": 0.0006231613228593336
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 44,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 275,
+        "afterCompleted": 275,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.5339241899898184,
+          "meanTravelTime": 0.5192307692307736,
+          "maxLength": 0.015163997754513048,
+          "meanLength": 0.004937766424472301
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 45,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 285,
+        "afterCompleted": 285,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0076942569842834985,
+          "meanTravelTime": 0.010000000000005116,
+          "maxLength": 0.021884896884813543,
+          "meanLength": 0.0004460851293233148
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 46,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 283,
+        "afterCompleted": 283,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 1.8618745901594522,
+          "meanTravelTime": 1.8444444444444343,
+          "maxLength": 0.09552976636584276,
+          "meanLength": 0.27551762957676207
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 47,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 277,
+        "afterCompleted": 277,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.05790269438622886,
+          "meanTravelTime": 0.04444444444443718,
+          "maxLength": 0.02230601271587318,
+          "meanLength": 0.03509956989836294
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 48,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 1,
+        "beforeCompleted": 297,
+        "afterCompleted": 297,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.763859162537539,
+          "meanTravelTime": 0.7782608695652229,
+          "maxLength": 0.01911109629783425,
+          "meanLength": 0.04631539307613419,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 49,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 253,
+        "afterCompleted": 253,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.22679649122912515,
+          "meanTravelTime": 0.20937500000000142,
+          "maxLength": 0.005299048591751898,
+          "meanLength": 0.013723775857452214
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 50,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 298,
+        "afterCompleted": 298,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 4.664310174125795,
+          "meanTravelTime": 4.646874999999994,
+          "maxLength": 27.777411401419144,
+          "meanLength": 0.3795335298500615
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 51,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 249,
+        "afterCompleted": 249,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01995686581147993,
+          "meanTravelTime": 0.0038461538461547207,
+          "maxLength": 0.018439834262153454,
+          "meanLength": 0.002715907005647944
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 52,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 296,
+        "afterCompleted": 296,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.041233724313141096,
+          "meanTravelTime": 0.023809523809532607,
+          "maxLength": 0.0213333272350269,
+          "meanLength": 0.008702053994521286
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 53,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 272,
+        "afterCompleted": 272,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.027572408088509803,
+          "meanTravelTime": 0.00999999999999801,
+          "maxLength": 0.017917742492784328,
+          "meanLength": 0.004335968025807269
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 54,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 284,
+        "afterCompleted": 284,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.03651521313647521,
+          "meanTravelTime": 0.05142857142857338,
+          "maxLength": 0.007536960573105489,
+          "meanLength": 0.003368718959812611
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 55,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 296,
+        "afterCompleted": 296,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.02611569965815619,
+          "meanTravelTime": 0.00833333333333286,
+          "maxLength": 0.022553897684431945,
+          "meanLength": 0.0015091124467261352
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 56,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 282,
+        "afterCompleted": 282,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.011626259820097573,
+          "meanTravelTime": 0.013636363636351234,
+          "maxLength": 0.13935225853018096,
+          "meanLength": 0.0010225060829722743
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 57,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 270,
+        "afterCompleted": 270,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.013716438543667664,
+          "meanTravelTime": 0.012499999999988631,
+          "maxLength": 0.002520254160174318,
+          "meanLength": 0.00018109562510337796
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 58,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 287,
+        "afterCompleted": 287,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.009515300815648331,
+          "meanTravelTime": 0.02692307692307594,
+          "maxLength": 0.0117063110063782,
+          "meanLength": 0.0004837891437265984
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 59,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 293,
+        "afterCompleted": 293,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.014366868276326272,
+          "meanTravelTime": 0.011764705882356452,
+          "maxLength": 0.24108028495156475,
+          "meanLength": 0.001816294214167069
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 60,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 245,
+        "afterCompleted": 245,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01760840509041728,
+          "meanTravelTime": 0.007407407407406197,
+          "maxLength": 0.021850000059714603,
+          "meanLength": 0.00014854093799332446
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 61,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 269,
+        "afterCompleted": 269,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0062624358807319425,
+          "meanTravelTime": 0.011111111111105743,
+          "maxLength": 0.020676305498298575,
+          "meanLength": 0.0019340393305600223
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 62,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 271,
+        "afterCompleted": 271,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.010269237326919978,
+          "meanTravelTime": 0.01578947368421524,
+          "maxLength": 0.02929884188147014,
+          "meanLength": 0.004048193163048719
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 63,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 283,
+        "afterCompleted": 283,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.008289562585618526,
+          "meanTravelTime": 0.021874999999994316,
+          "maxLength": 0.02469612044905034,
+          "meanLength": 0.0021568840942278733
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 64,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 261,
+        "afterCompleted": 261,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.022621388379462815,
+          "meanTravelTime": 0.01666666666666572,
+          "maxLength": 0.01511176143341686,
+          "meanLength": 0.0013121136854974402
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 65,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 0,
+        "beforeCompleted": 286,
+        "afterCompleted": 286,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0263243902205339,
+          "meanTravelTime": 0.009090909090915034,
+          "maxLength": 0.03066695466714009,
+          "meanLength": 0.003737614628119168,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 66,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 0,
+        "beforeCompleted": 275,
+        "afterCompleted": 275,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 5.032909952109751,
+          "meanTravelTime": 5.015789473684201,
+          "maxLength": 0.01584664532705915,
+          "meanLength": 0.21098347031012343,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 67,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 294,
+        "afterCompleted": 294,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.40793264630029924,
+          "meanTravelTime": 0.393333333333338,
+          "maxLength": 0.02320844777983666,
+          "meanLength": 0.04467453024032553
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 68,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 243,
+        "afterCompleted": 243,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.022465027804983606,
+          "meanTravelTime": 0.005263157894738413,
+          "maxLength": 0.01673803677675778,
+          "meanLength": 0.002266512298383594
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 69,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 256,
+        "afterCompleted": 256,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01755155507579431,
+          "meanTravelTime": 0.012500000000002842,
+          "maxLength": 0.016709154490143874,
+          "meanLength": 0.008119211900522227
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 70,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 0,
+        "beforeCompleted": 282,
+        "afterCompleted": 282,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.28719190240770587,
+          "meanTravelTime": 0.2692307692307523,
+          "maxLength": 0.017270048601858434,
+          "meanLength": 0.026025362338854663,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 71,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 256,
+        "afterCompleted": 256,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.02365907692264102,
+          "meanTravelTime": 0.011999999999996902,
+          "maxLength": 0.12118194875711197,
+          "meanLength": 0.00231934940066858
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 72,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 237,
+        "afterCompleted": 237,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.02153176691663461,
+          "meanTravelTime": 0.004166666666662877,
+          "maxLength": 0.014846984033823674,
+          "meanLength": 0.0010019922203778897
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 73,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 287,
+        "afterCompleted": 287,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.03783990323124797,
+          "meanTravelTime": 0.020000000000010232,
+          "maxLength": 0.06056575641301265,
+          "meanLength": 0.016176847351561108
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 74,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 246,
+        "afterCompleted": 246,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.02593862020912674,
+          "meanTravelTime": 0.021874999999994316,
+          "maxLength": 0.11857874519101586,
+          "meanLength": 0.007965296397867805
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 75,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 264,
+        "afterCompleted": 264,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.02426088568379825,
+          "meanTravelTime": 0.007142857142852677,
+          "maxLength": 0.01371746545387964,
+          "meanLength": 0.0017517909361308703
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 76,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 1,
+        "beforeCompleted": 287,
+        "afterCompleted": 287,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.023359846304536802,
+          "meanTravelTime": 0.0058823529411853315,
+          "maxLength": 0.017957978864032498,
+          "meanLength": 0.0061946252982605365,
+          "safetyClamps": 1
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 77,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 281,
+        "afterCompleted": 281,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.07398965677668556,
+          "meanTravelTime": 0.059259259259263786,
+          "maxLength": 0.0970342105065356,
+          "meanLength": 0.11708444714390076
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 78,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 262,
+        "afterCompleted": 262,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.041378644062739056,
+          "meanTravelTime": 0.0235294117647058,
+          "maxLength": 0.0489614201440105,
+          "meanLength": 0.00016521295688609605
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 79,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 1,
+        "afterClamps": 1,
+        "beforeCompleted": 255,
+        "afterCompleted": 255,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.013630833507923157,
+          "meanTravelTime": 0.004761904761906521,
+          "maxLength": 0.016559228763867395,
+          "meanLength": 0.001902673595320925
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 80,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 259,
+        "afterCompleted": 259,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.01729150803104318,
+          "meanTravelTime": 0.01666666666666572,
+          "maxLength": 0.01599383920085984,
+          "meanLength": 0.0021608914929895917
+        },
+        "changedAvailability": []
+      },
+      {
+        "seed": 81,
+        "project": "data/projects/t-junction-priority.traffic.json",
+        "reportsEqual": false,
+        "beforeClamps": 0,
+        "afterClamps": 0,
+        "beforeCompleted": 265,
+        "afterCompleted": 265,
+        "beforeActive": 0,
+        "afterActive": 0,
+        "beforePending": 0,
+        "afterPending": 0,
+        "maxAbsChangesByField": {
+          "meanDelay": 0.0260049258651609,
+          "meanTravelTime": 0.007999999999995566,
+          "maxLength": 0.04252043692612517,
+          "meanLength": 5.227393134621394e-05
+        },
+        "changedAvailability": []
+      }
+    ]
+  }
+]

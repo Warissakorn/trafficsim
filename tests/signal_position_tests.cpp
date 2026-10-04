@@ -25,15 +25,16 @@ const NetworkSignalHead& head(const ProjectDocument& d, const std::string& id) {
 Point drawn(const ProjectDocument& d, const std::string& id) {
     const auto slot = headSlot(d.network, head(d, id));
     CHECK(slot.has_value());
-    return pointAlong(slot->geometry, head(d, id).position);
+    return slot->equation ? equationPoint(*slot->equation, equationParameter(*slot->equation, head(d, id).position))
+                          : pointAlong(slot->geometry, head(d, id).position);
 }
-// Where the runtime stops traffic: the compiled segment's polyline at the compiled position.
+// Where the runtime stops traffic: the compiled section or equation at its metre station.
 Point run(const ProjectDocument& d, const std::string& id, std::string* segment = nullptr) {
     const auto table = runtimeSections(d.network);
     const auto compiled = rebaseHead(table, head(d, id));
     if (segment) *segment = compiled.segmentId;
     for (const auto& s : table.sections) if (s.id == compiled.segmentId) return pointAlong(s.geometry, compiled.position);
-    for (const auto& p : table.paths) if (p.id == compiled.segmentId) return pointAlong(p.geometry, compiled.position);
+    for (const auto& p : table.paths) if (p.id == compiled.segmentId) return connectorPathPoint(p, compiled.position);
     throw std::invalid_argument("no runtime segment");
 }
 void same(Point a, Point b, double tolerance = 1e-6) { test::near(a.x, b.x, tolerance); test::near(a.y, b.y, tolerance); }

@@ -5,6 +5,8 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-02-d99-d100.md`](PROGRESS-2026-10-02-d99-d100.md) — D99 Windows Run-view paint cost and D100 wireframe display; moved whole 2026-10-04
+
 - [`PROGRESS-2026-10-02-d97-d98.md`](PROGRESS-2026-10-02-d97-d98.md) — 2026-10-02, D97 vehicles drawn at true size, D98 the lane-change lab and where D95 stood, route table Length as a full chain; moved out 2026-10-04 as the oldest live entries
 - [`PROGRESS-2026-10-02-d95-d96.md`](PROGRESS-2026-10-02-d95-d96.md) — 2026-10-02, D96 the route overlay draws every lane of its Links, and D95's discretionary lane-change contract and rows (A47–A55); moved out 2026-10-03 as the oldest live entries
 - [`PROGRESS-2026-10-01-d93-d94.md`](PROGRESS-2026-10-01-d93-d94.md) — 2026-10-01, D93 downstream routing decisions (contract and rows, then the implementation with D94); moved out 2026-10-03 as the oldest live entries

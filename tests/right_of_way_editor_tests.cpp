@@ -178,7 +178,7 @@ TEST(rightofway_editor, a_click_cycles_priority_through_three_states_in_one_step
     test::throws([&] { h.execute("x", [&](ProjectDocument& d) { cycleConflictPriority(d, "nothing", kDefaults); }); }, "EDIT_UNKNOWN_OBJECT");
     CHECK(h.document() == before);
 }
-TEST(rightofway_editor, a_waiting_line_moves_along_the_polyline_its_bar_is_drawn_on) {
+TEST(rightofway_editor, a_waiting_line_maps_its_authored_station_to_the_runtime_normal) {
     auto p = crossingLinks();
     addCrossingAreas(p.d, p.a, p.b, p.b, kDefaults);
     // A Connector path too: a line on one is measured on the Connector's base polyline.
@@ -195,9 +195,14 @@ TEST(rightofway_editor, a_waiting_line_moves_along_the_polyline_its_bar_is_drawn
         const auto bar = waitingLineBar(p.d.network, point);
         CHECK(bar.has_value());
         const auto mid = Point{(bar->first.x + bar->second.x) / 2, (bar->first.y + bar->second.y) / 2};
-        const auto on = pointAlong(polyline, point.station);
-        // The bar crosses the polyline's normal at that station: the offset is purely lateral.
-        const auto ahead = pointAlong(polyline, point.station + .5);
+        Point on=pointAlong(polyline,point.station),ahead=pointAlong(polyline,point.station+.5);
+        if(!point.path.connectorId.empty()) {
+            const auto& path=paths.front();const double station=connectorRuntimeStation(connector,path,point.station);
+            on=connectorPathPoint(path,station);const auto tangent=connectorPathDirection(path,station);
+            const double length=std::hypot(tangent.x,tangent.y);
+            ahead={on.x+.5*tangent.x/length,on.y+.5*tangent.y/length};
+        }
+        // The normal is read at the same equation station where the engine holds the vehicle.
         const double along = ((mid.x - on.x) * (ahead.x - on.x) + (mid.y - on.y) * (ahead.y - on.y)) / .5;
         test::near(along, 0, 1e-6);
     }

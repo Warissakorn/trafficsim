@@ -164,7 +164,7 @@ private:
     bool conflictPress(QMouseEvent*);
     void updateLineDrag(QPoint);
     void finishLineDrag(QPoint);
-    struct LineDrag { std::string id; std::vector<Point> polyline; double original{}, station{}; bool moved{}; };
+    struct LineDrag { std::string id; std::vector<Point> polyline; double original{}, station{}; bool moved{}; std::optional<ConnectorEquation> equation{}; };
     std::optional<LineDrag> lineDrag_;
     std::vector<MeasurementLine> counterDraft_;
     bool counterPress(QMouseEvent*);
@@ -202,7 +202,7 @@ private:
     void drawCopyPreview();
     QPainterPath objectShape(const std::string&) const;
     std::optional<std::pair<Point,int>> headPosition(const NetworkSignalHead&) const;
-    struct HeadGeometry { std::vector<Point> points; double width{}; int level{}; };
+    struct HeadGeometry { std::vector<Point> points; double width{}; int level{}; std::optional<ConnectorEquation> equation{}; };
     std::optional<HeadGeometry> headGeometry(const NetworkSignalHead&) const;
     std::optional<HeadPlacement> headAt(Point) const;
     QPainterPath headShape(const NetworkSignalHead&) const;
@@ -213,7 +213,7 @@ private:
     void updateHeadDrag(QPoint);
     void finishHeadDrag(QPoint);
     void drawHeads();
-    struct HeadDrag { std::string id; std::vector<Point> geometry; double original{}, station{}; bool moved{}; };
+    struct HeadDrag { std::string id; std::vector<Point> geometry; double original{}, station{}; bool moved{}; std::optional<ConnectorEquation> equation{}; };
     std::optional<HeadDrag> headDrag_;
     std::optional<HeadPlacement> hoverHead_;
     std::optional<LaneReference> gestureFrom_;
@@ -231,6 +231,7 @@ private:
     std::map<std::string,std::string> runStyles_;
     SimState runFrame_;
     std::map<std::string,std::vector<Point>> runGeometry_;
+    std::map<std::string,ConnectorEquation> runEquations_;
     const ProjectDocument* document_{};
     QGraphicsScene scene_;
     std::shared_ptr<const std::string> cachedImage_;

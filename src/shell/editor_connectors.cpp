@@ -178,6 +178,8 @@ void EditorWindow::refreshConnectorRanges() {
     }
 }
 void EditorWindow::refreshConnector() {
+    connectorPoints_->setToolTip(text("editorConnectorPathInfo"));
+    connectorPoints_->setAccessibleDescription(text("editorConnectorPathInfo"));
     const auto* connector=canvas_->selectedConnector();
     {
         const QSignalBlocker block(connectorObject_);connectorObject_->clear();

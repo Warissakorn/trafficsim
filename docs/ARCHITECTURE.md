@@ -10,6 +10,10 @@ The authoring network is the source of truth. `compileScenario` derives a runtim
 it is never persisted as a second editable network. `createSimulation` copies and
 canonicalizes that scenario into `std::shared_ptr<const Scenario>`.
 
+D108 source insertion checks ordinary following/integration from rest against snapshot
+leader clearance before removing a queued arrival. The same sampled record waits until
+its first step fits the unchanged buffer; later safety phases remain authoritative.
+
 The engine cannot access the authoring model, JSON, Qt, files, wall clocks or threads.
 Each step receives a const state and returns a new value; vehicle/input/event vectors
 are independent copies. Old snapshots remain intact. The `SimState&&` overloads (D91) take the
@@ -26,6 +30,14 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`) |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
+
+Connector widths and runtime paths share topology-only `connectorLanePairs`; the surface
+does not call `connectorPaths`. D107 keeps D106 divider-midpoint guides for display, but
+runtime `ConnectorEquation` carries four controls and scalar arc-integral caches. Positions
+evaluate the existing Bézier directly; length integrates |B'(t)| and station inversion is
+bracketed. Authoring controls map through leg index/fraction to equation parameter and
+arc length; compiler, run canvas and heads read the same equation. Core receives lengths
+and metre stations only. Drawing points and Connector widths do not define runtime motion.
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
 and test the engine, model and CLI on a machine without Qt.
@@ -102,9 +114,9 @@ transient and one release submits one command. `EditorWindow` composes native ac
 inspector controls, translation, save prompts and QSaveFile atomic replacement. It is
 the only window, and runs its own compiled revision. Qt stays out of
 project/model/core. Embedded background bytes are immutable and shared across history.
-`connectorCurve` in the model returns a sampled cubic aligned to the endpoint lane
-directions. Only its polyline is persisted; its interior points are the editable curve
-handles. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
+`connectorCurve` samples the existing cubic only for the persisted drawing and its
+editable interior handles. `connectorEquation` derives that same cubic per mapped lane
+pair for runtime use, independently of drawing points; no second curve is persisted. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
 deletion. Explicit endpoint edits share model `retargetConnector` with the canvas preview:
 they rebuild the directed turn at the current intermediate-point count and narrow ranges to
 available lanes. Link geometry movement uses `reanchorConnectors`; lane-bundle/driving-side
@@ -166,12 +178,13 @@ validation of collapsed derived lanes. D80 replaces the old slide/square-mouth c
 `connectorBodyBoundaries` offsets every lane boundary around it; `connectorSurface` attaches
 those boundaries with P1–P4. Both ends pair by lane index at every angle. `connectorBoundaries`
 returns the same final rails used by paint, so conflict coverage and lane handles no longer
-read a second, legacy strip. Runtime lane paths and project schema are unchanged.
+read a second, legacy strip. D107 changes runtime paths to the continuous existing cubic;
+project schema remains unchanged, with explicit authoring-to-runtime station adapters.
 
 The surface owns its computed mouths and a `selfIntersecting` flag. Singular intersections
 and folds produce `WARN_CONNECTOR_ALIGNMENT`; they never select a square cap. Open markings
 on an undefined join remain selectable. Waiting-line bars use the actual rails' intersection
-with the normal at the authored runtime station. See
+with the normal at the mapped equation station. See
 [CONNECTOR_FOUR_POINT_MOUTH.md](CONNECTOR_FOUR_POINT_MOUTH.md) for the contract and
 [NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls/file semantics.
 

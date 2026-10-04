@@ -75,26 +75,32 @@ TEST(attachments, inspector_lane_count_and_turn_pocket_keep_opposite_edge) {
         test::near(a.back().y,b.back().y);
     }
 }
-TEST(attachments, connector_leading_edges_rebase_without_moving_surviving_paths) {
+TEST(attachments, connector_leading_edges_rebase_the_authoring_reference_and_rederive_paths) {
     for(auto side:{DrivingSide::left,DrivingSide::right}) {
         auto d=roads(side);const auto id=addConnectorRange(d,{"a","a2",at(d,"a",.4)},{"b","b2",at(d,"b",.6)},1,1);
         const auto original=d.network.connectors[0];
         const auto fixedEdge=connectorBoundaries(d.network,original).back();
         changeConnectorRange(d,id,2,2,true);
         CHECK(d.network.connectors[0].from.laneId=="a1");CHECK(d.network.connectors[0].to.laneId=="b1");
-        auto paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,original.geometry);
+        auto paths=connectorPaths(d.network,d.network.connectors[0]);
+        const auto beforeReopen=paths[1].geometry;
+        CHECK(paths[1].from.laneId==original.from.laneId);CHECK(paths[1].to.laneId==original.to.laneId);
+        CHECK(paths[1].geometry.front()==original.geometry.front());
+        CHECK(paths[1].geometry.back()==original.geometry.back());
         const auto centred=connectorCentreline(d.network,d.network.connectors[0]);
         const auto body=connectorBodyBoundaries(d.network,d.network.connectors[0]);
         CHECK(fixedEdge.size()==body.back().size());
         for(std::size_t j=0;j<centred.size();++j) {
             test::near(centred[j].x,(body.front()[j].x+body.back()[j].x)/2);
             test::near(centred[j].y,(body.front()[j].y+body.back()[j].y)/2);
-        } // Resizing retains runtime lane paths; centred drawing edges are re-derived.
+        } // D106: resizing retains the authoring reference; runtime paths follow the new surface.
         // Reopen must keep the frozen weights; otherwise the old curve drifts during derivation.
         d=parseDocument(Json::parse(documentJson(d).dump()));
-        paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,original.geometry);
-        changeConnectorRange(d,id,3,3,false);same(connectorPaths(d.network,d.network.connectors[0])[1].geometry,original.geometry);
-        changeConnectorRange(d,id,2,2,true);same(connectorPaths(d.network,d.network.connectors[0])[0].geometry,original.geometry);
+        paths=connectorPaths(d.network,d.network.connectors[0]);same(paths[1].geometry,beforeReopen);
+        changeConnectorRange(d,id,3,3,false);
+        CHECK(connectorPaths(d.network,d.network.connectors[0])[1].from.laneId==original.from.laneId);
+        changeConnectorRange(d,id,2,2,true);
+        same(d.network.connectors[0].geometry,original.geometry);
         const auto boundaries=connectorBoundaries(d.network,d.network.connectors[0]);CHECK(boundaries.size()==3);
         CHECK(validateNetwork(d.network).empty());
         History h;h.reset(d);const auto before=h.document();

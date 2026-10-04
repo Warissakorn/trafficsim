@@ -1,4 +1,4 @@
-#include "network.hpp"
+#include "connector_lane_mapping.hpp"
 #include "connector_surface.hpp"
 #include <algorithm>
 #include <cmath>
@@ -13,7 +13,7 @@ double laneWidthOf(const Network& n,const LaneReference& ref) {
 }
 }
 ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
-    const auto paths=connectorPaths(n,c);
+    const auto paths=connectorLanePairs(n,c);
     // A Connector carries lanes, not a ribbon that shrinks. Each lane keeps its width from end to
     // end; a lane the other end has no room for is the one that tapers, closing onto its neighbour
     // like a merge taper. The surplus path is the added or dropped lane itself (D73): the one the
@@ -41,7 +41,7 @@ ConnectorLaneWidths connectorLaneWidths(const Network& n,const Connector& c) {
 
 // File geometry remains the first lane's authored path (schema 17). Rebase it onto the
 // centre of the WHOLE lane range before constructing any edges. No edge feeds this axis.
-// This preserves old files and runtime paths without mistaking one lane for the road centre.
+// This preserves the authoring format without mistaking one lane for the road centre.
 std::vector<Point> connectorCentreline(const Network& n,const Connector& c) {
     auto axis=c.geometry;
     const auto a=connectorRangeCentre(n,c,true),b=connectorRangeCentre(n,c,false);

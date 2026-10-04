@@ -88,7 +88,7 @@ void EditorWindow::editHead(const std::string& id,const std::optional<HeadPlacem
         const auto slot=headSlot(network,probe);
         lane->addItem(label,QString::fromStdString(key));
         lane->setItemData(lane->count()-1,QString::fromStdString(linkId),Qt::UserRole+1);
-        lane->setItemData(lane->count()-1,slot?polylineLength(slot->geometry):0.,Qt::UserRole+2);
+        lane->setItemData(lane->count()-1,slot?(slot->equation?slot->equation->arcStations.back():polylineLength(slot->geometry)):0.,Qt::UserRole+2);
     };
     for(const auto& link:network.links)for(std::size_t i=0;i<link.lanes.size();++i) {
         NetworkSignalHead probe;probe.lane={link.id,link.lanes[i].id};

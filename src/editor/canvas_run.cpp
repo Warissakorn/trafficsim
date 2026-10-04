@@ -18,7 +18,7 @@ namespace {
 constexpr double kLaneChangeShown=3,kLaneChangeReach=8,kLaneChangeYawSpeed=5;
 }
 void EditorCanvas::setRunNetwork(const Network& network) {
-    runGeometry_.clear();runLevels_.clear();runStyles_.clear();
+    runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();
     // Keyed by SECTION, from the same table buildScenario compiled the scenario from, so every
     // segment a vehicle can be located on has geometry here. A lane with nothing attached to its
     // body is one section carrying the lane's own id, which is what the map held before.
@@ -27,14 +27,14 @@ void EditorCanvas::setRunNetwork(const Network& network) {
         runGeometry_[section.id]=section.geometry;runLevels_[section.id]=l.level;runStyles_[section.id]=l.displayType;
     }
     for(const auto& c:network.connectors)for(const auto& p:connectorPaths(network,c)) {
-        runGeometry_[p.id]=p.geometry;runLevels_[p.id]=c.level;runStyles_[p.id]=c.displayType;
+        runGeometry_[p.id]=p.geometry;if(p.equation)runEquations_[p.id]=*p.equation;runLevels_[p.id]=c.level;runStyles_[p.id]=c.displayType;
     }
 }
 void EditorCanvas::setRunFrame(const SimState& frame) {runFrame_=frame;drawRunItems();}
 // Clear all three together: marker() relies on the geometry, level and style maps holding
 // the same keys, so dropping only the geometry would leave the others describing a run that
 // no longer exists.
-void EditorCanvas::clearRunFrame() {runFrame_={};runGeometry_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
+void EditorCanvas::clearRunFrame() {runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
 void EditorCanvas::drawRunItems() {
     for(auto* item:runItems_){scene_.removeItem(item);delete item;}runItems_.clear();
     if(!runFrame_.scenario)return;
@@ -48,7 +48,8 @@ void EditorCanvas::drawRunItems() {
     };
     const auto marker=[&](const std::string& segment,double station,QColor color,double size,int layer){
         const auto it=runGeometry_.find(segment);if(it==runGeometry_.end() || !levelVisible(runLevels_.at(segment)))return;
-        const auto p=pointAlong(it->second,station);
+        const auto curve=runEquations_.find(segment);
+        const auto p=curve==runEquations_.end()?pointAlong(it->second,station):equationPoint(curve->second,equationParameter(curve->second,station));
         auto* item=scene_.addEllipse(p.x-size,p.y-size,size*2,size*2,QPen(Qt::NoPen),QBrush(color));
         item->setZValue(runLevels_.at(segment)*100.+layer);runItems_.push_back(item);
     };
@@ -74,7 +75,9 @@ void EditorCanvas::drawRunItems() {
         std::optional<Point> best;double bestDistance=std::numeric_limits<double>::infinity();
         for(const auto& part:parts->second) {
             const auto g=runGeometry_.find(part.segmentId);if(g==runGeometry_.end())continue;
-            const auto q=pointAlong(g->second,stationOfClosestPoint(g->second,p));
+            const auto curve=runEquations_.find(part.segmentId);
+            const auto q=curve==runEquations_.end()?pointAlong(g->second,stationOfClosestPoint(g->second,p)):
+                equationPoint(curve->second,equationParameter(curve->second,equationClosestStation(curve->second,p)));
             if(const double d=std::hypot(q.x-p.x,q.y-p.y);d<bestDistance){bestDistance=d;best=q;}
         }
         return best;
@@ -88,12 +91,14 @@ void EditorCanvas::drawRunItems() {
         if(shape==shapes.end())shape=shapes.emplace(v.typeIndex,vehicleShape(std::max(type.length,4/scale),
             std::max(type.width,2.5/scale),type.length*scale>=14)).first;
         const auto& g=it->second;const double station=location.position;
-        const auto front=pointAlong(g,station);
+        const auto curve=runEquations_.find(location.segmentId);
+        const auto point=[&](double at){return curve==runEquations_.end()?pointAlong(g,at):equationPoint(curve->second,equationParameter(curve->second,at));};
+        const auto front=point(station);
         // The body is the chord from rear to front, as a real vehicle sits across a curve; a vehicle
         // whose rear is still on the previous segment takes the tangent at its front instead.
-        Point heading=directionAlong(g,station,true);
+        Point heading=curve==runEquations_.end()?directionAlong(g,station,true):equationDerivative(curve->second,equationParameter(curve->second,station));
         if(station>=type.length) {
-            const auto rear=pointAlong(g,station-type.length);
+            const auto rear=point(station-type.length);
             if(std::hypot(front.x-rear.x,front.y-rear.y)>1e-6)heading={front.x-rear.x,front.y-rear.y};
         }
         Point at=front;

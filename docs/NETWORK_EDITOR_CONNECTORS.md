@@ -33,6 +33,11 @@ why nothing was created. Esc and Cancel leave the document and history unchanged
 
 A connector stores a base polyline and source/target lane counts. Its lane paths are
 derived in monotone order, with stable IDs: the first uses the connector ID and subsequent paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference those paths.
+Runtime paths evaluate the existing single cubic Bézier directly from each mapped pair
+of Link lane attachments and tangents (D107). Lengths integrate the equation, not drawing
+chords. Intermediate points and interior drags edit the drawing only; Connector widths do
+not change the equation. Schema-17 control values are retained and explicitly mapped to
+equation stations; their old physical positions are not promised.
 Unequal counts pair lane for lane over the narrower end, with at most one lane added or dropped on each side, so the counts differ by at most 2 (M3.2.9a, D73). For a one-lane difference
 `laneChangeSide` (schema 17, `"left"`/`"right"`, the driver's view; the Inspector's "Lane change side", M3.2.9c) picks the side, absent = kerb side; that lane is the one drawn tapering. Lane tabs stop at a two-lane difference. A Connector asked for across a larger difference (a 2-lane Link dragged onto a 5-lane one) is created narrowed to it: the wider end gets `narrower + 2` lanes, centred on the lane the drag ended on (M3.2.9d, D75). Ranges are limited by the existing lanes, at most 12 per end.
 
@@ -49,17 +54,18 @@ Drag outward to add lanes and inward to remove them; the road geometry previews 
 during the drag. One release is one undo entry. Esc cancels. Each tab changes
 its own edge, leaving the opposite edge fixed. The first-side handles add/remove lanes
 before the current first lane; the other handles change the last lane. Surviving lane
-IDs and positions stay fixed, including on curved Links. Connector paths whose lane pair
-survives a range edit retain their curve; unequal ranges can intentionally change lane mappings.
+IDs and positions stay fixed, including on curved Links. Connector lane pairs retain their references; their runtime curves are re-derived from the
+new Link attachments and directions (D107). Unequal ranges can intentionally change lane mappings.
 Properties count edits and downstream pocket creation expand the last-lane side.
 
 ## Connector shape: intermediate points and the mouth
 
-A Connector is stored and drawn the way Vissim's is: its two attachments and a few
+The Connector drawing stores its two attachments and a few
 **intermediate points**, joined by **straight legs and mitered at each point**, exactly as a Link
 is. It is not smoothed — a Connector with two intermediate points is three straight legs with a
-corner at each one, which is what Vissim draws. The count is what decides how closely that polygon
-follows the turn, and it is Vissim's own `Intermediate points` field, in Properties → Connectors.
+corner at each one. The count decides how closely the drawing polygon follows the turn,
+in Properties → Connectors. This display contract is separate from the continuous runtime
+equation: 0, 3 or 40 points produce the same driving path for the same lane attachments.
 
 Changing the count never re-derives the default curve; `Reset curve` is the button for that.
 Raising it splits the longest leg each time, so every point already there survives and the drawn
@@ -69,13 +75,10 @@ straight leg between the attachments. `Reset curve` lays 3 along the arc, and la
 it follows the turn more closely — 2.29 m of sag from the arc at one point, 0.60 m at three,
 under 0.10 m at fifteen.
 
-**The mouth must not become a needle.** Ordinary forward arrivals use the bounded M1.19
-projection/slide onto the Link's cross-section. Near-perpendicular arrivals (forward tangent
-dot product below 0.25), including backwards approaches, cannot be aligned this way without
-collapsing or reversing lane order. Those ends retain their full-width square cross-section
-and do not slide. `WARN_CONNECTOR_ALIGNMENT` flags the fallback or a residual gap over 1 cm.
-The warning is advisory: the drawing can be saved, but exact lane-edge alignment is not
-claimed. Use `Reset curve` or adjust intermediate points/attachments to approach with traffic.
+D80 mouths use the centred axis and fixed lane-index P1–P4 intersections at every angle,
+without slide/square fallbacks or an angle cutoff. Singular or folded surfaces report
+`WARN_CONNECTOR_ALIGNMENT`; they are not evidence of a drivable turn. See
+[the mouth contract](CONNECTOR_FOUR_POINT_MOUTH.md).
 
 An endpoint grip sits on the middle of the Link lanes that end joins (the mouth's P2, D77), where
 a drop is measured too. Dragging it along the lanes it joins keeps the curve, every point shifted
@@ -83,7 +86,8 @@ by its blend weight (D78); onto other lanes, or where a kept end leg would run a
 (the old wrong-way elbow), it rebuilds the turn at its point count. One undoable edit either way. Moving a Link still follows the separate world-position/deletion contract described
 above. Merely opening a file does not regenerate any authored curve.
 
-Interior points are editable; dragging one moves that corner and nothing else. Reset curve to
+Interior points are editable; dragging one moves that drawing corner. It does not modify
+the runtime equation. The Inspector tooltip makes this distinction explicit. Reset curve to
 lane directions lays the points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
 between **that end's** lane direction and the chord — the cubic that stands in for a circular
 arc leaving at that angle. It is `chord/3` as α tends to zero, the constant every turn used to

@@ -79,8 +79,8 @@ std::optional<Located> locateChecked(const Network& n, const RuntimeSections& ta
     }
     if (matches.size() != 1) return std::nullopt; // never pick one by ordinal
     const auto& path = *matches.front();
-    const double length = polylineLength(path.geometry);
-    return Located{path.id, matchedStation(connector->geometry, path.geometry, station), length};
+    const double length = connectorPathLength(path);
+    return Located{path.id, connectorRuntimeStation(*connector,path,station), length};
 }
 // buildScenario is unchecked assembly that must not throw (network.hpp), and the geometry helpers
 // throw on degenerate input. A reference that cannot be located is unresolved, never an exception.
@@ -255,7 +255,7 @@ Upstream upstreamOf(const RuntimeSections& table) {
         for (const auto& next : s.next) u.feeding[next].push_back(s.id);
     }
     for (std::size_t p = 0; p < table.paths.size(); ++p) {
-        u.length[table.paths[p].id] = polylineLength(table.paths[p].geometry);
+        u.length[table.paths[p].id] = connectorPathLength(table.paths[p]);
         u.feeding[table.pathNext[p]].push_back(table.paths[p].id);
     }
     return u;

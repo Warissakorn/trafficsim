@@ -22,7 +22,7 @@ double area(const std::vector<Point>& p) {
 }
 // A lane surface: the two boundaries that bound it, point for point with the polyline its
 // stations are authored on.
-struct Strip { std::vector<Point> base, left, right; };
+struct Strip { std::vector<Point> base, left, right; std::optional<ConnectorEquation> equation{}; };
 std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref) {
     try {
         if (!ref.linkId.empty() && ref.connectorId.empty()) {
@@ -50,7 +50,7 @@ std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref) {
             if (!match) return std::nullopt;
             const auto boundaries = connectorBoundaries(n, c);
             if (boundaries.size() < *match + 2) return Strip{c.geometry, {}, {}}; // reported unsupported
-            return Strip{c.geometry, boundaries[*match], boundaries[*match + 1]};
+            return Strip{c.geometry, boundaries[*match], boundaries[*match + 1], paths[*match].equation};
         }
     } catch (const std::exception&) {}
     return std::nullopt;
@@ -167,8 +167,13 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
         if(!point.path.connectorId.empty()) {
             // P1-P4 bends boundary vertices longitudinally. Matching their segment parameter
             // no longer puts a waiting bar on the normal at its authored runtime station.
-            const auto origin=pointAlong(strip->base,point.station);
-            const auto u=directionAlong(strip->base,point.station,false);
+            // Authoring stations stay on base; locate the bar on the same lane path as the car.
+            const auto found=std::find_if(n.connectors.begin(),n.connectors.end(),[&](const auto& c){return c.id==point.path.connectorId;});
+            if(found==n.connectors.end() || !strip->equation)return std::nullopt;
+            ConnectorPath path{"",{},{},{},strip->equation};
+            const double station=connectorRuntimeStation(*found,path,point.station);
+            const auto origin=connectorPathPoint(path,station);
+            const auto u=connectorPathDirection(path,station);
             const auto meet=[&](const std::vector<Point>& edge)->std::optional<Point> {
                 std::optional<Point> best;double nearest=INFINITY;
                 const auto guess=pointAlong(edge,matchedStation(strip->base,edge,point.station));

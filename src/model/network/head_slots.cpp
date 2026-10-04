@@ -21,7 +21,7 @@ std::optional<HeadSlot> headSlot(const Network& n, const NetworkSignalHead& head
     for (const auto& c : n.connectors) for (const auto& path : connectorPaths(n, c)) if (path.id == head.connectorId) {
         double width = 3.5;
         for (const auto& l : n.links) for (const auto& lane : l.lanes) if (lane.id == path.from.laneId) width = lane.width;
-        return HeadSlot{{}, path.id, path.geometry, width, c.level};
+        return HeadSlot{{}, path.id, path.geometry, width, c.level,path.equation};
     }
     return {};
 }
@@ -31,8 +31,8 @@ std::optional<HeadPlacement> nearestHeadSlot(const Network& n, Point target, int
     double bestDistance = 1e300;
     const auto consider = [&](HeadSlot slot) {
         if (slot.geometry.size() < 2) return;
-        const double station = stationOfClosestPoint(slot.geometry, target);
-        const auto at = pointAlong(slot.geometry, station);
+        const double station = slot.equation?equationClosestStation(*slot.equation,target):stationOfClosestPoint(slot.geometry,target);
+        const auto at = slot.equation?equationPoint(*slot.equation,equationParameter(*slot.equation,station)):pointAlong(slot.geometry,station);
         const double distance = std::hypot(at.x - target.x, at.y - target.y);
         if (distance <= slot.width / 2 + .01 && distance < bestDistance) {
             bestDistance = distance;
@@ -44,7 +44,7 @@ std::optional<HeadPlacement> nearestHeadSlot(const Network& n, Point target, int
     for (const auto& c : n.connectors) if (c.level == level) for (const auto& path : connectorPaths(n, c)) {
         double width = 3.5;
         for (const auto& l : n.links) for (const auto& lane : l.lanes) if (lane.id == path.from.laneId) width = lane.width;
-        consider({{}, path.id, path.geometry, width, c.level});
+        consider({{}, path.id, path.geometry, width, c.level,path.equation});
     }
     return best;
 }

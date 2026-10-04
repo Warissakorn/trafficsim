@@ -37,6 +37,13 @@ closed no owner item.
 
 In order:
 
+- **D107 Connector equation:** run a curved 3 → 3 Connector and both taper sides.
+  Vehicles follow the existing cubic from Link attachments/tangents; 0/3/40 drawing points
+  and interior drags must leave motion unchanged. Inspect heads and waiting bars on that
+  curve. Manually deformed paint can differ from the driving curve; check the Inspector
+  tooltip and owner expectations. Headless evidence is in `evidence/connector-equation.md`.
+  Geometry/round-trip evidence is headless; desktop appearance still needs an owner look.
+
 1. **D104 Results → CSV.** Run a project to its end, then Results → Export results (CSV). It
    should open in a spreadsheet with the marker line first, then movements, then approaches.
    The action stays greyed until the run ends.
@@ -77,8 +84,8 @@ In order:
      alignment advisory are intentional.
    - Near 180° the intersections can be hundreds of metres away, and are kept. Folded strips are
      unsupported by conflict coverage. Do not reintroduce a square fallback.
-   - Runtime paths remain the stored first-lane paths; schema-17 files are compatible. Conflict
-     extents use the new rails, so authored extents may need review.
+   - D107 runtime paths use the existing cubic equation independently of drawing points.
+     Schema-17 files remain readable; mapped conflict extents may need review.
 7. **D102 lane change drawn as a slide.** Open `data/projects/lane-change-lab.traffic.json`, Play,
    and watch the Lane drop scene. A changer should ease across over 3 s, nose turned slightly,
    not jump. Verified offscreen on Windows (`lane-change-display-ui`).
@@ -133,13 +140,15 @@ M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's u
 
 Pick one per session, as the user asks. Rows and contract come first for engine work.
 
-- **M3.2.8a.1 — remaining merge/source clamps (D105).** The five near-standing events are
-  diagnosed: four stationary false starts are removed, one moving hard-buffer clamp remains.
-  The 40-seed headway sweep has 20 moving minor clamps and two stationary source-insertion
-  clamps. Read [the evidence](evidence/m3.2.8a-clamps.md) and ROADMAP's M3.2.8a.1 first;
-  write an anticipation/first-step contract and failure-first cases before changing motion.
-  Preserve the existing buffer, D50 setback and maximum deceleration. Do not claim clamp-free.
-  Windows CI and the owner's M0/M3 observations remain distinct from Linux headless evidence.
+- **M3.2.8a.1 — moving merge anticipation.** D108 completes the source first-step
+  slice (M3.2.8a.1a): queue entry waits until ordinary following/integration fits the
+  current leader clearance. On D107 geometry, 120 stress runs remove 3 source clamps;
+  21 moving minor clamps remain. Read [source evidence](evidence/source-first-step.md),
+  the original [diagnosis](evidence/m3.2.8a-clamps.md) and ROADMAP first. Trace the current
+  moving cases, then write anticipation/failure-first rows before changing motion.
+  Preserve the buffer, D50 setback, maximum deceleration and genuine emergency reporting.
+  Post-entry lane changes can introduce a new leader; the source guard does not cover that.
+  Do not claim clamp-free or close M0/M3 owner observations.
 - **Volumes from turning counts.** Derive an input's interval volumes from its entry decision's
   turning counts, so a count sheet is typed once. Today both are entered separately.
 - **Per-lane shares (D32; one weight per entry-Link lane since D71).** No canvas gesture sets one.

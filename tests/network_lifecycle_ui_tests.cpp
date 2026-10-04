@@ -156,7 +156,7 @@ int main(int argc,char** argv) {
             const auto covered=pavement.united(margin.createStroke(pavement));
             for(const auto& path:connectorPaths(d.network,d.network.connectors.front()))for(double t:{.1,.3,.5,.7,.9}) {
                 const auto p=pointAlong(path.geometry,polylineLength(path.geometry)*t);
-                require(covered.contains(QPointF(p.x,p.y)),"Rendered pavement lost its driving path");
+                require(covered.contains(QPointF(p.x,p.y)),"Rendered pavement lost its authoring guide");
             }
             if(argc>1) {
                 c.fitNetwork();QApplication::processEvents();

@@ -119,7 +119,7 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
             if(link && validSide) length=polylineLength(laneGeometry(*link,head.lane.laneId,network.drivingSide));
         } else {
             for(const auto& c:network.connectors)try {
-                for(const auto& path:connectorPaths(network,c))if(path.id==head.connectorId)length=polylineLength(path.geometry);
+                for(const auto& path:connectorPaths(network,c))if(path.id==head.connectorId)length=connectorPathLength(path);
             }catch(const std::exception&){ /* Range errors are already reported above. */ }
             if(length<0) add("UNKNOWN_SEGMENT",p+".connectorId");
             if(!head.lane.linkId.empty() || !head.lane.laneId.empty())add("EDIT_HEAD_REFERENCE",p+".lane");

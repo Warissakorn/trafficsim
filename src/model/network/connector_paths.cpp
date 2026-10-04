@@ -1,7 +1,9 @@
-#include "network.hpp"
+#include "connector_lane_mapping.hpp"
+#include "connector_surface.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <numeric>
 #include <stdexcept>
 namespace trafficsim {
 std::string connectorPathId(const Connector& c,int index) {
@@ -86,7 +88,7 @@ std::size_t centredLaneRange(std::size_t focus,int count,std::size_t laneCount) 
     const long long lanes=static_cast<long long>(laneCount),run=std::max(1,count);
     return static_cast<std::size_t>(std::clamp(static_cast<long long>(focus)-(run-1)/2,0LL,std::max(0LL,lanes-run)));
 }
-std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
+std::vector<ConnectorLanePair> connectorLanePairs(const Network& n,const Connector& c) {
     const auto range=[&](const LaneReference& ref,int count) {
         std::vector<LaneReference> result;
         if(count<1 || count>12)throw std::invalid_argument("EDIT_LANE_RANGE");
@@ -102,22 +104,35 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
     const int count=std::max(c.fromLaneCount,c.toLaneCount);
     const int shift=connectorLaneShift(n,c);
     const auto narrow=[&](int i,int lanes){return lanes==count?i:std::clamp(i-shift,0,lanes-1);};
-    const auto weights=connectorBlendWeights(c);
+    std::vector<ConnectorLanePair> result;
+    for(int i=0;i<count;++i)result.push_back({from[narrow(i,c.fromLaneCount)],to[narrow(i,c.toLaneCount)]});
+    return result;
+}
+std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
+    const auto pairs=connectorLanePairs(n,c);
     std::vector<ConnectorPath> result;
-    for(int i=0;i<count;++i) {
-        const int a=narrow(i,c.fromLaneCount),b=narrow(i,c.toLaneCount);
-        auto shape=c.geometry;
-        if(i && !shape.empty()) {
-            const auto start=laneAttachment(n,from[a],true),end=laneAttachment(n,to[b],false);
-            const auto oldStart=shape.front(),oldEnd=shape.back();
-            for(std::size_t j=1;j+1<shape.size();++j) {
-                const double t=weights[j];
-                shape[j].x+=(start.x-oldStart.x)*(1-t)+(end.x-oldEnd.x)*t;
-                shape[j].y+=(start.y-oldStart.y)*(1-t)+(end.y-oldEnd.y)*t;
-            }
-            shape.front()=start;shape.back()=end;
+    if(c.geometry.size()<2) {
+        for(std::size_t i=0;i<pairs.size();++i)
+            result.push_back({connectorPathId(c,static_cast<int>(i)),pairs[i].from,pairs[i].to,c.geometry});
+        return result; // Keep draft validation readable, including empty geometry.
+    }
+    const auto rails=connectorSurface(n,c).boundaries;
+    for(std::size_t i=0;i<pairs.size();++i) {
+        std::vector<Point> shape;shape.reserve(c.geometry.size());
+        for(std::size_t j=0;j<c.geometry.size();++j) {
+            Point p{std::midpoint(rails[i][j].x,rails[i+1][j].x),
+                    std::midpoint(rails[i][j].y,rails[i+1][j].y)};
+            // Symmetric single-lane surfaces differ from their authoring axis only by round-off.
+            // Keep those vertices exactly, preserving the frozen core trajectory fixtures.
+            if(std::hypot(p.x-c.geometry[j].x,p.y-c.geometry[j].y)<=1e-12)p=c.geometry[j];
+            shape.push_back(p);
         }
-        result.push_back({connectorPathId(c,i),from[a],to[b],std::move(shape)});
+        // Mouth cuts can be longitudinally displaced, and a zero-width taper ends on an edge.
+        // Runtime enters/leaves at the named Link lane centre, not at either of those cuts.
+        // The terminal polyline legs connect that centre to the first/last interior midpoint.
+        shape.front()=laneAttachment(n,pairs[i].from,true);
+        shape.back()=laneAttachment(n,pairs[i].to,false);
+        result.push_back({connectorPathId(c,static_cast<int>(i)),pairs[i].from,pairs[i].to,std::move(shape),connectorEquation(n,pairs[i].from,pairs[i].to)});
     }
     return result;
 }

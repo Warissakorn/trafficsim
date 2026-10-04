@@ -205,8 +205,8 @@ std::vector<Segment> authoringSegments(const RuntimeSections& table) {
 // and hit this within a minute (2026-09-25). Geometry, not behaviour: nothing to calibrate.
 namespace {
 constexpr double kYieldClearance = 1.0;
-double yieldLine(const std::vector<Point>& path) {
-    return std::max(0.0, polylineLength(path) - kYieldClearance);
+double yieldLine(const ConnectorPath& path) {
+    return std::max(0.0, connectorPathLength(path) - kYieldClearance);
 }
 }
 std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
@@ -226,8 +226,8 @@ std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
         for (std::size_t q = 0; q < p; ++q)
             if (table.pathNext[q] == table.pathNext[p])
                 rules.push_back({"give-way/" + table.paths[p].id + "/to/" + table.paths[q].id,
-                                 table.paths[p].id, yieldLine(table.paths[p].geometry),
-                                 table.paths[q].id, polylineLength(table.paths[q].geometry),
+                                 table.paths[p].id, yieldLine(table.paths[p]),
+                                 table.paths[q].id, connectorPathLength(table.paths[q]),
                                  defaults.gapTime, defaults.headway});
         // An arriving path whose successor section does not start at 0 arrived inside the body,
         // so it and the section upstream of the arrival both feed that section: a merge, where
@@ -244,7 +244,7 @@ std::vector<PriorityRule> derivedPriorityRules(const RuntimeSections& table,
         // at its own downstream end; the conflict point is where the upstream section ends, which
         // is the drawn station.
         rules.push_back({"give-way/" + table.paths[p].id,
-                         table.paths[p].id, yieldLine(table.paths[p].geometry),
+                         table.paths[p].id, yieldLine(table.paths[p]),
                          upstream->id, upstream->end - upstream->start,
                          defaults.gapTime, defaults.headway});
     }

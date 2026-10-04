@@ -11,12 +11,13 @@ namespace trafficsim {
 // clamp in core/simulation.cpp), so the canvas draws the line there, across the lane it holds,
 // and a click puts it exactly where the pointer is -- on a Link lane or a Connector path.
 namespace {
-std::pair<Point,Point> barEnds(const std::vector<Point>& g, double station, double width) {
-    const double length = polylineLength(g);
+std::pair<Point,Point> barEnds(const std::vector<Point>& g, double station, double width,const std::optional<ConnectorEquation>& curve) {
+    const double length = curve?curve->arcStations.back():polylineLength(g);
     const double s = std::clamp(station, 0.0, length);
-    const auto a = pointAlong(g, std::max(0.0, s - .05)), b = pointAlong(g, std::min(length, s + .05));
-    const auto at = pointAlong(g, s);
-    double dx = b.x - a.x, dy = b.y - a.y; const double n = std::hypot(dx, dy);
+    const auto point=[&](double station){return curve?equationPoint(*curve,equationParameter(*curve,station)):pointAlong(g,station);};
+    const auto a=point(std::max(0.,s-.05)),b=point(std::min(length,s+.05)),at=point(s);
+    const auto tangent=curve?equationDerivative(*curve,equationParameter(*curve,s)):Point{b.x-a.x,b.y-a.y};
+    double dx=tangent.x,dy=tangent.y;const double n=std::hypot(dx,dy);
     if (n <= 0) { dx = 1; dy = 0; } else { dx /= n; dy /= n; }
     const double h = width / 2;
     return {{at.x - dy * h, at.y + dx * h}, {at.x + dy * h, at.y - dx * h}};
@@ -34,7 +35,7 @@ std::optional<EditorCanvas::HeadGeometry> EditorCanvas::headGeometry(const Netwo
     for (const auto& c : n.connectors) for (const auto& path : cachedPaths(c)) if (path.id == head.connectorId) {
         double width = 3.5;
         for (const auto& l : n.links) for (const auto& lane : l.lanes) if (lane.id == path.from.laneId) width = lane.width;
-        return HeadGeometry{path.geometry, width, c.level};
+        return HeadGeometry{path.geometry, width, c.level,path.equation};
     }
     return {};
 }
@@ -74,7 +75,7 @@ bool EditorCanvas::startHeadDrag(const std::string& id, QPoint press) {
     for (const auto& h : document_->network.signalHeads) if (h.id == id) {
         const auto geometry = headGeometry(h);
         if (!geometry || geometry->points.size() < 2) return false;
-        headDrag_ = HeadDrag{id, geometry->points, h.position, h.position, false};
+        headDrag_ = HeadDrag{id, geometry->points, h.position, h.position, false,geometry->equation};
         dragPress_ = press;
         return true;
     }
@@ -86,8 +87,10 @@ void EditorCanvas::updateHeadDrag(QPoint position) {
     headDrag_->moved = true; showMoveCursor();
     // Along its own lane only: moving a stop line to another lane is a different object, and
     // the dialog is where that is chosen.
-    const double length = polylineLength(headDrag_->geometry);
-    headDrag_->station = std::clamp(stationOfClosestPoint(headDrag_->geometry, world(position, false)), 0.0, length);
+    const auto& curve=headDrag_->equation;
+    const double length=curve?curve->arcStations.back():polylineLength(headDrag_->geometry);
+    const double station=curve?equationClosestStation(*curve,world(position,false)):stationOfClosestPoint(headDrag_->geometry,world(position,false));
+    headDrag_->station=std::clamp(station,0.,length);
     redraw();
 }
 void EditorCanvas::finishHeadDrag(QPoint position) {
@@ -99,8 +102,8 @@ void EditorCanvas::finishHeadDrag(QPoint position) {
 }
 void EditorCanvas::drawHeads() {
     if (!document_) return;
-    const auto bar = [&](const std::vector<Point>& g, double station, double width, int level, QColor fill, bool dashed) {
-        const auto [a, b] = barEnds(g, station, width);
+    const auto bar = [&](const std::vector<Point>& g, double station, double width, int level, QColor fill, bool dashed,const std::optional<ConnectorEquation>& curve) {
+        const auto [a,b]=barEnds(g,station,width,curve);
         QPen under(editorDesign::role(QPalette::Text), 5); under.setCosmetic(true); under.setCapStyle(Qt::FlatCap);
         QPen over(fill, 3, dashed ? Qt::DashLine : Qt::SolidLine); over.setCosmetic(true); over.setCapStyle(Qt::FlatCap);
         if (!dashed) scene_.addLine(a.x, a.y, b.x, b.y, under)->setZValue(level * 100. + 10);
@@ -113,18 +116,18 @@ void EditorCanvas::drawHeads() {
         const bool dragged = headDrag_ && headDrag_->id == head.id && headDrag_->moved;
         const double station = dragged ? headDrag_->station : head.position;
         bar(geometry->points, station, geometry->width, geometry->level,
-            isSelected(head.id) ? canvasStyle::selection() : head.id==hoverObject_ ? canvasStyle::hover() : editorDesign::role(QPalette::Base), false);
-        const auto p = pointAlong(geometry->points, station); const double r = 3 / std::abs(transform().m11());
+            isSelected(head.id) ? canvasStyle::selection() : head.id==hoverObject_ ? canvasStyle::hover() : editorDesign::role(QPalette::Base), false,geometry->equation);
+        const auto p=geometry->equation?equationPoint(*geometry->equation,equationParameter(*geometry->equation,station)):pointAlong(geometry->points,station); const double r = 3 / std::abs(transform().m11());
         scene_.addEllipse(p.x - r, p.y - r, 2 * r, 2 * r, QPen(editorDesign::role(QPalette::Dark)), QBrush(canvasStyle::error()))
             ->setZValue(geometry->level * 100. + 11);
     }
     if (hoverHead_ && tool_ == Tool::head)
-        bar(hoverHead_->slot.geometry, hoverHead_->station, hoverHead_->slot.width, hoverHead_->slot.level, canvasStyle::hover(), true);
+        bar(hoverHead_->slot.geometry, hoverHead_->station, hoverHead_->slot.width, hoverHead_->slot.level, canvasStyle::hover(), true,hoverHead_->slot.equation);
 }
 std::optional<std::pair<Point,Point>> EditorCanvas::headBar(const NetworkSignalHead& head) const {
     const auto geometry = headGeometry(head);
     if (!geometry || geometry->points.size() < 2) return std::nullopt;
-    return barEnds(geometry->points, head.position, geometry->width);
+    return barEnds(geometry->points,head.position,geometry->width,geometry->equation);
 }
 QPainterPath EditorCanvas::headShape(const NetworkSignalHead& head) const {
     QPainterPath shape;

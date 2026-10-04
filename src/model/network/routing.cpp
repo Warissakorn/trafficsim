@@ -234,7 +234,11 @@ std::vector<std::vector<Point>> routeGeometries(const Network& network,
         // stretch put a line on the road running against the traffic on it.
         for (const auto& id : expandRouteSegments(table, chain.ids)) {
             for (const auto& section : table.sections) if (section.id == id) append(section.geometry);
-            for (const auto& path : table.paths) if (path.id == id) append(path.geometry);
+            for(const auto& path:table.paths)if(path.id==id) {
+                // Display tessellation only; travel positions and lengths use the equation.
+                if(path.equation){std::vector<Point> shown;for(int j=0;j<=64;++j)shown.push_back(equationPoint(*path.equation,j/64.));append(shown);}
+                else append(path.geometry);
+            }
         }
         if (drawn.size() > 1) result.push_back(std::move(drawn));
     }

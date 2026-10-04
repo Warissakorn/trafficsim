@@ -1,6 +1,7 @@
 #pragma once
 #include "../../core/types.hpp"
 #include "control.hpp"
+#include <array>
 
 namespace trafficsim {
 struct Point { double x{}, y{}; bool operator==(const Point&) const = default; };
@@ -59,8 +60,33 @@ struct Connector {
 // One authored connector owns a contiguous range at each end. Individual runtime
 // paths are derived, with stable ids; they are never stored as duplicate objects.
 struct Network;
-struct ConnectorPath { std::string id; LaneReference from, to; std::vector<Point> geometry; };
+// D107: four coefficients define the runtime curve. Scalar integration cache is not a polyline.
+struct ConnectorEquation {
+    std::array<Point,4> controls;
+    std::array<double,17> arcStations{};
+};
+ConnectorEquation makeConnectorEquation(const std::array<Point,4>&);
+ConnectorEquation connectorEquation(const Network&, const LaneReference&, const LaneReference&);
+Point equationPoint(const ConnectorEquation&, double parameter);
+Point equationDerivative(const ConnectorEquation&, double parameter);
+Point equationSecondDerivative(const ConnectorEquation&, double parameter);
+double equationStation(const ConnectorEquation&, double parameter);
+double equationParameter(const ConnectorEquation&, double station);
+double equationClosestStation(const ConnectorEquation&, Point);
+struct ConnectorPath {
+    std::string id; LaneReference from, to;
+    std::vector<Point> geometry; // Drawing/authoring guide only; never used for runtime travel.
+    std::optional<ConnectorEquation> equation{};
+};
+double connectorPathLength(const ConnectorPath&);
+Point connectorPathPoint(const ConnectorPath&, double station);
+Point connectorPathDirection(const ConnectorPath&, double station);
+// Stored stations name uniform-parameter cross-sections of the authored point sequence.
+// These adapters do not approximate the runtime curve by those points.
+double connectorRuntimeStation(const Connector&, const ConnectorPath&, double authoredStation);
+double connectorAuthoringStation(const Connector&, const ConnectorPath&, double runtimeStation);
 std::string connectorPathId(const Connector&, int index);
+// Runtime lane paths evaluate the same cubic equation used to generate the default drawing.
 std::vector<ConnectorPath> connectorPaths(const Network&, const Connector&);
 struct NetworkSignalHead {
     std::string id; LaneReference lane; double position{};
@@ -84,7 +110,7 @@ struct Network {
 // A place a Signal head can stand -- a Link lane or a Connector path -- with its polyline and
 // the width its stop line spans. `nearestHeadSlot` is the pointer pick: the closest slot on
 // `level` within half its width of the point, and the station along it (head_slots.cpp).
-struct HeadSlot { LaneReference lane; std::string connectorId; std::vector<Point> geometry; double width{}; int level{}; };
+struct HeadSlot { LaneReference lane; std::string connectorId; std::vector<Point> geometry; double width{}; int level{}; std::optional<ConnectorEquation> equation{}; };
 struct HeadPlacement { HeadSlot slot; double station{}; };
 std::optional<HeadSlot> headSlot(const Network&, const NetworkSignalHead&);
 // M2.7b. The runtime program id a signal group expands to. `#` never appears in an allocated id,
@@ -222,7 +248,7 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network&);
 inline constexpr int kDefaultIntermediatePoints=3;
 std::vector<Point> connectorCurve(const Network&, const LaneReference& from, const LaneReference& to,
                                   int intermediatePoints=kDefaultIntermediatePoints);
-// The travel directions a Connector's two ends leave and arrive on, which clamp its spline.
+// The travel directions a Connector's two ends leave and arrive on, which set its cubic equation's endpoint tangents.
 std::pair<Point,Point> connectorTangents(const Network&, const LaneReference& from, const LaneReference& to);
 
 // One runnable piece of one authored lane. A lane is cut wherever a Connector attaches to its

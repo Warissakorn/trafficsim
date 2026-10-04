@@ -10,7 +10,7 @@ std::optional<std::pair<Point,int>> EditorCanvas::headPosition(const NetworkSign
         for(const auto& l:document_->network.links)if(l.id==head.lane.linkId)
             return std::pair{pointAlong(laneGeometry(l,head.lane.laneId,document_->network.drivingSide),head.position),l.level};
     } else for(const auto& c:document_->network.connectors)for(const auto& path:cachedPaths(c))
-        if(path.id==head.connectorId)return std::pair{pointAlong(path.geometry,head.position),c.level};
+        if(path.id==head.connectorId)return std::pair{connectorPathPoint(path,head.position),c.level};
     return {};
 }
 QPainterPath EditorCanvas::objectShape(const std::string& id) const {
