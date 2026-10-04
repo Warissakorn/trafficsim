@@ -1,6 +1,9 @@
 #include "editor_window.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include "../core/simulation.hpp"
+#include "editor_storage.hpp"
+#include <QFileDialog>
+#include <QToolBar>
 #include <QHeaderView>
 #include <QLabel>
 #include <QTabWidget>
@@ -43,6 +46,14 @@ void EditorWindow::buildResults() {
     auto* page=new ResultsPage(objects_,[this]{refreshResults();}); auto* layout=new QVBoxLayout(page);
     layout->setContentsMargins(editorDesign::space1,editorDesign::space1,editorDesign::space1,editorDesign::space1);
     layout->setSpacing(editorDesign::space1);
+    // Export writes exactly what `trafficsim-cli --csv` writes, marker line first, and only for
+    // a finished run: the CSV has no field saying its figures are partial.
+    auto* bar=new QToolBar(page); layout->addWidget(bar);
+    bar->addAction(action("editorExportResults",{},[this]{
+        const auto file=QFileDialog::getSaveFileName(this,text("editorExportResults"),"results.csv",text("editorCsvFilter"));
+        if(file.isEmpty())return;
+        try{exportResults(file);}catch(const std::exception& e){showError(e);}
+    }));
     resultsNote_=new QLabel(page); resultsNote_->setObjectName("editorResultsNote");
     resultsNote_->setWordWrap(true); layout->addWidget(resultsNote_);
     // Side by side, so the dock's height goes to rows: twelve movements beside four approaches.
@@ -87,10 +98,18 @@ void EditorWindow::refreshResults() {
         queueTable_->setItem(r,1,figure(q.meanLength));
         queueTable_->setItem(r,2,figure(q.maxLength));
     }
-    const bool finished=runState_.scenario && runState_.tick>=totalTicks(*runState_.scenario);
+    const bool finished=runFinished();
     QString note=text("editorResultsNote").arg(report->active).arg(report->pending)
         .arg(report->unassigned).arg(report->safetyClamps);
     if(!finished) note=text("editorResultsPartial").arg(report->time,0,'f',1)+" "+note;
     resultsNote_->setText(note);
+}
+bool EditorWindow::runFinished() const {
+    return runState_.scenario && runState_.tick>=totalTicks(*runState_.scenario);
+}
+void EditorWindow::exportResults(const QString& file) const {
+    const auto report=runReport();
+    if(!report || !runFinished())throw std::runtime_error("EDIT_CSV_UNFINISHED");
+    writeEditorBytes(file,movementCsv(*report),"EDIT_CSV_WRITE");
 }
 }

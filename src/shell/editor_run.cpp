@@ -97,6 +97,7 @@ void EditorWindow::refreshRun(){
     actions_.at("editorRun")->setText(text(runTimer_.isActive()?"editorPause":"editorRun"));
     actions_.at("editorRun")->setIcon(editorIcon(runTimer_.isActive()?EditorIcon::pause:EditorIcon::run));
     actions_.at("editorStep")->setEnabled(!runTimer_.isActive());
+    if(const auto e=actions_.find("editorExportResults");e!=actions_.end())e->second->setEnabled(runFinished());
     runSeed_->setAccessibleName(text("seed"));runSpeed_->setAccessibleName(text("speed"));
     if(!runSnapshot_){runInfo_->setText(text("editorRunReady"));runInfo_->setToolTip({});return;}
     // All diagnostic figures wrap above the canvas; their interpretation stays in the tooltip.

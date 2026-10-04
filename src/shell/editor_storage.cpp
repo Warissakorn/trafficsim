@@ -25,8 +25,11 @@ ProjectDocument readEditorDocument(const QString& file) {
 void writeEditorDocument(const QString& file,const Json& value) {
     const auto bytes=value.dump(2)+"\n";
     if(bytes.size()>48*1024*1024)throw std::runtime_error("EDIT_FILE_TOO_LARGE");
+    writeEditorBytes(file,bytes,"EDIT_FILE_WRITE");
+}
+void writeEditorBytes(const QString& file,const std::string& bytes,const char* errorCode) {
     QSaveFile output(file);output.setDirectWriteFallback(false);
     if(!output.open(QIODevice::WriteOnly) || output.write(bytes.data(),static_cast<qint64>(bytes.size()))!=static_cast<qint64>(bytes.size()) || !output.commit())
-        throw std::runtime_error("EDIT_FILE_WRITE");
+        throw std::runtime_error(errorCode);
 }
 }

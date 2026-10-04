@@ -8,6 +8,69 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-04 — Docs tidy: a map, no broken links, NEXT regrouped
+
+At the user's request ("tidy the docs"), the owner chose a tidy in place: no file moves, so no
+path changes. Docs only.
+- **`docs/README.md`** is new. It lists every file in `docs/` by purpose: start here, current
+  reference, milestone plans and gates, dated audits, folders. CLAUDE.md's read table and the
+  root README point at it.
+- **Links:** 7 relative links in `archive/` broke when their files moved there, and now carry
+  `../`. `PROGRESS-2026-09-28-d79-mouth.md` was missing from `archive/README.md`. A link and
+  reference sweep of every `*.md` finds no broken link. The remaining name mismatches are history
+  quoting old file names, or a proposed file (`evidence/m6-benchmark-options.md`).
+- **NEXT.md** is regrouped, with no item dropped: 0 the owner's order question (O1), 1 one
+  numbered checklist of owner looks on Windows, 2 owner decisions, 3 session work, 4 working
+  notes, 5 do not retry. The roadmap review's corrections are carried over: WSL is not
+  installed here, `Veytrix` was set aside, PRs #76–#78, M2.7 is open. D104 is recorded as part of
+  the review's S3.
+- **Root README:** its status still said M1 acceptance was open, the name waited on "the end of
+  M1", and lane changes, conflicts and priority were future work. It now states D49/D51–D53, an
+  open M0, and what the editor does, and its "Implemented" table matches `src/`.
+- **NETWORK_EDITOR.md** gains the Results tab and D104's export, which no current doc described.
+- **PROGRESS:** D97, D98 and the route table Length entry moved to
+  `archive/PROGRESS-2026-10-02-d97-d98.md` (488 → 376 lines).
+- The branch merged `main` first (the roadmap review, `cf8fb22`), so none of its 63 corrections
+  is undone.
+
+## 2026-10-04 — `scenario-run-ui` was the E-cores, not a regression; the test is now 10× cheaper
+
+The ≈100 s CPU found below is scheduling, not code. The same executable at the same commit was
+pinned by `ProcessorAffinity` on this i5-12450H (logical 0–7 = four P-cores with HT, 8–11 = four
+E-cores), interleaved: P-cores 29.1 / 26.0 s CPU, E-cores 103.9 / 88.9 s. The 2026-10-02 28 s run
+was on P-cores. The code between `b823cd8` and `eeb9c5c` could not have done it anyway: locale
+text, a test, and `hairlinePen` width 1/dpr → 1, which is the same pen at the offscreen dpr of 1.
+The earlier "machine idle" rested on one 3 % load sample; Windows still parks a Debug test on an
+E-core with Zoom and Discord running.
+
+The fragility was real, though: the test pumped the event loop after each of 1,800 Steps and
+painted 1,800 offscreen frames. Stepping and `refreshRun()` run inside the action, and only
+painting waits for the loop, so the bulk loop now triggers Step directly and pumps every 100 Steps
+and once at the end. Every assertion stays, including hidden-Results-not-rebuilt, which reads
+`isVisible()`. The loop still paints 18 frames, and frame cost is `trafficsim-run-view-benchmark`'s
+job. After: P-cores 2.8 s CPU, E-cores 11.8 s (one run each), against `TIMEOUT 90`, which is
+unchanged.
+
+## 2026-10-04 — Results export to CSV from the editor (D104)
+
+The Results tab has an "Export results (CSV)…" action on its own toolbar, also in the
+Simulation menu and the command palette. It writes `movementCsv(*runReport())`, the function
+behind `trafficsim-cli --csv`, so the editor's file is byte for byte the CLI's, with the
+not-yet-validated marker as its first line. It is enabled only once the run has reached its end
+(`runFinished()`, which the partial note in `refreshResults()` now shares). The enabled state is
+set in `refreshRun()`, because `refreshResults()` skips work while its tab is hidden. The write
+goes through a new `writeEditorBytes` (QSaveFile, no direct-write fallback); `writeEditorDocument`
+now calls it. A failed export reports `EDIT_CSV_WRITE` rather than `EDIT_FILE_WRITE`, whose text
+speaks of unsaved project changes. `scenario-run-ui` asserts the action is disabled before a run,
+part way through it and after Reset; that `exportResults` refuses a part-way run and writes
+nothing; and that the finished run's file equals `movementCsv` of the same report. Desktop 77/77
+on Windows (Debug).
+
+Found on the way, not caused by this change: `scenario-run-ui` is now ≈100 s CPU on Windows Debug
+with the machine idle (101 s at `eeb9c5c` without this change, 109 s with it; one run each). The
+2026-10-02 figure was 28 s. It times out at 90 s alone. See NEXT. *Corrected in the entry above:
+E-core scheduling, not code.*
+
 ## 2026-10-03 — Roadmap review: 63 stale statements corrected, the order left to the owner
 
 At the user's request, a session reviewed the roadmap for accuracy and direction. Report:
@@ -183,118 +246,6 @@ event profile put 4.5 ms/Step on the canvas viewport, ≈3.3 ms of it the grid i
   Windows: under ctest it swung 24–90 s on unchanged code; run directly, CPU 25.4–26.1 → 24.0–24.8 s
   (Debug, the engine dominates). Desktop 73/73 on Windows. Not run on Linux.
 
-## 2026-10-02 — The route table's Length is a full chain, not a stub
-
-The bug NEXT booked from D96. The Demand tab's route row took its length from the first compiled
-`r.id` or `r.id/lane-k` route. When lane 1 cannot reach the route's turn it compiles first as a
-stub (M3.2.8b), so a 2-lane Link → Connector from lane 2 → Link showed 100 m instead of 220 m.
-`authoredRouteLength` (`src/model/network/compile.cpp`) now picks the first chain that is not in
-`routeDeadEnds` — the same test `evaluation.cpp` uses to drop stubs from movements — and falls back
-to the first chain only if every one is a stub. The editor calls it instead of its own loop, so the
-choice is tested headless (`demand.a_route_length_is_a_full_chain_not_the_first_lane_stub`, which
-first asserts lane 1 really is a stub). Verified on Linux (WSL, GCC); display only, no run output
-changes.
-
-## 2026-10-02 — The lane-change lab, and where D95 stands (D98)
-
-### D95's A55 result
-
-D95 is implemented (`1f8fe26`) and stays **off**: `default.json` carries neither field, because
-A55 hit A53's failure condition.
-
-On four-leg and M2.6, seeds 42–81, clamps do not rise. But the A53 diagnostic counts thousands of
-changes within 3 s. Splitting them by kind (`191f0b1`; `quickRepeatsByKind` in
-`--lane-changes`) shows **every one is back-and-forth (A→B→A)**, at thresholds 0.25, 0.5 and
-1.0, in both projects. The owner rules (NEXT).
-
-### Implementation notes not in the D95 contract
-
-- **The threshold must be above 0.** Zero would change on any tie, which invites ping-pong.
-- **Missing fields.** One field without the other is `INCOMPLETE_DISCRETIONARY_BEHAVIOUR`,
-  reported on the missing field.
-- **Span building.** Discretionary spans come from `appendDiscretionaryLaneChanges` over
-  `DiscretionaryRoute` (names, last Link, and the D93 `after` clip). This replaced the
-  `FamilyRoute.names` the plan had.
-- **Counting.** `quickRepeats` counts discretionary changes only.
-- **D96 is not closed.** The run does not spread vehicles onto a lane drop's downstream second lane:
-  no route covers that lane, so no span reaches it.
-
-### The lane-change lab (D98)
-
-**The problem.** Iterating on D95 meant 40 seeds × 4 thresholds of four-leg and M2.6, through
-scratchpad scripts and `--data-dir` copies. Those drawings mix lane changes with signals and
-conflict areas.
-
-**The lab.** `data/projects/lane-change-lab.traffic.json` holds four independent scenes, built by
-`tools/lane_change_network.hpp` through the editor's commands:
-
-| Scene | Drawing |
-|---|---|
-| Overtaking | 2 lanes |
-| Three lanes | 3 lanes |
-| Lane drop | 2 → 1 → 2 |
-| Diverge | 3 lanes → a 1-lane and a 2-lane exit |
-
-**`lanelab`** checks three things:
-- the file is the builder's output;
-- what each scene compiles to:
-  - the lane drop has no discretionary span (the D96 gap, pinned);
-  - Diverge has none across exits;
-  - no conflict zone anywhere;
-- the catalog makes no discretionary change, and a threshold does.
-
-**The sweep tool.** `trafficsim-lane-change-sweep` runs any project across seeds and variants in
-one process. It sets the D95 fields on the compiled scenario's behaviours, then prints
-per-variant and per-movement tables.
-
-**Cross-check.** On four-leg, seeds 42–81, it reproduces the scratchpad A55 exactly:
-- delay 49.97 / 47.06 / 47.07 / 47.15;
-- clamps 220 / 183 / 179 / 185;
-- discretionary changes 13480 / 11116 / 7818;
-- back 2161 / 1104 / 172.
-
-**Lab, seeds 42–51 (58 s for 40 Debug runs, WSL).**
-
-| Threshold | Repeats within 3 s | back | afterMandatory | onward |
-|---|---|---|---|---|
-| 0.25 | 491 | 200 | 72 | 219 |
-| 0.5 | 330 | 112 | 67 | 151 |
-| 1.0 | 171 | 28 | 61 | 82 |
-
-- Unlike four-leg, the lab produces all three kinds. Onward comes mostly from Three lanes, and
-  afterMandatory from Diverge.
-- Overtaking delay falls 2.8 s, Three lanes 3.5 s, and Diverge → Exit B 2.0 s.
-- Lane drop is unchanged (+0.00).
-- Clamps are 5 / 2 / 2 / 5.
-
-Linux only.
-
-## 2026-10-02 — Vehicles drawn at true size in the Run view (D97)
-
-Owner request: the Run view drew every vehicle as the same 3 px dot in the road's vehicle colour,
-so a car and a 12 m heavy vehicle looked alike, queues read as dotted lines and heading was
-invisible. Asked this session, the owner chose a rounded body with a windshield (and a cab gap on a
-long vehicle), and colour by vehicle type.
-
-- `src/editor/vehicle_shape.{hpp,cpp}`: `vehicleShape(length, width, detailed)` returns one
-  `QPainterPath` in a local frame (front bumper at the origin, body along −x). The windshield and
-  cab gap are odd-even holes, so the road shows through and each vehicle stays **one** one-colour
-  scene item — `drawRunItems` rebuilds items every frame and was D85's hot spot.
-- `canvas_run.cpp`: the item sits at the located station (the front bumper, as `routes.cpp`
-  reads it), turned along the chord from rear to front, or along the tangent while the rear is
-  still on the previous segment. Paths are built once per type per frame and shared.
-- Size: true `length × width` from the scenario's `VehicleType`; floored at 4 × 2.5 px when
-  zoomed far out; detail only from 14 px of body length.
-- Colour: `data/vehicle-appearance/*.json` (`vehicleTypeId`, `color`), read by
-  `loadDisplayCatalog` into `DisplayCatalog::vehicleColors`; a type without one keeps the
-  road's display-type `vehicleColor`. The approved plan put `color` in `data/vehicle-types/`;
-  that changes the hashes the archived M3.2.7 sweep metadata pins (`t_junction_tests`), so it
-  moved before anything was committed. `core/` is untouched.
-
-Tests: `interaction_ui_tests` `runVehicles` (size, front position, 45° heading, type colour,
-fallback colour, zoomed-out floor, clear), `ranges.vehicle_colours_are_display_data_for_known_types`.
-Not measured: `scenario-run-ui` timing against D85's band.
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -414,6 +365,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D104 | 2026-10-04 | **The editor exports Results only for a finished run, as the CLI's CSV unchanged (`movementCsv`); the QFileDialog confirms overwriting, unlike the CLI's refusal** | One format with one writer (rule 3), and the marker line comes with it (rule 4). `movementCsv` has no field for "figures so far, t = …", so a part-way export would be indistinguishable from a full run, and adding that field would change the CLI's output. The CLI refuses to overwrite because nobody is there to ask; the editor can ask | An author needs a part-way export (then an optional context line in `project/`'s writer, used by both), or a study needs the seed and engine version in the file (the same line) |
 | D103 | 2026-10-03 | **Field text keeps D84's one digit row at 100 %; above it, digits may sit up to 1.5 logical px high (owner)** | The offset is the 13 px Thai-capable face's 6 px descent under Qt's line-box centring, in every body-font control. A 1 px QSS shift centres them but puts body and numeric digits on different rows at 100 %, the scale most use. `design-system-ui-1.5x`/`-2x` hold the limit; reopen with a per-font baseline measurement, not a padding guess |
 | D102 | 2026-10-02 | **D95 stays off (owner, option ii). The Run view draws a lane change as a 3 s smoothstep slide from the lane left (from `lastLaneChange`) with the nose turned along the path; display only, the engine change stays one tick** | Owner asked that a change not "warp"; the record D101 added already says where the vehicle came from, so the view needs no new engine state and no measurement moves. Finding the old lane by nearest point reuses the drawn geometry instead of copying the core's lane mapping (rule 3). 3 s and the 5 m/s yaw floor are display values, not driver parameters | A between-lanes state enters the engine (then the view draws the engine's lateral position instead), or a curved lane makes the nearest point jump visibly |
 | D101 | 2026-10-02 | **D95's back-and-forth: find the cause before adding state. A stateless fix keeps contract item 7 and A53; only if a stateless rule oscillates by nature, `Vehicle` carries one last-change record `{tick, fromRoute}` in `SimState`, a driver-behaviour hold time (absent = none), and A53 is rewritten to count returns beyond the hold** (owner's ruling) | Every change within 3 s on four-leg and M2.6 is A→B→A, which points at an incentive that flips after the move rather than at noise; a hold time would hide that. Option (b) also needs state and bans a later overtake back. A record inside `SimState` is copied with it, so replay stays exact, which is what item 7 protects. A hold of 3 s or more passes A53 by construction, so the criterion must move past the hold. One record also serves the lane-change animation and a later between-lanes state | The lab shows reversals with no flip in the incentive (genuine oscillation), so (a) applies directly; or the owner wants the D95 numbers before the cause is known |
