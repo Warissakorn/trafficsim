@@ -17,8 +17,8 @@ Not a schedule. A **sequence**, so that any session can see where it sits and wh
 The smallest thing that is genuinely a traffic simulator, end to end. Every layer exists in
 miniature, so wrong assumptions surface while they are still cheap.
 
-**Scope:** two crossing links · one connector each way · one fixed-time signal · one vehicle
-input · Wiedemann-style car-following · a native 2D view showing vehicles as dots · a headless run
+**Scope:** two crossing one-way roads (four Links in `crossing.json`) · one connector each way ·
+one fixed-time signal (two heads, one program each) · one vehicle input per road · Wiedemann-style car-following · a native 2D view showing vehicles as dots · a headless run
 that prints average delay.
 
 **Done when:** `trafficsim-desktop` shows vehicles accelerating, queueing at red, and
@@ -29,9 +29,9 @@ proves the same seed produces the same run on a fixed engine/toolchain.
 editor and use Run/Pause/Step/Reset there. Until M1.24 this said the same thing about a
 separate M0 window; that window is gone, the observation is not. The editor reads a bare M0
 scenario, steps the unchanged core, and its run status shows the mean trip delay and the
-safety-clamp count the retired window showed. `scenario-run-ui` pins that this path
-reproduces `trafficsim-cli 42` exactly — 31 completed trips, mean delay 29.249359418430977 —
-so an engineer judging plausibility in the editor is judging the same run the CLI prints.
+safety-clamp count the retired window showed. `scenario-run-ui` pins this path to the
+`trafficsim-cli 42` baseline — 31 completed trips exactly, mean delay 29.249359418430977 to
+within 1e-7 — so an engineer judging plausibility in the editor is judging the same run the CLI prints.
 **The gate itself is unchanged and still open:** no automated test closes it, and the
 plausibility judgement is the owner’s to make.
 
@@ -42,7 +42,8 @@ seeds, priority control. The slice is about the *shape*, not the feature set.
 
 ## M0.1 — Native C++ migration (D15)
 
-**Status:** implemented; Linux native/desktop checks passed. Owner M0 acceptance remains open.
+**Status:** implemented 2026-09-11; Linux native/desktop checks passed then. Windows desktop
+suites have run in `native.yml` since `e57b1b5` (2026-09-15). Owner M0 acceptance remains open.
 
 **Technical scope:** C++20 core/model/evaluation and CLI, CMake/CTest, a Qt Widgets desktop
 (originally a separate harness window; the editor since M1.24),
@@ -62,11 +63,14 @@ plausibility gate, the M1 editor or M7 installer.
 The Vissim modelling surface, natively: links are first class, connectors are real objects,
 junctions are not something the user places.
 
-**Status:** M1.1–M1.20 are implemented, including the carve-outs M1.3.1, M1.5.1, **M1.11.1** and
-**M1.12.1**. **M1.12.2 is closed** (the reported miter bulge was measured along the cross-section
+**Status:** M1.1–M1.16, M1.18–M1.21.1, M1.22.1–M1.22.2 and M1.24–M1.27 (with M1.26.1) are
+implemented, including the carve-outs M1.3.1, M1.5.1, **M1.11.1** and **M1.12.1**; M1.17 was
+reverted. **M1.22 and M1.23 are open.** **M1.12.2 is closed** (the reported miter bulge was measured along the cross-section
 and is not a defect) and **M1.12.3 is closed by M1.19**. The owner's requirement that a Connector's
 lanes meet the Link lanes they are assigned to ran M1.17 (reverted) → M1.18 (flush) → **M1.19**
-(each lane on the lane it feeds); **M1.20** gives the Connector its own position. M1.7's owner
+(each lane on the lane it feeds); D80 (2026-09-28) has since removed M1.18's slide and M1.19's
+re-solve: the four-point P1–P4 mouth (`CONNECTOR_FOUR_POINT_MOUTH.md`, D74/D79/D80) pairs lanes by
+index at both ends. **M1.20** gives the Connector its own position. M1.7's owner
 acceptance: **M1 usability accepted by owner ruling on 2026-09-25 (D49)** after one timed attempt
 (9 min 40 s, no assistance, save/reopen exact) that did not include turn pockets or an aerial
 image — see `M1_ACCEPTANCE.md` for what it did and did not show. M0 plausibility remains open.
@@ -154,14 +158,17 @@ Implemented: links and connectors persist a level and named display type; render
 
 ### M1.12 — Fixed lane edges, road markings and selection/copy gestures
 
-**Implemented** — fixed lane edges, road markings, two-sided handles (schema 4) and Ctrl-click/Ctrl-drag selection and copy. Owner Windows interaction and timed acceptance remain open. Body in [`archive/ROADMAP-M1.11-M3.1-implemented.md`](archive/ROADMAP-M1.11-M3.1-implemented.md).
+**Implemented** — fixed lane edges, road markings, two-sided handles (schema 4) and Ctrl-click/Ctrl-drag selection and copy. Timed acceptance: M1 usability accepted by owner ruling (D49), not by the written exercise. No owner check of these gestures on Windows is recorded; their UI suites (`editor-gestures`, `editor-attachments`, `tables-ui`) run on Windows in CI (`native.yml` `windows-desktop`). Body in [`archive/ROADMAP-M1.11-M3.1-implemented.md`](archive/ROADMAP-M1.11-M3.1-implemented.md).
 
 ---
 
-### M1.12.1–M1.25 — Completed geometry, authoring, audit and editor iterations
+### M1.12.1–M1.21.1, M1.24–M1.25 — Completed geometry, authoring, audit and editor iterations
 
-**All closed**, with the originals and what none of them claims about Vissim parity in
-[`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md): a Connector carries
+**All closed** (M1.17 by revert, replaced by M1.18; M1.12.3 by M1.19); M1.22 and M1.23, which fall
+between them in number, are open below. The originals and what none of them claims about Vissim
+parity are in [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md), except
+M1.17's and M1.18's full bodies: the archive holds stubs for those two, and the bodies are in Git
+history (`bcead5d:docs/ROADMAP.md`). In brief: a Connector carries
 its own `laneWidths` and `laneMarkings` in schema 6, `connectorLaneWidths` the single place a
 width is decided (M1.12.1); the 24% miter "bulge" measured along the cross-section, where a
 mitered corner's diagonal is `width / cos(φ/2)` by construction, so `offsetGeometry` was not
@@ -173,8 +180,8 @@ of the owner's specifications, where an unsupported field fails on load rather t
 save (M1.21); and the lifecycle audit's wrong-side retargets, pathological mouths, physical
 range picking and coalesced releases (M1.21.1); the one-window editor, whose run status carries
 the CLI's own delay figure (M1.24); and demand drawn by pointer (M1.25). M1.17's wedge remains
-reverted, owner M1 acceptance remains open, and none of this closes the supplied target
-specifications.
+reverted, M1 usability was accepted by owner ruling (D49; `M1_ACCEPTANCE.md` keeps what the
+attempt did not show), and none of this closes the supplied target specifications.
 
 ### M1.22 — Remaining authoring and interaction requirements
 
@@ -193,7 +200,8 @@ pivot/angle preview, Shift steps and an exact-angle dialog — all preserving in
 shapes, stations, lane metadata and carried heads in one Undo transaction. Full entries in
 [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md). These do not close
 M1.22: geometry/snapping tools, custom pivots, layer locks, bulk inspection and the
-keyboard-only owner exercise remain open, as does M1's timed gate.
+keyboard-only owner exercise remain open. M1 usability was accepted by owner ruling (D49), not
+by the written timed exercise.
 
 ### M1.23 — Interchange, document workflow and measured rendering
 
@@ -209,7 +217,10 @@ Full entries in [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-impleme
 2026-09-24). **M1.26:** a route names Links and Connectors and is compiled per lane; an input is
 the Link total. **M1.26.1:** optional `laneShares` (D32). **M1.27:** build, redraw and engine
 optimization, and the counted gesture walkthrough. **Gate still open for M1.26:** the
-keyboard-only gestures and the owner's timed exercise in `M1_ACCEPTANCE.md`.
+keyboard-only equivalents of the route and vehicle-input gestures (NEXT.md). The owner's timed
+exercise in `M1_ACCEPTANCE.md` was ruled on by D49: M1 usability accepted by owner ruling, not
+passed as written. Whether "CLOSED" stands with that gate open is the owner's call (see
+`ROADMAP_REVIEW-2026-10-03.md`).
 
 ---
 
@@ -221,8 +232,8 @@ Vehicle inputs per interval, compositions, turning proportions. Press Run, get a
 table.
 
 **GATE — the honesty check.** Before M3 starts, a practising traffic engineer completes a
-small **real** study in this tool and in their current tool, and the result shows whether the
-tool is usable for real engineering work.
+small **real** study in this tool, and the result shows whether the tool is usable for real
+engineering work. No criterion compares it with another tool (C2 withdrawn, D51; C4, D52).
 
 > **This gate is currently performed by the project owner alone (D8), which makes it weak** —
 > the person judging is the person who chose to build an engine. It is therefore run as a
@@ -257,10 +268,10 @@ withdrawn by D38, C2 by D51, C4 by D52; the rest keep their numbers so old recor
 it does not start M3). **M2.2** time-varying volumes · **M2.3** vehicle compositions · **M2.4**
 static turning proportions (moved here from M2.1, D37) · **M2.5** movement delay and queue, one
 run (implemented 2026-09-24, D39/D40) · **M2.6** the owner's gate study. Amber stays red until M4 (D36).
-**Status 2026-09-24:** M2.0, M2.0.1, M2.2, M2.3, M2.4 and M2.5 implemented. M2's done-condition
+**Status 2026-09-25:** M2.0, M2.0.1, M2.2, M2.3, M2.4 and M2.5 implemented. M2's done-condition
 (the M1 intersection with counted volumes runs and produces a delay table) is met in code. **M2.6: the
 gate passed by the owner's judgment on 2026-09-25 (D51, D53)** — recorded in `M2_GATE.md` as *not
-disproven*. M2.1 stays open; M3 may start.
+disproven*. M2.1 and M2.7 stay open; M3.2 implementation began 2026-09-25 (M3.2.2a, D54).
 
 ### M2.1 — Link/lane/Connector behavior and demand extensions
 
@@ -270,14 +281,17 @@ decisions (compositions and the static decision moved to M2.3/M2.4, D37). Persis
 imply runtime support; add explicit capability guards.
 **Gate:** validated distributions and references, deterministic sampling, old seed fixtures
 unchanged with defaults, observable runtime effects for every exposed behavior parameter.
-M2's pre-registered owner gate still precedes this work.
+M2's pre-registered owner gate passed on 2026-09-25 (D53).
 
 #### M2.1.1 — Routeless inputs and placed routing decisions · **Implemented 2026-09-24** (D42, D43)
 
 Owner request. An input on a Link needs no route; a decision placed on a Link sends routeless
 vehicles to destination Links by relative flow; everything expands at compile time into static
-routes (SIMULATION.md). Still open in M2.1: a decision's station along the Link, per-interval
-flows, and partial/dynamic decisions. Proportions after the entry Link wait for lane changing.
+routes (SIMULATION.md). Still open in M2.1: a decision's station along the Link and
+partial/dynamic decisions (per-interval flows came in M2.1.2). Proportions after the entry Link
+waited for lane changing; since M3.2.8c (D93/D94, 2026-10-01) a decision after the entry Link
+holds its proportions where lanes are served, by lane changes on its own Link, and a lane with no
+same-entry path beside it stays lane-fixed (A43).
 
 #### M2.1.2 — Per-interval turning proportions · **Implemented 2026-09-24** (D45)
 
@@ -286,8 +300,9 @@ interval (pasted per row in its dialog), schema 12; expanded at compile time per
 The interval is chosen by network entry time, not the time at the decision. Still open in M2.1:
 a decision's station along the Link, and partial/dynamic decisions.
 
-### M2.7 — Signal heads by pointer; fixed-time Signal Controllers · **Open** (owner request, before M2.6)
-M2.7a (head = stop line, placed by click, D47) and M2.7b (controllers, signal groups, schema 13, D48) implemented; the owner's use in M2.6 closes it. Detail and done-condition: [`M2_PLAN.md`](M2_PLAN.md) §4.
+### M2.7 — Signal heads by pointer; fixed-time Signal Controllers · **Open** (owner request, made before M2.6)
+M2.7a (head = stop line, placed at the pointer's station, D47; by Ctrl+right-click since D84) and M2.7b (controllers, signal groups, schema 13, D48) implemented 2026-09-25, before the gate. The owner's use in M2.6 was to close it; `M2_GATE.md` does not record whether that use met the done-condition. Detail and done-condition: [`M2_PLAN.md`](M2_PLAN.md) §4.
+
 ---
 
 ## M3 — Right-of-way: conflict areas and priority rules
@@ -304,10 +319,10 @@ M2.7a (head = stop line, placed by click, D47) and M2.7b (controllers, signal gr
 tunable minor-road delay that responds correctly to changing the gap time.
 
 **Preparation (2026-09-24):** [M3_PLAN.md](M3_PLAN.md), [M3_CONTRACT.md](M3_CONTRACT.md)
-and [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) specify the ordered work and evidence. M2.6 is
-still unperformed; this design neither starts runtime implementation nor waives its gate.
-Interior signal positions already work in the model/runtime; M3 audits and completes the
-authoring/interaction path, rather than introducing a second signal-position mechanism.
+and [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) specify the ordered work and evidence. Written before
+M2.6; the M2 gate passed on 2026-09-25 (D53) and runtime work began with M3.2.2a (D54). Interior
+signal positions already worked in the model/runtime; M3.2.6a (D64, A21) audited the
+authoring/interaction path rather than adding a second signal-position mechanism.
 
 ---
 
@@ -336,13 +351,13 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](M3_PLAN.md); next: `NEXT.md`. Pass
 | M3.2.2b/c | Reference lifecycle (A05, D55); a waiting line on a preceding Link and crossing-coverage check (D56) | **Implemented 2026-09-25**; `rightofway_lifecycle.*`, `rightofway_resolution.*`, curved Link, both driving sides |
 | M3.2.3a/b | Crossing admission runtime (D57): gap time/headway, grants held until the rear clears, receiving space, swept check, sink clearance; sides over section cuts, chained zones admitted atomically (A15), authored merges run on their compiled rules (D58) | **Implemented 2026-09-25**; A09–A17, A25 in `conflict_zone.*`, `conflict_chain.*`; `rightofway_runtime.*` |
 | M3.2.3c | Receiving space shared by same-tick requests behind one standing leader; authored merges on the zone solver (the major waits for an admitted minor); hold cycles between zones refused, acyclic role mixes run (D59) | **Implemented 2026-09-25**; `conflict_chain.*`, `rightofway_runtime.*`; derived merges stay on M3.1 rules, queue gridlock not prevented |
-| M3.2.4a/b/c | Conflict-area editor. **a** (D60): Conflict areas tab, add-crossing / take-over / restore / edit / delete, canvas display, Problems jump, Run protection note, en/th — **implemented 2026-09-25**. **b** (D61): Conflict area tool (`A`) — click picks, click again or `P` cycles priority, drag a waiting line; yielding side hatched; save/reopen through the UI — **implemented 2026-09-25** **c** (D68, the owner's ruling): automatic conflict areas — every at-grade overlap a passive area, every merge with its derived priority, derived and never stored; a click or `P` authors one, Delete makes a crossing passive again — **implemented 2026-09-26**. | `rightofway_editor.*`, `priority-ui`, `priority-canvas`; c: `automatic_conflict.*`, `conflict-auto-ui` |
+| M3.2.4a/b/c | Conflict-area editor. **a** (D60): Conflict areas tab, add-crossing / take-over / restore / edit / delete, canvas display, Problems jump, Run protection note, en/th — **implemented 2026-09-25**. **b** (D61): Conflict area tool (`A`) — click picks, Ctrl+right-click (a plain click until D84) or `P` cycles priority, drag a waiting line; yielding side hatched; save/reopen through the UI — **implemented 2026-09-25** **c** (D68, the owner's ruling): automatic conflict areas — every at-grade overlap a passive area, every merge with its derived priority, derived and never stored; Ctrl+right-click or `P` authors one (D84), Delete makes a crossing passive again — **implemented 2026-09-26**. D72: one area per overlap piece, only the joined lane is a Connector's mouth, drawn 0.3 m inset (display only) — **implemented 2026-09-27**. D86: an authored area follows its overlap after any drawing edit and is removed with its rule and Stop/Yield when the overlap goes — **implemented 2026-09-30**; the owner's look at both is pending (NEXT). | `rightofway_editor.*`, `priority-ui`, `priority-canvas`; c: `automatic_conflict.*`, `conflict-auto-ui`, `conflict_follow.*` |
 | M3.2.5a/b | Stop/Yield. **a** (D62): `StopControl`, schema 15, per-vehicle stop service in core, signal composition, lifecycle — **implemented 2026-09-25**. **b** (D63): Stop/Yield on the conflict dialog and table, line marks on the canvas, en/th, save/reopen; one waiting line per lane — **implemented 2026-09-25** | `stop_control.*`, `stop_control_model.*`, `priority-canvas` |
 | M3.2.6a/b/c | Signal positions and queue counters. **a** (D64): A21 evidence, before/on/after a cut, stretch/split/copy, both sides — **implemented 2026-09-25**. **b** (D64): `AuthoredQueueCounter`, schema 16, place-based evaluation, one row per approach — **implemented 2026-09-25**. **c** (D65): counter tool, Queue counters table, en/th, save/reopen — **implemented 2026-09-25** | a/b: `signal_position.*`, `queue_counter.*`; c: `queue-counter-ui` |
 | M3.2.7a–d | T-junction evidence (A26). **a** (D66): fixture through commands (both sides, Yield/Stop, blocked exit) and controlled gap/headway/movement cases — **implemented 2026-09-25**. **b** (D66): diagnostic seeded sweep, metadata committed first — **implemented 2026-09-25**. **c** (D67): signal-composition variant on the fixture; congested major road so headway decides, and its headway arm (metadata first) — **implemented 2026-09-26**. **d**: the owner exercise (§3, Windows) — **pending, owner** | a: `tjunction.*`, `tjunction_controlled.*`; b: `docs/evidence/m3.2.7-sweep.*`; c: `tjunction_signal.*`, `docs/evidence/m3.2.7c-headway.*`; d open |
-| M3.2.8a/b/c | Behaviour ([M3_8_CONTRACT.md](M3_8_CONTRACT.md)). **a** (D69): commitment at a waiting line — a driver who cannot stop at `maxDeceleration` ignores headway/gap time, never occupancy, Stop, receiving space or the swept check; zones and derived merges — **implemented 2026-09-26**. **b** (D71, the owner's ruling): mandatory lane changing, Vissim-style — volume on every entry lane, a stub changes before its dead end at `comfortableDeceleration`, plus one cooperation rule (hold back for a vehicle waiting at its dead end) — **implemented 2026-09-27** (Windows headless only). **c**: the remaining lane-change behaviour, rows before code — discretionary changes, visibility, `laneChangeDistance`, a between-lanes state — open; lane changes at a downstream routing decision (D93, A40–A46) **implemented 2026-10-01** (Windows only; free walk with no decision stays lane-fixed: no destination); cooperative braking with a deceleration parameter and look-ahead (D90, A36–A39) **implemented 2026-10-01** (Linux only); discretionary lane changes (free lane selection, acceleration-gain threshold, stricter trailing safety) — contract D95, rows A47–A55, **implemented and off**; the hold after a change (D101, A56–A58) **implemented and off**; A53 rewritten by D101 **fails** on four-leg and M2.6 (≈5% of changes return within 10 s at threshold 1.5, hold 3 s) — back to the owner | a: `commitment.*`, `docs/evidence/m3.2.8a-*`; b: `lanechange.*` (A27–A35), `docs/evidence/m3.2.8b-mandatory.md`; c: measurement steps 1–5 (D87–D89, `docs/evidence/m3.2.8c-*.md`), cooperative braking `lanechange.*` (A36–A39), `docs/evidence/m3.2.8c-cooperative-braking.md`; calibrated gap acceptance still requires M6 evidence |
-| M3.2.9a/b/c | Lane correspondence across a Connector (D73, the owner's ruling). **a**: one-to-one pairing over the narrower end, at most one lane added/dropped per side, `laneChangeSide` (schema 17), the added lane is the tapering one — **implemented 2026-09-27** (Windows desktop only). **b** (D74): each divider ends on its own Link boundary point on the mouth; rails bend onto P1/P4; the 1,512-case probe is `mouth_sweep.*` — **implemented 2026-09-27** (Windows desktop only). **c**: "Lane change side" (Kerb/Left/Right) in the Connector Inspector, enabled only for a one-lane difference, one undoable edit; the lane tabs stop at a difference of 2 (no message, owner's call) — **implemented 2026-09-27** (Windows desktop only) | a: `lane_correspondence.*`; b: `mouth_sweep.*`; c: `connector-ui` (lane-change side step), `attachment-ui` (capped drag) |
-| M3.2.9d–h | Connector end fixes (owner requests). **d** (D75): a range across more than a two-lane difference is created narrowed, centred on the dropped lane — **implemented 2026-09-27** (Windows desktop only). **e** (D76): dividers find their mouth point like P1/P4 — **implemented 2026-09-27** (Windows desktop only). **f** (D77): end grips on the Link range centre — **implemented 2026-09-27** (Windows desktop only). **g** (D78): moving an end along the same lanes keeps the curve — **implemented 2026-09-27** (Windows desktop only). **h** (D79): one P1–P4 pairing at every angle — **implemented 2026-09-28** (Windows desktop only) | d: `lane_correspondence.*`, `gesture-ui`; e: `mouth_sweep.*`; f: `mouth_sweep.an_end_grip…`, `attachment-ui`; g: `lifecycle.sliding_an_end…`, `attachment-ui`; h: `mouths.*`, `mouth_sweep.*` |
+| M3.2.8a/b/c | Behaviour ([M3_8_CONTRACT.md](M3_8_CONTRACT.md)). **a** (D69): commitment at a waiting line — a driver who cannot stop at `maxDeceleration` ignores headway/gap time, never occupancy, Stop, receiving space or the swept check; zones and derived merges — **implemented 2026-09-26**. **b** (D71, the owner's ruling): mandatory lane changing, Vissim-style — volume on every entry lane, a stub changes before its dead end at `comfortableDeceleration`, plus one cooperation rule (hold back for a vehicle waiting at its dead end) — **implemented 2026-09-27** (Windows; Linux/GCC replayed its evidence digit for digit, 2026-09-30). **c**: the remaining lane-change behaviour, rows before code — discretionary changes, visibility, `laneChangeDistance`, a between-lanes state — open; lane changes at a downstream routing decision (D93, A40–A46) **implemented 2026-10-01** (A44 byte comparison on Windows/MSVC only; tests green in Linux CI since PR #84; free walk with no decision stays lane-fixed: no destination); cooperative braking with a deceleration parameter and look-ahead (D90, A36–A39) **implemented 2026-10-01** (Linux; 40-seed M2.6 numbers identical on Windows/MSVC, 2026-10-02); discretionary lane changes (free lane selection, acceleration-gain threshold, stricter trailing safety) — contract D95, rows A47–A55, **implemented and off**; the hold after a change (D101, A56–A58) **implemented and off**; A53 rewritten by D101 **fails** on four-leg and M2.6 (≈5% of changes return within 10 s at threshold 1.5, hold 3 s) — off by the owner's choice (ii), 2026-10-02 (D102); route (i) if reopened (NEXT) | a: `commitment.*`, `docs/evidence/m3.2.8a-*`; b: `lanechange.*` (A27–A35), `docs/evidence/m3.2.8b-mandatory.md`; c: measurement steps 1–5 (D87–D89, `docs/evidence/m3.2.8c-*.md`), cooperative braking `lanechange.*` (A36–A39), `docs/evidence/m3.2.8c-cooperative-braking.md`; calibrated gap acceptance still requires M6 evidence |
+| M3.2.9a/b/c | Lane correspondence across a Connector (D73, the owner's ruling). **a**: one-to-one pairing over the narrower end, at most one lane added/dropped per side, `laneChangeSide` (schema 17), the added lane is the tapering one — **implemented 2026-09-27** (Windows desktop; Linux in CI). **b** (D74): each divider ends on its own Link boundary point on the mouth; rails bend onto P1/P4; the 1,512-case probe is `mouth_sweep.*` — **implemented 2026-09-27** (Windows desktop; Linux in CI). **c**: "Lane change side" (Kerb/Left/Right) in the Connector Inspector, enabled only for a one-lane difference, one undoable edit; the lane tabs stop at a difference of 2 (no message, owner's call) — **implemented 2026-09-27** (Windows desktop; Linux in CI) | a: `lane_correspondence.*`; b: `mouth_sweep.*`; c: `connector-ui` (lane-change side step), `editor-attachments` (capped drag) |
+| M3.2.9d–h | Connector end fixes (owner requests). **d** (D75): a range across more than a two-lane difference is created narrowed, centred on the lane the drag ended on — **implemented 2026-09-27** (Windows desktop; Linux in CI). **e** (D76): dividers find their mouth point like P1/P4 — **implemented 2026-09-27** (Windows desktop; Linux in CI). **f** (D77): end grips on the Link range centre — **implemented 2026-09-27** (Windows desktop; Linux in CI). **g** (D78): moving an end along the same lanes keeps the curve — **implemented 2026-09-27** (Windows desktop; Linux in CI). **h** (D79): one P1–P4 pairing at every angle — **implemented 2026-09-28** (Windows desktop; Linux in CI); D80 (2026-09-28) replaced its construction: a centred whole-carriageway axis, lane-index pairing at both ends, no square/slide/reach fallbacks — the owner's Windows review is pending (NEXT) | d: `lane_correspondence.*`, `editor-gestures`; e: `mouth_sweep.*`; f: `mouth_sweep.an_end_grip…`, `editor-attachments`; g: `lifecycle.sliding_an_end…`, `editor-attachments`; h: `mouths.*`, `mouth_sweep.*` |
 
 ---
 
@@ -357,7 +372,8 @@ under 8 minutes with zero validation errors, and runs.
 
 ### M4.1 — Detectors and controller integration
 
-**Open.** Detectors/DCP authoring and events, signal groups/controllers, actuated/adaptive logic,
+**Open.** Detectors/DCP authoring and events, signal groups/controllers beyond M2.7b's fixed-time
+ones (D48), actuated/adaptive logic,
 phase validation and external-control interfaces. External integrations need explicit protocols
 and deterministic recorded inputs; no wall-clock dependency in core.
 **Gate:** passage/occupancy/aggregation fixtures, controller state-transition tests, dangling-

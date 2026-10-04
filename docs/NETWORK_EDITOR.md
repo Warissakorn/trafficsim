@@ -65,7 +65,7 @@ is in metres, and Snap affects drawing/dragging. Measuring and calibration bypas
 | Shift+click | Add/remove an object in the selection |
 | Ctrl+left-click | Add an object to the selection |
 | Ctrl+left-drag on a selected object | Duplicate the selection at the drag offset |
-| Tab on the canvas | Cycle objects overlapping the last click position |
+| Ctrl+Tab on the canvas | Cycle objects overlapping the last click position (plain Tab moves focus) |
 | Delete / Ctrl+Delete | Delete objects / remove selected geometry point |
 | Ctrl+B / Ctrl+I / Ctrl+Shift+O | Toggle background / Properties / object tables |
 | Ctrl+A | Wireframe display: Links and Connectors as centre lines only (a focused text field keeps select-all) |
@@ -282,7 +282,7 @@ double-click their rows to edit. Table cells are read-only views of the document
 
 Properties → Level and Display type apply to the primary link/connector. Level orders
 drawing and picking; vehicles and heads use their carrying object's level. The sidebar
-filters to all levels or one catalog level. Tab can reach a lower overlapping object.
+filters to all levels or one catalog level. Ctrl+Tab can reach a lower overlapping object.
 Changing that filter removes hidden selections. Selecting a hidden object explicitly from
 a table or inspector switches to all levels so the edit target is visible.
 
@@ -347,6 +347,14 @@ engine decides or the results measure changes; a second change inside the 3 s re
 from the lane it left.
 
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
+
+**Results** tab (M2.5, D39/D40): per-movement vehicles, mean delay and mean travel time beside
+per-approach mean and maximum queue, for the current run. While the run is still going it shows
+the figures so far with the time reached. The note above the tables is the not-yet-validated
+marker and says what the delay is not (HCM control delay, LOS). **Export results (CSV)…** (D104),
+on the tab, in the Simulation menu and in the command palette, writes the same file as
+`trafficsim-cli --csv`, marker line first. It is enabled only once the run has reached its end.
+
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.
 **Conflict area tool** (`A`, M3.2.4b, D61): click an area to select it, Ctrl+right-click it or press `P` to

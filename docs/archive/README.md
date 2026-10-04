@@ -5,6 +5,8 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-02-d97-d98.md`](PROGRESS-2026-10-02-d97-d98.md) — 2026-10-02, D97 vehicles drawn at true size, D98 the lane-change lab and where D95 stood, route table Length as a full chain; moved out 2026-10-04 as the oldest live entries
+- [`PROGRESS-2026-10-02-d95-d96.md`](PROGRESS-2026-10-02-d95-d96.md) — 2026-10-02, D96 the route overlay draws every lane of its Links, and D95's discretionary lane-change contract and rows (A47–A55); moved out 2026-10-03 as the oldest live entries
 - [`PROGRESS-2026-10-01-d93-d94.md`](PROGRESS-2026-10-01-d93-d94.md) — 2026-10-01, D93 downstream routing decisions (contract and rows, then the implementation with D94); moved out 2026-10-03 as the oldest live entries
 - [`PROGRESS-2026-10-01-d90-d92.md`](PROGRESS-2026-10-01-d90-d92.md) — 2026-10-01, D90 cooperative braking with look-ahead, D91 `stepSimulation` takes the previous state, D92 why the dead-end waits wait; moved out 2026-10-02 as the oldest live entries
 - [`PROGRESS-2026-10-01-m3.2.8c-steps-4-5.md`](PROGRESS-2026-10-01-m3.2.8c-steps-4-5.md) — 2026-10-01, M3.2.8c steps 4–5 (D88 five-seed sample, D89 left-turn dead-end waits) and the SIMULATION.md "Step and motion" rewrite; moved out 2026-10-02 as the oldest live entries
@@ -15,6 +17,7 @@ entry behind what you are changing, not the directory.
 - [`PROGRESS-2026-09-29-optimization-d82.md`](PROGRESS-2026-09-29-optimization-d82.md) — 2026-09-29, measured optimization pass: docs headroom, CI (D82); moved out 2026-10-01 as the oldest live entry
 - [`PROGRESS-2026-09-29-d81.md`](PROGRESS-2026-09-29-d81.md) — 2026-09-29, D81 precision-tool restyle through palette roles; moved out 2026-10-01 as the oldest live entry
 - [`PROGRESS-2026-09-28-d80-selection.md`](PROGRESS-2026-09-28-d80-selection.md) — 2026-09-28, D80 central reference and four-point mouths, editor selection and visual cleanup; moved out 2026-10-01 as the oldest live entries
+- [`PROGRESS-2026-09-28-d79-mouth.md`](PROGRESS-2026-09-28-d79-mouth.md) — 2026-09-28, M3.2.9h one P1–P4 construction at every angle (D79)
 - [`PROGRESS-2026-09-27-m3.2.8b-m3.2.9g.md`](PROGRESS-2026-09-27-m3.2.8b-m3.2.9g.md) — 2026-09-27, M3.2.8b (D71), conflict areas on every overlap (D72), four-point display mouths, M3.2.9a–g; moved out 2026-09-29 as the oldest live entries
 - [`PROGRESS-2026-09-26-optimization-d70.md`](PROGRESS-2026-09-26-optimization-d70.md) — 2026-09-26, measured optimization pass (D70); moved out 2026-09-29 as the oldest live entry
 - [`PROGRESS-2026-09-26-m3.2.8a.md`](PROGRESS-2026-09-26-m3.2.8a.md) — 2026-09-26, M3.2.8a, commitment at a waiting line (D69); moved out 2026-09-27 as the oldest live entry

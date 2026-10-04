@@ -11,32 +11,35 @@ movement-level delay and LOS output that traffic impact studies require. See
 [`docs/PROBLEM.md`](docs/PROBLEM.md) §2 for the capabilities a study needs from the engine.
 
 `TrafficSim` is a working name. Naming was deferred until the end of M1 (D11); M1 is now accepted
-(D49), so **the name is the owner's decision** (NEXT item 4). Do not rename the project, the
+(D49), so **the name is the owner's decision** (NEXT owner item 2; Q5). Do not rename the project, the
 repository, or any package until the owner decides.
 
 ## Where it stands
 
 - **Gates:** M1 usability accepted by owner ruling (D49; `docs/M1_ACCEPTANCE.md` keeps what the
   attempt did not show). M2's gate passed by the owner's judgment (D51–D53, `docs/M2_GATE.md`).
-  **M0 plausibility is still open.** M3.2.2a–M3.2.8b are done (D54–D71) and M3.2.8c is under
-  way (D87–D90); the owner exercise M3.2.7d is open. What each step found and what is next live
+  **M0 plausibility is still open.** M3.2.2a–M3.2.8b are done (D54–D71), M3.2.9a–h are
+  implemented (D73–D80), and M3.2.8c is under way (D87–D102; D95 and D101 implemented and off,
+  D102); the owner exercise M3.2.7d is open. What each step found and what is next live
   in `docs/NEXT.md` and `docs/PROGRESS.md` — not here, so there is one copy.
 - **Engine:** C++ core, reduced Wiedemann-inspired car-following (unvalidated), fixed-time signals,
   derived merge priority rules (M3.1; a derived stop line sits 1 m short of the join, D50),
   authored crossing and merge areas admitted by gap time/headway with whole-area reservation
   (M3.2.3a–c, D57–D59), commitment at a line a driver cannot stop for (M3.2.8a, D69), and
-  mandatory lane changes with minimal cooperation (M3.2.8b, D71), and cooperative braking for a
-  changer still moving (M3.2.8c, D90).
+  mandatory lane changes with minimal cooperation (M3.2.8b, D71), lane changes at a downstream
+  routing decision (M3.2.8c, D93/D94), and cooperative braking for a changer still moving
+  (M3.2.8c, D90).
   Contracts: `docs/SIMULATION.md`.
 - **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md` (Connectors: `docs/NETWORK_EDITOR_CONNECTORS.md`). Project files are
-  schema 16 (authored right-of-way controls, M3.2.2a, D54; Stop/Yield, M3.2.5a, D62; queue counters, M3.2.6b, D64); unsupported network-object fields
+  schema 17 (authored right-of-way controls, M3.2.2a, D54; Stop/Yield, M3.2.5a, D62; queue counters, M3.2.6b, D64; Connector `laneChangeSide`, M3.2.9a, D73); unsupported network-object fields
   fail on load rather than vanish on save.
   Scenario JSON and editor `*.traffic.json` are **two formats on purpose** — read
   `NETWORK_EDITOR.md` §"Save, recovery and formats" and D19a before touching either loader.
 - **Demand:** an authored route names Links and Connectors, **never a lane**; `buildScenario`
   expands it per lane (`routeLaneChains`). Intervals, compositions, routing decisions and signal
-  controllers all compile into ordinary core inputs and programs, so `core/` and every frozen
-  fixture stay untouched by them. A route whose objects do not join up is kept and reported as
+  controllers all compile into ordinary core inputs and programs, so the engine and every frozen
+  fixture stay untouched by them (they ride as authoring-only `VehicleInput` fields in
+  `core/types.hpp`, which `buildScenario` expands away before the core runs). A route whose objects do not join up is kept and reported as
   `UNSUPPORTED_ROUTE_TOPOLOGY` — Run refuses it, authoring does not.
 - **Settled geometry — do not re-open without a new measurement:** the mitered `offsetGeometry`
   stays (D23); the M1.17 lateral mouth wedge stays reverted (M1.18's flush mouth replaced it).
@@ -58,6 +61,7 @@ The history behind each of these — and the M1.x milestones — is in `docs/PRO
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | The history and the reasoning, including the **decision log** every `D`-number here points at. Read the entry that touches what you are about to change. |
 | [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1, §3 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
 | [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
+| [`docs/README.md`](docs/README.md) | To find any other document. Every file in `docs/`, grouped by purpose; a new top-level doc gets a row there. |
 
 ## Stack
 
@@ -84,8 +88,8 @@ If either fails on a clean checkout, fixing that comes before any feature work.
 
 ## Hard rules
 
-The full list with reasoning is in [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md). The ones that
-get broken by accident:
+The full list with reasoning is in [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md), except rule 5
+below, whose reasoning is D7. The ones that get broken by accident:
 
 1. **`core/` imports nothing.** No UI, no I/O, no framework. The moment it does, the engine
    stops being testable, batchable and portable, and that is the project's most valuable
@@ -144,12 +148,14 @@ src/core/       simulation engine — imports nothing
 src/model/      network · demand · control data model
 src/commands/   every mutation, undoable, one registry
 src/project/    load, save, revisions, validation
-src/editor/     tools, inspector, tables
-src/shell/      layout, palette, i18n
+src/editor/     canvas: tools, gestures, run view
+src/shell/      window, inspector, tables, results, layout, palette, i18n
 src/eval/       event stream → measurements
-src/runner/     multi-seed batches
-src/report/     impact-study output
-data/           vehicle types · behaviour presets · LOS thresholds
+src/runner/     multi-seed batches (planned; README only, M5)
+src/report/     impact-study output (planned; README only, M5)
+data/           vehicle types · behaviour presets · compositions · priority rules · levels ·
+                display types · locales · example projects (LOS thresholds planned, M5)
+tools/          CLI, sweeps, benchmarks, checks
 tests/
 ```
 

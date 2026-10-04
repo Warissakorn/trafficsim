@@ -1,6 +1,6 @@
 # M3 right-of-way contract
 
-**Design for implementation after the M2 gate, not an implemented API.** Prepared with
+**Design written before the M2 gate (passed 2026-09-25, D53); implemented from M3.2.2a (D54), with later rulings (e.g. D68's automatic areas) amending parts. Slice status is in ROADMAP M3.2.** Prepared with
 [M3_PLAN.md](M3_PLAN.md); evidence requirements are in [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md).
 All proposed names below describe one small initial capability: explicit, at-grade,
 fixed-lane conflicts. No calibrated critical-gap, automatic collision detection over the

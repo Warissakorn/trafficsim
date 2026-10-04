@@ -262,7 +262,8 @@ travel whole. `Alt`-drag rotation is still not implemented and is not booked.
 
 A lateral wedge onto the Link's lane edges. It re-aimed each boundary's last leg, let neighbouring
 boundaries cross and folded the mouth to a point; reverted on the owner's instruction and
-superseded by M1.18, then M1.19. The body is below, in this file.
+superseded by M1.18, then M1.19. The full body was never moved here; it is in Git history
+(`bcead5d:docs/ROADMAP.md`).
 
 ---
 
@@ -305,7 +306,8 @@ met.** The owner's timed editor exercise in `docs/M1_ACCEPTANCE.md` is still the
 The mouth cut on the Link's own cross-section by sliding each boundary **longitudinally** along its
 own offset curve — not M1.17's lateral wedge, whose revert stands. Superseded in part by M1.19,
 which keeps the slide and changes the offsets it starts from. The full body, its measurements and
-the trade the owner took at the time are below, in this file.
+the trade the owner took at the time were never moved here; they are in Git history
+(`bcead5d:docs/ROADMAP.md`) and [`PROGRESS-2026-09-18-flush-mouth.md`](PROGRESS-2026-09-18-flush-mouth.md).
 
 ---
 
@@ -347,7 +349,7 @@ function is unchanged.
 none/double marking strokes in both renderers, schema-7 persistence, Link insert/midpoint/
 straighten/unreferenced-reverse actions, import cross-section validation and warning severity.
 Unknown schema-7 network-object fields are rejected, so unsupported behavior is never silently
-lost. [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md) defines the actual supported subset.
+lost. [AUTHORING_EXTENSIONS.md](../AUTHORING_EXTENSIONS.md) defines the actual supported subset.
 Owner M1 acceptance remains open. This does not close the supplied target specifications.
 
 ### M1.21.1 — Network lifecycle correctness audit
