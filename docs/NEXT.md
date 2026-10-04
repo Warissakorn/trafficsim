@@ -37,9 +37,11 @@ closed no owner item.
 
 In order:
 
-- **D106 Connector lane centres:** look at a curved 3 → 3 Connector and both taper sides,
-  then run with vehicles. Interior centres follow the painted dividers; terminal legs join
-  the Link lane centres. Inspect an authored-width mouth and conflict waiting bar too.
+- **D107 Connector equation:** run a curved 3 → 3 Connector and both taper sides.
+  Vehicles follow the existing cubic from Link attachments/tangents; 0/3/40 drawing points
+  and interior drags must leave motion unchanged. Inspect heads and waiting bars on that
+  curve. Manually deformed paint can differ from the driving curve; check the Inspector
+  tooltip and owner expectations. Headless evidence is in `evidence/connector-equation.md`.
   Geometry/round-trip evidence is headless; desktop appearance still needs an owner look.
 
 1. **D104 Results → CSV.** Run a project to its end, then Results → Export results (CSV). It

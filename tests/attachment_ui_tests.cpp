@@ -163,13 +163,19 @@ int main(int argc,char** argv) {
                 require(beforeLane==afterLane,"Growing an edge moved an existing lane");
             }
         }
-        c->select(id);const auto fixed=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[0].geometry;
+        c->select(id);const auto fixed=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[0];
         p=handle(c,5);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
         require(w.history().document().network.connectors.front().fromLaneCount==3,"Leading source handle did not grow");
         p=handle(c,6);releaseDrag(c,p,{p.x,p.y+3.5},Qt::LeftButton);
         require(w.history().document().network.connectors.front().toLaneCount==3,"Leading target handle did not grow");
-        const auto moved=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[1].geometry;
-        for(std::size_t i=0;i<fixed.size();++i)require(std::hypot(moved[i].x-fixed[i].x,moved[i].y-fixed[i].y)<1e-8,"Leading resize moved surviving connector lane");
+        const auto moved=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[1];
+        require(moved.from==fixed.from && moved.to==fixed.to,"Leading resize changed surviving lane references");
+        require(std::abs(connectorPathLength(moved)-connectorPathLength(fixed))<1e-8,"Leading resize changed the surviving equation length");
+        for(double fraction:{0.,.2,.5,.8,1.}) {
+            const auto beforePoint=connectorPathPoint(fixed,connectorPathLength(fixed)*fraction);
+            const auto afterPoint=connectorPathPoint(moved,connectorPathLength(moved)*fraction);
+            require(std::hypot(afterPoint.x-beforePoint.x,afterPoint.y-beforePoint.y)<1e-8,"Leading resize moved the surviving equation");
+        }
         attached(w.history().document());
         // Both sides of the body are present; cancel is an exact no-op.
         const auto resized=documentJson(w.history().document());

@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-04 — Direct Connector equation for vehicle motion (D107)
+
+Owner clarified: use the existing Bézier equation without PolyPoint driving segments.
+Runtime positions/tangents now evaluate that equation per mapped lane pair; lengths
+integrate |B'(t)| and distance inversion is bracketed. D106 midpoint guides remain drawing
+only. Point counts/interior drags cannot change the equation; retained controls map to its
+arc stations. Input metadata was registered in local 6318fe2/66282d7 before seed studies.
+Linux Release: 54/54 groups, including analytic tests and 240 curve/add/drop runs. Four
+projects × 40 seeds preserve counts but change timing; 120 stress runs pass safety checks,
+with total clamps 225 → 226 (minor 22 → 24). Frozen baselines unchanged. Methods, results,
+compatibility limits and pending Qt/owner review: [evidence](evidence/connector-equation.md).
+
+---
+
 ## 2026-10-04 — Connector vehicles follow painted lane centres (D106)
 
 Owner requested the measured centreline discrepancy be fixed. The baseline 90-degree
@@ -447,6 +461,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D107 | 2026-10-04 | **Use the existing single cubic equation directly for runtime Connector motion** | Owner requested no PolyPoint driving path. Lane attachments/tangents set controls; integrated/inverted arc length sets metre stations. Supersedes D106 runtime rail-midpoint paths; drawing/mouth rules remain. Intermediate points and widths edit paint only. Stored controls adapt via uniform parameter; timing changes and stress clamps are measured | Owner needs interior edits to steer vehicles, or analytic surface coverage/2D driveability is required |
 | D106 | 2026-10-04 | **Runtime Connector lane interiors follow final adjacent-rail midpoints; terminal legs join named Link lane centres, including taper recipients** | Owner requested the measured >1 m discrepancy be fixed. Topology-only pairing breaks the width/surface/path cycle; compiler/canvas share paths and lengths; bars use mapped runtime normals. Schema-17 geometry/stations remain authoring data. Supersedes D80 runtime compatibility and surviving-runtime-curve invariance, not the axis, miter or P1–P4 contract. Seven regressions and 240 curve/add/drop runs pass; T-junction digests are unchanged; project differences are measured | Terminal transitions or retained extreme mouths need a different driving model; a width/range edit must preserve old runtime curves; a desktop look finds a visual mismatch |
 | D105 | 2026-10-04 | **A follower at exactly zero speed and leader gap ≤ standstillDistance never receives positive following acceleration; moving followers and hard caps stay as before** | The outgoing merge leader's clipped rear gives zero hard clearance but its speed makes the reduced formula propose acceleration. Four of five traced minor clamps were stopped false starts. Waiting before integration removes those events with identical trajectories, delay and queue; all 120 runs replay and preserve accounting/safety. The moving case still needs 9.06 m/s² and remains counted; source insertion with small positive clearance is separate (M3.2.8a.1) | A stopped follower fails to release when the gap opens; a moving clamp disappears without a motion contract; a different toolchain changes trajectories |
 | D104 | 2026-10-04 | **The editor exports Results only for a finished run, as the CLI's CSV unchanged (`movementCsv`); the QFileDialog confirms overwriting, unlike the CLI's refusal** | One format with one writer (rule 3), and the marker line comes with it (rule 4). `movementCsv` has no field for "figures so far, t = …", so a part-way export would be indistinguishable from a full run, and adding that field would change the CLI's output. The CLI refuses to overwrite because nobody is there to ask; the editor can ask | An author needs a part-way export (then an optional context line in `project/`'s writer, used by both), or a study needs the seed and engine version in the file (the same line) |

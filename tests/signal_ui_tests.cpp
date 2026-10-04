@@ -91,7 +91,9 @@ int main(int argc,char** argv) {
                 "Dialog did not open on the clicked Connector path");
             dialog->accept();
         });
-        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,at(w,path.geometry,polylineLength(path.geometry)/2));
+        const auto connectorPoint=connectorPathPoint(path,connectorPathLength(path)/2);
+        QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,
+            w.canvas()->mapFromScene(connectorPoint.x,connectorPoint.y));
         QApplication::processEvents();
         require(w.history().document().network.signalHeads.size()==2,"No head was placed on the Connector");
         require(w.history().document().network.signalHeads.back().connectorId==path.id,"Connector head stood on the wrong path");

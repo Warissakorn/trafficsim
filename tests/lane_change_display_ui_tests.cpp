@@ -1,6 +1,8 @@
 // D102: the Run view draws a lane change as a slide from the lane the vehicle left to the one it is
 // on, for 3 s after the engine moved it. Display only: the engine still changes in one tick.
 #include "../src/shell/editor_window.hpp"
+#include "../src/project/load.hpp"
+#include "../src/core/simulation.hpp"
 #include <QAction>
 #include <QApplication>
 #include <QGraphicsItem>
@@ -34,6 +36,35 @@ Pose lanePose(EditorWindow& w, std::uint64_t id) {
     require(pose.has_value(), "Setup: the vehicle is not drawn without its record");
     return *pose;
 }
+// D107: force a Connector drawing to be one chord. The actual canvas vehicle must still
+// follow the curved equation, including its body heading, at several metre stations.
+void equationPose(const std::filesystem::path& data) {
+    Network n;n.links={{"a",{{-80,0},{0,0}},{{"a1",3.5}}},
+                       {"b",{{30,30},{30,100}},{{"b1",3.5}}}};
+    Connector c;c.id="curve";c.from={"a","a1"};c.to={"b","b1"};
+    c.geometry=connectorCurve(n,c.from,c.to,0);n.connectors.push_back(c);
+    const auto path=connectorPaths(n,n.connectors.front()).front();
+    const double length=connectorPathLength(path);
+    const auto source=loadScenario(data/"scenarios/crossing.json",data).scenario;
+    Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
+    scenario.segments={{path.id,length,{}}};scenario.routes={{"route",{path.id}}};
+    scenario.vehicleTypes=source.vehicleTypes;scenario.behaviours=source.behaviours;
+    auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;frame.vehicles.push_back(v);
+    EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
+    canvas.setTransform(QTransform::fromScale(8,-8));canvas.setRunNetwork(n);
+    const double vehicleLength=frame.scenario->vehicleTypes.front().length;
+    for(const double fraction:{.2,.5,.8}) {
+        const double station=length*fraction;frame.vehicles.front().distance=station;canvas.setRunFrame(frame);
+        const auto pose=poseOf(canvas,1);require(pose.has_value(),"Connector vehicle not drawn");
+        const auto front=connectorPathPoint(path,station),rear=connectorPathPoint(path,station-vehicleLength);
+        require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Vehicle follows drawing chords instead of the equation");
+        const double heading=std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.);
+        require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Connector body heading differs from the equation");
+        const auto chord=pointAlong(path.geometry,polylineLength(path.geometry)*fraction);
+        require(std::hypot(front.x-chord.x,front.y-chord.y)>1,"Setup: equation and drawing not separated");
+    }
+}
+
 double apart(Pose a, Pose b) { return std::hypot(a.x - b.x, a.y - b.y); }
 }
 int main(int argc, char** argv) {
@@ -42,6 +73,7 @@ int main(int argc, char** argv) {
     try {
         require(argc > 1, "data path");
         const std::filesystem::path data(argv[1]);
+        equationPose(data);
         EditorWindow w{data}; w.resize(1200, 800); w.show(); QTest::qWait(30);
         w.openFile(QString::fromStdString((data / "projects/lane-change-lab.traffic.json").string()));
         auto* step = w.findChild<QAction*>("editorStep");

@@ -50,8 +50,8 @@ MergeSide mergeSide(const Network& n, const RuntimeSections& table, const std::s
         for (const auto& c : n.connectors)
             for (int i = 0; i < std::max(c.fromLaneCount, c.toLaneCount); ++i)
                 if (connectorPathId(c, i) == segment) {
-                    const double length = polylineLength(path.geometry);
-                    const auto base = [&](double s) { return matchedStation(path.geometry, c.geometry, s); };
+                    const double length = connectorPathLength(path);
+                    const auto base = [&](double s) { return connectorAuthoringStation(c,path,s); };
                     return {{"", "", c.id, path.from.laneId, path.to.laneId},
                             base(std::max(0.0, length - kMergeSideLength)),
                             base(length - std::min(kMergeSideLength, length / 2)), base(length)};

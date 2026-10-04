@@ -18,7 +18,7 @@ std::vector<Stretch> stretches(const RuntimeSections& table, const std::map<std:
             continue;
         }
         // A Connector path: the same length buildScenario gives its segment.
-        for (const auto& path : table.paths) if (path.id == id) { at += polylineLength(path.geometry); break; }
+        for (const auto& path : table.paths) if (path.id == id) { at += connectorPathLength(path); break; }
     }
     return result;
 }
@@ -27,7 +27,7 @@ double routeLength(const RuntimeSections& table, const std::map<std::string, con
     double at = 0;
     for (const auto& id : segments) {
         if (const auto s = sections.find(id); s != sections.end()) { at += s->second->end - s->second->start; continue; }
-        for (const auto& path : table.paths) if (path.id == id) { at += polylineLength(path.geometry); break; }
+        for (const auto& path : table.paths) if (path.id == id) { at += connectorPathLength(path); break; }
     }
     return at;
 }

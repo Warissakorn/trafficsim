@@ -50,7 +50,7 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     for (const auto& section : table.sections)
         scenario.segments.push_back({section.id, section.end - section.start, section.next});
     for (std::size_t p = 0; p < table.paths.size(); ++p)
-        scenario.segments.push_back({table.paths[p].id, polylineLength(table.paths[p].geometry),
+        scenario.segments.push_back({table.paths[p].id, connectorPathLength(table.paths[p]),
                                      {table.pathNext[p]}});
     // A route is authored on LINKS AND CONNECTORS, because that is the object an author places
     // and keeps editing. The runtime travels one lane, so each authored route expands here into
@@ -263,10 +263,18 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
         // against rather than silently ignored here (hard rule 3).
         try { for(const double w:connectorLaneWidths(network,c).source)width+=w; }
         catch(const std::exception&) { continue; }
+        for(const auto& path:paths)if(path.equation)for(int j=0;j<=64;++j) {
+            // Advisory curvature samples evaluate derivatives of the equation, never corners
+            // of the display polyline. The runtime itself has no sampled-point path.
+            const auto d=equationDerivative(*path.equation,j/64.),dd=equationSecondDerivative(*path.equation,j/64.);
+            const double speed=std::hypot(d.x,d.y),cross=std::abs(d.x*dd.y-d.y*dd.x);
+            if(speed<=1e-12)radius=0;
+            else if(cross>1e-12)radius=std::min(radius,speed*speed*speed/cross);
+        }
+        // Retain the authoring advisory for a tight painted shape as well as the runtime
+        // equation. Interior drawing edits do not change vehicle motion, but can fold the road.
         for(const auto& path:paths)for(std::size_t j=1;j+1<path.geometry.size();++j) {
             const auto a=path.geometry[j-1],b=path.geometry[j],d=path.geometry[j+1];
-            // Radius of the circle through three consecutive points: the side lengths over
-            // twice the triangle area. Collinear points give an infinite radius, as they should.
             const double ab=std::hypot(b.x-a.x,b.y-a.y),bd=std::hypot(d.x-b.x,d.y-b.y),ad=std::hypot(d.x-a.x,d.y-a.y);
             const double area=std::abs((b.x-a.x)*(d.y-a.y)-(b.y-a.y)*(d.x-a.x))/2;
             if(area>1e-12)radius=std::min(radius,ab*bd*ad/(4*area));

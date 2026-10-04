@@ -37,11 +37,11 @@ void centred(const Network& n) {
         // Length and location use this very path, including the terminal transitions.
         const auto segment=std::find_if(scenario.segments.begin(),scenario.segments.end(),
             [&](const auto& s){return s.id==p.id;});CHECK(segment!=scenario.segments.end());
-        test::near(segment->length,polylineLength(p.geometry),1e-12);
+        CHECK(p.equation);test::near(segment->length,p.equation->arcStations.back(),1e-12);
         Scenario located;located.segments={*segment};located.routes={{"r",{p.id}}};
         Vehicle vehicle;vehicle.routeIndex=0;vehicle.distance=segment->length*.37;
         const auto at=locateVehicle(located,vehicle);CHECK(at.segmentId==p.id);
-        near(pointAlong(p.geometry,at.position),pointAlong(p.geometry,vehicle.distance));
+        near(connectorPathPoint(p,at.position),equationPoint(*p.equation,equationParameter(*p.equation,vehicle.distance)));
     }
 }
 }
@@ -93,7 +93,7 @@ TEST(lane_centres, rotations_body_attachments_and_frozen_weights_use_the_same_su
         for(const auto& path:table.paths) {
             const ControlPoint point{{"","",c.id,path.from.laneId,path.to.laneId},polylineLength(c.geometry)*.41};
             const auto at=locateControlPoint(d.network,table,point);CHECK(at);CHECK(at->segment==path.id);
-            test::near(at->position,matchedStation(c.geometry,path.geometry,point.station),1e-12);
+            test::near(at->position,connectorRuntimeStation(c,path,point.station),1e-12);
             const auto target=std::find_if(table.sections.begin(),table.sections.end(),
                 [&](const auto& section){return section.id==table.pathNext[&path-table.paths.data()];});
             CHECK(target!=table.sections.end());near(path.geometry.back(),target->geometry.front());
@@ -116,11 +116,11 @@ TEST(lane_centres, waiting_bar_intersects_rails_at_the_runtime_vehicle_station) 
     const auto table=runtimeSections(d.network);const auto& path=table.paths.front();
     const ControlPoint point{{"","",c.id,path.from.laneId,path.to.laneId},polylineLength(c.geometry)*.5};
     const auto at=locateControlPoint(d.network,table,point);CHECK(at);
-    const auto origin=pointAlong(path.geometry,at->position);
+    const auto origin=connectorPathPoint(path,at->position);
     const auto authored=pointAlong(c.geometry,point.station);
-    CHECK(std::hypot(origin.x-authored.x,origin.y-authored.y)>.8);
+    CHECK(std::hypot(origin.x-authored.x,origin.y-authored.y)>0);
     const auto bar=waitingLineBar(d.network,point);CHECK(bar);
-    const auto direction=directionAlong(path.geometry,at->position,false);
+    const auto direction=connectorPathDirection(path,at->position);
     for(const auto p:{bar->first,bar->second})
         test::near((p.x-origin.x)*direction.x+(p.y-origin.y)*direction.y,0,1e-9);
     const Point across{bar->second.x-bar->first.x,bar->second.y-bar->first.y};
@@ -137,8 +137,7 @@ TEST(lane_centres, forty_seeds_run_curves_and_both_count_changes_with_replay_and
         auto definition=static_cast<ScenarioDefinition>(test::straight());definition.duration=30;
         definition.priorityDefaults={3,1};definition.routes={{"r",{"a",c.id,"b"}}};
         definition.inputs={{"i","r","car",1800,0,20}};
-        const auto scenario=compileScenario(d.network,definition);const auto rails=connectorBoundaries(d.network,c);
-        const auto paths=connectorPaths(d.network,c);
+        const auto scenario=compileScenario(d.network,definition);const auto paths=connectorPaths(d.network,c);
         for(std::uint32_t seed=42;seed<=81;++seed) {
             auto state=createSimulation(scenario,seed),replay=state;
             for(auto tick=0;tick<totalTicks(scenario);++tick) {
@@ -156,14 +155,10 @@ TEST(lane_centres, forty_seeds_run_curves_and_both_count_changes_with_replay_and
                 for(const auto& vehicle:state.vehicles) {
                     const auto at=locateVehicle(*state.scenario,vehicle,*state.index);
                     for(std::size_t k=0;k<paths.size();++k)if(paths[k].id==at.segmentId) {
-                        const auto& g=paths[k].geometry;
-                        const double first=std::hypot(g[1].x-g.front().x,g[1].y-g.front().y);
-                        const double last=polylineLength(g)-std::hypot(g.back().x-g[g.size()-2].x,g.back().y-g[g.size()-2].y);
-                        if(at.position>first && at.position<last) {
+                        const auto& path=paths[k];CHECK(path.equation);
+                        if(at.position>1 && at.position<connectorPathLength(path)-1) {
                             ++onInterior;
-                            near(pointAlong(g,at.position),middle(
-                                pointAlong(rails[k],matchedStation(g,rails[k],at.position)),
-                                pointAlong(rails[k+1],matchedStation(g,rails[k+1],at.position))));
+                            near(connectorPathPoint(path,at.position),equationPoint(*path.equation,equationParameter(*path.equation,at.position)));
                         }
                     }
                 }

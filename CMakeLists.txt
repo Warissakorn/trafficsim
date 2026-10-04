@@ -43,7 +43,7 @@ add_library(trafficsim_core STATIC
 target_link_libraries(trafficsim_core PRIVATE trafficsim_options)
 
 add_library(trafficsim_model STATIC src/model/network/geometry.cpp
-    src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
+    src/model/network/connector_equation.cpp src/model/network/compile.cpp src/model/network/validate.cpp src/model/network/connector_geometry.cpp
     src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp src/model/network/road_boundaries.cpp src/model/network/connector_surface.cpp
     src/model/network/sections.cpp src/model/network/markings.cpp src/model/network/rotation.cpp src/model/network/head_slots.cpp src/model/demand/signal_control.cpp
     src/model/network/routing.cpp src/model/network/lane_family.cpp src/model/network/routeless.cpp src/model/network/right_of_way.cpp
@@ -140,7 +140,7 @@ if(BUILD_TESTING)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
-    target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp tests/connector_surface_tests.cpp tests/lane_correspondence_tests.cpp tests/connector_mouth_sweep_tests.cpp tests/connector_lane_centre_tests.cpp)
+    target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp tests/connector_surface_tests.cpp tests/lane_correspondence_tests.cpp tests/connector_mouth_sweep_tests.cpp tests/connector_lane_centre_tests.cpp tests/connector_equation_tests.cpp)
     # One ctest test per group, so `ctest -j` spreads them; a single unfiltered run was 60 s of
     # serial wall time and repeated every named group.
     set(TRAFFICSIM_TEST_GROUPS core network reference project editor connectors mouths points
@@ -149,7 +149,7 @@ if(BUILD_TESTING)
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict
         rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep conflict_follow
-        discretionary lanelab lane_centres)
+        discretionary lanelab lane_centres equation)
     foreach(group ${TRAFFICSIM_TEST_GROUPS})
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()

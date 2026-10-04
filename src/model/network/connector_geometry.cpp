@@ -203,9 +203,7 @@ Point endDirection(const Network& network,const LaneReference& ref,bool outgoing
 std::pair<Point,Point> connectorTangents(const Network& network,const LaneReference& from,const LaneReference& to) {
     return {endDirection(network,from,true),endDirection(network,to,false)};
 }
-std::vector<Point> connectorCurve(const Network& network, const LaneReference& from, const LaneReference& to,
-                                  int intermediatePoints) {
-    if(intermediatePoints<0 || intermediatePoints>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
+ConnectorEquation connectorEquation(const Network& network,const LaneReference& from,const LaneReference& to) {
     const auto a = laneAttachment(network,from,true), b = laneAttachment(network,to,false);
     const double gap = std::hypot(b.x-a.x, b.y-a.y);
     if (!std::isfinite(gap) || gap < 1e-6) throw std::invalid_argument("EDIT_CONNECTOR_GAP");
@@ -234,17 +232,17 @@ std::vector<Point> connectorCurve(const Network& network, const LaneReference& f
     };
     const auto c1 = control(a, entry, reach(entry), 1);
     const auto c2 = control(b, exit, reach(exit), -1);
-    // The points are laid on the arc; the Connector is drawn straight between them. More points
-    // follow the arc more closely, which is the whole meaning of the count.
+    return makeConnectorEquation({a,c1,c2,b});
+}
+std::vector<Point> connectorCurve(const Network& network,const LaneReference& from,const LaneReference& to,
+                                  int intermediatePoints) {
+    if(intermediatePoints<0 || intermediatePoints>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
+    const auto curve=connectorEquation(network,from,to);
+    // Sampling is solely for the authored/drawn shape; runtime evaluates the equation directly.
     const int spans=intermediatePoints+1;
-    std::vector<Point> points{a};
-    for (int i = 1; i < spans; ++i) {
-        const double t = static_cast<double>(i)/spans, s = 1-t;
-        points.push_back({s*s*s*a.x + 3*s*s*t*c1.x + 3*s*t*t*c2.x + t*t*t*b.x,
-                          s*s*s*a.y + 3*s*s*t*c1.y + 3*s*t*t*c2.y + t*t*t*b.y});
-    }
-    points.push_back(b);
-    return points;
+    std::vector<Point> points{curve.controls.front()};
+    for(int i=1;i<spans;++i)points.push_back(equationPoint(curve,static_cast<double>(i)/spans));
+    points.push_back(curve.controls.back());return points;
 }
 
 }
