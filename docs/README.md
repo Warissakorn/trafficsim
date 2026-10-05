@@ -38,6 +38,8 @@ Dated design and acceptance documents. For what is done, see `ROADMAP.md`.
 | File | What it is |
 |---|---|
 | [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md) | M1 owner acceptance record (accepted by ruling, D49). |
+| [`DEMAND_TIME_TYPES.md`](DEMAND_TIME_TYPES.md) | Slice 6 schema, period/type weights, deterministic compilation and gates |
+| [`DEMAND_CATALOGS.md`](DEMAND_CATALOGS.md) | Project-owned vehicle/composition catalogs, schema 18 and editing gates. |
 | [`DEMAND_IMPROVEMENT.md`](DEMAND_IMPROVEMENT.md) | Demand-only contract, implementation slices and vehicle/composition follow-up. |
 | [`M2_PLAN.md`](M2_PLAN.md) | The M1 review and the M2 plan (2026-09-24). |
 | [`M2_GATE.md`](M2_GATE.md) | M2 gate record (passed by the owner's judgment, D51–D53). |

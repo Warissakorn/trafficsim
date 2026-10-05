@@ -1,7 +1,9 @@
 #include "demand_paths.hpp"
+#include "demand_time_types.hpp"
 #include "../model/demand/signal_control.hpp"
 #include <algorithm>
 #include <map>
+#include <set>
 
 namespace trafficsim {
 namespace {
@@ -52,7 +54,7 @@ std::string routelessRouteId(const std::string& linkId, std::size_t k, std::size
     return n == 1 ? "link:" + linkId : "link:" + linkId + "/path-" + std::to_string(k + 1);
 }
 std::vector<PlacedDecision> placedDecisions(const Network& network, const AuthoringDefinition& d,
-                                            std::vector<ValidationIssue>* issues, std::optional<double> time) {
+                                            std::vector<ValidationIssue>* issues, std::optional<double> time,const std::string& type) {
     std::vector<PlacedDecision> result;
     const auto report = [&](std::string code, std::string path) { if (issues) issues->push_back({std::move(code), std::move(path)}); };
     for (std::size_t k = 0; k < d.routingDecisions.size(); ++k) {
@@ -75,7 +77,7 @@ std::vector<PlacedDecision> placedDecisions(const Network& network, const Author
             }
             std::erase_if(chains, [&](const auto& c) { return routeLaneChains(network, c).empty(); });
             if (chains.empty()) { report("ROUTING_DECISION_UNREACHABLE", at); continue; }
-            const double weight = time ? decisionFlowAt(decision, entry, *time) : entry.relativeFlow;
+            const double weight = typeDecisionFlowAt(decision,j,time.value_or(-1),type);
             if (weight > 0) placed.destinations.push_back({std::move(chains), weight});
         }
         result.push_back(std::move(placed));
@@ -117,6 +119,9 @@ RoutelessIssues routelessIssues(const Network& network, const AuthoringDefinitio
     // Reachability does not depend on the flows, so the static pass reports it once.
     std::vector<std::vector<PlacedDecision>> placed{placedDecisions(network, d, &result.blocking)};
     if (cut.times.front()) for (const auto& t : cut.times) placed.push_back(placedDecisions(network, d, nullptr, t));
+    std::set<std::string> typeIds;
+    for(const auto& x:d.routingDecisions)for(const auto& rule:x.typeRules)typeIds.insert(rule.vehicleTypeId);
+    for(const auto& type:typeIds)for(const auto& t:cut.times)placed.push_back(placedDecisions(network,d,nullptr,t,type));
     std::map<std::string, bool> walked;
     for (std::size_t i = 0; i < d.inputs.size(); ++i) {
         const auto link = routelessLink(d, d.inputs[i]);
@@ -142,8 +147,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
     if (std::none_of(resolved.inputs.begin(), resolved.inputs.end(), [](const auto& i) { return !i.linkId.empty(); }))
         return resolved; // nothing to do, and nothing to compute: every existing project
     const auto cut = slices(authored);
-    std::vector<std::vector<PlacedDecision>> placed;
-    for (const auto& t : cut.times) placed.push_back(placedDecisions(network, authored, nullptr, t));
+    const bool typed=hasTypeRouting(authored);
     const auto table = runtimeSections(network);
     // Per Link: the union of every slice's paths, in order of first appearance, so one runtime
     // route serves a path in every slice; and each slice's share of each path.
@@ -153,11 +157,20 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
     struct Walks { std::vector<std::vector<std::string>> paths; std::vector<std::size_t> lanes;
                    std::vector<std::vector<double>> share; std::vector<bool> stub; std::vector<std::vector<FamilyTag>> families;
                    bool byDestination{}; bool failed{}; };
-    std::map<std::string, Walks> walks;
+    std::map<std::pair<std::string,std::string>, Walks> walks;
+    std::map<std::string,std::vector<std::vector<PlacedDecision>>> placements;
     std::vector<VehicleInput> inputs;
     for (const auto& input : resolved.inputs) {
         if (input.linkId.empty()) { inputs.push_back(input); continue; }
-        auto [it, fresh] = walks.try_emplace(input.linkId);
+        const auto type=typed?input.vehicleTypeId:std::string{};
+        auto [context, newType]=placements.try_emplace(type);
+        if(newType)for(const auto& t:cut.times)context->second.push_back(placedDecisions(network,authored,nullptr,t,type));
+        const auto& placed=context->second;
+        const auto routeId=[&](std::size_t k,std::size_t n){
+            const auto base=routelessRouteId(input.linkId,k,n);
+            return typed?base+"/type-"+std::to_string(type.size())+":"+type:base;
+        };
+        auto [it, fresh] = walks.try_emplace(std::pair{input.linkId,type});
         auto& w = it->second;
         if (fresh) {
             for (std::size_t s = 0; s < placed.size(); ++s) {
@@ -183,7 +196,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 std::map<std::string, std::vector<FamilyRoute>> families;
                 std::vector<DiscretionaryRoute> full; // D95: every full path, with all its families
                 for (std::size_t k = 0; k < w.paths.size(); ++k) {
-                    Route route{routelessRouteId(input.linkId, k, w.paths.size()), expandRouteSegments(table, w.paths[k])};
+                    Route route{routeId(k,w.paths.size()), expandRouteSegments(table, w.paths[k])};
                     if (!w.stub[k]) full.push_back({route.id, route.segmentIds, {}, {}});
                     for (std::size_t f = 0; f < w.families[k].size(); ++f) {
                         const auto& tag = w.families[k][f];
@@ -217,7 +230,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 : w.lanes[k] < split.fraction.size() ? split.fraction[w.lanes[k]] : 1.0 / static_cast<double>(lanes);
             auto part = input;
             part.linkId.clear(); part.laneShares.clear();
-            part.routeId = routelessRouteId(input.linkId, k, w.paths.size());
+            part.routeId = routeId(k,w.paths.size());
             if (w.paths.size() > 1) part.id = input.id + "/path-" + std::to_string(k + 1);
             if (placed.size() == 1) {
                 const double fraction = lane * w.share[k][0];

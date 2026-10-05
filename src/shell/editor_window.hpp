@@ -93,6 +93,7 @@ private:
     void translateDemand();
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
     void showDemandPreview();
+    void editDemandCatalog();
     void editInput(const std::string& id = {}, const std::string& preselectedRoute = {}, const std::string& preselectedLink = {});
     void editProgram(const std::string& id = {}); // legacy programs only (M2.7b)
     // M2.7b, src/shell/editor_signal.cpp. Returns the id committed, empty on cancel.
