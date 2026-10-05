@@ -77,4 +77,4 @@ Link's width, and taper between them. **Not** done in this session on purpose: M
 mouth sits, M1.12.3 moves how wide it is, and together a failing width test and a failing mouth test
 are indistinguishable.
 
-Then, still the only thing that closes M1: the owner's timed exercise in `docs/M1_ACCEPTANCE.md`.
+Then, still the only thing that closes M1: the owner's timed exercise in `docs/plans/M1_ACCEPTANCE.md`.

@@ -83,7 +83,7 @@ public:
     // green where a side has priority, red where it gives way and amber while undetermined.
     void setHighlightedConflict(std::string id);
     const std::string& highlightedConflict() const { return highlightedConflict_; }
-    // M3.2.4b, the Conflict area tool (docs/VISSIM_PARITY.md §2b). Only that tool hit-tests areas,
+    // M3.2.4b, the Conflict area tool (docs/audits/VISSIM_PARITY.md §2b). Only that tool hit-tests areas,
     // so a click at a junction under Select still selects the Link. A click picks an area; a click
     // on the highlighted one asks to cycle its priority; a drag on a waiting line slides it along
     // its own path. The canvas never writes to the document itself.
@@ -96,7 +96,7 @@ public:
     void setAutomaticConflicts(std::vector<AutomaticConflict>);
     std::string automaticAt(Point) const;               // the key of the automatic area under it
     std::function<void(const std::string&)> conflictAuthored;
-    // M3.2.6c, the Queue counter tool (docs/VISSIM_PARITY.md §2b). A click adds one measurement
+    // M3.2.6c, the Queue counter tool (docs/audits/VISSIM_PARITY.md §2b). A click adds one measurement
     // line to an open draft: a stop line references its head, a waiting line references itself,
     // and anywhere else on a Link lane is an explicit point. Enter hands the draft over as one
     // counter; Backspace drops its last line; Esc drops it all.

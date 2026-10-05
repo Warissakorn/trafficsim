@@ -127,13 +127,16 @@ target_precompile_headers(trafficsim-lane-change-sweep REUSE_FROM trafficsim-fou
 
 add_executable(trafficsim-check-architecture tools/check_architecture.cpp)
 add_executable(trafficsim-check-file-sizes tools/check_file_sizes.cpp)
+add_executable(trafficsim-check-docs tools/check_docs.cpp)
 target_link_libraries(trafficsim-check-architecture PRIVATE trafficsim_options)
 target_link_libraries(trafficsim-check-file-sizes PRIVATE trafficsim_options)
+target_link_libraries(trafficsim-check-docs PRIVATE trafficsim_options)
 add_custom_target(check
     COMMAND $<TARGET_FILE:trafficsim-check-architecture> "${PROJECT_SOURCE_DIR}"
     COMMAND $<TARGET_FILE:trafficsim-check-file-sizes> "${PROJECT_SOURCE_DIR}"
+    COMMAND $<TARGET_FILE:trafficsim-check-docs> "${PROJECT_SOURCE_DIR}"
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIG>
-    DEPENDS trafficsim-cli trafficsim-check-architecture trafficsim-check-file-sizes
+    DEPENDS trafficsim-cli trafficsim-check-architecture trafficsim-check-file-sizes trafficsim-check-docs
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 if(BUILD_TESTING)
@@ -174,6 +177,8 @@ if(BUILD_TESTING)
     add_test(NAME architecture COMMAND trafficsim-check-architecture "${PROJECT_SOURCE_DIR}")
     add_test(NAME architecture-negative COMMAND trafficsim-check-architecture --self-test)
     add_test(NAME file-sizes COMMAND trafficsim-check-file-sizes "${PROJECT_SOURCE_DIR}")
+    add_test(NAME documentation COMMAND trafficsim-check-docs "${PROJECT_SOURCE_DIR}")
+    add_test(NAME documentation-negative COMMAND trafficsim-check-docs --self-test)
     add_test(NAME cli COMMAND trafficsim-cli 42)
     set_tests_properties(cli PROPERTIES PASS_REGULAR_EXPRESSION "29\\.24935")
     add_test(NAME cli-invalid-seed COMMAND trafficsim-cli 4294967296)

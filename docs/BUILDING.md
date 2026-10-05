@@ -142,5 +142,5 @@ No commercial license or redistribution arrangement is assumed by this repositor
 `--scenario path/to/file.json` opens either file kind in it — an editor project or a bare M0
 authoring scenario such as `data/scenarios/crossing.json`. `--editor` is still accepted and
 does nothing; M1.24 retired the separate M0 harness window. See
-[NETWORK_EDITOR.md](NETWORK_EDITOR.md) for drawing, images and saving.
+[NETWORK_EDITOR.md](reference/NETWORK_EDITOR.md) for drawing, images and saving.
 The headless build includes document/history tests but does not build Qt editor tests.

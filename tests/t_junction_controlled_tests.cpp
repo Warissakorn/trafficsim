@@ -2,7 +2,7 @@
 #include <cmath>
 using namespace trafficsim;
 using namespace tjunction;
-// M3.2.7a, A26 of docs/M3_ACCEPTANCE.md §2 "Controlled cases before stochastic sweeps": on the
+// M3.2.7a, A26 of docs/plans/M3_ACCEPTANCE.md §2 "Controlled cases before stochastic sweeps": on the
 // T-junction fixture's own compiled scenario, with test-owned initial states and no demand. Every
 // expectation below is derived from the setup before the run, never read back from it.
 namespace {

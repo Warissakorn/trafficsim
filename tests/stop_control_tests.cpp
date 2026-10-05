@@ -5,7 +5,7 @@
 
 using namespace trafficsim;
 // M3.2.5a: Stop and Yield at a conflict zone's waiting line, rows A18-A20 of
-// docs/M3_ACCEPTANCE.md, on hand-built scenarios. The minor approach "north" crosses the major
+// docs/plans/M3_ACCEPTANCE.md, on hand-built scenarios. The minor approach "north" crosses the major
 // "east"; the area is 98..102 on both; the minor waiting line is at 90.
 namespace {
 Scenario crossing(ZoneControl control) {

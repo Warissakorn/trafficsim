@@ -2,7 +2,7 @@
 
 Reviewed against `9066b08b4b0281aa7afe46dd676ff8b25056724f` on 2026-09-20.
 The three supplied Thai documents describe a target, not measured Vissim parity.
-Section numbers below refer to those documents (see [specs/README.md](specs/README.md)).
+Section numbers below refer to those documents (see [specs/README.md](../specs/README.md)).
 The copies are verbatim except that, on the owner's instruction of 2026-09-24 (D38), one
 import-format entry was removed from §18.1 and from the part-04 comparison table.
 `Partial` means some contracts exist; it never means the entire section is implemented.
@@ -85,7 +85,7 @@ import-format entry was removed from §18.1 and from the part-04 comparison tabl
 6. A shared lane boundary needs one marking value, not conflicting left/right copies on two
    lanes. Use `Link::boundaryMarkings` in lane order (N+1 values, or empty for defaults).
    The UI labels this order explicitly. Physical left/right depends on travel/driving side.
-7. Per-Link desired speed contradicts `PROBLEM.md`'s vehicle-owned desired speed. Resolve
+7. Per-Link desired speed contradicts `../PROBLEM.md`'s vehicle-owned desired speed. Resolve
    limits/factors versus distribution ownership before implementing runtime overrides.
 8. Automatic crossing conflicts are both promised (Connector §7) and excluded (§17).
    Keep current merge guards; book crossing conflicts explicitly in M3. Settled since: crossing
@@ -106,7 +106,7 @@ import-format entry was removed from §18.1 and from the part-04 comparison tabl
 
 `CLAUDE.md` requires one system per session. This change handles the authoring system first;
 it does not label all three target specifications implemented. Numbered follow-ups in
-[ROADMAP.md](ROADMAP.md) retain every remaining feature group.
+[ROADMAP.md](../ROADMAP.md) retain every remaining feature group.
 
 - **M1.21:** close authoring validation holes; Link geometry actions and shared road markings;
   persistence, command rollback/Undo/Redo, both renderers and bilingual inspector; advisories.
@@ -122,7 +122,7 @@ M0/M1 owner acceptance and M6 scientific validation remain open regardless of CI
 
 ## Result of this change
 
-M1.21 is implemented in [AUTHORING_EXTENSIONS.md](AUTHORING_EXTENSIONS.md), with ten new
+M1.21 is implemented in [AUTHORING_EXTENSIONS.md](../reference/AUTHORING_EXTENSIONS.md), with ten new
 model/command cases and an inspector/render/persistence UI suite. Local Linux verification:
 18/18 headless and 26/26 desktop CTest pass; the frozen replay fixtures and seed-42 diagnostic
 remain unchanged. The tables above intentionally describe the audited baseline, so the new

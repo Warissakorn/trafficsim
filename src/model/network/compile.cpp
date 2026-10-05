@@ -71,7 +71,7 @@ Scenario buildScenario(const Network& network, const ScenarioDefinition& definit
     // and replay the same trajectories. Only a genuinely multi-lane route gains "/lane-k".
     //
     // M3.2.8b: one core route per lane of the route's first Link -- a lane that cannot reach the
-    // end is a stub whose vehicles change lanes (docs/M3_8_CONTRACT.md §2) -- with the lateral
+    // end is a stub whose vehicles change lanes (docs/reference/M3_8_CONTRACT.md §2) -- with the lateral
     // spans and dead ends between them. A route whose every lane reaches expands exactly as before.
     std::vector<Route> routes;
     std::vector<VehicleInput> inputs;

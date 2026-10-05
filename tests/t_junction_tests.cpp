@@ -3,7 +3,7 @@
 #include <sstream>
 using namespace trafficsim;
 using namespace tjunction;
-// M3.2.7a, A26 of docs/M3_ACCEPTANCE.md: the T-junction fixture (§2). One drawing through the
+// M3.2.7a, A26 of docs/plans/M3_ACCEPTANCE.md: the T-junction fixture (§2). One drawing through the
 // editor's commands, a crossing and a separate downstream merge on the minor turn, both driving
 // sides, Yield and Stop, and a blocked receiving lane.
 namespace {

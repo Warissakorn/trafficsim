@@ -19,7 +19,7 @@
 #include <cmath>
 #include <iostream>
 using namespace trafficsim;
-// M3.2.4b: conflict areas on the canvas (A24, docs/VISSIM_PARITY.md §2b). The Conflict area tool
+// M3.2.4b: conflict areas on the canvas (A24, docs/audits/VISSIM_PARITY.md §2b). The Conflict area tool
 // picks and cycles areas and drags waiting lines; Select still picks the Link underneath; the
 // two sides of a crossing stay readable; what was edited survives Save and reopen.
 namespace {

@@ -53,7 +53,7 @@ surplus lane at the mouth. The owner was asked whether that taper should move in
 body and answered to keep it as it is.
 
 **The lesson, again.** The first two readings were built from the render and from the record, and
-both were plausible. Only the third survived a measurement. `docs/VISSIM_PARITY.md` already carried
+both were plausible. Only the third survived a measurement. `docs/audits/VISSIM_PARITY.md` already carried
 *"ask for a picture of Vissim before reasoning about it"*; the other half of it is **ask for a
 number before believing the picture.**
 

@@ -1,7 +1,7 @@
 # Authoring extensions — M1.21
 
-This is the implemented subset of the [supplied specifications](specs/README.md).
-[SPEC_AUDIT.md](SPEC_AUDIT.md) records the baseline, conflicts and remaining requirements.
+This is the implemented subset of the [supplied specifications](../specs/README.md).
+[SPEC_AUDIT.md](../audits/SPEC_AUDIT.md) records the baseline, conflicts and remaining requirements.
 It does not establish Vissim parity or close the M0/M1 owner acceptance gates.
 
 ## Link geometry actions
@@ -80,4 +80,4 @@ copy/opposite, referenced reversal rejection, command no-ops/rollback and adviso
 `authoring-ui` exercises actual inspector actions, canvas pen styles, Undo/Redo, save/reopen,
 Thai labels and preservation of the current document when an unsupported project is opened.
 Existing replay, mouth geometry and native UI suites remain required. Results and platform
-limitations are recorded in [PROGRESS.md](PROGRESS.md).
+limitations are recorded in [PROGRESS.md](../PROGRESS.md).

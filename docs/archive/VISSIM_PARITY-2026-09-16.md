@@ -1,6 +1,6 @@
 # VISSIM_PARITY archive — 2026-09-16
 
-Follow-ups moved whole from [`VISSIM_PARITY.md`](../VISSIM_PARITY.md) to keep it below 500
+Follow-ups moved whole from [`VISSIM_PARITY.md`](../audits/VISSIM_PARITY.md) to keep it below 500
 lines (hard rule 6). Nothing here is edited or summarised -- only relocated.
 
 The seven sections below are the **first seven 2026-09-16 follow-ups, in the order they were

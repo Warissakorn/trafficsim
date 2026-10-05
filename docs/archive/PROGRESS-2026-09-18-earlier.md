@@ -9,7 +9,7 @@ audit, the attachment-station snap, the engine profile, and the M1.17 revert.
 
 The owner listed Vissim's four snaps and asked for all of them, opening with **"Vissim does not snap
 to a Link end."** Audited against live code, the full table is in
-[`VISSIM_PARITY.md`](../VISSIM_PARITY.md). The short version: **one of the four was a snap gap and is
+[`VISSIM_PARITY.md`](../audits/VISSIM_PARITY.md). The short version: **one of the four was a snap gap and is
 now closed; two are interactions we do not have; one is a file format we do not read.**
 
 **Snap to Points is now complete.** `hitLanePosition` tries, in order, the lane's two endpoints, a
@@ -48,7 +48,7 @@ Link's intermediate point did not take it`. Linux only.
 ### Next
 
 Unchanged and still the only thing that closes M1: the owner's timed exercise in
-[`M1_ACCEPTANCE.md`](../M1_ACCEPTANCE.md). The three snap-adjacent items above are scoped and
+[`M1_ACCEPTANCE.md`](../plans/M1_ACCEPTANCE.md). The three snap-adjacent items above are scoped and
 **not** booked — if the owner wants pointer placement for heads and inputs, or CAD snapping, each
 needs a numbered milestone with a done-condition before any code.
 
@@ -99,7 +99,7 @@ and nothing here has been near it.
 ### Next
 
 The M1 position is unchanged: every sub-milestone is implemented and **only the owner's timed
-exercise in `docs/M1_ACCEPTANCE.md` closes it.** Carry the file above into that exercise — it is
+exercise in `docs/plans/M1_ACCEPTANCE.md` closes it.** Carry the file above into that exercise — it is
 a real four-leg drawing that exercised a real authoring trap, and re-drawing those two corners on
 a build with this snap is the cheapest check that the snap earns its place.
 
@@ -120,7 +120,7 @@ them:
 ## 2026-09-18 — An engine profile at scale: three measured optimizations, no behaviour change
 
 **None of this is M1 work.** M1's engineering side is still done and the owner's timed gate in
-`docs/M1_ACCEPTANCE.md` is still the only open item. This session profiled the engine and took
+`docs/plans/M1_ACCEPTANCE.md` is still the only open item. This session profiled the engine and took
 three wins that leave the trajectory byte-identical.
 
 **The shipped scenario is too small to profile.** `crossing.json` is 31 trips in 180 s (57 ms), so a
@@ -158,7 +158,7 @@ package.
 
 ### Next
 
-**Unchanged: the owner's timed four-leg / aerial-image / reopen exercise in `docs/M1_ACCEPTANCE.md`
+**Unchanged: the owner's timed four-leg / aerial-image / reopen exercise in `docs/plans/M1_ACCEPTANCE.md`
 is the only thing standing between here and M1.**
 
 Two optimizations are diagnosed, measured and deliberately NOT done, in priority order:

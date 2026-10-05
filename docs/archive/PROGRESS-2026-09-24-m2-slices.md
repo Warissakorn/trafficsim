@@ -74,7 +74,7 @@ is 8 × `UNSUPPORTED_MERGE`, pinned by a test M3 or M2.0.1 flips. Findings: `M2_
 
 ## 2026-09-24 — M1 reviewed, M2 planned, criteria drafted but not registered
 
-Owner request; everything is in [`M2_PLAN.md`](../M2_PLAN.md), no code changed; `desktop` 36/36 and
+Owner request; everything is in [`M2_PLAN.md`](../plans/M2_PLAN.md), no code changed; `desktop` 36/36 and
 `check` green on Linux. **The criteria stay a draft** because D8 makes pre-registration the
 owner's own act; ROADMAP §M2 only points at it. M2 can only run protected phasing
 honestly, so the gate study is a signalised intersection with protected phasing (D38 later
@@ -131,7 +131,7 @@ bulk inspection), M1.23's culling/LOD and the hard-coded 20 km `sceneRect`, the 
 `runtimeSections` refusal (§3.3, M3.2), and scenario-JSON export from the editor, which is
 neither implemented nor booked. Inside a tick `occupiedSpans` is the largest single cost at
 9.8%; no milestone is booked for it and none is needed yet. **M1's timed owner exercise
-(`docs/M1_ACCEPTANCE.md`) is untouched by all of this** — a counted walkthrough is not a timed
+(`docs/plans/M1_ACCEPTANCE.md`) is untouched by all of this** — a counted walkthrough is not a timed
 one, and M1.27.3 never claimed to close it.
 
 ---

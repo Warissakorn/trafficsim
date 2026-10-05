@@ -12,8 +12,8 @@ rather than picking one.
 2026-10-04 update (D107): runtime paths evaluate the existing single cubic Bézier directly
 from mapped lane attachments and tangents. Arc length is integrated and inverted, not
 measured along drawing points. D106 rail-midpoint guides now serve display/authoring only.
-The legacy path derivation below is historical. See [the current contract](CONNECTOR_FOUR_POINT_MOUTH.md)
-and [verification](evidence/connector-equation.md). Neither change measures Vissim fidelity.
+The legacy path derivation below is historical. See [the current contract](../reference/CONNECTOR_FOUR_POINT_MOUTH.md)
+and [verification](../evidence/connector-equation.md). Neither change measures Vissim fidelity.
 
 ---
 
@@ -21,10 +21,10 @@ and [verification](evidence/connector-equation.md). Neither change measures Viss
 
 | Benchmark | What it is | Verdict |
 |---|---|---|
-| **The supplied target specification** — [`specs/connector/`](specs/connector/part-01.md) | The owner's Thai requirement document, supplied 2026-09-20 | The **base** (§1–§4, §10–§15) is implemented; the **extension block** (§5–§9, §10.5, §16) is not |
+| **The supplied target specification** — [`specs/connector/`](../specs/connector/part-01.md) | The owner's Thai requirement document, supplied 2026-09-20 | The **base** (§1–§4, §10–§15) is implemented; the **extension block** (§5–§9, §10.5, §16) is not |
 | **Vissim itself** | The modelling surface this project is built to imitate (D1) | **Never measured.** No timed, counted or photographed comparison exists in this repository |
 
-The distinction is not pedantry. [`specs/README.md`](specs/README.md) states the supplied
+The distinction is not pedantry. [`../specs/README.md`](../specs/README.md) states the supplied
 documents are *"requirements/proposals, not implementation or validation claims"* and that *"a
 heading that says 'VISSIM-compatible' does not establish scientific or product parity"*.
 [`SPEC_AUDIT.md`](SPEC_AUDIT.md) repeats it: they *"describe a target, not measured Vissim
@@ -147,7 +147,7 @@ drawn."*
   as `WARN_CONNECTOR_ALIGNMENT` (`compile.cpp:77`).
 
 So the current end is **slide-to-flush, with a square end as the steep-arrival fallback** — not a
-plain square end everywhere. Both files are corrected in this session; `PROGRESS.md` by a new
+plain square end everywhere. Both files are corrected in this session; `../PROGRESS.md` by a new
 entry, since it is append-only.
 
 ### 3.2 Two comments in `connector_commands.hpp` contradict the code they declare
@@ -282,12 +282,12 @@ it.
 1. **The documentation corrections** in §3.1 and §3.2 — done in this session, since they are
    free and they are what the next session reads first.
 2. ~~**A test for §3.3**, before any fix.~~ **Done.** A toolchain was installed (WSL2 Ubuntu, see
-   [`BUILDING.md`](BUILDING.md)) and the question was answered: the pair is **refused**, not
+   [`../BUILDING.md`](../BUILDING.md)) and the question was answered: the pair is **refused**, not
    overlapped. The test is in `tests/connector_tests.cpp`, and §3.3 has been rewritten to the
    measured result. The follow-up is now a fix to `runtimeSections`' cut list — a duplicate station
    should reuse the existing cut instead of being rejected as too close to itself.
 3. **Conflict areas** — the largest real gap, and the reason this project exists
-   ([`PROBLEM.md`](PROBLEM.md) §2). They are also what §3.3's *second* half and §3.4 need: once the
+   ([`../PROBLEM.md`](../PROBLEM.md) §2). They are also what §3.3's *second* half and §3.4 need: once the
    refusal is fixed, two arrivals share a downstream section with no rule between them, and that is
    a conflict area, not a priority rule.
 4. **The §5–§9 extension block**, behind its engine contracts, in the order
@@ -310,7 +310,7 @@ it.
 | Commands | `src/commands/connector_commands.{hpp,cpp}` |
 | Editor: pick, snap, handles, gestures, inspector, table, tool palette | `src/editor/canvas_connectors.cpp`, `canvas_lanes.cpp`, `canvas_input.cpp`, `src/shell/editor_connectors.cpp`, `editor_tables.cpp`, `editor_palette.cpp` |
 | Tests | `tests/connector_tests.cpp`, `connector_shape_tests.cpp`, `connector_point_tests.cpp`, `connector_mouth_tests.cpp`, `connector_ui_tests.cpp`, `attachment_tests.cpp`, `attachment_ui_tests.cpp`, `range_tests.cpp`, `network_lifecycle_tests.cpp` |
-| The supplied target | [`specs/connector/part-01.md`](specs/connector/part-01.md), [`part-02.md`](specs/connector/part-02.md) |
+| The supplied target | [`../specs/connector/part-01.md`](../specs/connector/part-01.md), [`part-02.md`](../specs/connector/part-02.md) |
 | The recorded gap analysis | [`VISSIM_PARITY.md`](VISSIM_PARITY.md), [`SPEC_AUDIT.md`](SPEC_AUDIT.md), [`NETWORK_LIFECYCLE_AUDIT.md`](NETWORK_LIFECYCLE_AUDIT.md) |
 
 ---
@@ -336,10 +336,10 @@ Two things worth noting for the next session:
 - **Ninja's default parallelism OOMs the Qt build here.** The host has 7.66 GB, WSL is given
   3.74 GB, and `nproc` is 12; the first `desktop` build was killed with exit code 15. Build with
   `-- -j 3`. This is a property of this machine, not of the project.
-- The four gates that matter for this audit all passed: `file-sizes` (the `PROGRESS.md` archive
+- The four gates that matter for this audit all passed: `file-sizes` (the `../PROGRESS.md` archive
   move was required, not cosmetic), `all-model-tests` (no test fell out of registration),
   `architecture` (core purity intact) and `reference` (the four frozen TypeScript baselines are
   still inside tolerance).
 
 This is **Linux only**. Per the project's own rule, it is not cross-platform evidence, and the
-Windows MSVC path in [`BUILDING.md`](BUILDING.md) is still unexercised in this workstream.
+Windows MSVC path in [`../BUILDING.md`](../BUILDING.md) is still unexercised in this workstream.

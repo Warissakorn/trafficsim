@@ -7,7 +7,7 @@
 using namespace trafficsim;
 using namespace rowfixture;
 // M3.2.3a: an authored crossing compiles to a core ConflictZone and runs; what the first slice
-// cannot run stays refused by name (docs/M3_ACCEPTANCE.md, M3.2.3 rows at the model seam).
+// cannot run stays refused by name (docs/plans/M3_ACCEPTANCE.md, M3.2.3 rows at the model seam).
 namespace {
 struct Crossing { ProjectDocument d; std::string major, minor, area, minorRoute; };
 std::string lane(const ProjectDocument& d, const std::string& link) {

@@ -1,6 +1,6 @@
 #pragma once
 // M3.2.2: what the authored right-of-way controls (control.hpp) mean. Two kinds of check, kept
-// apart on purpose (docs/M3_CONTRACT.md §2):
+// apart on purpose (docs/reference/M3_CONTRACT.md §2):
 //   - structural issues reject the edit or the load -- the document stays as it was;
 //   - runtime issues leave a savable draft that Run refuses, each naming the object at fault.
 #include "network.hpp"

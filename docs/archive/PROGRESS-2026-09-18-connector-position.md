@@ -72,7 +72,7 @@ so the drag gestures are asserted at the command layer, not through the canvas.*
 
 **Drive the two changes by hand in the desktop editor.** Everything here and in M1.19 is measured at
 the model and command layer; nobody has yet dragged a Connector off a Link with a mouse, or looked
-at a mouth on screen. Do that first, then the owner's timed exercise in `docs/M1_ACCEPTANCE.md`.
+at a mouth on screen. Do that first, then the owner's timed exercise in `docs/plans/M1_ACCEPTANCE.md`.
 Watch in particular for: a Connector deleted by a Link drag the author did not expect to touch it
 (the Undo is there, but the surprise is the thing to judge), and whether half a lane width is the
 right distance for "off the Link" — it is one constant, in `laneContains`.

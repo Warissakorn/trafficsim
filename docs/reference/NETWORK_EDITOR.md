@@ -6,11 +6,11 @@ prototype: merges, internal sources and cyclic routes are rejected at Run; cross
 and priority control are M3.2 (below); lane changing is mandatory only (M3.2.8b).
 
 The owner's M0 plausibility and M1 timed usability gates remain open. See
-[M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). Running a drawing is not scientific validation.
+[M1_ACCEPTANCE.md](../plans/M1_ACCEPTANCE.md). Running a drawing is not scientific validation.
 
 ## Start
 
-Build as described in [BUILDING.md](BUILDING.md), then run:
+Build as described in [BUILDING.md](../BUILDING.md), then run:
 
 ```bash
 ./build/desktop/bin/trafficsim-desktop

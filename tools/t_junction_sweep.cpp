@@ -1,4 +1,4 @@
-// M3.2.7b: the T-junction's diagnostic seeded sweep (docs/M3_ACCEPTANCE.md §2). Not in `check`:
+// M3.2.7b: the T-junction's diagnostic seeded sweep (docs/plans/M3_ACCEPTANCE.md §2). Not in `check`:
 // it is evidence to archive, like the benchmarks, not a pass/fail test.
 //
 //   trafficsim-t-junction-sweep --metadata <out.json> <repo root>   what the sweep depends on

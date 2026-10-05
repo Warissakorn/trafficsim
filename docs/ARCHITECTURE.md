@@ -34,7 +34,7 @@ Accepted lane changes capture a snapshot-owned `LaneChangeTrace` before station 
 Only the Qt-free Run pose target reads it, reconstructing a spatial front guide with
 continuous rear rolling, including overlapping changes and stopped vehicles. Engine
 occupancy still changes instantly; scalar following/conflict/evaluation contracts stay
-unchanged. See [VEHICLE_POSE.md](VEHICLE_POSE.md).
+unchanged. See [VEHICLE_POSE.md](reference/VEHICLE_POSE.md).
 
 | CMake target | Location | Dependencies | Status |
 |---|---|---|---|
@@ -65,7 +65,7 @@ cleared on Run-network replacement or a different immutable Scenario snapshot. M
 visible size does not alter physical axle dimensions. Lane changes compose continuous
 front guides and use the same rolling solution; their cache keys include each vehicle's
 complete change trace/type. Between-lanes engine occupancy remains unmodelled.
-See [VEHICLE_POSE.md](VEHICLE_POSE.md) for the equation, defaults, numerical budget and limits.
+See [VEHICLE_POSE.md](reference/VEHICLE_POSE.md) for the equation, defaults, numerical budget and limits.
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
 and test the engine, model and CLI on a machine without Qt.
@@ -221,12 +221,12 @@ The surface owns its computed mouths and a `selfIntersecting` flag. Singular int
 and folds produce `WARN_CONNECTOR_ALIGNMENT`; they never select a square cap. Open markings
 on an undefined join remain selectable. Waiting-line bars use the actual rails' intersection
 with the normal at the mapped equation station. See
-[CONNECTOR_FOUR_POINT_MOUTH.md](CONNECTOR_FOUR_POINT_MOUTH.md) for the contract and
-[NETWORK_EDITOR.md](NETWORK_EDITOR.md) for user controls/file semantics.
+[CONNECTOR_FOUR_POINT_MOUTH.md](reference/CONNECTOR_FOUR_POINT_MOUTH.md) for the contract and
+[NETWORK_EDITOR.md](reference/NETWORK_EDITOR.md) for user controls/file semantics.
 
 ## Remaining systems
 
-M3's right-of-way seam ([M3_CONTRACT.md](M3_CONTRACT.md)) has landed in slices M3.2.2a–M3.2.6:
+M3's right-of-way seam ([M3_CONTRACT.md](reference/M3_CONTRACT.md)) has landed in slices M3.2.2a–M3.2.6:
 authored waiting lines, conflict areas, priority rules (gap time/headway), Stop/Yield controls and
 queue counters are project-codec objects; `resolveRightOfWay` resolves them once into runtime
 conflict zones and route incidence, admitted by `core/conflicts.*`. Derived merges still run on

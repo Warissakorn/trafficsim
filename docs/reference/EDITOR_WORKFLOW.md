@@ -127,6 +127,6 @@ Simulation, Help and Language menus retain full command names and keyboard short
 The unvalidated marker and complete simulation figures remain visible in focus mode.
 
 Layout examples from the Linux offscreen Qt platform:
-[English, 1360×860](images/workspace-en.png),
-[Thai, 1024×768](images/workspace-th.png), and
-[Thai focus mode](images/workspace-focus.png).
+[English, 1360×860](../images/workspace-en.png),
+[Thai, 1024×768](../images/workspace-th.png), and
+[Thai focus mode](../images/workspace-focus.png).

@@ -16,6 +16,7 @@ cmake --build build/headless --target check
 | `run_simulation.cpp` | `trafficsim-cli` | Run a seeded M0 scenario without a window |
 | `check_architecture.cpp` | `trafficsim-check-architecture` | Check core/eval include boundaries and forbidden nondeterministic APIs |
 | `check_file_sizes.cpp` | `trafficsim-check-file-sizes` | Enforce the source-file line budget |
+| `check_docs.cpp` | `trafficsim-check-docs` | Check maintained Markdown local links, anchors and folder indexes; supplied spec parts are excluded |
 
 The executables are under `build/headless/bin/` or `build/desktop/bin/` for the Ninja
 presets. On Windows add `.exe`. Multi-configuration generators add the configuration
@@ -48,7 +49,7 @@ unknown references, off-grid timing and unsupported topology fail before steppin
 The loaded scenario can contain explicit `definition.vehicleTypes` and
 `definition.behaviours` arrays. Otherwise every `.json` file in the corresponding
 catalog directory is loaded in filename order. Adding the 50th vehicle type needs no
-C++ edit. The authoring fixture format is documented in `../docs/SIMULATION.md`.
+C++ edit. The authoring fixture format is documented in `../docs/reference/SIMULATION.md`.
 
 Seed 42 outputs 31 completed trips, 0 active, 0 pending, mean delay
 29.249359418430977 seconds and 0 safety clamps after 180 simulated seconds.
@@ -127,7 +128,7 @@ maintenance, atomic failures and route/input preservation. The `connector-ui` CT
 entry exercises lane-end gestures, curve-point editing, ID/Properties controls,
 reference-safe deletion/Undo, persistence and English/Thai feedback. Both UI entries
 require a desktop build; headless results do not verify them.
-See [NETWORK_EDITOR.md](../docs/NETWORK_EDITOR.md) for the editing workflow and limits.
+See [NETWORK_EDITOR.md](../docs/reference/NETWORK_EDITOR.md) for the editing workflow and limits.
 
 `trafficsim-m26-study <output>` regenerates `data/projects/m2.6-study-template.traffic.json` from
 `m26_study_network.hpp` — the M2.6 study template with placeholder volumes. `m26study` in

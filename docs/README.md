@@ -12,14 +12,14 @@ selects additional context; read related decisions and evidence only when needed
 
 | Task | Read before editing | Code entry points |
 |---|---|---|
-| Engine, following, lane changes or safety | SIMULATION; M3_CONTRACT; M3_8_CONTRACT; M3_ACCEPTANCE | `src/core/`, `src/model/network/`, `tests/` |
-| Link/Connector geometry | CONNECTOR_FOUR_POINT_MOUTH; NETWORK_EDITOR_CONNECTORS; CONNECTOR_PARITY_AUDIT | `src/model/network/`, `src/editor/`, `src/commands/` |
-| Demand, catalogs or routing | DEMAND_IMPROVEMENT; DEMAND_CATALOGS; DEMAND_TIME_TYPES; SIMULATION | `src/project/`, `src/model/demand/`, `src/model/network/routing.cpp` |
-| Editor UI, gestures or Undo/Redo | NETWORK_EDITOR; EDITOR_WORKFLOW; VISSIM_PARITY; UI_REDESIGN_AUDIT | `src/editor/`, `src/shell/`, `src/commands/` |
-| Vehicle display and turning | VEHICLE_POSE; SIMULATION | `src/editor/vehicle_pose.*`, `rear_axle_pose.*`, `lane_change_pose.*` |
-| Load/save or schema changes | NETWORK_EDITOR save/recovery; relevant Demand/geometry contract; MIGRATION | `src/project/`, `tests/project_tests.cpp` |
-| Evaluation or reporting | PROBLEM; SIMULATION; ROADMAP M5/M6; M2_PLAN | `src/eval/`, `src/project/evaluation.*`, `src/runner/`, `src/report/` |
-| Build or portability | BUILDING; MIGRATION; tools README | `CMakeLists.txt`, `CMakePresets.json`, `.github/workflows/` |
+| Engine, following, lane changes or safety | [SIMULATION](reference/SIMULATION.md); [M3_CONTRACT](reference/M3_CONTRACT.md); [M3_8_CONTRACT](reference/M3_8_CONTRACT.md); [M3_ACCEPTANCE](plans/M3_ACCEPTANCE.md) | `src/core/`, `src/model/network/`, `tests/` |
+| Link/Connector geometry | [CONNECTOR_FOUR_POINT_MOUTH](reference/CONNECTOR_FOUR_POINT_MOUTH.md); [NETWORK_EDITOR_CONNECTORS](reference/NETWORK_EDITOR_CONNECTORS.md); [CONNECTOR_PARITY_AUDIT](audits/CONNECTOR_PARITY_AUDIT.md) | `src/model/network/`, `src/editor/`, `src/commands/` |
+| Demand, catalogs or routing | [DEMAND_IMPROVEMENT](plans/DEMAND_IMPROVEMENT.md); [DEMAND_CATALOGS](reference/DEMAND_CATALOGS.md); [DEMAND_TIME_TYPES](reference/DEMAND_TIME_TYPES.md); [SIMULATION](reference/SIMULATION.md) | `src/project/`, `src/model/demand/`, `src/model/network/routing.cpp` |
+| Editor UI, gestures or Undo/Redo | [NETWORK_EDITOR](reference/NETWORK_EDITOR.md); [EDITOR_WORKFLOW](reference/EDITOR_WORKFLOW.md); [VISSIM_PARITY](audits/VISSIM_PARITY.md); [UI_REDESIGN_AUDIT](audits/UI_REDESIGN_AUDIT.md) | `src/editor/`, `src/shell/`, `src/commands/` |
+| Vehicle display and turning | [VEHICLE_POSE](reference/VEHICLE_POSE.md); [SIMULATION](reference/SIMULATION.md) | `src/editor/vehicle_pose.*`, `rear_axle_pose.*`, `lane_change_pose.*` |
+| Load/save or schema changes | [NETWORK_EDITOR](reference/NETWORK_EDITOR.md) save/recovery; relevant Demand/geometry contract; [MIGRATION](reference/MIGRATION.md) | `src/project/`, `tests/project_tests.cpp` |
+| Evaluation or reporting | [PROBLEM](PROBLEM.md); [SIMULATION](reference/SIMULATION.md); [ROADMAP](ROADMAP.md) M5/M6; [M2_PLAN](plans/M2_PLAN.md) | `src/eval/`, `src/project/evaluation.*`, `src/runner/`, `src/report/` |
+| Build or portability | [BUILDING](BUILDING.md); [MIGRATION](reference/MIGRATION.md); tools README | `CMakeLists.txt`, `CMakePresets.json`, `.github/workflows/` |
 
 Resolve the document names through the indexes below. `src/runner/` and `src/report/`
 are planned module boundaries, not implemented batch/report products.
@@ -40,64 +40,30 @@ are planned module boundaries, not implemented batch/report products.
 | [`PROBLEM.md`](PROBLEM.md) | Audience and scope. Every feature traces back to a line here. |
 | [`PRINCIPLES.md`](PRINCIPLES.md) | Rules that do not get relitigated. Rules 1–4 are correctness. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Modules, dependencies and contracts between them. |
+| [`BUILDING.md`](BUILDING.md) | Linux/Windows toolchains and dependency setup. |
+| [`CMakeUserPresets.windows.example.json`](CMakeUserPresets.windows.example.json) | Local Windows preset example referenced by BUILDING. |
 | [`ROADMAP.md`](ROADMAP.md) | M0–M7, milestone gates, the dated accuracy review, owner decisions O1–O10 and proposed sessions S0–S5. |
-| [`PROGRESS.md`](PROGRESS.md) | Session history, newest first, and the decision log (D-numbers). |
-
-## How the product works (current reference)
-
-| File | What it is |
-|---|---|
-| [`SIMULATION.md`](SIMULATION.md) | Engine contracts: stepping, car-following, signals, right-of-way, lane changes, results. |
-| [`VEHICLE_POSE.md`](VEHICLE_POSE.md) | Rear-axle reference, continuous lane-change guidance, axle defaults, acceptance rows and limits. |
-| [`NETWORK_EDITOR.md`](NETWORK_EDITOR.md) | The desktop editor: tools, demand, control, Run, Results, save/recovery and file formats. |
-| [`NETWORK_EDITOR_CONNECTORS.md`](NETWORK_EDITOR_CONNECTORS.md) | The editor's Connector sections, split out to stay under 500 lines. |
-| [`CONNECTOR_FOUR_POINT_MOUTH.md`](CONNECTOR_FOUR_POINT_MOUTH.md) | The Connector mouth geometry contract (D80). |
-| [`EDITOR_WORKFLOW.md`](EDITOR_WORKFLOW.md) | History, keyboard editing and rotation. |
-| [`AUTHORING_EXTENSIONS.md`](AUTHORING_EXTENSIONS.md) | M1.21: the implemented subset of the supplied specifications. |
-| [`BUILDING.md`](BUILDING.md) | Toolchains for Linux and Windows, presets, Qt licensing. |
-| [`CMakeUserPresets.windows.example.json`](CMakeUserPresets.windows.example.json) | Example user presets for Windows, referenced by `BUILDING.md`. |
-| [`MIGRATION.md`](MIGRATION.md) | The D15 move from TypeScript to C++, and the baseline fixtures it keeps. |
-
-## Milestone plans, contracts and gate records
-
-Dated design and acceptance documents. For what is done, see `ROADMAP.md`.
-
-| File | What it is |
-|---|---|
-| [`M1_ACCEPTANCE.md`](M1_ACCEPTANCE.md) | M1 owner acceptance record (accepted by ruling, D49). |
-| [`DEMAND_TIME_TYPES.md`](DEMAND_TIME_TYPES.md) | Slice 6 schema, period/type weights, deterministic compilation and gates |
-| [`DEMAND_CATALOGS.md`](DEMAND_CATALOGS.md) | Project-owned vehicle/composition catalogs, schema 18 and editing gates. |
-| [`DEMAND_IMPROVEMENT.md`](DEMAND_IMPROVEMENT.md) | Demand-only contract, implementation slices and vehicle/composition follow-up. |
-| [`M2_PLAN.md`](M2_PLAN.md) | The M1 review and the M2 plan (2026-09-24). |
-| [`M2_GATE.md`](M2_GATE.md) | M2 gate record (passed by the owner's judgment, D51–D53). |
-| [`M3_PLAN.md`](M3_PLAN.md) | M3 delivery plan: the slices (2026-09-24). |
-| [`M3_CONTRACT.md`](M3_CONTRACT.md) | M3 right-of-way contract: conflict areas, priority, waiting lines. |
-| [`M3_8_CONTRACT.md`](M3_8_CONTRACT.md) | M3.2.8 behaviour contract: commitment, lane changes, cooperation. |
-| [`M3_ACCEPTANCE.md`](M3_ACCEPTANCE.md) | M3 test matrix, evidence rows and the owner exercise sheet (§3). |
-
-## Audits and reviews (dated)
-
-| File | What it is |
-|---|---|
-| [`VISSIM_PARITY.md`](VISSIM_PARITY.md) | Feature-by-feature gap to Vissim's surface. §1a and §2 are current. |
-| [`CONNECTOR_PARITY_AUDIT.md`](CONNECTOR_PARITY_AUDIT.md) | Connector against the supplied spec and against Vissim, kept apart. |
-| [`SPEC_AUDIT.md`](SPEC_AUDIT.md) | The supplied specifications against the code (2026-09-20). |
-| [`NETWORK_LIFECYCLE_AUDIT.md`](NETWORK_LIFECYCLE_AUDIT.md) | Network authoring regression audit (2026-09-21). |
-| [`UI_REDESIGN_AUDIT.md`](UI_REDESIGN_AUDIT.md) | The D81 precision-tool restyle; §6 lists the open gaps. |
+| [`PROGRESS.md`](PROGRESS.md) | Session history, newest first; links to the indexed decision record. |
 
 ## Folders
 
 | Folder | What it holds |
 |---|---|
+| [`reference/`](reference/README.md) | Current behaviour and contracts. |
+| [`plans/`](plans/README.md) | Milestone plans and acceptance/gate records. |
+| [`audits/`](audits/README.md) | Dated audits and reviews. |
 | [`specs/`](specs/README.md) | Supplied Thai target specifications and their original/retained byte manifests. |
 | [`evidence/`](evidence/) | Measurement records behind decisions: sweeps, CSVs, metadata, session checks. Each is cited by a `PROGRESS.md` entry or a decision row. |
 | [`images/`](images/) | Screenshots used by the docs. |
 | [`archive/`](archive/README.md) | Old PROGRESS, ROADMAP and VISSIM_PARITY blocks, moved out whole. Indexed newest first; nothing there is current. |
-| [`decisions/`](decisions/README.md) | Topic index into the existing decision record; IDs and reasoning stay stable. |
+| [`decisions/`](decisions/README.md) | Complete decision record with stable D-number anchors and a topic index. |
 
 ## Keeping this tidy
 
-- A new top-level doc gets a row here in the same commit.
+- A new maintained doc gets a row in its folder index in the same commit.
+- The tables above index docs at the root and link to the purpose folders.
+- Run `trafficsim-check-docs .` (also in `check`/CTest) for local inline Markdown links,
+  anchors and maintained-folder index coverage. Source-spec example parts are excluded.
 - `PROGRESS.md` stays under 500 lines (`trafficsim-check-file-sizes`). Move the oldest live
   entries whole into `archive/`, and list the new file in `archive/README.md`.
 - Moving a file into `archive/` means its relative links need `../`.

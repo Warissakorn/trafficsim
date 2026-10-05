@@ -5,7 +5,7 @@ owner's request to carry out the agreed sequence. Written before the M2 gate; th
 by the owner's judgment on 2026-09-25 (D53, `M2_GATE.md`) and implementation began with M3.2.2a
 (D54). Slice status is in ROADMAP M3.2.
 
-The live next action remains in [NEXT.md](NEXT.md). [ROADMAP.md](ROADMAP.md) owns milestone
+The live next action remains in [NEXT.md](../NEXT.md). [ROADMAP.md](../ROADMAP.md) owns milestone
 status; this document specifies dependencies, contracts and deliverables. No M0/M1/M2
 acceptance or M6 validation is closed by this plan.
 
@@ -57,7 +57,7 @@ lane-changing, cooperation, visibility or calibration work has disappeared.
 
 | Slice | Prerequisite | Deliverable | Completion evidence |
 |---|---|---|---|
-| M3.2.1 Contract and acceptance design | Owner's planning instruction | `M3_CONTRACT.md`, this sequence and `M3_ACCEPTANCE.md` | Source audit and reviewable contracts; prepared |
+| M3.2.1 Contract and acceptance design | Owner's planning instruction | `../reference/M3_CONTRACT.md`, this sequence and `M3_ACCEPTANCE.md` | Source audit and reviewable contracts; prepared |
 | M3.2.2 Authored model and compiler | M2 gate passes; M3.2.1 | References, validation, codec/migration, command transactions, explicit/fallback resolution | Roundtrips, reference lifecycle, cycles/ties rejected; unsupported runtime capability blocks Run |
 | M3.2.3 Crossing runtime | M3.2.2 | Conflict incidence, swept occupancy, deterministic grants, rear clearance, exit-space checks | Controlled crossing/merge tests and unchanged no-new-control fixtures |
 | M3.2.4 Conflict/priority editor | M3.2.3 | Canvas selection, tables/inspector, gap/headway editing, Problems links, English/Thai text | Mouse/keyboard workflows, cancellation, Undo/Redo, save/reopen, observable runtime effect |
@@ -73,7 +73,7 @@ including the original M3.2 requirement for calibrated gap acceptance.
 ### M3.2.2 — implement the file/model seam first
 
 1. Define the authored types and pure resolution functions in `src/model/network/` using
-   [M3_CONTRACT.md](M3_CONTRACT.md). Add structural and runtime diagnostics separately.
+   [M3_CONTRACT.md](../reference/M3_CONTRACT.md). Add structural and runtime diagnostics separately.
 2. Add the next project schema (11 if 10 is still current). Preserve schema 1-10 migration
    and the distinct M0 scenario format. Unknown future fields must fail rather than vanish.
 3. Add put/delete commands through `History`, then integrate split, copy, retarget, lane
@@ -103,7 +103,7 @@ Benchmark only if profiling identifies a cost. No performance target is invented
 
 - Follow the existing Network Objects palette, inspector, Problems panel and History paths.
   Runtime support lands before a new runnable tool. Pointer and keyboard actions submit
-  the same commands; gestures follow `VISSIM_PARITY.md`'s current sections and M1.22.
+  the same commands; gestures follow `../audits/VISSIM_PARITY.md`'s current sections and M1.22.
 - Show conflict extents, direction of priority, waiting lines and the rule's units together.
   Changing a rule invalidates the run snapshot, as every successful edit already does.
 - Offer Stop/Yield as controls over explicit conflict references. A green head is permission
