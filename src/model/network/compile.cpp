@@ -12,13 +12,22 @@ namespace trafficsim {
 LaneSplit laneSplit(const std::vector<std::size_t>& chainLanes, std::size_t shareCount,
                     const std::vector<double>& laneShares) {
     LaneSplit split;
+    double authoredSum=0;
+    for(double weight:laneShares) {
+        if(!std::isfinite(weight) || weight<0)throw ValidationError({{"INVALID_SHARE","laneShares"}});
+        authoredSum+=weight;
+    }
+    if(!laneShares.empty() && (!(authoredSum>0) || !std::isfinite(authoredSum)))
+        throw ValidationError({{"INVALID_SHARE","laneShares"}});
     split.weighted = !chainLanes.empty() && laneShares.size() == shareCount;
     double sum = 0; // in chain order, as the compiler always summed
     if (split.weighted)
         for (const auto k : chainLanes) {
-            if (k >= laneShares.size() || !(laneShares[k] > 0)) { split.weighted = false; break; }
+            if (k >= laneShares.size()) { split.weighted = false; break; }
             sum += laneShares[k];
         }
+    if(split.weighted && (!(sum>0) || !std::isfinite(sum)))
+        throw ValidationError({{"INVALID_SHARE","laneShares"}});
     for (const auto k : chainLanes)
         split.fraction.push_back(split.weighted ? laneShares[k] / sum : 1.0 / static_cast<double>(chainLanes.size()));
     return split;

@@ -7,6 +7,23 @@ decision log; **this file is the part a session must read before starting.**
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## Demand priority — owner instruction, 2026-10-05
+
+The owner explicitly asked to start Demand improvements. This takes priority over
+§0's unanswered ordering proposal. [DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md)
+defines slices 1–6: correctness, lossless interval editing, explicit periods and
+compiled preview first; project-owned vehicle/composition catalogs and typed/time
+rules next. Reporting, LOS and batch evaluation stay M5. Slices 1–4 (PR #106)
+passed native Linux/Windows CI. Slice 5 (#107) adds project-owned catalogs and editing;
+its five native jobs passed too. Slice 6 adds schema-19 time/type rules and staged
+editors ([DEMAND_TIME_TYPES.md](DEMAND_TIME_TYPES.md)); check this slice's native CI
+and owner appearance independently. The six implementation slices are present;
+M2.8 stays in progress until its own review gates pass. Next review the stacked PRs
+in dependency order (#106, #107, then time/type), retarget after each merge, and
+exercise catalog periods and type overrides in the owner's desktop. No automatic
+merge or whole-Demand completion claim. Additional distributions, exact-count or
+dynamic-routing work requires its own contract; reporting remains M5.
+
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 
 [ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) corrected the stale status lines

@@ -8,6 +8,61 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Time-varying compositions and type-conditioned routing (D113)
+
+Owner asked to continue after #107; all five of its native CI jobs passed. Slice 6
+adds schema-19 composition periods and complete per-type routing matrices. Input
+volume remains authoritative. Gaps use base composition; missing type rules inherit
+default flows; zero counted totals use that type's whole-period weights. Splitting
+by type precedes conditioned routing, including downstream decisions, at scheduled
+demand time. Source queueing never reselects the destination. Legacy ordering, IDs,
+file bytes and random stream are preserved when no new rules are present.
+[DEMAND_TIME_TYPES.md](DEMAND_TIME_TYPES.md) records interfaces and gates. Staged UI
+edits commit through History; reference checks include periods and type rules.
+Failure-first tests exposed missing serialization/validation. Breakpoint conservation,
+queue retention, replay and UI verification accompany this change. No new core RNG,
+dynamics, exact-count mode or reporting is added. Linux GCC / Qt 6.4.2 Debug:
+the required `check` target passes all 86 checks, including 56 Demand cases and
+the new time/type UI suite. Frozen fixtures remain unchanged. Native CI and owner
+review remain separate. Two older dated entries moved whole for D82 headroom.
+
+---
+
+## 2026-10-05 — Project vehicle/composition catalogs (D112)
+
+Owner asked to continue Demand improvements after PR #106. Its five native CI jobs
+passed. Slice 5 captures types, behaviors and compositions into one undoable project
+edit. Schema 18 adds owned compositions and authoring names; absence retains external
+catalog behavior and schema-17 fixture bytes on save. All owned compositions, including unused ones, validate IDs, weights
+and type references. Existing core checks validate dimensions, axles, speeds and
+behavior references. The staging UI offers add/edit/delete, stable IDs, names and
+engine/axle parameters. Cancel keeps ownership and History unchanged; referenced
+entries cannot be deleted. Input selection, Run and Preview share the ownership resolver.
+[DEMAND_CATALOGS.md](DEMAND_CATALOGS.md) records the interface and gates. No dynamics
+or report model is added. Regression tests first exposed missing serialization and
+validation; portable compilation, rollback, ownership Undo/Redo and Qt staging are tested.
+Linux GCC/Qt 6.4.2 Debug: all 85 desktop checks pass, including 44 Demand cases and
+the new catalog UI suite. Frozen reference files remain unchanged; this slice's
+native CI and owner appearance are separate.
+
+---
+
+## 2026-10-05 — Demand correctness, interval preservation and preview (D111)
+
+Owner requested a detailed Demand-only review and authorized implementation.
+[DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md) records the contract and six slices;
+this branch implements 1–4, with catalog and time/type extensions still planned.
+Zero lane weights now exclude a lane; invalid weights cannot silently fall back.
+Positive stale weights retain D32's fallback with an advisory. Decision/input dialogs
+preserve irregular intervals and offer explicit period editing. Missing active count
+cells are rejected. Preview compiles Run's snapshot and shows expected demand,
+including composition and lane expansion. Scheduled-time routing remains unchanged.
+New failure-first lane cases, conservation and Qt preservation/Undo tests accompany
+these changes. Frozen fixtures remain untouched. Linux verification and Windows
+native/owner review status are recorded with the branch; no M2 gate is reclosed.
+
+---
+
 ## 2026-10-05 — Continuous lane-change guidance (phase 3)
 
 Owner asked to continue after phase 2 (#104). Replaced the independent D102 lateral
@@ -250,86 +305,6 @@ path changes. Docs only.
 - The branch merged `main` first (the roadmap review, `cf8fb22`), so none of its 63 corrections
   is undone.
 
-## 2026-10-04 — `scenario-run-ui` was the E-cores, not a regression; the test is now 10× cheaper
-
-The ≈100 s CPU found below is scheduling, not code. The same executable at the same commit was
-pinned by `ProcessorAffinity` on this i5-12450H (logical 0–7 = four P-cores with HT, 8–11 = four
-E-cores), interleaved: P-cores 29.1 / 26.0 s CPU, E-cores 103.9 / 88.9 s. The 2026-10-02 28 s run
-was on P-cores. The code between `b823cd8` and `eeb9c5c` could not have done it anyway: locale
-text, a test, and `hairlinePen` width 1/dpr → 1, which is the same pen at the offscreen dpr of 1.
-The earlier "machine idle" rested on one 3 % load sample; Windows still parks a Debug test on an
-E-core with Zoom and Discord running.
-
-The fragility was real, though: the test pumped the event loop after each of 1,800 Steps and
-painted 1,800 offscreen frames. Stepping and `refreshRun()` run inside the action, and only
-painting waits for the loop, so the bulk loop now triggers Step directly and pumps every 100 Steps
-and once at the end. Every assertion stays, including hidden-Results-not-rebuilt, which reads
-`isVisible()`. The loop still paints 18 frames, and frame cost is `trafficsim-run-view-benchmark`'s
-job. After: P-cores 2.8 s CPU, E-cores 11.8 s (one run each), against `TIMEOUT 90`, which is
-unchanged.
-
-## 2026-10-04 — Results export to CSV from the editor (D104)
-
-The Results tab has an "Export results (CSV)…" action on its own toolbar, also in the
-Simulation menu and the command palette. It writes `movementCsv(*runReport())`, the function
-behind `trafficsim-cli --csv`, so the editor's file is byte for byte the CLI's, with the
-not-yet-validated marker as its first line. It is enabled only once the run has reached its end
-(`runFinished()`, which the partial note in `refreshResults()` now shares). The enabled state is
-set in `refreshRun()`, because `refreshResults()` skips work while its tab is hidden. The write
-goes through a new `writeEditorBytes` (QSaveFile, no direct-write fallback); `writeEditorDocument`
-now calls it. A failed export reports `EDIT_CSV_WRITE` rather than `EDIT_FILE_WRITE`, whose text
-speaks of unsaved project changes. `scenario-run-ui` asserts the action is disabled before a run,
-part way through it and after Reset; that `exportResults` refuses a part-way run and writes
-nothing; and that the finished run's file equals `movementCsv` of the same report. Desktop 77/77
-on Windows (Debug).
-
-Found on the way, not caused by this change: `scenario-run-ui` is now ≈100 s CPU on Windows Debug
-with the machine idle (101 s at `eeb9c5c` without this change, 109 s with it; one run each). The
-2026-10-02 figure was 28 s. It times out at 90 s alone. See NEXT. *Corrected in the entry above:
-E-core scheduling, not code.*
-
-## 2026-10-03 — Roadmap review: 63 stale statements corrected, the order left to the owner
-
-At the user's request, a session reviewed the roadmap for accuracy and direction. Report:
-[ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) (consolidated 2026-10-04). Six audit slices compared ROADMAP, NEXT and the status
-lines that repeat them against the decision log, archives, code, tests and git. An independent
-skeptic checked each finding, and 87 survived: 63 factual, 17 owner decisions, 7 strategic.
-- **Corrected (docs only):** CLAUDE.md said schema 16 (it is 17) and owner item 4 for the name
-  (it is 2). ROADMAP still said "M2.6 is still unperformed" (M3), "back to the owner" (M3.2.8c,
-  ruled by D102), "owner M1 acceptance remains open" (D49), listed fixed-time controllers as open
-  (M4.1), and cited ctest names that do not exist (`attachment-ui`, `gesture-ui`). ARCHITECTURE said
-  schema 8 and called the M3 seam "a design only". NEXT said WSL both exists here and does not
-  (`wsl.exe`: it does not). Overlap cycling has been `Ctrl+Tab` since `ed74268`, and four docs said
-  `Tab`. The full list is in the report's §3.
-- **Not corrected, on purpose:** dated PROGRESS entries and decision rows, which are records of
-  their day; one code comment; and anything that closes, carves or re-orders a milestone. Rule 1
-  and hard rule 8 make those the owner's. The ten owner questions are the report's §4.
-- **Why the order is not changed:** the strategic finding is that M5 (multi-seed runs, CIs, LOS,
-  export) has no product code and no commit since 2026-09-25, while 45 of 122 commits touched the
-  editor or shell. No gate holds M5 back. NEXT's order does, and CLAUDE.md forbids a session to
-  re-plan, so moving M5 up is O1, the owner's.
-- **Critics' corrections kept in the report:** M5 is not "gate-free". The M0 and M5.1 gate lines
-  apply, but neither precedes M5. D88's 7 s SD is a per-seed *change* between engine versions, and
-  does not size a single table's CI. The Q4 option sheet comes before the runner and carries no
-  engine figures, so the benchmark is not picked by what the engine already matches.
-Desktop 77/77 on Windows before the edits (MSVC, Qt 6.8.3, Debug). This session changed no code.
-
-## 2026-10-03 — The input table shows the lane split the run gets (`laneSplit`)
-
-With per-lane weights set, the Vehicle inputs row still printed the equal split ("1800 = 2 × 900.0"),
-because it had its own copy of the split rule. The rule now lives once, in
-`laneSplit(chainLanes, shareCount, laneShares)` (network.hpp, compile.cpp). It is used by the compiler,
-by routeless inputs (`demand_paths.cpp`, every Link lane a "chain") and by `refreshDemand`, which
-prints "1800 = 1200.0 + 600.0" when weights apply and the old "N × v" when they do not. It returns
-`weighted` as well as the fractions, because the equal split must stay `total / n`: `total * (1/n)`
-can differ in the last bit, which would move a Poisson spawn and break byte-identical replay. Seed 42
-CLI output is `cmp`-identical before and after for the four shipped projects, the D93 scratch case,
-and two scratch cases with weights set (routed {2,1}, routeless {3,1}). Tests: `laneSplit`
-fractions and fallbacks (editor group), and `demand-ui` asserts the row before and after the 2:1
-weight, after asserting that the compiled split really is 1200/600. Desktop 76/77 on Windows:
-`scenario-run-ui` timed out at 90 s under machine load, and an alternating A/B of the unchanged
-and changed builds measured both at 110–116 s CPU (NEXT).
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -449,6 +424,9 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D113 | 2026-10-05 | **Time/type rules compile at scheduled demand time into existing Poisson inputs, with complete per-type route matrices.** | Explicit defaults, gaps and zero-total fallback avoid ambiguous inheritance; split types before routing and keep type-specific route families separate. Legacy inputs retain their compilation order and IDs. | Dynamic reselection, exact-count arrivals and desired-speed distribution families require separate contracts. |
+| D112 | 2026-10-05 | **Catalog editing captures types, behaviors and compositions into the project atomically; IDs stay stable.** | A composition-only local file would still depend on installed type/behavior values. Capturing all three makes saved Demand portable, while old projects keep explicit external ownership. Names are authoring metadata. | A separately specified catalog import/merge workflow or behavior editor; time/type rules remain slice 6. |
+| D111 | 2026-10-05 | **Demand correctness and preview preserve scheduled-time routing; reporting stays M5.** | Zero weights must exclude a lane; invalid weights and missing turn counts must not silently alter demand. Irregular intervals need lossless editing. Preview must use Run's compiled snapshot, including compositions. | A separately accepted routing-time/count contract; project catalog and type/time extensions remain slices 5–6. |
 | D110 | 2026-10-05 | **Groups share control, while each lane-pair side is painted separately; one crossing classifier excludes true attachment mouths everywhere** | Owner clarification and reproduced automatic/manual disagreement at an internal Connector/Link join. Merge topology continues to own that competition. | A measured mouth case outside the connected attachment component, or another owner display ruling. |
 | D109 | 2026-10-05 | **Conflict calculation follows the runtime cubic; display follows paint; connected same-owner lane pairs share one editor group** | Owner ruling. Preserve nine pair reservations and one Undo for 3 × 3; spatial connectivity keeps separated crossings apart. A pure diverge has no competing arrival, and derived merge arbitration stays topological. | A new solver or measured grouping/geometry defect. |
 | D108 | 2026-10-04 | **Defer source entry when its ordinary first step exceeds current leader clearance** | M3.2.8a.1a; same following/integration, buffer, queue order and sampled vehicle. Exact equality admits. Failure-first tests and 120 stress/160 project comparisons pass; three measured source clamps removed, moving clamps remain | Later lane changes introduce a leader; the snapshot guard holds safe entry unnecessarily; moving merge anticipation remains a separate contract |

@@ -1,6 +1,9 @@
 #include "load.hpp"
 #include "json.hpp"
 #include "run.hpp"
+#include "demand_catalog.hpp"
+#include "demand_time_types.hpp"
+#include <set>
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -41,12 +44,14 @@ std::vector<Composition> loadCompositions(const std::filesystem::path& dataDirec
 namespace {
 bool validComposition(const Composition& c, const std::vector<VehicleType>& types) {
     if (c.types.empty()) return false;
+    double total=0;std::set<std::string> ids;
     for (const auto& t : c.types) {
+        total+=t.share;if(!ids.insert(t.vehicleTypeId).second)return false;
         if (!(std::isfinite(t.share) && t.share > 0)) return false;
         if (std::none_of(types.begin(), types.end(), [&](const auto& v) { return v.id == t.vehicleTypeId; }))
             return false;
     }
-    return true;
+    return std::isfinite(total) && total>0;
 }
 const Composition* findComposition(const std::vector<Composition>& all, const std::string& id) {
     for (const auto& c : all) if (c.id == id) return &c;
@@ -57,15 +62,25 @@ std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& author
                                                const std::filesystem::path& dataDirectory) {
     std::vector<ValidationIssue> issues;
     if (std::none_of(authored.inputs.begin(), authored.inputs.end(),
-                     [](const auto& i) { return !i.compositionId.empty(); })) return issues;
-    const auto all = loadCompositions(dataDirectory);
-    const auto types = resolveCatalogs(AuthoringDefinition{authored}, dataDirectory).vehicleTypes;
+                     [](const auto& i) { return !i.compositionId.empty(); }) && authored.externalCompositions && !hasTypeRouting(authored)) return issues;
+    const bool used=std::any_of(authored.inputs.begin(),authored.inputs.end(),[](const auto& i){return !i.compositionId.empty();});
+    const auto resolved=resolveDemandCatalog(authored,dataDirectory,used);
+    const auto& all=resolved.compositions;const auto& types=resolved.vehicleTypes;
+    auto owned=authored;owned.vehicleTypes=types;owned.externalVehicleTypes=false;
+    issues=timeTypeIssues(owned);
+    if(!owned.externalCompositions) {
+        const auto catalogIssues=ownedCatalogIssues(owned);issues.insert(issues.end(),catalogIssues.begin(),catalogIssues.end());
+    }
     for (std::size_t i = 0; i < authored.inputs.size(); ++i) {
         const auto& id = authored.inputs[i].compositionId;
         if (id.empty()) continue;
         const auto path = "inputs[" + std::to_string(i) + "].compositionId";
         const auto* c = findComposition(all, id);
         if (!c) { issues.push_back({"UNKNOWN_COMPOSITION", path}); continue; }
+        if(!c->intervals.empty()) {
+            auto single=owned;single.compositions={*c};single.inputs.clear();single.externalCompositions=false;
+            const auto timed=ownedCatalogIssues(single);issues.insert(issues.end(),timed.begin(),timed.end());
+        }
         if (c->types.empty() || std::any_of(c->types.begin(), c->types.end(),
                 [](const auto& t) { return !(std::isfinite(t.share) && t.share > 0); }))
             issues.push_back({"INVALID_SHARE", path});
@@ -73,48 +88,43 @@ std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& author
     }
     return issues;
 }
-ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
-    // Routing decisions first (M2.4): after this every input names one route, which is what the
-    // composition split below and buildScenario's period and lane splits all expect.
-    ScenarioDefinition definition=withRoutingDecisions(authored);
+DemandCatalog resolveDemandCatalog(const AuthoringDefinition& authored,const std::filesystem::path& dataDirectory,bool includeCompositions) {
+    DemandCatalog result{authored.vehicleTypes,authored.behaviours,authored.compositions,authored.vehicleTypeNames};
     try {
         if (authored.externalVehicleTypes) {
-            definition.vehicleTypes.clear();
-            for (const auto& item : catalog(dataDirectory / "vehicle-types"))
-                definition.vehicleTypes.push_back(parseVehicleType(item));
-        }
-        if (authored.externalBehaviours) {
-            definition.behaviours.clear();
-            for (const auto& item : catalog(dataDirectory / "driver-behaviour"))
-                definition.behaviours.push_back(parseBehaviour(item));
-        }
-    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
-    // M2.3. Splitting a Poisson stream by fixed shares gives independent Poisson streams, so one
-    // input per type is the composition exactly, not an approximation of it. Read only when
-    // an input names one, so a document without compositions never touches the directory.
-    if (std::any_of(authored.inputs.begin(), authored.inputs.end(),
-                    [](const auto& i) { return !i.compositionId.empty(); })) {
-        const auto all = loadCompositions(dataDirectory);
-        std::vector<VehicleInput> inputs;
-        for (const auto& input : definition.inputs) {
-            if (input.compositionId.empty()) { inputs.push_back(input); continue; }
-            const auto* c = findComposition(all, input.compositionId);
-            if (!c || !validComposition(*c, definition.vehicleTypes)) continue; // compositionIssues names it
-            double sum = 0;
-            for (const auto& t : c->types) sum += t.share;
-            for (const auto& t : c->types) {
-                auto part = input;
-                part.compositionId.clear();
-                part.vehicleTypeId = t.vehicleTypeId;
-                if (c->types.size() > 1) part.id = input.id + "/type-" + t.vehicleTypeId;
-                const double fraction = t.share / sum;
-                part.vehiclesPerHour = input.vehiclesPerHour * fraction;
-                for (auto& period : part.intervals) period.vehiclesPerHour *= fraction;
-                inputs.push_back(std::move(part));
+            result.vehicleTypes.clear();result.vehicleTypeNames.clear();
+            for (const auto& item : catalog(dataDirectory / "vehicle-types")) {
+                result.vehicleTypes.push_back(parseVehicleType(item));
+                if(item.contains("name")) {
+                    if(!item.at("name").is_string())throw std::invalid_argument("EDIT_CATALOG_READ");
+                    const auto name=item.at("name").get<std::string>();
+                    if(!name.empty())result.vehicleTypeNames[result.vehicleTypes.back().id]=name;
+                }
             }
         }
-        definition.inputs = std::move(inputs);
+        if (authored.externalBehaviours) {
+            result.behaviours.clear();
+            for (const auto& item : catalog(dataDirectory / "driver-behaviour"))
+                result.behaviours.push_back(parseBehaviour(item));
+        }
+    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    if(includeCompositions && authored.externalCompositions)result.compositions=loadCompositions(dataDirectory);
+    return result;
+}
+ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
+    const auto resolved=resolveDemandCatalog(authored,dataDirectory,
+        std::any_of(authored.inputs.begin(),authored.inputs.end(),[](const auto& i){return !i.compositionId.empty();}));
+    // Legacy ordering/IDs/draw stream are frozen. Type overrides need a type before routing.
+    AuthoringDefinition expanded=authored;
+    if(hasTypeRouting(authored)) {
+        expanded.inputs=expandCompositions(authored.inputs,resolved.compositions);
+        expanded=withRoutingDecisions(std::move(expanded));
+    } else {
+        expanded=withRoutingDecisions(std::move(expanded));
+        expanded.inputs=expandCompositions(expanded.inputs,resolved.compositions);
     }
+    ScenarioDefinition definition=expanded;
+    definition.vehicleTypes=resolved.vehicleTypes;definition.behaviours=resolved.behaviours;
     // Best-effort, and deliberately NOT inside the block above: a document carrying its own
     // vehicle types and behaviours must stay portable to a machine with no data directory, which
     // is a contract a test already pins. These numbers are only needed when a priority rule has

@@ -301,9 +301,22 @@ VehicleType parseVehicleType(const Json& t) {
     return type;
 }
 Composition parseComposition(const Json& c) {
+    knownFields(c,{"id","name","types","intervals"},"composition",19);
     Composition composition{field<std::string>(c, "id"), {}};
-    for (const auto& t : array(c, "types"))
+    if(c.contains("name"))composition.name=field<std::string>(c,"name");
+    for (const auto& t : array(c, "types")) {
+        knownFields(t,{"vehicleTypeId","share"},"composition.types",18);
         composition.types.push_back({field<std::string>(t, "vehicleTypeId"), field<double>(t, "share")});
+    }
+    if(c.contains("intervals"))for(const auto& p:array(c,"intervals")) {
+        knownFields(p,{"startTime","endTime","types"},"composition.intervals",19);
+        CompositionInterval period{field<double>(p,"startTime"),field<double>(p,"endTime"),{}};
+        for(const auto& t:array(p,"types")) {
+            knownFields(t,{"vehicleTypeId","share"},"composition.intervals.types",19);
+            period.types.push_back({field<std::string>(t,"vehicleTypeId"),field<double>(t,"share")});
+        }
+        composition.intervals.push_back(std::move(period));
+    }
     return composition;
 }
 std::vector<SignalController> parseSignalControllers(const Json& definition) {
@@ -326,10 +339,12 @@ std::vector<SignalController> parseSignalControllers(const Json& definition) {
 std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
     std::vector<RoutingDecision> result;
     for (const auto& x : array(definition, "routingDecisions")) {
+        knownFields(x,{"id","name","linkId","routes","intervals","typeRules"},"routingDecision",19);
         RoutingDecision decision{field<std::string>(x, "id"),
                                  present(x, "name") ? field<std::string>(x, "name") : std::string{}, {}};
         if (present(x, "linkId")) decision.linkId = field<std::string>(x, "linkId"); // M2.1.1
         for (const auto& r : array(x, "routes")) {
+            knownFields(r,{"routeId","relativeFlow","destinationLinkId","intervalFlows"},"routingDecision.routes",19);
             decision.routes.push_back({field<std::string>(r, "routeId"), field<double>(r, "relativeFlow")});
             if (present(r, "destinationLinkId")) decision.routes.back().destinationLinkId = field<std::string>(r, "destinationLinkId");
             if (present(r, "intervalFlows")) for (const auto& f : array(r, "intervalFlows")) { // M2.1.2
@@ -339,6 +354,16 @@ std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
         }
         if (present(x, "intervals")) for (const auto& i : array(x, "intervals")) // M2.1.2
             decision.intervals.push_back({field<double>(i, "startTime"), field<double>(i, "endTime")});
+        if(x.contains("typeRules"))for(const auto& rule:array(x,"typeRules")) {
+            knownFields(rule,{"vehicleTypeId","relativeFlows","intervalFlows"},"routingDecision.typeRules",19);
+            RoutingTypeRule parsed{field<std::string>(rule,"vehicleTypeId"),doubles(rule,"relativeFlows"),{}};
+            for(const auto& row:array(rule,"intervalFlows")) {
+                if(!row.is_array())throw std::invalid_argument("ROUTING_DECISION_INTERVALS");
+                std::vector<double> flows;for(const auto& f:row){if(!f.is_number())throw std::invalid_argument("INVALID_SHARE");flows.push_back(f.get<double>());}
+                parsed.intervalFlows.push_back(std::move(flows));
+            }
+            decision.typeRules.push_back(std::move(parsed));
+        }
         result.push_back(std::move(decision));
     }
     return result;

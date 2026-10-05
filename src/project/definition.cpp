@@ -1,5 +1,7 @@
 #include "demand_paths.hpp"
 #include "document.hpp"
+#include "demand_catalog.hpp"
+#include "demand_time_types.hpp"
 #include "../model/demand/signal_control.hpp"
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
@@ -13,6 +15,16 @@ AuthoringDefinition parseAuthoringDefinition(const Json& j) {
     static_cast<ScenarioDefinition&>(d) = parseDefinition(j);
     d.externalVehicleTypes = !j.contains("vehicleTypes");
     d.externalBehaviours = !j.contains("behaviours");
+    d.externalCompositions = !j.contains("compositions");
+    if(!d.externalCompositions) {
+        if(!j.at("compositions").is_array())throw std::invalid_argument("EDIT_CATALOG_READ");
+        for(const auto& c:j.at("compositions"))d.compositions.push_back(parseComposition(c));
+    }
+    if(!d.externalVehicleTypes)for(const auto& t:j.at("vehicleTypes"))if(t.contains("name")) {
+        if(!t.at("name").is_string())throw std::invalid_argument("EDIT_CATALOG_READ");
+        const auto name=t.at("name").get<std::string>();
+        if(!name.empty())d.vehicleTypeNames[t.at("id").get<std::string>()]=name;
+    }
     if (j.contains("routingDecisions")) d.routingDecisions = parseRoutingDecisions(j);
     if (j.contains("signalControllers")) d.signalControllers = parseSignalControllers(j);
     return d;
@@ -55,6 +67,11 @@ Json definitionJson(const AuthoringDefinition& d) {
                 decision["intervals"] = Json::array();
                 for (const auto& i : x.intervals) decision["intervals"].push_back({{"startTime",i.startTime},{"endTime",i.endTime}});
             }
+            if(!x.typeRules.empty()) {
+                decision["typeRules"]=Json::array();
+                for(const auto& rule:x.typeRules)decision["typeRules"].push_back({{"vehicleTypeId",rule.vehicleTypeId},
+                    {"relativeFlows",rule.relativeFlows},{"intervalFlows",rule.intervalFlows}});
+            }
             j["routingDecisions"].push_back(std::move(decision));
         }
     }
@@ -84,6 +101,7 @@ Json definitionJson(const AuthoringDefinition& d) {
                 {"desiredSpeed",{{"min",t.desiredSpeed.min},{"max",t.desiredSpeed.max}}},
                 {"maxAcceleration",t.maxAcceleration},{"comfortableDeceleration",t.comfortableDeceleration},
                 {"maxDeceleration",t.maxDeceleration},{"behaviourId",t.behaviourId}};
+            if(const auto at=d.vehicleTypeNames.find(t.id);at!=d.vehicleTypeNames.end() && !at->second.empty())item["name"]=at->second;
             if(t.axles)item["axles"]={{"wheelbase",t.axles->wheelbase},{"frontOverhang",t.axles->frontOverhang},{"rearOverhang",t.axles->rearOverhang}};
             j["vehicleTypes"].push_back(std::move(item));
         }
@@ -99,6 +117,21 @@ Json definitionJson(const AuthoringDefinition& d) {
             if (b.acceptedDecelerationTrailingVehicle) item["acceptedDecelerationTrailingVehicle"] = *b.acceptedDecelerationTrailingVehicle;
             if (b.discretionaryLaneChangeHoldTime) item["discretionaryLaneChangeHoldTime"] = *b.discretionaryLaneChangeHoldTime;
             j["behaviours"].push_back(std::move(item));
+        }
+    }
+    if(!d.externalCompositions) {
+        j["compositions"]=Json::array();
+        for(const auto& c:d.compositions) {
+            Json types=Json::array();for(const auto& t:c.types)types.push_back({{"vehicleTypeId",t.vehicleTypeId},{"share",t.share}});
+            Json item{{"id",c.id},{"types",types}};if(!c.name.empty())item["name"]=c.name;
+            if(!c.intervals.empty()) {
+                item["intervals"]=Json::array();
+                for(const auto& p:c.intervals) {
+                    Json members=Json::array();for(const auto& t:p.types)members.push_back({{"vehicleTypeId",t.vehicleTypeId},{"share",t.share}});
+                    item["intervals"].push_back({{"startTime",p.startTime},{"endTime",p.endTime},{"types",members}});
+                }
+            }
+            j["compositions"].push_back(std::move(item));
         }
     }
     return j;
@@ -173,6 +206,12 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
         }
     }
     for (std::size_t i = 0; i < d.inputs.size(); ++i) {
+        double sum=0;
+        const auto& weights=d.inputs[i].laneShares;
+        bool valid=true;
+        for(double w:weights) { valid=valid && std::isfinite(w) && w>=0;sum+=w; }
+        if(!weights.empty() && (!valid || !std::isfinite(sum) || !(sum>0)))
+            issues.push_back({"INVALID_SHARE","inputs["+std::to_string(i)+"].laneShares"});
         const auto& id = d.inputs[i].routingDecisionId;
         if (!id.empty() && std::none_of(d.routingDecisions.begin(), d.routingDecisions.end(),
                                         [&](const auto& x) { return x.id == id; }))
@@ -198,7 +237,7 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
             inputs.push_back(std::move(routeless)); continue;
         }
         double sum = 0;
-        for (const auto& entry : decision->routes) sum += entry.relativeFlow;
+        for (std::size_t k=0;k<decision->routes.size();++k) sum += typeDecisionFlowAt(*decision,k,-1,input.vehicleTypeId);
         if (!(sum > 0)) continue;
         if (!decision->intervals.empty()) { // M2.1.2: the fraction changes with the entry time
             const auto pieces = cutPeriods(input, decisionBreakpoints({&*decision}));
@@ -209,8 +248,8 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
                 for (const auto& piece : pieces) {
                     const double mid = (piece.startTime + piece.endTime) / 2;
                     double at = 0;
-                    for (const auto& other : decision->routes) at += decisionFlowAt(*decision, other, mid);
-                    const double fraction = at > 0 ? decisionFlowAt(*decision, entry, mid) / at : 0.0;
+                    for (std::size_t k=0;k<decision->routes.size();++k) at += typeDecisionFlowAt(*decision,k,mid,input.vehicleTypeId);
+                    const double fraction = at > 0 ? typeDecisionFlowAt(*decision,static_cast<std::size_t>(&entry-decision->routes.data()),mid,input.vehicleTypeId) / at : 0.0;
                     if (fraction > 0) part.intervals.push_back({piece.startTime, piece.endTime, piece.vehiclesPerHour * fraction});
                 }
                 if (part.intervals.empty()) continue;
@@ -227,7 +266,8 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
             // Weights for one route's lanes mean nothing on another's: each route splits its
             // lanes equally, the M1.26 default, and laneShares stay on single-route inputs.
             if (decision->routes.size() > 1) { part.id = input.id + "/route-" + entry.routeId; part.laneShares.clear(); }
-            const double fraction = entry.relativeFlow / sum;
+            const double fraction = typeDecisionFlowAt(*decision,static_cast<std::size_t>(&entry-decision->routes.data()),-1,input.vehicleTypeId) / sum;
+            if(!(fraction>0))continue;
             part.vehiclesPerHour = input.vehiclesPerHour * fraction;
             for (auto& period : part.intervals) period.vehiclesPerHour *= fraction;
             inputs.push_back(std::move(part));
@@ -238,6 +278,8 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;
+    if(auto issues=timeTypeIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
+    if(auto issues=ownedCatalogIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
     // Checked on the authored intervals, before they are expanded: an overlap is a property of
     // the table the author typed, and would otherwise surface as two core inputs that each look fine.
     if (auto periods = inputIntervalIssues(*d.definition); !periods.empty()) throw ValidationError(std::move(periods));

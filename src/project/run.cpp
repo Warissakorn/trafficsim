@@ -7,6 +7,8 @@ std::vector<Diagnostic> runDiagnostics(const ProjectDocument& d, const std::file
     if (!d.definition) return documentDiagnostics(d);
     try {
         auto rows=runtimeDiagnostics(d.network,expandRouteless(d.network,*d.definition,resolveCatalogs(*d.definition,data)));
+        for(const auto& issue:demandAdvisories(d.network,*d.definition))
+            rows.push_back({issue.code,issue.path,{},{},DiagnosticSeverity::advisory});
         // M2.1.1: a routeless walk that failed blocks Run; a lane a decision cannot serve advises.
         const auto routeless=routelessIssues(d.network,*d.definition);
         for(const auto& issue:routeless.blocking)rows.push_back({issue.code,issue.path,{},{},DiagnosticSeverity::runtime});

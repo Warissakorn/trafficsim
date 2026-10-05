@@ -344,8 +344,8 @@ std::vector<FamilyChain> routeLaneFamily(const Network&, const std::vector<std::
 std::size_t routeLaneShareCount(const Network&, const std::vector<std::string>& objectIds);
 // How an input's Link total divides over its chains: one fraction per chain, summing to 1.
 // chainLanes[k] is the lane chain k starts on, the index into laneShares. The authored weights
-// apply when there are shareCount of them and every weight a chain uses is positive; otherwise
-// the split is equal (M1.26.1: a stale size must not land a weight on the wrong lane). The one rule
+// apply when there are shareCount of them; zero excludes a lane. Negative/non-finite weights or
+// an all-zero usable sum are refused. Unset/stale-size weights split equally (M1.26.1). The one rule
 // for the compiler, routeless inputs and the input table, so the three cannot disagree.
 // `weighted` says which applied: an equal split is applied as total / n, the arithmetic every
 // frozen fixture was made with, not as total * (1 / n), which can differ in the last bit.

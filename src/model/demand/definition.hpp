@@ -1,6 +1,7 @@
 #pragma once
 #include "../../core/types.hpp"
 #include <algorithm>
+#include <map>
 
 namespace trafficsim {
 // The existing Route, VehicleInput and fixed-time SignalProgram value contracts are
@@ -11,8 +12,14 @@ struct CompositionShare {
     std::string vehicleTypeId; double share{};
     bool operator==(const CompositionShare&) const = default;
 };
+struct CompositionInterval {
+    double startTime{}, endTime{}; std::vector<CompositionShare> types;
+    bool operator==(const CompositionInterval&) const = default;
+};
 struct Composition {
     std::string id; std::vector<CompositionShare> types;
+    std::string name;
+    std::vector<CompositionInterval> intervals; // Half-open; gaps use types.
     bool operator==(const Composition&) const = default;
 };
 // M2.1.2. One time interval of a routing decision's counted turning volumes.
@@ -32,14 +39,22 @@ struct DecisionRoute {
     std::vector<double> intervalFlows; // M2.1.2: parallel to RoutingDecision::intervals
     bool operator==(const DecisionRoute&) const = default;
 };
+// Complete weights in decision route order; intervalFlows is route-major. Missing type
+// rules inherit default flows. A zero interval total falls back to that type's whole-period weights.
+struct RoutingTypeRule {
+    std::string vehicleTypeId; std::vector<double> relativeFlows;
+    std::vector<std::vector<double>> intervalFlows;
+    bool operator==(const RoutingTypeRule&) const = default;
+};
 struct RoutingDecision {
     std::string id, name; std::vector<DecisionRoute> routes;
     std::string linkId; // M2.1.1: the Link it is placed on; empty keeps the M2.4 meaning
     std::vector<DecisionInterval> intervals; // M2.1.2: ordered, non-overlapping
+    std::vector<RoutingTypeRule> typeRules;
     bool operator==(const RoutingDecision&) const = default;
 };
 // M2.1.2 (D45). An entry's relative flow at time t: its interval's flow inside an interval, the
-// whole-period relativeFlow outside every one. t is when the vehicle ENTERS the network.
+// whole-period relativeFlow outside every one. t is the scheduled demand time, before source queueing.
 // The decision's counts are proportions only: the input's volume is what is split (D46), so the
 // two tables need not agree. An interval with no turn counted at all (every flow 0) falls back
 // to the whole-period proportions rather than stranding the input's vehicles in it.
@@ -77,6 +92,9 @@ struct SignalController {
 };
 struct AuthoringDefinition : ScenarioDefinition {
     bool externalVehicleTypes{true}, externalBehaviours{true};
+    bool externalCompositions{true};
+    std::vector<Composition> compositions;
+    std::map<std::string,std::string> vehicleTypeNames;
     std::vector<RoutingDecision> routingDecisions; // M2.4
     std::vector<SignalController> signalControllers; // M2.7b; `signalPrograms` keeps only legacy ones
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }

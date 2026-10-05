@@ -11,7 +11,8 @@ namespace trafficsim {
 // With `at`, each destination's weight is its flow at that time (M2.1.2); without, relativeFlow.
 std::vector<PlacedDecision> placedDecisions(const Network&, const AuthoringDefinition&,
                                             std::vector<ValidationIssue>* issues = nullptr,
-                                            std::optional<double> at = std::nullopt);
+                                            std::optional<double> at = std::nullopt,
+                                            const std::string& vehicleTypeId = {});
 // Every input with a linkId (or naming a placed decision, which withRoutingDecisions turns into
 // one) becomes one input per complete path, each on an already-expanded runtime route
 // `link:<id>/path-k` that buildScenario passes through. An input whose walk has a problem is left
@@ -23,6 +24,11 @@ RoutelessIssues routelessIssues(const Network&, const AuthoringDefinition&);
 // M2.1.2: an input's periods (inputPeriods) cut at every breakpoint inside them, each piece at
 // its period's volume. Pieces of zero length are not produced.
 std::vector<VolumeInterval> cutPeriods(const VehicleInput&, const std::vector<double>& breakpoints);
+// The effective entry-lane policy used by the input dialog, diagnostics and demand preview.
+struct InputLanePolicy { std::size_t lanes{}; bool acceptsShares{true}; };
+InputLanePolicy inputLanePolicy(const Network&,const AuthoringDefinition&,const VehicleInput&);
+// Advisories for stored weights that the compiler cannot apply.
+std::vector<ValidationIssue> demandAdvisories(const Network&,const AuthoringDefinition&);
 // The runtime route id for path k of n from a Link.
 std::string routelessRouteId(const std::string& linkId, std::size_t k, std::size_t n);
 }

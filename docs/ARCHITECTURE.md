@@ -4,6 +4,16 @@
 M0 core/network functionality has been ported, with the native desktop editor and CLI.
 The traffic-engineering acceptance gate remains open. M1 editing and in-editor simulation are implemented; M1 usability was accepted by owner ruling (D49); owner M0 plausibility acceptance remains open.
 
+Project-owned Demand catalogs (schema 18) store types, behavior snapshots, composition
+weights and authoring names. `resolveDemandCatalog` supplies the UI and compiler;
+`putDemandCatalog` captures ownership atomically through History. Names/compositions
+stay outside core; only the expanded input rates and existing vehicle contracts run.
+Schema 19 adds composition periods and complete type routing matrices.
+`demand_time_types` supplies validation and expansion before conditioned routing;
+placed decisions key route families by type. Scheduled demand time selects weights,
+including downstream decisions; source queues never reselect. Legacy compilation
+order and schema-17/18 bytes stay unchanged without the new fields.
+
 ## Boundaries
 
 The authoring network is the source of truth. `compileScenario` derives a runtime scenario;
@@ -32,7 +42,7 @@ unchanged. See [VEHICLE_POSE.md](VEHICLE_POSE.md).
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
 | `trafficsim_model` | `src/model/network/`, `src/model/demand/` | Core contracts/validation | M0 authoring model and compiler implemented; fixed-time Signal Controllers compiled to core programs (`signal_control.*`, M2.7b); authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay/travel time and approach queues for one run (M2.5); M3.2.8c diagnostics (lane changes, segment times, stop-line discharge, arrival phases, dead-end waits) |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-17 authoring codec (reads schemas 1–17); evaluation spec and report output; revision run snapshots |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-19 authoring codec (reads schemas 1–19); evaluation spec and report output; revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`) |
@@ -158,7 +168,7 @@ change. Dynamic vehicle/head scene items are ordered by their authored level.
 between Save and recovery. Each editor owns a UUID recovery file and a QLockFile;
 restoration validates before replacing the document and starts untitled and dirty.
 Schema 1 loads with default one-lane connector ranges, level 0 and default display
-type. Schema 1/2 endpoint references retain their default attachments; saves write schema 17.
+type. Schema 1/2 endpoint references retain their default attachments; saves without catalog extensions keep schema 17; owned compositions/names use 18, time/type rules use 19.
 `Link::laneOffset` positions the lane bundle independently of its reference polyline.
 `replaceLaneBundle` anchors the edge opposite the edit; model lane geometry and road
 boundaries share that offset, so resizing curved roads does not move surviving lanes.

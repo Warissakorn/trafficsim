@@ -5,6 +5,10 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-04-results-run-cost.md`](PROGRESS-2026-10-04-results-run-cost.md) — D104 CSV export and Run-view CPU timing entries; moved whole 2026-10-05
+
+- [`PROGRESS-2026-10-03-roadmap-lane-split.md`](PROGRESS-2026-10-03-roadmap-lane-split.md) — roadmap review and input lane-split entries; moved whole 2026-10-05
+
 - [`PROGRESS-2026-10-03-grid-fields.md`](PROGRESS-2026-10-03-grid-fields.md) — grid crispness and field text scale entries; moved whole 2026-10-05
 
 - [`PROGRESS-2026-10-02-03-windows-scope.md`](PROGRESS-2026-10-02-03-windows-scope.md) — Windows session and scope-text entries; moved whole 2026-10-05
