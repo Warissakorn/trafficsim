@@ -37,10 +37,11 @@ closed no owner item.
 
 In order:
 
-- **Continuous vehicle headings (2026-10-05):** inspect car and heavy-vehicle noses
+- **Rear-axle turning (2026-10-05, phases 1/2):** inspect car and heavy-vehicle noses
   entering/leaving a curved Connector, a short Connector and an internal Link join.
-  The front remains at its runtime station; the body heading spans upstream sections
-  without a switch at one vehicle length. Check the lane-change lab and low zoom too.
+  The front remains at its runtime station; the rear axle cuts inside a curve, with
+  rigid wheelbase/overhangs and continuous heading. Check the lane-change overlay
+  and low zoom too; the heavy vehicle remains one rigid body, with no trailer joint.
   Automated Linux/Windows results belong to the PR; an owner look remains separate.
 
 - **D109/D110 conflict controls and Bézier coverage:** inspect a curved Connector after an interior
@@ -155,12 +156,12 @@ M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's u
 
 Pick one per session, as the user asks. Rows and contract come first for engine work.
 
-- **Vehicle turning, phase 2:** phase 1 only repairs display-heading continuity.
-  Before adding axles, define which point the runtime curve guides, then specify
-  wheelbase/overhang data, old-file defaults and failure-first geometry rows. Select
-  a kinematic/tractrix model only after that contract. Keep the traffic front-bumper
-  distance distinct from axle pose, and defer articulated trailer joints to their
-  own slice. Chord samples at `d - length` are not rear-axle positions.
+- **Vehicle turning after phase 2:** the rear-axle display model and optional axle
+  data are implemented ([contract](VEHICLE_POSE.md)). Next engine work needs separate
+  rows for swept-body conflict clearance and for a continuous lane-change guide.
+  Steering feasibility and articulated trailer joints are separate slices. Keep the
+  traffic front-bumper distance contract distinct from displayed axle coordinates;
+  owner appearance review does not validate swept paths or traffic behaviour.
 
 - **M3.2.8a.1 — moving merge anticipation.** D108 completes the source first-step
   slice (M3.2.8a.1a): queue entry waits until ordinary following/integration fits the

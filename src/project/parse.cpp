@@ -290,9 +290,15 @@ DriverBehaviour parseBehaviour(const Json& b) {
 }
 VehicleType parseVehicleType(const Json& t) {
     const auto& range = member(t, "desiredSpeed");
-    return {field<std::string>(t, "id"), field<double>(t, "length"), field<double>(t, "width"),
+    VehicleType type{field<std::string>(t, "id"), field<double>(t, "length"), field<double>(t, "width"),
         {field<double>(range, "min"), field<double>(range, "max")}, field<double>(t, "maxAcceleration"),
         field<double>(t, "comfortableDeceleration"), field<double>(t, "maxDeceleration"), field<std::string>(t, "behaviourId")};
+    if(t.contains("axles")) {
+        const auto& a=member(t,"axles");
+        knownFields(a,{"wheelbase","frontOverhang","rearOverhang"},"vehicleType.axles",17);
+        type.axles=VehicleAxles{field<double>(a,"wheelbase"),field<double>(a,"frontOverhang"),field<double>(a,"rearOverhang")};
+    }
+    return type;
 }
 Composition parseComposition(const Json& c) {
     Composition composition{field<std::string>(c, "id"), {}};

@@ -5,6 +5,7 @@
 #include "../src/project/run.hpp"
 #include <algorithm>
 #include <fstream>
+#include <limits>
 using namespace trafficsim;
 TEST(demand, authors_runs_and_preserves_snapshot) {
     History h;h.reset();std::string route,input;
@@ -44,6 +45,47 @@ TEST(demand, catalog_overrides_and_missing_catalog_are_explicit) {
     auto empty=explicitCatalog;empty.vehicleTypes.clear();
     CHECK(definitionJson(parseAuthoringDefinition(definitionJson(empty)))["vehicleTypes"].empty());
     test::throws([&]{compileDocument(d,test::root()/"missing-catalog");},"EDIT_CATALOG_READ");
+}
+TEST(demand, axle_catalog_roundtrip_defaults_validation_and_engine_independence) {
+    std::ifstream file(test::root()/"data/scenarios/crossing.json");Json j;file>>j;
+    auto d=parseDocument(j);const auto snapshot=compileDocument(d,test::root()/"data");
+    auto& definition=*d.definition;definition.externalVehicleTypes=false;
+    definition.vehicleTypes=snapshot.scenario.vehicleTypes;
+    CHECK(definition.vehicleTypes.front().axles.has_value()); // explicit shipped dimensions
+    const auto encoded=documentJson(d);const auto decoded=parseDocument(encoded);
+    CHECK(decoded.definition->vehicleTypes==definition.vehicleTypes);
+    CHECK(documentJson(decoded)==encoded);
+    auto old=definitionJson(definition);
+    for(auto& t:old["vehicleTypes"])t.erase("axles");
+    const auto legacy=parseAuthoringDefinition(old);
+    CHECK(!legacy.vehicleTypes.front().axles);
+    CHECK(!definitionJson(legacy)["vehicleTypes"][0].contains("axles"));
+    const auto a=vehicleAxles(legacy.vehicleTypes.front());
+    test::near(a.wheelbase,2.7);test::near(a.frontOverhang,.9);test::near(a.rearOverhang,.9);
+    auto partial=old;partial["vehicleTypes"][0]["axles"]={{"wheelbase",2.7}};
+    test::throws([&]{parseAuthoringDefinition(partial);},"Missing field: frontOverhang");
+    auto unknown=definitionJson(definition);unknown["vehicleTypes"][0]["axles"]["steeringLimit"]=.7;
+    test::throws([&]{parseAuthoringDefinition(unknown);},"EDIT_UNSUPPORTED_FIELD");
+    auto malformed=old;malformed["vehicleTypes"][0]["axles"]=nullptr;
+    test::throws([&]{parseAuthoringDefinition(malformed);},"Field is null: axles");
+    auto bad=snapshot.scenario;
+    for(const auto& invalid:{VehicleAxles{0,.9,3.6},VehicleAxles{2.7,-.1,1.9},VehicleAxles{2.7,.9,-.1},VehicleAxles{2.7,.9,2}}) {
+        bad.vehicleTypes.front().axles=invalid;
+        test::throws([&]{createSimulation(bad,42);},"INVALID_");
+    }
+    bad.vehicleTypes.front().axles=VehicleAxles{std::numeric_limits<double>::quiet_NaN(),.9,.9};
+    test::throws([&]{createSimulation(bad,42);},"INVALID_NUMBER");
+    const auto stream=[](const Scenario& s,std::uint32_t seed) {
+        std::vector<SimEvent> result;runSimulation(s,seed,[&](const auto& e){result.push_back(e);},true);return result;
+    };
+    auto without=snapshot.scenario,alternative=snapshot.scenario;
+    for(auto& t:without.vehicleTypes)t.axles.reset();
+    for(auto& t:alternative.vehicleTypes)t.axles=VehicleAxles{.5*t.length,.1*t.length,.4*t.length};
+    CHECK(alternative.vehicleTypes!=snapshot.scenario.vehicleTypes); // forcing: different axle data
+    for(std::uint32_t seed:{0u,42u,43u}) {
+        CHECK(stream(without,seed)==stream(snapshot.scenario,seed));
+        CHECK(stream(alternative,seed)==stream(snapshot.scenario,seed));
+    }
 }
 TEST(demand, program_deletion_is_reference_safe_and_settings_validate_together) {
     std::ifstream file(test::root()/"data/scenarios/crossing.json");Json j;file>>j;

@@ -19,6 +19,7 @@ namespace {
 constexpr double kLaneChangeShown=3,kLaneChangeReach=8,kLaneChangeYawSpeed=5;
 }
 void EditorCanvas::setRunNetwork(const Network& network) {
+    runAxlePaths_.clear();
     runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();
     // Keyed by SECTION, from the same table buildScenario compiled the scenario from, so every
     // segment a vehicle can be located on has geometry here. A lane with nothing attached to its
@@ -31,11 +32,15 @@ void EditorCanvas::setRunNetwork(const Network& network) {
         runGeometry_[p.id]=p.geometry;if(p.equation)runEquations_[p.id]=*p.equation;runLevels_[p.id]=c.level;runStyles_[p.id]=c.displayType;
     }
 }
-void EditorCanvas::setRunFrame(const SimState& frame) {runFrame_=frame;drawRunItems();}
+void EditorCanvas::setRunFrame(const SimState& frame) {
+    // Scenarios are owned immutable snapshots, not mutable documents/revisions.
+    if(frame.scenario!=runFrame_.scenario)runAxlePaths_.clear();
+    runFrame_=frame;drawRunItems();
+}
 // Clear all three together: marker() relies on the geometry, level and style maps holding
 // the same keys, so dropping only the geometry would leave the others describing a run that
 // no longer exists.
-void EditorCanvas::clearRunFrame() {runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
+void EditorCanvas::clearRunFrame() {runAxlePaths_.clear();runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
 void EditorCanvas::drawRunItems() {
     for(auto* item:runItems_){scene_.removeItem(item);delete item;}runItems_.clear();
     if(!runFrame_.scenario)return;
@@ -97,7 +102,12 @@ void EditorCanvas::drawRunItems() {
             std::max(type.width,2.5/scale),type.length*scale>=14)).first;
         const auto pose=vehiclePose(parts,v.distance,type.length,runGeometry_,runEquations_);
         if(!pose)continue;
-        const auto front=pose->front;Point heading=pose->heading;
+        const auto key=std::pair{v.routeIndex,v.typeIndex};
+        auto track=runAxlePaths_.find(key);
+        if(track==runAxlePaths_.end())track=runAxlePaths_.try_emplace(key,parts,type,runGeometry_,runEquations_).first;
+        const auto axlePose=track->second.pose(v.distance,pose->front);
+        if(!axlePose)continue;
+        const auto front=axlePose->front;Point heading=axlePose->heading;
         Point at=front;
         if(const auto& last=v.lastLaneChange) {
             const double f=static_cast<double>(runFrame_.tick-last->tick)*runFrame_.scenario->timeStep/kLaneChangeShown;
@@ -119,10 +129,17 @@ void EditorCanvas::drawRunItems() {
             }
         }
         const auto colour=display_.vehicleColors.find(type.id);
-        auto* item=new QGraphicsPathItem(shape->second);
+        const auto axles=vehicleAxles(type);const double lever=axles.wheelbase+axles.frontOverhang;
+        // Rear axle is local origin; even a minimum-size symbol keeps its nose at
+        // the traffic front station. The existing lane-change overlay is display-only.
+        auto body=shape->second;body.translate(lever,0);
+        auto* item=new QGraphicsPathItem(body);
         item->setPen(Qt::NoPen);
         item->setBrush(QColor(QString::fromStdString(colour!=display_.vehicleColors.end()?colour->second:styleOf(location.segmentId).vehicleColor)));
-        item->setPos(at.x,at.y);item->setRotation(std::atan2(heading.y,heading.x)*180/std::numbers::pi);
+        const double norm=std::hypot(heading.x,heading.y);
+        item->setPos(at.x-lever*heading.x/norm,at.y-lever*heading.y/norm);
+        item->setRotation(std::atan2(heading.y,heading.x)*180/std::numbers::pi);
+        item->setData(3,lever); // local front-bumper coordinate, metres from rear axle
         item->setData(0,"run-vehicle");item->setData(1,QString::fromStdString(type.id));item->setData(2,QVariant::fromValue<qulonglong>(v.id));
         item->setZValue(runLevels_.at(location.segmentId)*100.+11);scene_.addItem(item);runItems_.push_back(item);
     }

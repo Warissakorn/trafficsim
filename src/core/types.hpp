@@ -32,14 +32,24 @@ struct DriverBehaviour {
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };
+struct VehicleAxles {
+    double wheelbase{}, frontOverhang{}, rearOverhang{};
+    bool operator==(const VehicleAxles&) const = default;
+};
 struct VehicleType {
     std::string id;
     double length{}, width{};
     SpeedRange desiredSpeed;
     double maxAcceleration{}, comfortableDeceleration{}, maxDeceleration{};
     std::string behaviourId;
+    // Display kinematics only; traffic following/reservations still use length.
+    std::optional<VehicleAxles> axles;
     bool operator==(const VehicleType&) const = default;
 };
+inline VehicleAxles vehicleAxles(const VehicleType& type) {
+    // Nominal proportions for old catalogs, not calibrated vehicle dimensions.
+    return type.axles.value_or(VehicleAxles{.6*type.length,.2*type.length,.2*type.length});
+}
 // One period of an input's volume (M2.2). A counted 15-minute table is a list of these.
 struct VolumeInterval {
     double startTime{}, endTime{}, vehiclesPerHour{};

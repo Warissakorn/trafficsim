@@ -3,6 +3,7 @@
 #include "../src/shell/editor_window.hpp"
 #include "../src/project/load.hpp"
 #include "../src/core/simulation.hpp"
+#include "../src/core/routes.hpp"
 #include <QAction>
 #include <QApplication>
 #include <QGraphicsItem>
@@ -19,7 +20,10 @@ struct Pose { double x{}, y{}, rotation{}; };
 std::optional<Pose> poseOf(EditorCanvas& c, std::uint64_t id) {
     for (auto* item : c.scene()->items())
         if (item->data(0).toString() == "run-vehicle" && item->data(2).toULongLong() == id)
-            return Pose{item->pos().x(), item->pos().y(), item->rotation()};
+        {
+            const auto front=item->mapToScene(QPointF(item->data(3).toDouble(),0));
+            return Pose{front.x(),front.y(),item->rotation()};
+        }
     return std::nullopt;
 }
 const Vehicle* find(const SimState& s, std::uint64_t id) {
@@ -52,13 +56,15 @@ void equationPose(const std::filesystem::path& data) {
     auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;frame.vehicles.push_back(v);
     EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
     canvas.setTransform(QTransform::fromScale(8,-8));canvas.setRunNetwork(n);
-    const double vehicleLength=frame.scenario->vehicleTypes.front().length;
+    const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes.front(),
+        {{path.id,path.geometry}},{{path.id,*path.equation}});
     for(const double fraction:{.2,.5,.8}) {
         const double station=length*fraction;frame.vehicles.front().distance=station;canvas.setRunFrame(frame);
         const auto pose=poseOf(canvas,1);require(pose.has_value(),"Connector vehicle not drawn");
-        const auto front=connectorPathPoint(path,station),rear=connectorPathPoint(path,station-vehicleLength);
+        const auto front=connectorPathPoint(path,station);
         require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Vehicle follows drawing chords instead of the equation");
-        const double heading=std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.);
+        const auto expected=track.pose(station,front);require(expected.has_value(),"Setup: no axle pose");
+        const double heading=std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.);
         require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Connector body heading differs from the equation");
         const auto chord=pointAlong(path.geometry,polylineLength(path.geometry)*fraction);
         require(std::hypot(front.x-chord.x,front.y-chord.y)>1,"Setup: equation and drawing not separated");
@@ -91,13 +97,16 @@ void joinedPose(const std::filesystem::path& data) {
         canvas.setTransform(QTransform::fromScale(scale,-scale));
         for(std::uint32_t type=0;type<scenario.vehicleTypes.size();++type) {
             frame.vehicles.front().typeIndex=type;const double body=scenario.vehicleTypes[type].length;
+            const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes[type],
+                {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{{path.id,*path.equation}});
             const auto at=[&](double d) {
                 frame.vehicles.front().distance=d;canvas.setRunFrame(frame);
                 const auto pose=poseOf(canvas,1);require(pose.has_value(),"Joined-route vehicle not drawn");
-                const auto front=routePoint(d),rear=routePoint(d-body);
+                const auto front=routePoint(d);
                 require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Joined-route front moved off its station");
-                const double heading=std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.);
-                require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Body uses a local-segment tangent at a join");
+                const auto expected=track.pose(d,front);require(expected.has_value(),"Setup: no joined axle pose");
+                const double heading=std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.);
+                require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Canvas does not use rear-axle heading");
                 return pose->rotation;
             };
             at(0);at(body-1e-6);at(body);at(body+1e-6);
@@ -111,6 +120,29 @@ void joinedPose(const std::filesystem::path& data) {
             }
         }
     }
+    // The derived track depends on the immutable scenario and the Run network,
+    // not vehicle/tick identity. Force both inputs to change on this SAME canvas.
+    frame.vehicles.front().typeIndex=0;frame.vehicles.front().distance=95.123;
+    canvas.setRunFrame(frame);const auto original=*poseOf(canvas,1);
+    Scenario changed=*frame.scenario;changed.vehicleTypes.front().axles=VehicleAxles{2.,.5,2.};
+    auto next=createSimulation(changed,42);next.vehicles=frame.vehicles;
+    canvas.setRunFrame(next);const auto altered=*poseOf(canvas,1);
+    require(std::abs(std::remainder(altered.rotation-original.rotation,360.))>.1,"Setup: changed axles did not change heading");
+    const RearAxlePath alteredTrack(routeParts(changed,changed.routes.front()),changed.vehicleTypes.front(),
+        {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{{path.id,*path.equation}});
+    const auto expected=alteredTrack.pose(95.123,routePoint(95.123));require(expected.has_value(),"Setup: changed track missing");
+    require(std::abs(altered.rotation-std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.))<1e-7,
+        "Scenario replacement retained old axle solution");
+    next.vehicles.front().distance=120;canvas.setRunFrame(next);
+    next.vehicles.front().distance=95.123;canvas.setRunFrame(next);
+    require(std::abs(poseOf(canvas,1)->rotation-altered.rotation)<1e-12,"Seeking changed body heading");
+    auto rotated=n;
+    for(auto& link:rotated.links)for(auto& p:link.geometry)p={-p.y,p.x};
+    for(auto& connector:rotated.connectors)for(auto& p:connector.geometry)p={-p.y,p.x};
+    canvas.setRunNetwork(rotated);canvas.setRunFrame(next);const auto turned=*poseOf(canvas,1);
+    require(std::abs(std::remainder(turned.rotation-altered.rotation-90,360.))<1e-7,
+        "Network replacement retained old axle solution");
+    require(std::hypot(turned.x+altered.y,turned.y-altered.x)<1e-7,"Rotated front moved off its station");
 }
 
 double apart(Pose a, Pose b) { return std::hypot(a.x - b.x, a.y - b.y); }

@@ -3,6 +3,7 @@
 #include "../model/network/display.hpp"
 #include "../model/network/connector_surface.hpp"
 #include "../model/network/right_of_way.hpp"
+#include "rear_axle_pose.hpp"
 #include <QGraphicsView>
 #include <QPainterPath>
 #include <functional>
@@ -232,6 +233,7 @@ private:
     SimState runFrame_;
     std::map<std::string,std::vector<Point>> runGeometry_;
     std::map<std::string,ConnectorEquation> runEquations_;
+    std::map<std::pair<std::uint32_t,std::uint32_t>,RearAxlePath> runAxlePaths_;
     const ProjectDocument* document_{};
     QGraphicsScene scene_;
     std::shared_ptr<const std::string> cachedImage_;

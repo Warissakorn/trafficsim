@@ -137,6 +137,12 @@ TEST(tjunction, the_archived_sweep_metadata_keeps_its_original_geometry) {
     const auto behaviour = std::string("driver-behaviour/default.json");
     CHECK(current.at("catalogs").at(behaviour) != archived.at("catalogs").at(behaviour)); // the catalog really changed
     CHECK(sweep::restoreArchivedBehaviour(test::root(), current)); // D90: that field only, and no spans here
+    CHECK(current.at("catalogs").at("vehicle-types/car.json")!=archived.at("catalogs").at("vehicle-types/car.json"));
+    CHECK(sweep::restoreArchivedVehicleAxles(test::root(),current)); // display-only extension, original bytes retained
+    std::ifstream typeFile(test::root()/"data/vehicle-types/car.json");const auto type=nlohmann::json::parse(typeFile);
+    auto oldType=type;oldType.erase("axles");CHECK(sweep::sameTrafficVehicleType(type,oldType));
+    auto changed=type;changed["length"]=5.;CHECK(!sweep::sameTrafficVehicleType(changed,oldType));
+    changed=type;changed["maxAcceleration"]=3.;CHECK(!sweep::sameTrafficVehicleType(changed,oldType));
     CHECK(archived==current); // timing, volumes, catalogs, seeds and rules still agree
     // A changed catalog would be caught: the hash reads the file, not its name.
     CHECK(sweep::fnv1a(test::root() / "data/vehicle-types/car.json") != sweep::fnv1a(test::root() / "data/vehicle-types/heavy-vehicle.json"));

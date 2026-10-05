@@ -8,6 +8,38 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Rear-axle display reference (phase 2)
+
+Owner authorized the next turning slice after phase 1 merged (#103). The route still
+prescribes the traffic front bumper; its scalar station/length contract is unchanged.
+`RearAxlePath` solves the rear no-slip equation using the bumper-to-rear lever, with
+rigid axle/body offsets. Canvas items now originate at the rear axle, with the nose
+kept at its station, including low zoom. This is a bumper-guided approximation, not
+front-wheel tracking, swept-body collision clearance or measured Vissim fidelity.
+
+Optional complete type `axles` data is parsed, validated and retained on save. Missing
+old-file data stays omitted and resolves 60/20/20 percent proportions. The shipped car
+and rigid heavy dimensions are explicit modelling assumptions. Catalog/inline type
+extension is additive; network schema remains 17. No engine motion equations changed.
+
+Heading is solved on fixed spatial steps, split at joins/vertices and read without
+vehicle history. One derived track per route/type is retained against immutable Scenario
+ownership and Run-network replacement, never a document revision (D28). Memory is
+bounded; disconnected/missing paths draw none. Existing lane-change slide/yaw remains
+an overlay outside the no-slip equation. The full contract is in VEHICLE_POSE.md.
+
+Original type catalog bytes are preserved beside the old sweep evidence. Its guard
+permits only added display axles, rejecting changed traffic fields; no fixture/result
+is regenerated. Linux GCC 13.3 / Qt 6.4.2 Debug: all 82 desktop suites pass across the
+full run and four repair reruns; architecture/size guards pass. A chord substitution
+fails the analytic-turn regression. Crossing logs/reports for four seeds and seed-42
+reports/CSVs for four projects are byte-identical to main `5d823be`. The Run-view
+benchmark completes 3000 M2.6 Steps in both versions; concurrent build/test load means
+no timing claim. Headless and Windows CI results belong to the PR.
+Owner appearance and subsequent engine slices remain in NEXT.
+
+---
+
 ## 2026-10-05 — Continuous vehicle headings across route segments
 
 Owner authorized phase 1 of the vehicle-position audit: repair heading discontinuities
@@ -299,33 +331,8 @@ the scale really applied, and only the box model runs, because `gridIsCrisp` fai
 other than 100 % (booked in NEXT, not looked at). A 2 px upward shift fails all three scales, and a
 missing scale fails the forcing check. Desktop 77/77 on Windows.
 
-## 2026-10-03 — Scope text says what lane changing there is
-
-The owner approved new wording for `editorScope`, `editorScopeCompact` and `editorInputSplitHelp`
-(en/th). Each "no lane changing" becomes "lane changes only where a route requires one". That is
-what the engine does: mandatory changes (D71, D93), with discretionary ones off (D95). "Not yet validated",
-"no LOS" and "conflicts resolved only where authored" stay, since they are still true. The split
-help also mentions lane shares, which the same dialog sets (M1.26.1). At a 1360 px window the
-English banner now wraps to two lines, about 20 px of canvas; `workspace-ui`'s size floors still
-pass. Desktop 75/75 on Windows.
-
-## 2026-10-02 — The owner's Windows items, session-checked (no code change)
-
-At the user's request, a session ran NEXT's owner checks on the owner's Windows machine. It used
-the UI suites on the real `windows` platform and offscreen at 100/150/200 %, the screenshots, and the
-CLI. It could not drive the live desktop. Full results:
-`docs/evidence/windows-session-check-2026-10-02.md`. Desktop 75/75 (MSVC 19.51, Qt 6.8.3, Debug).
-- **Two defects:** the scope banner and the input split help still say "no lane changing", which
-  has been untrue since D71/D93. `QLineEdit` text sits ≈1 logical px high at 150/200 %:
-  `design-system-ui` fails at those scales, offscreen too, so D84's centring holds at 100 % only.
-  Both are booked in NEXT, not fixed here.
-- **Matches:** D90's 40-seed M2.6 dead-end waits and delays are identical on MSVC and Linux. A
-  D93 routeless pocket decision of 3:1 ran 118 : 41 : 0. D102's slide is visible in screenshots.
-- **Method note:** on a real platform the Windows cursor competes with `QTest::mouseMove`
-  (hover assertions fail). At 150/200 % on a 1080p screen, Windows clamps the test window, so the
-  gesture suites are only meaningful offscreen at those scales.
-- **Why nothing is closed:** a suite passing is not the owner's look. D84's and D100's failure
-  conditions are the owner's judgment, and hard rule 8 forbids closing on it.
+Scope-text and Windows-session entries are preserved in
+[`archive/PROGRESS-2026-10-02-03-windows-scope.md`](archive/PROGRESS-2026-10-02-03-windows-scope.md).
 
 D101/D102 session entries are preserved in
 [`archive/PROGRESS-2026-10-02-d101-d102.md`](archive/PROGRESS-2026-10-02-d101-d102.md).
