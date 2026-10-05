@@ -40,6 +40,28 @@ TEST(lanechange, a_stub_vehicle_on_an_empty_road_changes_at_once_and_arrives_on_
     while (!s.vehicles.empty() && s.tick < totalTicks(*s.scenario)) { s = stepSimulation(s); count(s, t); }
     CHECK(t.clamps == 0 && t.arrivedOn == std::vector<std::string>{"full"});
 }
+TEST(lanechange, display_trace_captures_remap_and_cannot_change_traffic) {
+    const auto before=test::withVehicles(lanes(),{on(1,"stubA",20,10)});
+    auto traced=stepSimulation(before);
+    CHECK(changed(traced,1)); // forcing: the record is from a real accepted engine change
+    const auto* old=find(before,1);const auto* moved=find(traced,1);
+    CHECK(old->laneChangeTrace.empty() && moved->laneChangeTrace.size()==1);
+    const auto record=moved->laneChangeTrace.front();
+    CHECK(record.fromRoute==old->routeIndex && record.toRoute==moved->routeIndex);
+    CHECK(record.fromDistance==20 && record.toDistance==20 && record.speed==10);
+    auto erased=traced;
+    for(int tick=0;tick<150;++tick) {
+        for(auto& vehicle:erased.vehicles)vehicle.laneChangeTrace.clear();
+        traced=stepSimulation(traced);erased=stepSimulation(erased);
+        CHECK(traced.events==erased.events && traced.randomState==erased.randomState);
+        auto traffic=traced.vehicles;
+        for(auto& vehicle:traffic)vehicle.laneChangeTrace.clear();
+        auto without=erased.vehicles;
+        for(auto& vehicle:without)vehicle.laneChangeTrace.clear();
+        CHECK(traffic==without && traced.inputs==erased.inputs && traced.completed==erased.completed);
+    }
+    CHECK(before.vehicles.front().laneChangeTrace.empty()); // copied state remains independent
+}
 TEST(lanechange, a_vehicle_alongside_refuses_the_change_until_it_clears) { // A28
     auto s = test::withVehicles(lanes(), {on(1, "stubA", 30, 8), on(2, "full", 32, 14)});
     CHECK(find(s, 2)->distance - 4.5 < find(s, 1)->distance); // the forcing: it overlaps the target place

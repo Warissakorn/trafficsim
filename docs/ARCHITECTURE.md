@@ -20,9 +20,15 @@ are independent copies. Old snapshots remain intact. The `SimState&&` overloads 
 previous state over instead; hot loops step with `std::move`, consuming it. States are C++ values, not objects
 with JavaScript-style deep-freeze; callers must treat published states as snapshots.
 
+Accepted lane changes capture a snapshot-owned `LaneChangeTrace` before station remapping.
+Only the Qt-free Run pose target reads it, reconstructing a spatial front guide with
+continuous rear rolling, including overlapping changes and stopped vehicles. Engine
+occupancy still changes instantly; scalar following/conflict/evaluation contracts stay
+unchanged. See [VEHICLE_POSE.md](VEHICLE_POSE.md).
+
 | CMake target | Location | Dependencies | Status |
 |---|---|---|---|
-| `trafficsim_vehicle_pose` | `src/editor/vehicle_pose.*`, `rear_axle_pose.*` | Model geometry, core route/type contracts; no Qt | Route front sampler and spatial rear-axle heading tracks, independently testable headless |
+| `trafficsim_vehicle_pose` | `src/editor/vehicle_pose.*`, `rear_axle_pose.*`, `lane_change_pose.*` | Model geometry, core route/type contracts; no Qt | Route front sampler, spatial rear-axle tracks and composed lane-change guides, independently testable headless |
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
 | `trafficsim_model` | `src/model/network/`, `src/model/demand/` | Core contracts/validation | M0 authoring model and compiler implemented; fixed-time Signal Controllers compiled to core programs (`signal_control.*`, M2.7b); authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay/travel time and approach queues for one run (M2.5); M3.2.8c diagnostics (lane changes, segment times, stop-line discharge, arrival phases, dead-end waits) |
@@ -46,8 +52,9 @@ heading by spatial RK4, independent of ticks and paint order; the rear axle is t
 scene item's origin. Optional type `axles` data has nominal old-file defaults and does
 not affect traffic following or reservations. Derived paths are shared per route/type,
 cleared on Run-network replacement or a different immutable Scenario snapshot. Minimum
-visible size does not alter physical axle dimensions. The existing lane-change slide
-is applied afterwards and remains a display approximation outside the no-slip model.
+visible size does not alter physical axle dimensions. Lane changes compose continuous
+front guides and use the same rolling solution; their cache keys include each vehicle's
+complete change trace/type. Between-lanes engine occupancy remains unmodelled.
 See [VEHICLE_POSE.md](VEHICLE_POSE.md) for the equation, defaults, numerical budget and limits.
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build

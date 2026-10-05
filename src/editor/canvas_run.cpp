@@ -7,19 +7,14 @@
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QPainter>
+#include <algorithm>
 #include <cmath>
-#include <limits>
 #include <map>
 #include <numbers>
 #include <optional>
 namespace trafficsim {
-namespace {
-// D102: how long a lane change is drawn, and how far off the lane it left may be found. Display
-// values, not engine parameters and not measured against any driver.
-constexpr double kLaneChangeShown=3,kLaneChangeReach=8,kLaneChangeYawSpeed=5;
-}
 void EditorCanvas::setRunNetwork(const Network& network) {
-    runAxlePaths_.clear();
+    runAxlePaths_.clear();runLaneChangePaths_.clear();
     runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();
     // Keyed by SECTION, from the same table buildScenario compiled the scenario from, so every
     // segment a vehicle can be located on has geometry here. A lane with nothing attached to its
@@ -34,13 +29,13 @@ void EditorCanvas::setRunNetwork(const Network& network) {
 }
 void EditorCanvas::setRunFrame(const SimState& frame) {
     // Scenarios are owned immutable snapshots, not mutable documents/revisions.
-    if(frame.scenario!=runFrame_.scenario)runAxlePaths_.clear();
+    if(frame.scenario!=runFrame_.scenario){runAxlePaths_.clear();runLaneChangePaths_.clear();}
     runFrame_=frame;drawRunItems();
 }
 // Clear all three together: marker() relies on the geometry, level and style maps holding
 // the same keys, so dropping only the geometry would leave the others describing a run that
 // no longer exists.
-void EditorCanvas::clearRunFrame() {runAxlePaths_.clear();runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
+void EditorCanvas::clearRunFrame() {runAxlePaths_.clear();runLaneChangePaths_.clear();runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
 void EditorCanvas::drawRunItems() {
     for(auto* item:runItems_){scene_.removeItem(item);delete item;}runItems_.clear();
     if(!runFrame_.scenario)return;
@@ -68,28 +63,11 @@ void EditorCanvas::drawRunItems() {
     // the windshield and cab gap appear only once the body is long enough on screen to show them.
     const double scale=std::abs(transform().m11());
     std::map<std::uint32_t,QPainterPath> shapes; // per type, shared by every item of that type
-    // D102, display only: for kLaneChangeShown seconds after a lane change the engine already made
-    // (Vehicle::lastLaneChange), the body is drawn sliding from the lane it left to the one it is on,
-    // eased in and out. The engine moved the vehicle in one tick and still does; nothing it decides
-    // or any measurement reads changes. The lane it left is found as the nearest point on that
-    // route's geometry, so no lane mapping is duplicated here. A second change inside the window
-    // restarts the slide from the lane the second one left.
     std::map<std::uint32_t,std::vector<RoutePart>> partsOf;
     const auto partsForRoute=[&](std::uint32_t route)->const std::vector<RoutePart>& {
         auto parts=partsOf.find(route);
         if(parts==partsOf.end())parts=partsOf.emplace(route,routeParts(*runFrame_.scenario,runFrame_.scenario->routes.at(route))).first;
         return parts->second;
-    };
-    const auto onRoute=[&](std::uint32_t route,Point p)->std::optional<Point> {
-        std::optional<Point> best;double bestDistance=std::numeric_limits<double>::infinity();
-        for(const auto& part:partsForRoute(route)) {
-            const auto g=runGeometry_.find(part.segmentId);if(g==runGeometry_.end())continue;
-            const auto curve=runEquations_.find(part.segmentId);
-            const auto q=curve==runEquations_.end()?pointAlong(g->second,stationOfClosestPoint(g->second,p)):
-                equationPoint(curve->second,equationParameter(curve->second,equationClosestStation(curve->second,p)));
-            if(const double d=std::hypot(q.x-p.x,q.y-p.y);d<bestDistance){bestDistance=d;best=q;}
-        }
-        return best;
     };
     for(const auto& v:runFrame_.vehicles) {
         const auto& parts=partsForRoute(v.routeIndex);
@@ -105,33 +83,23 @@ void EditorCanvas::drawRunItems() {
         const auto key=std::pair{v.routeIndex,v.typeIndex};
         auto track=runAxlePaths_.find(key);
         if(track==runAxlePaths_.end())track=runAxlePaths_.try_emplace(key,parts,type,runGeometry_,runEquations_).first;
-        const auto axlePose=track->second.pose(v.distance,pose->front);
+        auto axlePose=track->second.pose(v.distance,pose->front);
         if(!axlePose)continue;
-        const auto front=axlePose->front;Point heading=axlePose->heading;
-        Point at=front;
-        if(const auto& last=v.lastLaneChange) {
-            const double f=static_cast<double>(runFrame_.tick-last->tick)*runFrame_.scenario->timeStep/kLaneChangeShown;
-            const double norm=std::hypot(heading.x,heading.y);
-            // How far sideways the lane it left lies from the front: only the sideways part, since
-            // past a stub's dead end the nearest point is behind the vehicle.
-            if(norm<=1e-9)continue;
-            const Point along{heading.x/norm,heading.y/norm},side{-along.y,along.x};
-            std::optional<Point> left;
-            if(f<1 && norm>1e-9)left=onRoute(last->fromRoute,front);
-            const double offset=left?(left->x-front.x)*side.x+(left->y-front.y)*side.y:0;
-            if(left && std::abs(offset)<=kLaneChangeReach) {
-                const double rest=offset*(1-f*f*(3-2*f)); // smoothstep: leaves and arrives along the lane
-                at={front.x+side.x*rest,front.y+side.y*rest};
-                // The nose points along the path: sideways speed over forward speed, floored so a
-                // queued changer does not swing across the lane.
-                const double sidewaysSpeed=-offset*6*f*(1-f)/kLaneChangeShown,forward=std::max(v.speed,kLaneChangeYawSpeed);
-                heading={along.x*forward+side.x*sidewaysSpeed,along.y*forward+side.y*sidewaysSpeed};
+        if(!v.laneChangeTrace.empty()) {
+            auto changed=runLaneChangePaths_.find(v.id);
+            if(changed!=runLaneChangePaths_.end() && !changed->second.matches(v)) {
+                runLaneChangePaths_.erase(changed);changed=runLaneChangePaths_.end();
             }
+            if(changed==runLaneChangePaths_.end())changed=runLaneChangePaths_.try_emplace(v.id,
+                *runFrame_.scenario,v,runGeometry_,runEquations_).first;
+            axlePose=changed->second.pose(v);
+            if(!axlePose)continue;
         }
+        const Point at=axlePose->front,heading=axlePose->heading;
         const auto colour=display_.vehicleColors.find(type.id);
         const auto axles=vehicleAxles(type);const double lever=axles.wheelbase+axles.frontOverhang;
         // Rear axle is local origin; even a minimum-size symbol keeps its nose at
-        // the traffic front station. The existing lane-change overlay is display-only.
+        // the traffic front station. Lane-change guides also satisfy the rear rolling equation.
         auto body=shape->second;body.translate(lever,0);
         auto* item=new QGraphicsPathItem(body);
         item->setPen(Qt::NoPen);
@@ -143,6 +111,10 @@ void EditorCanvas::drawRunItems() {
         item->setData(0,"run-vehicle");item->setData(1,QString::fromStdString(type.id));item->setData(2,QVariant::fromValue<qulonglong>(v.id));
         item->setZValue(runLevels_.at(location.segmentId)*100.+11);scene_.addItem(item);runItems_.push_back(item);
     }
+    std::erase_if(runLaneChangePaths_,[&](const auto& entry) {
+        return std::none_of(runFrame_.vehicles.begin(),runFrame_.vehicles.end(),
+            [&](const Vehicle& v){return v.id==entry.first;});
+    });
     // No viewport()->update() here: adding and removing items already invalidates their own
     // rectangles, and a whole-viewport repaint per frame was 7 of scenario-run-ui's 9.5 s.
 }

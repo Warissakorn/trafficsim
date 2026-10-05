@@ -13,7 +13,8 @@ Point unit(Point p) {
 }
 RearAxlePath::RearAxlePath(const std::vector<RoutePart>& parts,const VehicleType& type,
     const std::map<std::string,std::vector<Point>>& geometry,
-    const std::map<std::string,ConnectorEquation>& equations,double maxStep):axles_(vehicleAxles(type)) {
+    const std::map<std::string,ConnectorEquation>& equations,double maxStep,
+    std::optional<Point> initialHeading):axles_(vehicleAxles(type)) {
     const double lever=axles_.wheelbase+axles_.frontOverhang;
     if(!std::isfinite(maxStep) || maxStep<=0 || !std::isfinite(lever) || axles_.wheelbase<=0 ||
         !std::isfinite(axles_.rearOverhang) || axles_.frontOverhang<0 || axles_.rearOverhang<0 ||
@@ -34,16 +35,23 @@ RearAxlePath::RearAxlePath(const std::vector<RoutePart>& parts,const VehicleType
         if(!std::isfinite(start.x) || !std::isfinite(start.y)){samples_.clear();return;}
         if(!samples_.empty() && std::hypot(start.x-previous.x,start.y-previous.y)>1e-5){samples_.clear();return;}
         if(samples_.empty()) {
-            const auto t=tangent(0);angle=std::atan2(t.y,t.x);samples_.push_back({0,angle});
+            const auto t=unit(initialHeading.value_or(tangent(0)));
+            angle=std::atan2(t.y,t.x);samples_.push_back({0,angle});
         }
         // Integrate independently inside each polyline leg, so a corner is never
         // smeared across an RK4 interval. Connector derivatives are evaluated directly.
         std::vector<double> breaks{0};double sum=0;
+        std::vector<std::pair<double,Point>> directions;
         if(!curve)for(std::size_t i=1;i<g->second.size();++i) {
-            sum+=std::hypot(g->second[i].x-g->second[i-1].x,g->second[i].y-g->second[i-1].y);
+            const Point delta{g->second[i].x-g->second[i-1].x,g->second[i].y-g->second[i-1].y};
+            const double length=std::hypot(delta.x,delta.y);
+            if(!std::isfinite(length))throw std::invalid_argument("INVALID_VEHICLE_POSE");
+            sum+=length;
+            if(length>0)directions.push_back({sum,{delta.x/length,delta.y/length}});
             if(sum>breaks.back()+1e-9 && sum<part.length-1e-9)breaks.push_back(sum);
         }
         breaks.push_back(part.length);
+        std::size_t directionIndex=0;
         for(std::size_t leg=1;leg<breaks.size();++leg) {
             const double begin=breaks[leg-1],end=breaks[leg];
             const double required=std::ceil((end-begin)/std::min(maxStep,lever/20));
@@ -51,7 +59,11 @@ RearAxlePath::RearAxlePath(const std::vector<RoutePart>& parts,const VehicleType
             if(required>1000000-samples_.size()){samples_.clear();return;}
             const int count=static_cast<int>(required);
             const double h=(end-begin)/count;
-            const auto straight=curve?Point{}:tangent((begin+end)/2);
+            // Walk the polyline once. Re-searching it at every sampled guide leg
+            // makes long lane-change journeys quadratic before the sample cap.
+            const double middle=(begin+end)/2;
+            while(directionIndex+1<directions.size() && directions[directionIndex].first<middle)++directionIndex;
+            const auto straight=curve?Point{}:directions.empty()?tangent(middle):directions[directionIndex].second;
             const auto rate=[&](double s,double theta) {
                 const auto t=curve?tangent(s):straight;
                 // R=F-a*u. The rear no-slip condition R' dot normal(u)=0

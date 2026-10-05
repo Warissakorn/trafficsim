@@ -50,7 +50,7 @@ add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/conflict_surface.cpp src/model/network/conflict_groups.cpp src/model/network/conflict_coverage.cpp src/model/network/conflict_crossings.cpp src/model/network/automatic_conflicts.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 # Run-view geometry is Qt-free and independently testable; the core never imports it.
-add_library(trafficsim_vehicle_pose STATIC src/editor/vehicle_pose.cpp src/editor/rear_axle_pose.cpp)
+add_library(trafficsim_vehicle_pose STATIC src/editor/vehicle_pose.cpp src/editor/rear_axle_pose.cpp src/editor/lane_change_pose.cpp)
 target_link_libraries(trafficsim_vehicle_pose PUBLIC trafficsim_model PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp src/eval/movement.cpp src/eval/lane_changes.cpp src/eval/segment_times.cpp src/eval/stop_lines.cpp src/eval/arrival_phases.cpp src/eval/dead_end_waits.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
@@ -137,6 +137,10 @@ add_custom_target(check
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 if(BUILD_TESTING)
+    add_executable(trafficsim-lane-change-pose-tests tests/lane_change_pose_tests.cpp)
+    target_link_libraries(trafficsim-lane-change-pose-tests PRIVATE trafficsim_vehicle_pose trafficsim_options)
+    add_test(NAME lane-change-pose COMMAND trafficsim-lane-change-pose-tests)
+    add_dependencies(check trafficsim-lane-change-pose-tests)
     add_executable(trafficsim-rear-axle-pose-tests tests/rear_axle_pose_tests.cpp)
     target_link_libraries(trafficsim-rear-axle-pose-tests PRIVATE trafficsim_vehicle_pose trafficsim_options)
     add_test(NAME rear-axle-pose COMMAND trafficsim-rear-axle-pose-tests)
