@@ -75,7 +75,7 @@ void EditorWindow::buildConflicts() {
     }));
     bar->addAction(action("editorDeleteConflict", {}, [this] {
         const auto id = selectedConflict(); if (id.empty()) return;
-        execute("editorDeleteConflict", [&](auto& d) { removeConflictArea(d, id); });
+        execute("editorDeleteConflict", [&](auto& d) { removeConflictGroup(d, id); });
     }));
     // The Conflict area tool's gestures (M3.2.4b) submit the same commands as the tab.
     canvas_->conflictPicked = [this](const std::string& id) { selectConflict(id); };
@@ -114,54 +114,54 @@ void EditorWindow::refreshConflicts() {
     if (shown && automaticRevision_ != history_.revision()) { automatic_ = automaticConflicts(n); automaticRevision_ = history_.revision(); }
     if (!shown && automaticRevision_ != UINT64_MAX) { automatic_.clear(); automaticRevision_ = UINT64_MAX; }
     canvas_->setAutomaticConflicts(automatic_);
-    const int rows = static_cast<int>(row.conflictAreas.size() + automatic_.size());
+    const auto groups = conflictGroups(n, automatic_);
+    const int rows = static_cast<int>(groups.size());
     if (conflictRevision_ != history_.revision() || conflictTable_->rowCount() != rows) {
         conflictRevision_ = history_.revision();
         const QSignalBlocker block(conflictTable_);
         conflictTable_->setRowCount(rows);
-        // The resolver's verdict per area, from the same call Run makes: what runs, or the first
-        // reason it does not. Defaults only matter for merges nobody overrode, not these rows.
         const auto verdict = row.conflictAreas.empty() ? RightOfWayResolution{} : resolveRightOfWay(n, runtimeSections(n), {1, 1});
-        for (int r = 0; r < static_cast<int>(row.conflictAreas.size()); ++r) {
-            const auto& a = row.conflictAreas[static_cast<std::size_t>(r)];
-            const auto prefix = "rightOfWay.conflictAreas[" + std::to_string(r) + "]";
-            QString status = text("editorConflictRuns");
-            for (const auto& issue : verdict.issues)
-                if (issue.path.rfind(prefix, 0) == 0 && (issue.path.size() == prefix.size() || issue.path[prefix.size()] == '.')) {
-                    const auto t = text(issue.code); status = t.isEmpty() ? QString::fromStdString(issue.code) : t; break;
+        for (int r=0;r<rows;++r) {
+            const auto& g=groups[static_cast<std::size_t>(r)];
+            std::vector<QStringList> members;
+            QString blocked;
+            for(const auto& id:g.areaIds) {
+                const auto at=std::find_if(row.conflictAreas.begin(),row.conflictAreas.end(),[&](const auto& a){return a.id==id;});
+                const auto& a=*at;
+                const auto prefix="rightOfWay.conflictAreas["+std::to_string(at-row.conflictAreas.begin())+"]";
+                for(const auto& issue:verdict.issues)if(issue.path==prefix || issue.path.rfind(prefix+".",0)==0) {
+                    if(blocked.isEmpty()) {const auto t=text(issue.code);blocked=t.isEmpty()?QString::fromStdString(issue.code):t;}
                 }
-            const auto rule = std::find_if(row.priorityRules.begin(), row.priorityRules.end(), [&](const auto& x) { return x.conflictAreaId == a.id; });
-            const QString priority = a.priority == ConflictPriority::undetermined ? text("editorConflictUndetermined")
-                : text("editorConflictGivesWay").arg(owner(a.priority == ConflictPriority::firstYields ? a.first.path : a.second.path));
-            const auto control = controlOf(row, a.id);
-            const QStringList values{QString::fromStdString(a.id), QString::fromStdString(a.name),
-                text(a.kind == ConflictKind::crossing ? "editorConflictCrossing" : "editorConflictMerge"), priority,
-                rule == row.priorityRules.end() ? QString() : QString::number(rule->gapTime, 'f', 1),
-                rule == row.priorityRules.end() ? QString() : QString::number(rule->headway, 'f', 1), status,
-                !control ? QString() : text(*control == StopMode::stop ? "editorControlStop" : "editorControlYield")};
-            for (int c = 0; c < values.size(); ++c) {
-                auto* cell = new QTableWidgetItem(values[c]); cell->setData(Qt::UserRole, QString::fromStdString(a.id));
+                const auto rule=std::find_if(row.priorityRules.begin(),row.priorityRules.end(),[&](const auto& x){return x.conflictAreaId==id;});
+                const auto control=controlOf(row,id);
+                members.push_back({QString::fromStdString(a.name),a.priority==ConflictPriority::undetermined?text("editorConflictUndetermined"):
+                    text("editorConflictGivesWay").arg(owner(a.priority==ConflictPriority::firstYields?a.first.path:a.second.path)),
+                    rule==row.priorityRules.end()?QString():QString::number(rule->gapTime,'f',1),
+                    rule==row.priorityRules.end()?QString():QString::number(rule->headway,'f',1),text("editorConflictRuns"),
+                    !control?QString():text(*control==StopMode::stop?"editorControlStop":"editorControlYield")});
+            }
+            for(const auto& key:g.automaticKeys) {
+                const auto at=std::find_if(automatic_.begin(),automatic_.end(),[&](const auto& a){return a.key==key;});
+                const auto& a=*at;
+                members.push_back({QString(),a.priority==ConflictPriority::undetermined?text("editorConflictPassive"):
+                    text("editorConflictGivesWay").arg(owner(a.priority==ConflictPriority::firstYields?a.first.path:a.second.path)),
+                    QString(),QString(),text(a.kind==ConflictKind::crossing?"editorConflictPassiveStatus":"editorConflictAutomaticStatus"),QString()});
+            }
+            const auto common=[&](int column) {
+                const auto value=members.front()[column];
+                for(const auto& m:members)if(m[column]!=value)return text("editorConflictMixed");
+                return value;
+            };
+            const QStringList values{g.areaIds.empty()?QStringLiteral("\u2014"):QString::fromStdString(g.key),common(0),
+                text(g.kind==ConflictKind::crossing?"editorConflictCrossing":"editorConflictMerge"),common(1),common(2),common(3),
+                blocked.isEmpty()?common(4):blocked,common(5)};
+            for(int c=0;c<values.size();++c) {
+                auto* cell=new QTableWidgetItem(values[c]);cell->setData(Qt::UserRole,QString::fromStdString(g.key));
+                cell->setToolTip(text("editorConflictGroupPairs").arg(g.areaIds.size()+g.automaticKeys.size()));
                 if(c==0||c==4||c==5)editorDesign::setNumericText(cell,c>0);
-                conflictTable_->setItem(r, c, cell);
+                conflictTable_->setItem(r,c,cell);
             }
-            if (a.id == keep) conflictTable_->selectRow(r);
-        }
-        // After the authored rows, the automatic ones: no id, the priority the drawing implies,
-        // and a status saying they are not the author's yet. Enter or P authors one.
-        for (std::size_t k = 0; k < automatic_.size(); ++k) {
-            const auto& a = automatic_[k];
-            const int r = static_cast<int>(row.conflictAreas.size() + k);
-            const QString priority = a.priority == ConflictPriority::undetermined ? text("editorConflictPassive")
-                : text("editorConflictGivesWay").arg(owner(a.priority == ConflictPriority::firstYields ? a.first.path : a.second.path));
-            const QStringList values{QStringLiteral("\u2014"), QString(),
-                text(a.kind == ConflictKind::crossing ? "editorConflictCrossing" : "editorConflictMerge"), priority, QString(), QString(),
-                text(a.kind == ConflictKind::crossing ? "editorConflictPassiveStatus" : "editorConflictAutomaticStatus"), QString()};
-            for (int c = 0; c < values.size(); ++c) {
-                auto* cell = new QTableWidgetItem(values[c]); cell->setData(Qt::UserRole, QString::fromStdString(a.key));
-                if(c==0)editorDesign::setNumericText(cell);
-                conflictTable_->setItem(r, c, cell);
-            }
-            if (a.key == keep) conflictTable_->selectRow(r);
+            if(conflictGroupContains(g,keep))conflictTable_->selectRow(r);
         }
         conflictTable_->resizeColumnsToContents();
     }
@@ -184,17 +184,15 @@ bool EditorWindow::automaticShown() const {
     return tool_->currentIndex() == static_cast<int>(EditorCanvas::Tool::conflict) || objects_->currentIndex() == kConflictTab;
 }
 void EditorWindow::authorConflict(const std::string& key) {
-    const auto a = std::find_if(automatic_.begin(), automatic_.end(), [&](const auto& x) { return x.key == key; });
-    if (a == automatic_.end()) return;
-    const auto chosen = *a; const auto defaults = priorityDefaults();
+    const auto defaults = priorityDefaults();
     std::string created;
-    if (execute("editorAuthorConflict", [&](auto& d) { created = authorAutomaticConflict(d, chosen, defaults); })) selectConflict(created);
+    if (execute("editorAuthorConflict", [&](auto& d) { created = authorConflictGroup(d, key, defaults); })) selectConflict(created);
 }
 void EditorWindow::cyclePriority(const std::string& id) {
     if (id.empty()) return;
     if (isAutomaticKey(id)) { authorConflict(id); return; } // the first P on a passive area sets it
     const auto defaults = priorityDefaults();
-    execute("editorCyclePriority", [&](auto& d) { cycleConflictPriority(d, id, defaults); });
+    execute("editorCyclePriority", [&](auto& d) { cycleConflictGroupPriority(d, id, defaults); });
 }
 bool EditorWindow::selectConflict(const std::string& id) {
     if (id.empty() || !conflictTable_) return false;
@@ -204,6 +202,8 @@ bool EditorWindow::selectConflict(const std::string& id) {
     for (const auto& c : row.stopControls) if (c.id == id && !c.conflictAreaIds.empty()) area = c.conflictAreaIds.front();
     for (const auto& a : row.conflictAreas)
         if (a.first.waitingLineId == id || a.second.waitingLineId == id) { area = a.id; break; }
+    for(const auto& g:conflictGroups(history_.document().network,automatic_))
+        if(conflictGroupContains(g,area)){area=g.key;break;}
     for (int r = 0; r < conflictTable_->rowCount(); ++r)
         if (conflictTable_->item(r, 0)->data(Qt::UserRole).toString().toStdString() == area) {
             objects_->setCurrentIndex(kConflictTab); conflictTable_->selectRow(r); return true;
@@ -234,6 +234,9 @@ void EditorWindow::editConflict(const std::string& id) {
     auto* headway = new QDoubleSpinBox(&dialog); headway->setObjectName("editorConflictHeadway");
     headway->setRange(0.1, 500); headway->setDecimals(1); headway->setSuffix(" m");
     headway->setValue(rule != row.priorityRules.end() ? rule->headway : std::max(0.1, defaults.headway));
+    std::size_t pairCount=1;
+    for(const auto& g:conflictGroups(history_.document().network,automatic_))if(conflictGroupContains(g,id))pairCount=g.areaIds.size()+g.automaticKeys.size();
+    form->addRow(new QLabel(text("editorConflictGroupEdit").arg(pairCount), &dialog));
     form->addRow(text("editorColumnName"), name);
     form->addRow(text("editorConflictPriority"), priority);
     form->addRow("gapTime", gap);
@@ -262,9 +265,9 @@ void EditorWindow::editConflict(const std::string& id) {
     const auto chosen = static_cast<ConflictPriority>(priority->currentData().toInt());
     const int mode = control->currentData().toInt();
     execute("editorEditConflict", [&](auto& d) {
-        setConflictControl(d, id, name->text().toStdString(), chosen, gap->value(), headway->value());
+        setConflictGroupControl(d, id, name->text().toStdString(), chosen, gap->value(), headway->value());
         if (chosen != ConflictPriority::undetermined)
-            setAreaControl(d, id, mode < 0 ? std::nullopt : std::optional{static_cast<StopMode>(mode)});
+            setConflictGroupStopControl(d, id, mode < 0 ? std::nullopt : std::optional{static_cast<StopMode>(mode)});
     });
 }
 void EditorWindow::addCrossings() {

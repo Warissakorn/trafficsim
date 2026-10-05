@@ -89,7 +89,14 @@ void followGeometry(ProjectDocument& d, const Network& before) {
     };
     for (auto& w : row.waitingLines) {
         const double from = firstEntry(was, w), to = firstEntry(row.conflictAreas, w);
-        if (std::isfinite(from) && std::isfinite(to)) w.point.station = std::max(0.0, w.point.station + (to - from));
+        if (std::isfinite(from) && std::isfinite(to)) {
+            try {
+                const double gap=controlStationDistance(before,w.point.path,w.point.station,from);
+                const double station=std::min(to,offsetControlStation(n,w.point.path,to,-gap));
+                // Avoid introducing round-off-only edits (for example renaming a Link).
+                if(w.point.station>to || std::abs(station-w.point.station)>1e-9)w.point.station=station;
+            } catch(const std::exception&) {} // unresolved paths remain named resolver issues
+        }
     }
     for (const auto& id : gone) removeConflictArea(d, id);
 }

@@ -106,7 +106,9 @@ int main(int argc, char** argv) {
         auto* table = w.findChild<QTableWidget*>("editorConflictTable"); require(table, "No conflict table");
         auto* tabs = w.findChild<QTabWidget*>("editorObjectTabs"); require(tabs, "No object tabs");
         const auto& network = [&]() -> const Network& { return w.history().document().network; };
-        const auto first = network().rightOfWay.conflictAreas.front();
+        const auto group = conflictGroups(network(), {}).front();
+        const auto first = *std::find_if(network().rightOfWay.conflictAreas.begin(),network().rightOfWay.conflictAreas.end(),
+                                        [&](const auto& a){return a.id==group.key;});
         const auto inside = centre(conflictSideOutline(network(), first.second));
 
         // Select never hit-tests areas: at the crossing it still picks a Link. The forcing first:
@@ -223,7 +225,7 @@ int main(int argc, char** argv) {
         const int shown = drawn(w);
         w.openFile(file); QApplication::processEvents();
         require(network().rightOfWay == saved, "Reopening lost a conflict edit");
-        require(table->rowCount() == 2 && drawn(w) == shown, "Reopening did not show the same areas");
+        require(table->rowCount() == 1 && drawn(w) == shown, "Reopening did not show the same group");
         for (int r = 0; r < table->rowCount(); ++r) require(table->item(r, 6)->text() == "Runs", "A reopened area does not run");
         require(network().rightOfWay.stopControls.size() == 1 && lineMark(w, line.id) == "stop", "Reopening lost the Stop");
         std::cout << "priority canvas tests passed\n";

@@ -500,5 +500,8 @@
   "editorConnectorWidthsRange": "Valid width: > 0 m, finite. Enter %1 values; blank derives widths from the links.",
   "editorSignalGreen": "Green",
   "editorSignalAmber": "Amber",
-  "editorSignalRed": "Red"
+  "editorSignalRed": "Red",
+  "editorConflictMixed": "Mixed values",
+  "editorConflictGroupPairs": "%1 lane-pair conflicts",
+  "editorConflictGroupEdit": "Apply these settings to all %1 lane-pair conflicts."
 }

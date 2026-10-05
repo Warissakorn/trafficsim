@@ -87,7 +87,7 @@ public:
     // its own path. The canvas never writes to the document itself.
     std::function<void(const std::string&)> conflictPicked, conflictCycled;
     std::function<void(const std::string&, double)> waitingLineMoved;
-    std::vector<std::string> conflictsAt(Point) const;   // areas whose drawn side contains it, by id
+    std::vector<std::string> conflictsAt(Point) const;   // groups whose painted side contains it
     // M3.2.4c (D68): the areas the drawing implies (automaticConflicts), drawn under the Conflict
     // area tool only -- passive crossings grey, derived merges in their derived colours, both
     // dashed. A click on one where no authored area is asks to author it; the shell decides how.
@@ -159,7 +159,7 @@ private:
     void drawConflicts();
     std::string highlightedConflict_;
     std::vector<AutomaticConflict> automatic_;
-    void drawAutomaticConflicts();
+    std::vector<ConflictGroup> conflictGroups_;
     std::string waitingLineAt(Point) const;
     bool conflictPress(QMouseEvent*);
     void updateLineDrag(QPoint);

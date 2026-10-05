@@ -115,6 +115,8 @@ double equationClosestStation(const ConnectorEquation& c,Point target) {
 double connectorPathLength(const ConnectorPath& p){return p.equation?p.equation->arcStations.back():polylineLength(p.geometry);}
 Point connectorPathPoint(const ConnectorPath& p,double s){return p.equation?equationPoint(*p.equation,equationParameter(*p.equation,s)):pointAlong(p.geometry,s);}
 Point connectorPathDirection(const ConnectorPath& p,double s){return p.equation?equationDerivative(*p.equation,equationParameter(*p.equation,s)):directionAlong(p.geometry,s,true);}
+double connectorDrawingParameter(const Connector& c,double s){return authoredParameter(c.geometry,s);}
+double connectorDrawingStation(const Connector& c,double t){return authoredStation(c.geometry,t);}
 double connectorRuntimeStation(const Connector& c,const ConnectorPath& p,double s){return p.equation?equationStation(*p.equation,authoredParameter(c.geometry,s)):matchedStation(c.geometry,p.geometry,s);}
 double connectorAuthoringStation(const Connector& c,const ConnectorPath& p,double s){return p.equation?authoredStation(c.geometry,equationParameter(*p.equation,s)):matchedStation(p.geometry,c.geometry,s);}
 }

@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Bézier conflict coverage and connected editor groups (D109)
+
+Owner requested runtime-equation coverage with painted highlights and one group for 3 × 3.
+Crossing strips now refine the mapped cubic and its width rails independently of drawing
+vertices. Broad-phase bounds use those rails; shared-lane exclusions apply only at the same
+attachment mouth, not to distinct stations or later separated intersections. Waiting lines
+retain physical setbacks under drawing edits. Grouping requires the same owner pair/kind
+and connected surfaces on both sides; two locations remain separate. Table/canvas selection
+and bulk commands share the group; nine runtime lane-pair reservations remain nine.
+Schema/core/frozen baselines are unchanged. The editable T-junction example is rebuilt for
+new extents. Linux model and Qt verification is recorded in the PR; Windows/owner gates
+remain open. Existing saved coverage is validated, never silently migrated or widened.
+
+---
+
 ## 2026-10-04 — Source entries wait until their first step fits (D108)
 
 NEXT's M3.2.8a.1 source slice: ordinary following/integration from rest must fit the
@@ -443,6 +458,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D109 | 2026-10-05 | **Conflict calculation follows the runtime cubic; display follows paint; connected same-owner lane pairs share one editor group** | Owner ruling. Preserve nine pair reservations and one Undo for 3 × 3; spatial connectivity keeps separated crossings apart. A pure diverge has no competing arrival, and derived merge arbitration stays topological. | A new solver or measured grouping/geometry defect. |
 | D108 | 2026-10-04 | **Defer source entry when its ordinary first step exceeds current leader clearance** | M3.2.8a.1a; same following/integration, buffer, queue order and sampled vehicle. Exact equality admits. Failure-first tests and 120 stress/160 project comparisons pass; three measured source clamps removed, moving clamps remain | Later lane changes introduce a leader; the snapshot guard holds safe entry unnecessarily; moving merge anticipation remains a separate contract |
 | D107 | 2026-10-04 | **Use the existing single cubic equation directly for runtime Connector motion** | Owner requested no PolyPoint driving path. Lane attachments/tangents set controls; integrated/inverted arc length sets metre stations. Supersedes D106 runtime rail-midpoint paths; drawing/mouth rules remain. Intermediate points and widths edit paint only. Stored controls adapt via uniform parameter; timing changes and stress clamps are measured | Owner needs interior edits to steer vehicles, or analytic surface coverage/2D driveability is required |
 | D106 | 2026-10-04 | **Runtime Connector lane interiors follow final adjacent-rail midpoints; terminal legs join named Link lane centres, including taper recipients** | Owner requested the measured >1 m discrepancy be fixed. Topology-only pairing breaks the width/surface/path cycle; compiler/canvas share paths and lengths; bars use mapped runtime normals. Schema-17 geometry/stations remain authoring data. Supersedes D80 runtime compatibility and surviving-runtime-curve invariance, not the axis, miter or P1–P4 contract. Seven regressions and 240 curve/add/drop runs pass; T-junction digests are unchanged; project differences are measured | Terminal transitions or retained extreme mouths need a different driving model; a width/range edit must preserve old runtime curves; a desktop look finds a visual mismatch |

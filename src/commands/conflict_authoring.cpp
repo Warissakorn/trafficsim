@@ -61,7 +61,7 @@ std::vector<std::string> addCrossingAreas(ProjectDocument& d, const std::string&
         double from = INFINITY;
         for (const auto& f : found)
             if ((onFirst ? f.i : f.j) == k) from = std::min(from, onFirst ? f.o.first.from : f.o.second.from);
-        return putWaitingLine(d, {"", "", {lanes[k], std::max(0.0, from - kCrossingSetback)}});
+        return putWaitingLine(d, {"", "", {lanes[k], offsetControlStation(d.network,lanes[k],from,-kCrossingSetback)}});
     };
     std::map<std::size_t, std::string> linesA, linesB;
     for (const auto& f : found) {
@@ -182,7 +182,7 @@ std::string authorAutomaticConflict(ProjectDocument& d, const AutomaticConflict&
     // A lane's crossing areas share one waiting line before the first of them (D63): reuse the
     // line this path already waits at, moved upstream when the new area comes first.
     const auto lineFor = [&](const ConflictSide& side) {
-        const double station = std::max(0.0, side.entryStation - kCrossingSetback);
+        const double station = offsetControlStation(d.network,side.path,side.entryStation,-kCrossingSetback);
         for (const auto& a : d.network.rightOfWay.conflictAreas) {
             if (a.kind != ConflictKind::crossing) continue;
             for (const auto* s : {&a.first, &a.second})
