@@ -7,6 +7,10 @@ The copies are verbatim except that, on the owner's instruction of 2026-09-24 (D
 import-format entry was removed from §18.1 and from the part-04 comparison table.
 `Partial` means some contracts exist; it never means the entire section is implemented.
 
+Current behaviour is maintained in [the reference index](../reference/README.md) and
+milestone status in [ROADMAP](../ROADMAP.md). The baseline tables below describe their
+2026-09-20 checkout; an `Absent` row is not evidence that today's code still lacks it.
+
 ## Link
 
 | Sections | Baseline status and evidence | Remaining work |

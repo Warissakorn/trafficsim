@@ -1,13 +1,13 @@
 # Simulation core and network model
 
-M0 implementation reference. **Not yet validated.** This engine is a reduced,
+Current engine/model reference. **Not yet validated.** This engine is a reduced,
 Wiedemann-inspired prototype, not an implementation of W74/W99 and not calibrated to
 Vissim. Mandatory lane changing exists (M3.2.8b, below). Discretionary changes (D95) and their
 hold (D101) are implemented but **off**: no shipped behaviour carries the fields, because A53
-fails (vehicles change back within 10 s). General
-priority control and LOS are not implemented. **Merge arbitration exists only as M3.1**: a deterministic gap-time/headway threshold,
-described below — not a calibrated critical-gap model. M0 remains open until the
-owner reviews the live traffic behaviour against its plausibility gate.
+fails (vehicles change back within 10 s). Derived merge priority and authored crossing/merge
+areas with Stop/Yield are implemented using deterministic thresholds and occupancy checks,
+not calibrated critical-gap behaviour. LOS is not implemented. Milestone gates are maintained
+in [ROADMAP](../ROADMAP.md); automated checks do not establish owner or scientific validation.
 
 ## Run
 
@@ -52,7 +52,8 @@ auto final = runSimulation(scenario, 42, [](const SimEvent& event) {
 authoring contract. Semantic validation accepts typed values. `src/project/load.hpp`
 loads M0 JSON fixtures and catalogs, checking object/array/string/number fields and
 rejecting invalid signal/driving-side enums before compilation. This read-only loader
-is not production project persistence; save/versioning remains M1.
+is separate from the editor project codec; see
+[Save, recovery and formats](NETWORK_EDITOR.md#save-recovery-and-formats) for persistence.
 
 ## Authoring network
 
@@ -65,14 +66,16 @@ is not production project persistence; save/versioning remains M1.
 | `NetworkSignalHead` | Lane reference, stop-line position, and a signal group (`controllerId` + `groupNumber`, M2.7b) or a legacy signal-program ID |
 
 Coordinates are planar Cartesian metres with positive Y upwards. Geographic projection
-and coordinate-system metadata belong to the future project layer. Runtime segment
-lengths are derived from the same lane-centre geometry the renderer uses. The link
-centreline is offset using bounded vertex normals; it is an initial geometric
-approximation, not a production road-surface or junction-construction algorithm.
+and coordinate-system metadata remain outside the current contract. Runtime Link geometry
+uses mitered lane offsets (`offsetGeometry`, D23). Connector motion evaluates the direct
+cubic equation from mapped lane attachments/tangents (D107), with integrated arc length;
+intermediate drawing points and Connector widths do not define that motion. Display paint
+can differ from the driving curve. See [Connector geometry](CONNECTOR_FOUR_POINT_MOUTH.md)
+and [vehicle pose](VEHICLE_POSE.md) for the separate drawing/display contracts.
 
 Driving side changes lane ordering and offsets. Connector endpoints must match their
-referenced lane endpoints within 0.01 m. Changing side on an authored multilane network
-requires rebuilding its connector geometry; stale endpoints fail validation.
+referenced lane attachment positions within 0.01 m; attachments may be at an interior
+station. Editor changes reanchor Connectors, and stale endpoints fail validation.
 Signal heads can be located anywhere along a lane, including its endpoints. The head's station
 is the stop line: a vehicle is held there while the head is not green. A signal group of a
 fixed-time controller (M2.7b, D48) is compiled into one ordinary `SignalProgram` with id
@@ -85,8 +88,9 @@ IDs, invalid geometry/widths, empty links, unknown lanes, duplicate connections,
 disconnected endpoints and signal positions outside lanes. The compiler also checks
 the runtime route, demand, vehicle and control references.
 
-`compileScenario` makes a detached runtime snapshot: one segment per lane and one per
-connector. This is derived data, not a second persisted representation of the network.
+`compileScenario` makes a detached runtime snapshot, splitting Link lanes into sections
+at body attachments and connecting the mapped Connector paths. Sections are derived on
+compile (D21), not a second persisted representation of the network.
 Desired speeds belong to the vehicle-type distribution, not the link.
 
 ### Routeless inputs and placed routing decisions (M2.1.1, D42, D43)
@@ -100,18 +104,19 @@ routes `link:<id>/path-k` and one input per complete path, at volume × probabil
   network at the lane end is one more when no path leaves from the end. A path leaving within
   `kRoutelessStubLength` (4.5 m) of the end counts as leaving from the end, because a shorter
   remainder cannot hold a vehicle (D44). Each way gets an equal share. A way out upstream of where the vehicle came onto the lane is behind it.
-- **Placed decision:** it acts when a routeless vehicle comes onto its Link. The station along
-  the Link is not modelled. The vehicle takes a destination its lane can reach, by relative flow
-  among those. A lane reaching none carries on routeless, with `ROUTING_DECISION_LANE_UNSERVED`.
-  After the destination it is routeless again.
+- **Placed decision:** its destination is booked during compilation using scheduled demand
+  time, then its path family governs travel on the decision's Link. A station along that Link
+  is not modelled. Relative flows apply among destinations the arrival lane serves via a
+  complete path or a kept adjacent-lane stub. A lane serving none continues free walk, with
+  `ROUTING_DECISION_LANE_UNSERVED`. After the destination it is routeless again.
 - **On the entry Link** a decision instead spreads each destination's flow equally over every
   lane of the Link. A lane that cannot reach it changes lanes (M3.2.8b), so typed proportions
   hold exactly and the input's lane weights are unused (D43, D71).
-- **No lane changing downstream:** free-walk paths and placed decisions after the entry Link stay
-  lane-fixed, so a vehicle's lane fixes its reachable destinations there, and the proportions
-  shift towards what the lanes allow. **A decision placed downstream works like an entry
-  decision** (D93, contract §2 "Downstream routing decisions", A40–A46): the destination is
-  drawn whatever the lane, and a stub vehicle changes lanes on the decision's Link.
+- **Downstream decisions:** free walk with no decision stays lane-fixed. A decision downstream
+  supports mandatory changes on its own Link (D93/D94, contract §2 "Downstream routing
+  decisions", A40–A46). A kept stub needs a same-entry full route on adjacent lanes; it does
+  not allow a change before arrival on that Link. Destination weights apply only to served
+  paths; see the contract for stub pruning and family rules.
 - **Refused on Run:** a revisited lane (`ROUTELESS_CYCLE`), more than 256 paths, an unknown Link,
   two decisions on one Link, or a destination no lane can reach. Inputs still start only on
   entry Links (`UNSUPPORTED_INTERNAL_INPUT`), as for routes.
@@ -122,9 +127,8 @@ routes `link:<id>/path-k` and one input per complete path, at volume × probabil
 with one relative flow per interval. Inside interval k an entry weighs `intervalFlows[k]`; outside
 every interval it weighs `relativeFlow` (the dialog writes the count total there). The input is cut
 at the interval boundaries and each piece is split at its own proportions, so the compiled volumes
-are exact per piece. **The interval is chosen by the time a vehicle enters the network, not the
-time it reaches the decision** — off by the travel time from entry to decision, seconds against
-15-minute counts. A placed decision's paths are the union over the intervals, one runtime route
+are exact per piece. **Scheduled demand time selects the interval**, not eventual entry after
+source waiting or arrival at the decision. A queued record keeps its booked route/type (D111–D113). A placed decision's paths are the union over the intervals, one runtime route
 each. Refused: `ROUTING_DECISION_INTERVALS` (a row's flow count differs from the intervals),
 `INVALID_INTERVAL`, and `INVALID_SHARE` for a negative flow.
 
@@ -193,7 +197,8 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   way to each drawn earlier: lane, then first, then second — a strict order, never a cycle.
   **Since M2.0.1 (D35) the same drawn-order rule arbitrates Connectors meeting at a lane's start**
   — every turn into an intersection exit. The order is the drawing order, which is arbitrary;
-  authoring who has priority is M3. With protected (split) phasing those movements are never green
+  authored controls can take over that priority under [M3_CONTRACT](M3_CONTRACT.md).
+  With protected (split) phasing those movements are never green
   together, so the rule rarely binds; with permissive phasing it would decide, unvalidated.
   A turn that does not wait for green — the Thai left turn at all times — makes it bind every
   cycle. **A derived rule's stop line is 1 m short of the join** (D50): held on the join itself,
@@ -208,12 +213,14 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
   - It replaces the emergency clamp that a gap closing under a driver too close to stop used to
     fire. It does not apply to signal heads.
 - Amber is treated as red, with no stop-or-go decision. A vehicle too close to stop when its head
-  turns amber is halted at the line by the safety clamp; every clamp in the four-leg fixture and
-  in the frozen seed-43/4294967295 baselines is this case (M2_PLAN.md M2.0.3).
-- Geometric crossings do not create conflicts automatically. Separate movement paths
-  can intersect spatially; their interaction is modelled **only where an author placed a
-  crossing conflict area** (M3.2.3a, D57). The demo uses separate fixed-time greens and
-  clearance intervals. Overlapping green plans with no authored area have no crossing protection.
+  turns amber may be halted at the line by a counted safety clamp. Other emergency clamps
+  remain possible at sources/merges or after a lane change; do not infer their cause from a
+  historical fixture count (see NEXT and the clamp evidence).
+- The editor derives passive crossing candidates from geometric overlaps (D68/D72); those
+  are not enforced merely because they are drawn. Runtime protection comes from authored
+  effective conflict controls compiled into zones. The core does not discover geometry or
+  provide global collision avoidance. Overlapping greens with no authored protection can
+  still conflict; see [M3_CONTRACT](M3_CONTRACT.md).
 - A `ConflictZone` (M3.2.3a) is one crossing: a major and a minor side, each an `[entry, exit)`
   interval on one segment, a minor waiting line (`waitPosition`, may be negative as for
   `yieldPosition`), a gap time and a headway. A minor vehicle waits at its line while any major

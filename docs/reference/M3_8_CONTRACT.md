@@ -119,8 +119,8 @@ every left-turner of an M2.6 approach appeared in the kerb lane at the network e
   `::routeDeadEnds`, filled by the compile step next to the routes they join). It never sees
   geometry, lanes or Links. Neither is in the project file.
 
-Routeless free walk and routing decisions placed downstream of the entry Link stay lane-fixed
-(M3.2.8c). When a full chain branches after its destination, a stub vehicle joins the
+Routeless free walk with no decision stays lane-fixed. Downstream decisions use D93/D94's
+family/stub rules in §2 "Downstream routing decisions" and can change lanes on that Link. When a full chain branches after its destination, a stub vehicle joins the
 lowest-slot chain, which shifts those downstream proportions. This is recorded, not modelled.
 
 ### The rule

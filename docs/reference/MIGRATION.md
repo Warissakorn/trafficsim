@@ -1,30 +1,25 @@
-# C++ migration — D15
+# Native baseline and migration compatibility
 
-The owner requested changing the whole application to C++, then authorized the project
-adjustment. This supersedes D3's initial TypeScript stack and D4's web-first development
-loop. It does not expand M0 into the M1 editor or close any traffic-engineering gate.
+D15 moved the application from TypeScript to C++20, CMake and Qt Widgets. The former
+application is retained at `70383db6ab884c718baef97a8ab81292fdc9d1b0`; use a separate
+checkout for its npm workflow. Do not restore a second active engine into this tree.
+The [historical migration reference](../archive/MIGRATION-D15.md) preserves the original
+mapping and planned horizon. Current modules are mapped in [ARCHITECTURE](../ARCHITECTURE.md),
+build commands in [BUILDING](../BUILDING.md), and gates in [ROADMAP](../ROADMAP.md).
 
-## Scope and mapping
+## Current entry points
 
-| Previous entry | Native replacement |
+| Surface | Maintained implementation |
 |---|---|
-| `src/core/index.ts` | `src/core/simulation.hpp` and typed C++ events |
-| `src/model/network/index.ts` | `src/model/network/network.hpp` |
-| `src/main.ts` and HTML/CSS | `src/shell/main.cpp`, `main_window.cpp` |
-| Browser canvas | `src/render/network_view.cpp` using QPainter |
-| `tools/run-simulation.ts` | `tools/run_simulation.cpp` → `trafficsim-cli` |
-| TypeScript AST boundary guard | C++ restricted-include checker plus isolated CMake targets |
-| Python size checker | `tools/check_file_sizes.cpp` |
-| npm/Vite/Vitest | CMake/Ninja/CTest and C++ test executables |
+| Core contract | `src/core/simulation.hpp` |
+| Network model | `src/model/network/network.hpp` |
+| Desktop shell and canvas | `src/shell/main.cpp`, `src/shell/editor_window.cpp`, `src/editor/canvas.cpp` |
+| Headless runner | `tools/run_simulation.cpp` → `trafficsim-cli` |
+| Project formats | [NETWORK_EDITOR — Save, recovery and formats](NETWORK_EDITOR.md#save-recovery-and-formats) |
 
-The former application is retained in Git history at commit
-`70383db6ab884c718baef97a8ab81292fdc9d1b0` (main before migration). Use a separate checkout
-of that commit for the old `npm ci`, `npm test`, `npm run dev` workflow. Do not restore
-a second active engine or parallel model store into this tree.
-
-All authored data stays in JSON. Locale files moved to `data/locales/`. Scenario and
-vehicle/behaviour fixtures retain their original values. The C++ loader adds structural
-JSON checks before the semantic validators and can read all catalog files.
+The numbers below describe frozen migration fixtures, not today's capacity, safety of
+every network, scientific validation or product performance. New features preserve the
+legacy fixtures; feature-specific contracts require their own evidence.
 
 ## Regression evidence
 
@@ -55,12 +50,7 @@ The native code explicitly sequences all PRNG draws; C++ operand evaluation orde
 not alter the Gaussian sampler. The simulation still uses pre-step occupancy, stable ID
 ordering, integer ticks and a fixed dt. No worker threads or algorithm change was added.
 
-## Acceptance and remaining work
+## Acceptance
 
-Technical migration checks are separate from the owner's M0 plausibility judgement.
-Read-only fixture loading does not constitute production project persistence. A running
-Qt window does not constitute the M1 editor or an M7 installer.
-
-Continue with owner M0 review, then commands/undo/project contracts and one editable link
-in M1. Crossing conflicts, merges, lane changing, true W74/W99, LOS, calibration and batch
-aggregation remain explicit future work.
+Technical regression checks do not establish M0 plausibility, M6 scientific validation
+or owner appearance acceptance. Read the current gate records through ROADMAP/NEXT.
