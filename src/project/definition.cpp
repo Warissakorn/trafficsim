@@ -173,6 +173,12 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
         }
     }
     for (std::size_t i = 0; i < d.inputs.size(); ++i) {
+        double sum=0;
+        const auto& weights=d.inputs[i].laneShares;
+        bool valid=true;
+        for(double w:weights) { valid=valid && std::isfinite(w) && w>=0;sum+=w; }
+        if(!weights.empty() && (!valid || !std::isfinite(sum) || !(sum>0)))
+            issues.push_back({"INVALID_SHARE","inputs["+std::to_string(i)+"].laneShares"});
         const auto& id = d.inputs[i].routingDecisionId;
         if (!id.empty() && std::none_of(d.routingDecisions.begin(), d.routingDecisions.end(),
                                         [&](const auto& x) { return x.id == id; }))

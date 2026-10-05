@@ -19,6 +19,35 @@ std::string routelessLink(const AuthoringDefinition& d, const VehicleInput& inpu
     return {};
 }
 }
+InputLanePolicy inputLanePolicy(const Network& n,const AuthoringDefinition& d,const VehicleInput& input) {
+    std::string link=input.linkId;
+    if(const auto* decision=decisionById(d,input.routingDecisionId)) {
+        if(!decision->linkId.empty())link=decision->linkId;
+        else if(decision->routes.size()>1)return {0,false};
+        else if(!decision->routes.empty()) {
+            auto routed=input;routed.routingDecisionId.clear();routed.routeId=decision->routes.front().routeId;
+            return inputLanePolicy(n,d,routed);
+        }
+    }
+    if(!link.empty())for(const auto& l:n.links)if(l.id==link) {
+        const bool decided=std::any_of(d.routingDecisions.begin(),d.routingDecisions.end(),[&](const auto& x){return x.linkId==link;});
+        return {l.lanes.size(),!decided};
+    }
+    for(const auto& route:d.routes)if(route.id==input.routeId)
+        return {routeLaneShareCount(n,route.segmentIds),true};
+    return {};
+}
+std::vector<ValidationIssue> demandAdvisories(const Network& n,const AuthoringDefinition& d) {
+    std::vector<ValidationIssue> result;
+    for(std::size_t k=0;k<d.inputs.size();++k) {
+        const auto& input=d.inputs[k];if(input.laneShares.empty())continue;
+        const auto policy=inputLanePolicy(n,d,input);
+        const auto path="inputs["+std::to_string(k)+"].laneShares";
+        if(!policy.acceptsShares)result.push_back({"DEMAND_LANE_SHARES_IGNORED",path});
+        else if(policy.lanes && policy.lanes!=input.laneShares.size())result.push_back({"DEMAND_LANE_SHARES_STALE",path});
+    }
+    return result;
+}
 std::string routelessRouteId(const std::string& linkId, std::size_t k, std::size_t n) {
     return n == 1 ? "link:" + linkId : "link:" + linkId + "/path-" + std::to_string(k + 1);
 }

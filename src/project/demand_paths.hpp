@@ -23,6 +23,11 @@ RoutelessIssues routelessIssues(const Network&, const AuthoringDefinition&);
 // M2.1.2: an input's periods (inputPeriods) cut at every breakpoint inside them, each piece at
 // its period's volume. Pieces of zero length are not produced.
 std::vector<VolumeInterval> cutPeriods(const VehicleInput&, const std::vector<double>& breakpoints);
+// The effective entry-lane policy used by the input dialog, diagnostics and demand preview.
+struct InputLanePolicy { std::size_t lanes{}; bool acceptsShares{true}; };
+InputLanePolicy inputLanePolicy(const Network&,const AuthoringDefinition&,const VehicleInput&);
+// Advisories for stored weights that the compiler cannot apply.
+std::vector<ValidationIssue> demandAdvisories(const Network&,const AuthoringDefinition&);
 // The runtime route id for path k of n from a Link.
 std::string routelessRouteId(const std::string& linkId, std::size_t k, std::size_t n);
 }

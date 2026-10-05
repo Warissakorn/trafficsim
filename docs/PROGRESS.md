@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Demand correctness, interval preservation and preview (D111)
+
+Owner requested a detailed Demand-only review and authorized implementation.
+[DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md) records the contract and six slices;
+this branch implements 1–4, with catalog and time/type extensions still planned.
+Zero lane weights now exclude a lane; invalid weights cannot silently fall back.
+Positive stale weights retain D32's fallback with an advisory. Decision/input dialogs
+preserve irregular intervals and offer explicit period editing. Missing active count
+cells are rejected. Preview compiles Run's snapshot and shows expected demand,
+including composition and lane expansion. Scheduled-time routing remains unchanged.
+New failure-first lane cases, conservation and Qt preservation/Undo tests accompany
+these changes. Frozen fixtures remain untouched. Linux verification and Windows
+native/owner review status are recorded with the branch; no M2 gate is reclosed.
+
+---
+
 ## 2026-10-05 — Continuous lane-change guidance (phase 3)
 
 Owner asked to continue after phase 2 (#104). Replaced the independent D102 lateral
@@ -288,48 +304,6 @@ with the machine idle (101 s at `eeb9c5c` without this change, 109 s with it; on
 2026-10-02 figure was 28 s. It times out at 90 s alone. See NEXT. *Corrected in the entry above:
 E-core scheduling, not code.*
 
-## 2026-10-03 — Roadmap review: 63 stale statements corrected, the order left to the owner
-
-At the user's request, a session reviewed the roadmap for accuracy and direction. Report:
-[ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) (consolidated 2026-10-04). Six audit slices compared ROADMAP, NEXT and the status
-lines that repeat them against the decision log, archives, code, tests and git. An independent
-skeptic checked each finding, and 87 survived: 63 factual, 17 owner decisions, 7 strategic.
-- **Corrected (docs only):** CLAUDE.md said schema 16 (it is 17) and owner item 4 for the name
-  (it is 2). ROADMAP still said "M2.6 is still unperformed" (M3), "back to the owner" (M3.2.8c,
-  ruled by D102), "owner M1 acceptance remains open" (D49), listed fixed-time controllers as open
-  (M4.1), and cited ctest names that do not exist (`attachment-ui`, `gesture-ui`). ARCHITECTURE said
-  schema 8 and called the M3 seam "a design only". NEXT said WSL both exists here and does not
-  (`wsl.exe`: it does not). Overlap cycling has been `Ctrl+Tab` since `ed74268`, and four docs said
-  `Tab`. The full list is in the report's §3.
-- **Not corrected, on purpose:** dated PROGRESS entries and decision rows, which are records of
-  their day; one code comment; and anything that closes, carves or re-orders a milestone. Rule 1
-  and hard rule 8 make those the owner's. The ten owner questions are the report's §4.
-- **Why the order is not changed:** the strategic finding is that M5 (multi-seed runs, CIs, LOS,
-  export) has no product code and no commit since 2026-09-25, while 45 of 122 commits touched the
-  editor or shell. No gate holds M5 back. NEXT's order does, and CLAUDE.md forbids a session to
-  re-plan, so moving M5 up is O1, the owner's.
-- **Critics' corrections kept in the report:** M5 is not "gate-free". The M0 and M5.1 gate lines
-  apply, but neither precedes M5. D88's 7 s SD is a per-seed *change* between engine versions, and
-  does not size a single table's CI. The Q4 option sheet comes before the runner and carries no
-  engine figures, so the benchmark is not picked by what the engine already matches.
-Desktop 77/77 on Windows before the edits (MSVC, Qt 6.8.3, Debug). This session changed no code.
-
-## 2026-10-03 — The input table shows the lane split the run gets (`laneSplit`)
-
-With per-lane weights set, the Vehicle inputs row still printed the equal split ("1800 = 2 × 900.0"),
-because it had its own copy of the split rule. The rule now lives once, in
-`laneSplit(chainLanes, shareCount, laneShares)` (network.hpp, compile.cpp). It is used by the compiler,
-by routeless inputs (`demand_paths.cpp`, every Link lane a "chain") and by `refreshDemand`, which
-prints "1800 = 1200.0 + 600.0" when weights apply and the old "N × v" when they do not. It returns
-`weighted` as well as the fractions, because the equal split must stay `total / n`: `total * (1/n)`
-can differ in the last bit, which would move a Poisson spawn and break byte-identical replay. Seed 42
-CLI output is `cmp`-identical before and after for the four shipped projects, the D93 scratch case,
-and two scratch cases with weights set (routed {2,1}, routeless {3,1}). Tests: `laneSplit`
-fractions and fallbacks (editor group), and `demand-ui` asserts the row before and after the 2:1
-weight, after asserting that the compiled split really is 1200/600. Desktop 76/77 on Windows:
-`scenario-run-ui` timed out at 90 s under machine load, and an alternating A/B of the unchanged
-and changed builds measured both at 110–116 s CPU (NEXT).
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -449,6 +423,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D111 | 2026-10-05 | **Demand correctness and preview preserve scheduled-time routing; reporting stays M5.** | Zero weights must exclude a lane; invalid weights and missing turn counts must not silently alter demand. Irregular intervals need lossless editing. Preview must use Run's compiled snapshot, including compositions. | A separately accepted routing-time/count contract; project catalog and type/time extensions remain slices 5–6. |
 | D110 | 2026-10-05 | **Groups share control, while each lane-pair side is painted separately; one crossing classifier excludes true attachment mouths everywhere** | Owner clarification and reproduced automatic/manual disagreement at an internal Connector/Link join. Merge topology continues to own that competition. | A measured mouth case outside the connected attachment component, or another owner display ruling. |
 | D109 | 2026-10-05 | **Conflict calculation follows the runtime cubic; display follows paint; connected same-owner lane pairs share one editor group** | Owner ruling. Preserve nine pair reservations and one Undo for 3 × 3; spatial connectivity keeps separated crossings apart. A pure diverge has no competing arrival, and derived merge arbitration stays topological. | A new solver or measured grouping/geometry defect. |
 | D108 | 2026-10-04 | **Defer source entry when its ordinary first step exceeds current leader clearance** | M3.2.8a.1a; same following/integration, buffer, queue order and sampled vehicle. Exact equality admits. Failure-first tests and 120 stress/160 project comparisons pass; three measured source clamps removed, moving clamps remain | Later lane changes introduce a leader; the snapshot guard holds safe entry unnecessarily; moving merge anticipation remains a separate contract |

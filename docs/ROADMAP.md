@@ -189,6 +189,15 @@ M2.7a (head = stop line, placed at the pointer's station, D47; by Ctrl+right-cli
 
 ---
 
+### M2.8 — Demand correctness and authoring improvements · **In progress**
+
+Owner requested Demand-only improvement on 2026-10-05.
+[DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md) specifies validation, lossless and
+explicit interval editing, and compiled preview (slices 1–4), followed by project
+vehicle/composition catalogs and time/type rules (5–6). Existing M2 gate remains
+observed; this extension needs its own automated and owner UI checks. Reporting,
+LOS, warm-up and multiple-seed summaries belong to M5.
+
 ## M3 — Right-of-way: conflict areas and priority rules
 
 **The right-of-way model an engineer controls.**

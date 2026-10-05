@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "demand_period_editor.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
@@ -14,6 +15,7 @@
 #include <QVBoxLayout>
 #include <cmath>
 #include <stdexcept>
+#include <QSignalBlocker>
 
 namespace trafficsim {
 // M2.4: a static routing decision -- turning proportions as relative flows over routes that all
@@ -61,7 +63,7 @@ void EditorWindow::editDecision(const std::string& id) {
     flows->setHorizontalHeaderLabels({text("editorDecisionTarget"),text("editorDecisionFlow"),text("editorDecisionCounts")});
     flows->horizontalHeader()->setStretchLastSection(true);flows->verticalHeader()->hide();
     // One row per route, then one per Link as a destination. `link` is empty for a route row.
-    struct Row { std::string route, link; QDoubleSpinBox* field; QLineEdit* counts; };
+    struct Row { std::string route, link; QDoubleSpinBox* field; QLineEdit* counts; std::vector<double> stored; };
     std::vector<Row> rows;
     const auto addRow=[&](const QString& label,const std::string& route,const std::string& link,double flow,
                           const std::vector<double>& stored){
@@ -77,7 +79,7 @@ void EditorWindow::editDecision(const std::string& id) {
             QStringList items;for(double f:stored)items<<QString::number(f,'g',12);
             counts->setText(items.join(' '));
         }
-        flows->setCellWidget(n,2,counts);rows.push_back({route,link,field,counts});
+        flows->setCellWidget(n,2,counts);rows.push_back({route,link,field,counts,stored});
     };
     if(def)for(const auto& r:def->routes) {
         double flow=0;std::vector<double> stored;
@@ -99,11 +101,68 @@ void EditorWindow::editDecision(const std::string& id) {
     };
     connect(place,&QComboBox::currentIndexChanged,&dialog,[sync](int){sync();});sync();
     layout->addWidget(flows);
+    bool countsDirty=false,flowsDirty=false;
+    for(const auto& row:rows) {
+        connect(row.counts,&QLineEdit::textChanged,&dialog,[&]{countsDirty=true;});
+        connect(row.field,&QDoubleSpinBox::valueChanged,&dialog,[&]{flowsDirty=true;});
+    }
+    connect(start,&QDoubleSpinBox::valueChanged,&dialog,[&]{countsDirty=true;});
+    connect(minutes,&QDoubleSpinBox::valueChanged,&dialog,[&]{countsDirty=true;});
+    auto* irregularNote=new QLabel(text("editorDemandIrregular"),&dialog);irregularNote->setWordWrap(true);layout->addWidget(irregularNote);
+    const auto protectIrregular=[&]{
+        const bool irregular=!value.intervals.empty() && !regular;
+        irregularNote->setVisible(irregular);start->setEnabled(!irregular);minutes->setEnabled(!irregular);
+        for(const auto& row:rows)row.counts->setReadOnly(irregular);
+    };protectIrregular();
+    auto* periods=new QPushButton(text("editorDemandPeriods"),&dialog);periods->setObjectName("editorDecisionPeriods");
+    periods->setEnabled(!value.routes.empty());layout->addWidget(periods);
+    connect(periods,&QPushButton::clicked,&dialog,[&]{
+        QStringList columns{text("editorInputStart"),text("editorInputEnd")};
+        for(const auto& r:value.routes)columns<<QString::fromStdString(r.destinationLinkId.empty()?r.routeId:r.destinationLinkId);
+        std::vector<std::vector<double>> table;
+        for(std::size_t k=0;k<value.intervals.size();++k) {
+            std::vector<double> row{value.intervals[k].startTime,value.intervals[k].endTime};
+            for(const auto& r:value.routes)row.push_back(r.intervalFlows[k]);
+            table.push_back(std::move(row));
+        }
+        const auto edited=editDemandPeriods(&dialog,columns,table,[this](const char* key){return text(key);});
+        if(!edited)return;
+        value.intervals.clear();for(auto& r:value.routes)r.intervalFlows.clear();
+        for(const auto& cells:*edited) {
+            value.intervals.push_back({cells[0],cells[1]});
+            for(std::size_t k=0;k<value.routes.size();++k)value.routes[k].intervalFlows.push_back(cells[k+2]);
+        }
+        regular=!value.intervals.empty();
+        const double length=regular?value.intervals.front().endTime-value.intervals.front().startTime:0;
+        for(std::size_t k=0;k<value.intervals.size() && regular;++k)
+            regular=std::abs(value.intervals[k].endTime-value.intervals[k].startTime-length)<1e-9 &&
+                (k==0 || std::abs(value.intervals[k].startTime-value.intervals[k-1].endTime)<1e-9);
+        const QSignalBlocker a(start),b(minutes);
+        if(regular){start->setValue(value.intervals.front().startTime);minutes->setValue(length/60);}
+        for(auto& row:rows) {
+            row.stored.clear();for(const auto& r:value.routes)if(r.routeId==row.route && r.destinationLinkId==row.link)row.stored=r.intervalFlows;
+            const QSignalBlocker block(row.counts);QStringList items;
+            if(regular)for(double f:row.stored)items<<QString::number(f,'g',12);
+            row.counts->setText(items.join(' '));
+        }
+        countsDirty=false;protectIrregular();
+    });
+    periods->setToolTip(text("editorDemandSaveCountsFirst"));
+    const auto syncPeriods=[&]{periods->setEnabled(!value.routes.empty() && !countsDirty && !flowsDirty &&
+        value.linkId==place->currentData().toString().toStdString());};
+    for(const auto& row:rows) {
+        connect(row.counts,&QLineEdit::textChanged,&dialog,syncPeriods);
+        connect(row.field,&QDoubleSpinBox::valueChanged,&dialog,syncPeriods);
+    }
+    connect(start,&QDoubleSpinBox::valueChanged,&dialog,syncPeriods);
+    connect(minutes,&QDoubleSpinBox::valueChanged,&dialog,syncPeriods);
+    connect(place,&QComboBox::currentIndexChanged,&dialog,syncPeriods);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);layout->addWidget(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
     buttons->button(QDialogButtonBox::Ok)->setEnabled(!rows.empty());
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
     dialog.resize(640,480);if(dialog.exec()!=QDialog::Accepted)return;
+    const bool targetChanged=value.linkId!=place->currentData().toString().toStdString();
     value.name=name->text().trimmed().toStdString();
     value.linkId=place->currentData().toString().toStdString();
     const double from=start->value(),length=minutes->value()*60;
@@ -111,9 +170,20 @@ void EditorWindow::editDecision(const std::string& id) {
     for(const auto& row:rows)if(row.field->isEnabled())
         typed.push_back({&row,row.counts->text().split(QRegularExpression("[\\s,;]+"),Qt::SkipEmptyParts)});
     std::string created;if(execute("editorEditDecision",[&](auto& d){
+        if(!countsDirty) {
+            if(flowsDirty || targetChanged) {
+                value.routes.clear();
+                for(const auto& row:rows)if(row.field->isEnabled() && row.field->value()>0)
+                    value.routes.push_back({row.route,row.field->value(),row.link,row.stored});
+            }
+            created=putRoutingDecision(d,value);return;
+        }
         value.routes.clear();value.intervals.clear();
         std::size_t periods=0;
         for(const auto& [row,items]:typed)periods=std::max<std::size_t>(periods,items.size());
+        if(periods>0)for(const auto& [row,items]:typed)
+            if((row->field->value()>0 || !items.empty()) && static_cast<std::size_t>(items.size())!=periods)
+                throw std::invalid_argument("EDIT_INCOMPLETE_COUNTS");
         for(std::size_t k=0;k<periods;++k)value.intervals.push_back({from+k*length,from+(k+1)*length});
         for(const auto& [row,items]:typed) {
             if(periods==0){ if(row->field->value()>0)value.routes.push_back({row->route,row->field->value(),row->link,{}}); continue; }

@@ -7,6 +7,16 @@ decision log; **this file is the part a session must read before starting.**
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## Demand priority — owner instruction, 2026-10-05
+
+The owner explicitly asked to start Demand improvements. This takes priority over
+§0's unanswered ordering proposal. [DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md)
+defines slices 1–6: correctness, lossless interval editing, explicit periods and
+compiled preview first; project-owned vehicle/composition catalogs and typed/time
+rules next. Reporting, LOS and batch evaluation stay M5. After slices 1–4, verify
+native Windows behavior and owner appearance, then implement slice 5's schema and
+reference/round-trip gates before its UI. Do not mark the entire Demand plan closed.
+
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 
 [ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) corrected the stale status lines

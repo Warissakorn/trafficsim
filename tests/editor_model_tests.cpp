@@ -369,7 +369,7 @@ TEST(editor, lane_split_is_the_one_rule_for_weights_and_their_fallback) {
     near(laneSplit({0,1,2},3,{1,2,3}),{1./6,2./6,3./6});
     near(laneSplit({0,1,2},3,{}),{1./3,1./3,1./3});          // none authored
     near(laneSplit({0,1},2,{1,2,3}),{.5,.5});                 // stale size
-    near(laneSplit({0,1},2,{0,1}),{.5,.5});                   // a weight that cannot divide
+    near(laneSplit({0,1},2,{0,1}),{0,1});                     // zero excludes a lane
     // Only the lanes the chains start on count: a lane no chain uses takes no weight, and two
     // chains on one lane each carry that lane's weight.
     near(laneSplit({0,2},3,{1,5,3}),{.25,.75});
