@@ -75,4 +75,13 @@ void setAreaControl(ProjectDocument&, const std::string& areaId, std::optional<S
 std::string authorAutomaticConflict(ProjectDocument&, const AutomaticConflict&, const PriorityDefaults&);
 // Deletes an area with its rule and the waiting lines no other area uses.
 void removeConflictArea(ProjectDocument&, const std::string& areaId);
+// Group gestures, executed once inside History. Existing lane-level commands remain available
+// for explicit per-pair edits. Priorities here are relative to the selected authored member.
+std::string authorConflictGroup(ProjectDocument&, const std::string& key, const PriorityDefaults&);
+void setConflictGroupControl(ProjectDocument&, const std::string& id, const std::string& name,
+                             ConflictPriority, double gapTime, double headway);
+void cycleConflictGroupPriority(ProjectDocument&, const std::string& id, const PriorityDefaults&);
+void setConflictGroupStopControl(ProjectDocument&, const std::string& id, std::optional<StopMode>);
+void removeConflictGroup(ProjectDocument&, const std::string& id);
+
 }

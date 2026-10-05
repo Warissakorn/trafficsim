@@ -177,8 +177,13 @@ validation of collapsed derived lanes. D80 replaces the old slide/square-mouth c
 `connectorCentreline` derives a central axis from the compatible stored first-lane geometry;
 `connectorBodyBoundaries` offsets every lane boundary around it; `connectorSurface` attaches
 those boundaries with P1–P4. Both ends pair by lane index at every angle. `connectorBoundaries`
-returns the same final rails used by paint, so conflict coverage and lane handles no longer
-read a second, legacy strip. D107 changes runtime paths to the continuous existing cubic;
+returns the same final rails used by paint and lane handles. D109 crossing coverage uses
+`conflictSurface`: adaptive strips around D107’s continuous cubic for each mapped lane pair,
+with endpoint lane widths blended by equation parameter. It converts results back to authored
+stations; editable drawing vertices cannot change coverage. Highlights still use painted rails.
+D109 `conflictGroups` derives connected groups for one road-owner pair and kind; commands
+author/edit/delete every member atomically, while the resolver keeps individual lane-pair zones.
+Separate locations remain separate groups. D107 changes runtime paths to the continuous existing cubic;
 project schema remains unchanged, with explicit authoring-to-runtime station adapters.
 
 The surface owns its computed mouths and a `selfIntersecting` flag. Singular intersections

@@ -1,4 +1,5 @@
 #include "right_of_way.hpp"
+#include "conflict_surface.hpp"
 #include <algorithm>
 #include <cmath>
 #include <optional>
@@ -22,8 +23,13 @@ double area(const std::vector<Point>& p) {
 }
 // A lane surface: the two boundaries that bound it, point for point with the polyline its
 // stations are authored on.
-struct Strip { std::vector<Point> base, left, right; std::optional<ConnectorEquation> equation{}; };
-std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref) {
+struct Strip { std::vector<Point> base, left, right; std::optional<ConnectorEquation> equation{}; std::vector<double> stations{}; const Connector* connector{}; };
+std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref, bool calculation = false) {
+    if(calculation) {
+        const auto s=conflictSurface(n,ref);
+        if(!s)return std::nullopt;
+        return Strip{s->base,s->left,s->right,{},s->stations,s->connector};
+    }
     try {
         if (!ref.linkId.empty() && ref.connectorId.empty()) {
             for (const auto& link : n.links) {
@@ -64,7 +70,7 @@ std::optional<std::vector<Quad>> quadsOf(const Strip& s) {
     std::vector<Quad> quads;
     double start = 0;
     for (std::size_t j = 0; j + 1 < s.base.size(); ++j) {
-        const double length = std::hypot(s.base[j + 1].x - s.base[j].x, s.base[j + 1].y - s.base[j].y);
+        const double length = s.stations.empty() ? std::hypot(s.base[j + 1].x - s.base[j].x, s.base[j + 1].y - s.base[j].y) : s.stations[j+1]-s.stations[j];
         Quad q{{}, s.left[j], s.left[j + 1], s.right[j], s.right[j + 1], start, length, {}, {}};
         start += length;
         for (const auto& p : {q.l0, q.l1, q.r1, q.r0})
@@ -202,7 +208,7 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
 // whose status says why (none / unsupported / unresolved).
 std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
     SurfaceOverlap failed;
-    const auto a = stripOf(n, first), b = stripOf(n, second);
+    const auto a = stripOf(n, first, true), b = stripOf(n, second, true);
     if (!a || !b) return {failed};
     failed.status = SurfaceOverlap::Status::unsupported;
     try {
@@ -216,7 +222,8 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
                 if (piece.size() < 3 || area(piece) < kMinOverlapArea) continue;
                 StationInterval sa{INFINITY, -INFINITY}, sb{INFINITY, -INFINITY};
                 for (const auto& p : piece) {
-                    const double u = stationIn(x, p), v = stationIn(y, p);
+                    const double u = a->connector ? connectorDrawingStation(*a->connector,stationIn(x,p)) : stationIn(x,p);
+                    const double v = b->connector ? connectorDrawingStation(*b->connector,stationIn(y,p)) : stationIn(y,p);
                     sa = {std::min(sa.from, u), std::max(sa.to, u)};
                     sb = {std::min(sb.from, v), std::max(sb.to, v)};
                 }
@@ -249,7 +256,7 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
 }
 SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
     SurfaceOverlap result;
-    const auto a = stripOf(n, first), b = stripOf(n, second);
+    const auto a = stripOf(n, first, true), b = stripOf(n, second, true);
     if (!a || !b) return result;
     result.status = SurfaceOverlap::Status::unsupported;
     try {
@@ -265,7 +272,8 @@ SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, con
                 // The station at each corner bounds the piece: a cross-section is a straight line,
                 // so the extreme cross-sections of a convex piece pass through its corners.
                 for (const auto& p : piece) {
-                    const double u = stationIn(x, p), v = stationIn(y, p);
+                    const double u = a->connector ? connectorDrawingStation(*a->connector,stationIn(x,p)) : stationIn(x,p);
+                    const double v = b->connector ? connectorDrawingStation(*b->connector,stationIn(y,p)) : stationIn(y,p);
                     sa = {std::min(sa.from, u), std::max(sa.to, u)};
                     sb = {std::min(sb.from, v), std::max(sb.to, v)};
                 }

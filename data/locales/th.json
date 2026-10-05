@@ -500,5 +500,8 @@
   "editorConnectorWidthsRange": "ความกว้างต้องมากกว่า 0 เมตรและเป็นค่าจำกัด ระบุ %1 ค่า; เว้นว่างเพื่อใช้ความกว้างจากลิงก์",
   "editorSignalGreen": "เขียว",
   "editorSignalAmber": "เหลือง",
-  "editorSignalRed": "แดง"
+  "editorSignalRed": "แดง",
+  "editorConflictMixed": "หลายค่า",
+  "editorConflictGroupPairs": "Conflict รายคู่เลน %1 คู่",
+  "editorConflictGroupEdit": "ใช้การตั้งค่านี้กับ Conflict รายคู่เลนทั้ง %1 คู่"
 }

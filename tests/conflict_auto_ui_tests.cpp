@@ -158,6 +158,29 @@ int main(int argc, char** argv) {
         key(w, Qt::Key_A);
         require(network().rightOfWay.conflictAreas.size() == 1 && drawn(w, "merge") == 4 && drawn(w, "passive") == 0,
                 "Reopening did not derive the same automatic areas");
+        // A 3 x 3 crossing is one selectable suggestion, with nine independent reservations.
+        ProjectDocument multi;
+        addLink(multi,{{0,0},{200,0}},3,3.5);addLink(multi,{{100,-60},{100,60}},3,3.5);
+        const auto multiFile=temp.filePath("multi.traffic.json");
+        {QFile f(multiFile);require(f.open(QIODevice::WriteOnly),"Multi fixture open failed");
+            f.write(QByteArray::fromStdString(documentJson(multi).dump()));}
+        w.openFile(multiFile);QApplication::processEvents();key(w,Qt::Key_A);
+        require(table->rowCount()==1 && drawn(w,"passive")==2,"Nine pairs did not draw one group");
+        table->setFocus();table->selectRow(0);QApplication::processEvents();
+        const auto beforeMulti=w.history().revision();
+        QTest::keyClick(table,Qt::Key_P);QApplication::processEvents();
+        require(network().rightOfWay.conflictAreas.size()==9 && table->rowCount()==1,"P did not author all nine pairs");
+        const auto grouped=network().rightOfWay;
+        act(w,"editorUndo")->trigger();QApplication::processEvents();
+        require(network().rightOfWay.empty() && w.history().revision()==beforeMulti,"Group authoring was not one Undo");
+        act(w,"editorRedo")->trigger();QApplication::processEvents();
+        require(network().rightOfWay==grouped,"Redo lost a group member");
+        act(w,"editorDeleteConflict")->trigger();QApplication::processEvents();
+        require(network().rightOfWay.empty() && drawn(w,"passive")==2,"Delete missed a group member");
+        act(w,"editorUndo")->trigger();QApplication::processEvents();
+        require(network().rightOfWay==grouped,"Group delete was not one Undo");
+        // Leave no unsaved document for window teardown.
+        act(w,"editorUndo")->trigger();QApplication::processEvents();
         std::cout << "conflict auto ui tests passed\n";
         return 0;
     } catch (const std::exception& e) {

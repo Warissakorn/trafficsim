@@ -49,6 +49,9 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const Cont
 // Connector's base polyline), so a drag commits the station waitingLineBar and the resolver read.
 // Empty when the reference does not resolve.
 std::vector<Point> controlPathPolyline(const Network&, const ControlPathRef&);
+// Physical distance/offset on the driving lane, adapted to stored authoring coordinates.
+double controlStationDistance(const Network&, const ControlPathRef&, double from, double to);
+double offsetControlStation(const Network&, const ControlPathRef&, double station, double metres);
 // M3.2.6c: the ControlPoint at a place on a Link lane, from a station along that lane's own
 // polyline (what nearestHeadSlot picks) -- mapped cross-section for cross-section onto the Link's
 // reference polyline, where a ControlPoint's station is measured. Empty when the lane is gone.
@@ -91,6 +94,18 @@ struct AutomaticConflict {
     bool operator==(const AutomaticConflict&) const = default;
 };
 std::vector<AutomaticConflict> automaticConflicts(const Network&);
+
+// Derived UI groups: one connected place of a pair of road objects. Lane pairs and their
+// reservations remain separate. Mixed authored/passive members share one selectable group.
+struct ConflictGroup {
+    std::string key, firstOwner, secondOwner;
+    ConflictKind kind{ConflictKind::crossing};
+    std::vector<std::string> areaIds, automaticKeys;
+};
+std::string conflictOwner(const ControlPathRef&);
+std::vector<ConflictGroup> conflictGroups(const Network&, const std::vector<AutomaticConflict>&);
+bool conflictGroupContains(const ConflictGroup&, const std::string& id);
+
 
 // The one resolver the compiler and the diagnostics share. `issues` are runtime (Run-blocking)
 // issues; with none, `rules` and `zones` are what compiles. With no authored controls `rules` is

@@ -83,6 +83,9 @@ Point connectorPathPoint(const ConnectorPath&, double station);
 Point connectorPathDirection(const ConnectorPath&, double station);
 // Stored stations name uniform-parameter cross-sections of the authored point sequence.
 // These adapters do not approximate the runtime curve by those points.
+// Uniform equation parameter to stored drawing station, without arc inversion.
+double connectorDrawingStation(const Connector&, double parameter);
+double connectorDrawingParameter(const Connector&, double authoredStation);
 double connectorRuntimeStation(const Connector&, const ConnectorPath&, double authoredStation);
 double connectorAuthoringStation(const Connector&, const ConnectorPath&, double runtimeStation);
 std::string connectorPathId(const Connector&, int index);

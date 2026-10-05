@@ -37,6 +37,12 @@ closed no owner item.
 
 In order:
 
+- **D109 conflict groups and Bézier coverage:** inspect a curved Connector after an interior
+  drawing drag: paired highlights follow paint, coverage/physical waiting positions follow
+  the equation. Inspect a 3 × 3 crossing: one row, nine lane-pair controls, group edit/Delete
+  and Undo. Two separated intersections of the same owners must remain two rows. Check
+  Windows native CI and owner appearance before claiming cross-platform verification.
+
 - **D107 Connector equation:** run a curved 3 → 3 Connector and both taper sides.
   Vehicles follow the existing cubic from Link attachments/tangents; 0/3/40 drawing points
   and interior drags must leave motion unchanged. Inspect heads and waiting bars on that

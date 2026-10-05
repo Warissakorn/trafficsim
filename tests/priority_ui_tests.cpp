@@ -85,10 +85,11 @@ int main(int argc, char** argv) {
         }, ran);
         act(w, "editorAddCrossing")->trigger(); QApplication::processEvents();
         require(ran, "Crossing dialog never opened");
-        require(authoredRows(table) == 2, "Two lane pairs did not make two rows");
+        require(authoredRows(table) == 1 && w.history().document().network.rightOfWay.conflictAreas.size() == 2,
+                "Two lane pairs did not make one group with two reservations");
         require(automaticRows(table) == 1, "The automatic merge is not listed"); // the crossings are authored now
         require(tabs->currentIndex() == 9, "The Conflict areas tab was not shown");
-        require(items(w, "conflict-area") == 4 && items(w, "waiting-line") == 3, "Areas and waiting lines were not drawn"); // one line per lane (D63)
+        require(items(w, "conflict-area") == 2 && items(w, "waiting-line") == 3, "Grouped sides and waiting lines were not drawn");
         require(table->item(0, 6)->text() == "Runs", "A complete crossing did not report that it runs");
         const auto revision = w.history().revision();
 
@@ -109,6 +110,8 @@ int main(int argc, char** argv) {
         const auto& row = w.history().document().network.rightOfWay;
         require(row.conflictAreas.front().priority == ConflictPriority::firstYields, "The priority was not committed");
         require(row.priorityRules.front().gapTime == 5.5, "gapTime was not committed");
+        for(const auto& a:row.conflictAreas)require(a.priority==ConflictPriority::firstYields,"The edit missed a grouped pair");
+        for(const auto& r:row.priorityRules)require(r.gapTime==5.5,"The edit missed a grouped rule");
         act(w, "editorUndo")->trigger(); QApplication::processEvents();
         require(w.history().revision() == revision, "The edit was not one Undo step");
         require(w.history().document().network.rightOfWay.priorityRules.front().gapTime != 5.5, "Undo did not restore gapTime");
@@ -117,17 +120,17 @@ int main(int argc, char** argv) {
         w.canvas()->select(join); QApplication::processEvents();
         require(act(w, "editorTakeOverMerge")->isEnabled(), "Take over merge disabled on a Connector");
         act(w, "editorTakeOverMerge")->trigger(); QApplication::processEvents();
-        require(authoredRows(table) == 3 && automaticRows(table) == 0, "Taking over the merge added no row");
+        require(authoredRows(table) == 2 && automaticRows(table) == 0, "Taking over the merge added no row");
         int merge = -1;
         for (int r = 0; r < table->rowCount(); ++r) if (table->item(r, 2)->text() == "Merge") merge = r;
         require(merge >= 0, "The taken-over area is not a merge row");
         table->selectRow(merge); QApplication::processEvents();
         act(w, "editorRestorePriority")->trigger(); QApplication::processEvents();
-        require(authoredRows(table) == 2 && automaticRows(table) == 1, "Restore automatic priority did not remove the merge");
+        require(authoredRows(table) == 1 && automaticRows(table) == 1, "Restore automatic priority did not remove the merge");
 
         // An undetermined area is a Problems row that leads back to the area.
-        table->selectRow(1); QApplication::processEvents();
-        const auto second = table->item(1, 0)->data(Qt::UserRole).toString().toStdString();
+        table->selectRow(0); QApplication::processEvents();
+        const auto second = table->item(0, 0)->data(Qt::UserRole).toString().toStdString();
         ran = false;
         onDialog("editorConflictDialog", [&](QDialog* dialog) {
             dialog->findChild<QComboBox*>("editorConflictPriority")->setCurrentIndex(2); dialog->accept(); }, ran);
