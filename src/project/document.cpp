@@ -1,4 +1,5 @@
 #include "document.hpp"
+#include "demand_time_types.hpp"
 #include "../core/validate.hpp"
 #include "../model/network/diagnostics.hpp"
 #include <nlohmann/json.hpp>
@@ -96,8 +97,8 @@ Json documentJson(const ProjectDocument& d) {
         network["queueCounters"] = counters;
     }
     const auto& b = d.background;
-    // Preserve schema-17 fixture/file bytes until a schema-18 catalog feature is authored.
-    const int schema=d.definition && (!d.definition->externalCompositions ||
+    // Preserve legacy bytes; use 18 for owned catalogs and 19 for time/type rules.
+    const int schema=d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     return {{"format", "TrafficSim"}, {"schemaVersion", schema}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
@@ -122,7 +123,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 18) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 19) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||

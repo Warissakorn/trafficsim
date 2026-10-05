@@ -1,5 +1,6 @@
 #include "editor_window.hpp"
 #include "demand_period_editor.hpp"
+#include "demand_type_rules_dialog.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
@@ -114,23 +115,40 @@ void EditorWindow::editDecision(const std::string& id) {
         irregularNote->setVisible(irregular);start->setEnabled(!irregular);minutes->setEnabled(!irregular);
         for(const auto& row:rows)row.counts->setReadOnly(irregular);
     };protectIrregular();
+    auto* typeRules=new QPushButton(text("editorTypeRules"),&dialog);typeRules->setObjectName("editorTypeRules");layout->addWidget(typeRules);
+    auto* typeHelp=new QLabel(text("editorTypeRulesTargetsHelp"),&dialog);typeHelp->setWordWrap(true);layout->addWidget(typeHelp);
+    const auto protectTypeTargets=[&]{
+        const bool locked=!value.typeRules.empty();place->setEnabled(!locked);start->setEnabled(!locked && (value.intervals.empty() || regular));minutes->setEnabled(!locked && (value.intervals.empty() || regular));
+        for(const auto& row:rows){row.field->setEnabled(!locked && (row.link.empty() || (!value.linkId.empty() && row.link!=value.linkId)));row.counts->setReadOnly(locked || (!value.intervals.empty()&&!regular));}
+    };
+    connect(typeRules,&QPushButton::clicked,&dialog,[&]{
+        try {
+            const auto catalog=resolveDemandCatalog(def.value_or(AuthoringDefinition{}),data_,false);
+            if(editDemandTypeRules(&dialog,value,catalog.vehicleTypes,[this](const char* key){return text(key);}))protectTypeTargets();
+        }catch(const std::exception& e){showError(e);}
+    });protectTypeTargets();
     auto* periods=new QPushButton(text("editorDemandPeriods"),&dialog);periods->setObjectName("editorDecisionPeriods");
     periods->setEnabled(!value.routes.empty());layout->addWidget(periods);
     connect(periods,&QPushButton::clicked,&dialog,[&]{
         QStringList columns{text("editorInputStart"),text("editorInputEnd")};
         for(const auto& r:value.routes)columns<<QString::fromStdString(r.destinationLinkId.empty()?r.routeId:r.destinationLinkId);
+        for(const auto& rule:value.typeRules)for(const auto& r:value.routes)
+            columns<<QString::fromStdString(rule.vehicleTypeId+": "+(r.destinationLinkId.empty()?r.routeId:r.destinationLinkId));
         std::vector<std::vector<double>> table;
         for(std::size_t k=0;k<value.intervals.size();++k) {
             std::vector<double> row{value.intervals[k].startTime,value.intervals[k].endTime};
             for(const auto& r:value.routes)row.push_back(r.intervalFlows[k]);
+            for(const auto& rule:value.typeRules)for(const auto& flows:rule.intervalFlows)row.push_back(flows[k]);
             table.push_back(std::move(row));
         }
         const auto edited=editDemandPeriods(&dialog,columns,table,[this](const char* key){return text(key);});
         if(!edited)return;
         value.intervals.clear();for(auto& r:value.routes)r.intervalFlows.clear();
+        for(auto& rule:value.typeRules)for(auto& flows:rule.intervalFlows)flows.clear();
         for(const auto& cells:*edited) {
             value.intervals.push_back({cells[0],cells[1]});
-            for(std::size_t k=0;k<value.routes.size();++k)value.routes[k].intervalFlows.push_back(cells[k+2]);
+            std::size_t col=2;for(auto& r:value.routes)r.intervalFlows.push_back(cells[col++]);
+            for(auto& rule:value.typeRules)for(auto& flows:rule.intervalFlows)flows.push_back(cells[col++]);
         }
         regular=!value.intervals.empty();
         const double length=regular?value.intervals.front().endTime-value.intervals.front().startTime:0;
@@ -145,10 +163,11 @@ void EditorWindow::editDecision(const std::string& id) {
             if(regular)for(double f:row.stored)items<<QString::number(f,'g',12);
             row.counts->setText(items.join(' '));
         }
-        countsDirty=false;protectIrregular();
+        countsDirty=false;protectIrregular();protectTypeTargets();
     });
     periods->setToolTip(text("editorDemandSaveCountsFirst"));
-    const auto syncPeriods=[&]{periods->setEnabled(!value.routes.empty() && !countsDirty && !flowsDirty &&
+    const auto syncPeriods=[&]{typeRules->setEnabled(!value.routes.empty() && !countsDirty && !flowsDirty &&
+        value.linkId==place->currentData().toString().toStdString());periods->setEnabled(!value.routes.empty() && !countsDirty && !flowsDirty &&
         value.linkId==place->currentData().toString().toStdString());};
     for(const auto& row:rows) {
         connect(row.counts,&QLineEdit::textChanged,&dialog,syncPeriods);
@@ -157,6 +176,7 @@ void EditorWindow::editDecision(const std::string& id) {
     connect(start,&QDoubleSpinBox::valueChanged,&dialog,syncPeriods);
     connect(minutes,&QDoubleSpinBox::valueChanged,&dialog,syncPeriods);
     connect(place,&QComboBox::currentIndexChanged,&dialog,syncPeriods);
+    syncPeriods();
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);layout->addWidget(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
     buttons->button(QDialogButtonBox::Ok)->setEnabled(!rows.empty());

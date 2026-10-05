@@ -78,10 +78,21 @@ void detail::pruneRoutingDecisions(AuthoringDefinition& values, const Network& n
     // A decision entry for a route that is gone goes with it, as the route's own inputs do, and
     // so does a destination whose Link is gone (M2.1.1). A decision left with no entries cannot
     // split anything, and a placed one whose Link is gone sits nowhere: it and its inputs go too.
-    for (auto& decision : values.routingDecisions)
-        std::erase_if(decision.routes,[&](const auto& entry){
-            if(!entry.destinationLinkId.empty())return !linkExists(entry.destinationLinkId);
-            return std::none_of(values.routes.begin(),values.routes.end(),[&](const auto& r){return r.id==entry.routeId;});});
+    for (auto& decision : values.routingDecisions) {
+        for(std::size_t k=decision.routes.size();k-->0;) {
+            const auto& entry=decision.routes[k];
+            const bool missing=!entry.destinationLinkId.empty()?!linkExists(entry.destinationLinkId):
+                std::none_of(values.routes.begin(),values.routes.end(),[&](const auto& r){return r.id==entry.routeId;});
+            if(!missing)continue;
+            decision.routes.erase(decision.routes.begin()+static_cast<std::ptrdiff_t>(k));
+            for(auto& rule:decision.typeRules) {
+                if(k<rule.relativeFlows.size())rule.relativeFlows.erase(rule.relativeFlows.begin()+static_cast<std::ptrdiff_t>(k));
+                if(k<rule.intervalFlows.size())rule.intervalFlows.erase(rule.intervalFlows.begin()+static_cast<std::ptrdiff_t>(k));
+            }
+        }
+        // Losing a type's only destination invalidates that rule: reject atomically rather
+        // than quietly reverting that type to the default destinations.
+    }
     const auto gone=[&](const RoutingDecision& x){return x.routes.empty() || (!x.linkId.empty() && !linkExists(x.linkId));};
     std::vector<std::string> emptied;
     for (const auto& decision : values.routingDecisions) if (gone(decision)) emptied.push_back(decision.id);
