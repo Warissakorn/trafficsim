@@ -15,9 +15,8 @@ std::string refKey(const ControlPathRef& r) {
 }
 // One lane path a crossing can involve, with what the exclusions and the prefilter read.
 struct Path {
-    ControlPathRef ref; std::string owner, key, fromLink, toLink, fromLane, toLane;
+    ControlPathRef ref; std::string owner, key;
     int level{}; Point lo{}, hi{};
-    double fromStation{}, toStation{}, length{};
 };
 void bound(Path& p, const std::vector<Point>& g, double margin) {
     p.lo = {INFINITY, INFINITY}; p.hi = {-INFINITY, -INFINITY};
@@ -28,22 +27,7 @@ void bound(Path& p, const std::vector<Point>& g, double margin) {
 }
 // Holds the piece's middle, so a stale area that merely touches a piece does not hide it (D86).
 bool holds(double from, double to, StationInterval i) { const double m = (i.from + i.to) / 2; return from <= m && m <= to; }
-// Pairs whose overlap is not a crossing. One place, so a later case (a diverge) is lifted here.
-bool sharedMouth(const Path& a, const Path& b, const SurfaceOverlap& o) {
-    const auto at=[](StationInterval i,double s){return i.from<=s+1e-7 && i.to>=s-1e-7;};
-    const auto same=[](double a,double b){return std::abs(a-b)<=1e-7;};
-    const bool ca=!a.ref.connectorId.empty(),cb=!b.ref.connectorId.empty();
-    if(ca && cb) {
-        const bool source=a.fromLink==b.fromLink && a.fromLane==b.fromLane && same(a.fromStation,b.fromStation);
-        const bool target=a.toLink==b.toLink && a.toLane==b.toLane && same(a.toStation,b.toStation);
-        return (source && at(o.first,0) && at(o.second,0)) || (target && at(o.first,a.length) && at(o.second,b.length));
-    }
-    const auto mouth=[&](const Path& c,const Path& l,StationInterval ci,StationInterval li) {
-        return (c.fromLink==l.owner && c.fromLane==l.ref.laneId && at(ci,0) && at(li,c.fromStation)) ||
-               (c.toLink==l.owner && c.toLane==l.ref.laneId && at(ci,c.length) && at(li,c.toStation));
-    };
-    return ca && !cb ? mouth(a,b,o.first,o.second) : cb && !ca ? mouth(b,a,o.second,o.first) : false;
-}
+
 }
 // Every station is chosen on the runtime segment itself, then converted to the authored polyline.
 // Choosing it on the authored polyline was only exact for a path that IS that polyline: lane 2
@@ -90,7 +74,7 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
     std::vector<Path> paths;
     for (const auto& l : n.links)
         for (const auto& lane : l.lanes) {
-            Path p{{l.id, lane.id, "", "", ""}, l.id, "", "", "", "", "", l.level};
+            Path p{{l.id, lane.id, "", "", ""}, l.id, "", l.level};
             const auto surface=conflictSurface(n,p.ref);
             if(!surface)continue;
             auto edges=surface->left;edges.insert(edges.end(),surface->right.begin(),surface->right.end());
@@ -99,10 +83,7 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
         }
     for (const auto& c : n.connectors)
         for (const auto& cp : connectorPaths(n, c)) {
-            Path p{{"", "", c.id, cp.from.laneId, cp.to.laneId}, c.id, "", c.from.linkId, c.to.linkId,
-                   cp.from.laneId, cp.to.laneId, c.level};
-            p.fromStation=attachmentStation(n,cp.from,true);p.toStation=attachmentStation(n,cp.to,false);
-            p.length=polylineLength(c.geometry);
+            Path p{{"", "", c.id, cp.from.laneId, cp.to.laneId}, c.id, "", c.level};
             const auto surface=conflictSurface(n,p.ref);
             if(!surface)continue;
             auto edges=surface->left;edges.insert(edges.end(),surface->right.begin(),surface->right.end());
@@ -116,11 +97,10 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
             const auto& a = paths[i]; const auto& b = paths[j];
             if(a.owner==b.owner || a.level!=b.level)continue;
             if (a.hi.x < b.lo.x || b.hi.x < a.lo.x || a.hi.y < b.lo.y || b.hi.y < a.lo.y) continue;
-            const auto pieces = surfaceOverlaps(n, a.ref, b.ref);
+            const auto pieces = crossingOverlaps(n, a.ref, b.ref);
             for (std::size_t k = 0; k < pieces.size(); ++k) {
                 const auto& o = pieces[k];
                 if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
-                if(sharedMouth(a,b,o))continue;
                 if (authoredCovers(n, a.ref, b.ref, o)) continue;
                 result.push_back({ConflictKind::crossing, {a.ref, o.first.from, o.first.to, ""}, {b.ref, o.second.from, o.second.to, ""},
                                   ConflictPriority::undetermined,

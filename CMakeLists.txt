@@ -47,7 +47,7 @@ add_library(trafficsim_model STATIC src/model/network/geometry.cpp
     src/model/network/diagnostics.cpp src/model/network/connector_paths.cpp src/model/network/road_boundaries.cpp src/model/network/connector_surface.cpp
     src/model/network/sections.cpp src/model/network/markings.cpp src/model/network/rotation.cpp src/model/network/head_slots.cpp src/model/demand/signal_control.cpp
     src/model/network/routing.cpp src/model/network/lane_family.cpp src/model/network/routeless.cpp src/model/network/right_of_way.cpp
-    src/model/network/conflict_surface.cpp src/model/network/conflict_groups.cpp src/model/network/conflict_coverage.cpp src/model/network/automatic_conflicts.cpp)
+    src/model/network/conflict_surface.cpp src/model/network/conflict_groups.cpp src/model/network/conflict_coverage.cpp src/model/network/conflict_crossings.cpp src/model/network/automatic_conflicts.cpp)
 target_link_libraries(trafficsim_model PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/summary.cpp src/eval/movement.cpp src/eval/lane_changes.cpp src/eval/segment_times.cpp src/eval/stop_lines.cpp src/eval/arrival_phases.cpp src/eval/dead_end_waits.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)

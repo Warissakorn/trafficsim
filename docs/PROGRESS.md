@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Shared mouth classification and separate lane-pair paint (D110)
+
+Owner reported Connector/Link endpoint conflicts and clarified that grouping shares priority,
+not filled outlines. Reproduced: a one-lane internal join is an automatic merge, but Add
+crossing creates a duplicate crossing there. `crossingOverlaps` now excludes actual rooted
+mouths for automatic suggestions, Add, geometry following and Run coverage; raw geometric
+measurements stay available. Neighbour-lane crossings and separate later intersections stay
+eligible. Old explicit mouth crossings report CONFLICT_NO_OVERLAP until removed/recreated
+as the actual merge. Canvas draws each lane pair's two original strips/insets; all share group
+selection and priority edits, including one Undo. Nine pairs have eighteen painted sides.
+Linux headless/desktop checks and regressions are recorded in the follow-up PR. No core,
+schema, topology or frozen fixture changes; Windows and owner appearance checks remain open.
+
+---
+
 ## 2026-10-05 — Bézier conflict coverage and connected editor groups (D109)
 
 Owner requested runtime-equation coverage with painted highlights and one group for 3 × 3.
@@ -316,29 +331,6 @@ proposed 1% cap; without the hold 5.19% / 5.44%. A hold of 3 s or more zeroes th
 by construction and moves the rest past it. Only the lab passes, at threshold 1.5 (0.92%), giving
 up most of the gain. D95 stays off; the choice goes back to the owner (NEXT).
 
-## 2026-10-02 — Why D95's changes reverse (D101 step 1)
-
-Reproduced with `trafficsim-lane-change-sweep` (Release, seeds 42–51, threshold 0.5): lab 4,817
-changes, 112 back-and-forth; four-leg-signalised 2,850 changes, 289, all back. A temporary probe in
-`decideLaneChanges` (removed, never committed) logged each accepted change's leaders and modes.
-**Two causes, both in the incentive, which compares one tick of `followingAcceleration`:**
-1. **The car-following regimes have hard edges** (`following.cpp:25–30`). Past `speedThreshold`
-   (0.2) and inside the approach horizon (`room < closing²/(2b) + v·T`) the result is
-   approaching (≈0 or braking); just outside either it is free (up to `maxAcceleration`).
-   One lane flips by >1 m/s² for a 0.05 m/s or 1.5 m difference: lab vehicle 184 changed every
-   tick; four-leg vehicle 67 saw a leader 95.3 m ahead as free, 93.8 m ahead as approaching
-   (−1.43). A regime edge is crossed in 110/112 lab reversals and 127/138 four-leg ones within 1 s.
-2. **Myopia at queues:** a moving leader looks better than a standing one while it is still
-   braking into its own queue; 1–3 s later the lane just left looks better. Most four-leg
-   reversals of 1.1–3 s are this (only 52/160 cross a regime edge).
-
-**Stateless fixes tried (probes):** E1, the worst of the first three vehicles ahead; E3, one
-continuous approach expression for the incentive only. Back-and-forth, lab / four-leg: current
-112/289; E1 110/212; E3 47/94; E1+E3 28/54. But the **current incentive at threshold 1.0 gives
-28/43 and keeps more of the delay gain** (lab 6.72 s vs 8.17, no-D95 8.83; four-leg 46.81 vs
-47.21, no-D95 50.11). No stateless variant reached zero. Windows only; development evidence.
-Side finding, not acted on: the same edges shape ordinary car-following (unvalidated prototype).
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -458,6 +450,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D110 | 2026-10-05 | **Groups share control, while each lane-pair side is painted separately; one crossing classifier excludes true attachment mouths everywhere** | Owner clarification and reproduced automatic/manual disagreement at an internal Connector/Link join. Merge topology continues to own that competition. | A measured mouth case outside the connected attachment component, or another owner display ruling. |
 | D109 | 2026-10-05 | **Conflict calculation follows the runtime cubic; display follows paint; connected same-owner lane pairs share one editor group** | Owner ruling. Preserve nine pair reservations and one Undo for 3 × 3; spatial connectivity keeps separated crossings apart. A pure diverge has no competing arrival, and derived merge arbitration stays topological. | A new solver or measured grouping/geometry defect. |
 | D108 | 2026-10-04 | **Defer source entry when its ordinary first step exceeds current leader clearance** | M3.2.8a.1a; same following/integration, buffer, queue order and sampled vehicle. Exact equality admits. Failure-first tests and 120 stress/160 project comparisons pass; three measured source clamps removed, moving clamps remain | Later lane changes introduce a leader; the snapshot guard holds safe entry unnecessarily; moving merge anticipation remains a separate contract |
 | D107 | 2026-10-04 | **Use the existing single cubic equation directly for runtime Connector motion** | Owner requested no PolyPoint driving path. Lane attachments/tangents set controls; integrated/inverted arc length sets metre stations. Supersedes D106 runtime rail-midpoint paths; drawing/mouth rules remain. Intermediate points and widths edit paint only. Stored controls adapt via uniform parameter; timing changes and stress clamps are measured | Owner needs interior edits to steer vehicles, or analytic surface coverage/2D driveability is required |

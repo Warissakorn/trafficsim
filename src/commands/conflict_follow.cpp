@@ -18,7 +18,7 @@ std::string label(const ControlPathRef& r) { return r.linkId + "/" + r.laneId + 
 // then the nearest middle; pieces another area of the same pair already took are not offered.
 std::optional<Extents> crossingNow(const Network& n, const ConflictArea& a, std::set<std::pair<std::string, std::size_t>>& taken,
                                    bool& gone) {
-    const auto pieces = surfaceOverlaps(n, a.first.path, a.second.path);
+    const auto pieces = crossingOverlaps(n, a.first.path, a.second.path);
     if (pieces.front().status == SurfaceOverlap::Status::none) { gone = true; return std::nullopt; }
     if (pieces.front().status != SurfaceOverlap::Status::overlap) return std::nullopt; // the resolver says why
     const auto pair = std::min(label(a.first.path), label(a.second.path)) + "|" + std::max(label(a.first.path), label(a.second.path));

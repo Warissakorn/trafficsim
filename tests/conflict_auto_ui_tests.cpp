@@ -14,6 +14,7 @@
 #include <QTest>
 #include <QTimer>
 #include <iostream>
+#include <set>
 using namespace trafficsim;
 // M3.2.4c (D68): automatic conflict areas in the editor, as the owner asked -- they appear where
 // roads overlap with no Add step; the Conflict area tool only sets priority. A passive crossing is
@@ -165,7 +166,12 @@ int main(int argc, char** argv) {
         {QFile f(multiFile);require(f.open(QIODevice::WriteOnly),"Multi fixture open failed");
             f.write(QByteArray::fromStdString(documentJson(multi).dump()));}
         w.openFile(multiFile);QApplication::processEvents();key(w,Qt::Key_A);
-        require(table->rowCount()==1 && drawn(w,"passive")==2,"Nine pairs did not draw one group");
+        require(table->rowCount()==1 && drawn(w,"passive")==18,"Nine pairs did not retain their individual sides");
+        std::set<QString> pairIds,groupIds;
+        for(auto* item:w.canvas()->scene()->items())if(item->data(0).toString()=="auto-conflict") {
+            pairIds.insert(item->data(3).toString());groupIds.insert(item->data(1).toString());
+        }
+        require(pairIds.size()==9 && groupIds.size()==1,"Separate outlines did not share one selectable control group");
         table->setFocus();table->selectRow(0);QApplication::processEvents();
         const auto beforeMulti=w.history().revision();
         QTest::keyClick(table,Qt::Key_P);QApplication::processEvents();
@@ -176,7 +182,7 @@ int main(int argc, char** argv) {
         act(w,"editorRedo")->trigger();QApplication::processEvents();
         require(network().rightOfWay==grouped,"Redo lost a group member");
         act(w,"editorDeleteConflict")->trigger();QApplication::processEvents();
-        require(network().rightOfWay.empty() && drawn(w,"passive")==2,"Delete missed a group member");
+        require(network().rightOfWay.empty() && drawn(w,"passive")==18,"Delete missed a group member");
         act(w,"editorUndo")->trigger();QApplication::processEvents();
         require(network().rightOfWay==grouped,"Group delete was not one Undo");
         // Leave no unsaved document for window teardown.

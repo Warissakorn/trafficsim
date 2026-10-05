@@ -64,7 +64,7 @@ ConflictPriority priority(EditorWindow& w, const std::string& id) {
 std::vector<QGraphicsPathItem*> sides(EditorWindow& w, const std::string& id) {
     std::vector<QGraphicsPathItem*> found;
     for (auto* i : w.canvas()->scene()->items())
-        if (i->data(0).toString() == "conflict-area" && i->data(1).toString().toStdString() == id)
+        if (i->data(0).toString() == "conflict-area" && i->data(3).toString().toStdString() == id)
             if (auto* path = dynamic_cast<QGraphicsPathItem*>(i)) found.push_back(path);
     return found;
 }

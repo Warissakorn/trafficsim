@@ -46,7 +46,7 @@ std::vector<std::string> addCrossingAreas(ProjectDocument& d, const std::string&
     bool authored = false;
     for (std::size_t i = 0; i < a.size(); ++i)
         for (std::size_t j = 0; j < b.size(); ++j) {
-            for (const auto& o : surfaceOverlaps(d.network, a[i], b[j])) { // every piece its own area (D72)
+            for (const auto& o : crossingOverlaps(d.network, a[i], b[j])) { // every crossing piece its own area (D72)
                 if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
                 // A piece already authored keeps its area: a second Add crossing does not double it.
                 if (authoredCovers(d.network, a[i], b[j], o)) authored = true;

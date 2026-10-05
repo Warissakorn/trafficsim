@@ -8,11 +8,9 @@
 #include <QPen>
 #include <algorithm>
 #include <cmath>
-#include <map>
-#include <tuple>
 
 // M3.2.4: authored conflict areas and waiting lines on the canvas, drawn from the same lane
-// strips the resolver measures coverage with (conflictSideOutline), so what is shown is what runs.
+// painted strips. Runtime coverage uses the equation; grouping shares controls, not outlines.
 namespace trafficsim {
 namespace {
 QPainterPath outlinePath(const std::vector<Point>& points) {
@@ -140,10 +138,8 @@ void EditorCanvas::drawConflicts() {
     if (!document_) return;
     const auto& n = document_->network;
     conflictGroups_=conflictGroups(n,automatic_);
-    // Union display strips by road side and state, never a convex hull across empty space.
-    using Key=std::tuple<std::string,std::string,bool,bool,bool,int>;
-    std::map<Key,QPainterPath> shapes;
-    const auto add=[&](const std::string& id,ConflictPriority priority,const ConflictSide& first,const ConflictSide& second,bool automatic) {
+    // Each lane pair retains its own painted sides and inset. Only selection and controls group.
+    const auto draw=[&](const std::string& id,ConflictPriority priority,const ConflictSide& first,const ConflictSide& second,bool automatic) {
         std::string key=id;
         for(const auto& g:conflictGroups_)if(conflictGroupContains(g,id)){key=g.key;break;}
         for(const auto* side:{&first,&second}) {
@@ -151,29 +147,26 @@ void EditorCanvas::drawConflicts() {
             const auto outline=conflictSideOutline(n,*side);if(outline.size()<3)continue;
             const bool undecided=priority==ConflictPriority::undetermined;
             const bool yields=(side==&first)==(priority==ConflictPriority::firstYields);
-            const Key k{key,conflictOwner(side->path),automatic,undecided,yields,level};
-            const auto path=outlinePath(outline);auto& shape=shapes[k];shape=shape.isEmpty()?path:shape.united(path);
+            const bool lit=key==highlightedConflict_,hover=key==hoverConflict_ || key==hoverAutomatic_;
+            QColor tint=undecided?(automatic?canvasStyle::ink():canvasStyle::warning()):yields?canvasStyle::error():canvasStyle::ok();
+            tint.setAlpha(automatic?(undecided?90:80):150);
+            const bool hatched=!automatic && yields;
+            QPen pen(lit?canvasStyle::selection():hover?canvasStyle::hover():tint.darker(150),lit?2.5:hover?2:1,
+                     automatic?Qt::DashLine:Qt::SolidLine);pen.setCosmetic(true);
+            const auto shape=outlinePath(outline);
+            QPainterPathStroker stroker;stroker.setWidth(2*kConflictInset);stroker.setJoinStyle(Qt::MiterJoin);
+            auto inset=shape.subtracted(stroker.createStroke(shape)).simplified();if(inset.isEmpty())inset=shape;
+            auto* item=scene_.addPath(inset,pen,QBrush(tint,hatched?Qt::BDiagPattern:Qt::SolidPattern));
+            item->setZValue(level*100.+(automatic?5.5:hatched?6.5:6));item->setToolTip(QString::fromStdString(key));
+            item->setData(0,QStringLiteral("conflict-area"));
+            if(automatic && key.rfind("auto/",0)==0)item->setData(0,QStringLiteral("auto-conflict"));
+            item->setData(1,QString::fromStdString(key));
+            if(automatic)item->setData(2,QString::fromLatin1(undecided?"passive":"merge"));
+            item->setData(3,QString::fromStdString(id)); // lane-pair identity, independent of group selection
         }
     };
-    for(const auto& a:n.rightOfWay.conflictAreas)add(a.id,a.priority,a.first,a.second,false);
-    if(tool_==Tool::conflict)for(const auto& a:automatic_)add(a.key,a.priority,a.first,a.second,true);
-    for(const auto& [k,shape]:shapes) {
-        const auto& [key,road,automatic,undecided,yields,level]=k;(void)road;
-        const bool lit=key==highlightedConflict_,hover=key==hoverConflict_ || key==hoverAutomatic_;
-        QColor tint=undecided?(automatic?canvasStyle::ink():canvasStyle::warning()):yields?canvasStyle::error():canvasStyle::ok();
-        tint.setAlpha(automatic?(undecided?90:80):150);
-        const bool hatched=!automatic && yields;
-        QPen pen(lit?canvasStyle::selection():hover?canvasStyle::hover():tint.darker(150),lit?2.5:hover?2:1,
-                 automatic?Qt::DashLine:Qt::SolidLine);pen.setCosmetic(true);
-        QPainterPathStroker stroker;stroker.setWidth(2*kConflictInset);stroker.setJoinStyle(Qt::MiterJoin);
-        auto inset=shape.subtracted(stroker.createStroke(shape)).simplified();if(inset.isEmpty())inset=shape;
-        auto* item=scene_.addPath(inset,pen,QBrush(tint,hatched?Qt::BDiagPattern:Qt::SolidPattern));
-        item->setZValue(level*100.+(automatic?5.5:hatched?6.5:6));item->setToolTip(QString::fromStdString(key));
-        item->setData(0,QStringLiteral("conflict-area"));
-        if(automatic && key.rfind("auto/",0)==0)item->setData(0,QStringLiteral("auto-conflict"));
-        item->setData(1,QString::fromStdString(key));
-        if(automatic)item->setData(2,QString::fromLatin1(undecided?"passive":"merge"));
-    }
+    for(const auto& a:n.rightOfWay.conflictAreas)draw(a.id,a.priority,a.first,a.second,false);
+    if(tool_==Tool::conflict)for(const auto& a:automatic_)draw(a.key,a.priority,a.first,a.second,true);
     for (const auto& line : n.rightOfWay.waitingLines) {
         const int level = levelOf(n, line.point.path);
         if (!levelVisible(level)) continue;

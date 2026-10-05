@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
                 "Two lane pairs did not make one group with two reservations");
         require(automaticRows(table) == 1, "The automatic merge is not listed"); // the crossings are authored now
         require(tabs->currentIndex() == 9, "The Conflict areas tab was not shown");
-        require(items(w, "conflict-area") == 2 && items(w, "waiting-line") == 3, "Grouped sides and waiting lines were not drawn");
+        require(items(w, "conflict-area") == 4 && items(w, "waiting-line") == 3, "Individual lane-pair sides and waiting lines were not drawn");
         require(table->item(0, 6)->text() == "Runs", "A complete crossing did not report that it runs");
         const auto revision = w.history().revision();
 
