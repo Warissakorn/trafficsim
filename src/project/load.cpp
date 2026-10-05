@@ -1,6 +1,8 @@
 #include "load.hpp"
 #include "json.hpp"
 #include "run.hpp"
+#include "demand_catalog.hpp"
+#include <set>
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -41,12 +43,14 @@ std::vector<Composition> loadCompositions(const std::filesystem::path& dataDirec
 namespace {
 bool validComposition(const Composition& c, const std::vector<VehicleType>& types) {
     if (c.types.empty()) return false;
+    double total=0;std::set<std::string> ids;
     for (const auto& t : c.types) {
+        total+=t.share;if(!ids.insert(t.vehicleTypeId).second)return false;
         if (!(std::isfinite(t.share) && t.share > 0)) return false;
         if (std::none_of(types.begin(), types.end(), [&](const auto& v) { return v.id == t.vehicleTypeId; }))
             return false;
     }
-    return true;
+    return std::isfinite(total) && total>0;
 }
 const Composition* findComposition(const std::vector<Composition>& all, const std::string& id) {
     for (const auto& c : all) if (c.id == id) return &c;
@@ -57,9 +61,11 @@ std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& author
                                                const std::filesystem::path& dataDirectory) {
     std::vector<ValidationIssue> issues;
     if (std::none_of(authored.inputs.begin(), authored.inputs.end(),
-                     [](const auto& i) { return !i.compositionId.empty(); })) return issues;
-    const auto all = loadCompositions(dataDirectory);
-    const auto types = resolveCatalogs(AuthoringDefinition{authored}, dataDirectory).vehicleTypes;
+                     [](const auto& i) { return !i.compositionId.empty(); }) && authored.externalCompositions) return issues;
+    const auto resolved=resolveDemandCatalog(authored,dataDirectory);
+    const auto& all=resolved.compositions;const auto& types=resolved.vehicleTypes;
+    auto owned=authored;owned.vehicleTypes=types;owned.externalVehicleTypes=false;
+    if(!owned.externalCompositions)issues=ownedCatalogIssues(owned);
     for (std::size_t i = 0; i < authored.inputs.size(); ++i) {
         const auto& id = authored.inputs[i].compositionId;
         if (id.empty()) continue;
@@ -73,28 +79,42 @@ std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& author
     }
     return issues;
 }
+DemandCatalog resolveDemandCatalog(const AuthoringDefinition& authored,const std::filesystem::path& dataDirectory,bool includeCompositions) {
+    DemandCatalog result{authored.vehicleTypes,authored.behaviours,authored.compositions,authored.vehicleTypeNames};
+    try {
+        if (authored.externalVehicleTypes) {
+            result.vehicleTypes.clear();result.vehicleTypeNames.clear();
+            for (const auto& item : catalog(dataDirectory / "vehicle-types")) {
+                result.vehicleTypes.push_back(parseVehicleType(item));
+                if(item.contains("name")) {
+                    if(!item.at("name").is_string())throw std::invalid_argument("EDIT_CATALOG_READ");
+                    const auto name=item.at("name").get<std::string>();
+                    if(!name.empty())result.vehicleTypeNames[result.vehicleTypes.back().id]=name;
+                }
+            }
+        }
+        if (authored.externalBehaviours) {
+            result.behaviours.clear();
+            for (const auto& item : catalog(dataDirectory / "driver-behaviour"))
+                result.behaviours.push_back(parseBehaviour(item));
+        }
+    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    if(includeCompositions && authored.externalCompositions)result.compositions=loadCompositions(dataDirectory);
+    return result;
+}
 ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
     // Routing decisions first (M2.4): after this every input names one route, which is what the
     // composition split below and buildScenario's period and lane splits all expect.
     ScenarioDefinition definition=withRoutingDecisions(authored);
-    try {
-        if (authored.externalVehicleTypes) {
-            definition.vehicleTypes.clear();
-            for (const auto& item : catalog(dataDirectory / "vehicle-types"))
-                definition.vehicleTypes.push_back(parseVehicleType(item));
-        }
-        if (authored.externalBehaviours) {
-            definition.behaviours.clear();
-            for (const auto& item : catalog(dataDirectory / "driver-behaviour"))
-                definition.behaviours.push_back(parseBehaviour(item));
-        }
-    } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    const auto resolved=resolveDemandCatalog(authored,dataDirectory,
+        std::any_of(authored.inputs.begin(),authored.inputs.end(),[](const auto& i){return !i.compositionId.empty();}));
+    definition.vehicleTypes=resolved.vehicleTypes;definition.behaviours=resolved.behaviours;
     // M2.3. Splitting a Poisson stream by fixed shares gives independent Poisson streams, so one
     // input per type is the composition exactly, not an approximation of it. Read only when
     // an input names one, so a document without compositions never touches the directory.
     if (std::any_of(authored.inputs.begin(), authored.inputs.end(),
                     [](const auto& i) { return !i.compositionId.empty(); })) {
-        const auto all = loadCompositions(dataDirectory);
+        const auto& all = resolved.compositions;
         std::vector<VehicleInput> inputs;
         for (const auto& input : definition.inputs) {
             if (input.compositionId.empty()) { inputs.push_back(input); continue; }

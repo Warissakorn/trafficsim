@@ -1,5 +1,6 @@
 #include "demand_paths.hpp"
 #include "document.hpp"
+#include "demand_catalog.hpp"
 #include "../model/demand/signal_control.hpp"
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
@@ -13,6 +14,16 @@ AuthoringDefinition parseAuthoringDefinition(const Json& j) {
     static_cast<ScenarioDefinition&>(d) = parseDefinition(j);
     d.externalVehicleTypes = !j.contains("vehicleTypes");
     d.externalBehaviours = !j.contains("behaviours");
+    d.externalCompositions = !j.contains("compositions");
+    if(!d.externalCompositions) {
+        if(!j.at("compositions").is_array())throw std::invalid_argument("EDIT_CATALOG_READ");
+        for(const auto& c:j.at("compositions"))d.compositions.push_back(parseComposition(c));
+    }
+    if(!d.externalVehicleTypes)for(const auto& t:j.at("vehicleTypes"))if(t.contains("name")) {
+        if(!t.at("name").is_string())throw std::invalid_argument("EDIT_CATALOG_READ");
+        const auto name=t.at("name").get<std::string>();
+        if(!name.empty())d.vehicleTypeNames[t.at("id").get<std::string>()]=name;
+    }
     if (j.contains("routingDecisions")) d.routingDecisions = parseRoutingDecisions(j);
     if (j.contains("signalControllers")) d.signalControllers = parseSignalControllers(j);
     return d;
@@ -84,6 +95,7 @@ Json definitionJson(const AuthoringDefinition& d) {
                 {"desiredSpeed",{{"min",t.desiredSpeed.min},{"max",t.desiredSpeed.max}}},
                 {"maxAcceleration",t.maxAcceleration},{"comfortableDeceleration",t.comfortableDeceleration},
                 {"maxDeceleration",t.maxDeceleration},{"behaviourId",t.behaviourId}};
+            if(const auto at=d.vehicleTypeNames.find(t.id);at!=d.vehicleTypeNames.end() && !at->second.empty())item["name"]=at->second;
             if(t.axles)item["axles"]={{"wheelbase",t.axles->wheelbase},{"frontOverhang",t.axles->frontOverhang},{"rearOverhang",t.axles->rearOverhang}};
             j["vehicleTypes"].push_back(std::move(item));
         }
@@ -99,6 +111,14 @@ Json definitionJson(const AuthoringDefinition& d) {
             if (b.acceptedDecelerationTrailingVehicle) item["acceptedDecelerationTrailingVehicle"] = *b.acceptedDecelerationTrailingVehicle;
             if (b.discretionaryLaneChangeHoldTime) item["discretionaryLaneChangeHoldTime"] = *b.discretionaryLaneChangeHoldTime;
             j["behaviours"].push_back(std::move(item));
+        }
+    }
+    if(!d.externalCompositions) {
+        j["compositions"]=Json::array();
+        for(const auto& c:d.compositions) {
+            Json types=Json::array();for(const auto& t:c.types)types.push_back({{"vehicleTypeId",t.vehicleTypeId},{"share",t.share}});
+            Json item{{"id",c.id},{"types",types}};if(!c.name.empty())item["name"]=c.name;
+            j["compositions"].push_back(std::move(item));
         }
     }
     return j;
@@ -244,6 +264,7 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;
+    if(auto issues=ownedCatalogIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
     // Checked on the authored intervals, before they are expanded: an overlap is a property of
     // the table the author typed, and would otherwise surface as two core inputs that each look fine.
     if (auto periods = inputIntervalIssues(*d.definition); !periods.empty()) throw ValidationError(std::move(periods));

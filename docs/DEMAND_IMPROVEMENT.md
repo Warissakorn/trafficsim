@@ -48,7 +48,9 @@ This work extends M2 without reopening or claiming its observed gate.
 | 5 | Vehicle type and composition authoring | Project-owned catalog editing, reference validation, migration and portable save/reopen before UI delivery |
 | 6 | Time-varying composition and type-specific routing | Explicit interval/type rules, conservation across every breakpoint, backward compatibility and deterministic replay |
 
-Slices 1–4 are this branch's implementation scope. Slices 5–6 remain planned.
+Slices 1–4 are PR #106. Slice 5 is implemented in the subsequent catalog branch;
+[DEMAND_CATALOGS.md](DEMAND_CATALOGS.md) records its ownership and editing contract.
+Slice 6 remains planned; native CI and owner appearance gates remain distinct.
 Do not claim completion from the presence of an external JSON catalog or a combo box.
 
 ## Vehicle type and composition scope for the next slice

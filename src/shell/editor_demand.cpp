@@ -58,6 +58,7 @@ void EditorWindow::buildDemandTables() {
     page(inputTable_,"editorInputTable","editorAddInput","editorEditInput","editorDeleteInput",
         [this](const auto& id){editInput(id);},"input");
     inputTable_->parentWidget()->findChild<QToolBar*>()->addAction(action("editorDemandPreview",{},[this]{showDemandPreview();}));
+    inputTable_->parentWidget()->findChild<QToolBar*>()->addAction(action("editorDemandCatalog",{},[this]{editDemandCatalog();}));
     // M2.7b: signal controllers, and below them any legacy program an older file still carries.
     page(programTable_,"editorProgramTable","editorAddController","editorEditController","editorDeleteController",
         [this](const auto& id){

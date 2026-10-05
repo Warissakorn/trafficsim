@@ -301,9 +301,13 @@ VehicleType parseVehicleType(const Json& t) {
     return type;
 }
 Composition parseComposition(const Json& c) {
+    knownFields(c,{"id","name","types"},"composition",18);
     Composition composition{field<std::string>(c, "id"), {}};
-    for (const auto& t : array(c, "types"))
+    if(c.contains("name"))composition.name=field<std::string>(c,"name");
+    for (const auto& t : array(c, "types")) {
+        knownFields(t,{"vehicleTypeId","share"},"composition.types",18);
         composition.types.push_back({field<std::string>(t, "vehicleTypeId"), field<double>(t, "share")});
+    }
     return composition;
 }
 std::vector<SignalController> parseSignalControllers(const Json& definition) {

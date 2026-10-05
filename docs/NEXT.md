@@ -13,9 +13,12 @@ The owner explicitly asked to start Demand improvements. This takes priority ove
 §0's unanswered ordering proposal. [DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md)
 defines slices 1–6: correctness, lossless interval editing, explicit periods and
 compiled preview first; project-owned vehicle/composition catalogs and typed/time
-rules next. Reporting, LOS and batch evaluation stay M5. After slices 1–4, verify
-native Windows behavior and owner appearance, then implement slice 5's schema and
-reference/round-trip gates before its UI. Do not mark the entire Demand plan closed.
+rules next. Reporting, LOS and batch evaluation stay M5. Slices 1–4 (PR #106)
+passed native Linux/Windows CI. Slice 5 adds schema-18 project catalog ownership
+and its editor ([DEMAND_CATALOGS.md](DEMAND_CATALOGS.md)); check native CI and owner
+appearance independently. Next implement slice 6: define the schema and deterministic
+sampling contract for time-varying compositions and type-conditioned routing, then
+write breakpoint/conservation tests before UI work. Do not mark the whole plan closed.
 
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 

@@ -1,6 +1,7 @@
 #include "editor_window.hpp"
 #include "demand_period_editor.hpp"
 #include "../project/demand_paths.hpp"
+#include "../project/demand_catalog.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
 #include <QDialog>
@@ -22,11 +23,11 @@ namespace trafficsim {
 void EditorWindow::editInput(const std::string& id,const std::string& preselectedRoute,const std::string& preselectedLink) {
     VehicleInput value{id,{},{},600,0,history_.document().definition?history_.document().definition->duration:180};
     if(history_.document().definition)for(const auto& i:history_.document().definition->inputs)if(i.id==id)value=i;
-    ScenarioDefinition catalog;
+    DemandCatalog catalog;
     std::vector<Composition> compositions;
     try {
-        catalog=resolveCatalogs(history_.document().definition.value_or(AuthoringDefinition{}),data_);
-        compositions=loadCompositions(data_);
+        catalog=resolveDemandCatalog(history_.document().definition.value_or(AuthoringDefinition{}),data_);
+        compositions=catalog.compositions;
     }
     catch(const std::exception& e){showError(e);return;}
     QDialog dialog(this);dialog.setObjectName("editorInputDialog");dialog.setWindowTitle(text("editorEditInput"));
@@ -36,7 +37,7 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     auto* route=new QComboBox(&dialog);route->setObjectName("editorInputRoute");
     // Routes, then routing decisions (M2.4): an input follows one route, or is split across the
     // routes of a decision by its turning proportions. Item data says which.
-    for(const auto& r:catalog.routes)route->addItem(QString::fromStdString(r.id),"route:"+QString::fromStdString(r.id));
+    if(history_.document().definition)for(const auto& r:history_.document().definition->routes)route->addItem(QString::fromStdString(r.id),"route:"+QString::fromStdString(r.id));
     if(history_.document().definition)for(const auto& x:history_.document().definition->routingDecisions)
         route->addItem(text("editorInputDecisionItem").arg(QString::fromStdString(x.name.empty()?x.id:x.name)),
                        "decision:"+QString::fromStdString(x.id));
@@ -57,10 +58,13 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     auto* type=new QComboBox(&dialog);type->setObjectName("editorInputType");
     // One list for both (M2.3): a vehicle type, or a composition of types from data/compositions/.
     // The item data says which, so an id shared by a type and a composition cannot be confused.
-    for(const auto& t:catalog.vehicleTypes)
-        type->addItem(QString::fromStdString(t.id),"type:"+QString::fromStdString(t.id));
+    for(const auto& t:catalog.vehicleTypes) {
+        const auto at=catalog.vehicleTypeNames.find(t.id);
+        const auto label=at==catalog.vehicleTypeNames.end()?t.id:at->second+" ("+t.id+")";
+        type->addItem(QString::fromStdString(label),"type:"+QString::fromStdString(t.id));
+    }
     for(const auto& c:compositions)
-        type->addItem(text("editorInputCompositionItem").arg(QString::fromStdString(c.id)),
+        type->addItem(text("editorInputCompositionItem").arg(QString::fromStdString(c.name.empty()?c.id:c.name+" ("+c.id+")")),
                       "composition:"+QString::fromStdString(c.id));
     const auto current=value.compositionId.empty()?"type:"+QString::fromStdString(value.vehicleTypeId)
                                                   :"composition:"+QString::fromStdString(value.compositionId);

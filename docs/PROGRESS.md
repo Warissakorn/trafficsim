@@ -8,6 +8,25 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Project vehicle/composition catalogs (D112)
+
+Owner asked to continue Demand improvements after PR #106. Its five native CI jobs
+passed. Slice 5 captures types, behaviors and compositions into one undoable project
+edit. Schema 18 adds owned compositions and authoring names; absence retains external
+catalog behavior and schema-17 fixture bytes on save. All owned compositions, including unused ones, validate IDs, weights
+and type references. Existing core checks validate dimensions, axles, speeds and
+behavior references. The staging UI offers add/edit/delete, stable IDs, names and
+engine/axle parameters. Cancel keeps ownership and History unchanged; referenced
+entries cannot be deleted. Input selection, Run and Preview share the ownership resolver.
+[DEMAND_CATALOGS.md](DEMAND_CATALOGS.md) records the interface and gates. No dynamics
+or report model is added. Regression tests first exposed missing serialization and
+validation; portable compilation, rollback, ownership Undo/Redo and Qt staging are tested.
+Linux GCC/Qt 6.4.2 Debug: all 85 desktop checks pass, including 44 Demand cases and
+the new catalog UI suite. Frozen reference files remain unchanged; this slice's
+native CI and owner appearance are separate.
+
+---
+
 ## 2026-10-05 — Demand correctness, interval preservation and preview (D111)
 
 Owner requested a detailed Demand-only review and authorized implementation.
@@ -423,6 +442,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D112 | 2026-10-05 | **Catalog editing captures types, behaviors and compositions into the project atomically; IDs stay stable.** | A composition-only local file would still depend on installed type/behavior values. Capturing all three makes saved Demand portable, while old projects keep explicit external ownership. Names are authoring metadata. | A separately specified catalog import/merge workflow or behavior editor; time/type rules remain slice 6. |
 | D111 | 2026-10-05 | **Demand correctness and preview preserve scheduled-time routing; reporting stays M5.** | Zero weights must exclude a lane; invalid weights and missing turn counts must not silently alter demand. Irregular intervals need lossless editing. Preview must use Run's compiled snapshot, including compositions. | A separately accepted routing-time/count contract; project catalog and type/time extensions remain slices 5–6. |
 | D110 | 2026-10-05 | **Groups share control, while each lane-pair side is painted separately; one crossing classifier excludes true attachment mouths everywhere** | Owner clarification and reproduced automatic/manual disagreement at an internal Connector/Link join. Merge topology continues to own that competition. | A measured mouth case outside the connected attachment component, or another owner display ruling. |
 | D109 | 2026-10-05 | **Conflict calculation follows the runtime cubic; display follows paint; connected same-owner lane pairs share one editor group** | Owner ruling. Preserve nine pair reservations and one Undo for 3 × 3; spatial connectivity keeps separated crossings apart. A pure diverge has no competing arrival, and derived merge arbitration stays topological. | A new solver or measured grouping/geometry defect. |

@@ -31,7 +31,7 @@ repository, or any package until the owner decides.
   (M3.2.8c, D90).
   Contracts: `docs/SIMULATION.md`.
 - **Editor:** Qt Widgets, Vissim's modelling surface — `docs/NETWORK_EDITOR.md` (Connectors: `docs/NETWORK_EDITOR_CONNECTORS.md`). Project files are
-  schema 17 (authored right-of-way controls, M3.2.2a, D54; Stop/Yield, M3.2.5a, D62; queue counters, M3.2.6b, D64; Connector `laneChangeSide`, M3.2.9a, D73); unsupported network-object fields
+  schema 18 (project Demand catalogs; authored right-of-way controls, M3.2.2a, D54; Stop/Yield, M3.2.5a, D62; queue counters, M3.2.6b, D64; Connector `laneChangeSide`, M3.2.9a, D73); unsupported network-object fields
   fail on load rather than vanish on save.
   Scenario JSON and editor `*.traffic.json` are **two formats on purpose** — read
   `NETWORK_EDITOR.md` §"Save, recovery and formats" and D19a before touching either loader.

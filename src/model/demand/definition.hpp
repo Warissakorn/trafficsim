@@ -1,6 +1,7 @@
 #pragma once
 #include "../../core/types.hpp"
 #include <algorithm>
+#include <map>
 
 namespace trafficsim {
 // The existing Route, VehicleInput and fixed-time SignalProgram value contracts are
@@ -13,6 +14,7 @@ struct CompositionShare {
 };
 struct Composition {
     std::string id; std::vector<CompositionShare> types;
+    std::string name;
     bool operator==(const Composition&) const = default;
 };
 // M2.1.2. One time interval of a routing decision's counted turning volumes.
@@ -77,6 +79,9 @@ struct SignalController {
 };
 struct AuthoringDefinition : ScenarioDefinition {
     bool externalVehicleTypes{true}, externalBehaviours{true};
+    bool externalCompositions{true};
+    std::vector<Composition> compositions;
+    std::map<std::string,std::string> vehicleTypeNames;
     std::vector<RoutingDecision> routingDecisions; // M2.4
     std::vector<SignalController> signalControllers; // M2.7b; `signalPrograms` keeps only legacy ones
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
