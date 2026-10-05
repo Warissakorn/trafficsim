@@ -238,7 +238,7 @@ std::vector<Point> connectorCurve(const Network& network,const LaneReference& fr
                                   int intermediatePoints) {
     if(intermediatePoints<0 || intermediatePoints>40)throw std::invalid_argument("EDIT_CONNECTOR_POINTS");
     const auto curve=connectorEquation(network,from,to);
-    // Sampling is solely for the authored/drawn shape; runtime evaluates the equation directly.
+    // Default authoring shape. Runtime paths are derived from its editable surface.
     const int spans=intermediatePoints+1;
     std::vector<Point> points{curve.controls.front()};
     for(int i=1;i<spans;++i)points.push_back(equationPoint(curve,static_cast<double>(i)/spans));

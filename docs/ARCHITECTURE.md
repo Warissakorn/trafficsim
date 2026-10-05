@@ -49,12 +49,11 @@ unchanged. See [VEHICLE_POSE.md](reference/VEHICLE_POSE.md).
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
 Connector widths and runtime paths share topology-only `connectorLanePairs`; the surface
-does not call `connectorPaths`. D107 keeps D106 divider-midpoint guides for display, but
-runtime `ConnectorEquation` carries four controls and scalar arc-integral caches. Positions
-evaluate the existing Bézier directly; length integrates |B'(t)| and station inversion is
-bracketed. Authoring controls map through leg index/fraction to equation parameter and
-arc length; compiler, run canvas and heads read the same equation. Core receives lengths
-and metre stations only. Drawing points and Connector widths do not define runtime motion.
+never calls `connectorPaths`. D114 derives each runtime lane's interior vertices from adjacent
+final painted-rail midpoints, and terminal vertices from named Link lane attachments.
+The compiler, canvas, heads and controls read the same path and metre length. Stored control
+stations map by corresponding leg fractions; conflict coverage uses the same rails and authored
+cross-sections. The cubic remains the default drawing generator. Core sees lengths/stations only.
 
 The Run view keeps the front bumper at route distance `d`, then derives a rigid body's
 rear-axle pose with a prescribed-bumper-track/no-slip model. `RearAxlePath` integrates
@@ -143,8 +142,8 @@ inspector controls, translation, save prompts and QSaveFile atomic replacement. 
 the only window, and runs its own compiled revision. Qt stays out of
 project/model/core. Embedded background bytes are immutable and shared across history.
 `connectorCurve` samples the existing cubic only for the persisted drawing and its
-editable interior handles. `connectorEquation` derives that same cubic per mapped lane
-pair for runtime use, independently of drawing points; no second curve is persisted. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
+editable interior handles. `connectorPaths` derives driving lane centres from the resulting
+editable surface; no second curve is persisted. `connector_commands.hpp` defines creation, geometry, retargeting, reset and
 deletion. Explicit endpoint edits share model `retargetConnector` with the canvas preview:
 they rebuild the directed turn at the current intermediate-point count and narrow ranges to
 available lanes. Link geometry movement uses `reanchorConnectors`; lane-bundle/driving-side
@@ -205,22 +204,20 @@ validation of collapsed derived lanes. D80 replaces the old slide/square-mouth c
 `connectorCentreline` derives a central axis from the compatible stored first-lane geometry;
 `connectorBodyBoundaries` offsets every lane boundary around it; `connectorSurface` attaches
 those boundaries with P1–P4. Both ends pair by lane index at every angle. `connectorBoundaries`
-returns the same final rails used by paint and lane handles. D109 crossing coverage uses
-`conflictSurface`: adaptive strips around D107’s continuous cubic for each mapped lane pair,
-with endpoint lane widths blended by equation parameter. It converts results back to authored
-stations; editable drawing vertices cannot change coverage. Highlights still use painted rails.
+returns the same final rails used by paint and lane handles. D114 crossing coverage uses these same final rails, so a geometry edit changes both
+motion and coverage. Authored cross-section stations map onto the derived lane paths.
 D109 `conflictGroups` derives connected groups for one road-owner pair and kind; commands
 author/edit/delete every member atomically, while the resolver keeps individual lane-pair zones.
 D110 paints every lane-pair side separately, retaining shared group selection/control.
 `crossingOverlaps` applies one attachment-mouth exclusion to automatic detection, Add,
 geometry following and Run validation; `surfaceOverlaps` remains raw geometry.
-Separate locations remain separate groups. D107 changes runtime paths to the continuous existing cubic;
+Separate locations remain separate groups. D114 restores geometry-derived runtime paths;
 project schema remains unchanged, with explicit authoring-to-runtime station adapters.
 
 The surface owns its computed mouths and a `selfIntersecting` flag. Singular intersections
 and folds produce `WARN_CONNECTOR_ALIGNMENT`; they never select a square cap. Open markings
 on an undefined join remain selectable. Waiting-line bars use the actual rails' intersection
-with the normal at the mapped equation station. See
+with the normal at the mapped runtime lane station. See
 [CONNECTOR_FOUR_POINT_MOUTH.md](reference/CONNECTOR_FOUR_POINT_MOUTH.md) for the contract and
 [NETWORK_EDITOR.md](reference/NETWORK_EDITOR.md) for user controls/file semantics.
 

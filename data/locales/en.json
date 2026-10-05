@@ -283,7 +283,7 @@
   "editorLaneSideLeft": "Left",
   "editorLaneSideRight": "Right",
   "editorConnectorPoints": "Intermediate points",
-  "editorConnectorPathInfo": "Vehicle paths use the existing Bézier equation from lane endpoints and directions. Intermediate points and interior drags change the drawing only.",
+  "editorConnectorPathInfo": "Vehicles follow the lane centre between the drawn boundaries. Editing intermediate points or lane widths updates vehicle paths and control positions.",
   "editorToLaneCount": "Target lane count (toLaneCount)",
   "editorLinkData": "Link Data",
   "editorGestureHelp": "Click selects; Ctrl + right-click or Ctrl + right-drag creates or changes, in every tool. Ctrl + right-drag: create Link or Connector. Select (S): orange handles on either side add/remove lanes while the opposite edge stays fixed. Shift + click: add or remove. Ctrl + click: add to selection. Ctrl + drag selected objects: duplicate. Delete: objects. Ctrl + Delete: vertex. Ctrl + Tab: cycle overlapping objects. Conflict areas (A): click an area to select it, Ctrl + right-click or press P to cycle its priority, drag a dashed waiting line along its lane.",

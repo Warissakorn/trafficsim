@@ -32,16 +32,21 @@ std::pair<double,double> runtimeExtent(const ProjectDocument& d) {
     return {connectorRuntimeStation(c,cp,overlaps[0].first.from),connectorRuntimeStation(c,cp,overlaps[0].first.to)};
 }
 }
-TEST(conflict_geometry, runtime_overlap_is_invariant_under_point_count_and_interior_drag) {
-    const auto d=curved(0);const auto expected=runtimeExtent(d);
-    CHECK(pairCount(d.network,d.network.connectors.front().id,d.network.links.back().id)==1);
-    for(int count:{3,40}) {
-        auto other=curved(count);auto extent=runtimeExtent(other);
-        test::near(extent.first,expected.first,1e-8);test::near(extent.second,expected.second,1e-8);
-        other.network.connectors.front().geometry[1].y+=50;
-        extent=runtimeExtent(other);test::near(extent.first,expected.first,1e-8);test::near(extent.second,expected.second,1e-8);
-        CHECK(pairCount(other.network,other.network.connectors.front().id,other.network.links.back().id)==1);
-    }
+TEST(conflict_geometry, runtime_overlap_moves_with_the_edited_painted_lane) {
+    auto d=curved(3);const auto before=runtimeExtent(d);
+    const auto c=d.network.connectors.front();auto geometry=c.geometry;geometry[1].y+=5;
+    changeConnectorGeometry(d,c.id,geometry);
+    const auto after=runtimeExtent(d);
+    CHECK(std::abs(after.first-before.first)>1);
+    const auto surface=conflictSurface(d.network,connectorRef(d.network.connectors.front()));CHECK(surface);
+    const auto rails=connectorBoundaries(d.network,d.network.connectors.front());
+    CHECK(surface->left==rails[0] && surface->right==rails[1]);
+    const auto path=connectorPaths(d.network,d.network.connectors.front()).front();
+    const auto road=d.network.links.back();
+    const auto entry=connectorPathPoint(path,after.first),exit=connectorPathPoint(path,after.second);
+    // The conflict interval must physically contain the crossing road's centre.
+    CHECK(std::min(entry.x,exit.x)<=road.geometry.front().x);
+    CHECK(std::max(entry.x,exit.x)>=road.geometry.front().x);
 }
 TEST(conflict_geometry, a_wide_connector_is_not_dropped_by_a_four_metre_prefilter) {
     ProjectDocument d;const auto a=addLink(d,{{-20,0},{0,0}},1,20),b=addLink(d,{{100,0},{120,0}},1,20);
@@ -51,6 +56,18 @@ TEST(conflict_geometry, a_wide_connector_is_not_dropped_by_a_four_metre_prefilte
     CHECK(overlap.front().status==SurfaceOverlap::Status::overlap);
     CHECK(validateNetwork(d.network).empty() && connectorRuntimeIssues(d.network).empty());
     CHECK(pairCount(d.network,c,other)==1);
+}
+TEST(conflict_geometry, a_separate_interior_crossing_of_the_attached_lane_is_retained) {
+    ProjectDocument d;
+    const auto source=addLink(d,{{-100,0},{0,0}},1,3.5),target=addLink(d,{{100,100},{100,200}},1,3.5);
+    const auto id=addConnector(d,{source,lane(d,source)},{target,lane(d,target)});
+    changeConnectorGeometry(d,id,{{0,0},{20,20},{-50,20},{-50,-20},{50,-20},{100,100}});
+    const auto& c=d.network.connectors.front();const ControlPathRef road{source,lane(d,source),"","",""};
+    const auto raw=surfaceOverlaps(d.network,connectorRef(c),road);
+    CHECK(raw.size()==2 && raw[0].status==SurfaceOverlap::Status::overlap);
+    const auto crossings=crossingOverlaps(d.network,connectorRef(c),road);
+    CHECK(crossings.size()==1 && crossings[0].status==SurfaceOverlap::Status::overlap);
+    CHECK(crossings[0].first.from>20); // interior piece survives the terminal-mouth exclusion
 }
 TEST(conflict_geometry, sharing_a_lane_at_distinct_stations_does_not_hide_a_crossing) {
     ProjectDocument d;d.network.drivingSide=DrivingSide::right;
@@ -131,17 +148,18 @@ TEST(conflict_geometry, three_lane_connectors_group_with_links_and_other_connect
         CHECK(g!=groups.end() && g->automaticKeys.size()==9);
     }
 }
-TEST(conflict_geometry, editing_drawing_rebases_authored_stations_without_moving_runtime_extents) {
+TEST(conflict_geometry, editing_lane_rebases_authored_controls_to_the_new_runtime_extents) {
     auto d=curved(3);const auto c=d.network.connectors.front();const auto road=d.network.links.back().id;
     addCrossingAreas(d,c.id,road,c.id,defaults);CHECK(d.network.rightOfWay.conflictAreas.size()==1);
     History h;h.reset(d);const auto expected=runtimeExtent(d);
-    CHECK(h.execute("paint",[&](auto& d){d.network.connectors.front().geometry[1].y+=50;}));
-    const auto actual=runtimeExtent(h.document());test::near(actual.first,expected.first,1e-8);test::near(actual.second,expected.second,1e-8);
+    CHECK(h.execute("paint",[&](auto& d){auto g=d.network.connectors.front().geometry;g[1].y+=5;changeConnectorGeometry(d,c.id,g);}));
+    const auto actual=runtimeExtent(h.document());CHECK(std::abs(actual.first-expected.first)>1);
     const auto r=resolveRightOfWay(h.document().network,runtimeSections(h.document().network),defaults);
     CHECK(r.issues.empty() && r.zones.size()==1);
-    const auto& z=r.zones.front();test::near(z.minor.entry,expected.first,1e-8);test::near(z.minor.exit,expected.second,1e-8);
+    const auto& z=r.zones.front();test::near(z.minor.entry,actual.first,1e-8);test::near(z.minor.exit,actual.second,1e-8);
     const auto before=resolveRightOfWay(d.network,runtimeSections(d.network),defaults);
-    test::near(z.waitPosition,before.zones.front().waitPosition,1e-8);
+    CHECK(std::abs(z.waitPosition-before.zones.front().waitPosition)>1);
+    test::near(z.minor.entry-z.waitPosition,1,1e-8);
     CHECK(!conflictSideOutline(h.document().network,h.document().network.rightOfWay.conflictAreas.front().first).empty());
     h.undo();CHECK(h.document()==d);
 }
@@ -203,7 +221,12 @@ TEST(conflict_geometry, mapped_lane_mouths_are_excluded_at_link_ends_and_interna
                 const ControlPathRef joined{target,path.to.laneId,"","",""};
                 const auto measured=surfaceOverlaps(d.network,ref,joined);
                 CHECK(measured.front().status==SurfaceOverlap::Status::none || measured.front().status==SurfaceOverlap::Status::overlap);
-                CHECK(crossingOverlaps(d.network,ref,joined).front().status==SurfaceOverlap::Status::none);
+                const auto crossing=crossingOverlaps(d.network,ref,joined);
+                if(crossing.front().status!=SurfaceOverlap::Status::none)
+                    throw std::runtime_error("mouth: count="+std::to_string(count)+" direction="+std::to_string(u.x)+","+std::to_string(u.y)+
+                        " station="+std::to_string(station)+" lane="+path.to.laneId+
+                        " connector interval="+std::to_string(crossing.front().first.from)+","+std::to_string(crossing.front().first.to)+
+                        " link interval="+std::to_string(crossing.front().second.from)+","+std::to_string(crossing.front().second.to));
             }
         }
 }

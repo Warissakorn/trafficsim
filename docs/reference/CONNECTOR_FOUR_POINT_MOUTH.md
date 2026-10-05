@@ -13,10 +13,10 @@ for body corners. A surplus lane has zero width at the narrower end as before.
 
 The serialized schema-17 `geometry` still denotes the first authored lane path. It is not
 silently reinterpreted as a centreline: existing files, lane references and
-authored station values remain readable. D107 derives runtime paths from the existing cubic
-equation independently of those drawing points; retained controls use an explicit station
-adapter described below. The *derived reference used to construct the road* is central.
-Changing Connector lane widths does not move that reference or the runtime equation.
+authored station values remain readable. D114 derives runtime lane paths from the final
+painted rails. Retained control stations map proportionally along the corresponding
+authored/path legs. The *derived reference used to construct the road* is central.
+Changing Connector lane widths does not move that reference, but can move lane centres.
 
 Grips use the axis directly. An interior drag solves the inverse blend on [0,1] by 64 fixed
 bisection steps, so the displayed point reaches the pointer after the command clears frozen
@@ -76,7 +76,7 @@ mouths or swaps in a legacy polygon. `WARN_CONNECTOR_ALIGNMENT` reports missing 
 or a fold, in both languages. Authoring remains possible. Conflict coverage still rejects
 non-convex lane quads as unsupported instead of guessing a station through a fold.
 
-## Drawing surface and runtime equation
+## Drawing surface and runtime lane centres
 
 Rails and dividers reach the mouth intersections with a common smoothstep weight measured
 on the **original axis**, supported on the nearest half of that axis. No distance is measured
@@ -86,31 +86,42 @@ On curved Link edges the mouth need not be symmetric; P2 remains the attached ra
 
 `ConnectorSurface` supplies the final boundaries, markings and outline. `connectorBoundaries`
 returns those same boundaries for conflict coverage and lane handles. Paint, selection,
-copy/move previews and rotation bounds use the same surface cache. D106's adjacent-rail
-midpoints remain an authoring/display guide, with terminal points on the named Link lane
-centres. D107 supersedes their use as a piecewise-linear driving path at the owner's request.
+copy/move previews and rotation bounds use the same surface cache.
 
-Each mapped lane pair now uses the existing single cubic Bézier equation from
-`connectorEquation`: lane-centre attachments, directed Link tangents and the existing capped
-control reach. Positions evaluate B(t) directly. Runtime length is the numerical integral
-of |B'(t)|, and a bracketed inverse maps the engine's metre station to t. Its 17 scalar
-arc stations cache integrals; they are not points or straight driving segments. The compiler,
-run canvas, heads and route display share this equation. Route overlays sample it only to draw.
-Zero intermediate points still draw one straight leg, but do not straighten the driving curve.
-Interior point edits and Connector width edits affect the surface, not the driving equation;
-Link attachment, lane mapping or tangent changes can change that equation.
+D114 supersedes D107's endpoint-only runtime equation at the owner's request: dragging
+interior points must steer vehicles. `connectorPaths` uses the midpoint of adjacent final
+rails at every interior vertex. Terminal vertices are the named Link lane-centre attachments,
+so a displaced mouth cut or closed taper does not move a vehicle off its connected lane.
+Vehicles interpolate by metre distance along this path; the compiler, run canvas, signal
+heads, route overlays and right-of-way controls share the same path and length.
+The rolling rear-axle display follows this path while retaining continuous body heading.
+
+The existing cubic still generates the initial/default drawing. It is not a second runtime
+path. Zero intermediate points and Reset straight now yield straight driving legs; adding
+or removing points, reshaping, widths and range changes can change lane paths and travel times.
+Point insertion preserves the authored axis; it need not preserve mouth-blended lane centres
+because the surface is reconstructed at its new cross-sections.
 
 Lane pairing and width derivation share a topology-only helper, independent of runtime
-geometry; deriving a surface therefore cannot recurse through its own paths. Retained
-schema-17 control stations map from authored leg index/fraction to uniform curve parameter,
-then to true arc length. This preserves file values, not their old physical runtime positions.
-Inverse mapping is used for derived controls. Waiting bars intersect the actual rails with
-the normal at the mapped equation position. Paint-based conflict coverage still measures
-lane quads and maps their stations; it is not an analytic swept-surface intersection solver.
+geometry; deriving a surface therefore cannot recurse through its own paths. Stored control
+stations remain metres on `Connector::geometry`. `matchedStation` maps each authored leg's
+fraction onto the corresponding runtime lane leg; the inverse is used when writing derived
+controls. Signal-head positions are runtime lane metres. Existing files and IDs remain readable;
+no schema change or analytic equation is persisted.
 
-The driving equation is independent of manually deformed paint and can leave that surface.
-D80's unbounded or folded authoring mouths still do not establish a drivable turn; there is
-no new mouth cutoff, lane-change motion model or measured Vissim fidelity.
+Conflict coverage and highlights both use the final painted lane rails, with the same authored
+cross-section stations. Physical waiting-line setbacks use the mapped runtime path distance;
+waiting bars intersect those rails with the runtime path normal. Geometry edits recompute
+areas and waiting controls in the existing History transaction; Undo/Redo restore them together.
+Common attachment mouths remain topology joins, including longitudinal cuts that extend
+past a finite Link end; separate interior crossings of the same joined lane remain crossings.
+The shell clears the old Run snapshot after a successful edit or Undo/Redo, and recompiles
+before the next Run. Old stored conflict extents are validated against the current surface;
+loading does not silently repair them.
+
+D80's unbounded or folded mouths still do not establish a drivable turn. Non-convex conflict
+quads remain unsupported; terminal transitions do not establish whole-body containment or
+cross-path physical collision safety. No new mouth cutoff or measured Vissim fidelity is claimed.
 
 ## Verification
 
@@ -126,6 +137,8 @@ no new mouth cutoff, lane-change motion model or measured Vissim fidelity.
   rotations, frozen weights, control stations/bars, single-lane guides, file/Undo/Redo,
   and 240 seeded curve/add/drop runs with replay, accounting and segment-body checks.
 - `connector_equation_tests`: independent analytic arc length, station inversion, closest
-  points, exact point-count independence and equation-based controls/heads.
-- D107 execution details: [equation evidence](../evidence/connector-equation.md).
+  points, analytic cubic helpers and straight-runtime reset behaviour.
+- `connector_edit_motion_tests`: fixed-end interior edits, both driving sides and taper
+  directions, runtime/rail agreement, compilation, heads, waiting bars, file and Undo/Redo.
+- Historical D107 execution details: [equation evidence](../evidence/connector-equation.md).
 - Execution results and platform limitations are in PROGRESS.md. Linux is not Windows evidence.

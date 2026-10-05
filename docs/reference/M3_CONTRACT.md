@@ -39,12 +39,11 @@ apply to every member in one Undo; differing existing settings are shown as mixe
 locations and different owner pairs stay separate. Using three single-lane Links per road
 therefore keeps nine groups, but is a different network topology. No group is persisted.
 
-Connector crossing calculation follows the D107 cubic, using normals and endpoint widths
-with deterministic adaptive refinement (2 mm chord-error target). Drawing point counts and
-interior edits do not change it. Stored schema-17 stations remain on the drawing polyline;
-the shared parameter adapter maps measured extents and physical waiting-line setbacks.
-Highlight outlines use the painted rails; their two sides may be separated after a paint edit,
-but share group selection. Unsupported folded strips remain named blockers. Common rooted
+Connector crossing calculation uses the same final painted lane rails that define runtime
+lane centres (D114). Drawing edits and widths can change coverage and physical waiting positions.
+Stored stations remain metres on the authored polyline; `matchedStation` maps leg fractions
+onto runtime lane distances for extents and physical setbacks. Highlights use these same rails.
+Unsupported folded strips remain named blockers. Common rooted
 merge/diverge mouths are excluded by shared `crossingOverlaps` in suggestions, Add, geometry
 following and Run coverage checks; downstream merges retain their
 topological arbitration, and a pure diverge needs no competing-arrival reservation. Sharing

@@ -170,11 +170,11 @@ int main(int argc,char** argv) {
         require(w.history().document().network.connectors.front().toLaneCount==3,"Leading target handle did not grow");
         const auto moved=connectorPaths(w.history().document().network,w.history().document().network.connectors.front())[1];
         require(moved.from==fixed.from && moved.to==fixed.to,"Leading resize changed surviving lane references");
-        require(std::abs(connectorPathLength(moved)-connectorPathLength(fixed))<1e-8,"Leading resize changed the surviving equation length");
+        require(std::abs(connectorPathLength(moved)-polylineLength(moved.geometry))<1e-8,"Leading resize length differs from the painted lane");
         for(double fraction:{0.,.2,.5,.8,1.}) {
-            const auto beforePoint=connectorPathPoint(fixed,connectorPathLength(fixed)*fraction);
+            const auto expected=pointAlong(moved.geometry,polylineLength(moved.geometry)*fraction);
             const auto afterPoint=connectorPathPoint(moved,connectorPathLength(moved)*fraction);
-            require(std::hypot(afterPoint.x-beforePoint.x,afterPoint.y-beforePoint.y)<1e-8,"Leading resize moved the surviving equation");
+            require(std::hypot(afterPoint.x-expected.x,afterPoint.y-expected.y)<1e-8,"Leading resize runtime leaves the painted lane");
         }
         attached(w.history().document());
         // Both sides of the body are present; cancel is an exact no-op.

@@ -39,34 +39,37 @@ Pose lanePose(EditorWindow& w, std::uint64_t id) {
     require(pose.has_value(), "Setup: the vehicle is not drawn without its record");
     return *pose;
 }
-// D107: force a Connector drawing to be one chord. The actual canvas vehicle must still
-// follow the curved equation, including its body heading, at several metre stations.
-void equationPose(const std::filesystem::path& data) {
+// Actual canvas fronts and rolling body headings must follow an edited lane, including
+// replacement of the Run network on the same canvas (no stale equation/axle cache).
+void editedLanePose(const std::filesystem::path& data) {
     Network n;n.links={{"a",{{-80,0},{0,0}},{{"a1",3.5}}},
                        {"b",{{30,30},{30,100}},{{"b1",3.5}}}};
     Connector c;c.id="curve";c.from={"a","a1"};c.to={"b","b1"};
-    c.geometry=connectorCurve(n,c.from,c.to,0);n.connectors.push_back(c);
-    const auto path=connectorPaths(n,n.connectors.front()).front();
-    const double length=connectorPathLength(path);
+    c.geometry=connectorCurve(n,c.from,c.to,3);n.connectors.push_back(c);
     const auto source=loadScenario(data/"scenarios/crossing.json",data).scenario;
-    Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
-    scenario.segments={{path.id,length,{}}};scenario.routes={{"route",{path.id}}};
-    scenario.vehicleTypes=source.vehicleTypes;scenario.behaviours=source.behaviours;
-    auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;frame.vehicles.push_back(v);
     EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
-    canvas.setTransform(QTransform::fromScale(8,-8));canvas.setRunNetwork(n);
-    const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes.front(),
-        {{path.id,path.geometry}},{{path.id,*path.equation}});
-    for(const double fraction:{.2,.5,.8}) {
-        const double station=length*fraction;frame.vehicles.front().distance=station;canvas.setRunFrame(frame);
-        const auto pose=poseOf(canvas,1);require(pose.has_value(),"Connector vehicle not drawn");
-        const auto front=connectorPathPoint(path,station);
-        require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Vehicle follows drawing chords instead of the equation");
-        const auto expected=track.pose(station,front);require(expected.has_value(),"Setup: no axle pose");
-        const double heading=std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.);
-        require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Connector body heading differs from the equation");
-        const auto chord=pointAlong(path.geometry,polylineLength(path.geometry)*fraction);
-        require(std::hypot(front.x-chord.x,front.y-chord.y)>1,"Setup: equation and drawing not separated");
+    canvas.setTransform(QTransform::fromScale(8,-8));
+    for(bool edited:{false,true}) {
+        if(edited){n.connectors.front().geometry[2].x+=6;n.connectors.front().geometry[2].y-=4;}
+        const auto path=connectorPaths(n,n.connectors.front()).front();
+        require(!path.equation,"Connector retained an endpoint-only driving equation");
+        const double length=polylineLength(path.geometry);
+        Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
+        scenario.segments={{path.id,length,{}}};scenario.routes={{"route",{path.id}}};
+        scenario.vehicleTypes=source.vehicleTypes;scenario.behaviours=source.behaviours;
+        auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;frame.vehicles.push_back(v);
+        canvas.setRunNetwork(n);
+        const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes.front(),
+            {{path.id,path.geometry}},{});
+        for(const double fraction:{.2,.5,.8}) {
+            const double station=length*fraction;frame.vehicles.front().distance=station;canvas.setRunFrame(frame);
+            const auto pose=poseOf(canvas,1);require(pose.has_value(),"Connector vehicle not drawn");
+            const auto front=pointAlong(path.geometry,station);
+            require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Vehicle leaves the edited lane centre");
+            const auto expected=track.pose(station,front);require(expected.has_value(),"Setup: no axle pose");
+            const double heading=std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.);
+            require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Body heading differs from the edited lane track");
+        }
     }
 }
 
@@ -77,7 +80,7 @@ void joinedPose(const std::filesystem::path& data) {
     Network n;n.links={{"a",{{-80,0},{0,0}},{{"a1",3.5}}},
                        {"b",{{30,30},{30,100}},{{"b1",3.5}}}};
     Connector c;c.id="curve";c.from={"a","a1"};c.to={"b","b1"};
-    c.geometry=connectorCurve(n,c.from,c.to,0);n.connectors.push_back(c);
+    c.geometry=connectorCurve(n,c.from,c.to,19);n.connectors.push_back(c);
     const auto path=connectorPaths(n,c).front();const double length=connectorPathLength(path);
     const auto source=loadScenario(data/"scenarios/crossing.json",data).scenario;
     Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
@@ -97,7 +100,7 @@ void joinedPose(const std::filesystem::path& data) {
         for(std::uint32_t type=0;type<scenario.vehicleTypes.size();++type) {
             frame.vehicles.front().typeIndex=type;const double body=scenario.vehicleTypes[type].length;
             const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes[type],
-                {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{{path.id,*path.equation}});
+                {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{});
             const auto at=[&](double d) {
                 frame.vehicles.front().distance=d;canvas.setRunFrame(frame);
                 const auto pose=poseOf(canvas,1);require(pose.has_value(),"Joined-route vehicle not drawn");
@@ -128,7 +131,7 @@ void joinedPose(const std::filesystem::path& data) {
     canvas.setRunFrame(next);const auto altered=*poseOf(canvas,1);
     require(std::abs(std::remainder(altered.rotation-original.rotation,360.))>.1,"Setup: changed axles did not change heading");
     const RearAxlePath alteredTrack(routeParts(changed,changed.routes.front()),changed.vehicleTypes.front(),
-        {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{{path.id,*path.equation}});
+        {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{});
     const auto expected=alteredTrack.pose(95.123,routePoint(95.123));require(expected.has_value(),"Setup: changed track missing");
     require(std::abs(altered.rotation-std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.))<1e-7,
         "Scenario replacement retained old axle solution");
@@ -194,7 +197,7 @@ int main(int argc, char** argv) {
     try {
         require(argc > 1, "data path");
         const std::filesystem::path data(argv[1]);
-        equationPose(data);
+        editedLanePose(data);
         joinedPose(data);
         overlappingCanvas(data);
         EditorWindow w{data}; w.resize(1200, 800); w.show(); QTest::qWait(30);
