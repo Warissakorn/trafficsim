@@ -37,10 +37,13 @@ closed no owner item.
 
 In order:
 
-- **Continuous vehicle headings (2026-10-05):** inspect car and heavy-vehicle noses
+- **Rear-axle turning (2026-10-05, phases 1–3):** inspect car and heavy-vehicle noses
   entering/leaving a curved Connector, a short Connector and an internal Link join.
-  The front remains at its runtime station; the body heading spans upstream sections
-  without a switch at one vehicle length. Check the lane-change lab and low zoom too.
+  The front remains at its runtime station; the rear axle cuts inside a curve, with
+  rigid wheelbase/overhangs and continuous heading. Check lane-change guidance
+  and low zoom too: a stopped changer must hold its body, a second change must continue
+  the first, and heading must settle after the front arrives. The heavy vehicle remains
+  one rigid body, with no trailer joint.
   Automated Linux/Windows results belong to the PR; an owner look remains separate.
 
 - **D109/D110 conflict controls and Bézier coverage:** inspect a curved Connector after an interior
@@ -101,9 +104,10 @@ In order:
      unsupported by conflict coverage. Do not reintroduce a square fallback.
    - D107 runtime paths use the existing cubic equation independently of drawing points.
      Schema-17 files remain readable; mapped conflict extents may need review.
-7. **D102 lane change drawn as a slide.** Open `data/projects/lane-change-lab.traffic.json`, Play,
-   and watch the Lane drop scene. A changer should ease across over 3 s, nose turned slightly,
-   not jump. Verified offscreen on Windows (`lane-change-display-ui`).
+7. **D102 lane-change display, superseded by phase 3.** Open `data/projects/lane-change-lab.traffic.json`, Play,
+   and watch the Lane drop scene. A changer should ease across with rear rolling on a
+   spatial guide, hold when stopped and continue during repeated changes. Phase 3
+   replaces the fixed three-second slide. Windows evidence belongs to its PR.
 8. **D90 cooperative braking.** Run M2.6 and watch the East approach. Left-turners on lanes 2/3
    should slip into lane 1, and the lane-1 vehicle behind should slow without stopping dead.
    Long standing waits at the dead end should be rarer. Its 40-seed numbers are identical on
@@ -155,12 +159,15 @@ M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's u
 
 Pick one per session, as the user asks. Rows and contract come first for engine work.
 
-- **Vehicle turning, phase 2:** phase 1 only repairs display-heading continuity.
-  Before adding axles, define which point the runtime curve guides, then specify
-  wheelbase/overhang data, old-file defaults and failure-first geometry rows. Select
-  a kinematic/tractrix model only after that contract. Keep the traffic front-bumper
-  distance distinct from axle pose, and defer articulated trailer joints to their
-  own slice. Chord samples at `d - length` are not rear-axle positions.
+- **Vehicle turning after phase 3:** rear-axle display, optional axle data and continuous
+  lane-change guidance are implemented ([contract](VEHICLE_POSE.md)). Next engine work
+  needs separate acceptance rows for swept-body conflict clearance and between-lanes
+  occupancy. Audit where `occupiedSpans`/conflict reservations use scalar length;
+  reproduce a rigid heavy vehicle whose displayed swept body exceeds that envelope
+  before changing admission.
+  Steering feasibility and articulated trailer joints are separate slices. Keep the
+  traffic front-bumper distance contract distinct from displayed axle coordinates;
+  owner appearance review does not validate swept paths or traffic behaviour.
 
 - **M3.2.8a.1 — moving merge anticipation.** D108 completes the source first-step
   slice (M3.2.8a.1a): queue entry waits until ordinary following/integration fits the
@@ -179,7 +186,7 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
 - **The rest of M3.2.8c** (ROADMAP row):
   - Discretionary changes (D95, rows A47–A55; hold D101, rows A56–A58; both off): visibility at
     areas and a between-lanes state are unwritten. A change
-    is instantaneous in the engine; the Run view draws it as a slide (D102).
+    is instantaneous in the engine; the Run view uses a continuous rear-rolling spatial guide (phase 3).
   - `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found
     left-turners change at the first tick allowed).
   - Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.

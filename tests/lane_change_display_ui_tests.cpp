@@ -1,8 +1,8 @@
-// D102: the Run view draws a lane change as a slide from the lane the vehicle left to the one it is
-// on, for 3 s after the engine moved it. Display only: the engine still changes in one tick.
+// Continuous lane-change guide with a rolling rear axle; engine changes stay instantaneous.
 #include "../src/shell/editor_window.hpp"
 #include "../src/project/load.hpp"
 #include "../src/core/simulation.hpp"
+#include "../src/core/routes.hpp"
 #include <QAction>
 #include <QApplication>
 #include <QGraphicsItem>
@@ -19,7 +19,10 @@ struct Pose { double x{}, y{}, rotation{}; };
 std::optional<Pose> poseOf(EditorCanvas& c, std::uint64_t id) {
     for (auto* item : c.scene()->items())
         if (item->data(0).toString() == "run-vehicle" && item->data(2).toULongLong() == id)
-            return Pose{item->pos().x(), item->pos().y(), item->rotation()};
+        {
+            const auto front=item->mapToScene(QPointF(item->data(3).toDouble(),0));
+            return Pose{front.x(),front.y(),item->rotation()};
+        }
     return std::nullopt;
 }
 const Vehicle* find(const SimState& s, std::uint64_t id) {
@@ -29,7 +32,7 @@ const Vehicle* find(const SimState& s, std::uint64_t id) {
 // The pose the vehicle would have without the slide: the same frame with its record cleared.
 Pose lanePose(EditorWindow& w, std::uint64_t id) {
     auto copy = w.runState();
-    for (auto& v : copy.vehicles) if (v.id == id) v.lastLaneChange.reset();
+    for (auto& v : copy.vehicles) if (v.id == id) {v.lastLaneChange.reset();v.laneChangeTrace.clear();}
     w.canvas()->setRunFrame(copy);
     const auto pose = poseOf(*w.canvas(), id);
     w.canvas()->setRunFrame(w.runState());
@@ -52,13 +55,15 @@ void equationPose(const std::filesystem::path& data) {
     auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;frame.vehicles.push_back(v);
     EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
     canvas.setTransform(QTransform::fromScale(8,-8));canvas.setRunNetwork(n);
-    const double vehicleLength=frame.scenario->vehicleTypes.front().length;
+    const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes.front(),
+        {{path.id,path.geometry}},{{path.id,*path.equation}});
     for(const double fraction:{.2,.5,.8}) {
         const double station=length*fraction;frame.vehicles.front().distance=station;canvas.setRunFrame(frame);
         const auto pose=poseOf(canvas,1);require(pose.has_value(),"Connector vehicle not drawn");
-        const auto front=connectorPathPoint(path,station),rear=connectorPathPoint(path,station-vehicleLength);
+        const auto front=connectorPathPoint(path,station);
         require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Vehicle follows drawing chords instead of the equation");
-        const double heading=std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.);
+        const auto expected=track.pose(station,front);require(expected.has_value(),"Setup: no axle pose");
+        const double heading=std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.);
         require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Connector body heading differs from the equation");
         const auto chord=pointAlong(path.geometry,polylineLength(path.geometry)*fraction);
         require(std::hypot(front.x-chord.x,front.y-chord.y)>1,"Setup: equation and drawing not separated");
@@ -91,13 +96,16 @@ void joinedPose(const std::filesystem::path& data) {
         canvas.setTransform(QTransform::fromScale(scale,-scale));
         for(std::uint32_t type=0;type<scenario.vehicleTypes.size();++type) {
             frame.vehicles.front().typeIndex=type;const double body=scenario.vehicleTypes[type].length;
+            const RearAxlePath track(routeParts(scenario,scenario.routes.front()),scenario.vehicleTypes[type],
+                {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{{path.id,*path.equation}});
             const auto at=[&](double d) {
                 frame.vehicles.front().distance=d;canvas.setRunFrame(frame);
                 const auto pose=poseOf(canvas,1);require(pose.has_value(),"Joined-route vehicle not drawn");
-                const auto front=routePoint(d),rear=routePoint(d-body);
+                const auto front=routePoint(d);
                 require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Joined-route front moved off its station");
-                const double heading=std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.);
-                require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Body uses a local-segment tangent at a join");
+                const auto expected=track.pose(d,front);require(expected.has_value(),"Setup: no joined axle pose");
+                const double heading=std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.);
+                require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Canvas does not use rear-axle heading");
                 return pose->rotation;
             };
             at(0);at(body-1e-6);at(body);at(body+1e-6);
@@ -111,6 +119,71 @@ void joinedPose(const std::filesystem::path& data) {
             }
         }
     }
+    // The derived track depends on the immutable scenario and the Run network,
+    // not vehicle/tick identity. Force both inputs to change on this SAME canvas.
+    frame.vehicles.front().typeIndex=0;frame.vehicles.front().distance=95.123;
+    canvas.setRunFrame(frame);const auto original=*poseOf(canvas,1);
+    Scenario changed=*frame.scenario;changed.vehicleTypes.front().axles=VehicleAxles{2.,.5,2.};
+    auto next=createSimulation(changed,42);next.vehicles=frame.vehicles;
+    canvas.setRunFrame(next);const auto altered=*poseOf(canvas,1);
+    require(std::abs(std::remainder(altered.rotation-original.rotation,360.))>.1,"Setup: changed axles did not change heading");
+    const RearAxlePath alteredTrack(routeParts(changed,changed.routes.front()),changed.vehicleTypes.front(),
+        {{"a1",{{-80,0},{0,0}}},{path.id,path.geometry},{"b1",{{30,30},{30,100}}}},{{path.id,*path.equation}});
+    const auto expected=alteredTrack.pose(95.123,routePoint(95.123));require(expected.has_value(),"Setup: changed track missing");
+    require(std::abs(altered.rotation-std::atan2(expected->heading.y,expected->heading.x)*180/std::acos(-1.))<1e-7,
+        "Scenario replacement retained old axle solution");
+    next.vehicles.front().distance=120;canvas.setRunFrame(next);
+    next.vehicles.front().distance=95.123;canvas.setRunFrame(next);
+    require(std::abs(poseOf(canvas,1)->rotation-altered.rotation)<1e-12,"Seeking changed body heading");
+    auto rotated=n;
+    for(auto& link:rotated.links)for(auto& p:link.geometry)p={-p.y,p.x};
+    for(auto& connector:rotated.connectors)for(auto& p:connector.geometry)p={-p.y,p.x};
+    canvas.setRunNetwork(rotated);canvas.setRunFrame(next);const auto turned=*poseOf(canvas,1);
+    require(std::abs(std::remainder(turned.rotation-altered.rotation-90,360.))<1e-7,
+        "Network replacement retained old axle solution");
+    require(std::hypot(turned.x+altered.y,turned.y-altered.x)<1e-7,"Rotated front moved off its station");
+}
+
+void overlappingCanvas(const std::filesystem::path& data) {
+    Network n;n.links={{"a",{{0,0},{100,0}},{{"a1",3.5}}},
+        {"b",{{0,3.5},{100,3.5}},{{"b1",3.5}}},{"c",{{0,7},{100,7}},{{"c1",3.5}}}};
+    const auto catalog=loadScenario(data/"scenarios/crossing.json",data).scenario;
+    Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
+    scenario.segments={{"a1",100,{}},{"b1",100,{}},{"c1",100,{}}};
+    scenario.routes={{"a",{"a1"}},{"b",{"b1"}},{"c",{"c1"}}};
+    scenario.vehicleTypes=catalog.vehicleTypes;scenario.behaviours=catalog.behaviours;
+    auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;v.routeIndex=1;v.distance=28;
+    v.laneChangeTrace={{0,1,20,20,10}};frame.vehicles={v};
+    EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
+    canvas.setRunNetwork(n);
+    for(std::uint32_t type=0;type<catalog.vehicleTypes.size();++type) {
+        frame.vehicles={v};frame.vehicles.front().typeIndex=type;
+        canvas.setTransform(QTransform::fromScale(8,-8));canvas.setRunFrame(frame);
+        const auto before=poseOf(canvas,1);require(before.has_value(),"Setup: first changer not drawn");
+        require(before->y>0 && before->y<3.5,"Setup: changes must overlap");
+        auto second=frame;second.vehicles.front().routeIndex=2;
+        second.vehicles.front().laneChangeTrace.push_back({1,2,28,28,10});
+        canvas.setRunFrame(second);const auto after=poseOf(canvas,1);
+        require(after && std::hypot(after->x-before->x,after->y-before->y)<1e-7 &&
+            std::abs(after->rotation-before->rotation)<.002,"Second change resets front or rear heading");
+        canvas.setTransform(QTransform::fromScale(.1,-.1));canvas.setRunFrame(second);
+        const auto small=poseOf(canvas,1);
+        require(small && std::hypot(small->x-after->x,small->y-after->y)<1e-7 &&
+            std::abs(small->rotation-after->rotation)<1e-12,"Low zoom changed lane-change kinematics");
+        second.vehicles.front().distance=60;canvas.setRunFrame(second);
+        canvas.setRunFrame(frame);const auto sought=poseOf(canvas,1);
+        require(sought && std::hypot(sought->x-before->x,sought->y-before->y)<1e-12 &&
+            std::abs(sought->rotation-before->rotation)<1e-12,"Seeking reused future trace");
+        auto changed=frame;changed.vehicles.front().laneChangeTrace.front().speed=0;
+        canvas.setRunFrame(changed);const auto faster=poseOf(canvas,1);
+        require(faster && faster->y>before->y+.5,"Changed trace reused cached guide");
+    }
+    auto rotated=n;for(auto& link:rotated.links)for(auto& p:link.geometry)p={-p.y,p.x};
+    canvas.setRunFrame(frame);const auto original=poseOf(canvas,1);
+    canvas.setRunNetwork(rotated);canvas.setRunFrame(frame);const auto turned=poseOf(canvas,1);
+    require(original && turned && std::hypot(turned->x+original->y,turned->y-original->x)<1e-7 &&
+        std::abs(std::remainder(turned->rotation-original->rotation-90,360.))<1e-7,
+        "Network replacement reused old lane-change guide");
 }
 
 double apart(Pose a, Pose b) { return std::hypot(a.x - b.x, a.y - b.y); }
@@ -123,6 +196,7 @@ int main(int argc, char** argv) {
         const std::filesystem::path data(argv[1]);
         equationPose(data);
         joinedPose(data);
+        overlappingCanvas(data);
         EditorWindow w{data}; w.resize(1200, 800); w.show(); QTest::qWait(30);
         w.openFile(QString::fromStdString((data / "projects/lane-change-lab.traffic.json").string()));
         auto* step = w.findChild<QAction*>("editorStep");
@@ -136,10 +210,12 @@ int main(int argc, char** argv) {
                 if (v.lastLaneChange && v.lastLaneChange->tick + 1 == w.runState().tick) { changer = v.id; break; }
         }
         require(changer.has_value(), "Setup: no vehicle changed lanes on the lab");
-        const double dt = w.runState().scenario->timeStep;
+        const auto trace=find(w.runState(),*changer)->laneChangeTrace;
+        require(trace.size()==1,"Setup: expected first lane change");
+        const double reach=3*std::max(trace.front().speed,5.);
         const auto startTick = find(w.runState(), *changer)->lastLaneChange->tick;
 
-        // 2. Follow it: drawn off its lane, closer every frame, and on its lane from 3 s on.
+        // 2. Follow the spatial guide: the front arrives, then rear heading settles.
         std::vector<double> gaps, turns;
         while (true) {
             const auto* v = find(w.runState(), *changer);
@@ -148,12 +224,20 @@ int main(int argc, char** argv) {
             const auto drawn = poseOf(*w.canvas(), *changer);
             require(drawn.has_value(), "The changer is not drawn");
             const auto lane = lanePose(w, *changer);
-            const double elapsed = static_cast<double>(w.runState().tick - startTick) * dt;
-            if (elapsed >= 3 - 1e-9) {
-                require(apart(*drawn, lane) < 1e-9 && std::abs(drawn->rotation - lane.rotation) < 1e-9,
-                        "The slide does not end on the lane after 3 s");
+            const double progress=v->distance-trace.front().toDistance;
+            if (progress >= reach - 1e-9) {
+                require(apart(*drawn, lane) < 1e-7,
+                        "The guide front does not reach its target lane");
                 break;
             }
+            // Repaint a later tick with the same station: stopped cars hold position
+            // and heading, and seeking back reproduces the exact scene pose.
+            auto stopped=w.runState();stopped.tick+=1000;stopped.time+=100;
+            for(auto& vehicle:stopped.vehicles)if(vehicle.id==*changer)vehicle.speed=0;
+            w.canvas()->setRunFrame(stopped);const auto held=poseOf(*w.canvas(),*changer);
+            require(held && apart(*held,*drawn)<1e-12 && std::abs(held->rotation-drawn->rotation)<1e-12,
+                "Stopped changer slides or turns with elapsed time");
+            w.canvas()->setRunFrame(w.runState());
             gaps.push_back(apart(*drawn, lane));
             if (argc > 2 && gaps.size() == 12) { // optional artifact: mid-slide, zoomed on the changer
                 w.canvas()->setTransform(QTransform::fromScale(12, -12)); w.canvas()->centerOn(drawn->x, drawn->y);
@@ -168,7 +252,7 @@ int main(int argc, char** argv) {
         require(gaps.front() > 2, "The first frame after the change is not drawn near the lane it left");
         require(gaps.front() < 8, "The first frame is drawn further off than the lane it left");
         for (std::size_t i = 1; i < gaps.size(); ++i)
-            require(gaps[i] < gaps[i - 1], "The slide does not close on the lane every frame");
+            require(gaps[i] <= gaps[i - 1]+1e-8, "The slide does not close on the lane every frame");
         // Mid-slide the nose turns toward the new lane, and only a little.
         const double middle = turns[turns.size() / 2];
         require(middle > 0.5 && middle < 30, "Mid-slide the body is not turned a few degrees toward the new lane");

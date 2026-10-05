@@ -194,6 +194,8 @@ SimState stepSimulation(SimState&& state, double dt) {
             events.emplace_back(LaneChangeEvent{startTime, vehicle.id, scenario.routes[vehicle.routeIndex].id,
                                                 scenario.routes[change.route].id});
             vehicle.lastLaneChange = LastLaneChange{startTick, vehicle.routeIndex};
+            vehicle.laneChangeTrace.push_back({vehicle.routeIndex, change.route,
+                vehicle.distance, change.distance, vehicle.speed});
             vehicle.routeIndex = change.route; vehicle.distance = change.distance;
         }
         if (!changes.empty()) {

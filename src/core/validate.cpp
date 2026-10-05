@@ -251,6 +251,16 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         const auto& t = s.vehicleTypes[i];
         const auto p = "vehicleTypes[" + std::to_string(i) + "]";
         number(t.length, p + ".length"); number(t.width, p + ".width");
+        if(t.axles) {
+            const auto& a=*t.axles;
+            number(a.wheelbase,p+".axles.wheelbase");
+            number(a.frontOverhang,p+".axles.frontOverhang",true);
+            number(a.rearOverhang,p+".axles.rearOverhang",true);
+            const double total=a.wheelbase+a.frontOverhang+a.rearOverhang;
+            if(!std::isfinite(total) || (std::isfinite(t.length) &&
+                std::abs(total-t.length)>1e-6*std::max(1.,t.length)))
+                add("INVALID_VEHICLE_AXLES",p+".axles");
+        }
         number(t.maxAcceleration, p + ".maxAcceleration");
         number(t.comfortableDeceleration, p + ".comfortableDeceleration"); number(t.maxDeceleration, p + ".maxDeceleration");
         number(t.desiredSpeed.min, p + ".desiredSpeed.min"); number(t.desiredSpeed.max, p + ".desiredSpeed.max");

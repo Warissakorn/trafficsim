@@ -101,6 +101,23 @@ struct SweepRow {
     std::uint32_t seed{}; double gapTime{}, headway{};
     MovementReport report;
 };
+// Phase 2 adds display-only axles. Keep old sweep evidence bound to its original
+// catalog bytes, permitting exactly this extension and no traffic parameter change.
+inline bool sameTrafficVehicleType(nlohmann::json now,const nlohmann::json& archived) {
+    now.erase("axles");return now==archived;
+}
+inline bool restoreArchivedVehicleAxles(const std::filesystem::path& root,nlohmann::ordered_json& current) {
+    auto restored=current;
+    for(const auto* type:{"car","heavy-vehicle"}) {
+        const auto name=std::string(type)+".json";
+        const auto archivedFile=root/("docs/evidence/vehicle-pose-original-"+name);
+        std::ifstream a(archivedFile),n(root/("data/vehicle-types/"+name));
+        const auto archived=nlohmann::json::parse(a),now=nlohmann::json::parse(n);
+        if(!now.contains("axles") || !sameTrafficVehicleType(now,archived))return false;
+        restored["catalogs"]["vehicle-types/"+name]=fnv1a(archivedFile);
+    }
+    current=std::move(restored);return true;
+}
 inline SweepRow runOne(const std::filesystem::path& data, std::uint32_t seed, double gapTime, double headway,
                        bool congested = false) {
     fixture::TJunctionOptions o; o.gapTime = gapTime; o.headway = headway; o.congestedMajor = congested;

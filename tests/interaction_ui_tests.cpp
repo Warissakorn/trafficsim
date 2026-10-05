@@ -338,7 +338,7 @@ void runVehicles(EditorCanvas& c,const std::filesystem::path& data) {
     Scenario s;s.duration=60;s.timeStep=.1;
     s.segments={{"d1",std::hypot(60.,60.),{}}};s.routes={{"route",{"d1"}}};
     s.vehicleTypes=source.vehicleTypes;s.behaviours=source.behaviours;
-    auto van=s.vehicleTypes.front();van.id="van";van.length=6;van.width=2;s.vehicleTypes.push_back(van);
+    auto van=s.vehicleTypes.front();van.id="van";van.length=6;van.width=2;van.axles.reset();s.vehicleTypes.push_back(van);
     auto state=createSimulation(s,42);
     const std::map<std::string,double> front{{"car",20},{"heavy-vehicle",50},{"van",80}};
     for(std::uint32_t i=0;i<state.scenario->vehicleTypes.size();++i) {
@@ -354,10 +354,14 @@ void runVehicles(EditorCanvas& c,const std::filesystem::path& data) {
     for(const auto& type:state.scenario->vehicleTypes) {
         const auto* item=drawn.at(type.id);require(item,"A vehicle is not a path item");
         const auto box=item->path().boundingRect();
-        require(std::abs(box.width()-type.length)<.01 && std::abs(box.height()-type.width)<.01 && std::abs(box.right())<.01,
-                "Vehicle body is not its type's length x width ending at the front bumper");
+        const auto axles=vehicleAxles(type);const double lever=axles.wheelbase+axles.frontOverhang;
+        require(std::abs(box.width()-type.length)<.01 && std::abs(box.height()-type.width)<.01 && std::abs(box.right()-lever)<.01,
+                "Vehicle body is not its type's length x width referenced to the rear axle");
         const double at=front.at(type.id)/std::sqrt(2.);
-        require(std::abs(item->pos().x()-at)<1e-6 && std::abs(item->pos().y()-at)<1e-6,"Vehicle front is not at its station");
+        const auto nose=item->mapToScene(QPointF(lever,0));
+        require(std::abs(nose.x()-at)<1e-6 && std::abs(nose.y()-at)<1e-6,"Vehicle front is not at its station");
+        require(std::abs(item->pos().x()-(at-lever/std::sqrt(2.)))<1e-6 &&
+                std::abs(item->pos().y()-(at-lever/std::sqrt(2.)))<1e-6,"Item origin is not its rear axle");
         require(std::abs(item->rotation()-45)<1e-6,"Vehicle does not follow the road's heading");
         require(item->pen().style()==Qt::NoPen,"Vehicle has an outline");
     }

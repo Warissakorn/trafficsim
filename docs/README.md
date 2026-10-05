@@ -21,6 +21,7 @@ contract or a dated record. When one of them states a status, its own date appli
 | File | What it is |
 |---|---|
 | [`SIMULATION.md`](SIMULATION.md) | Engine contracts: stepping, car-following, signals, right-of-way, lane changes, results. |
+| [`VEHICLE_POSE.md`](VEHICLE_POSE.md) | Rear-axle reference, continuous lane-change guidance, axle defaults, acceptance rows and limits. |
 | [`NETWORK_EDITOR.md`](NETWORK_EDITOR.md) | The desktop editor: tools, demand, control, Run, Results, save/recovery and file formats. |
 | [`NETWORK_EDITOR_CONNECTORS.md`](NETWORK_EDITOR_CONNECTORS.md) | The editor's Connector sections, split out to stay under 500 lines. |
 | [`CONNECTOR_FOUR_POINT_MOUTH.md`](CONNECTOR_FOUR_POINT_MOUTH.md) | The Connector mouth geometry contract (D80). |

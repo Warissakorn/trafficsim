@@ -297,6 +297,11 @@ those later constraints and genuine moving-vehicle clamps remain enforced.
 Out: a `Vehicle` at `distance` 0, speed 0, and `departed`; a blocked arrival waits in its
 input's queue (departure delay). Starting from rest is the ≈3 s of entry acceleration in delay.
 
+Accepted changes also append a snapshot-owned `Vehicle.laneChangeTrace` containing
+both stations/routes and pre-change speed, solely for display reconstruction
+([VEHICLE_POSE.md](VEHICLE_POSE.md)). No physics/evaluation function reads that trace;
+this does not introduce a between-lanes engine state.
+
 **Each tick** (`stepSimulation`). In: the pre-step snapshot, the same for every vehicle. Process:
 1. Insert arrivals, then build occupied intervals; a rear keeps occupying upstream segments.
 2. Mandatory lane changes (M3.2.8b): `decideLaneChanges` moves a stub vehicle to its target

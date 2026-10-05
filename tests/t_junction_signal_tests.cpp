@@ -138,5 +138,6 @@ TEST(tjunction_signal, the_archived_headway_metadata_keeps_its_original_geometry
     const auto behaviour = std::string("driver-behaviour/default.json");
     CHECK(current.at("catalogs").at(behaviour) != archived.at("catalogs").at(behaviour)); // the catalog really changed
     CHECK(sweep::restoreArchivedBehaviour(test::root(), current)); // D90: that field only, and no spans here
+    CHECK(sweep::restoreArchivedVehicleAxles(test::root(),current));
     CHECK(archived==current); // timing, volumes, catalogs, seeds and rules still agree
 }

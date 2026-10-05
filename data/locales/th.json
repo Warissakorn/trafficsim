@@ -167,6 +167,7 @@
   "EMPTY_ROUTE": "เส้นทางนี้ไม่มีขั้นตอน",
   "INVALID_NUMBER": "ค่านี้ต้องเป็นตัวเลขจำกัดที่มากกว่าศูนย์",
   "INVALID_RANGE": "ขอบล่างของช่วงต้องไม่มากกว่าขอบบน",
+  "INVALID_VEHICLE_AXLES": "ฐานล้อรวมกับระยะยื่นหน้าและหลังต้องเท่ากับความยาวรถ",
   "INCOMPLETE_DISCRETIONARY_BEHAVIOUR": "discretionaryLaneChangeThreshold และ acceptedDecelerationTrailingVehicle ต้องกำหนดคู่กัน กรุณากำหนดทั้งสองค่า หรือไม่กำหนดเลย",
   "INVALID_INTERVAL": "ช่วงเวลาสิ้นสุดก่อนเริ่ม กรุณาตรวจสอบ startTime และ endTime",
   "TIMESTEP_TOO_LARGE": "timeStep ต้องไม่เกิน 0.5 วินาที เพื่อให้แบบจำลองการตามรถยังเสถียร",

@@ -79,11 +79,14 @@ Json definitionJson(const AuthoringDefinition& d) {
     }
     if (!d.externalVehicleTypes) {
         j["vehicleTypes"] = Json::array();
-        for (const auto& t : d.vehicleTypes)
-            j["vehicleTypes"].push_back({{"id",t.id},{"length",t.length},{"width",t.width},
+        for (const auto& t : d.vehicleTypes) {
+            Json item{{"id",t.id},{"length",t.length},{"width",t.width},
                 {"desiredSpeed",{{"min",t.desiredSpeed.min},{"max",t.desiredSpeed.max}}},
                 {"maxAcceleration",t.maxAcceleration},{"comfortableDeceleration",t.comfortableDeceleration},
-                {"maxDeceleration",t.maxDeceleration},{"behaviourId",t.behaviourId}});
+                {"maxDeceleration",t.maxDeceleration},{"behaviourId",t.behaviourId}};
+            if(t.axles)item["axles"]={{"wheelbase",t.axles->wheelbase},{"frontOverhang",t.axles->frontOverhang},{"rearOverhang",t.axles->rearOverhang}};
+            j["vehicleTypes"].push_back(std::move(item));
+        }
     }
     if (!d.externalBehaviours) {
         j["behaviours"] = Json::array();
