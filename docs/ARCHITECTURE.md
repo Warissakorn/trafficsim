@@ -22,6 +22,7 @@ with JavaScript-style deep-freeze; callers must treat published states as snapsh
 
 | CMake target | Location | Dependencies | Status |
 |---|---|---|---|
+| `trafficsim_vehicle_pose` | `src/editor/vehicle_pose.*` | Model geometry, core route contracts; no Qt | Stateless display-only front position and chord heading across complete routes, testable headless |
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
 | `trafficsim_model` | `src/model/network/`, `src/model/demand/` | Core contracts/validation | M0 authoring model and compiler implemented; fixed-time Signal Controllers compiled to core programs (`signal_control.*`, M2.7b); authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay/travel time and approach queues for one run (M2.5); M3.2.8c diagnostics (lane changes, segment times, stop-line discharge, arrival phases, dead-end waits) |
@@ -38,6 +39,16 @@ evaluate the existing Bézier directly; length integrates |B'(t)| and station in
 bracketed. Authoring controls map through leg index/fraction to equation parameter and
 arc length; compiler, run canvas and heads read the same equation. Core receives lengths
 and metre stations only. Drawing points and Connector widths do not define runtime motion.
+
+The Run view evaluates front and rear heading samples at route distances `d` and
+`d - vehicleLength`, across Link sections and Connector equations. A sample before
+route entry extends the initial tangent backwards. Section boundaries do not switch
+the heading formula. This is a display chord approximation, not an axle/swept-path
+model: the rendered rear is a rigid body length behind the front and need not coincide
+with the arc-distance rear sample on a curve. Vehicle length comes from the type,
+independent of the minimum visible size at low zoom. The existing lane-change slide
+is applied afterwards. Per-frame route parts are shared by drawing and slide lookup;
+no pose history or new simulation state is stored.
 
 Qt and JSON are not linked into the core. Set `TRAFFICSIM_BUILD_DESKTOP=OFF` to build
 and test the engine, model and CLI on a machine without Qt.
