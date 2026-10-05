@@ -65,6 +65,54 @@ void equationPose(const std::filesystem::path& data) {
     }
 }
 
+// Regression: the front changes segment while the rear is still upstream. Verify
+// actual scene items on a complete Link -> Connector -> Link route, also at the old
+// station==length branch and at low zoom (drawing size must not set the heading).
+void joinedPose(const std::filesystem::path& data) {
+    Network n;n.links={{"a",{{-80,0},{0,0}},{{"a1",3.5}}},
+                       {"b",{{30,30},{30,100}},{{"b1",3.5}}}};
+    Connector c;c.id="curve";c.from={"a","a1"};c.to={"b","b1"};
+    c.geometry=connectorCurve(n,c.from,c.to,0);n.connectors.push_back(c);
+    const auto path=connectorPaths(n,c).front();const double length=connectorPathLength(path);
+    const auto source=loadScenario(data/"scenarios/crossing.json",data).scenario;
+    Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
+    scenario.segments={{"a1",80,{path.id}},{path.id,length,{"b1"}},{"b1",70,{}}};
+    scenario.routes={{"route",{"a1",path.id,"b1"}}};
+    scenario.vehicleTypes=source.vehicleTypes;scenario.behaviours=source.behaviours;
+    auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;frame.vehicles.push_back(v);
+    EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
+    canvas.setRunNetwork(n);
+    const auto routePoint=[&](double d)->Point {
+        if(d<=80)return {d-80,0}; // extends upstream for a rear sample before route entry
+        if(d<=80+length)return connectorPathPoint(path,d-80);
+        return {30,30+d-80-length};
+    };
+    for(double scale:{8.,.1}) {
+        canvas.setTransform(QTransform::fromScale(scale,-scale));
+        for(std::uint32_t type=0;type<scenario.vehicleTypes.size();++type) {
+            frame.vehicles.front().typeIndex=type;const double body=scenario.vehicleTypes[type].length;
+            const auto at=[&](double d) {
+                frame.vehicles.front().distance=d;canvas.setRunFrame(frame);
+                const auto pose=poseOf(canvas,1);require(pose.has_value(),"Joined-route vehicle not drawn");
+                const auto front=routePoint(d),rear=routePoint(d-body);
+                require(std::hypot(pose->x-front.x,pose->y-front.y)<1e-7,"Joined-route front moved off its station");
+                const double heading=std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.);
+                require(std::abs(std::remainder(pose->rotation-heading,360.))<1e-7,"Body uses a local-segment tangent at a join");
+                return pose->rotation;
+            };
+            at(0);at(body-1e-6);at(body);at(body+1e-6);
+            // The setup separates the expected chord from the legacy exit tangent.
+            const auto front=routePoint(80+length),rear=routePoint(80+length-body);
+            require(std::abs(std::atan2(front.y-rear.y,front.x-rear.x)*180/std::acos(-1.)-90)>4,
+                "Setup: join does not expose the old heading jump");
+            for(double boundary:{80.,80.+body,80.+length,80.+length+body}) {
+                const double before=at(boundary-1e-6);at(boundary);const double after=at(boundary+1e-6);
+                require(std::abs(std::remainder(after-before,360.))<1e-4,"Heading jumps across a route boundary");
+            }
+        }
+    }
+}
+
 double apart(Pose a, Pose b) { return std::hypot(a.x - b.x, a.y - b.y); }
 }
 int main(int argc, char** argv) {
@@ -74,6 +122,7 @@ int main(int argc, char** argv) {
         require(argc > 1, "data path");
         const std::filesystem::path data(argv[1]);
         equationPose(data);
+        joinedPose(data);
         EditorWindow w{data}; w.resize(1200, 800); w.show(); QTest::qWait(30);
         w.openFile(QString::fromStdString((data / "projects/lane-change-lab.traffic.json").string()));
         auto* step = w.findChild<QAction*>("editorStep");

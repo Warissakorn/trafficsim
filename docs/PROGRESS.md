@@ -8,6 +8,34 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Continuous vehicle headings across route segments
+
+Owner authorized phase 1 of the vehicle-position audit: repair heading discontinuities
+before introducing axle kinematics. The old Run view used a front tangent when local
+station was below vehicle length, then switched to a chord inside the segment. On the
+90-degree test curve that switched by 4.28 degrees for a 4.5 m car and 11.52 degrees for
+a 12 m vehicle; exiting onto the straight target also switched to its tangent.
+
+`vehicle_pose.*` now samples the complete ordered route at front distance and one type
+length upstream, using the existing Link geometry and direct Connector equation. The
+initial tangent extends behind route entry; coincident samples use a finite front
+tangent fallback. Missing geometry has no drawable pose. Canvas shares per-frame route
+parts with its lane-change slide; it keeps the true type length for heading at low zoom.
+The new Qt-free target has headless geometry regressions, and the Qt suite checks actual
+scene-item poses at both joins and the former length thresholds for both shipped types.
+Both the extracted legacy formula and the original Canvas fail the new join regression.
+
+This remains a display chord approximation. The upstream arc sample is not the actual
+rear bumper or axle, and no wheelbase, overhang, steering or articulated trailer model
+is introduced. Core state/events, runtime equations, schema and frozen fixtures are
+unchanged. Linux GCC 13.3 / Qt 6.4.2 Debug: headless 56/56 and desktop 81/81 pass,
+including architecture and file-size guards. Against main `3403b72`, crossing event logs
+and reports match byte-for-byte for seeds 0, 42, 43 and 4294967295; seed-42 reports/CSVs
+also match for four-leg-signalised, t-junction-priority, lane-change-lab and m2.6-study-template.
+Windows CI is pending; owner appearance and axle-model work remain open in NEXT.
+
+---
+
 ## 2026-10-05 — Shared mouth classification and separate lane-pair paint (D110)
 
 Owner reported Connector/Link endpoint conflicts and clarified that grouping shares priority,
@@ -299,37 +327,8 @@ CLI. It could not drive the live desktop. Full results:
 - **Why nothing is closed:** a suite passing is not the owner's look. D84's and D100's failure
   conditions are the owner's judgment, and hard rule 8 forbids closing on it.
 
-## 2026-10-02 — D95 stays off (owner, option ii); lane changes drawn as a slide (D102)
-
-The owner chose option (ii): D95 and D101's hold stay implemented and off; a better incentive (i)
-waits for a later session. **Run view (D102):** for 3 s after a change, `drawRunItems` draws the
-vehicle easing (smoothstep) from the lane it left to its own, found as the sideways part of the
-nearest point on `lastLaneChange.fromRoute`'s geometry, so no lane mapping is copied from the core.
-Only the sideways part, because past a stub's dead end the nearest point lies behind the vehicle.
-The nose turns by sideways over forward speed, forward floored at 5 m/s so a queued changer does
-not swing across. Each `run-vehicle` item now carries its vehicle id (`data(2)`). Test
-`lane-change-display-ui` (lab, one changer frame by frame): the first frame 3.49 m off, closer every
-frame, turned 0.5°–30° mid-slide, on its lane from 3 s; disabling the slide and removing the yaw
-each fail it. Desktop 75/75 on Windows.
-
-## 2026-10-02 — D101 implemented: the last-change record and the hold; A53 fails
-
-The owner confirmed D101 step 2. **Contract:** item 7 of D95 is replaced (M3_8_CONTRACT.md):
-`Vehicle::lastLaneChange` `{tick, fromRoute}` is written by every change, inside `SimState`, and
-read only by the hold; `discretionaryLaneChangeHoldTime` (s, behaviour field, absent = no hold)
-blocks discretionary changes, never mandatory ones. **Rows:** A52 and A53 rewritten; A56 (the hold
-delays a change back until it has passed), A57 (never a mandatory change), A58 (no hold: the
-record is never read -- a run that forgets every record matches change for change). Mutating
-the hold check off fails A56. **Code:** `types.hpp`, `lanes.cpp` (the hold check;
-`decideLaneChanges` now takes the tick), `simulation.cpp` (writes the record), validation,
-parse/definition, the evaluator's `returns` (back to the route left, within 10 s) and the sweep's
-`--hold` and returns columns. Desktop 74/74 on Windows.
-
-**A53 fails** (`docs/evidence/m3.2.8c-discretionary.md`): four-leg and M2.6, seeds 42–81,
-threshold 1.5, hold 3 s, 4.85% / 5.09% of discretionary changes return within 10 s against the
-proposed 1% cap; without the hold 5.19% / 5.44%. A hold of 3 s or more zeroes the old 3 s count
-by construction and moves the rest past it. Only the lab passes, at threshold 1.5 (0.92%), giving
-up most of the gain. D95 stays off; the choice goes back to the owner (NEXT).
+D101/D102 session entries are preserved in
+[`archive/PROGRESS-2026-10-02-d101-d102.md`](archive/PROGRESS-2026-10-02-d101-d102.md).
 
 ## Backlog (M0, in order)
 

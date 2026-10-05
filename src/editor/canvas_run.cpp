@@ -1,6 +1,7 @@
 #include "canvas.hpp"
 #include "canvas_style.hpp"
 #include "vehicle_shape.hpp"
+#include "vehicle_pose.hpp"
 #include "../core/routes.hpp"
 #include "../core/simulation.hpp"
 #include <QGraphicsEllipseItem>
@@ -69,11 +70,14 @@ void EditorCanvas::drawRunItems() {
     // route's geometry, so no lane mapping is duplicated here. A second change inside the window
     // restarts the slide from the lane the second one left.
     std::map<std::uint32_t,std::vector<RoutePart>> partsOf;
-    const auto onRoute=[&](std::uint32_t route,Point p)->std::optional<Point> {
+    const auto partsForRoute=[&](std::uint32_t route)->const std::vector<RoutePart>& {
         auto parts=partsOf.find(route);
         if(parts==partsOf.end())parts=partsOf.emplace(route,routeParts(*runFrame_.scenario,runFrame_.scenario->routes.at(route))).first;
+        return parts->second;
+    };
+    const auto onRoute=[&](std::uint32_t route,Point p)->std::optional<Point> {
         std::optional<Point> best;double bestDistance=std::numeric_limits<double>::infinity();
-        for(const auto& part:parts->second) {
+        for(const auto& part:partsForRoute(route)) {
             const auto g=runGeometry_.find(part.segmentId);if(g==runGeometry_.end())continue;
             const auto curve=runEquations_.find(part.segmentId);
             const auto q=curve==runEquations_.end()?pointAlong(g->second,stationOfClosestPoint(g->second,p)):
@@ -83,30 +87,24 @@ void EditorCanvas::drawRunItems() {
         return best;
     };
     for(const auto& v:runFrame_.vehicles) {
-        const auto location=locateVehicle(*runFrame_.scenario,v);
+        const auto& parts=partsForRoute(v.routeIndex);
+        const auto location=locateOnParts(parts,v);
         const auto it=runGeometry_.find(location.segmentId);
         if(it==runGeometry_.end() || !levelVisible(runLevels_.at(location.segmentId)))continue;
         const auto& type=runFrame_.scenario->vehicleTypes.at(v.typeIndex);
         auto shape=shapes.find(v.typeIndex);
         if(shape==shapes.end())shape=shapes.emplace(v.typeIndex,vehicleShape(std::max(type.length,4/scale),
             std::max(type.width,2.5/scale),type.length*scale>=14)).first;
-        const auto& g=it->second;const double station=location.position;
-        const auto curve=runEquations_.find(location.segmentId);
-        const auto point=[&](double at){return curve==runEquations_.end()?pointAlong(g,at):equationPoint(curve->second,equationParameter(curve->second,at));};
-        const auto front=point(station);
-        // The body is the chord from rear to front, as a real vehicle sits across a curve; a vehicle
-        // whose rear is still on the previous segment takes the tangent at its front instead.
-        Point heading=curve==runEquations_.end()?directionAlong(g,station,true):equationDerivative(curve->second,equationParameter(curve->second,station));
-        if(station>=type.length) {
-            const auto rear=point(station-type.length);
-            if(std::hypot(front.x-rear.x,front.y-rear.y)>1e-6)heading={front.x-rear.x,front.y-rear.y};
-        }
+        const auto pose=vehiclePose(parts,v.distance,type.length,runGeometry_,runEquations_);
+        if(!pose)continue;
+        const auto front=pose->front;Point heading=pose->heading;
         Point at=front;
         if(const auto& last=v.lastLaneChange) {
             const double f=static_cast<double>(runFrame_.tick-last->tick)*runFrame_.scenario->timeStep/kLaneChangeShown;
             const double norm=std::hypot(heading.x,heading.y);
             // How far sideways the lane it left lies from the front: only the sideways part, since
             // past a stub's dead end the nearest point is behind the vehicle.
+            if(norm<=1e-9)continue;
             const Point along{heading.x/norm,heading.y/norm},side{-along.y,along.x};
             std::optional<Point> left;
             if(f<1 && norm>1e-9)left=onRoute(last->fromRoute,front);
