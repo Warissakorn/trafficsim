@@ -5,6 +5,7 @@
 #include "../src/commands/history.hpp"
 #include "../src/model/network/conflict_surface.hpp"
 #include <algorithm>
+#include <cmath>
 using namespace trafficsim;
 namespace {
 const PriorityDefaults defaults{3,7};
@@ -143,4 +144,66 @@ TEST(conflict_geometry, editing_drawing_rebases_authored_stations_without_moving
     test::near(z.waitPosition,before.zones.front().waitPosition,1e-8);
     CHECK(!conflictSideOutline(h.document().network,h.document().network.rightOfWay.conflictAreas.front().first).empty());
     h.undo();CHECK(h.document()==d);
+}
+TEST(conflict_geometry, add_crossing_does_not_duplicate_an_attached_link_mouth) {
+    ProjectDocument d;
+    const auto source=addLink(d,{{-100,30},{100,30}},1,3.5),target=addLink(d,{{0,0},{200,0}},1,3.5);
+    const auto id=addConnector(d,{source,lane(d,source),100},{target,lane(d,target),100});
+    const auto ref=connectorRef(d.network.connectors.front());
+    CHECK(validateNetwork(d.network).empty() && connectorRuntimeIssues(d.network).empty());
+    for(const auto& link:{source,target}) {
+        const ControlPathRef road{link,lane(d,link),"","",""};
+        CHECK(surfaceOverlaps(d.network,ref,road).front().status==SurfaceOverlap::Status::overlap);
+        CHECK(crossingOverlaps(d.network,ref,road).front().status==SurfaceOverlap::Status::none);
+        CHECK(crossingOverlaps(d.network,road,ref).front().status==SurfaceOverlap::Status::none);
+        CHECK(pairCount(d.network,id,link)==(link==target?1:0)); // actual target merge, no crossing
+        const auto before=d;
+        test::throws([&]{addCrossingAreas(d,id,link,id,defaults);},"EDIT_NO_CROSSING");
+        CHECK(d==before);
+    }
+    // A retained old crossing at that mouth is rejected by Run, rather than taking over a merge.
+    const ControlPathRef road{target,lane(d,target),"","",""};
+    const auto o=surfaceOverlaps(d.network,ref,road).front();
+    const auto firstLine=putWaitingLine(d,{"","",{ref,offsetControlStation(d.network,ref,o.first.from,-1)}});
+    const auto secondLine=putWaitingLine(d,{"","",{road,offsetControlStation(d.network,road,o.second.from,-1)}});
+    const auto area=putConflictArea(d,{"","",ConflictKind::crossing,{ref,o.first.from,o.first.to,firstLine},
+        {road,o.second.from,o.second.to,secondLine},ConflictPriority::firstYields});
+    putPriorityRule(d,{"","",area,3,7});
+    const auto r=resolveRightOfWay(d.network,runtimeSections(d.network),defaults);
+    CHECK(std::any_of(r.issues.begin(),r.issues.end(),[](const auto& i){return i.code=="CONFLICT_NO_OVERLAP";}));
+}
+TEST(conflict_geometry, manual_crossing_keeps_the_neighbour_lane_swept_before_a_join) {
+    ProjectDocument d;
+    const auto main=addLink(d,{{0,0},{200,0}},2,3.5),minor=addLink(d,{{100,-60},{100,-15}},1,3.5);
+    const auto landing=d.network.links.front().lanes.back().id;
+    const auto c=addConnector(d,{minor,lane(d,minor)},{main,landing,130});
+    const auto created=addCrossingAreas(d,c,main,c,defaults);
+    CHECK(!created.empty());
+    for(const auto& a:d.network.rightOfWay.conflictAreas) {
+        const auto& side=a.first.path.linkId==main?a.first:a.second;
+        CHECK(side.path.linkId==main && side.path.laneId!=landing);
+    }
+}
+TEST(conflict_geometry, mapped_lane_mouths_are_excluded_at_link_ends_and_internal_stations) {
+    for(const auto side:{DrivingSide::left,DrivingSide::right})for(int count:{1,2,3})
+        for(double station:{0.,100.,200.})for(Point u:{Point{0,-1},Point{1,0},Point{0,1}}) {
+            ProjectDocument d;d.network.drivingSide=side;
+            const Point end{station-50*u.x,-50*u.y};
+            const auto source=addLink(d,{{end.x-100*u.x,end.y-100*u.y},end},count,3.5);
+            const auto target=addLink(d,{{0,0},{200,0}},count,3.5);
+            addConnectorRange(d,{source,lane(d,source)},{target,lane(d,target),station},count,count);
+            const auto& c=d.network.connectors.front();
+            CHECK(validateNetwork(d.network).empty());
+            const auto issues=connectorRuntimeIssues(d.network);
+            // A target at its very end has no receiving section: still a valid geometry draft.
+            if(station==200)CHECK(std::any_of(issues.begin(),issues.end(),[](const auto& i){return i.code=="UNSUPPORTED_CONNECTOR_POSITION";}));
+            else CHECK(issues.empty());
+            for(const auto& path:connectorPaths(d.network,c)) {
+                const ControlPathRef ref{"","",c.id,path.from.laneId,path.to.laneId};
+                const ControlPathRef joined{target,path.to.laneId,"","",""};
+                const auto measured=surfaceOverlaps(d.network,ref,joined);
+                CHECK(measured.front().status==SurfaceOverlap::Status::none || measured.front().status==SurfaceOverlap::Status::overlap);
+                CHECK(crossingOverlaps(d.network,ref,joined).front().status==SurfaceOverlap::Status::none);
+            }
+        }
 }

@@ -5,6 +5,8 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-02-d101-step1.md`](PROGRESS-2026-10-02-d101-step1.md) — D101 step 1, reversing D95 changes; moved whole 2026-10-05
+
 - [`PROGRESS-2026-10-02-d99-d100.md`](PROGRESS-2026-10-02-d99-d100.md) — D99 Windows Run-view paint cost and D100 wireframe display; moved whole 2026-10-04
 
 - [`PROGRESS-2026-10-02-d97-d98.md`](PROGRESS-2026-10-02-d97-d98.md) — 2026-10-02, D97 vehicles drawn at true size, D98 the lane-change lab and where D95 stood, route table Length as a full chain; moved out 2026-10-04 as the oldest live entries

@@ -368,7 +368,7 @@ RightOfWayResolution resolveRightOfWay(const Network& n, const RuntimeSections& 
         }
         if (a.kind == ConflictKind::crossing && r.first && r.second) {
             // D72: a pair may overlap in several places; the area answers for the one it lies over.
-            const auto pieces = surfaceOverlaps(n, a.first.path, a.second.path);
+            const auto pieces = crossingOverlaps(n, a.first.path, a.second.path);
             auto overlap = pieces.front();
             if (overlap.status == SurfaceOverlap::Status::overlap) {
                 const auto over = std::find_if(pieces.begin(), pieces.end(), [&](const auto& o) {

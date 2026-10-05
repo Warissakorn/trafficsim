@@ -183,6 +183,9 @@ with endpoint lane widths blended by equation parameter. It converts results bac
 stations; editable drawing vertices cannot change coverage. Highlights still use painted rails.
 D109 `conflictGroups` derives connected groups for one road-owner pair and kind; commands
 author/edit/delete every member atomically, while the resolver keeps individual lane-pair zones.
+D110 paints every lane-pair side separately, retaining shared group selection/control.
+`crossingOverlaps` applies one attachment-mouth exclusion to automatic detection, Add,
+geometry following and Run validation; `surfaceOverlaps` remains raw geometry.
 Separate locations remain separate groups. D107 changes runtime paths to the continuous existing cubic;
 project schema remains unchanged, with explicit authoring-to-runtime station adapters.
 

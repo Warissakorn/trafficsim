@@ -38,6 +38,9 @@ SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const
 // D72: each separate overlap of the two surfaces, ordered along `first`. Every element has status
 // `overlap`, or the result is a single element carrying none/unsupported/unresolved.
 std::vector<SurfaceOverlap> surfaceOverlaps(const Network&, const ControlPathRef& first, const ControlPathRef& second);
+// Crossing candidates exclude the connected overlap rooted at an actual shared attachment.
+// Raw surfaceOverlaps remains available for geometric measurement. Merge topology owns mouths.
+std::vector<SurfaceOverlap> crossingOverlaps(const Network&, const ControlPathRef& first, const ControlPathRef& second);
 // Whether an authored area of this pair already holds this piece of its overlap (D72, D86).
 bool authoredCovers(const Network&, const ControlPathRef& first, const ControlPathRef& second, const SurfaceOverlap&);
 // M3.2.4: what the editor draws, from the same lane strips. A side's area is the strip between

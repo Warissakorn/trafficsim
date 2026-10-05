@@ -33,7 +33,8 @@ multiple paths is unresolved; a changed lane count never silently retargets it b
 No route's Link/Connector authoring contract changes, and no lane-changing decision is added.
 
 D109 groups connected lane-pair areas of the same Link/Connector owner pair and kind in the
-canvas and table. A 3 × 3 crossing has one group and nine lane-pair reservations. Group edits
+canvas and table. D110 retains separate painted strips/insets for every lane-pair side: a
+3 × 3 crossing has eighteen side outlines, one control group and nine lane-pair reservations. Group edits
 apply to every member in one Undo; differing existing settings are shown as mixed. Separate
 locations and different owner pairs stay separate. Using three single-lane Links per road
 therefore keeps nine groups, but is a different network topology. No group is persisted.
@@ -44,13 +45,16 @@ interior edits do not change it. Stored schema-17 stations remain on the drawing
 the shared parameter adapter maps measured extents and physical waiting-line setbacks.
 Highlight outlines use the painted rails; their two sides may be separated after a paint edit,
 but share group selection. Unsupported folded strips remain named blockers. Common rooted
-merge/diverge mouths are excluded from crossing suggestions; downstream merges retain their
+merge/diverge mouths are excluded by shared `crossingOverlaps` in suggestions, Add, geometry
+following and Run coverage checks; downstream merges retain their
 topological arbitration, and a pure diverge needs no competing-arrival reservation. Sharing
 a lane at different attachment stations does not exclude a crossing elsewhere.
 
 Older authored extents are checked against the new surface on load, without silently changing
 priority or coverage. If coverage is stale, recreate the crossing with Delete and P (or Add
-crossing areas), or make an undoable geometry edit to rederive it through D86.
+crossing areas), or make an undoable geometry edit to rederive it through D86. An old crossing
+at an actual attachment mouth reports CONFLICT_NO_OVERLAP: delete that crossing and use
+Take over merge when an explicit merge override is intended.
 
 Link/Connector geometry edits preserve numeric stations on their reference geometry and
 recompute the visual/runtime conversion. Out-of-range or no-longer-overlapping extents
