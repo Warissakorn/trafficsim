@@ -50,7 +50,8 @@ This work extends M2 without reopening or claiming its observed gate.
 
 Slices 1–4 are PR #106. Slice 5 is implemented in the subsequent catalog branch;
 [DEMAND_CATALOGS.md](DEMAND_CATALOGS.md) records its ownership and editing contract.
-Slice 6 remains planned; native CI and owner appearance gates remain distinct.
+Slice 6 is implemented in the time/type branch ([contract](DEMAND_TIME_TYPES.md));
+native CI and owner appearance gates remain distinct.
 Do not claim completion from the presence of an external JSON catalog or a combo box.
 
 ## Vehicle type and composition scope for the next slice
@@ -66,9 +67,9 @@ appearance; changing them must not silently alter arrival or car-following model
 Motorcycle-heavy counts need a separately specified dynamics/lane-occupation
 contract before a motorcycle type can be claimed as supported. Articulated vehicles
 also need an articulation model; a heavy rigid body is not a trailer train.
-Time-varying shares, type-conditioned destinations and desired-speed distributions
-need their own authored schema, migration, validation and deterministic sampling
-contracts. Decide exact arrival/count mode only after defining interaction with
+Time-varying shares and type-conditioned destinations use the slice-6 contract.
+Additional desired-speed distribution families need their own authored schema,
+migration, validation and deterministic sampling contracts. Decide exact arrival/count mode only after defining interaction with
 Poisson arrivals and source queues; Preview must never imply exact counts today.
 
 ## Verification and limits

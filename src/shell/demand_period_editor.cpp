@@ -11,7 +11,8 @@
 #include <algorithm>
 namespace trafficsim {
 std::optional<std::vector<std::vector<double>>> editDemandPeriods(QWidget* parent,const QStringList& columns,
-    const std::vector<std::vector<double>>& values,const std::function<QString(const char*)>& text) {
+    const std::vector<std::vector<double>>& values,const std::function<QString(const char*)>& text,
+    const std::function<const char*(const std::vector<std::vector<double>>&)>& validate) {
     QDialog dialog(parent);dialog.setObjectName("editorDemandPeriodsDialog");dialog.setWindowTitle(text("editorDemandPeriods"));
     auto* layout=new QVBoxLayout(&dialog);
     auto* help=new QLabel(text("editorDemandPeriodsHelp"),&dialog);help->setWordWrap(true);layout->addWidget(help);
@@ -52,6 +53,7 @@ std::optional<std::vector<std::vector<double>>> editDemandPeriods(QWidget* paren
             if(row[0]>=row[1] || row[0]<end){error->setText(text("INVALID_INTERVAL"));return;}
             end=row[1];result.push_back(std::move(row));
         }
+        if(validate)if(const auto* code=validate(result)){error->setText(text(code));return;}
         dialog.accept();
     });
     QObject::connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);

@@ -1,5 +1,5 @@
 add_library(trafficsim_shell STATIC editor_style.cpp editor_appearance.cpp editor_workspace.cpp editor_window.cpp editor_commands.cpp editor_signal.cpp signal_timing_view.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
-    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_demand_preview.cpp editor_catalog.cpp demand_catalog_dialog.cpp demand_period_editor.cpp editor_input.cpp editor_decision.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_results.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
+    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_demand_preview.cpp editor_catalog.cpp demand_catalog_dialog.cpp demand_type_rules_dialog.cpp demand_period_editor.cpp editor_input.cpp editor_decision.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_results.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
     ../editor/canvas_feedback.cpp ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/vehicle_shape.cpp ../editor/canvas_display.cpp ../editor/canvas_demand.cpp ../editor/canvas_cache.cpp ../editor/canvas_heads.cpp ../editor/canvas_conflicts.cpp ../editor/canvas_counters.cpp editor_priority.cpp editor_counters.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_vehicle_pose trafficsim_options)
 # 26 sources, every one of them a Qt widgets translation unit: <QGraphicsView> alone costs
@@ -92,6 +92,12 @@ target_precompile_headers(trafficsim-lifecycle-ui-tests REUSE_FROM trafficsim_sh
     target_link_libraries(trafficsim-demand-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
 target_precompile_headers(trafficsim-demand-ui-tests REUSE_FROM trafficsim_shell)
     add_test(NAME demand-ui COMMAND trafficsim-demand-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    add_executable(trafficsim-demand-time-types-ui-tests ../../tests/demand_time_types_ui_tests.cpp)
+    target_link_libraries(trafficsim-demand-time-types-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    target_precompile_headers(trafficsim-demand-time-types-ui-tests REUSE_FROM trafficsim_shell)
+    add_test(NAME demand-time-types-ui COMMAND trafficsim-demand-time-types-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(demand-time-types-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-demand-time-types-ui-tests)
     add_executable(trafficsim-demand-catalog-ui-tests ../../tests/demand_catalog_ui_tests.cpp)
     target_link_libraries(trafficsim-demand-catalog-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     target_precompile_headers(trafficsim-demand-catalog-ui-tests REUSE_FROM trafficsim_shell)

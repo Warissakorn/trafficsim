@@ -11,7 +11,8 @@ namespace trafficsim {
 // With `at`, each destination's weight is its flow at that time (M2.1.2); without, relativeFlow.
 std::vector<PlacedDecision> placedDecisions(const Network&, const AuthoringDefinition&,
                                             std::vector<ValidationIssue>* issues = nullptr,
-                                            std::optional<double> at = std::nullopt);
+                                            std::optional<double> at = std::nullopt,
+                                            const std::string& vehicleTypeId = {});
 // Every input with a linkId (or naming a placed decision, which withRoutingDecisions turns into
 // one) becomes one input per complete path, each on an already-expanded runtime route
 // `link:<id>/path-k` that buildScenario passes through. An input whose walk has a problem is left

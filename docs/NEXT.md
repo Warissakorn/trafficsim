@@ -14,11 +14,15 @@ The owner explicitly asked to start Demand improvements. This takes priority ove
 defines slices 1–6: correctness, lossless interval editing, explicit periods and
 compiled preview first; project-owned vehicle/composition catalogs and typed/time
 rules next. Reporting, LOS and batch evaluation stay M5. Slices 1–4 (PR #106)
-passed native Linux/Windows CI. Slice 5 adds schema-18 project catalog ownership
-and its editor ([DEMAND_CATALOGS.md](DEMAND_CATALOGS.md)); check native CI and owner
-appearance independently. Next implement slice 6: define the schema and deterministic
-sampling contract for time-varying compositions and type-conditioned routing, then
-write breakpoint/conservation tests before UI work. Do not mark the whole plan closed.
+passed native Linux/Windows CI. Slice 5 (#107) adds project-owned catalogs and editing;
+its five native jobs passed too. Slice 6 adds schema-19 time/type rules and staged
+editors ([DEMAND_TIME_TYPES.md](DEMAND_TIME_TYPES.md)); check this slice's native CI
+and owner appearance independently. The six implementation slices are present;
+M2.8 stays in progress until its own review gates pass. Next review the stacked PRs
+in dependency order (#106, #107, then time/type), retarget after each merge, and
+exercise catalog periods and type overrides in the owner's desktop. No automatic
+merge or whole-Demand completion claim. Additional distributions, exact-count or
+dynamic-routing work requires its own contract; reporting remains M5.
 
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 

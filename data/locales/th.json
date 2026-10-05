@@ -543,5 +543,11 @@
   "catalogAxles": "ระบุขนาดส่วนประกอบเพลา (การแสดงผล)",
   "catalogWheelbase": "wheelbase (m)",
   "catalogFrontOverhang": "frontOverhang (m)",
-  "catalogRearOverhang": "rearOverhang (m)"
+  "catalogRearOverhang": "rearOverhang (m)",
+  "editorCompositionPeriods": "ช่วงเวลาส่วนผสมรถ…",
+  "editorCompositionPeriodsHelp": "ระบุสัดส่วนรถครบในแต่ละช่วงเวลา ช่องว่างใช้ส่วนผสมเดิม ค่า 0 ไม่นับประเภทรถนั้น ปริมาณรถยังใช้ค่าจาก Vehicle input",
+  "editorTypeRules": "เส้นทางตามประเภทรถ…",
+  "editorTypeRulesHelp": "ระบุน้ำหนักครบทุกปลายทาง ประเภทรถที่ไม่เลือกใช้ค่าเริ่มต้น ช่วงที่ทุกค่าเป็น 0 ใช้น้ำหนักรวมของประเภทรถนั้น เลือกปลายทางตามเวลาที่กำหนดก่อนเข้าคิว",
+  "editorTypeRuleOverride": "กำหนดสัดส่วนเส้นทางเฉพาะประเภทรถนี้",
+  "editorTypeRulesTargetsHelp": "บันทึกปลายทางก่อน เมื่อมีกฎเฉพาะประเภทรถ ให้แก้จำนวนรถผ่านช่วงเวลาแบบชัดเจน ลบกฎก่อนเปลี่ยนปลายทางหรือจำนวนรถแบบย่อ"
 }

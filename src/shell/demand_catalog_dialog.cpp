@@ -1,4 +1,5 @@
 #include "demand_catalog_dialog.hpp"
+#include "demand_period_editor.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QCheckBox>
 #include <QComboBox>
@@ -72,7 +73,30 @@ bool editCatalogComposition(QWidget* parent,Composition& composition,const std::
         auto* id=new QTableWidgetItem(QString::fromStdString(t.id));id->setFlags(Qt::ItemIsEnabled);table->setItem(at,0,id);
         auto* field=number(table,"editorCatalogShare",weight);table->setCellWidget(at,1,field);shares.push_back(field);
     }
+    auto staged=composition;
+    auto* periods=new QPushButton(text("editorCompositionPeriods"),&dialog);periods->setObjectName("editorCompositionPeriods");layout->addWidget(periods);
+    auto* timeHelp=new QLabel(text("editorCompositionPeriodsHelp"),&dialog);timeHelp->setWordWrap(true);layout->addWidget(timeHelp);
+    QObject::connect(periods,&QPushButton::clicked,&dialog,[&]{
+        QStringList columns{text("editorInputStart"),text("editorInputEnd")};for(const auto& t:types)columns<<QString::fromStdString(t.id);
+        std::vector<std::vector<double>> rows;
+        for(const auto& p:staged.intervals) {
+            std::vector<double> row{p.startTime,p.endTime};for(const auto& t:types) {
+                double weight=0;for(const auto& m:p.types)if(m.vehicleTypeId==t.id)weight=m.share;row.push_back(weight);
+            }
+            rows.push_back(std::move(row));
+        }
+        const auto edited=editDemandPeriods(&dialog,columns,rows,text,[](const auto& values)->const char*{
+            for(const auto& r:values){double sum=0;for(std::size_t k=2;k<r.size();++k)sum+=r[k];if(!(sum>0))return "INVALID_SHARE";}return nullptr;
+        });
+        if(!edited || *edited==rows)return;
+        staged.intervals.clear();for(const auto& r:*edited) {
+            CompositionInterval p{r[0],r[1],{}};
+            for(std::size_t k=0;k<types.size();++k)if(r[k+2]>0)p.types.push_back({types[k].id,r[k+2]});
+            staged.intervals.push_back(std::move(p));
+        }
+    });
     buttons(dialog,layout,text);dialog.resize(500,420);if(dialog.exec()!=QDialog::Accepted)return false;
+    composition.intervals=std::move(staged.intervals);
     composition.name=name->text().trimmed().toStdString();
     if(std::none_of(shares.begin(),shares.end(),[](const auto* f){return f->property("edited").toBool();}))return true;
     composition.types.clear();

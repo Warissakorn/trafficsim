@@ -543,5 +543,11 @@
   "catalogAxles": "Specify axle dimensions (display)",
   "catalogWheelbase": "wheelbase (m)",
   "catalogFrontOverhang": "frontOverhang (m)",
-  "catalogRearOverhang": "rearOverhang (m)"
+  "catalogRearOverhang": "rearOverhang (m)",
+  "editorCompositionPeriods": "Composition periods…",
+  "editorCompositionPeriodsHelp": "Complete type weights per period. Gaps use the base composition; zero excludes a type. Input volume stays authoritative.",
+  "editorTypeRules": "Vehicle type routing…",
+  "editorTypeRulesHelp": "Overrides use complete target weights. Unchecked types inherit default flows. All-zero periods use that type’s whole-period weights. Selection uses scheduled demand time, before queueing.",
+  "editorTypeRuleOverride": "Override default flows for this type",
+  "editorTypeRulesTargetsHelp": "Save targets first. With type overrides, use explicit periods to edit shared counts; remove overrides before changing targets or compact counts."
 }

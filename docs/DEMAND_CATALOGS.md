@@ -49,4 +49,5 @@ articulated dynamics are outside this slice.
   validators rather than a shell-only rule.
 - Linux automated UI and native CI are distinct from owner appearance acceptance.
 
-Time-varying compositions and type-specific routing remain slice 6. Reporting stays M5.
+Time-varying compositions and type-specific routing are defined in
+[DEMAND_TIME_TYPES.md](DEMAND_TIME_TYPES.md), slice 6. Reporting stays M5.

@@ -1,6 +1,7 @@
 #include "demand_paths.hpp"
 #include "document.hpp"
 #include "demand_catalog.hpp"
+#include "demand_time_types.hpp"
 #include "../model/demand/signal_control.hpp"
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
@@ -66,6 +67,11 @@ Json definitionJson(const AuthoringDefinition& d) {
                 decision["intervals"] = Json::array();
                 for (const auto& i : x.intervals) decision["intervals"].push_back({{"startTime",i.startTime},{"endTime",i.endTime}});
             }
+            if(!x.typeRules.empty()) {
+                decision["typeRules"]=Json::array();
+                for(const auto& rule:x.typeRules)decision["typeRules"].push_back({{"vehicleTypeId",rule.vehicleTypeId},
+                    {"relativeFlows",rule.relativeFlows},{"intervalFlows",rule.intervalFlows}});
+            }
             j["routingDecisions"].push_back(std::move(decision));
         }
     }
@@ -118,6 +124,13 @@ Json definitionJson(const AuthoringDefinition& d) {
         for(const auto& c:d.compositions) {
             Json types=Json::array();for(const auto& t:c.types)types.push_back({{"vehicleTypeId",t.vehicleTypeId},{"share",t.share}});
             Json item{{"id",c.id},{"types",types}};if(!c.name.empty())item["name"]=c.name;
+            if(!c.intervals.empty()) {
+                item["intervals"]=Json::array();
+                for(const auto& p:c.intervals) {
+                    Json members=Json::array();for(const auto& t:p.types)members.push_back({{"vehicleTypeId",t.vehicleTypeId},{"share",t.share}});
+                    item["intervals"].push_back({{"startTime",p.startTime},{"endTime",p.endTime},{"types",members}});
+                }
+            }
             j["compositions"].push_back(std::move(item));
         }
     }
@@ -224,7 +237,7 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
             inputs.push_back(std::move(routeless)); continue;
         }
         double sum = 0;
-        for (const auto& entry : decision->routes) sum += entry.relativeFlow;
+        for (std::size_t k=0;k<decision->routes.size();++k) sum += typeDecisionFlowAt(*decision,k,-1,input.vehicleTypeId);
         if (!(sum > 0)) continue;
         if (!decision->intervals.empty()) { // M2.1.2: the fraction changes with the entry time
             const auto pieces = cutPeriods(input, decisionBreakpoints({&*decision}));
@@ -235,8 +248,8 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
                 for (const auto& piece : pieces) {
                     const double mid = (piece.startTime + piece.endTime) / 2;
                     double at = 0;
-                    for (const auto& other : decision->routes) at += decisionFlowAt(*decision, other, mid);
-                    const double fraction = at > 0 ? decisionFlowAt(*decision, entry, mid) / at : 0.0;
+                    for (std::size_t k=0;k<decision->routes.size();++k) at += typeDecisionFlowAt(*decision,k,mid,input.vehicleTypeId);
+                    const double fraction = at > 0 ? typeDecisionFlowAt(*decision,static_cast<std::size_t>(&entry-decision->routes.data()),mid,input.vehicleTypeId) / at : 0.0;
                     if (fraction > 0) part.intervals.push_back({piece.startTime, piece.endTime, piece.vehiclesPerHour * fraction});
                 }
                 if (part.intervals.empty()) continue;
@@ -253,7 +266,8 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
             // Weights for one route's lanes mean nothing on another's: each route splits its
             // lanes equally, the M1.26 default, and laneShares stay on single-route inputs.
             if (decision->routes.size() > 1) { part.id = input.id + "/route-" + entry.routeId; part.laneShares.clear(); }
-            const double fraction = entry.relativeFlow / sum;
+            const double fraction = typeDecisionFlowAt(*decision,static_cast<std::size_t>(&entry-decision->routes.data()),-1,input.vehicleTypeId) / sum;
+            if(!(fraction>0))continue;
             part.vehiclesPerHour = input.vehiclesPerHour * fraction;
             for (auto& period : part.intervals) period.vehiclesPerHour *= fraction;
             inputs.push_back(std::move(part));
@@ -264,6 +278,7 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;
+    if(auto issues=timeTypeIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
     if(auto issues=ownedCatalogIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
     // Checked on the authored intervals, before they are expanded: an overlap is a property of
     // the table the author typed, and would otherwise surface as two core inputs that each look fine.

@@ -8,6 +8,26 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Time-varying compositions and type-conditioned routing (D113)
+
+Owner asked to continue after #107; all five of its native CI jobs passed. Slice 6
+adds schema-19 composition periods and complete per-type routing matrices. Input
+volume remains authoritative. Gaps use base composition; missing type rules inherit
+default flows; zero counted totals use that type's whole-period weights. Splitting
+by type precedes conditioned routing, including downstream decisions, at scheduled
+demand time. Source queueing never reselects the destination. Legacy ordering, IDs,
+file bytes and random stream are preserved when no new rules are present.
+[DEMAND_TIME_TYPES.md](DEMAND_TIME_TYPES.md) records interfaces and gates. Staged UI
+edits commit through History; reference checks include periods and type rules.
+Failure-first tests exposed missing serialization/validation. Breakpoint conservation,
+queue retention, replay and UI verification accompany this change. No new core RNG,
+dynamics, exact-count mode or reporting is added. Linux GCC / Qt 6.4.2 Debug:
+the required `check` target passes all 86 checks, including 56 Demand cases and
+the new time/type UI suite. Frozen fixtures remain unchanged. Native CI and owner
+review remain separate. Two older dated entries moved whole for D82 headroom.
+
+---
+
 ## 2026-10-05 — Project vehicle/composition catalogs (D112)
 
 Owner asked to continue Demand improvements after PR #106. Its five native CI jobs
@@ -285,44 +305,6 @@ path changes. Docs only.
 - The branch merged `main` first (the roadmap review, `cf8fb22`), so none of its 63 corrections
   is undone.
 
-## 2026-10-04 — `scenario-run-ui` was the E-cores, not a regression; the test is now 10× cheaper
-
-The ≈100 s CPU found below is scheduling, not code. The same executable at the same commit was
-pinned by `ProcessorAffinity` on this i5-12450H (logical 0–7 = four P-cores with HT, 8–11 = four
-E-cores), interleaved: P-cores 29.1 / 26.0 s CPU, E-cores 103.9 / 88.9 s. The 2026-10-02 28 s run
-was on P-cores. The code between `b823cd8` and `eeb9c5c` could not have done it anyway: locale
-text, a test, and `hairlinePen` width 1/dpr → 1, which is the same pen at the offscreen dpr of 1.
-The earlier "machine idle" rested on one 3 % load sample; Windows still parks a Debug test on an
-E-core with Zoom and Discord running.
-
-The fragility was real, though: the test pumped the event loop after each of 1,800 Steps and
-painted 1,800 offscreen frames. Stepping and `refreshRun()` run inside the action, and only
-painting waits for the loop, so the bulk loop now triggers Step directly and pumps every 100 Steps
-and once at the end. Every assertion stays, including hidden-Results-not-rebuilt, which reads
-`isVisible()`. The loop still paints 18 frames, and frame cost is `trafficsim-run-view-benchmark`'s
-job. After: P-cores 2.8 s CPU, E-cores 11.8 s (one run each), against `TIMEOUT 90`, which is
-unchanged.
-
-## 2026-10-04 — Results export to CSV from the editor (D104)
-
-The Results tab has an "Export results (CSV)…" action on its own toolbar, also in the
-Simulation menu and the command palette. It writes `movementCsv(*runReport())`, the function
-behind `trafficsim-cli --csv`, so the editor's file is byte for byte the CLI's, with the
-not-yet-validated marker as its first line. It is enabled only once the run has reached its end
-(`runFinished()`, which the partial note in `refreshResults()` now shares). The enabled state is
-set in `refreshRun()`, because `refreshResults()` skips work while its tab is hidden. The write
-goes through a new `writeEditorBytes` (QSaveFile, no direct-write fallback); `writeEditorDocument`
-now calls it. A failed export reports `EDIT_CSV_WRITE` rather than `EDIT_FILE_WRITE`, whose text
-speaks of unsaved project changes. `scenario-run-ui` asserts the action is disabled before a run,
-part way through it and after Reset; that `exportResults` refuses a part-way run and writes
-nothing; and that the finished run's file equals `movementCsv` of the same report. Desktop 77/77
-on Windows (Debug).
-
-Found on the way, not caused by this change: `scenario-run-ui` is now ≈100 s CPU on Windows Debug
-with the machine idle (101 s at `eeb9c5c` without this change, 109 s with it; one run each). The
-2026-10-02 figure was 28 s. It times out at 90 s alone. See NEXT. *Corrected in the entry above:
-E-core scheduling, not code.*
-
 ## Backlog (M0, in order)
 
 - [x] Toolchain + directory skeleton + core-import guard
@@ -442,6 +424,7 @@ Non-obvious choices **and the reasoning**. Without the reasoning a later session
 | D76 | 2026-09-27 | **An interior divider's mouth point is its own Connector divider line (offset by the Connector widths before it, along the end direction) meeting its Link boundary's line, as P1/P4 are; the P1→P2→P3 cap crossing is only the fallback** | Owner ruling ("like the edges"); the cap crossing made dividers veer sideways at the mouth. Display only | — |
 | D77 | 2026-09-27 | **A Connector's end grip is the middle of the Link lane range it joins at its station (P2), not the midpoint of the unbent outer rails** | Owner report: grips were off the Link at steep arrivals (square-end fallback), and grabbing and dropping measured different points | — |
 | D78 | 2026-09-27 | **Moving a Connector end along the lanes it already joins keeps the authored curve (blend-weighted shift); the turn is rebuilt only for other lanes, or when a kept end leg would run against its lane** | Owner request: a station adjustment threw away the author's shape. The guard keeps the reason the rebuild was introduced (a wrong-way elbow) | — |
+| D113 | 2026-10-05 | **Time/type rules compile at scheduled demand time into existing Poisson inputs, with complete per-type route matrices.** | Explicit defaults, gaps and zero-total fallback avoid ambiguous inheritance; split types before routing and keep type-specific route families separate. Legacy inputs retain their compilation order and IDs. | Dynamic reselection, exact-count arrivals and desired-speed distribution families require separate contracts. |
 | D112 | 2026-10-05 | **Catalog editing captures types, behaviors and compositions into the project atomically; IDs stay stable.** | A composition-only local file would still depend on installed type/behavior values. Capturing all three makes saved Demand portable, while old projects keep explicit external ownership. Names are authoring metadata. | A separately specified catalog import/merge workflow or behavior editor; time/type rules remain slice 6. |
 | D111 | 2026-10-05 | **Demand correctness and preview preserve scheduled-time routing; reporting stays M5.** | Zero weights must exclude a lane; invalid weights and missing turn counts must not silently alter demand. Irregular intervals need lossless editing. Preview must use Run's compiled snapshot, including compositions. | A separately accepted routing-time/count contract; project catalog and type/time extensions remain slices 5–6. |
 | D110 | 2026-10-05 | **Groups share control, while each lane-pair side is painted separately; one crossing classifier excludes true attachment mouths everywhere** | Owner clarification and reproduced automatic/manual disagreement at an internal Connector/Link join. Merge topology continues to own that competition. | A measured mouth case outside the connected attachment component, or another owner display ruling. |
