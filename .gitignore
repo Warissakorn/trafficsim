@@ -4,4 +4,13 @@ out/
 CMakeUserPresets.json
 *.user
 *.jsonl
+!docs/evidence/*.jsonl
 .optimize/
+
+# Local installer output, temporary edits and desktop metadata.
+/aqtinstall.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

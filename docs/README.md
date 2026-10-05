@@ -67,7 +67,6 @@ are planned module boundaries, not implemented batch/report products.
 - `PROGRESS.md` stays under 500 lines (`trafficsim-check-file-sizes`). Move the oldest live
   entries whole into `archive/`, and list the new file in `archive/README.md`.
 - Moving a file into `archive/` means its relative links need `../`.
-
 - Keep status in NEXT/ROADMAP; link to it from summaries instead of copying detailed queues.
 - A contract distinguishes implemented behaviour, planned behaviour and acceptance evidence.
 - Record the verification platform and date; automated CI does not replace owner observation.
