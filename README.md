@@ -77,7 +77,7 @@ installer — M7 owns installation.
 |---|---|---|
 | Simulation core | `src/core/simulation.hpp` | Fixed stepping, seeded arrivals, reduced car-following, fixed-time signals, conflict-area and merge right-of-way, commitment at waiting lines, mandatory lane changes with cooperative braking. Imports nothing. |
 | Network and demand model | `src/model/` | Links, lanes, Connectors, routes, inputs, routing decisions, signal controllers, conflict areas and queue counters, compiled into core inputs |
-| Project files | `src/project/` | Strict load and save of `*.traffic.json` (schema 17) and M0 scenario JSON, validation, movement evaluation and its CSV |
+| Project files | `src/project/` | Strict load and save of `*.traffic.json` (schemas 1–19; legacy save versions retained) and M0 scenario JSON, validation, movement evaluation and its CSV |
 | Evaluation | `src/eval/` | Per-movement delay and per-approach queue from one run's event stream |
 | Desktop | `src/shell/`, `src/editor/` | The Network Editor, Run view and Results tab, in English and Thai |
 | CLI | `tools/run_simulation.cpp` | One seeded run of a scenario or project; summary JSON, optional events and `--csv` |
@@ -99,6 +99,9 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 
 ## Project map
 
+AI development starts at [AGENTS.md](AGENTS.md); read only the task-specific context
+selected by the documentation map.
+
 [`docs/README.md`](docs/README.md) lists every document by purpose. The ones to read first:
 
 | Document | Purpose |
@@ -109,7 +112,8 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Modules, dependencies and contracts |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | M0–M7 and acceptance gates |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Session log and the decision record |
-| [`CLAUDE.md`](CLAUDE.md) | Working instructions |
+| [`AGENTS.md`](AGENTS.md) | Shared working instructions for humans and AI tools |
+| [`CLAUDE.md`](CLAUDE.md) | Claude entry point, pointing to the shared instructions |
 
 ## Native network editor
 

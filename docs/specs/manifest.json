@@ -26,6 +26,9 @@
     "name": "network-editor",
     "sha256": "e723615bfde8da782bb9952e18566dab3322f3f38bb573395344f040a545c97d",
     "bytes": 54815,
+    "retained_sha256": "52f1e10fc8d2854c5e32e6548de611ceb3ff8c8270312cac29940eeae05c2bb8",
+    "retained_bytes": 54759,
+    "modification_commit": "f2dce3c59e37cd33dcf8b4d823e20b21c4437f45",
     "parts": [
       "network-editor/part-01.md",
       "network-editor/part-02.md",

@@ -34,8 +34,7 @@ other than 100 % (booked in NEXT, not looked at). A 2 px upward shift fails all 
 missing scale fails the forcing check. Desktop 77/77 on Windows.
 
 Scope-text and Windows-session entries are preserved in
-[`archive/PROGRESS-2026-10-02-03-windows-scope.md`](archive/PROGRESS-2026-10-02-03-windows-scope.md).
+[`PROGRESS-2026-10-02-03-windows-scope.md`](PROGRESS-2026-10-02-03-windows-scope.md).
 
 D101/D102 session entries are preserved in
-[`archive/PROGRESS-2026-10-02-d101-d102.md`](archive/PROGRESS-2026-10-02-d101-d102.md).
-
+[`PROGRESS-2026-10-02-d101-d102.md`](PROGRESS-2026-10-02-d101-d102.md).

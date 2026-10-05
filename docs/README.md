@@ -1,9 +1,36 @@
 # Documentation map
 
 Every file in `docs/`, grouped by what it is for. Engineering documentation is in English;
-the supplied Thai specifications in `specs/` are kept verbatim. **Status lines live in
+the supplied Thai specifications in `specs/` retain their documented owner edit. **Status lines live in
 [`NEXT.md`](NEXT.md) and [`ROADMAP.md`](ROADMAP.md) only.** Other files describe a design, a
 contract or a dated record. When one of them states a status, its own date applies.
+
+## Read by task
+
+Start at [AGENTS.md](../AGENTS.md), then NEXT and the relevant module README. The table
+selects additional context; read related decisions and evidence only when needed.
+
+| Task | Read before editing | Code entry points |
+|---|---|---|
+| Engine, following, lane changes or safety | SIMULATION; M3_CONTRACT; M3_8_CONTRACT; M3_ACCEPTANCE | `src/core/`, `src/model/network/`, `tests/` |
+| Link/Connector geometry | CONNECTOR_FOUR_POINT_MOUTH; NETWORK_EDITOR_CONNECTORS; CONNECTOR_PARITY_AUDIT | `src/model/network/`, `src/editor/`, `src/commands/` |
+| Demand, catalogs or routing | DEMAND_IMPROVEMENT; DEMAND_CATALOGS; DEMAND_TIME_TYPES; SIMULATION | `src/project/`, `src/model/demand/`, `src/model/network/routing.cpp` |
+| Editor UI, gestures or Undo/Redo | NETWORK_EDITOR; EDITOR_WORKFLOW; VISSIM_PARITY; UI_REDESIGN_AUDIT | `src/editor/`, `src/shell/`, `src/commands/` |
+| Vehicle display and turning | VEHICLE_POSE; SIMULATION | `src/editor/vehicle_pose.*`, `rear_axle_pose.*`, `lane_change_pose.*` |
+| Load/save or schema changes | NETWORK_EDITOR save/recovery; relevant Demand/geometry contract; MIGRATION | `src/project/`, `tests/project_tests.cpp` |
+| Evaluation or reporting | PROBLEM; SIMULATION; ROADMAP M5/M6; M2_PLAN | `src/eval/`, `src/project/evaluation.*`, `src/runner/`, `src/report/` |
+| Build or portability | BUILDING; MIGRATION; tools README | `CMakeLists.txt`, `CMakePresets.json`, `.github/workflows/` |
+
+Resolve the document names through the indexes below. `src/runner/` and `src/report/`
+are planned module boundaries, not implemented batch/report products.
+
+## Sources and status
+
+- NEXT owns the live queue and pending owner checks; ROADMAP owns milestone status/gates.
+- Contracts define behaviour; ARCHITECTURE defines boundaries; PRINCIPLES defines rules.
+- PROGRESS records sessions. The [decision index](decisions/README.md) locates their reasoning.
+- Dated reviews are evidence/proposals, not permission to change the owner's priorities.
+- Engineering docs are English. Supplied Thai specs retain their documented provenance.
 
 ## Start here, every session
 
@@ -62,10 +89,11 @@ Dated design and acceptance documents. For what is done, see `ROADMAP.md`.
 
 | Folder | What it holds |
 |---|---|
-| [`specs/`](specs/README.md) | The three supplied Thai target specifications (Link, Connector, Network Editor), verbatim. |
+| [`specs/`](specs/README.md) | Supplied Thai target specifications and their original/retained byte manifests. |
 | [`evidence/`](evidence/) | Measurement records behind decisions: sweeps, CSVs, metadata, session checks. Each is cited by a `PROGRESS.md` entry or a decision row. |
 | [`images/`](images/) | Screenshots used by the docs. |
 | [`archive/`](archive/README.md) | Old PROGRESS, ROADMAP and VISSIM_PARITY blocks, moved out whole. Indexed newest first; nothing there is current. |
+| [`decisions/`](decisions/README.md) | Topic index into the existing decision record; IDs and reasoning stay stable. |
 
 ## Keeping this tidy
 
@@ -73,3 +101,9 @@ Dated design and acceptance documents. For what is done, see `ROADMAP.md`.
 - `PROGRESS.md` stays under 500 lines (`trafficsim-check-file-sizes`). Move the oldest live
   entries whole into `archive/`, and list the new file in `archive/README.md`.
 - Moving a file into `archive/` means its relative links need `../`.
+
+- Keep status in NEXT/ROADMAP; link to it from summaries instead of copying detailed queues.
+- A contract distinguishes implemented behaviour, planned behaviour and acceptance evidence.
+- Record the verification platform and date; automated CI does not replace owner observation.
+- Start archiving/splitting maintained docs near 450 lines, before the 500-line check fails.
+- Preserve decision IDs, milestone IDs, gates and source-spec bytes during reorganization.

@@ -3,7 +3,7 @@
 ## 2026-10-03 — Roadmap review: 63 stale statements corrected, the order left to the owner
 
 At the user's request, a session reviewed the roadmap for accuracy and direction. Report:
-[ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) (consolidated 2026-10-04). Six audit slices compared ROADMAP, NEXT and the status
+[ROADMAP.md — review record](../ROADMAP.md#review-record--2026-10-03) (consolidated 2026-10-04). Six audit slices compared ROADMAP, NEXT and the status
 lines that repeat them against the decision log, archives, code, tests and git. An independent
 skeptic checked each finding, and 87 survived: 63 factual, 17 owner decisions, 7 strategic.
 - **Corrected (docs only):** CLAUDE.md said schema 16 (it is 17) and owner item 4 for the name
@@ -41,4 +41,3 @@ fractions and fallbacks (editor group), and `demand-ui` asserts the row before a
 weight, after asserting that the compiled split really is 1200/600. Desktop 76/77 on Windows:
 `scenario-run-ui` timed out at 90 s under machine load, and an alternating A/B of the unchanged
 and changed builds measured both at 110–116 s CPU (NEXT).
-

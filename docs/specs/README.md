@@ -1,8 +1,11 @@
 # Supplied target specifications
 
 The owner supplied these three Thai Markdown documents on 2026-09-20 and requested
-an audit, implementation, then inclusion in the repository. They are preserved verbatim
-as source material; maintained engineering documentation is in English.
+an audit, implementation, then inclusion in the repository. They are retained as source
+material; maintained engineering documentation is in English. Link and Connector remain
+verbatim. Network Editor includes the owner's explicit 2026-09-24 removal of two external
+simulator references (D38); see [the audit](../SPEC_AUDIT.md) and
+[the edit commit](https://github.com/Warissakorn/trafficsim/commit/f2dce3c59e37cd33dcf8b4d823e20b21c4437f45).
 
 These are **requirements/proposals, not implementation or validation claims**. Some statements
 conflict with each other or with existing contracts. Read [the audit](../SPEC_AUDIT.md) and
@@ -10,9 +13,11 @@ conflict with each other or with existing contracts. Read [the audit](../SPEC_AU
 “VISSIM-compatible” does not establish scientific or product parity.
 
 Files are split at section boundaries to respect the repository's 500-line limit.
-Concatenating each document's parts in order reproduces the original bytes, including line
-endings. [manifest.json](manifest.json) records the original names, lengths and SHA-256 digests.
-No headings, examples or claims were silently corrected in these source copies.
+Concatenating each document's parts in order reproduces its retained bytes, including line
+endings. [manifest.json](manifest.json) keeps the original names, lengths and SHA-256 digests.
+For the authorized Network Editor edit it also records `retained_bytes`, `retained_sha256`
+and `modification_commit`; use those retained fields when verifying today's copy.
+Do not rewrite supplied text or reset the authorized edit during documentation maintenance.
 
 | Document | Ordered source parts |
 |---|---|
