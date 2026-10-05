@@ -1,6 +1,6 @@
 # M2 gate record
 
-**Status: passed by the owner's judgment, 2026-09-25 (D51, D53).** The criteria are pre-registered in `ROADMAP.md` §M2: ratified by the
+**Status: passed by the owner's judgment, 2026-09-25 (D51, D53).** The criteria are pre-registered in `../ROADMAP.md` §M2: ratified by the
 owner 2026-09-24 (D34) and re-registered the same day, before any observation, as C1 + C2 with C4
 recorded (D38); C2 withdrawn and the verdict made the owner's own judgment 2026-09-25 (D51); C4 withdrawn the same day (D52). Fill this in as the observations are made; never change a criterion after the
 fact (D8). A pass means *not disproven*, never *confirmed*.

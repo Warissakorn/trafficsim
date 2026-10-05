@@ -5,6 +5,8 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-M0-backlog-and-questions.md`](PROGRESS-M0-backlog-and-questions.md) — complete historical M0 checklist/question register; moved whole 2026-10-05
+
 - [`PROGRESS-2026-10-04-results-run-cost.md`](PROGRESS-2026-10-04-results-run-cost.md) — D104 CSV export and Run-view CPU timing entries; moved whole 2026-10-05
 
 - [`PROGRESS-2026-10-03-roadmap-lane-split.md`](PROGRESS-2026-10-03-roadmap-lane-split.md) — roadmap review and input lane-split entries; moved whole 2026-10-05
@@ -87,6 +89,9 @@ entry behind what you are changing, not the directory.
 - [`PROGRESS-2026-09-10--2026-09-15.md`](PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
 ## Other docs
+
+- [`MIGRATION-D15.md`](MIGRATION-D15.md) — former migration reference, including the original UI mapping and implementation horizon; retained 2026-10-05
+- [`AUTHORING_EXTENSIONS-M1.21.md`](AUTHORING_EXTENSIONS-M1.21.md) — former M1.21 reference before current codec/reversal/marking clarification; retained 2026-10-05
 
 - [`ROADMAP-M1.11-M3.1-implemented.md`](ROADMAP-M1.11-M3.1-implemented.md) — M1.11, M1.11.1, M1.12 and M3.1 bodies, out of `ROADMAP.md` 2026-09-29
 - [`ROADMAP-M1-implemented.md`](ROADMAP-M1-implemented.md) — M1's implemented slices, out of `ROADMAP.md`

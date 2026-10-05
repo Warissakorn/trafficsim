@@ -1,7 +1,7 @@
 # NEXT — what a session does first
 
-The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the history and the
-decision log; **this file is the part a session must read before starting.**
+The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the session history; the
+[decision record](decisions/RECORD.md) stores the reasoning; **this file is the part a session must read before starting.**
 
 **Write the next session's work here, not into a new `PROGRESS.md` entry.** Two copies of what
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
@@ -10,13 +10,13 @@ the log. Rewrite this file; do not append to it.
 ## Demand priority — owner instruction, 2026-10-05
 
 The owner explicitly asked to start Demand improvements. This takes priority over
-§0's unanswered ordering proposal. [DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md)
+§0's unanswered ordering proposal. [DEMAND_IMPROVEMENT.md](plans/DEMAND_IMPROVEMENT.md)
 defines slices 1–6: correctness, lossless interval editing, explicit periods and
 compiled preview first; project-owned vehicle/composition catalogs and typed/time
 rules next. Reporting, LOS and batch evaluation stay M5. Slices 1–4 (PR #106)
 passed native Linux/Windows CI. Slice 5 (#107) adds project-owned catalogs and editing;
 its five native jobs passed too. Slice 6 adds schema-19 time/type rules and staged
-editors ([DEMAND_TIME_TYPES.md](DEMAND_TIME_TYPES.md)); check this slice's native CI
+editors ([DEMAND_TIME_TYPES.md](reference/DEMAND_TIME_TYPES.md)); check this slice's native CI
 and owner appearance independently. The six implementation slices are present;
 M2.8 stays in progress until its own review gates pass. Next review the stacked PRs
 in dependency order (#106, #107, then time/type), retarget after each merge, and
@@ -37,7 +37,7 @@ sentence has no product code and no commit since 2026-09-25: 10 seeds, LOS, and 
   clipboard copy and the batch export are still to do.
 - Until the owner answers, this file's order stands.
 - S4 (the input row's lane-share figure) is done (2026-10-03, `laneSplit`). S5 (the T-junction
-  clamps, plus the session-fillable `M3_ACCEPTANCE.md` §4 rows) needs no answer; it is in §3.
+  clamps, plus the session-fillable `plans/M3_ACCEPTANCE.md` §4 rows) needs no answer; it is in §3.
 
 Sections: [0 Order](#0--the-owner-decides-the-order-roadmap-review-2026-10-03) · [1 Owner checks on Windows](#1--owner-checks-on-windows) ·
 [2 Owner decisions](#2--owner-decisions) · [3 Session work](#3--session-work-without-the-owner) ·
@@ -107,10 +107,10 @@ In order:
      conflict-area priority.
    - If Ctrl+right is slow for heavy route/counter work, that is D84's failure condition. Record
      it; do not quietly restore left-click authoring.
-   - Open gaps: `UI_REDESIGN_AUDIT.md` §6 (dock-title tracking, remaining C-locale cell formats).
+   - Open gaps: `audits/UI_REDESIGN_AUDIT.md` §6 (dock-title tracking, remaining C-locale cell formats).
 5. **Editor interaction cleanup (PRs #73–#75).** The UI suite covers the mechanics. Look by eye
    at curved and overlapping roads, and at the tabs at working zoom levels.
-6. **D80 central axis and four-point mouths.** Read `CONNECTOR_FOUR_POINT_MOUTH.md` and
+6. **D80 central axis and four-point mouths.** Read `reference/CONNECTOR_FOUR_POINT_MOUTH.md` and
    `archive/PROGRESS-2026-09-28-d80-selection.md` first. The owner asked for fixed lane-index
    pairing on both ends, including obtuse arrivals.
    - Check both ends at 45/90/120/150/170/179°, with 1–3 lanes and kerb/median lanes added or
@@ -147,7 +147,7 @@ In order:
 
 1. **M0 plausibility observation:** acceleration, queue at red, discharge at green. This is an
    observation, not calibration or M6 validation. The not-yet-validated marker stays.
-2. **M3.2.7d exercise:** use the recording sheet in `M3_ACCEPTANCE.md` §3, on Windows. The row
+2. **M3.2.7d exercise:** use the recording sheet in `plans/M3_ACCEPTANCE.md` §3, on Windows. The row
    stays pending until the owner reports it.
 3. **The name (Q5).** D11's trigger ("end of M1") is live. `Velk` is the strongest recorded
    candidate. `Headway` and `MicroFlow Simulator` were rejected and `Veytrix` set aside (D11
@@ -177,7 +177,7 @@ M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's u
 Pick one per session, as the user asks. Rows and contract come first for engine work.
 
 - **Vehicle turning after phase 3:** rear-axle display, optional axle data and continuous
-  lane-change guidance are implemented ([contract](VEHICLE_POSE.md)). Next engine work
+  lane-change guidance are implemented ([contract](reference/VEHICLE_POSE.md)). Next engine work
   needs separate acceptance rows for swept-body conflict clearance and between-lanes
   occupancy. Audit where `occupiedSpans`/conflict reservations use scalar length;
   reproduce a rigid heavy vehicle whose displayed swept body exceeds that envelope
@@ -221,7 +221,7 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
     Before changing `observe`, measure whether its cost is the per-line walk or `queueLength`'s
     per-line `behind` allocation.
 - **Linux replay of D91–D94:** CI (`native.yml`) is the evidence.
-- **`M3_ACCEPTANCE.md` §4:** the rows a session can fill ([ROADMAP review §7, S5](ROADMAP.md#7-proposed-sequence--owner-free-sessions-after-o1)).
+- **`plans/M3_ACCEPTANCE.md` §4:** the rows a session can fill ([ROADMAP review §7, S5](ROADMAP.md#7-proposed-sequence--owner-free-sessions-after-o1)).
 - The entry-acceleration bias in movement delay needs travel-time sections (M5), not a correction
   factor.
 

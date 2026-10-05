@@ -1,6 +1,6 @@
 # VISSIM PARITY — archived section
 
-Moved out of `docs/VISSIM_PARITY.md` on 2026-09-22 (M1.27.3) to keep that file inside the
+Moved out of `docs/audits/VISSIM_PARITY.md` on 2026-09-22 (M1.27.3) to keep that file inside the
 500-line limit. It is the oldest of the dated follow-ups and the most superseded: M1.17's wedge
 was reverted, M1.18 cut the mouth flush, and M1.19 settled the lane middles. Kept whole because
 it records what the owner sent and why the first reading of it was wrong.

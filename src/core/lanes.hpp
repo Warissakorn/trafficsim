@@ -1,5 +1,5 @@
 #pragma once
-// M3.2.8b: mandatory lane changes (docs/M3_8_CONTRACT.md §2). A vehicle on a stub route -- one
+// M3.2.8b: mandatory lane changes (docs/reference/M3_8_CONTRACT.md §2). A vehicle on a stub route -- one
 // whose lane cannot reach its movement's end -- moves to an adjacent chain of the same movement
 // when both the gap ahead and the gap behind are safe there. Everything is read off the tick's
 // pre-step snapshot and decided in vehicle-id order, with no random draw, so replay is exact.

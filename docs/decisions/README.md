@@ -1,7 +1,7 @@
 # Decision index
 
 This is navigation, not a second decision log. The complete decisions and reasoning are
-currently in [PROGRESS — Decisions](../PROGRESS.md#decisions). Read the applicable rows
+in [RECORD](RECORD.md). Read the applicable rows
 and their evidence before reopening a choice. IDs remain stable even when records move.
 
 | Topic | Start with these decisions |
@@ -22,5 +22,20 @@ supersedes it. For example, D15 supersedes the original D3/D4 stack, D11 superse
 the D9/D10 names, and D107 replaces D106's runtime path choice. A historical row is
 not automatically the current contract. Current interfaces live in the reference docs.
 
-For continuous vehicle-pose work, also read [VEHICLE_POSE](../VEHICLE_POSE.md) and the
+## All decision IDs
+
+[D1](RECORD.md#d1) · [D2](RECORD.md#d2) · [D3](RECORD.md#d3) · [D4](RECORD.md#d4) · [D5](RECORD.md#d5) · [D6](RECORD.md#d6) · [D7](RECORD.md#d7) · [D8](RECORD.md#d8) · [D9](RECORD.md#d9) · [D10](RECORD.md#d10)
+[D11](RECORD.md#d11) · [D12](RECORD.md#d12) · [D13](RECORD.md#d13) · [D14](RECORD.md#d14) · [D15](RECORD.md#d15) · [D16](RECORD.md#d16) · [D17](RECORD.md#d17) · [D18a](RECORD.md#d18a) · [D18b](RECORD.md#d18b) · [D18c](RECORD.md#d18c)
+[D18d](RECORD.md#d18d) · [D19a](RECORD.md#d19a) · [D19b](RECORD.md#d19b) · [D19c](RECORD.md#d19c) · [D19d](RECORD.md#d19d) · [D20](RECORD.md#d20) · [D21](RECORD.md#d21) · [D22](RECORD.md#d22) · [D23](RECORD.md#d23) · [D24](RECORD.md#d24)
+[D25](RECORD.md#d25) · [D26](RECORD.md#d26) · [D27](RECORD.md#d27) · [D28](RECORD.md#d28) · [D29](RECORD.md#d29) · [D30](RECORD.md#d30) · [D31](RECORD.md#d31) · [D32](RECORD.md#d32) · [D33](RECORD.md#d33) · [D34](RECORD.md#d34)
+[D35](RECORD.md#d35) · [D36](RECORD.md#d36) · [D37](RECORD.md#d37) · [D38](RECORD.md#d38) · [D39](RECORD.md#d39) · [D40](RECORD.md#d40) · [D41](RECORD.md#d41) · [D42](RECORD.md#d42) · [D43](RECORD.md#d43) · [D44](RECORD.md#d44)
+[D45](RECORD.md#d45) · [D46](RECORD.md#d46) · [D47](RECORD.md#d47) · [D48](RECORD.md#d48) · [D49](RECORD.md#d49) · [D50](RECORD.md#d50) · [D51](RECORD.md#d51) · [D52](RECORD.md#d52) · [D53](RECORD.md#d53) · [D54](RECORD.md#d54)
+[D55](RECORD.md#d55) · [D56](RECORD.md#d56) · [D57](RECORD.md#d57) · [D58](RECORD.md#d58) · [D59](RECORD.md#d59) · [D60](RECORD.md#d60) · [D61](RECORD.md#d61) · [D62](RECORD.md#d62) · [D63](RECORD.md#d63) · [D64](RECORD.md#d64)
+[D65](RECORD.md#d65) · [D66](RECORD.md#d66) · [D67](RECORD.md#d67) · [D68](RECORD.md#d68) · [D69](RECORD.md#d69) · [D70](RECORD.md#d70) · [D71](RECORD.md#d71) · [D72](RECORD.md#d72) · [D73](RECORD.md#d73) · [D74](RECORD.md#d74)
+[D75](RECORD.md#d75) · [D76](RECORD.md#d76) · [D77](RECORD.md#d77) · [D78](RECORD.md#d78) · [D79](RECORD.md#d79) · [D80](RECORD.md#d80) · [D81](RECORD.md#d81) · [D82](RECORD.md#d82) · [D83](RECORD.md#d83) · [D84](RECORD.md#d84)
+[D85](RECORD.md#d85) · [D86](RECORD.md#d86) · [D87](RECORD.md#d87) · [D88](RECORD.md#d88) · [D89](RECORD.md#d89) · [D90](RECORD.md#d90) · [D91](RECORD.md#d91) · [D92](RECORD.md#d92) · [D93](RECORD.md#d93) · [D94](RECORD.md#d94)
+[D95](RECORD.md#d95) · [D96](RECORD.md#d96) · [D97](RECORD.md#d97) · [D98](RECORD.md#d98) · [D99](RECORD.md#d99) · [D100](RECORD.md#d100) · [D101](RECORD.md#d101) · [D102](RECORD.md#d102) · [D103](RECORD.md#d103) · [D104](RECORD.md#d104)
+[D105](RECORD.md#d105) · [D106](RECORD.md#d106) · [D107](RECORD.md#d107) · [D108](RECORD.md#d108) · [D109](RECORD.md#d109) · [D110](RECORD.md#d110) · [D111](RECORD.md#d111) · [D112](RECORD.md#d112) · [D113](RECORD.md#d113)
+
+For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_POSE.md) and the
 2026-10-05 phase entries in PROGRESS; those entries do not invent new D-numbers.

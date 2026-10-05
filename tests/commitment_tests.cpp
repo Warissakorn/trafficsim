@@ -3,7 +3,7 @@
 #include "../src/core/routes.hpp"
 #include <algorithm>
 using namespace trafficsim;
-// M3.2.8a (docs/M3_8_CONTRACT.md §1, D69): a driver who cannot stop at its line at its type's
+// M3.2.8a (docs/reference/M3_8_CONTRACT.md §1, D69): a driver who cannot stop at its line at its type's
 // maximum deceleration goes instead of being clamped there -- unless the area is physically taken.
 // Hand-built scenarios with test-owned states: a crossing (area 98..102 on both roads, the minor
 // line at 90; the major route starts 50 m earlier) and a derived-rule merge.

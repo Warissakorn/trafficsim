@@ -1,5 +1,5 @@
 #pragma once
-// M3.2.3a: the crossing admission runtime (docs/M3_CONTRACT.md §4). Everything here reads the
+// M3.2.3a: the crossing admission runtime (docs/reference/M3_CONTRACT.md §4). Everything here reads the
 // immutable pre-step snapshot, so no vehicle's decision depends on the order vehicles are visited.
 #include "following.hpp"
 
@@ -13,7 +13,7 @@ std::vector<RouteZone> zoneIncidence(const Scenario&, const std::vector<RoutePar
 // The room a vehicle needs to wait in: the longest type plus its standstill distance. Less than
 // this between two zones means a vehicle waiting at the second still occupies the first.
 double waitingRoom(const Scenario&);
-// M3.2.8a (docs/M3_8_CONTRACT.md §1): a vehicle `gap` short of a line it gives way at that cannot
+// M3.2.8a (docs/reference/M3_8_CONTRACT.md §1): a vehicle `gap` short of a line it gives way at that cannot
 // stop there at its type's maximum deceleration. A committed vehicle ignores the anticipation
 // part of the gap test (headway, gapTime), never occupancy, an unserved Stop, receiving space or
 // the swept check. Read off the snapshot, never stored. Equality can stop.

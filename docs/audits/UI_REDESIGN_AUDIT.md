@@ -1,5 +1,10 @@
 # TrafficSim precision-tool UI restyle (D81)
 
+This is the dated D81 implementation audit with later notes. Its initial "Now" column
+describes that pass, not every subsequent D83/D84/D103 change. Current palette/gesture
+semantics are in [EDITOR_WORKFLOW](../reference/EDITOR_WORKFLOW.md) and
+`src/editor/ui_design_tokens.hpp`; live owner reviews remain in NEXT.
+
 Scope: presentation only — canvas, view, inspector, shell, palette and QSS. No model, command,
 codec or runtime change, no shortcut change, no new dependency, no GPU/3D renderer.
 

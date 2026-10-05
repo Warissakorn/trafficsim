@@ -1,7 +1,7 @@
 # M3 acceptance design and evidence record
 
 **Status: automated rows recorded through A46 (M3.2.8c, §4); A47–A58 implemented and off (D102); owner exercise M3.2.7d not performed.** This is a prepared engineering test matrix and owner exercise,
-not a passed gate or a scientific validation result. The M2 gate passed 2026-09-25 (D53). [M3_CONTRACT.md](M3_CONTRACT.md) defines the proposed behavior;
+not a passed gate or a scientific validation result. The M2 gate passed 2026-09-25 (D53). [M3_CONTRACT.md](../reference/M3_CONTRACT.md) defines the proposed behavior;
 [M3_PLAN.md](M3_PLAN.md) names the slices. New tests and runnable fixtures are not added by
 this documentation change. Record actual evidence below as each slice is implemented.
 
@@ -40,7 +40,7 @@ same-build event replay exact. Do not weaken the frozen reference comparisons.
 | A25 | .3-.7 | Branch a copied state, same seed/toolchain; congested finite demand | Independent snapshots, exact replay, no lost vehicles; completed/active/pending/clamps reported |
 | A26 | .7 | T-junction gap/headway sweep described below | Controlled boundaries and admission times match; stochastic differences reported without invented monotonic guarantees |
 
-M3.2.8b rows (mandatory lane changing, [`M3_8_CONTRACT.md`](M3_8_CONTRACT.md) §2), written
+M3.2.8b rows (mandatory lane changing, [`../reference/M3_8_CONTRACT.md`](../reference/M3_8_CONTRACT.md) §2), written
 before its code:
 
 | ID | Slice | Case | Must show |
@@ -171,8 +171,8 @@ Keep any failure in the record; fixes receive separate attempts rather than over
 | Field | Observation |
 |---|---|
 | M2 gate evidence and pass prerequisite | Passed by the owner's judgment, 2026-09-25 (D53, `M2_GATE.md`) |
-| Implementation commit / build / platform | D105 session: baseline `f538a7e`, local input registration `048b541`; Linux x86_64, GCC 13.3.0, Release, JSON 3.12.0. Fix source and all results: [clamp evidence](evidence/m3.2.8a-clamps.md). This is Linux headless evidence, not Windows or an owner verdict. |
-| Fixture metadata and data hashes | D105: [current-fixture metadata and SHA-256](evidence/m3.2.8a-clamp-metadata.json), registered before outputs in local commit `048b541`. The archived pre-D80 fixture and its metadata remain unchanged; it is not accepted by current coverage validation. |
+| Implementation commit / build / platform | D105 session: baseline `f538a7e`, local input registration `048b541`; Linux x86_64, GCC 13.3.0, Release, JSON 3.12.0. Fix source and all results: [clamp evidence](../evidence/m3.2.8a-clamps.md). This is Linux headless evidence, not Windows or an owner verdict. |
+| Fixture metadata and data hashes | D105: [current-fixture metadata and SHA-256](../evidence/m3.2.8a-clamp-metadata.json), registered before outputs in local commit `048b541`. The archived pre-D80 fixture and its metadata remain unchanged; it is not accepted by current coverage validation. |
 | A01-A26: test names, results, artifacts, uncovered rows | M3.2.2a, `tests/right_of_way_tests.cpp` (`rightofway.*`), all passing on Linux headless and desktop: A01, A03, A04, A06, A07, A08. **A02 partial** — merge areas, waiting lines and rules round-trip; Stop controls and counters do not exist until M3.2.5/M3.2.6. **A05** (M3.2.2b): `tests/right_of_way_lifecycle_tests.cpp` (`rightofway_lifecycle.*`) — delete/drag cascade with Undo/Redo, split remap to the same world point (1e-9) and straddle refused, copy only with every owner, lane/retarget edits keep ids and report unresolved, reverse refused; curved Link, both driving sides; six of eight fail on the pre-M3.2.2b commands. **A04 extended** (M3.2.2c): `tests/right_of_way_resolution_tests.cpp` (`rightofway_resolution.*`) — a waiting line on the preceding Link compiles before the Connector; a bypassable or non-upstream line and an uncovered, non-overlapping or doubly-crossing extent are named Run blockers; five of six fail on the pre-M3.2.2c code. **M3.2.3a** (D57): `tests/conflict_zone_tests.cpp` (`conflict_zone.*`) — A09 exact thresholds, A10 major seen before a section cut, A11 identical events for shuffled inputs, A12 sink clearance refused, A13 whole-area jump in one tick and a same-tick request capped by the swept check, A14 standing queue past the exit, A16 grant kept while the major waits, A17 same-side following, A25 copied state replays; a congested sweep with no swept overlap. Six fail with admission disabled; the rest check thresholds, replay, validation and non-over-restriction. `tests/right_of_way_runtime_tests.cpp`: an authored crossing compiles to one zone and runs; minor-road travel time rises with gap time; span, group and undetermined areas refused by name. **M3.2.3b** (D58): `tests/conflict_chain_tests.cpp` (`conflict_chain.*`):
 - A15: chained zones admit together, and nothing overlaps under demand.
 - A side over a section cut, with a route turning off inside it.
@@ -266,7 +266,7 @@ decision on D of 60:40.
 **A24 partial** (M3.2.4a, D60): `tests/right_of_way_editor_tests.cpp` (`rightofway_editor.*`) — lane-pair expansion, one-step edits, take over/restore, delete keeping shared lines, drawn geometry equals the resolver's, every right-of-way code in en/th; `tests/priority_ui_tests.cpp` (`priority-ui`) — add via dialog, Enter-to-edit, Undo, take over/restore, Problems → area, Run note, Thai. M3.2.4b (D61): `tests/priority_canvas_tests.cpp` (`priority-canvas`) — the Conflict area tool picks and cycles by pointer and `P`, each one Undo step, Select still picks the Link; a waiting-line drag along its lane is one step; the two sides are told apart; Save and reopen keep every edit and still run. M3.2.5b (D63): the same suite sets Stop from the dialog, one Undo step, listed and drawn, disabled for an undetermined area, and kept through Save and reopen. M3.2.6c (D65): `tests/queue_counter_ui_tests.cpp` (`queue-counter-ui`) — the Queue counter tool builds a counter from stop lines and a lane place and commits it on Enter as one Undo step (Esc, Backspace, a refused click), the tab adds one over heads selected by keyboard, renames and deletes it (each one step), the Results tab lists the authored row in place of the derived one with the same row count and restores it on delete, Thai headers, and Save and reopen keep, draw and still run it. A24 stays partial until the Windows run and the owner's attempt below. A18–A23, A25–A26 need M3.2.5+ |
 | Linux headless/desktop and Windows native CI | D105: Linux headless 52/52 at baseline and after the fix; includes architecture, negative architecture, file-size and frozen-reference checks. Desktop and Windows verification are pending for this change; historical runs above retain their dates. |
 | Frozen fixtures and seed-42 regression | M3.2.2a: four TS baselines pass; `trafficsim-cli 42` output byte-identical before/after; the two project fixtures changed only `schemaVersion` 13 → 14 (regenerated by their tools) |
-| Same-build replay | D105: all events and mutable snapshot fields replay exactly at every tick of 120 congested T-junction runs (seeds 42–81, headways 3/7/12). Before/after numerical trajectory digests, movement counts/delays and queues are identical; 17 stationary false starts removed, moving clamps preserved. [Raw runs and remaining causes](evidence/m3.2.8a-clamps.md). |
+| Same-build replay | D105: all events and mutable snapshot fields replay exactly at every tick of 120 congested T-junction runs (seeds 42–81, headways 3/7/12). Before/after numerical trajectory digests, movement counts/delays and queues are identical; 17 stationary false starts removed, moving clamps preserved. [Raw runs and remaining causes](../evidence/m3.2.8a-clamps.md). |
 | Controlled gap/headway/clearance outcomes | M3.2.7a (D66), `tjunction_controlled.*` on the fixture's compiled scenario: gapTime 4/5/6 s at 5 s to entry admit/admit/deny on both driving sides; headway 7 m − 0.01/7/+0.01 block/block/pass (equality blocks, as A09); movement case with the clearance margin asserted first (3.8 s against 5 s) and bounds stated before the run — permitted admission within 1.6 s (0.7 s), denied not before the major's rear leaves the area (6.1 s from the trace, predicted 6.10 s; admitted 6.8 s), later arrival. Linux only |
 | Seeded sweep reports and unserved counts | M3.2.7b (D66): `docs/evidence/m3.2.7-sweep.{csv,md}`, metadata committed first (`b66313b`). 20 runs, all drained (active = pending = 0). Minor delay and queue rose with gapTime 3 → 5 → 7 s for every seed; **headway 3/7/12 m gave identical rows**, investigated: no major vehicle within 12 m of an entry was slower than 10 m/s, so headway never decided a block at this demand. Clamps 3–10 per run, all minor vehicles at a waiting line (carved to M3.2.8). M3.2.7c (D67): repeated on a congested major road where headway demonstrably decides (asserted before the run, metadata first, `docs/evidence/m3.2.7c-headway.*`): minor queue mean never fell with headway 3 → 7 → 12 m, the near turn's delay rose in every seed, the crossing turn's in two of four; all drained. M3.2.8a (D69): re-run with the commitment rule (`docs/evidence/m3.2.8a-*`, same metadata): clamps 76 → 3 in the gap arm and 83 → 20 in the congested arm (15 amber at the head, 5 minor near-standing, undiagnosed), none a major vehicle at an area; the gapTime and headway responses still hold; all drained |
 | Owner, date, Windows version and attempt number | Pending |
@@ -280,7 +280,7 @@ decision on D of 60:40.
 ### 2026-10-04 — D105 session-fillable evidence (review S5)
 
 The current fixture's five near-standing minor-road events are traced individually in
-[the clamp evidence](evidence/m3.2.8a-clamps.md). Four were stationary false starts;
+[the clamp evidence](../evidence/m3.2.8a-clamps.md). Four were stationary false starts;
 one was a moving vehicle with zero hard-buffer clearance and remains counted. The
 failure-first regression and exact boundary check are in `core`; no frozen baseline
 was changed. All 120 congested runs preserve accounting and drain, with no body or
@@ -303,5 +303,5 @@ A59–A61 in `tests/source_insertion_tests.cpp` (`core`):
 Linux Release 54/54, frozen references unchanged. Input metadata committed before output.
 120 stress cases pass replay/accounting/body/swept/braking checks; all drain, source clamps
 3 → 0, moving minor clamps 21 → 21. Four projects × 40 seeds preserve counts and delays;
-travel time/queue changes are measured in [the source evidence](evidence/source-first-step.md).
+travel time/queue changes are measured in [the source evidence](../evidence/source-first-step.md).
 No moving-merge, cross-path 2D, owner plausibility or M6 gate is closed.

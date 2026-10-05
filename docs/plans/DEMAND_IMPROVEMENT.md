@@ -49,8 +49,8 @@ This work extends M2 without reopening or claiming its observed gate.
 | 6 | Time-varying composition and type-specific routing | Explicit interval/type rules, conservation across every breakpoint, backward compatibility and deterministic replay |
 
 Slices 1–4 are PR #106. Slice 5 is implemented in the subsequent catalog branch;
-[DEMAND_CATALOGS.md](DEMAND_CATALOGS.md) records its ownership and editing contract.
-Slice 6 is implemented in the time/type branch ([contract](DEMAND_TIME_TYPES.md));
+[DEMAND_CATALOGS.md](../reference/DEMAND_CATALOGS.md) records its ownership and editing contract.
+Slice 6 is implemented in the time/type branch ([contract](../reference/DEMAND_TIME_TYPES.md));
 native CI and owner appearance gates remain distinct.
 Do not claim completion from the presence of an external JSON catalog or a combo box.
 

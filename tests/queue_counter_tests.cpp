@@ -8,7 +8,7 @@
 #include <fstream>
 using namespace trafficsim;
 using namespace rowfixture;
-// M3.2.6b, A22 and A23 of docs/M3_ACCEPTANCE.md: a queue counter is a set of places on the road,
+// M3.2.6b, A22 and A23 of docs/plans/M3_ACCEPTANCE.md: a queue counter is a set of places on the road,
 // independent of signal heads; one mechanism measures both the counters derived from heads and the
 // ones an author places, so the two agree and an approach is never listed twice.
 namespace {

@@ -127,5 +127,5 @@ no new mouth cutoff, lane-change motion model or measured Vissim fidelity.
   and 240 seeded curve/add/drop runs with replay, accounting and segment-body checks.
 - `connector_equation_tests`: independent analytic arc length, station inversion, closest
   points, exact point-count independence and equation-based controls/heads.
-- D107 execution details: [equation evidence](evidence/connector-equation.md).
+- D107 execution details: [equation evidence](../evidence/connector-equation.md).
 - Execution results and platform limitations are in PROGRESS.md. Linux is not Windows evidence.

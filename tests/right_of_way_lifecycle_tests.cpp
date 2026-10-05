@@ -4,7 +4,7 @@
 #include "../src/commands/connector_commands.hpp"
 using namespace trafficsim;
 using namespace rowfixture;
-// M3.2.2b: authored controls follow the objects they name (docs/M3_ACCEPTANCE.md A05) -- on a
+// M3.2.2b: authored controls follow the objects they name (docs/plans/M3_ACCEPTANCE.md A05) -- on a
 // curved road and with both driving sides, because stations and lane offsets depend on both.
 namespace {
 // A curved two-lane Link X and a Link Z whose Connector arrives on X's first lane at station 110:

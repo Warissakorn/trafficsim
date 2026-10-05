@@ -1,7 +1,7 @@
 #pragma once
 // M3.2.2: edits to the authored right-of-way controls. Each is a plain document change; the caller
 // runs it inside History::execute, which validates the whole document and makes it one undoable
-// step. A failed edit therefore changes nothing (docs/M3_CONTRACT.md §6).
+// step. A failed edit therefore changes nothing (docs/reference/M3_CONTRACT.md §6).
 #include "../project/document.hpp"
 #include "../model/network/right_of_way.hpp"
 #include <optional>

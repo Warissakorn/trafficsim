@@ -1,5 +1,5 @@
 #pragma once
-// M3.2.2: authored right-of-way controls (docs/M3_CONTRACT.md §1). Values only -- they belong to
+// M3.2.2: authored right-of-way controls (docs/reference/M3_CONTRACT.md §1). Values only -- they belong to
 // the project network and are persisted with it. Everything derived from them (runtime segments,
 // route incidence, the compiled core PriorityRule) is computed, never stored.
 //

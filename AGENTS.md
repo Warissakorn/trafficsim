@@ -27,7 +27,7 @@ do not rename the repository, project or packages until the owner decides.
 | Project principles and their reasoning | [PRINCIPLES](docs/PRINCIPLES.md) |
 | Module boundaries and interfaces | [ARCHITECTURE](docs/ARCHITECTURE.md) and module READMEs |
 | Behaviour and file semantics | The relevant contract in [the documentation map](docs/README.md) |
-| Session history and decisions | [PROGRESS](docs/PROGRESS.md) and [decision index](docs/decisions/README.md) |
+| Session history and decisions | [PROGRESS](docs/PROGRESS.md) and [decision record/index](docs/decisions/README.md) |
 | Toolchain setup | [BUILDING](docs/BUILDING.md) |
 
 README summaries are navigation, not another status ledger. Dated audits, plans and
@@ -44,9 +44,9 @@ code and tests; record the discrepancy rather than silently changing an owner ga
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Before adding a system. Update when the map changes. |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | To see which milestone this is and what closes it. |
 | [`docs/NEXT.md`](docs/NEXT.md) | **Every session, first.** The one live to-do; write the next session's work here, never into a `PROGRESS.md` entry. |
-| [`docs/PROGRESS.md`](docs/PROGRESS.md) | The history and reasoning. Use the [decision index](docs/decisions/README.md) to find the relevant D-number; read only related entries. |
-| [`docs/VISSIM_PARITY.md`](docs/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1, §3 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
-| [`docs/CONNECTOR_PARITY_AUDIT.md`](docs/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
+| [`docs/PROGRESS.md`](docs/PROGRESS.md) | The session history and reasoning. Use the [decision index](docs/decisions/README.md) to find the relevant D-number; read only related entries. |
+| [`docs/audits/VISSIM_PARITY.md`](docs/audits/VISSIM_PARITY.md) | Before proposing editor UX work. **§1a and §2 are current; §1, §3 and §6 are the dated 2026-09-14 assessment and under-report the product.** |
+| [`docs/audits/CONNECTOR_PARITY_AUDIT.md`](docs/audits/CONNECTOR_PARITY_AUDIT.md) | Before touching the Connector. Holds the two benchmarks apart — the supplied target spec vs never-measured Vissim — and records the defects no test covers. |
 | [`docs/README.md`](docs/README.md) | To find any other document. The task reading map and folder indexes; index new maintained docs in the same commit. |
 
 ## Stack
@@ -54,7 +54,7 @@ code and tests; record the discrepancy rather than silently changing an owner ga
 C++20, CMake 3.24+, Qt 6.4+ Widgets for the desktop, and nlohmann/json outside the core.
 `core/` depends only on its own headers and the standard C++ library. No Qt, file I/O,
 JSON, model types or wall clock may reach it. D15 supersedes the initial D3/D4 stack.
-See `docs/BUILDING.md` and `docs/MIGRATION.md`.
+See `docs/BUILDING.md` and `docs/reference/MIGRATION.md`.
 
 ## Commands
 
@@ -109,7 +109,8 @@ below, whose reasoning is D7. The ones that get broken by accident:
   and a harness that drives Qt pumps the event loop between iterations, or it times Qt's deferred
   work instead of the code (D31).
 - **Update `docs/PROGRESS.md` before committing** — what changed and the reasoning behind any
-  non-obvious decision. This is the memory the next session runs on. **What is next goes in
+  non-obvious decision. Record new decision IDs and reasoning once in `docs/decisions/RECORD.md`.
+  This is the memory the next session runs on. **What is next goes in
   `docs/NEXT.md` instead**, rewritten rather than appended, so there is one live to-do.
 
 ## Session start
@@ -123,7 +124,7 @@ reading all of it to find twenty lines is what moved `Next` out of it.
 
 Stop at roughly three-quarters of context, or when the current system is done. In order:
 build green (or reverted to green) → `docs/NEXT.md` rewritten specifically enough to need no
-questions → decisions logged with reasons in `PROGRESS.md` → commit → tell the user what
+questions → session logged in `docs/PROGRESS.md`, decisions with reasons in `docs/decisions/RECORD.md` → commit → tell the user what
 changed, in outcomes.
 
 ## Layout

@@ -9,7 +9,7 @@
 #include <set>
 using namespace trafficsim;
 using namespace rowfixture;
-// M3.2.4: the commands and geometry the conflict-area editor stands on (docs/M3_ACCEPTANCE.md A24).
+// M3.2.4: the commands and geometry the conflict-area editor stands on (docs/plans/M3_ACCEPTANCE.md A24).
 namespace {
 std::string lane(const ProjectDocument& d, const std::string& link, std::size_t k = 0) {
     for (const auto& l : d.network.links) if (l.id == link) return l.lanes[k].id;

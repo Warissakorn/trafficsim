@@ -3,7 +3,7 @@
 Sub-milestone bodies (M1.1–M1.6, M1.8–M1.10) moved whole out of [`ROADMAP.md`](../ROADMAP.md) to keep the active
 sequence inside the 500-line budget (hard rule 6). Nothing here is edited or summarised — only
 relocated. These are all **implemented**; `ROADMAP.md` keeps each heading with a one-line status,
-and the current behaviour they describe lives in [`NETWORK_EDITOR.md`](../NETWORK_EDITOR.md).
+and the current behaviour they describe lives in [`NETWORK_EDITOR.md`](../reference/NETWORK_EDITOR.md).
 Open milestones, gates and every M1.7-and-later entry stay in `ROADMAP.md`.
 
 ### M1.1 — Document and commands
@@ -297,7 +297,7 @@ otherwise folded 120 of 288 cases.
 **Done when:** a two-lane mouth spans the Link's own 7.000 m at every arrival up to 60 degrees; each
 lane middle is on its Link lane's to 1 mm wherever the mouth's outer edges land on the Link's; the
 sweep still has 0 folds; and `trafficsim-cli 42` still prints `meanDelay 29.249359418430977`. **All
-met.** The owner's timed editor exercise in `docs/M1_ACCEPTANCE.md` is still the gate.
+met.** The owner's timed editor exercise in `docs/plans/M1_ACCEPTANCE.md` is still the gate.
 
 ---
 
@@ -349,7 +349,7 @@ function is unchanged.
 none/double marking strokes in both renderers, schema-7 persistence, Link insert/midpoint/
 straighten/unreferenced-reverse actions, import cross-section validation and warning severity.
 Unknown schema-7 network-object fields are rejected, so unsupported behavior is never silently
-lost. [AUTHORING_EXTENSIONS.md](../AUTHORING_EXTENSIONS.md) defines the actual supported subset.
+lost. [AUTHORING_EXTENSIONS.md](../reference/AUTHORING_EXTENSIONS.md) defines the actual supported subset.
 Owner M1 acceptance remains open. This does not close the supplied target specifications.
 
 ### M1.21.1 — Network lifecycle correctness audit
