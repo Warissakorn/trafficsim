@@ -1,5 +1,4 @@
-// D102: the Run view draws a lane change as a slide from the lane the vehicle left to the one it is
-// on, for 3 s after the engine moved it. Display only: the engine still changes in one tick.
+// Continuous lane-change guide with a rolling rear axle; engine changes stay instantaneous.
 #include "../src/shell/editor_window.hpp"
 #include "../src/project/load.hpp"
 #include "../src/core/simulation.hpp"
@@ -33,7 +32,7 @@ const Vehicle* find(const SimState& s, std::uint64_t id) {
 // The pose the vehicle would have without the slide: the same frame with its record cleared.
 Pose lanePose(EditorWindow& w, std::uint64_t id) {
     auto copy = w.runState();
-    for (auto& v : copy.vehicles) if (v.id == id) v.lastLaneChange.reset();
+    for (auto& v : copy.vehicles) if (v.id == id) {v.lastLaneChange.reset();v.laneChangeTrace.clear();}
     w.canvas()->setRunFrame(copy);
     const auto pose = poseOf(*w.canvas(), id);
     w.canvas()->setRunFrame(w.runState());
@@ -145,6 +144,48 @@ void joinedPose(const std::filesystem::path& data) {
     require(std::hypot(turned.x+altered.y,turned.y-altered.x)<1e-7,"Rotated front moved off its station");
 }
 
+void overlappingCanvas(const std::filesystem::path& data) {
+    Network n;n.links={{"a",{{0,0},{100,0}},{{"a1",3.5}}},
+        {"b",{{0,3.5},{100,3.5}},{{"b1",3.5}}},{"c",{{0,7},{100,7}},{{"c1",3.5}}}};
+    const auto catalog=loadScenario(data/"scenarios/crossing.json",data).scenario;
+    Scenario scenario;scenario.duration=60;scenario.timeStep=.1;
+    scenario.segments={{"a1",100,{}},{"b1",100,{}},{"c1",100,{}}};
+    scenario.routes={{"a",{"a1"}},{"b",{"b1"}},{"c",{"c1"}}};
+    scenario.vehicleTypes=catalog.vehicleTypes;scenario.behaviours=catalog.behaviours;
+    auto frame=createSimulation(scenario,42);Vehicle v;v.id=1;v.routeIndex=1;v.distance=28;
+    v.laneChangeTrace={{0,1,20,20,10}};frame.vehicles={v};
+    EditorCanvas canvas;canvas.setDisplayCatalog({{},{{"default",{},"#49596d","#607d8b","#d0dfeb","#facc15"}}, {}});
+    canvas.setRunNetwork(n);
+    for(std::uint32_t type=0;type<catalog.vehicleTypes.size();++type) {
+        frame.vehicles={v};frame.vehicles.front().typeIndex=type;
+        canvas.setTransform(QTransform::fromScale(8,-8));canvas.setRunFrame(frame);
+        const auto before=poseOf(canvas,1);require(before.has_value(),"Setup: first changer not drawn");
+        require(before->y>0 && before->y<3.5,"Setup: changes must overlap");
+        auto second=frame;second.vehicles.front().routeIndex=2;
+        second.vehicles.front().laneChangeTrace.push_back({1,2,28,28,10});
+        canvas.setRunFrame(second);const auto after=poseOf(canvas,1);
+        require(after && std::hypot(after->x-before->x,after->y-before->y)<1e-7 &&
+            std::abs(after->rotation-before->rotation)<.002,"Second change resets front or rear heading");
+        canvas.setTransform(QTransform::fromScale(.1,-.1));canvas.setRunFrame(second);
+        const auto small=poseOf(canvas,1);
+        require(small && std::hypot(small->x-after->x,small->y-after->y)<1e-7 &&
+            std::abs(small->rotation-after->rotation)<1e-12,"Low zoom changed lane-change kinematics");
+        second.vehicles.front().distance=60;canvas.setRunFrame(second);
+        canvas.setRunFrame(frame);const auto sought=poseOf(canvas,1);
+        require(sought && std::hypot(sought->x-before->x,sought->y-before->y)<1e-12 &&
+            std::abs(sought->rotation-before->rotation)<1e-12,"Seeking reused future trace");
+        auto changed=frame;changed.vehicles.front().laneChangeTrace.front().speed=0;
+        canvas.setRunFrame(changed);const auto faster=poseOf(canvas,1);
+        require(faster && faster->y>before->y+.5,"Changed trace reused cached guide");
+    }
+    auto rotated=n;for(auto& link:rotated.links)for(auto& p:link.geometry)p={-p.y,p.x};
+    canvas.setRunFrame(frame);const auto original=poseOf(canvas,1);
+    canvas.setRunNetwork(rotated);canvas.setRunFrame(frame);const auto turned=poseOf(canvas,1);
+    require(original && turned && std::hypot(turned->x+original->y,turned->y-original->x)<1e-7 &&
+        std::abs(std::remainder(turned->rotation-original->rotation-90,360.))<1e-7,
+        "Network replacement reused old lane-change guide");
+}
+
 double apart(Pose a, Pose b) { return std::hypot(a.x - b.x, a.y - b.y); }
 }
 int main(int argc, char** argv) {
@@ -155,6 +196,7 @@ int main(int argc, char** argv) {
         const std::filesystem::path data(argv[1]);
         equationPose(data);
         joinedPose(data);
+        overlappingCanvas(data);
         EditorWindow w{data}; w.resize(1200, 800); w.show(); QTest::qWait(30);
         w.openFile(QString::fromStdString((data / "projects/lane-change-lab.traffic.json").string()));
         auto* step = w.findChild<QAction*>("editorStep");
@@ -168,10 +210,12 @@ int main(int argc, char** argv) {
                 if (v.lastLaneChange && v.lastLaneChange->tick + 1 == w.runState().tick) { changer = v.id; break; }
         }
         require(changer.has_value(), "Setup: no vehicle changed lanes on the lab");
-        const double dt = w.runState().scenario->timeStep;
+        const auto trace=find(w.runState(),*changer)->laneChangeTrace;
+        require(trace.size()==1,"Setup: expected first lane change");
+        const double reach=3*std::max(trace.front().speed,5.);
         const auto startTick = find(w.runState(), *changer)->lastLaneChange->tick;
 
-        // 2. Follow it: drawn off its lane, closer every frame, and on its lane from 3 s on.
+        // 2. Follow the spatial guide: the front arrives, then rear heading settles.
         std::vector<double> gaps, turns;
         while (true) {
             const auto* v = find(w.runState(), *changer);
@@ -180,12 +224,20 @@ int main(int argc, char** argv) {
             const auto drawn = poseOf(*w.canvas(), *changer);
             require(drawn.has_value(), "The changer is not drawn");
             const auto lane = lanePose(w, *changer);
-            const double elapsed = static_cast<double>(w.runState().tick - startTick) * dt;
-            if (elapsed >= 3 - 1e-9) {
-                require(apart(*drawn, lane) < 1e-9 && std::abs(drawn->rotation - lane.rotation) < 1e-9,
-                        "The slide does not end on the lane after 3 s");
+            const double progress=v->distance-trace.front().toDistance;
+            if (progress >= reach - 1e-9) {
+                require(apart(*drawn, lane) < 1e-7,
+                        "The guide front does not reach its target lane");
                 break;
             }
+            // Repaint a later tick with the same station: stopped cars hold position
+            // and heading, and seeking back reproduces the exact scene pose.
+            auto stopped=w.runState();stopped.tick+=1000;stopped.time+=100;
+            for(auto& vehicle:stopped.vehicles)if(vehicle.id==*changer)vehicle.speed=0;
+            w.canvas()->setRunFrame(stopped);const auto held=poseOf(*w.canvas(),*changer);
+            require(held && apart(*held,*drawn)<1e-12 && std::abs(held->rotation-drawn->rotation)<1e-12,
+                "Stopped changer slides or turns with elapsed time");
+            w.canvas()->setRunFrame(w.runState());
             gaps.push_back(apart(*drawn, lane));
             if (argc > 2 && gaps.size() == 12) { // optional artifact: mid-slide, zoomed on the changer
                 w.canvas()->setTransform(QTransform::fromScale(12, -12)); w.canvas()->centerOn(drawn->x, drawn->y);
@@ -200,7 +252,7 @@ int main(int argc, char** argv) {
         require(gaps.front() > 2, "The first frame after the change is not drawn near the lane it left");
         require(gaps.front() < 8, "The first frame is drawn further off than the lane it left");
         for (std::size_t i = 1; i < gaps.size(); ++i)
-            require(gaps[i] < gaps[i - 1], "The slide does not close on the lane every frame");
+            require(gaps[i] <= gaps[i - 1]+1e-8, "The slide does not close on the lane every frame");
         // Mid-slide the nose turns toward the new lane, and only a little.
         const double middle = turns[turns.size() / 2];
         require(middle > 0.5 && middle < 30, "Mid-slide the body is not turned a few degrees toward the new lane");

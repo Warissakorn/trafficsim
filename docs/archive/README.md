@@ -5,6 +5,8 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-03-grid-fields.md`](PROGRESS-2026-10-03-grid-fields.md) — grid crispness and field text scale entries; moved whole 2026-10-05
+
 - [`PROGRESS-2026-10-02-03-windows-scope.md`](PROGRESS-2026-10-02-03-windows-scope.md) — Windows session and scope-text entries; moved whole 2026-10-05
 
 - [`PROGRESS-2026-10-02-d101-d102.md`](PROGRESS-2026-10-02-d101-d102.md) — D101 hold implementation and D102 owner choice/lane-change display; moved whole 2026-10-05

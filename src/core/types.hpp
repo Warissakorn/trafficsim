@@ -256,10 +256,19 @@ struct LastLaneChange {
     std::uint64_t tick{}; std::uint32_t fromRoute{};
     bool operator==(const LastLaneChange&) const = default;
 };
+// Display reconstruction only. Stations are captured BEFORE the route remap;
+// physics, admission and measurements never read this trace. Owned by SimState
+// so replay/seek and a second change can reconstruct the same rolling body.
+struct LaneChangeTrace {
+    std::uint32_t fromRoute{}, toRoute{};
+    double fromDistance{}, toDistance{}, speed{};
+    bool operator==(const LaneChangeTrace&) const = default;
+};
 struct Vehicle : PendingVehicle {
     double enteredTime{}, distance{}, speed{}, acceleration{};
     FollowingMode mode{FollowingMode::free};
     std::optional<LastLaneChange> lastLaneChange;
+    std::vector<LaneChangeTrace> laneChangeTrace;
     bool operator==(const Vehicle&) const = default;
 };
 // Parallel to Scenario::inputs, one entry each and in that order: createSimulation builds it

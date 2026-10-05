@@ -8,6 +8,36 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-05 — Continuous lane-change guidance (phase 3)
+
+Owner asked to continue after phase 2 (#104). Replaced the independent D102 lateral
+slide/yaw with a composed front guide and the same rear rolling solution. Accepted
+changes capture their source/target stations and pre-change speed in snapshot-owned,
+runtime-only `laneChangeTrace`; following, lane admission and evaluation never read it.
+Station remaps reconstruct longitudinal travel. Quintic blends compose with the ongoing
+guide, so overlapping changes start from its position/tangent. Stopped vehicles hold
+pose; body heading continues settling after the front reaches the lane. Blend length
+is `3 * max(startSpeed, 5)` m, an uncalibrated display assumption replacing a time window.
+
+Guide polyline sampling splits at route vertices, sections and blend endpoints, then
+uses arc length in the existing RK4 rear model with the source's initial rolling heading.
+Polyline tangents are walked once rather than repeatedly searched for every sample.
+Actual Canvas cache keys include complete trace/type and immutable Scenario/Run geometry;
+seeking rebuilds older journeys and arrivals discard paths. No revision cache. Numerical
+sample bounds and missing/disconnected/inconsistent-input behaviour are documented in
+VEHICLE_POSE.md, including acceptance rows P3.1–P3.6. Engine occupancy still changes in
+one tick; this does not add swept-body conflict clearance or a between-lanes state.
+
+Independent analytic-guide RK4/no-slip, two rigid vehicle sizes, differing station remaps,
+overlapping changes, curved join, convergence, invalid input and query-order tests pass.
+Crossing reports/events (seeds 0/42/43/4294967295) and four example-project reports,
+lane-change diagnostics and CSVs (seed 42) match phase-2 `de9aee3` byte-for-byte.
+Linux GCC 13.3 / Qt 6.4.2 Debug: 58/58 headless and 83/83 desktop suites pass;
+final guide/Canvas reruns follow the tangent-walk repair. Architecture and size guards
+pass. Windows CI results belong to the PR. Owner appearance review stays open. Two old display-scale entries moved whole to the archive.
+
+---
+
 ## 2026-10-05 — Rear-axle display reference (phase 2)
 
 Owner authorized the next turning slice after phase 1 merged (#103). The route still
@@ -299,43 +329,6 @@ fractions and fallbacks (editor group), and `demand-ui` asserts the row before a
 weight, after asserting that the compiled split really is 1200/600. Desktop 76/77 on Windows:
 `scenario-run-ui` timed out at 90 s under machine load, and an alternating A/B of the unchanged
 and changed builds measured both at 110–116 s CPU (NEXT).
-
-## 2026-10-03 — The canvas grid is crisp at every scale
-
-`gridIsCrisp` failed at every scale other than 100 %. The cause was measured offscreen at
-1.25/1.5/2×, with the cache on and off. Blended pixels were along the whole length of every line
-(7,327 / 8,815 / 11,791 interior pixels, one colour per tier), not at line ends, and identical with
-`CacheNone`. So it was neither the flat caps nor D99's background cache. `hairlinePen` used a
-cosmetic width of 1/dpr, on the belief that cosmetic widths are logical pixels. On Qt 6.8 they are
-**device** pixels: width 1 draws exactly one device pixel at 1.25, 1.5 and 2× (run lengths
-measured in the grab), with no blended pixel. Width 0 did too. `hairlinePen(colour)` is now width 1
-with no dpr argument, and `drawBackground` no longer reads the dpr. The `hairlines()` assertion
-"0.5 at 2×" encoded the wrong belief and now asserts width 1. The D103 mode is renamed
-`--at-scale` and runs `gridIsCrisp()` too, so `design-system-ui-1.5x`/`-2x` failed before the fix
-("Blended grid pixel #f7f8f9 at 3,0") and pass after. CI's Qt 6.5.3 runs the same entries, which
-is the check that 6.5 agrees. Desktop 77/77 on Windows.
-
-## 2026-10-03 — Field text at 150/200 %: a measured limit, tested (D103)
-
-The Windows session check's `design-system-ui` failure at 150/200 % was measured (`boxModel()`,
-offscreen, 1–2× in 0.25 steps). It is **not** `QLineEdit`. QLineEdit, QComboBox and QPushButton
-share identical gaps at every scale (7/8, 8/10, 10/12, 12/14, 13/16 device px). They all use the
-13 px body face, ascent 14 and descent 6, the descent for Thai below-vowels. Qt centres the line box,
-so digits sit ≈0.5 logical px high at 100 % and ≈1.5 at 2×. The spin box's 12 px numeric face
-(13/5) is within 1 device px everywhere. A QSS shift of 1 px down for body-font fields centred them
-at every scale (8/7, 9/9, 11/11, 15/14). It also put their digits 1 px below the spin box's at 100 %,
-which breaks D84's one row for digits. The owner kept the style (D103). The test now holds 100 % exactly
-as before. Above it, a control is centred within 1.5 logical px, with rows within 1 logical px.
-Two ctest entries, `design-system-ui-1.5x`/`-2x`, run `--box-model-at-scale`. They first assert that
-the scale really applied, and only the box model runs, because `gridIsCrisp` fails at any scale
-other than 100 % (booked in NEXT, not looked at). A 2 px upward shift fails all three scales, and a
-missing scale fails the forcing check. Desktop 77/77 on Windows.
-
-Scope-text and Windows-session entries are preserved in
-[`archive/PROGRESS-2026-10-02-03-windows-scope.md`](archive/PROGRESS-2026-10-02-03-windows-scope.md).
-
-D101/D102 session entries are preserved in
-[`archive/PROGRESS-2026-10-02-d101-d102.md`](archive/PROGRESS-2026-10-02-d101-d102.md).
 
 ## Backlog (M0, in order)
 
