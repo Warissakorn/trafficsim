@@ -1,16 +1,18 @@
 # Native network editor
 
 The editor supports network drawing, demand and fixed-time control editing, persistence
-and recovery, and simulation on the same canvas. The M0 core remains an unvalidated
-prototype: merges, internal sources and cyclic routes are rejected at Run; crossing conflicts
-and priority control are M3.2 (below); lane changing is mandatory only (M3.2.8b).
+and recovery, and simulation on the same canvas. The core remains an unvalidated prototype.
+Supported merges use derived or authored right-of-way; authored crossing areas and Stop/Yield
+controls also run. Unsupported merge topology, internal sources and cyclic routes still block
+Run. Mandatory lane changing and cooperative braking run; discretionary changes are implemented
+but disabled. See [SIMULATION](SIMULATION.md) and the relevant contracts for their limits.
 
-The owner's M0 plausibility and M1 timed usability gates remain open. See
-[M1_ACCEPTANCE.md](M1_ACCEPTANCE.md). Running a drawing is not scientific validation.
+Gate status is maintained in [ROADMAP](../ROADMAP.md), with the dated owner ruling in
+[M1_ACCEPTANCE](../plans/M1_ACCEPTANCE.md). Running a drawing is not scientific validation.
 
 ## Start
 
-Build as described in [BUILDING.md](BUILDING.md), then run:
+Build as described in [BUILDING.md](../BUILDING.md), then run:
 
 ```bash
 ./build/desktop/bin/trafficsim-desktop
@@ -82,7 +84,9 @@ editable. Normal file actions use the platform shortcut conventions.
 
 Properties → Links edits lane count and widths together. Enter one width for all lanes
 or comma-separated widths per lane, using decimal points. Retained lane IDs do not
-change. Shrinking away a lane referenced by a connector range, head or route is rejected.
+change. Shrinking away a lane referenced by a Connector range, signal head or explicit
+queue-counter point is rejected. Routes name Links, so a route alone does not prevent
+lane removal; its runtime lane chains are rebuilt from the edited Link.
 
 Create opposite carriageway makes a separate directed link with reversed geometry,
 offset on the median side according to combined lane widths and the carriageway gap.
@@ -404,18 +408,23 @@ Unknown future versions are rejected.
 | Opened by | Editor (or `trafficsim-cli --scenario`) | Editor |
 | Runs | Editor, or `trafficsim-cli` | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and schema-1–6 projects and saves schema 7.
-Schema 4 stores the lane bundle offset and Connector interpolation weights; older versions
-default to centred lanes and arclength interpolation. Old files retain their positions.
-A bare M0 scenario carries no `schemaVersion`, so the editor reads it with the pre-5
-meaning; saving it writes a schema-7 project. Writing scenario JSON back out is not
+The editor opens bare M0 authoring files and project schemas 1–19. Saving uses schema 17
+by default, 18 for owned composition catalogs or embedded vehicle names, and 19 for
+composition periods or type-conditioned routing. This is selected from the document's
+features, not the version of the file opened. See [Demand catalogs](DEMAND_CATALOGS.md)
+and [time/type rules](DEMAND_TIME_TYPES.md); old feature-free fixtures retain schema-17 bytes.
+Schema 4 introduced lane bundle offset and Connector interpolation weights; older versions
+default to centred lanes and arclength interpolation. A bare M0 scenario has no
+`schemaVersion`, so its attachments use the pre-5 interpretation; Save writes a versioned
+project using the same feature rule. Writing scenario JSON back out is not
 implemented — `trafficsim-cli` still reads the format, and `loadScenario` still rejects a
 project with `SCENARIO_IS_PROJECT` for callers that want only a runnable scenario.
 
-Schema 7 adds shared Link boundary markings and `none`/`double` marking kinds. Unsupported
-schema-7 network object fields are rejected before replacing the current document. See
-[Authoring extensions](AUTHORING_EXTENSIONS.md) for the exact supported subset and the new
-Link station-insert, midpoint, straighten and unreferenced-reverse inspector actions.
+Schema 7 introduced shared Link boundary markings and `none`/`double` marking kinds.
+For schemas 7–19, supported network-object keys depend on the version; unknown fields are
+rejected before replacing the current document, not silently dropped. See
+[Link authoring and markings](AUTHORING_EXTENSIONS.md) for geometry actions, reference-safe
+reversal and markings. The supplied spec's schema snippets are not a complete codec contract.
 
 Save uses atomic QSaveFile replacement without direct-write fallback. A failed save keeps the
 previous destination and dirty state; a failed load keeps the current model. An empty or

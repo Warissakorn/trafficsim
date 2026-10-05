@@ -18,7 +18,7 @@
 #include <iostream>
 #include <set>
 using namespace trafficsim;
-// M3.2.6c: queue counters in the editor (A24, docs/VISSIM_PARITY.md §2b). The Queue counter tool
+// M3.2.6c: queue counters in the editor (A24, docs/audits/VISSIM_PARITY.md §2b). The Queue counter tool
 // builds a counter from clicks and commits it on Enter; the tab adds one over the selected heads,
 // renames and deletes it; each is one Undo step. The Results tab shows the authored row in place
 // of the derived one, and everything survives Save and reopen.

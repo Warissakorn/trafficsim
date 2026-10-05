@@ -4,7 +4,7 @@
 #include <cmath>
 using namespace trafficsim;
 using namespace rowfixture;
-// M3.2.2c: a waiting line on a preceding Link, and crossing coverage (docs/M3_CONTRACT.md §1).
+// M3.2.2c: a waiting line on a preceding Link, and crossing coverage (docs/reference/M3_CONTRACT.md §1).
 // "No issue" below means the area would run (M3.2.3a/b).
 namespace {
 const Link& link(const ProjectDocument& d, const std::string& id) {

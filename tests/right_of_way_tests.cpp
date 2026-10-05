@@ -7,7 +7,7 @@
 #include <algorithm>
 using namespace trafficsim;
 using namespace rowfixture;
-// M3.2.2: authored right-of-way controls at the file/model seam (docs/M3_ACCEPTANCE.md A01-A08).
+// M3.2.2: authored right-of-way controls at the file/model seam (docs/plans/M3_ACCEPTANCE.md A01-A08).
 // Since M3.2.3b a complete authored merge group runs on its compiled rules (D58).
 TEST(rightofway, a01_no_controls_compile_exactly_as_before) {
     const auto d = fixture::fourLegIntersection().document;

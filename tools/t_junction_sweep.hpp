@@ -1,5 +1,5 @@
 #pragma once
-// M3.2.7b: the diagnostic seeded sweep of docs/M3_ACCEPTANCE.md §2 over the T-junction fixture.
+// M3.2.7b: the diagnostic seeded sweep of docs/plans/M3_ACCEPTANCE.md §2 over the T-junction fixture.
 // Its inputs are fixed here and committed as metadata BEFORE any output is observed; `tjunction`
 // checks the committed metadata still describes the fixture, so an archived sweep cannot silently
 // outlive the drawing it was run on. Development evidence only: no calibration, no M5 batch

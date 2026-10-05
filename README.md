@@ -19,7 +19,7 @@ The controls are in English and Thai, with a bundled Noto Sans Thai font. What i
 [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 The supplied Link, Connector and Network Editor target specs are retained in
-[`docs/specs/`](docs/specs/README.md), with a [code audit](docs/SPEC_AUDIT.md). These documents
+[`docs/specs/`](docs/specs/README.md), with a [code audit](docs/audits/SPEC_AUDIT.md). These documents
 are not claims of Vissim parity.
 
 **Not yet validated:** the longitudinal model is a reduced Wiedemann-inspired prototype,
@@ -77,13 +77,13 @@ installer — M7 owns installation.
 |---|---|---|
 | Simulation core | `src/core/simulation.hpp` | Fixed stepping, seeded arrivals, reduced car-following, fixed-time signals, conflict-area and merge right-of-way, commitment at waiting lines, mandatory lane changes with cooperative braking. Imports nothing. |
 | Network and demand model | `src/model/` | Links, lanes, Connectors, routes, inputs, routing decisions, signal controllers, conflict areas and queue counters, compiled into core inputs |
-| Project files | `src/project/` | Strict load and save of `*.traffic.json` (schema 17) and M0 scenario JSON, validation, movement evaluation and its CSV |
+| Project files | `src/project/` | Strict load and save of `*.traffic.json` (reads schemas 1–19; writes 17–19 by feature) and M0 scenario JSON, validation, movement evaluation and its CSV |
 | Evaluation | `src/eval/` | Per-movement delay and per-approach queue from one run's event stream |
 | Desktop | `src/shell/`, `src/editor/` | The Network Editor, Run view and Results tab, in English and Thai |
 | CLI | `tools/run_simulation.cpp` | One seeded run of a scenario or project; summary JSON, optional events and `--csv` |
 
 Out of scope today: multi-seed batches, confidence intervals and LOS (M5), and validation
-against field data (M6). Read [`docs/SIMULATION.md`](docs/SIMULATION.md) for numerical behaviour.
+against field data (M6). Read [`docs/reference/SIMULATION.md`](docs/reference/SIMULATION.md) for numerical behaviour.
 
 ## Migration evidence
 
@@ -95,9 +95,12 @@ Same-build C++ replay compares the full event stream exactly.
 
 Seed 42: 180 seconds, **31 completed, 0 active, 0 pending**, 0 safety clamps,
 mean completed-trip delay **29.249359418430977 s**. This is a regression fixture, not
-scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs/MIGRATION.md).
+scientific validation or a performance benchmark. See [`docs/reference/MIGRATION.md`](docs/reference/MIGRATION.md).
 
 ## Project map
+
+AI development starts at [AGENTS.md](AGENTS.md); read only the task-specific context
+selected by the documentation map.
 
 [`docs/README.md`](docs/README.md) lists every document by purpose. The ones to read first:
 
@@ -109,7 +112,8 @@ scientific validation or a performance benchmark. See [`docs/MIGRATION.md`](docs
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Modules, dependencies and contracts |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | M0–M7 and acceptance gates |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Session log and the decision record |
-| [`CLAUDE.md`](CLAUDE.md) | Working instructions |
+| [`AGENTS.md`](AGENTS.md) | Shared working instructions for humans and AI tools |
+| [`CLAUDE.md`](CLAUDE.md) | Claude entry point, pointing to the shared instructions |
 
 ## Native network editor
 
@@ -122,8 +126,8 @@ Reset, seed and playback speed operate on one explicit document revision. Succes
 edits invalidate that run. Save/Open preserves geometry, demand, embedded images,
 levels and display types; locked recovery copies protect unsaved work.
 
-See [the editor guide](docs/NETWORK_EDITOR.md) for controls and file semantics. M1's acceptance
-record is [`docs/M1_ACCEPTANCE.md`](docs/M1_ACCEPTANCE.md). Accepting the editor does not close M0
+See [the editor guide](docs/reference/NETWORK_EDITOR.md) for controls and file semantics. M1's acceptance
+record is [`docs/plans/M1_ACCEPTANCE.md`](docs/plans/M1_ACCEPTANCE.md). Accepting the editor does not close M0
 plausibility or engine validation.
 
 ## License

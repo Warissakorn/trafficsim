@@ -1,6 +1,6 @@
 # VISSIM PARITY archive — dated follow-ups, 2026-09-15 to 2026-09-21
 
-Moved whole out of [`../VISSIM_PARITY.md`](../VISSIM_PARITY.md) on 2026-09-29. Each is a dated finding; the
+Moved whole out of [`../audits/VISSIM_PARITY.md`](../audits/VISSIM_PARITY.md) on 2026-09-29. Each is a dated finding; the
 current state is §1a and §2 of the live file, and later work may have closed what these report.
 
 ## 2026-09-15 follow-up — Reported Network Editor failures
@@ -83,7 +83,7 @@ not things that are slow.
 ## 2026-09-21 — the Connector, audited end to end
 
 The owner asked whether the Connector matches Vissim in every respect. The full audit is
-[`CONNECTOR_PARITY_AUDIT.md`](../CONNECTOR_PARITY_AUDIT.md); it is the place to look, and it names
+[`CONNECTOR_PARITY_AUDIT.md`](../audits/CONNECTOR_PARITY_AUDIT.md); it is the place to look, and it names
 its own limits. Two points from it belong in this file:
 
 **The 2026-09-18 entry below is stale on one sentence.** It says the Connector end is "a plain
@@ -94,7 +94,7 @@ the wedge was withdrawn still holds; only the description of what replaced it is
 
 **There are two benchmarks, and this file only has one of them.** Everything recorded here as a
 Vissim gap comes from the owner's screenshots and dialog references. The other benchmark — the
-owner's supplied Thai specification — is a *target*, and `../SPEC_AUDIT.md` and `../specs/README.md`
+owner's supplied Thai specification — is a *target*, and `../audits/SPEC_AUDIT.md` and `../specs/README.md`
 both say so. The audit keeps them apart deliberately; do not let a section number from the
 specification be read here as a measured Vissim behaviour.
 

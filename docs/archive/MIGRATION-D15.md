@@ -1,3 +1,9 @@
+# Historical reference snapshot
+
+Retained on 2026-10-05 before refreshing the maintained reference. The text below
+records its earlier implementation horizon; it is not current product status.
+Read [the maintained reference](../reference/MIGRATION.md) for today's contract.
+
 # C++ migration — D15
 
 The owner requested changing the whole application to C++, then authorized the project

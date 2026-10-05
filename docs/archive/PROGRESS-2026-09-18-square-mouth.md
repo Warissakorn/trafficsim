@@ -6,7 +6,7 @@ file past the 500-line guard (hard rule 6). Nothing here was edited.
 **Why this one:** it is the oldest live entry, and it is also the one the 2026-09-21 Connector
 parity audit corrects. Its description of what `connectorBoundaries` draws has been false since
 M1.18. The correction of record is in `PROGRESS.md` under *2026-09-21 — Connector parity audit*;
-[`../CONNECTOR_PARITY_AUDIT.md`](../CONNECTOR_PARITY_AUDIT.md) §3.1 has the detail.
+[`../audits/CONNECTOR_PARITY_AUDIT.md`](../audits/CONNECTOR_PARITY_AUDIT.md) §3.1 has the detail.
 
 ---
 
@@ -40,7 +40,7 @@ the Link's lane edge instead of demanding it be zero. 127 tests pass, 16/16 ctes
 ### Next
 
 The engineering side of M1 is unchanged by this: **the only open item is the owner's timed
-four-leg / aerial-image / reopen exercise in `docs/M1_ACCEPTANCE.md`.** If the square mouth looks
+four-leg / aerial-image / reopen exercise in `docs/plans/M1_ACCEPTANCE.md`.** If the square mouth looks
 wrong once seen in the editor, the wedge is in Git history at `55294fa` and its reasoning is in
 [`archive/PROGRESS-2026-09-17-mouth.md`](PROGRESS-2026-09-17-mouth.md) — do not re-derive it.
 *(It did look wrong; M1.18 above replaced it with a longitudinal slide, not the wedge.)*

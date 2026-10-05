@@ -1,5 +1,5 @@
 #pragma once
-// The T-junction of docs/M3_ACCEPTANCE.md §2 (M3.2.7, A26): a two-way major road, one minor
+// The T-junction of docs/plans/M3_ACCEPTANCE.md §2 (M3.2.7, A26): a two-way major road, one minor
 // approach, no signals, and a minor turn that CROSSES the near major stream and then MERGES into
 // the far one across a 1 m median -- a crossing area and a separate downstream merge, so a merge-only drawing cannot
 // pretend to exercise crossing control. Built through the editor's own commands, like the four-leg

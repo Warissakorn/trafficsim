@@ -329,7 +329,7 @@ std::vector<std::vector<std::string>> routeShortestChains(const Network&, const 
 std::vector<std::vector<std::string>> routeLaneChains(const Network&,
                                                       const std::vector<std::string>& objectIds,
                                                       std::vector<std::string>* ambiguous = nullptr);
-// M3.2.8b (docs/M3_8_CONTRACT.md §2): the same walk, keeping one chain per lane of the first Link.
+// M3.2.8b (docs/reference/M3_8_CONTRACT.md §2): the same walk, keeping one chain per lane of the first Link.
 // A lane that cannot reach the end is a STUB: its chain follows the route's objects as far as that
 // lane goes and stops on the lane the next object does not leave; its vehicles change lanes. A
 // stub is kept only when neighbouring lanes with chains lead from it to a full chain. The full

@@ -7,7 +7,7 @@ gesture**, so the gap is a list of decisions rather than a feeling.
 **Which parts are current.** §1, §3 and §6 are the 2026-09-14 pre-completion assessment and are
 kept as written — their "today" columns describe an editor that no longer exists. **§1a and §2
 are the current state**, §1a measured by `trafficsim-gesture-walkthrough` rather than read off
-the code. Everything M1.1–M1.10 built is listed in [`NETWORK_EDITOR.md`](NETWORK_EDITOR.md);
+the code. Everything M1.1–M1.10 built is listed in [`../reference/NETWORK_EDITOR.md`](../reference/NETWORK_EDITOR.md);
 group drag (M1.16), rotation (M1.22.2), Connector lane ranges and corner handles, overlap
 cycling (`Ctrl+Tab` since `ed74268`), tool shortcuts and levels all exist now and §1/§6 say they do not.
 
@@ -16,10 +16,10 @@ selected objects duplicates them. Lane handles work on both sides without recent
 lanes. Outer road markings and internal dividers replace lane-centre dashes. Independent
 Connector and Signal head copies require valid attachments.
 
-**How to read it.** A gap is not automatically work. `PROBLEM.md` owns scope and `ROADMAP.md`
+**How to read it.** A gap is not automatically work. `../PROBLEM.md` owns scope and `../ROADMAP.md`
 owns sequence; this file only tells the truth about the distance and proposes where each item
 belongs. The gaps the owner accepted are carved into **M1.8, M1.9 and M1.10** in
-[`ROADMAP.md`](ROADMAP.md) — anything else here is recorded, not booked.
+[`../ROADMAP.md`](../ROADMAP.md) — anything else here is recorded, not booked.
 
 This file describes authoring. It makes no claim about simulation fidelity; the
 not-yet-validated marker (D5, hard rule 4) stands over everything below.
@@ -41,8 +41,8 @@ invalidated the conclusion drawn from it. Do not restore it.
 | | Vissim | Today | Gap |
 |---|---|---|---|
 | Choosing what you are about to create | Click a type in the **Network Objects** sidebar; the sidebar is the mode, and it stays visible ✔ | A `QComboBox` of six tools: `select, draw, split, measure, calibrate, connect` (`src/editor/canvas.hpp:10`, wired at `src/shell/editor_window.cpp:57-59`) | The current mode is a collapsed dropdown showing one line of text. Vissim's is a permanent list — you can see every object type you *could* be placing |
-| Creating a link | **`Ctrl` + right-drag** from start to end on empty space, then a **Link Data** dialog for lane count and widths ✔ | Pick **Draw link**, set lane count and width in the inspector, click each centreline point, Enter or double-click to finish (`docs/NETWORK_EDITOR.md` §Draw) | Ours is a polyline of clicks, Vissim's is one drag plus a dialog. Defensible: tracing an aerial image wants per-point placement. But the **creation chord** should still be `Ctrl`+right-drag so the reflex transfers |
-| Adding curve points to a link | **`Ctrl` + right-click** on the link ✔ | Double-click the centreline (`docs/NETWORK_EDITOR.md` §Draw) | Divergent, and it collides with the Vissim reflex below |
+| Creating a link | **`Ctrl` + right-drag** from start to end on empty space, then a **Link Data** dialog for lane count and widths ✔ | Pick **Draw link**, set lane count and width in the inspector, click each centreline point, Enter or double-click to finish (`docs/reference/NETWORK_EDITOR.md` §Draw) | Ours is a polyline of clicks, Vissim's is one drag plus a dialog. Defensible: tracing an aerial image wants per-point placement. But the **creation chord** should still be `Ctrl`+right-drag so the reflex transfers |
+| Adding curve points to a link | **`Ctrl` + right-click** on the link ✔ | Double-click the centreline (`docs/reference/NETWORK_EDITOR.md` §Draw) | Divergent, and it collides with the Vissim reflex below |
 | Rotating a link | **`Alt` + left-drag** on the selection ✔ | Not possible at all | Absent. Cheap to add once group transforms exist; blocked by the same connector-reanchoring problem as group drag |
 | Creating a connector | **`Ctrl` + right-drag** from the source link to the target link, then a **Connector** dialog choosing the lane range at each end; **left-click during the drag adds spline points** ✔ | Two clicks: an orange circle at a source lane end, then a teal circle at a target lane start (`src/editor/canvas_connectors.cpp`), or two combo boxes in **Properties → Connectors** | The real cost: a four-lane-to-four-lane movement is **one** `Ctrl`+right-drag in Vissim and **four** two-click pairs here. Vissim also shapes the curve in the same gesture; we require a separate editing pass. Owner's third priority |
 | Adjusting lane count across a connector | **Corner drag points** on the connector when source and target lane counts differ ✔ | Not possible — a connector is one lane to one lane (`src/model/network/network.hpp`) | Structural, not cosmetic: our connector model has no lane *range*. M1.9 has to widen the model, not just the gesture |
@@ -52,7 +52,7 @@ invalidated the conclusion drawn from it. Do not restore it.
 | Adding to a selection | Not stated. The reference gives **`Ctrl` + left-click = duplicate the selection** ✔ | `Ctrl`+click or Shift+click adds/removes one object; rubber band on empty space (`src/editor/canvas_select.cpp`) | **Direct semantic collision on the same chord**: the gesture that extends a selection here *copies an object* there. A Vissim user reaching for `Ctrl`+click expects a duplicate. This is more dangerous than a missing feature |
 | Cycling overlapping objects | **`Tab`** at the click position ✔ | Nothing — `hit()` returns the nearest object and there is no way to reach the one behind it (`src/editor/canvas.hpp:64`) | Absent, and genuinely needed: links and connectors overlap constantly at a junction. `hit()` already ranks by distance, so the ordered list this needs mostly exists |
 | Deleting the selection | `Delete` **?** — not in the reference | `Delete` on the canvas removes a **geometry vertex** (`src/editor/canvas_input.cpp:135-137`); deleting objects is a toolbar button with a confirmation dialog | Divergent from near-universal convention regardless of Vissim. Worth fixing with M1.9 |
-| Moving several objects | Drag the selection **?** | Not possible — "There is no group drag" (`docs/NETWORK_EDITOR.md` §M1.5) | Known and documented. Reanchoring every attached connector is the reason; it is real work, not an oversight |
+| Moving several objects | Drag the selection **?** | Not possible — "There is no group drag" (`docs/reference/NETWORK_EDITOR.md` §M1.5) | Known and documented. Reanchoring every attached connector is the reason; it is real work, not an oversight |
 
 **Summary, corrected.** Vissim's creation verb is **`Ctrl` + right-drag**, uniformly, for every
 network object, and adopting it cost nothing here because right-drag panning was never the
@@ -182,7 +182,7 @@ M1.9 — it is not decoration, it is what makes a single creation chord unambigu
 |---|---|---|
 | Network object palette | Permanent left sidebar, one row per object type, the active row is the edit mode | None. A toolbar dropdown (§1) |
 | Properties | Modal dialog on double-click, per object type | A dockable, always-available inspector with **Links / Connectors / Image** tabs; the tab follows the selection (`src/shell/editor_inspector.cpp`, `editor_window.cpp:78-81`) — **better than Vissim for tracing work**, keep it |
-| Object lists | Dockable list windows per object type, editable in place | **Objects and problems** dock, four tabs: Links, Connectors, Signal heads, Problems; two-way selection with the canvas; **read-only** (`src/shell/editor_tables.cpp`, `docs/NETWORK_EDITOR.md` §M1.5) |
+| Object lists | Dockable list windows per object type, editable in place | **Objects and problems** dock, four tabs: Links, Connectors, Signal heads, Problems; two-way selection with the canvas; **read-only** (`src/shell/editor_tables.cpp`, `docs/reference/NETWORK_EDITOR.md` §M1.5) |
 | Quick View | A small panel showing the selected object's key attributes | None; the inspector covers most of the need |
 | Level selector | Levels order overlapping geometry (flyovers, underpasses) | None — no `level` anywhere in the model |
 | Display types | Named, swappable draw styles per object | None — draw styles are fixed in `src/render/` and `src/editor/canvas.cpp` |
@@ -217,8 +217,8 @@ queue counters · travel time sections · nodes · levels · display types · li
 Two of these are already booked and should not be re-litigated here:
 
 - **Vehicle routes and inputs** exist only as untyped JSON inside the project document — they
-  have no table and no commands. `ROADMAP.md` M1.5.1 owns this and says so plainly.
-- **Conflict areas** are the whole reason D1 exists (`PROBLEM.md` §2). They belong with
+  have no table and no commands. `../ROADMAP.md` M1.5.1 owns this and says so plainly.
+- **Conflict areas** are the whole reason D1 exists (`../PROBLEM.md` §2). They belong with
   right-of-way in the engine, not with the editor; authoring them before the core can honour
   them would be a fidelity claim the code cannot support.
 
@@ -260,7 +260,7 @@ button finds a different window that rejects their file.
    This is the only genuinely new surface, and it is M1.8.
 
 Steps 1–3 already exist on the roadmap; only step 4 needed booking. Hence M1.8 is the *surface*
-and M1.7 stays the *plumbing* — see `ROADMAP.md`.
+and M1.7 stays the *plumbing* — see `../ROADMAP.md`.
 
 **Final output.** Vissim ends in evaluation: node results, movement delay, queue lengths, LOS.
 Here `src/eval/` produces a completed-trip mean delay, shown on the editor's run status since
@@ -291,11 +291,11 @@ so the ranking stays readable as history; §1a is the current state.
 | 10 | No group drag, no `Alt`-drag rotate, no copy/paste | Group drag M1.16, rotate M1.22.2; copy/paste still unbooked (ID allocation) |
 | 11 | Missing object types (nodes, priority rules, stop signs, reduced speed areas, parking lots, signal groups, …) | Open — each one needs engine behaviour first; see §4 and §2b |
 Items 9–11 stay without a milestone deliberately. Booking work the engine cannot yet honour is
-how a roadmap stops being true (`ROADMAP.md` rule 2).
+how a roadmap stops being true (`../ROADMAP.md` rule 2).
 
 **Nodes are the one omission worth re-reading later.** They are absent here and unbooked, but in
 Vissim they are how delay and queue are aggregated per junction — which is the output a traffic
-impact study is actually paid for (`PROBLEM.md`). They belong to M5 evaluation, not the editor,
+impact study is actually paid for (`../PROBLEM.md`). They belong to M5 evaluation, not the editor,
 but M5 should not rediscover them from scratch.
 
 ---
@@ -324,7 +324,7 @@ translated code (`SCENARIO_IS_PROJECT`, `SCENARIO_NO_DEFINITION`, `SCENARIO_NO_N
 `SCENARIO_NOT_JSON_OBJECT`, `SCENARIO_FILE_READ`), and the dialogs default to
 `*.traffic.json` for projects. The **Open in Network Editor** hand-off the simulation window
 offered is moot since M1.24: the editor opens both kinds itself.
-See `docs/NETWORK_EDITOR.md` §"Save, recovery and formats" (the file-kind table).
+See `docs/reference/NETWORK_EDITOR.md` §"Save, recovery and formats" (the file-kind table).
 
 The two kinds were **not** merged into one schema, deliberately. A single format would make
 every drawing look runnable, which is the fidelity claim hard rule 4 exists to prevent. They
@@ -335,4 +335,4 @@ not by blurring the formats.
 
 The 2026-09-15 to 2026-09-21 follow-ups (reported editor failures, intermediate points, the
 Connector audited end to end, the snapping audit, the withdrawn wedge) are in
-[`archive/VISSIM_PARITY-2026-09-15--2026-09-21-follow-ups.md`](archive/VISSIM_PARITY-2026-09-15--2026-09-21-follow-ups.md).
+[`../archive/VISSIM_PARITY-2026-09-15--2026-09-21-follow-ups.md`](../archive/VISSIM_PARITY-2026-09-15--2026-09-21-follow-ups.md).

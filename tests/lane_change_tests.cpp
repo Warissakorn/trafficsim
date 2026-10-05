@@ -9,7 +9,7 @@
 #include "../tools/four_leg_network.hpp"
 #include <algorithm>
 using namespace trafficsim;
-// M3.2.8b (docs/M3_8_CONTRACT.md §2, A27-A35) and M3.2.8c cooperative braking (A36-A39): mandatory
+// M3.2.8b (docs/reference/M3_8_CONTRACT.md §2, A27-A35) and M3.2.8c cooperative braking (A36-A39): mandatory
 // lane changes, on hand-built scenarios.
 namespace {
 using test::lanes; using test::on;

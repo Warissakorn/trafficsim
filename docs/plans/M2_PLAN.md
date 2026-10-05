@@ -1,7 +1,7 @@
 # M2 plan — and the M1 review it starts from
 
 Written 2026-09-24 at the owner's request ("ตรวจสอบ M1 และวางแผนพัฒนา M2"). **§3 was the draft;
-the owner ratified it as drafted the same day and it is now registered in `ROADMAP.md` §M2
+the owner ratified it as drafted the same day and it is now registered in `../ROADMAP.md` §M2
 (D34).** The same day, before any observation, the owner withdrew C0 and C3 and re-registered
 the gate as C1 + C2 with C4 recorded (D38); §3 below is the registered version. **2026-09-25 (D51):**
 C2 is withdrawn and the pass is the owner's judgment; C4 is withdrawn too (D52) — ROADMAP §M2 is current where they differ.
@@ -41,7 +41,7 @@ M1.12.3 was closed by M1.19. ROADMAP is the authority for each.
 
 ### Engineering defects found or confirmed
 
-1. **Duplicate-station refusal still unfixed** (`NEXT.md` item 0). `src/model/network/sections.cpp`
+1. **Duplicate-station refusal still unfixed** (`../NEXT.md` item 0). `src/model/network/sections.cpp`
    still measures a second arrival at an already-cut station against
    `boundaries.back() + kMinSectionLength`, i.e. against itself, and marks the Connector
    unsectionable. Run is refused for a physically fine drawing.
@@ -75,7 +75,7 @@ produces a delay table.* Then the honesty gate.
 
 **Consequence for the gate:** the only study M2 can run honestly is a **signalised intersection
 with fully protected phasing**. That is enough to show whether the tool carries a real study
-from blank network to report table (`PROBLEM.md` §7.1).
+from blank network to report table (`../PROBLEM.md` §7.1).
 
 ---
 
@@ -93,11 +93,11 @@ not a test (D8).
   the same study, both timed from a blank project. Record both regardless of outcome.
 - **C4 — Plausibility, recorded, not scored.** For each movement, the TrafficSim delay next to the
   current tool's. Neither engine is validated against the other and bit-agreement is a non-goal
-  (`PROBLEM.md` §5), so C4 cannot pass or fail the gate; a movement more than **[two LOS
+  (`../PROBLEM.md` §5), so C4 cannot pass or fail the gate; a movement more than **[two LOS
   letters]** away opens a numbered investigation milestone, per ROADMAP rule 2.
 
 **Pass = C1 and C2 pass.** Reported as *not disproven*, never
-*confirmed* (D8). Evidence goes in a new `docs/M2_GATE.md`, shaped like `M1_ACCEPTANCE.md`.
+*confirmed* (D8). Evidence goes in a new `docs/plans/M2_GATE.md`, shaped like `M1_ACCEPTANCE.md`.
 
 ---
 
@@ -140,7 +140,7 @@ M2.3/M2.4 below, because M2's done-condition needs them and M2.1's gate does not
      `AMBIGUOUS_ROUTE_STEP`; Run is not blocked. The fixture names the taper or pocket entry.
    - **M2.0.3 — 4 safety clamps in 900 s. Diagnosed; owner decision.** Every one is a vehicle
      under 2 m from its stop line at 4–12 m/s when its head turns amber — amber is treated as red
-     with no stop-or-go decision (`SIMULATION.md`). Not the M3.1 rules, not the merges. The frozen
+     with no stop-or-go decision (`../reference/SIMULATION.md`). Not the M3.1 rules, not the merges. The frozen
      TS baselines (seeds 43, 4294967295) hold six of the same clamps, so a decision changes
      frozen fixtures and needs the owner: keep it until M4, or accept it now with a logged new
      baseline. Its effect on M2.5 delay is small but real — a halted vehicle waits a red it would
@@ -181,7 +181,7 @@ It feeds the existing per-route inputs at compile time; it does **not** restore 
 routes (that is M2.1's positioned decision, D25). **Gate:** flows compile to the same core
 scenario as the equivalent hand-split inputs; tables and dialogs round-trip through save/reopen.
 
-### M2.5 — Movement evaluation, single run · **Implemented** (D39, D40; contract in `SIMULATION.md`)
+### M2.5 — Movement evaluation, single run · **Implemented** (D39, D40; contract in `../reference/SIMULATION.md`)
 
 In `src/eval/`, fed only by the event stream (`core/` unchanged):
 
@@ -201,7 +201,7 @@ whose delay and queue can be computed by hand — plus exact replay per seed.
 
 ### M2.6 — The gate study (owner)
 
-Run C1, C2 and C4 exactly as committed; fill in `docs/M2_GATE.md`; close M2 only on a pass. **M3 may not
+Run C1, C2 and C4 exactly as committed; fill in `docs/plans/M2_GATE.md`; close M2 only on a pass. **M3 may not
 start before this** (ROADMAP §M2).
 
 ---

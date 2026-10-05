@@ -4,7 +4,7 @@
 #include <cmath>
 #include <optional>
 
-// M3.2.2c: the crossing-coverage measurement (docs/M3_CONTRACT.md §1). Two lane surfaces are
+// M3.2.2c: the crossing-coverage measurement (docs/reference/M3_CONTRACT.md §1). Two lane surfaces are
 // intersected quad by quad and the overlap is read back as stations, so a crossing area's two
 // stored numbers can be checked against the geometry instead of trusted.
 namespace trafficsim {

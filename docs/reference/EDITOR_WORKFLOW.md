@@ -5,8 +5,8 @@ existing authoring commands; they do not change the project format or simulation
 
 ## Selection and editing feedback
 
-Hover shows a light blue outline; selection uses a stronger teal outline and a subtle tint,
-keeping the road's display-type colour and markings visible. Geometry points are small square
+Hover, selection and active tool previews use the shared palette accent (D81/D84), with
+different stroke/tint treatment; road display-type colour and markings remain visible. Geometry points are small square
 grips, shown only for a single object in Select. Rectangular lane tabs sit directly against
 both edges at the start, middle and end; drag a tab outward/inward to add/remove lanes. Tabs
 have no count labels. Lane markings are 0.10 m wide, with 3 m dashes and gaps that scale with
@@ -67,7 +67,7 @@ levels. Invalid or deleted object IDs are not accepted as selection targets.
 In **Select (S)**, hold **Alt** and left-drag a selected road to rotate the whole selection.
 Alt-dragging an unselected road first selects it. The pivot is the centre of the world-axis
 bounds of the affected road surfaces, including internal Connectors. Signal heads do not
-change that centre. The canvas shows the pivot, angle and amber outlines before committing.
+change that centre. The canvas shows the pivot, angle and accent outlines before committing.
 Keep the pointer away from the pivot: a press or release within eight screen pixels of it
 has no stable angle and does not rotate anything. A click or small pointer jitter also does
 not rotate. Drag angles ignore the metre grid; hold **Shift** for **15-degree** increments.
@@ -86,7 +86,7 @@ head-only selection cannot rotate independently. Unrelated selected heads stay o
 Other Connectors keep their world positions under M1.20. After rotation, affected attachments
 are re-read; an endpoint still on its parent carriageway snaps to its lane middle. A Connector
 that leaves either parent road is removed together with its dependent routes, inputs and
-heads. The amber outline previews the rigid transform before this attachment check. **One
+heads. The accent outline previews the rigid transform before this attachment check. **One
 Undo restores the entire edit**, including any removed dependants; Redo restores its result.
 Rotation clears a compiled run only on a successful change. Save/reopen retains the geometry.
 Escape, focus loss, tool/selection/level changes or document replacement cancel the drag;
@@ -127,6 +127,6 @@ Simulation, Help and Language menus retain full command names and keyboard short
 The unvalidated marker and complete simulation figures remain visible in focus mode.
 
 Layout examples from the Linux offscreen Qt platform:
-[English, 1360×860](images/workspace-en.png),
-[Thai, 1024×768](images/workspace-th.png), and
-[Thai focus mode](images/workspace-focus.png).
+[English, 1360×860](../images/workspace-en.png),
+[Thai, 1024×768](../images/workspace-th.png), and
+[Thai focus mode](../images/workspace-focus.png).

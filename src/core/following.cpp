@@ -3,7 +3,7 @@
 #include <cmath>
 
 namespace trafficsim {
-// Reduced Wiedemann-inspired prototype, NOT W74/W99. See docs/SIMULATION.md.
+// Reduced Wiedemann-inspired prototype, NOT W74/W99. See docs/reference/SIMULATION.md.
 FollowingResult followingAcceleration(double speed, double desiredSpeed, double driverFactor,
     const VehicleType& type, const DriverBehaviour& behaviour, std::optional<Leader> leader) {
     const double free = std::min(type.maxAcceleration, (desiredSpeed - speed) / behaviour.followingTime);

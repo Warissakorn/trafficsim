@@ -15,4 +15,4 @@ recording those checkpoint fields whenever `state.tick % 100 === 0`. The four se
 0, 42, 43 and 4294967295. Fixtures are stored compactly because full states are repetitive.
 
 These are frozen migration evidence. Do not update them when a native test fails.
-See `../../docs/MIGRATION.md` for tolerances and the limits of sampled trajectory checks.
+See `../../docs/reference/MIGRATION.md` for tolerances and the limits of sampled trajectory checks.

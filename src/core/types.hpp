@@ -132,7 +132,7 @@ struct ConflictZone {
     ZoneControl control{ZoneControl::yield};
     bool operator==(const ConflictZone&) const = default;
 };
-// M3.2.8b (docs/M3_8_CONTRACT.md §2). A vehicle on route `fromRouteId` whose rear is at or past
+// M3.2.8b (docs/reference/M3_8_CONTRACT.md §2). A vehicle on route `fromRouteId` whose rear is at or past
 // `fromStart` and whose front is at or short of `fromEnd` may change to `toRouteId`; distances map
 // linearly between [fromStart, fromEnd] and [toStart, toEnd]. Compiled from the drawing -- two
 // chains of one movement on adjacent lanes of a Link -- and never authored: the core sees route
