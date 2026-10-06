@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <map>
 namespace trafficsim {
+class InputManifest;
 struct DemandCatalog {
     std::vector<VehicleType> vehicleTypes;
     std::vector<DriverBehaviour> behaviours;
@@ -11,7 +12,7 @@ struct DemandCatalog {
 };
 // Resolve authored ownership without expanding routes, lanes or compositions.
 DemandCatalog resolveDemandCatalog(const AuthoringDefinition&,const std::filesystem::path&,
-                                   bool includeCompositions=true);
+                                   bool includeCompositions=true, InputManifest* =nullptr);
 // Validate every owned composition and input reference, including unused entries.
 std::vector<ValidationIssue> ownedCatalogIssues(const AuthoringDefinition&);
 }

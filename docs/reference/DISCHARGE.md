@@ -33,8 +33,9 @@ eligible. An initial observed green is conservatively unavailable, including
 one starting at time zero; an unfinished last cycle is unavailable. Repeated
 observation of the same tick is ignored; missing/out-of-order ticks or changed
 Scenario identity throw. The caller must not replace a snapshot within a tick.
-Route/lane changes of upstream tracked vehicles make that whole cycle
-unavailable. Source departures already beyond the head or arriving within the
+Lane changes or route choices that change the physical prefix through a head
+make that whole cycle unavailable; shared-prefix route recognition is supported
+as defined below. Source departures already beyond the head or arriving within the
 insertion tick conservatively invalidate it because the prior position/type
 snapshot is absent. Sink arrivals of previously upstream tracked vehicles are
 counted explicitly, even without a survivor snapshot.
@@ -61,8 +62,8 @@ Defaults are the full run window, zero warmup, steady ranks 3–5 and startup ra
 cycle completeness and reasons are emitted. Unavailable numeric fields are null.
 CLI controls and vehicle-type selection are defined below. Future class assignment
 remains separate. Existing top-level seed/compiler/engine-version output applies.
-Study operators must retain project/catalog hashes and the exact executable
-commit/toolchain alongside that JSON; the CLI does not yet emit input hashes.
+The CLI emits captured project/catalog hashes as defined below. Retain the
+original inputs and exact executable commit/toolchain alongside that JSON.
 
 BA03 has type-selection/window evidence; future vehicle classes are not assigned.
 BA05 remains open: complete remap/source passage tracking is still pending. Native/desktop CI and empirical/owner validation are separate gates.
@@ -92,5 +93,39 @@ Startup uses that selected steady reference only when every vehicle in original
 startup ranks 1..k is selected. Otherwise headway can remain available while
 startup is null with `mixed_type_startup_prefix`. The JSON emits this separate
 startup reason and the selection/rate definitions. Unfiltered defaults retain the
-previous numeric results. Input-hash output and complete remap/source tracking
-remain the next measurement slice; this change does not close BA05.
+previous numeric results. Captured input hashes and supported shared-prefix recognition are defined below.
+Complete lateral/source reconstruction remains the next slice; BA05 stays open.
+
+## Captured input provenance (M3.3.1b2a)
+
+With `--discharge`, `inputManifest` records SHA-256, byte count and read count for
+`project`, every catalog JSON file actually read by compilation/validation, and
+`evaluation/queue-counter.json`. Names are logical relative paths, not host-specific
+absolute paths. Entries are sorted by logical path. Project-owned catalogs remain
+inside the project hash; unused external catalogs do not appear.
+
+The parser and digest consume the same captured binary bytes, including whitespace,
+BOM and line endings. JSON is not normalized or reserialized before hashing.
+Repeated reads of a logical file must have identical bytes/digest; a mismatch
+rejects before simulation. Best-effort priority-catalog fallbacks are recorded,
+including files read before parsing fails. The collector is explicit and optional;
+ordinary loading and simulation retain their previous contracts. No filesystem
+or hashing code reaches core/eval.
+
+This is the identity of actual file reads, not a directory snapshot or an archived
+copy of inputs. Hashes do not recreate missing files, establish calibration, or
+capture the executable's source commit. Retain the original files and exact build
+commit alongside top-level engine/compiler/seed fields for replay.
+
+## Supported route recognition and remaining passage limits
+
+A positioned `RoutingEvent` can preserve the queue and crossings when source and
+target routes have an identical physical segment prefix through this head.
+Recognizing a different suffix does not move the front off that shared lane; keep
+its original queued-at-Go membership and count a subsequent passage once.
+Changing the physical prefix through a head, including diverting to a suffix
+without that head, remains unavailable for that cycle. Such remaps suppress raw
+crossing inference too: arrival on a diverted route is not passage of the old head.
+Lane changes and ambiguous insertion-tick source passages remain conservative
+unavailable cases. Complete lateral/source passage reconstruction is still BA05
+work; this supported shared-prefix case does not close that gate.

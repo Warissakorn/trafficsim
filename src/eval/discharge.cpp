@@ -90,13 +90,32 @@ void DischargeAccumulator::observe(const SimState& state) {
             if(h.cycle)h.cycle->crossings.push_back({id,scenario_->vehicleTypes.at(type).id,
                                                     state.time,h.queue.contains(id)});
         };
-        // Remaps cannot be mistaken for motion through a head. Conservatively invalidate
-        // the affected cycle when a vehicle tracked upstream changes lane or route.
+        // A suffix choice keeps the same front coordinate on a shared physical prefix.
+        // A lateral/diverted remap does not establish passage of the old head.
+        const auto sharedPrefix=[&](const std::string& from,const std::string& to) {
+            const auto find=[&](const auto& id) {
+                return std::find_if(scenario_->routes.begin(),scenario_->routes.end(),
+                                    [&](const auto& route){return route.id==id;});
+            };
+            const auto source=find(from),target=find(to);
+            if(source==scenario_->routes.end()||target==scenario_->routes.end())return false;
+            for(std::size_t j=0;j<source->segmentIds.size();++j) {
+                if(j>=target->segmentIds.size()||source->segmentIds[j]!=target->segmentIds[j])return false;
+                if(source->segmentIds[j]==head.segmentId)return true;
+            }
+            return false;
+        };
+        std::set<std::uint64_t> unplaced;
         for(const auto& e:state.events) {
             std::visit([&](const auto& event) {
                 using T=std::decay_t<decltype(event)>;
-                if constexpr(std::is_same_v<T,LaneChangeEvent>||std::is_same_v<T,RoutingEvent>)
-                    if(h.cycle&&h.upstream.contains(event.vehicleId))h.cycle->unavailable="route_or_lane_change";
+                if constexpr(std::is_same_v<T,LaneChangeEvent>||std::is_same_v<T,RoutingEvent>) {
+                    if(!h.upstream.contains(event.vehicleId))return;
+                    if constexpr(std::is_same_v<T,RoutingEvent>)
+                        if(sharedPrefix(event.fromRouteId,event.toRouteId))return;
+                    unplaced.insert(event.vehicleId);
+                    if(h.cycle)h.cycle->unavailable="route_or_lane_change";
+                }
             },e);
         }
         // A source can be downstream of a head, or pass it within its insertion tick.
@@ -110,12 +129,12 @@ void DischargeAccumulator::observe(const SimState& state) {
                 h.cycle->unavailable="untracked_source_passage";
         }
         for(const auto& v:state.vehicles)
-            if(h.upstream.contains(v.id)&&!nextUpstream.contains(v.id)&&
+            if(h.upstream.contains(v.id)&&!unplaced.contains(v.id)&&!nextUpstream.contains(v.id)&&
                std::isfinite(h.atRoute.at(v.routeIndex)))record(v.id,v.typeIndex);
         // At a route sink no survivor snapshot exists. The Arrived event and previously
         // tracked head establish passage, rather than dropping the last vehicle.
         for(const auto& e:state.events)if(const auto* a=std::get_if<ArrivedEvent>(&e))
-            if(h.upstream.contains(a->vehicleId)) {
+            if(h.upstream.contains(a->vehicleId)&&!unplaced.contains(a->vehicleId)) {
                 const auto type=types_.find(a->vehicleId);
                 if(type!=types_.end())record(a->vehicleId,type->second);
             }

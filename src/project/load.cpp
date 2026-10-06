@@ -1,4 +1,5 @@
 #include "load.hpp"
+#include "input_manifest.hpp"
 #include "json.hpp"
 #include "run.hpp"
 #include "demand_catalog.hpp"
@@ -15,29 +16,27 @@
 
 namespace trafficsim {
 namespace {
-Json readJson(const std::filesystem::path& file) {
-    std::ifstream stream(file);
-    if (!stream) throw std::runtime_error("Cannot read JSON: " + file.string());
-    // Parsing the entire stream rejects trailing garbage as well as malformed JSON.
-    return Json::parse(stream);
+Json readJson(const std::filesystem::path& file,InputManifest* manifest=nullptr) {
+    return readInputJson(file,"catalog/"+file.parent_path().filename().generic_string()+"/"+
+                              file.filename().generic_string(),manifest);
 }
-std::vector<Json> catalog(const std::filesystem::path& directory) {
+std::vector<Json> catalog(const std::filesystem::path& directory,InputManifest* manifest=nullptr) {
     std::vector<std::filesystem::path> files;
     for (const auto& entry : std::filesystem::directory_iterator(directory))
         if (entry.is_regular_file() && entry.path().extension() == ".json") files.push_back(entry.path());
     std::sort(files.begin(), files.end());
     std::vector<Json> result;
-    for (const auto& file : files) result.push_back(readJson(file));
+    for (const auto& file : files) result.push_back(readJson(file,manifest));
     return result;
 }
 }
-std::vector<Composition> loadCompositions(const std::filesystem::path& dataDirectory) {
+std::vector<Composition> loadCompositions(const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     std::vector<Composition> result;
     // A data directory with no compositions is legal: nothing may name one, and that is checked
     // where one is named. A composition file that does not parse is a broken catalog.
     if (!std::filesystem::is_directory(dataDirectory / "compositions")) return result;
     try {
-        for (const auto& item : catalog(dataDirectory / "compositions")) result.push_back(parseComposition(item));
+        for (const auto& item : catalog(dataDirectory / "compositions",manifest)) result.push_back(parseComposition(item));
     } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
     return result;
 }
@@ -59,12 +58,12 @@ const Composition* findComposition(const std::vector<Composition>& all, const st
 }
 }
 std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& authored,
-                                               const std::filesystem::path& dataDirectory) {
+                                               const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     std::vector<ValidationIssue> issues;
     if (std::none_of(authored.inputs.begin(), authored.inputs.end(),
                      [](const auto& i) { return !i.compositionId.empty(); }) && authored.externalCompositions && !hasTypeRouting(authored)) return issues;
     const bool used=std::any_of(authored.inputs.begin(),authored.inputs.end(),[](const auto& i){return !i.compositionId.empty();});
-    const auto resolved=resolveDemandCatalog(authored,dataDirectory,used);
+    const auto resolved=resolveDemandCatalog(authored,dataDirectory,used,manifest);
     const auto& all=resolved.compositions;const auto& types=resolved.vehicleTypes;
     auto owned=authored;owned.vehicleTypes=types;owned.externalVehicleTypes=false;
     issues=timeTypeIssues(owned);
@@ -88,12 +87,12 @@ std::vector<ValidationIssue> compositionIssues(const AuthoringDefinition& author
     }
     return issues;
 }
-DemandCatalog resolveDemandCatalog(const AuthoringDefinition& authored,const std::filesystem::path& dataDirectory,bool includeCompositions) {
+DemandCatalog resolveDemandCatalog(const AuthoringDefinition& authored,const std::filesystem::path& dataDirectory,bool includeCompositions,InputManifest* manifest) {
     DemandCatalog result{authored.vehicleTypes,authored.behaviours,authored.compositions,authored.vehicleTypeNames};
     try {
         if (authored.externalVehicleTypes) {
             result.vehicleTypes.clear();result.vehicleTypeNames.clear();
-            for (const auto& item : catalog(dataDirectory / "vehicle-types")) {
+            for (const auto& item : catalog(dataDirectory / "vehicle-types",manifest)) {
                 result.vehicleTypes.push_back(parseVehicleType(item));
                 if(item.contains("name")) {
                     if(!item.at("name").is_string())throw std::invalid_argument("EDIT_CATALOG_READ");
@@ -104,16 +103,16 @@ DemandCatalog resolveDemandCatalog(const AuthoringDefinition& authored,const std
         }
         if (authored.externalBehaviours) {
             result.behaviours.clear();
-            for (const auto& item : catalog(dataDirectory / "driver-behaviour"))
+            for (const auto& item : catalog(dataDirectory / "driver-behaviour",manifest))
                 result.behaviours.push_back(parseBehaviour(item));
         }
     } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
-    if(includeCompositions && authored.externalCompositions)result.compositions=loadCompositions(dataDirectory);
+    if(includeCompositions && authored.externalCompositions)result.compositions=loadCompositions(dataDirectory,manifest);
     return result;
 }
-ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory) {
+ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     const auto resolved=resolveDemandCatalog(authored,dataDirectory,
-        std::any_of(authored.inputs.begin(),authored.inputs.end(),[](const auto& i){return !i.compositionId.empty();}));
+        std::any_of(authored.inputs.begin(),authored.inputs.end(),[](const auto& i){return !i.compositionId.empty();}),manifest);
     // Legacy ordering/IDs/draw stream are frozen. Type overrides need a type before routing.
     AuthoringDefinition expanded=authored;
     if(hasTypeRouting(authored)) {
@@ -132,9 +131,12 @@ ScenarioDefinition resolveCatalogs(const AuthoringDefinition& authored, const st
     // the point of use, where the alternative would be a zero gap time, a merge nobody gives way
     // at, invented in silence.
     try {
-        const auto defaults = catalog(dataDirectory / "priority-rules");
+        const auto defaults = catalog(dataDirectory / "priority-rules",manifest);
         if (!defaults.empty()) definition.priorityDefaults = parsePriorityDefaults(defaults.front());
-    } catch (const std::exception&) { /* Left at zero; refused where it is needed. */ }
+        else if(manifest)manifest->fallback("catalog/priority-rules");
+    } catch (const std::exception&) {
+        if(manifest)manifest->fallback("catalog/priority-rules"); // existing best-effort default
+    }
     return definition;
 }
 ScenarioLoadError::ScenarioLoadError(std::filesystem::path path, std::string errorCode, const std::string& text)

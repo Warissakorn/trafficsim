@@ -13,7 +13,8 @@ slices add diagnostics and CLI settings without changing engine behavior or sche
 | M3.3.0 (P0) | Assignment contract, capability map and acceptance design | Docs/navigation guards; baseline provenance; no runtime completion inference |
 | M3.3.1a (P1) | [Discharge observer/CLI](../reference/DISCHARGE.md) delivered | BA01/BA02/BA04 focused evidence; existing StopLine output unchanged |
 | M3.3.1b1 (P1) | Vehicle-type follower selection and declared CLI windows/ranks delivered | BA03 type/window evidence; no behavior classes or PCU inference |
-| M3.3.1b2 (P1) | Input-hash output and complete passage tracking | BA05 remains open; native CI required |
+| M3.3.1b2a (P1) | Captured input hashes and shared-prefix recognition delivered | [Provenance/passage evidence](../evidence/discharge-provenance.md); raw diverted sink inference suppressed |
+| M3.3.1b2b (P1) | Lateral/insertion-tick passage reconstruction | BA05 remains open; native CI required |
 | M3.3.2a (P2a) | Project library/class/behaviour-type contracts and codec | BA06–BA09; portable schema/legacy behavior before UI |
 | M3.3.2b (P2b) | Compile assignment and select prototype per road/type | BA10–BA18; one effective resolver for all consumers |
 | M3.3.2c (P2c) | Library/assignment editor | BA19–BA20; EN/TH, Linux/Windows automated checks and independent owner review |

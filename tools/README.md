@@ -46,7 +46,7 @@ name after `bin/`.
 | `--discharge-type ID` | Repeatable selection of original follower gaps by vehicle type | All types |
 
 See [the discharge contract](../docs/reference/DISCHARGE.md) for raw crossings,
-unavailable results and selection semantics. `discharge_options.hpp` owns CLI
+unavailable results, selection semantics and captured parsed-byte input hashes. `discharge_options.hpp` owns CLI
 syntax; scientific validation and estimation stay in `eval/discharge.*`.
 
 Stdout contains a JSON diagnostic; errors go to stderr with a nonzero exit code.
