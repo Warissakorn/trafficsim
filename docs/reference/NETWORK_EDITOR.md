@@ -30,11 +30,11 @@ Objects and problems dock is below. Switching language updates controls and mess
 
 ## Draw and navigate
 
-**One gesture rule (D84).** In every tool a plain left click only selects, and **Ctrl+right-click
+**Default gesture rule (D84).** Outside Routes, a plain left click only selects, and **Ctrl+right-click
 or Ctrl+right-drag creates or changes** — Links, Connectors, split points, routes, vehicle inputs,
 signal heads, queue counters and conflict-area priority alike, so a stray click never authors.
-Dragging an already selected object (move, vertex, waiting line) stays a left drag. The one
-exception is Measure/Calibrate, whose left clicks place measuring points and change nothing.
+Dragging an already selected object (move, vertex, waiting line) stays a left drag. Routes use click-start, hover-trace, click-destination (D116); Measure/Calibrate also use left clicks
+to place measuring points without changing the network.
 
 In **Select (S)** or **Links (L)**, Ctrl+right-drag from empty space creates a Link.
 Confirm lane count and width in Link Data. Starting the same drag on a Link and ending
@@ -299,18 +299,18 @@ Levels only affect display and selection; they do not change runtime conflicts.
 ## Routes, inputs and fixed-time signals
 
 1. Draw a continuous path using links and connectors.
-2. With the Routes tool (R), Ctrl+right-click the start link, then each destination: the whole
-   chain leading there is appended, so a crossing takes two clicks. A route names Links and Connectors
-   and covers **every lane** of them, so a Connector's lane count never invalidates it.
-   Backspace removes the last object, Enter stores it,
-   Esc cancels; the draft and the selected route draw with arrows, the hovered object is haloed,
-   and a click no chain reaches, or two reach equally, authors nothing (Add is the same, by dialog).
+2. With Routes (R), click the start road, move over connected roads to choose the path,
+   then click the destination to save one History entry. Crossbars mark start/end and a static
+   blue tint follows the actual route spans. Passing an intermediate branch disambiguates
+   equal paths. Backspace goes back; Esc, focus loss or tool/level change cancels.
+   Ctrl+right-click start/append and Enter remain available. Routes still name whole Links
+   and Connectors, never new arbitrary endpoint stations. See [EDITOR_WORKFLOW](EDITOR_WORKFLOW.md).
 3. With the Vehicle inputs tool (V), Ctrl+right-click the link traffic enters on: the dialog opens on the
    route starting there or, when none does, on **following the network from that link** with no
    route (M2.1.1). The volume is the **link total**, divided across the link's lanes (equally or
    by weights); a vehicle on a lane that cannot reach the route's end changes lanes (M3.2.8b). A routing decision can be **placed on a link** with destination
-   links and relative flows, and draws as a diamond (SIMULATION.md). Each input draws a chevron
-   and its volume. Right-clicking a route, input or decision marker edits or deletes it.
+   links and relative flows, and draws as a diamond (SIMULATION.md). Each input draws entry-lane crossbars
+   and its localized rate, or a period count when interval-based. Right-clicking a route, input or decision marker edits or deletes it.
 4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal
    head on a lane or derived connector path, choose a program and position in metres.
    Program deletion is blocked while a head references it.

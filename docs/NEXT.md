@@ -7,6 +7,16 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## Road crossbars and Route trace — owner instruction, 2026-10-06
+
+D116 implements the owner's common crossbar appearance and click/hover/click Route gesture.
+Review this PR's native Linux/Windows CI. On Windows at 100/150/200 %, inspect curved and
+multi-lane roads, Connector-mounted heads and overlapping Route/input endpoints. Trace a chosen
+branch, click the destination, Undo/Redo, Backspace, cancel, and save/reopen. Signal Run bars
+must stay at the stop position and change colour with the program; Reset restores Edit bars.
+Input zero-weight lanes must remain unmarked. No owner or simulation-validation gate closes.
+After this review, continue the conflict and Demand review queues below.
+
 ## Conflict overlap priority — owner instruction, 2026-10-06
 
 The owner authorized the overlap/type/display plan. M3.2.4d (D115) retains exact polygon

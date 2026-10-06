@@ -12,7 +12,7 @@ and their evidence before reopening a choice. IDs remain stable even when record
 | Demand and routing | D25, D32–D33, D37, D42–D46, D71, D93–D94, D111–D113 |
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
 | Following, commitment and lane changes | D69, D71, D87–D95, D98, D101–D102, D105, D108 |
-| UI, gestures, display and results | D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104 |
+| UI, gestures, display and results | D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
 | Performance, checks and documentation | D27–D29, D31, D70, D82, D85, D91, D99 |
 
 ## Reading a historical choice
@@ -40,3 +40,5 @@ not automatically the current contract. Current interfaces live in the reference
 
 For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_POSE.md) and the
 2026-10-05 phase entries in PROGRESS; those entries do not invent new D-numbers.
+
+[D116](RECORD.md#d116)

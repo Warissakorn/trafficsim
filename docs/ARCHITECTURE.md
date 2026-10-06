@@ -136,6 +136,11 @@ submit `rotateObjects` through History. Internal Connectors retain authored refe
 a rigid group rotation; only affected partial attachments are re-read. Detached Connectors
 use the existing deletion cascade. No preview geometry is stored, and no schema changes.
 
+`road_crossbar.*` is an editor-only presentation helper: actual rail intersections and
+cosmetic stroke/hit geometry are shared by Routes, inputs and signal heads. Run snapshots
+retain head bars by ID, so the program's colour changes on the same authored stop position.
+Route hover traces remain local until one existing route command commits; no schema/core change.
+
 `EditorCanvas` renders a const document and sends gesture callbacks. Drag previews are
 transient and one release submits one command. `EditorWindow` composes native actions,
 inspector controls, translation, save prompts and QSaveFile atomic replacement. It is

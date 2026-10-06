@@ -195,9 +195,9 @@
   "editorDeleteHead": "Delete signal head",
   "editorDeleteDemandWarning": "Delete this object? Deleting a route also removes its vehicle inputs. Undo restores the whole change.",
   "editorRouteSegments": "Links and connectors in travel order",
-  "editorRouteHelp": "Choose a starting link, then append connected links and connectors in travel order. Remove last to revise the path. On the canvas, the Routes tool draws the same route: Ctrl + right-click the start, then each destination. A route covers every lane of the links it names.",
+  "editorRouteHelp": "Choose connected links and connectors in travel order. On the canvas, click the start road, trace the desired branches, then click the destination. Crossbars mark the start and end; the blue tint shows the route. A route covers every lane of the links it names.",
   "editorSelectHelp": "Click to select · Shift-click adds or removes · Ctrl-click adds · Drag edge tabs to resize lanes · Empty space / Esc clears selection",
-  "editorRouteClickHelp": "Route tool: Ctrl + right-click the start link, then a destination. Enter or double-click stores the route, Backspace removes the last object, Esc cancels. The route covers every lane.",
+  "editorRouteClickHelp": "Routes: click the start road, trace the connected roads, then click the destination. Esc cancels.",
   "editorInputPlaceHelp": "Vehicle inputs tool: Ctrl + right-click the link traffic enters on. The volume is the link total, split across its lanes.",
   "editorDemandMenuReveal": "Show in table",
   "editorAppendSegment": "Append segment",
@@ -553,5 +553,8 @@
   "editorConflictBranching": "Branching",
   "editorConflictOriginalOrder": "Original vehicle order",
   "editorConflictBranchingStatus": "Branching: original order; no separate priority control",
-  "EDIT_BRANCHING_PRIORITY": "A branching area keeps the original vehicle order; it has no separate priority control."
+  "EDIT_BRANCHING_PRIORITY": "A branching area keeps the original vehicle order; it has no separate priority control.",
+  "editorRouteFinishHelp": "Trace the roads to choose a branch, then click the destination to save. Backspace goes back; Esc cancels. Ctrl + right-click appends; Enter saves.",
+  "editorInputRateUnit": "veh/h",
+  "editorInputCanvasPeriods": "%1 periods"
 }

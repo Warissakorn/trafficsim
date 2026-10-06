@@ -8,6 +8,31 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Road crossbars and hover-traced Routes (D116)
+
+The owner requested a simpler common appearance: Routes, Vehicle inputs and signal
+heads are lines across the road. A shared normal/rail-intersection helper places
+these bars on actual road edges, including attached Link rails at Connector mouths.
+Cosmetic pens keep the line readable at zoom; a wider hit area keeps it selectable.
+Inputs mark contiguous served lanes and skip zero-share lanes. Edit heads are neutral
+with a contrasting casing; Run heads reuse their stop geometry and show program colours.
+Reset restores the Edit bars. Selected Routes tint their clipped road surfaces and
+mark both ends, preserving D96's partial-Link rendering.
+
+The Route tool now accepts click start, hover through the chosen branch, click destination.
+Hover remembers a valid lane-connected chain without changing the document; revisiting
+an earlier road trims it. Ambiguous/unreachable extensions are rejected. Backspace,
+Escape, focus/tool/level changes and the existing Ctrl+right/Enter flow remain supported.
+The destination creates one command, so one Undo removes the whole Route. English/Thai
+hints and input labels describe the new interaction. Core behaviour and schemas are unchanged.
+
+Validation: Linux Debug build with GCC 13.3 / Qt 6.4.2; offscreen regression coverage for
+curves, both driving sides, Connector mouths, zoom/picking, zero-share inputs, branched
+tracing, cancellation, one-command Undo and Edit/Run signal geometry. All 89 tests passed
+across the full run and five affected-test reruns after fixing adjacent-lane hit spill;
+architecture, file-size, documentation and whitespace checks passed. Native Windows CI
+and owner appearance review remain separate; no simulation or owner gate is closed.
+
 ## 2026-10-06 — Exact conflict polygons and classified mouths (D115)
 
 Owner authorized the geometry/type/display slice after inspecting why measured

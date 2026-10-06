@@ -51,7 +51,7 @@ QPoint laneMiddle(EditorWindow& w,const std::string& linkId,const std::string& l
     }
     require(false,"Unknown lane");return {};
 }
-// D84: routes and inputs are authored with Ctrl+right-click; a left click only selects.
+// Ctrl+right-click remains an append gesture; plain clicks trace and finish Routes.
 void click(EditorWindow& w,QPoint position) {
     QTest::mouseClick(w.canvas()->viewport(),Qt::RightButton,Qt::ControlModifier,position);
     QApplication::processEvents();
@@ -94,7 +94,21 @@ int main(int argc,char** argv) {
         // The forcing: the click lands on a LANE of the Link, and what starts is a route on the
         // whole Link -- the lane clicked is not stored anywhere.
         QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},laneMiddle(w,west,westLane));QApplication::processEvents();
-        require(w.canvas()->routeDraft().empty(),"A left click started a route");
+        require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"A left click did not start tracing");
+        QTest::keyClick(w.canvas(),Qt::Key_Escape);QApplication::processEvents();
+        const auto beforeTrace=w.history().revision();
+        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},laneMiddle(w,west,westLane));
+        hover(w,laneMiddle(w,east,eastLane));
+        require(w.history().revision()==beforeTrace,"Hover tracing created a History entry");
+        require(w.canvas()->routePreview()==std::vector<std::string>({west,connector,east}),"Trace missed its connected roads");
+        QTest::mouseClick(w.canvas()->viewport(),Qt::LeftButton,{},laneMiddle(w,east,eastLane));
+        QApplication::processEvents();
+        require(w.history().document().definition && w.history().document().definition->routes.size()==1,
+            "Destination click did not store a route");
+        require(w.canvas()->routePreview().empty(),"Stored trace left a preview behind");
+        action(w,"editorUndo");
+        require(!w.history().document().definition || w.history().document().definition->routes.empty(),
+            "One Undo did not remove the entire traced route");
         click(w,laneMiddle(w,west,westLane));
         require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"Click did not start a route on the Link");
         // Hovering an unreachable Link says so BEFORE the click, and the click is refused.
@@ -102,8 +116,7 @@ int main(int argc,char** argv) {
         auto* halo=drawn(w,"demand-hover");
         require(halo && halo->data(1).toString().toStdString()==north,"Hover halo missed the Link");
         require(!halo->data(2).toBool(),"Unreachable Link drew as reachable");
-        auto* band=drawn(w,"route-band");
-        require(band && !band->data(2).toBool(),"Rubber band did not warn");
+        require(!drawn(w,"route-band"),"Route still drew a straight rubber band");
         click(w,laneMiddle(w,north,northLane));
         require(w.canvas()->routeDraft()==std::vector<std::string>({west}),"Unreachable click was appended");
         require(!item<QLabel>(w,"editorError")->text().isEmpty(),"Refused click did not report an error");
@@ -118,7 +131,7 @@ int main(int argc,char** argv) {
         require(w.canvas()->routeDraft()==std::vector<std::string>({west,connector,east}),
             "Destination click did not append the chain");
         require(drawn(w,"route-draft"),"Draft route was not drawn");
-        require(drawnCount(w,"route-arrow")>0,"Draft route drew no direction");
+        require(drawn(w,"route-start") && drawn(w,"route-end"),"Draft route drew no endpoint crossbars");
         QTest::keyClick(w.canvas(),Qt::Key_Backspace);QApplication::processEvents();
         require(w.canvas()->routeDraft().size()==2,"Backspace did not remove the last segment");
         click(w,laneMiddle(w,east,eastLane));
@@ -141,8 +154,8 @@ int main(int argc,char** argv) {
         require(drawn(w,"route-overlay"),"Selected route drew nothing");
         auto* overlay=dynamic_cast<QGraphicsPathItem*>(drawn(w,"route-overlay"));
         require(overlay,"Route overlay is not a path");
-        require(overlay->pen().style()==Qt::CustomDashLine&&overlay->pen().dashOffset()==0,
-                "Selected route is not a static directional overlay");
+        require(overlay->pen().style()==Qt::NoPen && overlay->brush().color().alpha()>0,
+                "Selected route is not a static tinted surface");
         const double first=overlay->pen().dashOffset();QApplication::processEvents();
         overlay=dynamic_cast<QGraphicsPathItem*>(drawn(w,"route-overlay"));
         require(overlay&&overlay->pen().dashOffset()==first,"Route overlay changed without input");

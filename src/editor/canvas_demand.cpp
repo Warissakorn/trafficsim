@@ -2,6 +2,8 @@
 #include "canvas_style.hpp"
 #include <QGraphicsPathItem>
 #include <QGraphicsSimpleTextItem>
+#include <QPainterPathStroker>
+#include "../project/demand_paths.hpp"
 #include <QMouseEvent>
 #include <algorithm>
 #include <cmath>
@@ -22,7 +24,11 @@ QPainterPath polylinePath(const std::vector<Point>& points) {
 std::string EditorCanvas::objectAt(Point p) const {
     if(!document_)return {};
     const auto hits=hitObjects(p);
-    return hits.empty()?std::string{}:hits.front().first;
+    for(const auto& hit:hits) {
+        if(isLink(hit.first))return hit.first;
+        for(const auto& connector:document_->network.connectors)if(connector.id==hit.first)return hit.first;
+    }
+    return {};
 }
 std::vector<std::string> EditorCanvas::routeDraftWith(const std::string& target) const {
     if(!document_ || target.empty())return {};
@@ -32,37 +38,54 @@ std::vector<std::string> EditorCanvas::routeDraftWith(const std::string& target)
 void EditorCanvas::startRouteDraft(const std::string& objectId) {
     if(!document_ || objectId.empty())return;
     if(routeLaneChains(document_->network,{objectId}).empty())return;
-    routeDraft_={objectId};hoverSegment_.clear();redraw();
+    routeDraft_={objectId};routePreview_=routeDraft_;routeTracing_=true;hoverSegment_.clear();
+    if(routeDraftChanged)routeDraftChanged();
+    redraw();
 }
 std::pair<std::string,std::string> EditorCanvas::demandObjectAt(QPoint viewportPosition) const {
+    std::pair<std::string,std::string> route;
     for(const auto* item:items(viewportPosition)) {
         const auto kind=item->data(0).toString();
-        if(kind=="input-marker")return {"input",item->data(1).toString().toStdString()};
+        const auto id=item->data(1).toString().toStdString();
+        if(id.empty())continue; // An unfinished Route is not an editable stored object.
+        if(kind=="input-marker" || kind=="input-volume")return {"input",item->data(1).toString().toStdString()};
         if(kind=="decision-marker")return {"decision",item->data(1).toString().toStdString()};
-        if(kind=="route-overlay")return {"route",item->data(1).toString().toStdString()};
+        if(kind=="route-overlay" || kind=="route-start" || kind=="route-end")route={"route",id};
     }
-    return {};
+    return route;
 }
 bool EditorCanvas::demandPress(QMouseEvent* e) {
     if(tool_!=Tool::route && tool_!=Tool::input)return false;
-    // Vissim's Ctrl+right-click on the link the input or decision sits on (D84).
-    if(e->button()!=Qt::RightButton || !(e->modifiers()&Qt::ControlModifier))return false;
-    const auto p=world(e->pos(),false);
-    const auto target=objectAt(p);
+    const bool trace=tool_==Tool::route && e->button()==Qt::LeftButton && e->modifiers()==Qt::NoModifier;
+    const bool legacy=e->button()==Qt::RightButton && (e->modifiers()&Qt::ControlModifier);
+    if(!trace && !legacy)return false;
+    const auto target=objectAt(world(e->pos(),false));
     if(target.empty()){clearSelection(false);return true;}
     if(tool_==Tool::input) {
-        // A vehicle input is placed on a LINK, the way Vissim places one, and its volume is the
-        // Link's total: the compiler divides it across the lanes the route actually reaches.
-        if(isLink(target)) {if(inputPlaced)inputPlaced(target);}
-        else reject();
+        if(isLink(target)) {if(inputPlaced)inputPlaced(target);}else reject();
         return true;
     }
+    if(trace) {
+        if(routeDraft_.empty()){clearSelection(false);startRouteDraft(target);return true;}
+        // Re-read the click: Qt can coalesce the final hover move.
+        const auto base=routePreview_.empty()?routeDraft_:routePreview_;
+        auto candidate=base;
+        const auto previous=std::find(candidate.begin(),candidate.end(),target);
+        if(previous!=candidate.end())candidate.erase(previous+1,candidate.end());
+        else {
+            const auto chain=routeChainTo(document_->network,base,target);
+            if(chain.empty()){reject();return true;}
+            candidate.insert(candidate.end(),chain.begin(),chain.end());
+        }
+        if(routeLaneChains(document_->network,candidate).empty()){reject();return true;}
+        routeDraft_=std::move(candidate);routePreview_.clear();commitRouteDraft();return true;
+    }
     const auto chain=routeDraftWith(target);
-    if(chain.empty()) {reject();return true;}
-    // One click can append a whole chain: that is what makes "click the destination" work.
-    routeDraft_.insert(routeDraft_.end(),chain.begin(),chain.end());
-    redraw();
-    return true;
+    if(chain.empty()){reject();return true;}
+    routeTracing_=false;
+    routeDraft_.insert(routeDraft_.end(),chain.begin(),chain.end());routePreview_=routeDraft_;
+    if(routeDraftChanged)routeDraftChanged();
+    redraw();return true;
 }
 bool EditorCanvas::isLink(const std::string& objectId) const {
     if(!document_ || objectId.empty())return false;
@@ -71,28 +94,47 @@ bool EditorCanvas::isLink(const std::string& objectId) const {
 }
 bool EditorCanvas::demandHover(QMouseEvent* e) {
     if(tool_!=Tool::route && tool_!=Tool::input)return false;
-    const auto p=world(e->pos(),false);
-    const auto hovered=objectAt(p);
-    const bool reachable=tool_==Tool::input?isLink(hovered):!routeDraftWith(hovered).empty();
-    if(hovered!=hoverSegment_ || reachable!=hoverReachable_ || !routeDraft_.empty()) {
-        hoverSegment_=hovered;hoverReachable_=reachable;hoverPoint_=p;redraw();
+    const auto hovered=objectAt(world(e->pos(),false));
+    // Path finding and scene rebuilds happen on object changes, not on every mouse pixel.
+    if(hovered==hoverSegment_)return true;
+    hoverSegment_=hovered;
+    if(tool_==Tool::input)hoverReachable_=isLink(hovered);
+    else if(routeDraft_.empty())hoverReachable_=!routeDraftWith(hovered).empty();
+    else {
+        const auto base=routeTracing_ && !routePreview_.empty()?routePreview_:routeDraft_;
+        auto candidate=base;
+        const auto previous=std::find(candidate.begin(),candidate.end(),hovered);
+        if(previous!=candidate.end())candidate.erase(previous+1,candidate.end());
+        else {
+            const auto chain=routeChainTo(document_->network,base,hovered);
+            if(!chain.empty())candidate.insert(candidate.end(),chain.begin(),chain.end());
+            else candidate.clear();
+        }
+        hoverReachable_=!candidate.empty() && !routeLaneChains(document_->network,candidate).empty();
+        if(hoverReachable_)routePreview_=std::move(candidate);
     }
-    return true;
+    redraw();return true;
 }
 void EditorCanvas::commitRouteDraft() {
     if(routeDraft_.empty())return;
-    const auto segments=routeDraft_;
-    routeDraft_.clear();hoverSegment_.clear();
+    const auto segments=routeTracing_ && !routePreview_.empty()?routePreview_:routeDraft_;
+    clearRouteDraft();
     if(routeDraftCommitted)routeDraftCommitted(segments);
     redraw();
 }
 void EditorCanvas::dropLastRouteSegment() {
-    if(routeDraft_.empty())return;
-    routeDraft_.pop_back();redraw();
+    auto& path=routeTracing_?routePreview_:routeDraft_;
+    if(path.empty())return;
+    path.pop_back();
+    if(routeTracing_ && path.empty())routeDraft_.clear();
+    else if(!routeTracing_)routePreview_=routeDraft_;
+    hoverSegment_.clear();
+    if(routeDraftChanged)routeDraftChanged();
+    redraw();
 }
 void EditorCanvas::clearRouteDraft() {
-    if(routeDraft_.empty() && hoverSegment_.empty())return;
-    routeDraft_.clear();hoverSegment_.clear();
+    routeDraft_.clear();routePreview_.clear();routeTracing_=false;hoverSegment_.clear();
+    if(routeDraftChanged)routeDraftChanged();
 }
 void EditorCanvas::reject() {
     if(creationRejected)creationRejected();
@@ -101,13 +143,6 @@ void EditorCanvas::reject() {
 void EditorCanvas::setHighlightedRoute(std::string id) {
     if(highlightedRoute_==id)return;
     highlightedRoute_=std::move(id);redraw();
-}
-namespace {
-QPen routePen(QColor colour,double width,bool draft) {
-    QPen pen(colour,width);pen.setCosmetic(true);pen.setDashPattern({6,4});
-    if(draft)pen.setDashPattern({3,3});
-    return pen;
-}
 }
 void EditorCanvas::drawDemandOverlay() {
     if(!document_)return;
@@ -126,38 +161,53 @@ void EditorCanvas::drawDemandOverlay() {
             item->setData(2,hoverReachable_);
         }
     }
-    // Every vehicle input draws where its traffic enters, with the volume beside it.
+    // Inputs use the same crossbar as route endpoints and signal heads.
     if(document_->definition)for(const auto& input:document_->definition->inputs) {
+        const auto& def=*document_->definition;
+        std::string origin=input.linkId;
         std::vector<std::string> segments;
-        for(const auto& route:document_->definition->routes)if(route.id==input.routeId)segments=route.segmentIds;
-        // M2.1.1: a routeless input enters on its own Link, across all of that Link's lanes.
-        std::vector<std::vector<Point>> chains;
-        if(!input.linkId.empty()) {
-            chains={objectGeometry(document_->network,input.linkId)};
-            for(const auto& link:document_->network.links)if(link.id==input.linkId)
-                chains.resize(std::max<std::size_t>(1,link.lanes.size()),chains.front());
-        } else if(!segments.empty()) chains=routeGeometries(document_->network,segments);
-        if(chains.empty() || chains.front().size()<2)continue;
-        const auto& geometry=chains.front();
-        const bool lit=input.routeId==highlightedRoute_;
-        const double r=7/scale;
-        const auto at=pointAlong(geometry,0),ahead=pointAlong(geometry,std::min(0.5,polylineLength(geometry)));
-        const double angle=std::atan2(ahead.y-at.y,ahead.x-at.x);
-        QPolygonF chevron;
-        for(double offset:{0.0,2.4,-2.4})chevron<<QPointF(at.x+r*std::cos(angle+offset),at.y+r*std::sin(angle+offset));
-        QPen pen(canvasStyle::active(),lit?2:1);pen.setCosmetic(true);
-        QColor markerFill=canvasStyle::active();markerFill.setAlpha(lit?72:28);
-        auto* marker=scene_.addPolygon(chevron,pen,QBrush(markerFill));
-        marker->setZValue(200005);marker->setData(0,QStringLiteral("input-marker"));
-        marker->setData(1,QString::fromStdString(input.id));
-        // The authored number is the Link total; the lanes it splits across is what the author
-        // needs to see beside it, because that is what the run actually receives.
-        auto* label=scene_.addSimpleText(chains.size()>1
-            ?QString::number(input.vehiclesPerHour,'f',0)+" / "+QString::number(chains.size())
-            :QString::number(input.vehiclesPerHour,'f',0));
+        for(const auto& route:def.routes)if(route.id==input.routeId)segments=route.segmentIds;
+        if(origin.empty() && !segments.empty())origin=segments.front();
+        if(origin.empty())for(const auto& decision:def.routingDecisions)if(decision.id==input.routingDecisionId) {
+            origin=decision.linkId;
+            if(origin.empty())for(const auto& choice:decision.routes)
+                for(const auto& route:def.routes)if(route.id==choice.routeId && !route.segmentIds.empty())origin=route.segmentIds.front();
+        }
+        const auto whole=objectCrossbar(document_->network,origin,false);
+        if(!whole || !levelVisible(whole->level))continue;
+        std::vector<RoadCrossbar> bars;
+        for(const auto& link:document_->network.links)if(link.id==origin) {
+            std::vector<bool> served(link.lanes.size(),segments.empty());
+            if(!segments.empty())for(const auto& chain:routeLaneFamily(document_->network,segments))
+                if(chain.lane<served.size())served[chain.lane]=true;
+            const auto policy=inputLanePolicy(document_->network,def,input);
+            if(policy.acceptsShares && input.laneShares.size()==served.size())
+                for(std::size_t k=0;k<served.size();++k)served[k]=served[k] && input.laneShares[k]>0;
+            for(std::size_t k=0;k<served.size();) {
+                if(!served[k]){++k;continue;}
+                const auto first=k;while(k<served.size() && served[k])++k;
+                const auto a=laneBoundaryGeometry(link,first,document_->network.drivingSide);
+                const auto b=laneBoundaryGeometry(link,k,document_->network.drivingSide);
+                const auto centre=linkCentreline(link,document_->network.drivingSide);
+                if(const auto bar=roadCrossbar(centre,a,b,0,link.level))bars.push_back(*bar);
+            }
+        }
+        if(!isLink(origin))bars.push_back(*whole);
+        if(bars.empty())continue;
+        for(const auto& bar:bars) {
+            auto* marker=new RoadCrossbarItem(bar,canvasStyle::active(),scale);
+            scene_.addItem(marker);marker->setZValue(200005);
+            marker->setData(0,QStringLiteral("input-marker"));marker->setData(1,QString::fromStdString(input.id));
+        }
+        const auto& at=bars.back().second;
+        const auto value=input.intervals.empty()?input.vehiclesPerHour:0;
+        const auto text=input.intervals.empty()?editorDesign::formatValue(value,0,inputRateLabel_)
+            :inputPeriodsLabel_.arg(static_cast<int>(input.intervals.size()));
+        auto* label=scene_.addSimpleText(text,editorDesign::numericFont());
         label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        label->setBrush(editorDesign::role(QPalette::Text));label->setPos(at.x+r,at.y+r);label->setZValue(200006);
-        label->setData(0,QStringLiteral("input-volume"));
+        label->setBrush(editorDesign::role(QPalette::Text));
+        label->setPos(at.x+editorDesign::space2/scale,at.y);label->setZValue(200006);
+        label->setData(0,QStringLiteral("input-volume"));label->setData(1,QString::fromStdString(input.id));
     }
     // M2.1.1: a routing decision placed on a Link draws as a diamond a little way along it, where
     // Vissim draws its decision marker; clicking it opens the decision.
@@ -177,47 +227,38 @@ void EditorCanvas::drawDemandOverlay() {
         label->setBrush(editorDesign::role(QPalette::Text));label->setPos(at.x+r,at.y-r);label->setZValue(200006);
         label->setData(0,QStringLiteral("decision-label"));
     }
-    // A committed route draws only while it is selected, so the canvas does not silt up.
     if(document_->definition && !highlightedRoute_.empty())
-        for(const auto& route:document_->definition->routes)if(route.id==highlightedRoute_) {
-            // One line per lane the route carries, each clipped to the sections the vehicles
-            // travel -- drawing the whole lane put a line upstream of a mid-body arrival, which
-            // read on screen as a route running against the traffic on that Link.
-            for(const auto& geometry:routeGeometries(document_->network,route.segmentIds)) {
-                auto* item=scene_.addPath(polylinePath(geometry),routePen(canvasStyle::active(),2,false));
-                item->setZValue(200004);item->setData(0,QStringLiteral("route-overlay"));
-                item->setData(1,QString::fromStdString(route.id));
-                drawRouteArrows(geometry,canvasStyle::active());
-            }
-        }
-    if(routeDraft_.empty())return;
-    const auto drawn=routeGeometries(document_->network,routeDraft_);
-    for(const auto& geometry:drawn) {
-        if(geometry.size()<2)continue;
-        auto* item=scene_.addPath(polylinePath(geometry),routePen(canvasStyle::active(),2,true));
-        item->setZValue(200007);item->setData(0,QStringLiteral("route-draft"));
-        drawRouteArrows(geometry,canvasStyle::active());
-    }
-    // The rubber band leaves the head of the draft -- the last lane it reached -- and says,
-    // before the click, whether the click will be taken.
-    if(!drawn.empty() && !drawn.front().empty()) {
-        const QColor colour=hoverSegment_.empty()||hoverReachable_?canvasStyle::active():canvasStyle::error();
-        QPen pen(colour,1,Qt::DashLine);pen.setCosmetic(true);
-        const auto tail=drawn.front().back();
-        auto* band=scene_.addLine(tail.x,tail.y,hoverPoint_.x,hoverPoint_.y,pen);
-        band->setZValue(200007);band->setData(0,QStringLiteral("route-band"));
-        band->setData(2,hoverSegment_.empty()||hoverReachable_);
-    }
+        for(const auto& route:document_->definition->routes)if(route.id==highlightedRoute_)
+            drawRouteOverlay(route.segmentIds,route.id,false);
+    if(!routeDraft_.empty())drawRouteOverlay(routePreview_.empty()?routeDraft_:routePreview_,{},true);
 }
-void EditorCanvas::drawRouteArrows(const std::vector<Point>& geometry,QColor colour) {
-    const double length=polylineLength(geometry);
-    if(!(length>0))return;
-    // Spaced along the route rather than one per segment: a long lane needs more than one
-    // arrow to read as a direction, and a short connector needs none of its own.
-    for(double station=length/8;station<length;station+=length/4) {
-        const auto at=pointAlong(geometry,station);
-        const auto ahead=pointAlong(geometry,std::min(length,station+0.05));
-        addArrowhead(at,std::atan2(ahead.y-at.y,ahead.x-at.x),6,colour,200008,QStringLiteral("route-arrow"));
+void EditorCanvas::drawRouteOverlay(const std::vector<std::string>& segments,const std::string& id,bool preview) {
+    if(segments.empty())return;
+    const auto& n=document_->network;
+    // Keep D96's compiled spans: tint never extends upstream of a mid-Link arrival.
+    // Clip a lane-centre corridor to real road surfaces rather than inventing another road.
+    QPainterPath roads;
+    for(const auto& object:segments) {
+        const auto level=objectLevel(object);
+        if(level && levelVisible(*level))roads=roads.united(objectShape(object));
     }
+    QPainterPath corridors;
+    double width=0;
+    for(const auto& l:n.links)for(const auto& lane:l.lanes)width=std::max(width,lane.width);
+    for(const auto& c:n.connectors)for(const auto w:c.laneWidths)width=std::max(width,w);
+    QPainterPathStroker stroke;stroke.setWidth(width);stroke.setCapStyle(Qt::FlatCap);
+    for(const auto& geometry:routeGeometries(n,segments))corridors=corridors.united(stroke.createStroke(polylinePath(geometry)));
+    QColor fill=canvasStyle::active();fill.setAlpha(preview?24:40);
+    auto* overlay=scene_.addPath(roads.intersected(corridors),QPen(Qt::NoPen),QBrush(fill));
+    overlay->setZValue(200004);overlay->setData(0,preview?QStringLiteral("route-draft"):QStringLiteral("route-overlay"));
+    overlay->setData(1,QString::fromStdString(id));
+    const auto mark=[&](const std::string& object,bool end) {
+        const auto bar=objectCrossbar(n,object,end);
+        if(!bar || !levelVisible(bar->level))return;
+        auto* line=new RoadCrossbarItem(*bar,canvasStyle::active(),std::abs(transform().m11()),preview && end);
+        scene_.addItem(line);line->setZValue(200007);
+        line->setData(0,end?QStringLiteral("route-end"):QStringLiteral("route-start"));line->setData(1,QString::fromStdString(id));
+    };
+    mark(segments.front(),false);mark(segments.back(),true);
 }
 }

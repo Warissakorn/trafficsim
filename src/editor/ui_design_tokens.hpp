@@ -39,6 +39,7 @@ inline constexpr int controlHeight=24,tableRowHeight=24,toolbarHeight=32,iconSiz
 inline constexpr int controlPaddingY=2;
 inline constexpr int maxRadius=3,maxMotionMs=150;
 inline constexpr double iconStroke=1.5;
+inline constexpr double crossbarPixels=3,crossbarHitPixels=10;
 inline constexpr double labelTracking=1.0; // px, English uppercase group labels only
 
 enum class Semantic { error, warning, advisory, ok };

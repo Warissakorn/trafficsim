@@ -15,10 +15,12 @@
 namespace trafficsim {
 void EditorCanvas::setRunNetwork(const Network& network) {
     runAxlePaths_.clear();runLaneChangePaths_.clear();
-    runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();
+    runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();runHeadBars_.clear();
     // Keyed by SECTION, from the same table buildScenario compiled the scenario from, so every
     // segment a vehicle can be located on has geometry here. A lane with nothing attached to its
     // body is one section carrying the lane's own id, which is what the map held before.
+    for(const auto& head:network.signalHeads)
+        if(const auto bar=signalCrossbar(network,head))runHeadBars_.emplace(head.id,*bar);
     const auto table=runtimeSections(network);
     for(const auto& section:table.sections)for(const auto& l:network.links)if(l.id==section.linkId) {
         runGeometry_[section.id]=section.geometry;runLevels_[section.id]=l.level;runStyles_[section.id]=l.displayType;
@@ -32,14 +34,11 @@ void EditorCanvas::setRunFrame(const SimState& frame) {
     if(frame.scenario!=runFrame_.scenario){runAxlePaths_.clear();runLaneChangePaths_.clear();}
     runFrame_=frame;drawRunItems();
 }
-// Clear all three together: marker() relies on the geometry, level and style maps holding
-// the same keys, so dropping only the geometry would leave the others describing a run that
-// no longer exists.
-void EditorCanvas::clearRunFrame() {runAxlePaths_.clear();runLaneChangePaths_.clear();runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();drawRunItems();}
+// Clear the snapshot-derived geometry and head bars together; Reset restores Edit bars.
+void EditorCanvas::clearRunFrame() {runAxlePaths_.clear();runLaneChangePaths_.clear();runFrame_={};runGeometry_.clear();runEquations_.clear();runLevels_.clear();runStyles_.clear();runHeadBars_.clear();redraw();}
 void EditorCanvas::drawRunItems() {
     for(auto* item:runItems_){scene_.removeItem(item);delete item;}runItems_.clear();
     if(!runFrame_.scenario)return;
-    const double radius=3/std::abs(transform().m11());
     // style() already falls back to the default type, so resolve without at(): a segment
     // missing here must degrade like one missing from marker()'s geometry map, not throw
     // out of a paint callback.
@@ -47,16 +46,20 @@ void EditorCanvas::drawRunItems() {
         const auto it=runStyles_.find(segment);
         return style(it==runStyles_.end()?std::string{}:it->second);
     };
-    const auto marker=[&](const std::string& segment,double station,QColor color,double size,int layer){
-        const auto it=runGeometry_.find(segment);if(it==runGeometry_.end() || !levelVisible(runLevels_.at(segment)))return;
-        const auto curve=runEquations_.find(segment);
-        const auto p=curve==runEquations_.end()?pointAlong(it->second,station):equationPoint(curve->second,equationParameter(curve->second,station));
-        auto* item=scene_.addEllipse(p.x-size,p.y-size,size*2,size*2,QPen(Qt::NoPen),QBrush(color));
-        item->setZValue(runLevels_.at(segment)*100.+layer);runItems_.push_back(item);
-    };
     for(const auto& h:runFrame_.scenario->signalHeads)for(const auto& p:runFrame_.scenario->signalPrograms)if(p.id==h.programId) {
+        const auto found=runHeadBars_.find(h.id);
+        if(found==runHeadBars_.end() || !levelVisible(found->second.level))continue;
         const auto color=signalColorAt(p,runFrame_.time);
-        marker(h.segmentId,h.position,color==SignalColor::red?canvasStyle::error():color==SignalColor::green?canvasStyle::ok():canvasStyle::warning(),radius*1.3,12);
+        const auto& bar=found->second;
+        QPen outline(editorDesign::role(QPalette::Base),editorDesign::crossbarPixels+2);
+        outline.setCosmetic(true);outline.setCapStyle(Qt::FlatCap);
+        auto* casing=scene_.addLine(bar.first.x,bar.first.y,bar.second.x,bar.second.y,outline);
+        casing->setZValue(bar.level*100.+11.9);runItems_.push_back(casing);
+        auto* item=new RoadCrossbarItem(found->second,
+            color==SignalColor::red?canvasStyle::error():color==SignalColor::green?canvasStyle::ok():canvasStyle::warning(),
+            std::abs(transform().m11()));
+        scene_.addItem(item);item->setZValue(found->second.level*100.+12);
+        item->setData(0,QStringLiteral("run-signal"));item->setData(1,QString::fromStdString(h.id));runItems_.push_back(item);
     }
     // D97: each vehicle is its type's true length x width, front bumper at the located station.
     // Below a few pixels the size is floored so a vehicle never vanishes when zoomed far out, and
