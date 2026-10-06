@@ -58,7 +58,9 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     error_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
     layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
-    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset(); file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
+    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset();
+        automaticRevision_=conflictRevision_=UINT64_MAX;
+        file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
         if(!confirmDiscard()) return;
         const auto file=QFileDialog::getOpenFileName(this,text("editorOpen"),{},text("editorFilter"));

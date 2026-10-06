@@ -28,7 +28,8 @@ struct WaitingLine {
     std::string id, name; ControlPoint point;
     bool operator==(const WaitingLine&) const = default;
 };
-enum class ConflictKind { crossing, merge };
+// Branching is a derived display kind only; authored controls/codec accept crossing and merge.
+enum class ConflictKind { crossing, merge, branching };
 enum class ConflictPriority { firstYields, secondYields, undetermined };
 struct ConflictSide {
     ControlPathRef path; double entryStation{}, exitStation{}; std::string waitingLineId;

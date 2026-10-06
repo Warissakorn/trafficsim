@@ -18,7 +18,9 @@ ConflictPriority priorityFor(const ConflictArea& a,const std::string& yielding) 
 }
 }
 std::string authorConflictGroup(ProjectDocument& d,const std::string& key,const PriorityDefaults& defaults) {
-    const auto g=groupOf(d.network,key);const auto automatic=automaticConflicts(d.network);
+    const auto g=groupOf(d.network,key);
+    if(g.geometryKind==ConflictGeometryKind::branching)throw std::invalid_argument("EDIT_BRANCHING_PRIORITY");
+    const auto automatic=automaticConflicts(d.network);
     std::string first=g.areaIds.empty()?std::string{}:g.areaIds.front();std::set<std::string> merges;
     for(const auto& id:g.automaticKeys) {
         const auto at=std::find_if(automatic.begin(),automatic.end(),[&](const auto& a){return a.key==id;});

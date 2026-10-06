@@ -7,6 +7,8 @@
 #include <QComboBox>
 #include <QFile>
 #include <QGraphicsItem>
+#include <QGraphicsPathItem>
+#include <QPainterPath>
 #include <QStandardPaths>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -77,7 +79,8 @@ int main(int argc, char** argv) {
         // Click where only the crossing is: the middle of its Link side (the turn's side is the same square).
         const auto onLink = passive.first.path.linkId.empty() ? passive.second : passive.first;
         const auto crossingPoint = centre(conflictSideOutline(network(), onLink));
-        const auto mergePoint = centre(conflictSideOutline(network(), merge.first));
+        require(!merge.polygons.empty(), "The merge has no measured mouth geometry");
+        const auto mergePoint = centre(merge.polygons.front());
 
         // Select draws no automatic area and still picks a road there.
         require(drawn(w, "passive") == 0 && drawn(w, "merge") == 0, "Automatic areas drawn outside the Conflict area tool");
@@ -89,7 +92,19 @@ int main(int argc, char** argv) {
         require(drawn(w, "passive") == 2 && drawn(w, "merge") == 4, "The passive crossing and the two merges are not drawn");
         int automatic = 0;
         for (int r = 0; r < table->rowCount(); ++r) automatic += table->item(r, 6)->text().startsWith("Passive") || table->item(r, 6)->text().startsWith("Automatic");
-        require(automatic == 3 && table->rowCount() == 3, "The table does not list the three automatic areas");
+        require(automatic == 3 && table->rowCount() == static_cast<int>(conflictGroups(network(),all).size()),
+                "The table does not list crossings, merges and branching separately");
+        const auto branch=std::find_if(all.begin(),all.end(),[](const auto& a){return a.kind==ConflictKind::branching;});
+        require(branch!=all.end() && !branch->polygons.empty(),"The shared-source branching mouth is missing");
+        const auto branchPoint=centre(branch->polygons.front());
+        const auto beforeBranch=w.history().revision();
+        click(w,branchPoint);
+        require(!c->highlightedConflict().empty(),"A branching area cannot be selected");
+        require(!act(w,"editorCyclePriority")->isEnabled() && !act(w,"editorEditConflict")->isEnabled(),
+                "A branching area offers a separate priority control");
+        require(table->item(table->currentRow(),2)->text()=="Branching","The branching kind is not shown");
+        author(w,branchPoint);key(w,Qt::Key_P);
+        require(network().rightOfWay.empty() && w.history().revision()==beforeBranch,"Branching authored a priority");
 
         // First click: the passive crossing gets a priority -- the turn gives way to the road.
         const auto revision = w.history().revision();
@@ -111,6 +126,7 @@ int main(int argc, char** argv) {
 
         // Delete makes it passive again.
         require(network().rightOfWay.conflictAreas.size() == 1, "Redo did not restore the crossing");
+        click(w, crossingPoint); // select the restored area, independently of the row selected during Undo
         require(w.findChild<QAction*>("editorDeleteConflict")->isEnabled(), "Delete is disabled on the authored crossing");
         act(w, "editorDeleteConflict")->trigger(); QApplication::processEvents();
         require(network().rightOfWay.empty() && drawn(w, "passive") == 2, "Delete did not make the crossing passive");
@@ -186,6 +202,56 @@ int main(int argc, char** argv) {
         act(w,"editorUndo")->trigger();QApplication::processEvents();
         require(network().rightOfWay==grouped,"Group delete was not one Undo");
         // Leave no unsaved document for window teardown.
+        act(w,"editorUndo")->trigger();QApplication::processEvents();
+        // Oblique crossing: no rectangular spill outside the true intersection, and picking
+        // agrees with the painted shape both before and after authoring.
+        ProjectDocument oblique;
+        addLink(oblique,{{0,0},{200,0}},1,3.5);addLink(oblique,{{0,-100},{200,100}},1,3.5);
+        const auto obliqueFile=temp.filePath("oblique.traffic.json");
+        {QFile f(obliqueFile);require(f.open(QIODevice::WriteOnly),"Oblique fixture open failed");
+            f.write(QByteArray::fromStdString(documentJson(oblique).dump()));}
+        w.openFile(obliqueFile);QApplication::processEvents();key(w,Qt::Key_A);
+        require(table->rowCount()==1 && drawn(w,"passive")==2,"Opening a new document retained cached conflicts");
+        const auto crossing=automaticConflicts(network()).front();
+        const auto path=[](const std::vector<Point>& points) {
+            QPainterPath p;for(std::size_t i=0;i<points.size();++i)
+                if(i)p.lineTo(points[i].x,points[i].y);else p.moveTo(points[i].x,points[i].y);
+            p.closeSubpath();return p;
+        };
+        const auto firstShape=path(conflictSideOutline(network(),crossing.first));
+        const auto secondShape=path(conflictSideOutline(network(),crossing.second));
+        const auto expected=firstShape.intersected(secondShape);
+        require(!expected.isEmpty() && !firstShape.subtracted(expected).isEmpty(),"The oblique probe has no strip spill");
+        const auto pathArea=[](const QPainterPath& p) {
+            double total=0;
+            for(const auto& polygon:p.toSubpathPolygons()) {
+                double sum=0;
+                for(int i=0;i<polygon.size();++i) {
+                    const auto a=polygon[i],b=polygon[(i+1)%polygon.size()];
+                    sum+=a.x()*b.y()-a.y()*b.x();
+                }
+                total+=std::abs(sum)/2;
+            }
+            return total;
+        };
+        for(auto* item:c->scene()->items())if(item->data(0).toString()=="auto-conflict") {
+            auto* shape=dynamic_cast<QGraphicsPathItem*>(item);require(shape,"Conflict is not a path");
+            // Qt and model clipping can differ at the last floating-point bits of an edge.
+            require(pathArea(shape->path().subtracted(expected))+pathArea(expected.subtracted(shape->path()))<1e-7,
+                    "The painted conflict does not equal the intersection");
+        }
+        QPointF outside;bool foundOutside=false;const auto bounds=firstShape.boundingRect();
+        for(int x=1;x<20 && !foundOutside;++x)for(int y=1;y<20 && !foundOutside;++y) {
+            const QPointF point{bounds.left()+bounds.width()*x/20,bounds.top()+bounds.height()*y/20};
+            if(firstShape.contains(point) && !expected.contains(point)){outside=point;foundOutside=true;}
+        }
+        require(foundOutside,"No point outside the true overlap was found");
+        require(c->automaticAt({outside.x(),outside.y()}).empty(),"Picking includes the old strip spill");
+        c->fitNetwork();c->scale(4,4);QApplication::processEvents();
+        c->centerOn(expected.boundingRect().center());QApplication::processEvents();
+        author(w,centre(crossing.polygons.front()));
+        require(network().rightOfWay.conflictAreas.size()==1,"The exact intersection cannot be authored");
+        require(c->conflictsAt({outside.x(),outside.y()}).empty(),"Authored picking includes the old strip spill");
         act(w,"editorUndo")->trigger();QApplication::processEvents();
         std::cout << "conflict auto ui tests passed\n";
         return 0;

@@ -20,6 +20,7 @@ std::string putWaitingLine(ProjectDocument& d, WaitingLine value) {
     const auto id = value.id; put(d.network.rightOfWay.waitingLines, std::move(value)); return id;
 }
 std::string putConflictArea(ProjectDocument& d, ConflictArea value) {
+    if(value.kind==ConflictKind::branching)throw std::invalid_argument("EDIT_BRANCHING_PRIORITY");
     if (value.id.empty()) value.id = allocateId(d, "conflict");
     const auto id = value.id; put(d.network.rightOfWay.conflictAreas, std::move(value)); return id;
 }
