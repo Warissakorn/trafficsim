@@ -7,6 +7,17 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## Positioned routing decisions — owner instruction, 2026-10-06
+
+D119 implements M2.1.3 ([contract](reference/POSITIONED_ROUTING.md)). Check this PR's
+native Linux/Windows CI independently. On Windows, click a mid-Link source, hover to
+an exit, add a second Route from the same line, edit weights/time/type rules, then run
+routeless input traffic. Verify recognition at the line, downstream lane-change awareness,
+Undo/Redo, line drag/cancellation, save/reopen and legacy files. Review the documented
+one-timestep recognition boundary before using this feature in a study. Multiple points
+on the same Link remain unsupported; a point may be repositioned. No owner or simulation
+validation gate closes. Continue the existing queues below after this review.
+
 ## Road crossbars and Route trace — owner instruction, 2026-10-06
 
 D116 implements the owner's common crossbar appearance and click/hover/click Route gesture.
@@ -198,7 +209,7 @@ In order:
    volumes, a guessed timing-window-to-approach mapping and no aerial image. Replace them before
    using it for a real study.
 7. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
-   Thai counts are motorcycle-heavy); a routing decision's station along its Link (M2.1).
+   Thai counts are motorcycle-heavy); continuous-time or multiple same-Link routing stations beyond M2.1.3.
 
 M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's use in M2.6);
 `ROADMAP.md` is the authority on each.
@@ -238,8 +249,8 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
   - `laneChangeDistance`, only on a network where changes are measured late (D87; D89 found
     left-turners change at the first tick allowed).
   - Vissim's cooperative lane change (a vehicle moving out of the way) is not modelled.
-  - Free walk with no decision stays lane-fixed, and the decision station is not modelled
-    (contract §2, rule 7).
+  - Free walk with no decision stays lane-fixed, and positioned recognition now follows M2.1.3
+    ([contract](reference/POSITIONED_ROUTING.md)).
 - **Conflict areas, later, not booked:** a branching (diverge) kind, red-red status, front/rear
   gap and visibility.
 - **Split targetStanding (measurement only).** Is the target lane standing at its own red, or in

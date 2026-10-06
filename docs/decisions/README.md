@@ -41,4 +41,4 @@ not automatically the current contract. Current interfaces live in the reference
 For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_POSE.md) and the
 2026-10-05 phase entries in PROGRESS; those entries do not invent new D-numbers.
 
-[D116](RECORD.md#d116) · [D117](RECORD.md#d117) · [D118](RECORD.md#d118)
+[D116](RECORD.md#d116) · [D117](RECORD.md#d117) · [D118](RECORD.md#d118) · [D119](RECORD.md#d119)

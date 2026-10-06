@@ -62,6 +62,7 @@ Json definitionJson(const AuthoringDefinition& d) {
             }
             Json decision = {{"id",x.id},{"routes",routes}};
             if (!x.name.empty()) decision["name"] = x.name;
+            if(x.position)decision["position"]=*x.position;
             if (!x.linkId.empty()) decision["linkId"] = x.linkId; // M2.1.1
             if (!x.intervals.empty()) { // M2.1.2
                 decision["intervals"] = Json::array();
@@ -169,6 +170,12 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
     for (std::size_t k = 0; k < d.routingDecisions.size(); ++k) {
         const auto& decision = d.routingDecisions[k];
         const auto path = "routingDecisions[" + std::to_string(k) + "]";
+        if(decision.position) {
+            if(decision.id.find_first_not_of(" \t\r\n")==std::string::npos)issues.push_back({"INVALID_ID",path+".id"});
+            for(std::size_t e=0;e<k;++e)if(d.routingDecisions[e].id==decision.id)issues.push_back({"DUPLICATE_ID",path+".id"});
+        }
+        if(decision.position && (decision.linkId.empty() || !std::isfinite(*decision.position) || *decision.position<0))
+            issues.push_back({"INVALID_POSITION",path+".position"});
         if (decision.routes.empty()) { issues.push_back({"INVALID_SHARE", path}); continue; }
         // M2.1.1: one decision per Link, since a vehicle reaching it cannot follow two.
         if (!decision.linkId.empty())
@@ -278,6 +285,11 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;
+    for(const auto& decision:d.definition->routingDecisions)if(decision.position) {
+        const auto link=std::find_if(d.network.links.begin(),d.network.links.end(),[&](const auto& x){return x.id==decision.linkId;});
+        if(link==d.network.links.end() || !std::isfinite(*decision.position) || *decision.position<0 || *decision.position>=polylineLength(link->geometry))
+            throw ValidationError({{"INVALID_POSITION",decision.id+".position"}});
+    }
     if(auto issues=timeTypeIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
     if(auto issues=ownedCatalogIssues(*d.definition);!issues.empty())throw ValidationError(std::move(issues));
     // Checked on the authored intervals, before they are expanded: an overlap is a property of

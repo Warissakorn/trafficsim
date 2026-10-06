@@ -8,6 +8,8 @@
 #include <QTableWidget>
 #include <QSignalBlocker>
 #include <algorithm>
+#include <cmath>
+#include <stdexcept>
 
 namespace trafficsim {
 namespace {
@@ -28,7 +30,10 @@ void EditorWindow::buildRouting() {
             table->clearSelection();table->setCurrentItem(nullptr);
         }
     };
-    canvas_->routeDraftCommitted=[this](const auto& segments){commitDrawnRoute(segments);};
+    canvas_->positionedRouteCommitted=[this](const auto& segments,auto position){commitDrawnRoute(segments,position);};
+    canvas_->decisionMoved=[this](const auto& id,double position){
+        execute("editorEditDecision",[&](auto& d){for(auto decision:demand(d).routingDecisions)if(decision.id==id){decision.position=position;putRoutingDecision(d,decision);break;}});
+    };
     canvas_->routeDraftChanged=[this]{refreshToolHint();};
     canvas_->inputPlaced=[this](const auto& link){placeInputOnLink(link);};
     canvas_->contextMenuRequested=[this](QPoint position){showDemandMenu(position);};
@@ -46,19 +51,30 @@ void EditorWindow::refreshToolHint() {
     toolHint_->setText(index==0?text("editorSelectHelp"):index==6?text(canvas_->routeDraft().empty()?"editorRouteClickHelp":"editorRouteFinishHelp"):index==7?text("editorInputPlaceHelp"):index==8?text("editorHeadPlaceHelp"):index==10?text("editorCounterPlaceHelp"):QString{});
     toolHint_->setToolTip(toolHint_->text());
 }
-void EditorWindow::commitDrawnRoute(const std::vector<std::string>& segmentIds) {
+void EditorWindow::commitDrawnRoute(const std::vector<std::string>& segmentIds,std::optional<double> position) {
     if(segmentIds.empty())return;
     std::string created;
     // The same command the dialog commits through, so a route drawn by pointer and a route
     // typed into the dialog are the same object with the same history entry.
-    if(execute("editorEditRoute",[&](auto& d){created=putRoute(d,Route{{},segmentIds});})) {
+    if(execute("editorEditRoute",[&](auto& d){created=putRoute(d,Route{{},segmentIds});
+        if(position) {
+            RoutingDecision value;value.linkId=segmentIds.front();value.position=position;
+            for(const auto& decision:demand(d).routingDecisions)if(decision.linkId==value.linkId) {
+                if(!decision.position || std::abs(*decision.position-*position)>1e-6)throw std::invalid_argument("EDIT_ROUTING_LINK_OCCUPIED");
+                if(!decision.typeRules.empty())throw std::invalid_argument("EDIT_ROUTING_TARGETS_LOCKED");
+                value=decision;break;
+            }
+            value.routes.push_back({created,1,{},std::vector<double>(value.intervals.size(),1)});
+            putRoutingDecision(d,value);
+        }})) {
         selectDemand(created);canvas_->setHighlightedRoute(created);
     }
 }
 void EditorWindow::placeInputOnLink(const std::string& linkId) {
     const auto existing=history_.document().definition
         ?routeStartingOn(*history_.document().definition,linkId):std::string{};
-    if(!existing.empty()) {editInput({},existing);return;}
+    const bool positioned=history_.document().definition && std::any_of(history_.document().definition->routingDecisions.begin(),history_.document().definition->routingDecisions.end(),[&](const auto& x){return x.linkId==linkId && x.position;});
+    if(!existing.empty() && !positioned) {editInput({},existing);return;}
     // No route starts here: as in Vissim, the input needs none (M2.1.1). Its vehicles follow the
     // network from this Link -- equal shares at each branch, a placed routing decision's flows
     // where they meet one -- so the dialog opens on exactly that.

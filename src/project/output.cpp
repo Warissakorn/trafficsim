@@ -42,6 +42,9 @@ Json eventJson(const SimEvent& event) {
             } else if constexpr (std::is_same_v<T, SegmentEnteredEvent>) {
                 j["kind"] = "segment-entered"; j["segmentId"] = e.segmentId;
             } else if constexpr (std::is_same_v<T, SafetyClampEvent>) j["kind"] = "safety-clamp";
+            else if constexpr (std::is_same_v<T, RoutingEvent>) {
+                j["kind"]="routing";j["decisionId"]=e.decisionId;j["fromRouteId"]=e.fromRouteId;j["toRouteId"]=e.toRouteId;
+            }
             else if constexpr (std::is_same_v<T, LaneChangeEvent>) {
                 j["kind"] = "lane-change"; j["fromRouteId"] = e.fromRouteId; j["toRouteId"] = e.toRouteId;
             } else {
@@ -60,6 +63,7 @@ Json checkpointJson(const SimState& state) {
     Json vehicles = Json::array(), inputs = Json::array();
     for (const auto& vehicle : state.vehicles) {
         auto j = pendingJson(scenario, vehicle);
+        if(!vehicle.passedDecisions.empty())j["passedDecisions"]=vehicle.passedDecisions;
         j["enteredTime"] = vehicle.enteredTime; j["distance"] = vehicle.distance;
         j["speed"] = vehicle.speed; j["acceleration"] = vehicle.acceleration; j["mode"] = modeName(vehicle.mode);
         vehicles.push_back(std::move(j));

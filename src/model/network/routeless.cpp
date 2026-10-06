@@ -15,6 +15,7 @@ const FamilyChain* legFrom(const std::vector<std::vector<FamilyChain>>& families
     return nullptr;
 }
 std::string familyName(const PlacedDecision& d, const PlacedDecision::Destination& destination) {
+    if(d.position)return d.id+">route-"+std::to_string(&destination-d.destinations.data());
     const auto& objects = destination.chains.front();
     return d.id + ">" + (objects.empty() ? std::string{} : objects.back());
 }
@@ -57,7 +58,7 @@ struct Walk {
     void at(std::vector<std::string> chain, const std::string& linkId, const std::string& laneId,
             std::optional<double> arrived, bool entered, std::size_t lane, double share) {
         if (stopped) return;
-        if (entered) if (const auto* d = decisionOn(linkId)) if (decide(*d, chain, laneId, lane, share)) return;
+        if (entered) if (const auto* d = decisionOn(linkId)) if ((!d->position || !arrived || *arrived<=*d->position) && decide(*d, chain, laneId, lane, share)) return;
         free(std::move(chain), laneId, arrived, lane, share);
     }
     // D93 (contract §2, "Downstream routing decisions"): a decision past the entry Link draws

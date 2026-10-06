@@ -197,7 +197,7 @@
   "editorRouteSegments": "Links and connectors in travel order",
   "editorRouteHelp": "Choose connected links and connectors in travel order. On the canvas, click the start road, trace the desired branches, then click the destination. Crossbars mark the start and end; the blue tint shows the route. A route covers every lane of the links it names.",
   "editorSelectHelp": "Click to select · Shift-click adds or removes · Ctrl-click adds · Drag edge tabs to resize lanes · Empty space / Esc clears selection",
-  "editorRouteClickHelp": "Routes: click the start road, trace the connected roads, then click the destination. Esc cancels.",
+  "editorRouteClickHelp": "Click a Link to place the routing line, hover through roads, then click the destination.",
   "editorInputPlaceHelp": "Vehicle inputs tool: Ctrl + right-click the link traffic enters on. The volume is the link total, split across its lanes.",
   "editorDemandMenuReveal": "Show in table",
   "editorAppendSegment": "Append segment",
@@ -554,8 +554,16 @@
   "editorConflictOriginalOrder": "Original vehicle order",
   "editorConflictBranchingStatus": "Branching: original order; no separate priority control",
   "EDIT_BRANCHING_PRIORITY": "A branching area keeps the original vehicle order; it has no separate priority control.",
-  "editorRouteFinishHelp": "Trace the roads to choose a branch, then click the destination to save. Backspace goes back; Esc cancels. Ctrl + right-click appends; Enter saves.",
+  "editorRouteFinishHelp": "Hover through the desired branch, then click the destination. Esc cancels; Backspace removes the last road.",
   "editorInputRateUnit": "veh/h",
   "editorInputCanvasPeriods": "%1 periods",
-  "editorConflictGroupReadOnly": "Branching members are read-only."
+  "editorConflictGroupReadOnly": "Branching members are read-only.",
+  "editorDecisionPositioned": "Choose routes when vehicles pass this line",
+  "editorDecisionPositionLabel": "position (m)",
+  "EDIT_ROUTING_LINK_OCCUPIED": "This Link already has a routing decision. Start on its line to add a route, or edit its position.",
+  "EDIT_ROUTING_TARGETS_LOCKED": "Remove type rules before adding a route to this decision.",
+  "ROUTING_POSITION_AFTER_DIVERGENCE": "The routing line must be before every route departs this Link.",
+  "ROUTING_PREFIX_MISMATCH": "Routing alternatives do not share the same road before the decision.",
+  "editorDemandDeferredRoute": "Chosen at routing line",
+  "ROUTING_POSITION_IN_CONFLICT": "Place the routing line outside an active conflict area."
 }

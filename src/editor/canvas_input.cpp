@@ -56,6 +56,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
         if(hit(lastPick_).first.empty())clearSelection();else startRotation(e->pos());
         return;
     }
+    if(tool_==Tool::select && startDecisionDrag(e->pos()))return;
     if(tool_==Tool::select && startLaneResize(e->pos()))return;
     // Measuring changes nothing in the network, so it keeps plain clicks (the one exception).
     if (tool_==Tool::measure || tool_==Tool::calibrate) {
@@ -128,6 +129,7 @@ int EditorCanvas::vertexAt(QPoint position) const {
 }
 void EditorCanvas::mouseMoveEvent(QMouseEvent* e) {
     if(cursorMoved) cursorMoved(world(e->pos(),false));
+    if(decisionDrag_) {updateDecisionDrag(e->pos());return;}
     if(rotationPivot_) {updateRotation(e->pos(),e->modifiers()&Qt::ShiftModifier);return;}
     if(creating_) {
         draft_.back()=world(e->pos());
@@ -213,6 +215,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
         else {auto ids=selection_;if(!isSelected(picked))ids.push_back(picked);setSelection(std::move(ids));}
         redraw();return;
     }
+    if(e->button()==Qt::LeftButton && decisionDrag_) {finishDecisionDrag(e->pos());return;}
     if(e->button()==Qt::LeftButton && headDrag_) {finishHeadDrag(e->pos());return;}
     if(e->button()==Qt::LeftButton && lineDrag_) {finishLineDrag(e->pos());return;}
     if(e->button()==Qt::LeftButton && groupDrag_) {
@@ -356,7 +359,7 @@ void EditorCanvas::keyPressEvent(QKeyEvent* e) {
     QGraphicsView::keyPressEvent(e);
 }
 bool EditorCanvas::mouseGestureActive() const {
-    return creating_ || headDrag_ || lineDrag_ || !routeDraft_.empty() || !counterDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
+    return creating_ || decisionDrag_ || headDrag_ || lineDrag_ || !routeDraft_.empty() || !counterDraft_.empty() || !copyPick_.empty() || groupDrag_ || rotationPivot_ || endpointDrag_ ||
            laneResize_ || panning_ || band_ || dragging_;
 }
 void EditorCanvas::focusOutEvent(QFocusEvent* e) {

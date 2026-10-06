@@ -1,7 +1,9 @@
 #include "demand_paths.hpp"
 #include "demand_time_types.hpp"
+#include "station_routing.hpp"
 #include "../model/demand/signal_control.hpp"
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <set>
 
@@ -32,7 +34,7 @@ InputLanePolicy inputLanePolicy(const Network& n,const AuthoringDefinition& d,co
         }
     }
     if(!link.empty())for(const auto& l:n.links)if(l.id==link) {
-        const bool decided=std::any_of(d.routingDecisions.begin(),d.routingDecisions.end(),[&](const auto& x){return x.linkId==link;});
+        const bool decided=std::any_of(d.routingDecisions.begin(),d.routingDecisions.end(),[&](const auto& x){return x.linkId==link && !x.position;});
         return {l.lanes.size(),!decided};
     }
     for(const auto& route:d.routes)if(route.id==input.routeId)
@@ -62,7 +64,10 @@ std::vector<PlacedDecision> placedDecisions(const Network& network, const Author
         if (decision.linkId.empty()) continue;
         const auto path = "routingDecisions[" + std::to_string(k) + "]";
         if (!hasLink(network, decision.linkId)) { report("UNKNOWN_LINK", path + ".linkId"); continue; }
-        PlacedDecision placed{decision.id, decision.linkId, path, {}};
+        if(decision.position)for(const auto& link:network.links)if(link.id==decision.linkId)
+            if(!std::isfinite(*decision.position) || *decision.position<0 || *decision.position>=polylineLength(link.geometry))
+                report("INVALID_POSITION",path+".position");
+        PlacedDecision placed{decision.id, decision.linkId, path, {},decision.position};
         for (std::size_t j = 0; j < decision.routes.size(); ++j) {
             const auto& entry = decision.routes[j];
             const auto at = path + ".routes[" + std::to_string(j) + "]";
@@ -77,7 +82,7 @@ std::vector<PlacedDecision> placedDecisions(const Network& network, const Author
             }
             std::erase_if(chains, [&](const auto& c) { return routeLaneChains(network, c).empty(); });
             if (chains.empty()) { report("ROUTING_DECISION_UNREACHABLE", at); continue; }
-            const double weight = typeDecisionFlowAt(decision,j,time.value_or(-1),type);
+            const double weight = decision.position?1.:typeDecisionFlowAt(decision,j,time.value_or(-1),type);
             if (weight > 0) placed.destinations.push_back({std::move(chains), weight});
         }
         result.push_back(std::move(placed));
@@ -91,7 +96,7 @@ namespace {
 struct Slices { std::vector<double> points; std::vector<std::optional<double>> times; };
 Slices slices(const AuthoringDefinition& d) {
     std::vector<const RoutingDecision*> timed;
-    for (const auto& x : d.routingDecisions) if (!x.linkId.empty() && !x.intervals.empty()) timed.push_back(&x);
+    for (const auto& x : d.routingDecisions) if (!x.linkId.empty() && !x.position && !x.intervals.empty()) timed.push_back(&x);
     Slices result{decisionBreakpoints(timed), {}};
     if (result.points.empty()) { result.times.push_back(std::nullopt); return result; }
     result.times.push_back(result.points.front() - 1);
@@ -193,6 +198,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 }
             }
             if (!w.failed) {
+                std::vector<StationRoute> stationRoutes;
                 std::map<std::string, std::vector<FamilyRoute>> families;
                 std::vector<DiscretionaryRoute> full; // D95: every full path, with all its families
                 for (std::size_t k = 0; k < w.paths.size(); ++k) {
@@ -208,11 +214,13 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                             if (!after.empty()) full.back().after.push_back(after);
                         }
                     }
+                    stationRoutes.push_back({route,w.families[k]});
                     resolved.routes.push_back(std::move(route));
                 }
                 for (const auto& [name, members] : families)
                     appendLaneChanges(network, table, members, resolved.laneChanges, resolved.routeDeadEnds);
                 appendDiscretionaryLaneChanges(network, table, full, resolved.laneChanges);
+                appendStationRouting(network,authored,type,stationRoutes,resolved);
             }
         }
         if (w.failed) continue; // routelessIssues names it
@@ -226,21 +234,22 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
         const auto split = laneSplit(everyLane, lanes, input.laneShares);
         const auto pieces = placed.size() > 1 ? cutPeriods(input, cut.points) : std::vector<VolumeInterval>{};
         for (std::size_t k = 0; k < w.paths.size(); ++k) {
-            const double lane = w.byDestination ? 1.0
+            const bool positionedEntry=std::any_of(authored.routingDecisions.begin(),authored.routingDecisions.end(),[&](const auto& x){return x.linkId==input.linkId && x.position;});
+            const double lane = w.byDestination && !positionedEntry ? 1.0
                 : w.lanes[k] < split.fraction.size() ? split.fraction[w.lanes[k]] : 1.0 / static_cast<double>(lanes);
             auto part = input;
             part.linkId.clear(); part.laneShares.clear();
             part.routeId = routeId(k,w.paths.size());
             if (w.paths.size() > 1) part.id = input.id + "/path-" + std::to_string(k + 1);
             if (placed.size() == 1) {
-                const double fraction = lane * w.share[k][0];
+                const double fraction = lane * w.share[k][0]*(positionedEntry?static_cast<double>(lanes):1.);
                 if (!(fraction > 0)) continue;
                 part.vehiclesPerHour *= fraction;
                 for (auto& period : part.intervals) period.vehiclesPerHour *= fraction;
             } else { // M2.1.2: each piece of the input at its slice's share of this path
                 part.intervals.clear();
                 for (const auto& piece : pieces) {
-                    const double fraction = lane * w.share[k][sliceOf(cut, (piece.startTime + piece.endTime) / 2)];
+                    const double fraction = lane * w.share[k][sliceOf(cut, (piece.startTime + piece.endTime) / 2)]*(positionedEntry?static_cast<double>(lanes):1.);
                     if (fraction > 0) part.intervals.push_back({piece.startTime, piece.endTime, piece.vehiclesPerHour * fraction});
                 }
                 if (part.intervals.empty()) continue;

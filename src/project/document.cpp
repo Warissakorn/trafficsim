@@ -98,7 +98,8 @@ Json documentJson(const ProjectDocument& d) {
     }
     const auto& b = d.background;
     // Preserve legacy bytes; use 18 for owned catalogs and 19 for time/type rules.
-    const int schema=d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    const bool positioned=d.definition && std::any_of(d.definition->routingDecisions.begin(),d.definition->routingDecisions.end(),[](const auto& x){return x.position.has_value();});
+    const int schema=positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     return {{"format", "TrafficSim"}, {"schemaVersion", schema}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
@@ -123,7 +124,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 19) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 20) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -139,6 +140,9 @@ ProjectDocument parseDocument(const Json& j) {
             b.at("metresPerPixel").get<double>(), b.at("rotation").get<double>(), b.at("opacity").get<double>()};
     }
     if (!present(j, "network")) throw std::invalid_argument("EDIT_NO_NETWORK");
+    if(j.contains("schemaVersion") && j.at("schemaVersion")<20 && present(j,"definition") && present(j.at("definition"),"routingDecisions") && j.at("definition").at("routingDecisions").is_array())
+        for(const auto& x:j.at("definition").at("routingDecisions"))
+            if(x.contains("position"))throw std::invalid_argument("UNSUPPORTED_FIELD: routingDecision.position");
     d.network = parseNetwork(j.at("network"), j.contains("schemaVersion") ? j.at("schemaVersion").get<int>() : 0);
     if (present(j, "definition")) {
         d.definition = parseAuthoringDefinition(j.at("definition"));
@@ -169,6 +173,7 @@ std::string allocateId(ProjectDocument& d, const std::string& prefix) {
         for (const auto& i : d.definition->inputs) used.insert(i.id);
         for (const auto& p : d.definition->signalPrograms) used.insert(p.id);
         for (const auto& c : d.definition->signalControllers) used.insert(c.id);
+        for (const auto& decision : d.definition->routingDecisions) used.insert(decision.id);
     }
     for (;;) {
         if (d.nextId >= std::numeric_limits<std::uint64_t>::max() - 1) throw std::invalid_argument("EDIT_ID_LIMIT");

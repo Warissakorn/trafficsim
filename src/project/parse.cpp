@@ -339,10 +339,11 @@ std::vector<SignalController> parseSignalControllers(const Json& definition) {
 std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition) {
     std::vector<RoutingDecision> result;
     for (const auto& x : array(definition, "routingDecisions")) {
-        knownFields(x,{"id","name","linkId","routes","intervals","typeRules"},"routingDecision",19);
+        knownFields(x,{"id","name","linkId","routes","intervals","typeRules","position"},"routingDecision",20);
         RoutingDecision decision{field<std::string>(x, "id"),
                                  present(x, "name") ? field<std::string>(x, "name") : std::string{}, {}};
         if (present(x, "linkId")) decision.linkId = field<std::string>(x, "linkId"); // M2.1.1
+        if(present(x,"position"))decision.position=field<double>(x,"position");
         for (const auto& r : array(x, "routes")) {
             knownFields(r,{"routeId","relativeFlow","destinationLinkId","intervalFlows"},"routingDecision.routes",19);
             decision.routes.push_back({field<std::string>(r, "routeId"), field<double>(r, "relativeFlow")});

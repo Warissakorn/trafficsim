@@ -148,6 +148,17 @@ struct RouteDeadEnd {
     std::string routeId; double at{};
     bool operator==(const RouteDeadEnd&) const = default;
 };
+// Compiled station routing. Alternatives share the exact physical prefix through `at`.
+struct RoutingChoice {
+    std::string routeId; double weight{}; std::vector<double> intervalWeights;
+    bool operator==(const RoutingChoice&) const = default;
+};
+struct RouteDecision {
+    std::string id, fromRouteId; double at{};
+    std::vector<VolumeInterval> intervals; // only start/end are used
+    std::vector<RoutingChoice> choices;
+    bool operator==(const RouteDecision&) const = default;
+};
 struct ScenarioDefinition {
     double duration{}, timeStep{};
     std::vector<Route> routes;
@@ -172,6 +183,7 @@ struct ScenarioDefinition {
     // which then runs exactly the code path it always did.
     std::vector<LaneChangeSpan> laneChanges;
     std::vector<RouteDeadEnd> routeDeadEnds;
+    std::vector<RouteDecision> routeDecisions;
     // Value equality, so callers can tell "this edit changed nothing" without serialising.
     bool operator==(const ScenarioDefinition&) const = default;
 };
@@ -269,6 +281,7 @@ struct Vehicle : PendingVehicle {
     FollowingMode mode{FollowingMode::free};
     std::optional<LastLaneChange> lastLaneChange;
     std::vector<LaneChangeTrace> laneChangeTrace;
+    std::vector<std::string> passedDecisions; // one selection per passage; routes cannot cycle
     bool operator==(const Vehicle&) const = default;
 };
 // Parallel to Scenario::inputs, one entry each and in that order: createSimulation builds it
@@ -311,9 +324,13 @@ struct LaneChangeEvent {
     double time{}; std::uint64_t vehicleId{}; std::string fromRouteId, toRouteId;
     bool operator==(const LaneChangeEvent&) const = default;
 };
-// LaneChangeEvent is last so every existing alternative keeps its index.
+struct RoutingEvent {
+    double time{}; std::uint64_t vehicleId{}; std::string decisionId, fromRouteId, toRouteId;
+    bool operator==(const RoutingEvent&) const = default;
+};
+// New event alternatives append so every existing index stays stable.
 using SimEvent = std::variant<SignalEvent, DepartedEvent, MovedEvent,
-                              SegmentEnteredEvent, SafetyClampEvent, ArrivedEvent, LaneChangeEvent>;
+                              SegmentEnteredEvent, SafetyClampEvent, ArrivedEvent, LaneChangeEvent, RoutingEvent>;
 // M3.2.5: one vehicle's service at a Stop line (contract §5). `line` is the route distance of the
 // next Stop line it has not passed; `since` the tick whose start first found it standing there.
 // It has served the line once a whole tick has run since then. Kept only while the line is ahead

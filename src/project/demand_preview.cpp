@@ -15,6 +15,8 @@ DemandPreview previewDemand(const ProjectDocument& d,const std::filesystem::path
                 if(section.id==route.segmentIds.back())row.lastLinkId=section.linkId;
             }
         }
+        row.deferredRouting=std::any_of(snapshot.scenario.routeDecisions.begin(),snapshot.scenario.routeDecisions.end(),[&](const auto& x){return x.fromRouteId==input.routeId;});
+        if(row.deferredRouting)row.lastLinkId.clear();
         for(const auto& period:inputPeriods(input)) {
             row.startTime=std::max(0.0,period.startTime);row.endTime=std::min(snapshot.scenario.duration,period.endTime);
             if(row.endTime<=row.startTime)continue;
