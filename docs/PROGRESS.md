@@ -8,6 +8,39 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Routes recognized at clicked Link stations (D119)
+
+Owner authorized choosing a destination when vehicles reach the first Route click.
+An optional RoutingDecision.position stores a reference-polyline station; positioned
+documents opt into schema 20, while absent positions retain legacy demand-time booking.
+The Route gesture creates/reuses the station atomically with its traced Route. A shared
+crossbar previews and selects the point; dragging commits one Undo step. The dialog can
+opt existing decisions in. Link inputs use the decision; explicitly assigned Route inputs
+retain their assignment. Pending demand preview destinations are labelled as deferred.
+
+Neutral provisional route families preserve source volume and lane shares, retain all
+period/type alternatives and distinguish different traces to the same end Link. At passage,
+the core draws once using seeded RNG and passage-time half-open interval weights, records
+the decision on the vehicle and emits a routing event. Compatible physical prefixes retain
+distance and lane; generated lateral awareness starts at the station. Legacy downstream
+bookings remain intact. Decisions in active conflict reservation spans are refused.
+
+Recognition caps the crossing tick's displacement at the line and retains computed speed;
+the selected suffix receives normal safety checks on the next tick. Excess proposed travel
+is discarded, so recognition time is quantized by dt; whole-trip timing impact is unmeasured.
+The initial slice retains one decision per Link and excludes Connector stations. The
+contract and independent M2.1.3 platform/owner gates document these limits. Oldest complete
+D105/D106 progress entries moved to the indexed archive to keep this file near 500 lines.
+
+Validation: GCC 13.3/C++20 and Qt 6.4.2 desktop build on Linux. All **91/91 CTest groups**
+pass after updating the existing future-schema rejection example from 20 to 999 and
+rerunning that affected group. New core/compiler coverage includes nine station cases;
+Qt offscreen coverage verifies gesture, overlay clipping, grouping, drag/cancel, Undo and
+save/reopen. Frozen references and architecture/file-size/documentation guards pass.
+Native Linux/Windows CI and owner appearance/fidelity remain separate gates.
+
+---
+
 ## 2026-10-06 — Mixed conflict sites and P3–P4 continuation (D118)
 
 Owner authorized grouping all three kinds for a connected owner-pair site, 0.5 m per-side
@@ -421,58 +454,6 @@ Linux Release: 54/54 groups, including analytic tests and 240 curve/add/drop run
 projects × 40 seeds preserve counts but change timing; 120 stress runs pass safety checks,
 with total clamps 225 → 226 (minor 22 → 24). Frozen baselines unchanged. Methods, results,
 compatibility limits and pending Qt/owner review: [evidence](evidence/connector-equation.md).
-
----
-
-## 2026-10-04 — Connector vehicles follow painted lane centres (D106)
-
-Owner requested the measured centreline discrepancy be fixed. The baseline 90-degree
-3 → 3 fixture's first runtime lane is over 1 m off its painted interior midpoint.
-`connectorPaths` now takes final adjacent-rail midpoints at interior vertices, joining
-those to the named Link lane centres with its terminal legs. A taper's zero-width edge
-and a mouth's longitudinal cut are not runtime attachments. Width derivation shares
-independent lane pairing, so surface construction cannot recurse through its paths.
-Waiting bars use the normal at the mapped runtime lane position. Schema-17 geometry,
-authored stations, lane IDs/pairing and all core code remain unchanged. D106 supersedes
-D80's unchanged-runtime-path promise; range edits can re-derive surviving runtime curves.
-
-Inputs were registered in local `c74b3fb` before seeded comparisons (published `addeb738`).
-The three initial centre regressions failed before and pass after. Linux/GCC 13.3 Release
-`check` passes architecture/file-size guards and 53/53 groups. Seven lane-centre tests
-include 240 seeded curve/add/drop runs, replay, accounting, segment-body checks, actual
-interior vehicle positions, control bars/stations and file/Undo/Redo. T-junction's 120
-cases per build have identical trajectory digests/reports and pass its safety checks.
-Four projects × 40 seeds preserve counts/clamps; max delay/travel differences are
-0.000206837/0.000207040 s and max queue difference is 0.000001477 m. Frozen baselines
-are unchanged. [Evidence](evidence/connector-lane-centres.md) records methods and limits.
-Qt/Windows CI and the owner's desktop look are not replaced by headless evidence.
-
----
-
-## 2026-10-04 — Five near-standing clamps diagnosed; stopped followers wait (D105)
-
-From `f538a7e`, input metadata registered in local commit `048b541` before observing outputs.
-The current T-junction reproduces five minor clamps (seeds 42/43, headways 3/7/12).
-Their leader gap is below standstillDistance: a major's rear is clipped at the shared
-segment's origin, while its moving speed makes following propose acceleration.
-Four minor vehicles were already stopped; one was moving at 0.905577 m/s.
-D105 prevents a stopped follower accelerating when no standstill room exists.
-The stopped-merge regression fails before the fix and passes after; the moving
-case still clamps and is reported. The exact standstill boundary and later release
-are tested. No cap, buffer, commitment threshold or frozen fixture was changed.
-Linux headless baseline/final: 52/52. CMake/Ninja/JSON headers were installed in the
-workspace; TMPDIR resolved the environment's missing /tmp. No Qt/Windows claim.
-120 congested runs pass full replay, per-tick accounting, body/swept crossing safety
-and reported braking bounds. Trajectory digests, movement delays/counts and queues
-are identical; total clamps 242 → 225, moving minor 20 → 20. Source insertion has
-two remaining stationary positive-clearance clamps; M3.2.8a.1 is carved in ROADMAP.
-Three committed projects × 40 seeds keep reports identical except fewer clamps;
-unfinished four-leg/M2.6 traffic is recorded. The archived pre-D80 document fails
-current coverage validation; its old evidence is kept, not rewritten as today's.
-Raw traces, sweeps, reproduction and limits: `evidence/m3.2.8a-clamps.md`.
-Session-fillable M3_ACCEPTANCE rows are updated; owner gates remain open.
-NEXT now names the remaining anticipation/first-step contract, not the completed
-diagnosis. No M5 ordering or owner decision changed.
 
 ---
 

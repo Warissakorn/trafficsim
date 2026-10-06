@@ -66,6 +66,9 @@ public:
     // A route drawn by pointer: the segments, in travel order, exactly as the dialog would
     // have stored them. The canvas never writes to the document itself.
     std::function<void(std::vector<std::string>)> routeDraftCommitted;
+    std::function<void(std::vector<std::string>,std::optional<double>)> positionedRouteCommitted;
+    std::optional<double> routeStartPosition() const { return routeStartPosition_; }
+    std::function<void(const std::string&,double)> decisionMoved;
     std::function<void(std::string)> inputPlaced;
     const std::vector<std::string>& routeDraft() const { return routeDraft_; }
     const std::vector<std::string>& routePreview() const { return routePreview_; }
@@ -185,6 +188,13 @@ private:
     void clearRouteDraft();
     void reject();
     std::vector<std::string> routeDraft_;
+    std::optional<double> routeStartPosition_;
+    struct DecisionDrag { std::string id,linkId;double position{};QPoint press;bool moved{}; };
+    std::optional<DecisionDrag> decisionDrag_;
+    bool startDecisionDrag(QPoint);
+    void updateDecisionDrag(QPoint);
+    void finishDecisionDrag(QPoint);
+    void drawPositionedDecisions();
     std::vector<std::string> routePreview_;
     bool routeTracing_{};
     QString inputRateLabel_, inputPeriodsLabel_;

@@ -3,6 +3,7 @@
 #include "detail.hpp"
 #include "following.hpp"
 #include "lanes.hpp"
+#include "routing.hpp"
 #include "routes.hpp"
 #include "validate.hpp"
 #include <cmath>
@@ -180,6 +181,12 @@ SimState stepSimulation(SimState&& state, double dt) {
     if (std::is_sorted(vehicles.begin(), arrivals, byId))
         std::inplace_merge(vehicles.begin(), arrivals, vehicles.end(), byId);
     else std::sort(vehicles.begin(), vehicles.end(), byId);
+    // A station at the source is recognized before the first lane-change/motion decision.
+    if(!scenario.routeDecisions.empty())for(auto& vehicle:vehicles)
+        while(const auto* decision=nextRouteDecision(scenario,vehicle)) {
+            if(vehicle.distance<decision->at-1e-9)break;
+            applyRouteDecision(scenario,vehicle,*decision,startTime,next.randomState,events);
+        }
     // Resolved once per tick rather than roughly six times per vehicle.
     auto refs = resolveRefs(scenario, vehicles, index);
     auto spans = occupiedSpans(scenario, vehicles, index, refs); // Everyone sees the SAME pre-step state.
@@ -326,6 +333,11 @@ SimState stepSimulation(SimState&& state, double dt) {
     // most kStoppedSpeed/dt of ordinary braking -- not an emergency clamp.
     for (std::size_t v = 0; v < stopOf.size(); ++v)
         if (restsAtStop(stopOf[v], startTick)) moves[v] = {0, 0, -vehicles[v].speed / dt, FollowingMode::braking, false};
+    // A newly recognized route starts at a tick boundary. Never move onto its unknown
+    // suffix under the previous route's safety checks; keep speed, recognize at the line.
+    if(!scenario.routeDecisions.empty())for(std::size_t v=0;v<vehicles.size();++v)
+        if(const auto* decision=nextRouteDecision(scenario,vehicles[v]))
+            moves[v].distance=std::min(moves[v].distance,std::max(0.,decision->at-vehicles[v].distance));
     // Phase 2: requests resolved across all candidates at once -- the swept check and shared
     // receiving space. A cap only ever shortens a move.
     if (!zones.empty()) {
@@ -343,21 +355,26 @@ SimState stepSimulation(SimState&& state, double dt) {
     next.vehicles.reserve(vehicles.size()); // At most one survivor per vehicle; arrivals already in.
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
         const auto& vehicle = vehicles[v];
-        const auto& parts = index.parts[refs[v].route];
+        const auto& oldParts = index.parts[refs[v].route];
         const auto& move = moves[v];
         if (move.clamped) events.emplace_back(SafetyClampEvent{time, vehicle.id});
         auto moved = vehicle;
         moved.distance += move.distance; moved.speed = move.speed;
         moved.acceleration = move.acceleration; moved.mode = move.mode;
-        for (std::size_t i = 1; i < parts.size(); ++i)
-            if (vehicle.distance < parts[i].start && moved.distance >= parts[i].start)
-                events.emplace_back(SegmentEnteredEvent{time, vehicle.id, parts[i].segmentId});
+        for (std::size_t i = 1; i < oldParts.size(); ++i)
+            if (vehicle.distance < oldParts[i].start && moved.distance >= oldParts[i].start)
+                events.emplace_back(SegmentEnteredEvent{time, vehicle.id, oldParts[i].segmentId});
+        if(!scenario.routeDecisions.empty())
+            if(const auto* decision=nextRouteDecision(scenario,vehicle))
+                if(moved.distance>=decision->at-1e-9)
+                    applyRouteDecision(scenario,moved,*decision,time,next.randomState,events);
+        const auto& parts=index.parts[moved.routeIndex];
         const double routeLength = parts.back().start + parts.back().length;
         // A stub's dead end may be its last metre; standing there is waiting, never arriving.
-        const bool stub = index.laneChanges && std::isfinite(index.deadEndOfRoute[refs[v].route]);
+        const bool stub = index.laneChanges && std::isfinite(index.deadEndOfRoute[moved.routeIndex]);
         if (moved.distance >= routeLength && !stub) {
             ++next.completed;
-            events.emplace_back(ArrivedEvent{time, vehicle.id, scenario.routes[vehicle.routeIndex].id,
+            events.emplace_back(ArrivedEvent{time, vehicle.id, scenario.routes[moved.routeIndex].id,
                 time - vehicle.enteredTime,
                 vehicle.enteredTime - vehicle.scheduledTime, routeLength / vehicle.desiredSpeed});
         } else {

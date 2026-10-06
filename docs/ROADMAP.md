@@ -184,6 +184,15 @@ Owner request. An input on a Link needs no route; a decision placed on a Link se
 
 Owner choice for the next engineering item. A routing decision takes counted turning volumes per interval (pasted per row in its dialog), schema 12; expanded at compile time per interval piece. The interval is chosen by network entry time, not the time at the decision. Still open in M2.1: a decision's station along the Link, and partial/dynamic decisions.
 
+#### M2.1.3 — Recognition at an authored station · **In progress** (D119)
+
+Owner authorized a click-positioned decision on 2026-10-06. Schema 20 and the
+[station contract](reference/POSITIONED_ROUTING.md) define passage-time selection,
+source/awareness separation, discrete recognition boundaries and legacy opt-in.
+Automated platform checks and owner appearance review remain independent gates.
+Multiple points on one Link and continuous-time substeps are outside this slice.
+M2.1 stays open; partial/dynamic routing is not closed by this implementation.
+
 ### M2.7 — Signal heads by pointer; fixed-time Signal Controllers · **Open** (owner request, made before M2.6)
 M2.7a (head = stop line, placed at the pointer's station, D47; by Ctrl+right-click since D84) and M2.7b (controllers, signal groups, schema 13, D48) implemented 2026-09-25, before the gate. The owner's use in M2.6 was to close it; `plans/M2_GATE.md` does not record whether that use met the done-condition. Detail and done-condition: [`plans/M2_PLAN.md`](plans/M2_PLAN.md) §4.
 

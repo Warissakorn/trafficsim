@@ -410,7 +410,7 @@ Unknown future versions are rejected.
 
 The editor opens bare M0 authoring files and project schemas 1–19. Saving uses schema 17
 by default, 18 for owned composition catalogs or embedded vehicle names, and 19 for
-composition periods or type-conditioned routing. This is selected from the document's
+composition periods or type-conditioned routing; schema 20 when a routing decision has `position`. This is selected from the document's
 features, not the version of the file opened. See [Demand catalogs](DEMAND_CATALOGS.md)
 and [time/type rules](DEMAND_TIME_TYPES.md); old feature-free fixtures retain schema-17 bytes.
 Schema 4 introduced lane bundle offset and Connector interpolation weights; older versions
@@ -450,3 +450,6 @@ authoring, in-editor Run and deterministic Reset, recovery, Thai UI, creation/ca
 gestures and level-aware overlap selection. They do **not** perform the owner's timed exercise,
 establish model fidelity or measure large-network performance, and Windows core checks do not
 imply Windows/macOS GUI verification; installers remain M7.
+
+For first-click recognition stations, shared Route points, line dragging and runtime
+semantics, see [POSITIONED_ROUTING](POSITIONED_ROUTING.md). Missing `position` retains legacy behaviour.

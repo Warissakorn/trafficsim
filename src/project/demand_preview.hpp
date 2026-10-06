@@ -4,6 +4,7 @@ namespace trafficsim {
 struct DemandPreviewRow {
     std::string inputId,vehicleTypeId,routeId,entryLinkId,entryLaneId,lastLinkId;
     double startTime{},endTime{},vehiclesPerHour{},expectedVehicles{};
+    bool deferredRouting{};
 };
 struct DemandPreview {
     std::uint64_t revision{};

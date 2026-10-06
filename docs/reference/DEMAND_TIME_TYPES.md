@@ -18,7 +18,7 @@ Rules do not create new destinations; target topology/reachability remains share
 
 Catalog/type expansion precedes type-conditioned routing. Active input periods
 are cut at composition and decision breakpoints, conserving their rates through
-both splits. A placed decision, including one downstream, uses the vehicle type
+both splits. A legacy placed decision without `position`, including one downstream, uses the vehicle type
 and scheduled demand time. Source queueing and time spent travelling do not change
 its booked destination. Family routes for different types stay distinct.
 
@@ -46,3 +46,6 @@ appearance review are independent gates. M2's earlier observed gate is not reclo
 Desired-speed distribution families, exact-count arrivals, dynamic reselection,
 motorcycle lane occupation and articulation remain separate contracts. Reporting,
 LOS and batch evaluation remain M5.
+
+Positioned decisions opt into passage-time selection under schema 20; see
+[POSITIONED_ROUTING](POSITIONED_ROUTING.md). Their intervals do not split source streams.

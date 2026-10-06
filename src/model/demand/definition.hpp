@@ -32,7 +32,7 @@ struct DecisionInterval {
 // every routeless vehicle reaching that Link, and an entry may name a destination Link instead of
 // a route. M2.1.2: `intervals` with one `intervalFlows` value per entry per interval give turning
 // proportions that change over the run; outside every interval `relativeFlow` applies. A station
-// part way along the Link is still M2.1.
+// part way along the Link opts into passage-time recognition with `position` (D119).
 struct DecisionRoute {
     std::string routeId; double relativeFlow{};
     std::string destinationLinkId; // M2.1.1: instead of routeId, on a placed decision only
@@ -51,6 +51,8 @@ struct RoutingDecision {
     std::string linkId; // M2.1.1: the Link it is placed on; empty keeps the M2.4 meaning
     std::vector<DecisionInterval> intervals; // M2.1.2: ordered, non-overlapping
     std::vector<RoutingTypeRule> typeRules;
+    // Metres on the Link reference polyline. Absent retains legacy scheduled-time routing.
+    std::optional<double> position;
     bool operator==(const RoutingDecision&) const = default;
 };
 // M2.1.2 (D45). An entry's relative flow at time t: its interval's flow inside an interval, the

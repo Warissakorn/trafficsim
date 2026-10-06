@@ -67,7 +67,7 @@ TEST(rightofway, a03_bad_controls_are_refused_and_change_nothing) {
     test::throws([&] { parseDocument(badEnum); }, "INVALID_ENUM");
     auto older = file; older["schemaVersion"] = 13;
     test::throws([&] { parseDocument(older); }, "");
-    auto future = file; future["schemaVersion"] = 20;
+    auto future = file; future["schemaVersion"] = 999;
     test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
     CHECK(parseDocument(file).network.rightOfWay == area);
 }

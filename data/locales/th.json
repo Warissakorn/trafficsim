@@ -197,7 +197,7 @@
   "editorRouteSegments": "Link และ Connector ตามลำดับการเดินทาง",
   "editorRouteHelp": "เลือก Link และ Connector ที่เชื่อมกันตามทิศทางเดินรถ บนแผนที่ให้คลิกถนนต้นทาง เลื่อนตามแขนงที่ต้องการ แล้วคลิกปลายทาง เส้นขวางแสดงต้นทางและปลายทาง พื้นสีฟ้าแสดงเส้นทาง โดยครอบคลุมทุกเลนของ Link ที่เลือก",
   "editorSelectHelp": "คลิกเพื่อเลือก · Shift+คลิก เพิ่ม/ลดการเลือก · Ctrl+คลิก เลือกเพิ่ม · ลากแท็บขอบถนนเพื่อปรับช่องจราจร · คลิกพื้นที่ว่าง / Esc เพื่อล้างการเลือก",
-  "editorRouteClickHelp": "เส้นทาง: คลิกถนนต้นทาง เลื่อนตามถนนที่เชื่อมกัน แล้วคลิกปลายทาง กด Esc เพื่อยกเลิก",
+  "editorRouteClickHelp": "คลิกบน Link เพื่อวางเส้นเลือกเส้นทาง เลื่อนเมาส์ผ่านถนน แล้วคลิกปลายทาง",
   "editorInputPlaceHelp": "เครื่องมือปริมาณรถเข้า: Ctrl + คลิกขวา Link ที่รถเข้าสู่โครงข่าย ปริมาณที่กรอกเป็นยอดรวมของ Link แล้วแบ่งไปตามช่องจราจร",
   "editorDemandMenuReveal": "แสดงในตาราง",
   "editorAppendSegment": "เพิ่มช่วงถนน",
@@ -554,8 +554,16 @@
   "editorConflictOriginalOrder": "ลำดับรถเดิม",
   "editorConflictBranchingStatus": "ทางแยกออก: ใช้ลำดับรถเดิม ไม่มีการกำหนดสิทธิ์แยก",
   "EDIT_BRANCHING_PRIORITY": "พื้นที่ทางแยกออกใช้ลำดับรถเดิม ไม่มีการกำหนดสิทธิ์แยก",
-  "editorRouteFinishHelp": "เลื่อนตามถนนเพื่อเลือกแขนง แล้วคลิกปลายทางเพื่อบันทึก Backspace ย้อนกลับ; Esc ยกเลิก; Ctrl + คลิกขวาเพิ่มช่วง; Enter บันทึก",
+  "editorRouteFinishHelp": "เลื่อนเมาส์ผ่านทางที่ต้องการ แล้วคลิกปลายทาง Esc ยกเลิก Backspace ย้อนเส้นทาง",
   "editorInputRateUnit": "คัน/ชม.",
   "editorInputCanvasPeriods": "%1 ช่วงเวลา",
-  "editorConflictGroupReadOnly": "ส่วนแยกทางเป็นข้อมูลอ่านอย่างเดียว"
+  "editorConflictGroupReadOnly": "ส่วนแยกทางเป็นข้อมูลอ่านอย่างเดียว",
+  "editorDecisionPositioned": "เลือกเส้นทางเมื่อรถผ่านเส้นนี้",
+  "editorDecisionPositionLabel": "position (m)",
+  "EDIT_ROUTING_LINK_OCCUPIED": "Link นี้มีจุดเลือกเส้นทางแล้ว คลิกเริ่มบนเส้นเดิมเพื่อเพิ่มเส้นทาง หรือแก้ตำแหน่งของจุดเดิม",
+  "EDIT_ROUTING_TARGETS_LOCKED": "ลบกฎแยกประเภทรถก่อนเพิ่มเส้นทางในจุดนี้",
+  "ROUTING_POSITION_AFTER_DIVERGENCE": "เส้นเลือกเส้นทางต้องอยู่ก่อนจุดที่แต่ละเส้นทางออกจาก Link",
+  "ROUTING_PREFIX_MISMATCH": "เส้นทางก่อนถึงจุดเลือกเส้นทางไม่ตรงกัน",
+  "editorDemandDeferredRoute": "เลือกเมื่อผ่านเส้นเลือกเส้นทาง",
+  "ROUTING_POSITION_IN_CONFLICT": "วางเส้นเลือกเส้นทางนอกพื้นที่ควบคุม Conflict area"
 }

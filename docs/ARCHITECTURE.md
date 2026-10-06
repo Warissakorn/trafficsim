@@ -8,10 +8,13 @@ Project-owned Demand catalogs (schema 18) store types, behavior snapshots, compo
 weights and authoring names. `resolveDemandCatalog` supplies the UI and compiler;
 `putDemandCatalog` captures ownership atomically through History. Names/compositions
 stay outside core; only the expanded input rates and existing vehicle contracts run.
-Schema 19 adds composition periods and complete type routing matrices.
+Schema 20 adds opt-in physical routing stations. `station_routing` derives shared-prefix
+route alternatives and clips lateral awareness spans; `core/routing` selects once at the
+recognition tick using passage-time/type weights. See [POSITIONED_ROUTING](reference/POSITIONED_ROUTING.md)
+for the conservative tick boundary and limits. Schema 19 adds composition periods and complete type routing matrices.
 `demand_time_types` supplies validation and expansion before conditioned routing;
-placed decisions key route families by type. Scheduled demand time selects weights,
-including downstream decisions; source queues never reselect. Legacy compilation
+placed decisions key route families by type. Scheduled demand time selects legacy weights,
+including downstream decisions without `position`; source queues never reselect. Legacy compilation
 order and schema-17/18 bytes stay unchanged without the new fields.
 
 ## Boundaries
@@ -42,7 +45,7 @@ unchanged. See [VEHICLE_POSE.md](reference/VEHICLE_POSE.md).
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
 | `trafficsim_model` | `src/model/network/`, `src/model/demand/` | Core contracts/validation | M0 authoring model and compiler implemented; fixed-time Signal Controllers compiled to core programs (`signal_control.*`, M2.7b); authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay/travel time and approach queues for one run (M2.5); M3.2.8c diagnostics (lane changes, segment times, stop-line discharge, arrival phases, dead-end waits) |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-19 authoring codec (reads schemas 1–19); evaluation spec and report output; revision run snapshots |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-20 authoring codec (reads schemas 1–20); evaluation spec and report output; revision run snapshots |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
 | `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`) |
@@ -103,7 +106,7 @@ LoadedScenario loadScenario(const std::filesystem::path& file,
 `runSimulation` invokes a synchronous `std::function<void(const SimEvent&)>` sink and
 returns the final state. The core owns no output stream. The callback decides whether to
 accumulate statistics, write a file or discard events. `SimEvent` is a `std::variant` of
-seven typed event structs (`LaneChangeEvent` appended last, M3.2.8b). States retain only the latest tick's events.
+eight typed event structs (`RoutingEvent` appended last, D119). States retain only the latest tick's events.
 
 The desktop uses a Qt timer to schedule fixed steps. Playback time never enters the
 engine. The M0 workload runs on the UI thread; playback credit is capped per callback.

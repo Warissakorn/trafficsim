@@ -27,7 +27,7 @@ void EditorWindow::showDemandPreview() {
         text("editorDemandEntryLink"),text("editorDemandEntryLane"),text("editorDemandLastLink"),
         text("editorInputStart"),text("editorInputEnd"),text("editorInputVolume"),text("editorDemandExpected")});
     for(const auto& r:preview.rows) {
-        const QStringList cells{QString::fromStdString(r.inputId),QString::fromStdString(r.vehicleTypeId),QString::fromStdString(r.routeId),
+        const QStringList cells{QString::fromStdString(r.inputId),QString::fromStdString(r.vehicleTypeId),r.deferredRouting?text("editorDemandDeferredRoute"):QString::fromStdString(r.routeId),
             QString::fromStdString(r.entryLinkId),QString::fromStdString(r.entryLaneId),QString::fromStdString(r.lastLinkId),
             QString::number(r.startTime,'g',12),QString::number(r.endTime,'g',12),QString::number(r.vehiclesPerHour,'g',12),
             QString::number(r.expectedVehicles,'g',12)};

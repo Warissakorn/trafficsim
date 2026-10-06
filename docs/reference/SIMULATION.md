@@ -94,7 +94,17 @@ at body attachments and connecting the mapped Connector paths. Sections are deri
 compile (D21), not a second persisted representation of the network.
 Desired speeds belong to the vehicle-type distribution, not the link.
 
-### Routeless inputs and placed routing decisions (M2.1.1, D42, D43)
+### Positioned recognition (M2.1.3, D119)
+
+An explicit `RoutingDecision.position` uses passage time and chooses once at its
+physical line; missing position retains the scheduled-time semantics below.
+[POSITIONED_ROUTING](POSITIONED_ROUTING.md) defines the compiled interface, seeded
+choice, awareness spans, source allocation and conservative tick boundary. The line
+is not a Stop. Its crossing tick ends at the line with retained speed; remaining
+proposed distance waits for a new safety calculation next tick. This quantization is
+an explicit numerical limit, not a calibrated behaviour.
+
+### Legacy routeless inputs and placed routing decisions (M2.1.1, D42, D43)
 
 A vehicle input may name a Link (`linkId`) instead of a route, and a routing decision may be
 placed on a Link (`linkId`), with rows that are destination Links (`destinationLinkId`) or

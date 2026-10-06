@@ -15,6 +15,7 @@ struct PlacedDecision {
     // ways (a taper and a pocket entry, say): each lane takes the first one it can drive.
     struct Destination { std::vector<std::vector<std::string>> chains; double weight{}; };
     std::vector<Destination> destinations;
+    std::optional<double> position;
 };
 // M3.2.8b/D93: a decision's destination is a family -- one chain per lane of the decision's Link,
 // and a lane that cannot reach it is a stub whose vehicles change lanes there. `name` is

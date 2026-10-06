@@ -145,3 +145,8 @@ Layout examples from the Linux offscreen Qt platform:
 [English, 1360×860](../images/workspace-en.png),
 [Thai, 1024×768](../images/workspace-th.png), and
 [Thai focus mode](../images/workspace-focus.png).
+
+The first plain Route click on a Link also places an opt-in recognition line at its
+projected station. Start on the same line to add a Route to its decision. Select-drag
+moves the line; [POSITIONED_ROUTING](POSITIONED_ROUTING.md) defines grouping, validation,
+passage-time choice and the numerical boundary. Legacy Ctrl+right/Enter remains unchanged.

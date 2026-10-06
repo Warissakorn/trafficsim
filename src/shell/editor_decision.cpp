@@ -3,6 +3,7 @@
 #include "demand_type_rules_dialog.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QComboBox>
+#include <QCheckBox>
 #include <QDialog>
 #include <QFormLayout>
 #include <QDialogButtonBox>
@@ -45,6 +46,15 @@ void EditorWindow::editDecision(const std::string& id) {
     auto* placeRow=new QFormLayout;placeRow->setContentsMargins(0,0,0,0);
     placeRow->setHorizontalSpacing(editorDesign::space2);placeRow->setVerticalSpacing(editorDesign::space1);
     placeRow->addRow(text("editorDecisionLinkLabel"),place);layout->addLayout(placeRow);
+    auto* positioned=new QCheckBox(text("editorDecisionPositioned"),&dialog);positioned->setObjectName("editorDecisionPositioned");positioned->setChecked(value.position.has_value());
+    auto* position=new QDoubleSpinBox(&dialog);position->setObjectName("editorDecisionPosition");position->setDecimals(3);position->setSuffix(" m");
+    const auto syncPosition=[&]{
+        double length=0;for(const auto& l:network.links)if(l.id==place->currentData().toString().toStdString())length=polylineLength(l.geometry);
+        positioned->setEnabled(length>0);position->setRange(0,std::max(0.,length-1e-6));position->setEnabled(length>0 && positioned->isChecked());
+    };
+    connect(place,&QComboBox::currentIndexChanged,&dialog,[&]{syncPosition();});
+    connect(positioned,&QCheckBox::toggled,&dialog,[&]{syncPosition();});syncPosition();position->setValue(value.position.value_or(0));
+    placeRow->addRow(positioned);placeRow->addRow(text("editorDecisionPositionLabel"),position);
     // M2.1.2: counted turning volumes per interval, pasted per row as they come off a count sheet,
     // over intervals of one length from a start time -- the M2.2 input dialog's convention.
     auto* start=new QDoubleSpinBox(&dialog);start->setObjectName("editorDecisionIntervalStart");
@@ -185,6 +195,7 @@ void EditorWindow::editDecision(const std::string& id) {
     const bool targetChanged=value.linkId!=place->currentData().toString().toStdString();
     value.name=name->text().trimmed().toStdString();
     value.linkId=place->currentData().toString().toStdString();
+    value.position=positioned->isChecked() && !value.linkId.empty()?std::optional<double>{position->value()}:std::nullopt;
     const double from=start->value(),length=minutes->value()*60;
     std::vector<std::pair<const Row*,QStringList>> typed;
     for(const auto& row:rows)if(row.field->isEnabled())
