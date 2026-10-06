@@ -9,11 +9,12 @@ measured. Every claim below cites the file and line it was read from, and every 
 Vissim cites the document it came from. Where the two benchmarks disagree, this file says so
 rather than picking one.
 
-2026-10-04 update (D107): runtime paths evaluate the existing single cubic Bézier directly
-from mapped lane attachments and tangents. Arc length is integrated and inverted, not
-measured along drawing points. D106 rail-midpoint guides now serve display/authoring only.
-The legacy path derivation below is historical. See [the current contract](../reference/CONNECTOR_FOUR_POINT_MOUTH.md)
-and [verification](../evidence/connector-equation.md). Neither change measures Vissim fidelity.
+2026-10-06 update (D114): the owner's interior-edit requirement supersedes D107's fixed
+endpoint-only cubic runtime. Lane paths again follow adjacent final painted-rail midpoints,
+with named lane-centre terminals. Conflict coverage uses those same rails. The audit below
+is historical; [the current contract](../reference/CONNECTOR_FOUR_POINT_MOUTH.md) defines
+behaviour. [D107 verification](../evidence/connector-equation.md) remains historical evidence,
+not verification of D114. Neither change measures Vissim fidelity.
 
 ---
 

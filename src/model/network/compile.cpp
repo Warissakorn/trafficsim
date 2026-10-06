@@ -280,8 +280,7 @@ std::vector<ValidationIssue> connectorShapeIssues(const Network& network) {
             if(speed<=1e-12)radius=0;
             else if(cross>1e-12)radius=std::min(radius,speed*speed*speed/cross);
         }
-        // Retain the authoring advisory for a tight painted shape as well as the runtime
-        // equation. Interior drawing edits do not change vehicle motion, but can fold the road.
+        // Check the actual lane path, including corners introduced by interior edits.
         for(const auto& path:paths)for(std::size_t j=1;j+1<path.geometry.size();++j) {
             const auto a=path.geometry[j-1],b=path.geometry[j],d=path.geometry[j+1];
             const double ab=std::hypot(b.x-a.x,b.y-a.y),bd=std::hypot(d.x-b.x,d.y-b.y),ad=std::hypot(d.x-a.x,d.y-a.y);

@@ -42,40 +42,18 @@ TEST(equation, closest_station_finds_global_minimum_including_loops_and_endpoint
         }
     }
 }
-TEST(equation, drawing_point_count_and_interior_edits_do_not_change_runtime_motion) {
+TEST(equation, zero_points_and_reset_straight_use_the_authored_chord) {
     auto d=turn(0);const auto& c=d.network.connectors.front();
-    const auto first=connectorPaths(d.network,c);CHECK(first[0].equation);CHECK(first[0].geometry.size()==2);
-    // Zero intermediate points draws a straight chord, but the runtime remains a real curve.
-    const auto curved=connectorPathPoint(first[0],connectorPathLength(first[0])*.5);
-    const auto chord=pointAlong(first[0].geometry,polylineLength(first[0].geometry)*.5);
-    CHECK(std::hypot(curved.x-chord.x,curved.y-chord.y)>5);
-    for(int count:{1,3,19,40}) {
-        auto other=turn(count);auto& connector=other.network.connectors.front();
-        auto paths=connectorPaths(other.network,connector);
-        for(std::size_t k=0;k<paths.size();++k){test::near(connectorPathLength(paths[k]),connectorPathLength(first[k]),0);
-            for(double fraction:{0.,.13,.5,.89,1.})near(connectorPathPoint(paths[k],connectorPathLength(paths[k])*fraction),
-                connectorPathPoint(first[k],connectorPathLength(first[k])*fraction),0);}
-        connector.geometry[1].x+=7;connector.geometry[1].y-=4;
-        paths=connectorPaths(other.network,connector);
-        for(std::size_t k=0;k<paths.size();++k)test::near(connectorPathLength(paths[k]),connectorPathLength(first[k]),0);
+    const auto paths=connectorPaths(d.network,c);
+    for(const auto& path:paths) {
+        CHECK(!path.equation);CHECK(path.geometry.size()==2);
+        test::near(connectorPathLength(path),polylineLength(path.geometry),1e-12);
+        near(connectorPathPoint(path,connectorPathLength(path)*.5),
+             {(path.geometry.front().x+path.geometry.back().x)/2,(path.geometry.front().y+path.geometry.back().y)/2});
     }
-}
-TEST(equation, controls_heads_and_both_attachments_use_equation_stations) {
-    auto d=turn(19);const auto& c=d.network.connectors.front();const auto table=runtimeSections(d.network);
-    for(const auto& path:table.paths) {
-        near(connectorPathPoint(path,0),laneAttachment(d.network,path.from,true));
-        near(connectorPathPoint(path,connectorPathLength(path)),laneAttachment(d.network,path.to,false));
-        const auto tangents=connectorTangents(d.network,path.from,path.to);
-        auto a=connectorPathDirection(path,0),b=connectorPathDirection(path,connectorPathLength(path));
-        near({a.x/std::hypot(a.x,a.y),a.y/std::hypot(a.x,a.y)},tangents.first);
-        near({b.x/std::hypot(b.x,b.y),b.y/std::hypot(b.x,b.y)},tangents.second);
-        double station=0;for(int j=1;j<=5;++j)station+=std::hypot(c.geometry[j].x-c.geometry[j-1].x,c.geometry[j].y-c.geometry[j-1].y);
-        const ControlPoint point{{"","",c.id,path.from.laneId,path.to.laneId},station};
-        const auto located=locateControlPoint(d.network,table,point);CHECK(located);
-        test::near(located->position,equationStation(*path.equation,.25),1e-9);
-        test::near(connectorAuthoringStation(c,path,located->position),station,1e-7);
-        const auto target=equationPoint(*path.equation,.43);
-        const auto placed=nearestHeadSlot(d.network,target,0);CHECK(placed);CHECK(placed->slot.connectorId==path.id);
-        test::near(placed->station,equationStation(*path.equation,.43),1e-7);
-    }
+    auto curved=turn(19);const auto before=connectorPaths(curved.network,curved.network.connectors.front());
+    resetConnectorCurve(curved,c.id,true);
+    const auto straight=connectorPaths(curved.network,curved.network.connectors.front());
+    CHECK(straight.front().geometry.size()==2);
+    CHECK(connectorPathLength(before.front())>connectorPathLength(straight.front())+1);
 }

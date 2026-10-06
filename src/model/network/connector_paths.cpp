@@ -132,7 +132,9 @@ std::vector<ConnectorPath> connectorPaths(const Network& n,const Connector& c) {
         // The terminal polyline legs connect that centre to the first/last interior midpoint.
         shape.front()=laneAttachment(n,pairs[i].from,true);
         shape.back()=laneAttachment(n,pairs[i].to,false);
-        result.push_back({connectorPathId(c,static_cast<int>(i)),pairs[i].from,pairs[i].to,std::move(shape),connectorEquation(n,pairs[i].from,pairs[i].to)});
+        // The editable surface is authoritative. An endpoint-only equation would ignore
+        // interior drags and authored widths, leaving vehicles on a different road.
+        result.push_back({connectorPathId(c,static_cast<int>(i)),pairs[i].from,pairs[i].to,std::move(shape)});
     }
     return result;
 }

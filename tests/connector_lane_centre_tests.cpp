@@ -37,11 +37,11 @@ void centred(const Network& n) {
         // Length and location use this very path, including the terminal transitions.
         const auto segment=std::find_if(scenario.segments.begin(),scenario.segments.end(),
             [&](const auto& s){return s.id==p.id;});CHECK(segment!=scenario.segments.end());
-        CHECK(p.equation);test::near(segment->length,p.equation->arcStations.back(),1e-12);
+        CHECK(!p.equation);test::near(segment->length,polylineLength(p.geometry),1e-12);
         Scenario located;located.segments={*segment};located.routes={{"r",{p.id}}};
         Vehicle vehicle;vehicle.routeIndex=0;vehicle.distance=segment->length*.37;
         const auto at=locateVehicle(located,vehicle);CHECK(at.segmentId==p.id);
-        near(connectorPathPoint(p,at.position),equationPoint(*p.equation,equationParameter(*p.equation,vehicle.distance)));
+        near(connectorPathPoint(p,at.position),pointAlong(p.geometry,vehicle.distance));
     }
 }
 }
@@ -155,10 +155,10 @@ TEST(lane_centres, forty_seeds_run_curves_and_both_count_changes_with_replay_and
                 for(const auto& vehicle:state.vehicles) {
                     const auto at=locateVehicle(*state.scenario,vehicle,*state.index);
                     for(std::size_t k=0;k<paths.size();++k)if(paths[k].id==at.segmentId) {
-                        const auto& path=paths[k];CHECK(path.equation);
+                        const auto& path=paths[k];CHECK(!path.equation);
                         if(at.position>1 && at.position<connectorPathLength(path)-1) {
                             ++onInterior;
-                            near(connectorPathPoint(path,at.position),equationPoint(*path.equation,equationParameter(*path.equation,at.position)));
+                            near(connectorPathPoint(path,at.position),pointAlong(path.geometry,at.position));
                         }
                     }
                 }

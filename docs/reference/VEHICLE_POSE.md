@@ -6,7 +6,7 @@ reported measurements. It has not been calibrated against Vissim or real vehicle
 ## Reference points and data
 
 The engine's `Vehicle.distance` remains the **front bumper's station** along the complete
-ordered route. The lane-centre Link geometry and direct Connector equation prescribe
+ordered route. The lane-centre Link geometry and derived Connector lane-centre path prescribe
 that point's track. The rear axle is the rigid body's local origin in the Run view.
 The front axle can therefore depart from the lane-centre curve while turning; this is
 a deliberately bumper-guided model, not a claim that the front wheel follows that curve.

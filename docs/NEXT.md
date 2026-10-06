@@ -64,20 +64,20 @@ In order:
   Automated Linux/Windows results belong to the PR; an owner look remains separate.
 
 - **D109/D110 conflict controls and Bézier coverage:** inspect a curved Connector after an interior
-  drawing drag: paired highlights follow paint, coverage/physical waiting positions follow
-  the equation. Inspect a 3 × 3 crossing: eighteen separate side outlines, one row, nine
+  geometry drag: paired highlights, coverage and physical waiting positions follow
+  the edited lane rails/centres (D114). Inspect a 3 × 3 crossing: eighteen separate side outlines, one row, nine
   lane-pair controls, group edit/Delete
   and Undo. Two separated intersections of the same owners must remain two rows. Check
   Windows native CI and owner appearance before claiming cross-platform verification.
   At internal and terminal Connector/Link attachments, compare Add with automatic areas:
   a mouth must remain topology/merge; a neighbouring lane genuinely swept stays a crossing.
 
-- **D107 Connector equation:** run a curved 3 → 3 Connector and both taper sides.
-  Vehicles follow the existing cubic from Link attachments/tangents; 0/3/40 drawing points
-  and interior drags must leave motion unchanged. Inspect heads and waiting bars on that
-  curve. Manually deformed paint can differ from the driving curve; check the Inspector
-  tooltip and owner expectations. Headless evidence is in `evidence/connector-equation.md`.
-  Geometry/round-trip evidence is headless; desktop appearance still needs an owner look.
+- **D114 edited Connector lane centres:** run a curved 3 → 3 Connector and both taper
+  sides, drag an interior point while keeping its attachments fixed, then rerun. Vehicles,
+  heads, waiting bars and conflict coverage must follow the edited lanes. Check Zero points,
+  Reset straight, widths, save/reopen and Undo/Redo. The old D107 point-count/motion invariance
+  is superseded by this owner's instruction. Verify this branch's native Linux/Windows CI
+  independently and inspect actual desktop appearance; headless tests close no owner gate.
 
 1. **D104 Results → CSV.** Run a project to its end, then Results → Export results (CSV). It
    should open in a spreadsheet with the marker line first, then movements, then approaches.

@@ -60,7 +60,7 @@ struct Connector {
 // One authored connector owns a contiguous range at each end. Individual runtime
 // paths are derived, with stable ids; they are never stored as duplicate objects.
 struct Network;
-// D107: four coefficients define the runtime curve. Scalar integration cache is not a polyline.
+// Cubic used to generate default Connector geometry and by explicit analytic callers.
 struct ConnectorEquation {
     std::array<Point,4> controls;
     std::array<double,17> arcStations{};
@@ -75,21 +75,21 @@ double equationParameter(const ConnectorEquation&, double station);
 double equationClosestStation(const ConnectorEquation&, Point);
 struct ConnectorPath {
     std::string id; LaneReference from, to;
-    std::vector<Point> geometry; // Drawing/authoring guide only; never used for runtime travel.
-    std::optional<ConnectorEquation> equation{};
+    std::vector<Point> geometry; // Authoritative lane path when equation is absent.
+    std::optional<ConnectorEquation> equation{}; // Explicit analytic callers only; connectorPaths leaves absent.
 };
 double connectorPathLength(const ConnectorPath&);
 Point connectorPathPoint(const ConnectorPath&, double station);
 Point connectorPathDirection(const ConnectorPath&, double station);
-// Stored stations name uniform-parameter cross-sections of the authored point sequence.
-// These adapters do not approximate the runtime curve by those points.
+// Stored stations are metres on Connector::geometry. Derived lane paths map each leg's
+// fraction to that same leg, preserving the authored cross-section after a shape edit.
 // Uniform equation parameter to stored drawing station, without arc inversion.
 double connectorDrawingStation(const Connector&, double parameter);
 double connectorDrawingParameter(const Connector&, double authoredStation);
 double connectorRuntimeStation(const Connector&, const ConnectorPath&, double authoredStation);
 double connectorAuthoringStation(const Connector&, const ConnectorPath&, double runtimeStation);
 std::string connectorPathId(const Connector&, int index);
-// Runtime lane paths evaluate the same cubic equation used to generate the default drawing.
+// Runtime lane interiors follow adjacent painted-rail midpoints; endpoints join named lanes.
 std::vector<ConnectorPath> connectorPaths(const Network&, const Connector&);
 struct NetworkSignalHead {
     std::string id; LaneReference lane; double position{};

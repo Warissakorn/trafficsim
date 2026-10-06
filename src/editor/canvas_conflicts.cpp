@@ -10,7 +10,7 @@
 #include <cmath>
 
 // M3.2.4: authored conflict areas and waiting lines on the canvas, drawn from the same lane
-// painted strips. Runtime coverage uses the equation; grouping shares controls, not outlines.
+// painted strips. Runtime coverage uses those same rails; grouping shares controls, not outlines.
 namespace trafficsim {
 namespace {
 QPainterPath outlinePath(const std::vector<Point>& points) {

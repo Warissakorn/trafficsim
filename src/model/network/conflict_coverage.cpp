@@ -23,43 +23,12 @@ double area(const std::vector<Point>& p) {
 }
 // A lane surface: the two boundaries that bound it, point for point with the polyline its
 // stations are authored on.
-struct Strip { std::vector<Point> base, left, right; std::optional<ConnectorEquation> equation{}; std::vector<double> stations{}; const Connector* connector{}; };
-std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref, bool calculation = false) {
-    if(calculation) {
-        const auto s=conflictSurface(n,ref);
-        if(!s)return std::nullopt;
-        return Strip{s->base,s->left,s->right,{},s->stations,s->connector};
-    }
-    try {
-        if (!ref.linkId.empty() && ref.connectorId.empty()) {
-            for (const auto& link : n.links) {
-                if (link.id != ref.linkId) continue;
-                for (std::size_t k = 0; k < link.lanes.size(); ++k)
-                    if (link.lanes[k].id == ref.laneId)
-                        return Strip{link.geometry, laneBoundaryGeometry(link, k, n.drivingSide),
-                                     laneBoundaryGeometry(link, k + 1, n.drivingSide)};
-            }
-            return std::nullopt;
-        }
-        if (!ref.linkId.empty() || ref.connectorId.empty()) return std::nullopt;
-        for (const auto& c : n.connectors) {
-            if (c.id != ref.connectorId) continue;
-            // Path i runs between boundaries i and i+1 -- connectorBoundaries builds them from the
-            // same connectorPaths list. Exactly one path, never one picked by ordinal.
-            const auto paths = connectorPaths(n, c);
-            std::optional<std::size_t> match;
-            for (std::size_t i = 0; i < paths.size(); ++i)
-                if (paths[i].from.laneId == ref.fromLaneId && paths[i].to.laneId == ref.toLaneId) {
-                    if (match) return std::nullopt;
-                    match = i;
-                }
-            if (!match) return std::nullopt;
-            const auto boundaries = connectorBoundaries(n, c);
-            if (boundaries.size() < *match + 2) return Strip{c.geometry, {}, {}}; // reported unsupported
-            return Strip{c.geometry, boundaries[*match], boundaries[*match + 1], paths[*match].equation};
-        }
-    } catch (const std::exception&) {}
-    return std::nullopt;
+struct Strip { std::vector<Point> base, left, right; std::vector<double> stations{}; };
+std::optional<Strip> stripOf(const Network& n, const ControlPathRef& ref) {
+    // Calculation, outlines and waiting bars share one surface source.
+    const auto surface=conflictSurface(n,ref);
+    if(!surface)return std::nullopt;
+    return Strip{surface->base,surface->left,surface->right,surface->stations};
 }
 // One quad of a strip, counter-clockwise for clipping, plus what maps a point in it to a station.
 struct Quad { std::vector<Point> ccw; Point l0, l1, r0, r1; double start{}, length{}; Point lo, hi; };
@@ -175,8 +144,13 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
             // no longer puts a waiting bar on the normal at its authored runtime station.
             // Authoring stations stay on base; locate the bar on the same lane path as the car.
             const auto found=std::find_if(n.connectors.begin(),n.connectors.end(),[&](const auto& c){return c.id==point.path.connectorId;});
-            if(found==n.connectors.end() || !strip->equation)return std::nullopt;
-            ConnectorPath path{"",{},{},{},strip->equation};
+            if(found==n.connectors.end())return std::nullopt;
+            const auto paths=connectorPaths(n,*found);
+            const auto selected=std::find_if(paths.begin(),paths.end(),[&](const auto& path){
+                return path.from.laneId==point.path.fromLaneId && path.to.laneId==point.path.toLaneId;
+            });
+            if(selected==paths.end())return std::nullopt;
+            const auto& path=*selected;
             const double station=connectorRuntimeStation(*found,path,point.station);
             const auto origin=connectorPathPoint(path,station);
             const auto u=connectorPathDirection(path,station);
@@ -208,7 +182,7 @@ std::optional<std::pair<Point, Point>> waitingLineBar(const Network& n, const Co
 // whose status says why (none / unsupported / unresolved).
 std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
     SurfaceOverlap failed;
-    const auto a = stripOf(n, first, true), b = stripOf(n, second, true);
+    const auto a = stripOf(n, first), b = stripOf(n, second);
     if (!a || !b) return {failed};
     failed.status = SurfaceOverlap::Status::unsupported;
     try {
@@ -222,8 +196,8 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
                 if (piece.size() < 3 || area(piece) < kMinOverlapArea) continue;
                 StationInterval sa{INFINITY, -INFINITY}, sb{INFINITY, -INFINITY};
                 for (const auto& p : piece) {
-                    const double u = a->connector ? connectorDrawingStation(*a->connector,stationIn(x,p)) : stationIn(x,p);
-                    const double v = b->connector ? connectorDrawingStation(*b->connector,stationIn(y,p)) : stationIn(y,p);
+                    const double u = stationIn(x,p);
+                    const double v = stationIn(y,p);
                     sa = {std::min(sa.from, u), std::max(sa.to, u)};
                     sb = {std::min(sb.from, v), std::max(sb.to, v)};
                 }
@@ -256,7 +230,7 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
 }
 SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
     SurfaceOverlap result;
-    const auto a = stripOf(n, first, true), b = stripOf(n, second, true);
+    const auto a = stripOf(n, first), b = stripOf(n, second);
     if (!a || !b) return result;
     result.status = SurfaceOverlap::Status::unsupported;
     try {
@@ -272,8 +246,8 @@ SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, con
                 // The station at each corner bounds the piece: a cross-section is a straight line,
                 // so the extreme cross-sections of a convex piece pass through its corners.
                 for (const auto& p : piece) {
-                    const double u = a->connector ? connectorDrawingStation(*a->connector,stationIn(x,p)) : stationIn(x,p);
-                    const double v = b->connector ? connectorDrawingStation(*b->connector,stationIn(y,p)) : stationIn(y,p);
+                    const double u = stationIn(x,p);
+                    const double v = stationIn(y,p);
                     sa = {std::min(sa.from, u), std::max(sa.to, u)};
                     sb = {std::min(sb.from, v), std::max(sb.to, v)};
                 }

@@ -33,11 +33,11 @@ why nothing was created. Esc and Cancel leave the document and history unchanged
 
 A connector stores a base polyline and source/target lane counts. Its lane paths are
 derived in monotone order, with stable IDs: the first uses the connector ID and subsequent paths use `id/lane-2`, `id/lane-3`, etc. Routes and signal heads can reference those paths.
-Runtime paths evaluate the existing single cubic Bézier directly from each mapped pair
-of Link lane attachments and tangents (D107). Lengths integrate the equation, not drawing
-chords. Intermediate points and interior drags edit the drawing only; Connector widths do
-not change the equation. Schema-17 control values are retained and explicitly mapped to
-equation stations; their old physical positions are not promised.
+Runtime paths follow the centre between adjacent painted lane boundaries (D114). Terminal
+points join the named Link lane centres. Intermediate-point edits and lane widths change
+these paths, their metre lengths and control positions; the default Bézier only generates
+the initial drawing. Zero points and Reset straight produce straight driving legs.
+Stored control stations map from the authored geometry to the same lane path used by vehicles.
 Unequal counts pair lane for lane over the narrower end, with at most one lane added or dropped on each side, so the counts differ by at most 2 (M3.2.9a, D73). For a one-lane difference
 `laneChangeSide` (schema 17, `"left"`/`"right"`, the driver's view; the Inspector's "Lane change side", M3.2.9c) picks the side, absent = kerb side; that lane is the one drawn tapering. Lane tabs stop at a two-lane difference. A Connector asked for across a larger difference (a 2-lane Link dragged onto a 5-lane one) is created narrowed to it: the wider end gets `narrower + 2` lanes, centred on the lane the drag ended on (M3.2.9d, D75). Ranges are limited by the existing lanes, at most 12 per end.
 
@@ -54,8 +54,8 @@ Drag outward to add lanes and inward to remove them; the road geometry previews 
 during the drag. One release is one undo entry. Esc cancels. Each tab changes
 its own edge, leaving the opposite edge fixed. The first-side handles add/remove lanes
 before the current first lane; the other handles change the last lane. Surviving lane
-IDs and positions stay fixed, including on curved Links. Connector lane pairs retain their references; their runtime curves are re-derived from the
-new Link attachments and directions (D107). Unequal ranges can intentionally change lane mappings.
+IDs and positions stay fixed, including on curved Links. Connector lane pairs retain their references; their runtime lane centres are re-derived from the
+new painted rails and Link attachments (D114). Unequal ranges can intentionally change lane mappings.
 Properties count edits and downstream pocket creation expand the last-lane side.
 
 ## Connector shape: intermediate points and the mouth
@@ -64,8 +64,8 @@ The Connector drawing stores its two attachments and a few
 **intermediate points**, joined by **straight legs and mitered at each point**, exactly as a Link
 is. It is not smoothed — a Connector with two intermediate points is three straight legs with a
 corner at each one. The count decides how closely the drawing polygon follows the turn,
-in Properties → Connectors. This display contract is separate from the continuous runtime
-equation: 0, 3 or 40 points produce the same driving path for the same lane attachments.
+in Properties → Connectors. Runtime motion follows the resulting lane-centre legs too;
+changing the shape or point count can change travel lengths and times.
 
 Changing the count never re-derives the default curve; `Reset curve` is the button for that.
 Raising it splits the longest leg each time, so every point already there survives and the drawn
@@ -86,8 +86,8 @@ by its blend weight (D78); onto other lanes, or where a kept end leg would run a
 (the old wrong-way elbow), it rebuilds the turn at its point count. One undoable edit either way. Moving a Link still follows the separate world-position/deletion contract described
 above. Merely opening a file does not regenerate any authored curve.
 
-Interior points are editable; dragging one moves that drawing corner. It does not modify
-the runtime equation. The Inspector tooltip makes this distinction explicit. Reset curve to
+Interior points are editable; dragging one moves that corner, its derived lane centres,
+vehicle paths and control positions together. The Inspector tooltip describes this behaviour. Reset curve to
 lane directions lays the points along a cubic. Each control point reaches `(2/3)·chord·tan(α/2)/sin(α)`, where α is the angle
 between **that end's** lane direction and the chord — the cubic that stands in for a circular
 arc leaving at that angle. It is `chord/3` as α tends to zero, the constant every turn used to

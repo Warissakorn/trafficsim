@@ -67,11 +67,12 @@ is separate from the editor project codec; see
 
 Coordinates are planar Cartesian metres with positive Y upwards. Geographic projection
 and coordinate-system metadata remain outside the current contract. Runtime Link geometry
-uses mitered lane offsets (`offsetGeometry`, D23). Connector motion evaluates the direct
-cubic equation from mapped lane attachments/tangents (D107), with integrated arc length;
-intermediate drawing points and Connector widths do not define that motion. Display paint
-can differ from the driving curve. See [Connector geometry](CONNECTOR_FOUR_POINT_MOUTH.md)
-and [vehicle pose](VEHICLE_POSE.md) for the separate drawing/display contracts.
+uses mitered lane offsets (`offsetGeometry`, D23). Connector motion follows adjacent
+painted-rail midpoints with named lane-centre attachments at both ends (D114). Lengths and
+stations are metres on that derived lane path; interior edits and widths can change motion.
+The compiler, canvas, heads and right-of-way mappings share these paths; conflict coverage
+uses the same painted rails. See [Connector geometry](CONNECTOR_FOUR_POINT_MOUTH.md)
+and [vehicle pose](VEHICLE_POSE.md).
 
 Driving side changes lane ordering and offsets. Connector endpoints must match their
 referenced lane attachment positions within 0.01 m; attachments may be at an interior

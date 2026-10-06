@@ -29,8 +29,20 @@ bool sharedMouth(const ControlPathRef& a,const Mouth& ma,const ControlPathRef& b
         return (same(ma.from,ma.fromStation,mb.from,mb.fromStation) && at(o.first,0) && at(o.second,0)) ||
                (same(ma.to,ma.toStation,mb.to,mb.toStation) && at(o.first,ma.length) && at(o.second,mb.length));
     const auto joins=[](const Mouth& c,const ControlPathRef& l,StationInterval ci,StationInterval li) {
-        return (c.from.linkId==l.linkId && c.from.laneId==l.laneId && at(ci,0) && at(li,c.fromStation)) ||
-               (c.to.linkId==l.linkId && c.to.laneId==l.laneId && at(ci,c.length) && at(li,c.toStation));
+        // P1-P4 cuts can meet the named Link lane before/after its attachment station.
+        // A measured piece touching this Connector's terminal cross-section is its
+        // mouth on that lane; a separate interior crossing remains a crossing.
+        const auto& g=c.connector->geometry;
+        if(g.size()<2)return false;
+        const double firstLeg=std::hypot(g[1].x-g[0].x,g[1].y-g[0].y);
+        const double lastLeg=std::hypot(g.back().x-g[g.size()-2].x,g.back().y-g[g.size()-2].y);
+        // At a finite Link end, a longitudinal mouth cut can extend beyond the Link.
+        // Its overlap then ends before the Connector terminal, but still reaches the
+        // named attachment on the Link and lies wholly on the terminal Connector leg.
+        const bool source=at(ci,0) || (ci.to<=firstLeg+kMouthStationTolerance && at(li,c.fromStation));
+        const bool target=at(ci,c.length) || (ci.from>=c.length-lastLeg-kMouthStationTolerance && at(li,c.toStation));
+        return (c.from.linkId==l.linkId && c.from.laneId==l.laneId && source) ||
+               (c.to.linkId==l.linkId && c.to.laneId==l.laneId && target);
     };
     return ma.connector && !mb.connector?joins(ma,b,o.first,o.second):
            mb.connector && !ma.connector?joins(mb,a,o.second,o.first):false;

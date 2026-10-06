@@ -258,8 +258,8 @@
       "conflictAreas": [
         {
           "first": {
-            "entryStation": 7.333606950467372,
-            "exitStation": 19.08162228892412,
+            "entryStation": 7.5792212653785525,
+            "exitStation": 19.45769068088689,
             "path": {
               "connectorId": "connector-7",
               "fromLaneId": "lane-6",
@@ -272,8 +272,8 @@
           "name": "Minor crosses eastbound",
           "priority": "firstYields",
           "second": {
-            "entryStation": 137.62761792691003,
-            "exitStation": 149.30784068363778,
+            "entryStation": 137.23873476704452,
+            "exitStation": 149.1232224375268,
             "path": {
               "laneId": "lane-2",
               "linkId": "link-1"
@@ -283,7 +283,7 @@
         },
         {
           "first": {
-            "entryStation": 26.20432066149186,
+            "entryStation": 26.2272604864502,
             "exitStation": 27.2272604864502,
             "path": {
               "connectorId": "connector-7",
@@ -308,7 +308,7 @@
         },
         {
           "first": {
-            "entryStation": 23.941102628022982,
+            "entryStation": 24.013305159865943,
             "exitStation": 25.013305159865943,
             "path": {
               "connectorId": "connector-8",
@@ -385,7 +385,7 @@
               "fromLaneId": "lane-6",
               "toLaneId": "lane-4"
             },
-            "station": 6.305626599793946
+            "station": 6.5792212653785525
           }
         },
         {
@@ -396,7 +396,7 @@
               "laneId": "lane-2",
               "linkId": "link-1"
             },
-            "station": 136.62761792691003
+            "station": 136.23873476704452
           }
         },
         {
@@ -419,7 +419,7 @@
               "fromLaneId": "lane-6",
               "toLaneId": "lane-4"
             },
-            "station": 26.20432066149186
+            "station": 26.2272604864502
           }
         },
         {
@@ -442,7 +442,7 @@
               "fromLaneId": "lane-6",
               "toLaneId": "lane-2"
             },
-            "station": 23.941102628022982
+            "station": 24.013305159865943
           }
         }
       ]
