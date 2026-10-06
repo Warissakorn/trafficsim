@@ -19,6 +19,8 @@ headway as selected-type throughput; original ranks/predecessors remain intact.
 M3.3.1b2a captures parsed-byte project/catalog/queue hashes and supports positioned
 route recognition on identical physical prefixes (D123). Diversions suppress raw
 old-head crossing inference; see [evidence](evidence/discharge-provenance.md).
+The checkout hash regression has explicit LF/CRLF fixtures; confirm this head's
+native Linux/Windows jobs before advancing.
 Next do **M3.3.1b2b passage completion**: reconstruct lateral changes and insertion-
 tick source crossings with explicit event/snapshot contracts and fixtures. Keep
 ambiguous cases unavailable; BA05 remains open until those cases are demonstrated

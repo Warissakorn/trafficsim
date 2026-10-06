@@ -2,6 +2,8 @@
 #include "../src/project/input_manifest.hpp"
 #include "../src/project/run.hpp"
 #include "../src/project/evaluation.hpp"
+#include <fstream>
+#include <iterator>
 using namespace trafficsim;
 
 TEST(provenance, sha256_known_answers_and_multiblock_padding) {
@@ -25,6 +27,9 @@ TEST(provenance, stable_logical_order_repeat_count_and_changed_read_guard) {
 TEST(provenance, exact_project_bytes_and_catalog_reads_preserve_compilation) {
     InputManifest m;
     const auto file=test::root()/"data/projects/four-leg-signalised.traffic.json";
+    std::ifstream stream(file,std::ios::binary);CHECK(stream.is_open());
+    const std::string bytes{std::istreambuf_iterator<char>(stream),std::istreambuf_iterator<char>()};
+    CHECK(!stream.bad() && !bytes.empty());
     const auto document=parseDocument(readInputJson(file,"project",&m));
     const auto measured=compileDocument(document,test::root()/"data",&m);
     const auto original=compileDocument(document,test::root()/"data");
@@ -44,11 +49,39 @@ TEST(provenance, exact_project_bytes_and_catalog_reads_preserve_compilation) {
     CHECK(spec.queue.maxGap>0);const auto j=m.json();bool project=false,queue=false,types=false,behaviour=false;
     for(const auto& e:j["files"]) {
         const auto name=e["logicalPath"].get<std::string>();
-        if(name=="project") {project=true;CHECK(e["sha256"]=="3b0eb4450904ed66ef6f698b24280f7318a6031d6423dc60e16a2ba11542c016");}
+        if(name=="project") {
+            project=true;CHECK(e["sha256"]==inputSha256(bytes));CHECK(e["bytes"]==bytes.size());
+        }
         if(name=="evaluation/queue-counter.json")queue=true;
         types|=name.starts_with("catalog/vehicle-types/");behaviour|=name.starts_with("catalog/driver-behaviour/");
     }
     CHECK(project && queue && types && behaviour);
+}
+TEST(provenance, equivalent_json_retains_distinct_lf_and_crlf_bytes) {
+    const std::string lf="{\n  \"value\": 42\n}\n",crlf="{\r\n  \"value\": 42\r\n}\r\n";
+    CHECK(Json::parse(lf)==Json::parse(crlf));CHECK(lf.size()==18 && crlf.size()==21);
+    const auto directory=std::filesystem::temp_directory_path()/"trafficsim-input-line-endings";
+    std::filesystem::create_directories(directory);
+    struct Cleanup {
+        std::filesystem::path path;
+        ~Cleanup() {std::error_code error;std::filesystem::remove_all(path,error);}
+    } cleanup{directory};
+    const auto file=directory/"input.json";
+    const auto write=[&](const std::string& bytes) {
+        std::ofstream stream(file,std::ios::binary);CHECK(stream.is_open());
+        stream.write(bytes.data(),static_cast<std::streamsize>(bytes.size()));
+        stream.close();CHECK(!stream.fail());
+    };
+    write(lf);InputManifest a;const auto parsed=readInputJson(file,"project",&a);
+    const auto first=a.json()["files"][0];CHECK(first["bytes"]==18);
+    // Independent hashlib answers: checkout line endings must never be normalized.
+    CHECK(first["sha256"]=="4c7433d86dcfac84280ccbf1704e4fb540e511085a4fd0bd45f28b85e3400163");
+    write(crlf);InputManifest b;CHECK(readInputJson(file,"project",&b)==parsed);
+    const auto second=b.json()["files"][0];CHECK(second["bytes"]==21);
+    CHECK(second["sha256"]=="68641a2550477f0ea086f3bad36f9ec5cb700ffaa6e1bccc6ec1198960967aff");
+    CHECK(first["sha256"]!=second["sha256"]);
+    test::throws([&]{readInputJson(file,"project",&a);},"Input changed");
+    test::throws([&]{a.validate();},"Input changed");
 }
 TEST(provenance, optional_fallbacks_are_reported_and_deduplicated) {
     InputManifest m;m.fallback("catalog/priority-rules");m.fallback("catalog/priority-rules");

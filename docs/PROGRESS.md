@@ -23,6 +23,11 @@ reference fixtures; seeded CLI/hash parity and guards pass (see evidence). Paren
 native CI; the candidate's native/desktop CI is separate. CMake/Qt are absent locally.
 No engine/schema/frozen data changed; no owner or calibration gate closes.
 
+Follow-up: workflow 457 passed Linux but both Windows jobs failed the LF-only fixture hash.
+The test now reads actual checkout bytes; controlled LF/CRLF JSON retains distinct hashes.
+The old assertion fails on a CRLF copy; the corrected suite passes 73 Linux tests and
+7 CRLF-copy provenance tests. See evidence; fresh native Windows CI remains required.
+
 ---
 
 ## 2026-10-06 — Declared discharge windows and type selection (D122)

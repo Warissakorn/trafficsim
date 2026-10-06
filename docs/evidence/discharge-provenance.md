@@ -39,7 +39,7 @@ Fixture SHA-256:
 - `tests/discharge_tests.cpp`:
   `a0833f9a57cc09df6c0e08889fbce0f906f4addc758277c0eec658c88d218a44`
 - `tests/input_manifest_tests.cpp`:
-  `b03a6954a4b49ef345a7c3ed2fd5a2844b04a5aba46f19e8093185428d8a55f0`
+  `236219672feb7c7263838fe44219ab0639d77fe0fb7ab4825a5fc2a6ba7b2a25` (after checkout regression correction)
 
 Directly compile the CMake-listed core/model/eval/project sources and test files
 `main`, `discharge`, `input_manifest`, `core`, `project`, `reference`, `movement`.
@@ -72,3 +72,25 @@ The unchanged project/queue input hashes are retained in
 architecture, file-size and whitespace guards passed before publishing.
 Current candidate native Linux/Windows CI remains independent. No owner,
 empirical calibration or BA05 gate is closed by these observations.
+
+## Checkout line-ending regression correction — 2026-10-06
+
+[Native workflow 457](https://github.com/Warissakorn/trafficsim/actions/runs/37461264965)
+passed all three Linux jobs; Windows core and desktop failed the project digest
+assertion. It assumed the checked-out project retained LF bytes. Copy `data/` to a
+scratch root, change only that project's LF to CRLF, compile the original provenance
+tests against that root using the same flags and existing production objects:
+**5 pass, 1 fails** at the same assertion. No tracked input is modified.
+
+The corrected project test compares the manifest digest and byte count against
+an independent binary read of the actual checkout. SHA-256 known-answer tests stay.
+A seventh provenance test writes equivalent LF and CRLF JSON in binary mode,
+checks identical parsed values but distinct independent Python hashlib digests
+and byte counts (18/21), and verifies repeated-read change rejection stays sticky.
+No production normalization, hashing, loading, engine or frozen input is changed.
+
+Recompile that test object, retaining unchanged GCC/Linux production objects.
+The ordinary checkout passes **73/73** tests in the six existing groups; the CRLF
+copy passes **7/7** provenance tests. Registered groups and repository guards pass.
+This repeats the failed checkout condition on Linux, not an MSVC desktop run;
+fresh candidate Linux/Windows CI remains separate. BA05 and owner/M0/M6 stay open.
