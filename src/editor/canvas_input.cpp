@@ -13,7 +13,8 @@ void EditorCanvas::mousePressEvent(QMouseEvent* e) {
     if(creating_ && e->button()==Qt::LeftButton) {
         draft_.back()=world(e->pos());draft_.push_back(draft_.back());redraw();return;
     }
-    // ONE rule in every tool (D84): a left click selects and never changes the network;
+    // D116: Route has an explicit click-start/hover/click-finish gesture. Other tools
+    // keep D84: a left click selects and never changes the network;
     // Ctrl+right-click or Ctrl+right-drag creates or changes, as Vissim adds objects. The
     // modifier is what keeps a stray click from authoring something.
     if(e->button()==Qt::RightButton && (e->modifiers()&Qt::ControlModifier)) {
@@ -275,7 +276,7 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* e) {
 void EditorCanvas::mouseDoubleClickEvent(QMouseEvent* e) {
     if(e->button()!=Qt::LeftButton) return;
     if(e->modifiers()&Qt::AltModifier)return;
-    if(tool_==Tool::route) { commitRouteDraft(); return; }
+    if(tool_==Tool::route) return; // the preceding destination click already committed once
     if(tool_!=Tool::select) return;
     cancel();
     insertVertex(world(e->pos(),false));

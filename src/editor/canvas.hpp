@@ -5,6 +5,7 @@
 #include "../model/network/right_of_way.hpp"
 #include "rear_axle_pose.hpp"
 #include "lane_change_pose.hpp"
+#include "road_crossbar.hpp"
 #include <QGraphicsView>
 #include <QPainterPath>
 #include <functional>
@@ -67,6 +68,9 @@ public:
     std::function<void(std::vector<std::string>)> routeDraftCommitted;
     std::function<void(std::string)> inputPlaced;
     const std::vector<std::string>& routeDraft() const { return routeDraft_; }
+    const std::vector<std::string>& routePreview() const { return routePreview_; }
+    std::function<void()> routeDraftChanged;
+    void setDemandLabels(QString rate, QString periods) { inputRateLabel_=std::move(rate); inputPeriodsLabel_=std::move(periods); redraw(); }
     void commitRouteDraft();
     void dropLastRouteSegment();
     // Which route is drawn on the canvas. The shell owns table selection, so it says.
@@ -172,7 +176,7 @@ private:
     bool counterPress(QMouseEvent*);
     std::optional<MeasurementLine> counterLineAt(Point) const;
     void drawCounters();
-    void drawRouteArrows(const std::vector<Point>&, QColor);
+    void drawRouteOverlay(const std::vector<std::string>&, const std::string& id, bool preview);
     std::string objectAt(Point) const;
     bool isLink(const std::string& objectId) const;
     std::vector<std::string> routeDraftWith(const std::string& target) const;
@@ -181,9 +185,11 @@ private:
     void clearRouteDraft();
     void reject();
     std::vector<std::string> routeDraft_;
+    std::vector<std::string> routePreview_;
+    bool routeTracing_{};
+    QString inputRateLabel_, inputPeriodsLabel_;
     std::string hoverSegment_, highlightedRoute_;
     bool hoverReachable_{};
-    Point hoverPoint_{};
     // Connector geometry is the most expensive thing a frame does, and a frame recomputed all
     // of it even when nothing had moved. What `connectorPaths` and `connectorBoundaries` read is
     // exactly the Connector, the two Links it names and the driving side -- nothing else in the
@@ -231,6 +237,7 @@ private:
     std::vector<QGraphicsItem*> runItems_;
     std::map<std::string,int> runLevels_;
     std::map<std::string,std::string> runStyles_;
+    std::map<std::string,RoadCrossbar> runHeadBars_;
     std::map<std::uint64_t,LaneChangePath> runLaneChangePaths_;
     SimState runFrame_;
     std::map<std::string,std::vector<Point>> runGeometry_;

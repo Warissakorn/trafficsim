@@ -10,19 +10,6 @@ namespace trafficsim {
 // A Signal head IS its stop line: the runtime holds a vehicle at the head's station (the
 // clamp in core/simulation.cpp), so the canvas draws the line there, across the lane it holds,
 // and a click puts it exactly where the pointer is -- on a Link lane or a Connector path.
-namespace {
-std::pair<Point,Point> barEnds(const std::vector<Point>& g, double station, double width,const std::optional<ConnectorEquation>& curve) {
-    const double length = curve?curve->arcStations.back():polylineLength(g);
-    const double s = std::clamp(station, 0.0, length);
-    const auto point=[&](double station){return curve?equationPoint(*curve,equationParameter(*curve,station)):pointAlong(g,station);};
-    const auto a=point(std::max(0.,s-.05)),b=point(std::min(length,s+.05)),at=point(s);
-    const auto tangent=curve?equationDerivative(*curve,equationParameter(*curve,s)):Point{b.x-a.x,b.y-a.y};
-    double dx=tangent.x,dy=tangent.y;const double n=std::hypot(dx,dy);
-    if (n <= 0) { dx = 1; dy = 0; } else { dx /= n; dy /= n; }
-    const double h = width / 2;
-    return {{at.x - dy * h, at.y + dx * h}, {at.x + dy * h, at.y - dx * h}};
-}
-}
 std::optional<EditorCanvas::HeadGeometry> EditorCanvas::headGeometry(const NetworkSignalHead& head) const {
     if (!document_) return {};
     const auto& n = document_->network;
@@ -101,45 +88,43 @@ void EditorCanvas::finishHeadDrag(QPoint position) {
     if (drag.moved && std::abs(drag.station - drag.original) > 1e-9 && headMoved) headMoved(drag.id, drag.station);
 }
 void EditorCanvas::drawHeads() {
-    if (!document_) return;
-    const auto bar = [&](const std::vector<Point>& g, double station, double width, int level, QColor fill, bool dashed,const std::optional<ConnectorEquation>& curve) {
-        const auto [a,b]=barEnds(g,station,width,curve);
-        QPen under(editorDesign::role(QPalette::Text), 5); under.setCosmetic(true); under.setCapStyle(Qt::FlatCap);
-        QPen over(fill, 3, dashed ? Qt::DashLine : Qt::SolidLine); over.setCosmetic(true); over.setCapStyle(Qt::FlatCap);
-        if (!dashed) scene_.addLine(a.x, a.y, b.x, b.y, under)->setZValue(level * 100. + 10);
-        auto* line = scene_.addLine(a.x, a.y, b.x, b.y, over); line->setZValue(level * 100. + 10.5);
-        line->setData(0, QStringLiteral("stop-line"));
+    if(!document_ || runFrame_.scenario)return;
+    const double scale=std::abs(transform().m11());
+    const auto draw=[&](const NetworkSignalHead& head,QColor colour,bool dashed) {
+        const auto bar=signalCrossbar(document_->network,head);
+        if(!bar || !levelVisible(bar->level))return;
+        if(!dashed && isSelected(head.id)) {
+            QPen halo(canvasStyle::selection(),editorDesign::crossbarPixels+4);halo.setCosmetic(true);halo.setCapStyle(Qt::FlatCap);
+            scene_.addLine(bar->first.x,bar->first.y,bar->second.x,bar->second.y,halo)->setZValue(bar->level*100.+10);
+        } else if(!dashed) {
+            QPen outline(editorDesign::role(QPalette::Text),editorDesign::crossbarPixels+2);
+            outline.setCosmetic(true);outline.setCapStyle(Qt::FlatCap);
+            scene_.addLine(bar->first.x,bar->first.y,bar->second.x,bar->second.y,outline)->setZValue(bar->level*100.+10);
+        }
+        auto* line=new RoadCrossbarItem(*bar,colour,scale,dashed);scene_.addItem(line);
+        line->setZValue(bar->level*100.+10.5);line->setData(0,QStringLiteral("stop-line"));
+        line->setData(1,QString::fromStdString(head.id));
     };
-    for (const auto& head : document_->network.signalHeads) {
-        const auto geometry = headGeometry(head);
-        if (!geometry || geometry->points.size() < 2 || !levelVisible(geometry->level)) continue;
-        const bool dragged = headDrag_ && headDrag_->id == head.id && headDrag_->moved;
-        const double station = dragged ? headDrag_->station : head.position;
-        bar(geometry->points, station, geometry->width, geometry->level,
-            isSelected(head.id) ? canvasStyle::selection() : head.id==hoverObject_ ? canvasStyle::hover() : editorDesign::role(QPalette::Base), false,geometry->equation);
-        const auto p=geometry->equation?equationPoint(*geometry->equation,equationParameter(*geometry->equation,station)):pointAlong(geometry->points,station); const double r = 3 / std::abs(transform().m11());
-        scene_.addEllipse(p.x - r, p.y - r, 2 * r, 2 * r, QPen(editorDesign::role(QPalette::Dark)), QBrush(canvasStyle::error()))
-            ->setZValue(geometry->level * 100. + 11);
+    for(auto head:document_->network.signalHeads) {
+        if(headDrag_ && headDrag_->id==head.id && headDrag_->moved)head.position=headDrag_->station;
+        draw(head,head.id==hoverObject_?canvasStyle::hover():editorDesign::role(QPalette::Base),false);
     }
-    if (hoverHead_ && tool_ == Tool::head)
-        bar(hoverHead_->slot.geometry, hoverHead_->station, hoverHead_->slot.width, hoverHead_->slot.level, canvasStyle::hover(), true,hoverHead_->slot.equation);
+    if(hoverHead_ && tool_==Tool::head) {
+        NetworkSignalHead preview;preview.lane=hoverHead_->slot.lane;
+        preview.connectorId=hoverHead_->slot.connectorId;preview.position=hoverHead_->station;
+        draw(preview,canvasStyle::hover(),true);
+    }
 }
 std::optional<std::pair<Point,Point>> EditorCanvas::headBar(const NetworkSignalHead& head) const {
-    const auto geometry = headGeometry(head);
-    if (!geometry || geometry->points.size() < 2) return std::nullopt;
-    return barEnds(geometry->points,head.position,geometry->width,geometry->equation);
+    if(!document_)return {};
+    const auto bar=signalCrossbar(document_->network,head);
+    if(!bar)return {};
+    return std::pair{bar->first,bar->second};
 }
 QPainterPath EditorCanvas::headShape(const NetworkSignalHead& head) const {
-    QPainterPath shape;
-    const auto bar = headBar(head);
-    if (!bar) return shape;
-    const auto [a, b] = *bar;
-    // Wide enough to hit at any zoom: four pixels either side of the line.
-    const double pad = 4 / std::abs(transform().m11());
-    const double dx = b.x - a.x, dy = b.y - a.y, n = std::max(1e-9, std::hypot(dx, dy));
-    const double ox = -dy / n * pad, oy = dx / n * pad;
-    shape.moveTo(a.x + ox, a.y + oy); shape.lineTo(b.x + ox, b.y + oy);
-    shape.lineTo(b.x - ox, b.y - oy); shape.lineTo(a.x - ox, a.y - oy); shape.closeSubpath();
-    return shape;
+    if(!document_)return {};
+    const auto bar=signalCrossbar(document_->network,head);
+    if(!bar)return {};
+    return RoadCrossbarItem(*bar,canvasStyle::active(),std::abs(transform().m11())).shape();
 }
 }

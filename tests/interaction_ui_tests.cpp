@@ -90,7 +90,8 @@ void selectionWorkflow(EditorCanvas& c) {
     }
     require(rejections==0 && clears>0,"Empty-space navigation reported a creation error");
     c.setTool(EditorCanvas::Tool::route);click(c,{-65,0});
-    require(c.routeDraft().empty() && c.selected()=="a","A left click in the route tool did more than select");
+    require(c.routeDraft()==std::vector<std::string>{"a"},"A Route click did not start tracing");
+    c.cancel();
     author(c,{-65,0});
     require(c.routeDraft()==std::vector<std::string>{"a"},"Route draft did not start");
     click(c,{-50,-30});QTest::keyClick(&c,Qt::Key_Tab);

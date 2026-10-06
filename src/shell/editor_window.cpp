@@ -210,6 +210,7 @@ void EditorWindow::translate() {
             if(auto* item=table->horizontalHeaderItem(column))item->setText(item->text().toUpper());
     }
     translateDemand(); translateResults(); translateConflicts(); translateCounters(); translatePalette(); refreshToolHint();
+    canvas_->setDemandLabels(text("editorInputRateUnit"),text("editorInputCanvasPeriods"));
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     language_->setAccessibleName(text("language"));
     texts_.at("editorScopeCompact")->setToolTip(text("editorScope"));

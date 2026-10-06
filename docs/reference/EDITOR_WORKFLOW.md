@@ -22,7 +22,7 @@ Escape first cancels an unfinished gesture/draft; when idle, it clears selection
 clicks in any authoring tool clear selection while keeping an unfinished
 multi-click draft, without showing an error. Enter commits and Escape cancels those drafts.
 Plain right/middle drag remains pan; Ctrl+right-click or Ctrl+right-drag creates or changes
-in every tool, and a plain left click never authors (D84; Measure/Calibrate points excepted). Shift-click toggles, Ctrl-click adds an unselected object, and
+in every tool, and a plain left click never authors outside Routes (D116) and Measure/Calibrate. Shift-click toggles, Ctrl-click adds an unselected object, and
 Ctrl-drag of a selected object copies it, retaining the D30 convention.
 
 ## History
@@ -94,19 +94,34 @@ a later release cannot commit it. Existing copy, move and vertex gestures keep t
 
 ## Draw a route and a vehicle input
 
+Routes use an explicit trace gesture (D116, owner request):
+
 | Gesture | Effect |
 |---|---|
-| `R`, then `Ctrl`+right-click a link | Starts a route draft there, covering every lane of it |
-| `Ctrl`+right-click a further link or connector | Appends the whole chain leading to it; refused, with a red flash, when none leads there or two do |
-| `Backspace` | Removes the last segment of the draft |
-| `Enter` or double-click | Stores the route — one History entry, the same command the dialog uses |
-| `Esc`, or moving focus off the canvas | Cancels the draft; nothing is stored |
-| `V`, then `Ctrl`+right-click a link | Places a vehicle input on the route starting there, or offers to draw one. Its volume is the link total, split across the lanes the route reaches |
-| Right-click (without dragging) a drawn route or input | Edit, delete, or show it in its table |
+| `R`, then click a road | Starts an unsaved route at the whole Link or Connector |
+| Move over connected roads | Previews the actual path; passing a branch remembers that choice |
+| Move back onto an earlier route object | Trims the preview back to that object |
+| Click the destination road | Saves the complete preview as one undoable edit |
+| `Backspace` | Removes the last object from the trace |
+| `Esc`, tool/level change or focus loss | Cancels without storing anything |
+| `Ctrl`+right-click | Retains the earlier start/append gesture; `Enter` saves it |
+| `V`, then `Ctrl`+right-click a Link | Opens a vehicle input on that Link, with or without a route |
+| Right-click a stored route or input | Edit, delete, or show in its table |
 
-The draft and the selected route draw as moving dashes with direction arrows, the hovered
-lane is haloed, and each input draws a chevron with its volume. That is all paint state: it
-is not saved, and no measured number depends on it.
+An unreachable or equally ambiguous path is rejected. Pass over the desired intermediate
+branch to disambiguate it; the gesture does not guess a turn. Hover never mutates the document.
+Double-click adds no second commit. Other authoring tools retain D84's Ctrl+right gesture.
+
+Route start/end, vehicle inputs and signal heads share three-pixel cosmetic crossbars with
+wider hit regions. Bars intersect the road normal with the actual lane rails. A route's
+static blue surface tint follows its compiled spans, including mid-Link arrivals; it has no
+straight rubber band, moving dashes or repeated arrows. The start/end are the existing route
+object boundaries, not new arbitrary stations. Only the selected stored route is tinted.
+Inputs mark the served entry lanes (separate bars across non-contiguous positive lane shares),
+with a localized rate unit; interval inputs show their number of periods instead of a misleading
+instantaneous scalar. Inputs on a hidden level are hidden. Signal bars cover only their controlled
+lane. In Edit they are neutral, with a blue selection halo; Run colours the same snapshot bars
+from the real signal program. Reset restores the authored bars. None of this paint state is saved.
 
 ## Workspace and screen space
 

@@ -29,6 +29,7 @@ void EditorWindow::buildRouting() {
         }
     };
     canvas_->routeDraftCommitted=[this](const auto& segments){commitDrawnRoute(segments);};
+    canvas_->routeDraftChanged=[this]{refreshToolHint();};
     canvas_->inputPlaced=[this](const auto& link){placeInputOnLink(link);};
     canvas_->contextMenuRequested=[this](QPoint position){showDemandMenu(position);};
     // The pointer tools are gestures with no dialog to explain them, so the status bar says
@@ -42,7 +43,7 @@ void EditorWindow::buildRouting() {
 void EditorWindow::refreshToolHint() {
     if(!toolHint_)return;
     const int index=tool_->currentIndex();
-    toolHint_->setText(index==0?text("editorSelectHelp"):index==6?text("editorRouteClickHelp"):index==7?text("editorInputPlaceHelp"):index==8?text("editorHeadPlaceHelp"):index==10?text("editorCounterPlaceHelp"):QString{});
+    toolHint_->setText(index==0?text("editorSelectHelp"):index==6?text(canvas_->routeDraft().empty()?"editorRouteClickHelp":"editorRouteFinishHelp"):index==7?text("editorInputPlaceHelp"):index==8?text("editorHeadPlaceHelp"):index==10?text("editorCounterPlaceHelp"):QString{});
     toolHint_->setToolTip(toolHint_->text());
 }
 void EditorWindow::commitDrawnRoute(const std::vector<std::string>& segmentIds) {

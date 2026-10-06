@@ -63,6 +63,7 @@ void EditorCanvas::clearHover() {
     hoverObject_.clear(); hoverConflict_.clear(); hoverAutomatic_.clear(); hoverWaitingLine_.clear();
     hoverVertex_ = -1; hoverLaneKind_ = 0; hoverLaneLocation_ = -1;
     hoverSegment_.clear(); hoverHead_.reset(); connectorHover_.reset();
+    if(!routeTracing_)routePreview_=routeDraft_;
     setCursor(tool_ == Tool::select ? Qt::ArrowCursor : Qt::CrossCursor);
 }
 void EditorCanvas::updateHover(QPoint position) {
