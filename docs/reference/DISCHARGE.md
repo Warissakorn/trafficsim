@@ -13,7 +13,8 @@ of that segment, as the existing stop-line diagnostic does. Repeated-segment rou
 are outside this first slice's supported topology. Cycle Go is today's green
 transition; red or amber ends it. Records contain vehicle ID, vehicle-type ID,
 end-of-tick front-crossing time, and membership in the queue at Go. Classes are
-not assigned yet: all types participate and no PCU conversion occurs.
+not assigned yet: records retain every vehicle type; selection affects estimator
+samples only, and no PCU conversion occurs.
 
 At Go, upstream vehicles are sorted by distance to the head, then ID. The initial
 queue is the contiguous prefix below `QueueDefinition.beginSpeed`, with each gap
@@ -58,13 +59,38 @@ reason with absent numeric estimates. Consumers must display unavailable as such
 Defaults are the full run window, zero warmup, steady ranks 3–5 and startup ranks
 1–2. All defaults, timestamp convention, timestep, sample count, crossings,
 cycle completeness and reasons are emitted. Unavailable numeric fields are null.
-The C++ API supports other declared windows/ranks; CLI controls and class filters
-remain M3.3.1b. Existing top-level seed/compiler/engine-version output applies.
+CLI controls and vehicle-type selection are defined below. Future class assignment
+remains separate. Existing top-level seed/compiler/engine-version output applies.
 Study operators must retain project/catalog hashes and the exact executable
 commit/toolchain alongside that JSON; the CLI does not yet emit input hashes.
 
-This first slice does not close BA03/BA05: it retains type identity and separate
-lanes, but class filtering and complete remap/source passage tracking remain
-pending. Native/desktop CI and empirical/owner validation are separate gates.
+BA03 has type-selection/window evidence; future vehicle classes are not assigned.
+BA05 remains open: complete remap/source passage tracking is still pending. Native/desktop CI and empirical/owner validation are separate gates.
 See [delivery rows](../plans/DRIVING_BEHAVIOUR.md) and
 [local evidence](../evidence/discharge-measurement.md).
+
+## Declared controls and vehicle-type selection (M3.3.1b1)
+
+The CLI accepts `--discharge-start S`, `--discharge-end S`,
+`--discharge-warmup S`, `--discharge-steady-first N`,
+`--discharge-steady-last N`, `--discharge-startup-last N`, and repeatable
+`--discharge-type ID`. These require `--discharge --project FILE`.
+Seconds must be finite and nonnegative, ranks positive integers; scientific
+window/rank restrictions above still apply, and the end cannot exceed run duration.
+An unknown type ID rejects before the run. Empty type selection means all types.
+
+Type selection keeps the full raw crossing stream and original ranks. A steady
+sample is included only when its follower (the vehicle at rank r) has a selected
+vehicle type; its predecessor remains the actual vehicle at rank r-1, of any type.
+Skipped samples never connect nonadjacent selected vehicles into a fictitious gap.
+Report the sampled ranks and count. No selected samples means unavailable.
+`3600/h` is inverse selected-follower mean headway, not the selected type's hourly
+throughput or a new approach capacity. These IDs are current vehicle types, not
+future behavior/vehicle-class assignments, and no PCU conversion occurs.
+
+Startup uses that selected steady reference only when every vehicle in original
+startup ranks 1..k is selected. Otherwise headway can remain available while
+startup is null with `mixed_type_startup_prefix`. The JSON emits this separate
+startup reason and the selection/rate definitions. Unfiltered defaults retain the
+previous numeric results. Input-hash output and complete remap/source tracking
+remain the next measurement slice; this change does not close BA05.

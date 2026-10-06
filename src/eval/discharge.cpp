@@ -11,6 +11,7 @@ void validateDischargeSpec(const DischargeSpec& s) {
        s.windowStart<0||s.windowEnd<=s.windowStart||s.warmup<0||s.warmup>=s.windowEnd||
        s.steadyFirst<2||s.steadyLast<s.steadyFirst||s.startupLast==0||s.startupLast>=s.steadyFirst)
         throw std::invalid_argument("Invalid discharge window or rank ranges");
+    if(s.vehicleTypeIds.contains(""))throw std::invalid_argument("Empty discharge vehicle type ID");
 }
 DischargeEstimate estimateDischarge(const DischargeCycle& c,const DischargeSpec& s) {
     validateDischargeSpec(s);
@@ -31,16 +32,26 @@ DischargeEstimate estimateDischarge(const DischargeCycle& c,const DischargeSpec&
     for(std::size_t i=0;i<s.steadyLast;++i)
         if(!c.crossings[i].queuedAtGo)return unavailable("queue_not_sustained");
     double total=0;
+    std::vector<std::size_t> ranks;
     for(auto rank=s.steadyFirst;rank<=s.steadyLast;++rank) {
         const double gap=c.crossings[rank-1].time-c.crossings[rank-2].time;
         if(gap<=0)return unavailable("nonpositive_headway");
-        total+=gap;
+        if(s.vehicleTypeIds.empty()||s.vehicleTypeIds.contains(c.crossings[rank-1].vehicleTypeId)) {
+            total+=gap;ranks.push_back(rank);
+        }
     }
-    const auto n=s.steadyLast-s.steadyFirst+1;
+    const auto n=ranks.size();
+    if(n==0)return unavailable("no_matching_headways");
     const double h=total/static_cast<double>(n);
     const double rate=3600/h, startup=c.crossings[s.startupLast-1].time-c.go-s.startupLast*h;
     if(!std::isfinite(h)||!std::isfinite(rate)||!std::isfinite(startup))return unavailable("nonfinite_estimate");
-    return {{},n,h,rate,startup};
+    DischargeEstimate result{{},n,h,rate,startup,std::move(ranks),{}};
+    if(!s.vehicleTypeIds.empty())
+        for(std::size_t i=0;i<s.startupLast;++i)
+            if(!s.vehicleTypeIds.contains(c.crossings[i].vehicleTypeId)) {
+                result.startupLostTime.reset();result.startupUnavailableReason="mixed_type_startup_prefix";break;
+            }
+    return result;
 }
 
 DischargeAccumulator::DischargeAccumulator(DischargeSpec s,QueueDefinition q):spec_(s),queue_(q) {
@@ -54,6 +65,10 @@ void DischargeAccumulator::observe(const SimState& state) {
     if(tick_&&*tick_==state.tick)return;
     if(tick_&&state.tick!=*tick_+1)throw std::invalid_argument("Discharge needs consecutive snapshots");
     if(!scenario_) {
+        for(const auto& id:spec_.vehicleTypeIds)
+            if(std::none_of(state.scenario->vehicleTypes.begin(),state.scenario->vehicleTypes.end(),
+                            [&](const auto& v){return v.id==id;}))
+                throw std::invalid_argument("Unknown discharge vehicle type: "+id);
         scenario_=state.scenario;
         for(const auto& head:scenario_->signalHeads) {
             Head h; h.atRoute.assign(scenario_->routes.size(),std::numeric_limits<double>::quiet_NaN());

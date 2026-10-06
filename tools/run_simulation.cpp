@@ -1,4 +1,5 @@
 #include "../src/core/simulation.hpp"
+#include "discharge_options.hpp"
 #include "../src/project/load.hpp"
 #include "../src/project/evaluation.hpp"
 #include "../src/project/json.hpp"
@@ -12,7 +13,7 @@ using namespace trafficsim;
 // A project run steps the engine itself so the movement evaluation sees every state.
 int runProject(const std::filesystem::path& file, const std::filesystem::path& csvFile,
                const std::filesystem::path& data, std::uint32_t seed, bool laneChanges, bool segmentTimes, bool stopLines,
-               double phaseBin, bool waitCauses, bool discharge) { // phaseBin 0: no --arrival-phases
+               double phaseBin, bool waitCauses, const DischargeOptions& discharge) { // phaseBin 0: no --arrival-phases
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
     const auto document = parseDocument(Json::parse(stream));
@@ -32,9 +33,9 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     if (phaseBin > 0) phases.emplace(spec, phaseBin);
     std::optional<DeadEndWaitAccumulator> waits;
     if (waitCauses) waits.emplace(spec);
-    const DischargeSpec dischargeSpec{0, snapshot.scenario.duration, 0, 3, 5, 2};
+    const auto dischargeSpec = discharge.enabled ? discharge.forDuration(snapshot.scenario.duration) : DischargeSpec{};
     std::optional<DischargeAccumulator> release;
-    if (discharge) release.emplace(dischargeSpec, spec.queue);
+    if (discharge.enabled) release.emplace(dischargeSpec, spec.queue);
     auto state = createSimulation(snapshot.scenario, seed);
     const auto observe = [&] {
         movements.observe(state);
@@ -73,7 +74,8 @@ int main(int argc, char** argv) {
         std::uint32_t seed = 42;
         std::filesystem::path data, scenarioFile, eventsFile, projectFile, csvFile;
         bool seedSet = false, laneChanges = false, segmentTimes = false, stopLines = false;
-        bool arrivalPhases = false, waitCauses = false, discharge = false;
+        bool arrivalPhases = false, waitCauses = false;
+        DischargeOptions discharge;
         double binWidth = 10;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
@@ -91,10 +93,13 @@ int main(int argc, char** argv) {
                              "--arrival-phases adds the cycle phase of segment entries and first stops (M3.2.8c),\n"
                              "  in --phase-bin S second bins (default 10).\n"
                              "--discharge adds unvalidated lane/cycle headways and startup estimates (ranks 3-5, 1-2).\n"
+                             "  --discharge-start S --discharge-end S --discharge-warmup S (default full run, 0 warmup).\n"
+                             "  --discharge-steady-first N --discharge-steady-last N --discharge-startup-last N.\n"
+                             "  Repeat --discharge-type ID to select follower gaps at original ranks.\n"
                              "--wait-causes adds each dead-end wait's cause at its start (M3.2.8c).\n";
                 return 0;
             }
-            if (arg == "--discharge") { discharge = true; continue; }
+            if (discharge.consume(arg, i, argc, argv)) continue;
             if (arg == "--lane-changes") { laneChanges = true; continue; }
             if (arg == "--segment-times") { segmentTimes = true; continue; }
             if (arg == "--stop-lines") { stopLines = true; continue; }
@@ -127,7 +132,7 @@ int main(int argc, char** argv) {
         if (segmentTimes && projectFile.empty()) throw std::invalid_argument("--segment-times needs --project");
         if (stopLines && projectFile.empty()) throw std::invalid_argument("--stop-lines needs --project");
         if (arrivalPhases && projectFile.empty()) throw std::invalid_argument("--arrival-phases needs --project");
-        if (discharge && projectFile.empty()) throw std::invalid_argument("--discharge needs --project");
+        discharge.validateUsage(!projectFile.empty());
         if (waitCauses && projectFile.empty()) throw std::invalid_argument("--wait-causes needs --project");
         if (binWidth != 10 && !arrivalPhases) throw std::invalid_argument("--phase-bin needs --arrival-phases");
         if (!projectFile.empty()) {

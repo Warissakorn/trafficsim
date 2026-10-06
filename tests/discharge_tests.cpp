@@ -3,6 +3,7 @@
 #include "../src/core/routes.hpp"
 #include "../src/project/evaluation.hpp"
 #include <nlohmann/json.hpp>
+#include "../tools/discharge_options.hpp"
 using namespace trafficsim;
 namespace {
 DischargeSpec spec() { return {0,100,0,3,5,2}; }
@@ -122,4 +123,66 @@ TEST(discharge, timestep_metadata_initial_green_and_boundary_crossing) {
     DischargeAccumulator d(spec(),{.5,1,10}); d.observe(a);
     a.tick=1; a.time=.1; a.events={SignalEvent{.1,"head",SignalColor::red}}; d.observe(a);
     CHECK(estimateDischarge(d.report()[0],spec()).reason=="initial_partial_cycle");
+}
+
+TEST(discharge, type_filter_preserves_original_follower_gaps_and_ranks) {
+    auto s=spec(); s.vehicleTypeIds={"car"}; auto c=cycle();
+    c.crossings[2].time=8; c.crossings[3].time=11; c.crossings[4].time=15;
+    const auto r=estimateDischarge(c,s);
+    CHECK(r.reason.empty()); CHECK(r.samples==2);
+    CHECK(r.sampledRanks==std::vector<std::size_t>({3,4}));
+    test::near(*r.meanHeadway,2.75); // car follows bus at rank 3: 8-5.5, not 8-3
+    CHECK(!r.startupLostTime); CHECK(r.startupUnavailableReason=="mixed_type_startup_prefix");
+    s.vehicleTypeIds={"bus"}; const auto bus=estimateDischarge(c,s);
+    CHECK(bus.samples==1); test::near(*bus.meanHeadway,4);
+    s.vehicleTypeIds={"truck"}; CHECK(estimateDischarge(c,s).reason=="no_matching_headways");
+    s.vehicleTypeIds={"car","bus"};
+    test::near(*estimateDischarge(c,s).startupLostTime,5.5-2*(9.5/3));
+}
+TEST(discharge, filtered_json_keeps_raw_stream_and_sample_selection) {
+    auto s=spec(); s.vehicleTypeIds={"car"};
+    const auto result=dischargeJson({cycle()},s);
+    CHECK(result.contains("vehicleTypeIds"));
+    CHECK(result["vehicleTypeIds"]==Json::array({"car"}));
+    const auto row=result["cycles"][0];
+    CHECK(row["crossings"].size()==5); CHECK(row["sampledRanks"]==Json::array({3,4}));
+    CHECK(row["startupLostTimeSeconds"].is_null());
+    CHECK(row["startupUnavailableReason"]=="mixed_type_startup_prefix");
+}
+TEST(discharge, unknown_or_empty_type_filters_reject) {
+    auto s=spec(); s.vehicleTypeIds={""}; test::throws([&]{validateDischargeSpec(s);});
+    s.vehicleTypeIds={"truck"}; auto a=state(); DischargeAccumulator d(s,{.5,1,10});
+    test::throws([&]{d.observe(a);},"Unknown discharge vehicle type");
+}
+
+namespace {
+DischargeOptions options(std::vector<std::string> args) {
+    std::vector<char*> pointers; for(auto& arg:args)pointers.push_back(arg.data());
+    DischargeOptions result;
+    for(int i=0;i<static_cast<int>(args.size());++i)
+        CHECK(result.consume(args[i],i,static_cast<int>(args.size()),pointers.data()));
+    return result;
+}
+}
+TEST(discharge, cli_declared_windows_ranks_and_repeated_types) {
+    auto o=options({"--discharge","--discharge-start","5","--discharge-end","50",
+        "--discharge-warmup","10","--discharge-steady-first","4","--discharge-steady-last","7",
+        "--discharge-startup-last","3","--discharge-type","bus","--discharge-type","car"});
+    o.validateUsage(true);const auto s=o.forDuration(60);
+    CHECK(s.windowStart==5 && s.windowEnd==50 && s.warmup==10);
+    CHECK(s.steadyFirst==4 && s.steadyLast==7 && s.startupLast==3);
+    CHECK(s.vehicleTypeIds==std::set<std::string>({"bus","car"}));
+    CHECK(options({"--discharge"}).forDuration(60).windowEnd==60);
+}
+TEST(discharge, cli_invalid_or_orphan_options_reject) {
+    for(const auto bad:{"nan","inf","1junk","-1"})
+        test::throws([&]{options({"--discharge-start",bad});});
+    for(const auto bad:{"0","-1","1.5","1x","99999999999999999999999999"})
+        test::throws([&]{options({"--discharge-steady-last",bad});});
+    test::throws([&]{options({"--discharge-end"});},"Missing value");
+    test::throws([&]{options({"--discharge-type",""});});
+    test::throws([&]{options({"--discharge-start","0"}).validateUsage(true);},"need --discharge");
+    test::throws([&]{options({"--discharge"}).validateUsage(false);},"needs --project");
+    test::throws([&]{options({"--discharge","--discharge-end","61"}).forDuration(60);});
+    test::throws([&]{options({"--discharge","--discharge-start","60"}).forDuration(60);});
 }
