@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Queue discharge and startup measurement (D121)
+
+M3.3.1a adds a stdlib-only observer, pure rank estimator and CLI `--discharge` JSON.
+Lane/cycle records retain type identity and queued-at-Go membership; tracked sink
+arrivals are counted. Windows, ranks, timestep, signed startup estimates and
+unavailable reasons are explicit. StopLine output and engine code are unchanged.
+BA03 class filters and BA05 complete remap/source support remain M3.3.1b; neither
+measurement nor owner/calibration gates close. See [contract](reference/DISCHARGE.md)
+and [local test evidence](evidence/discharge-measurement.md).
+
+Validation: 10 GCC/Linux tests pass; direct full CLI link and seeded JSON parity;
+documentation, architecture and file-size guards. CMake/Ninja/Qt are absent; native/desktop
+CTest must run in CI. No frozen baseline was regenerated.
+
+---
+
 ## 2026-10-06 — Driving behaviour contract before implementation (D120)
 
 Owner authorized the staged plan following the supplied Driving Behavior design.
@@ -458,20 +474,6 @@ braking checks; source clamps 3 → 0, moving minor 21 → 21, all clamps 226 �
 Four projects × 40 seeds preserve counts/delay; two reports remain identical. Lab/M2.6
 clamps fall 19 → 1 / 858 → 837; max travel-time difference 0.002857143 s. Detailed
 [evidence](evidence/source-first-step.md) records limits. M3/M6 owner gates remain open.
-
----
-
-## 2026-10-04 — Direct Connector equation for vehicle motion (D107)
-
-Owner clarified: use the existing Bézier equation without PolyPoint driving segments.
-Runtime positions/tangents now evaluate that equation per mapped lane pair; lengths
-integrate |B'(t)| and distance inversion is bracketed. D106 midpoint guides remain drawing
-only. Point counts/interior drags cannot change the equation; retained controls map to its
-arc stations. Input metadata was registered in local 6318fe2/66282d7 before seed studies.
-Linux Release: 54/54 groups, including analytic tests and 240 curve/add/drop runs. Four
-projects × 40 seeds preserve counts but change timing; 120 stress runs pass safety checks,
-with total clamps 225 → 226 (minor 22 → 24). Frozen baselines unchanged. Methods, results,
-compatibility limits and pending Qt/owner review: [evidence](evidence/connector-equation.md).
 
 ---
 

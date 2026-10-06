@@ -6,6 +6,7 @@ acceptance records live in [plans](../plans/README.md); milestone status lives i
 
 | Document | Scope |
 |---|---|
+| [DISCHARGE.md](DISCHARGE.md) | Lane/cycle discharge and startup diagnostics, quantization and unavailable results |
 | [DRIVING_BEHAVIOUR.md](DRIVING_BEHAVIOUR.md) | Proposed class/road behavior assignment and target capability map |
 | [POSITIONED_ROUTING.md](POSITIONED_ROUTING.md) | Positioned Route recognition and schema 20 |
 | [SIMULATION.md](SIMULATION.md) | Simulation core and network model |

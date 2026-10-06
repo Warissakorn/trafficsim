@@ -269,7 +269,7 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](plans/M3_PLAN.md); next: `NEXT.md`
 
 ### M3.3 — Driving behaviour library and models
 
-**Status:** M3.3.0 contract/capability/acceptance design delivered (D120), no runtime implementation. **Scope/gates:** M3.3.1 measurement (BA01–BA05), M3.3.2a/b/c owned library/class/road assignment and prototype selection (BA06–BA20), then M3.3.3a/b W74/W99 equations/state contracts before code. [Delivery rows](plans/DRIVING_BEHAVIOUR.md) and [interface](reference/DRIVING_BEHAVIOUR.md) define evidence; native checks and owner reviews remain distinct. M0/M6 gates, D102's off state and legacy baselines remain unchanged; signals/lateral/batches retain their own milestones.
+**Status:** M3.3.0 contracts delivered (D120); M3.3.1a queue discharge/startup observer and CLI delivered (D121), no engine behavior changed. **Scope/gates:** M3.3.1b closes measurement (BA03 class filters and BA05 complete passage tracking pending; [contract](reference/DISCHARGE.md)), M3.3.2a/b/c owned library/class/road assignment and prototype selection (BA06–BA20), then M3.3.3a/b W74/W99 equations/state contracts before code. [Delivery rows](plans/DRIVING_BEHAVIOUR.md) and [interface](reference/DRIVING_BEHAVIOUR.md) define evidence; native checks and owner reviews remain distinct. M0/M6 gates, D102's off state and legacy baselines remain unchanged; signals/lateral/batches retain their own milestones.
 
 ## M4 — Signal control
 

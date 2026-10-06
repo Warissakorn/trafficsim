@@ -94,6 +94,8 @@ entry behind what you are changing, not the directory.
 - [`PROGRESS-2026-09-14.md`](PROGRESS-2026-09-14.md) — 2026-09-14
 - [`PROGRESS-2026-09-10--2026-09-15.md`](PROGRESS-2026-09-10--2026-09-15.md) — 2026-09-10 to 2026-09-15
 
+- [`PROGRESS-2026-10-04-connector-equation.md`](PROGRESS-2026-10-04-connector-equation.md) — oldest live D107 history block, moved whole 2026-10-06
+
 ## Other docs
 
 - [`MIGRATION-D15.md`](MIGRATION-D15.md) — former migration reference, including the original UI mapping and implementation horizon; retained 2026-10-05
