@@ -556,5 +556,6 @@
   "EDIT_BRANCHING_PRIORITY": "พื้นที่ทางแยกออกใช้ลำดับรถเดิม ไม่มีการกำหนดสิทธิ์แยก",
   "editorRouteFinishHelp": "เลื่อนตามถนนเพื่อเลือกแขนง แล้วคลิกปลายทางเพื่อบันทึก Backspace ย้อนกลับ; Esc ยกเลิก; Ctrl + คลิกขวาเพิ่มช่วง; Enter บันทึก",
   "editorInputRateUnit": "คัน/ชม.",
-  "editorInputCanvasPeriods": "%1 ช่วงเวลา"
+  "editorInputCanvasPeriods": "%1 ช่วงเวลา",
+  "editorConflictGroupReadOnly": "ส่วนแยกทางเป็นข้อมูลอ่านอย่างเดียว"
 }

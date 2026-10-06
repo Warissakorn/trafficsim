@@ -211,14 +211,20 @@ validation of collapsed derived lanes. D80 replaces the old slide/square-mouth c
 those boundaries with P1–P4. Both ends pair by lane index at every angle. `connectorBoundaries`
 returns the same final rails used by paint and lane handles. D114 crossing coverage uses these same final rails, so a geometry edit changes both
 motion and coverage. Authored cross-section stations map onto the derived lane paths.
-D109 `conflictGroups` derives connected groups for one road-owner pair and kind; commands
+D109/D118 `conflictGroups` derives connected groups for one road-owner pair across kinds; commands
 author/edit/delete every member atomically, while the resolver keeps individual lane-pair zones.
 D115 retains the convex polygon clips in `surfaceOverlaps`; `classifiedOverlaps` labels
 mouths as merge, branching or continuation without discarding their geometry. The crossing-only
 `crossingOverlaps` view remains shared by Add, following and Run. `conflictAreaGeometry`
 in `conflict_display.hpp` supplies measured polygons and separate per-side station spans;
 `conflictAreaPolygons` and automatic suggestions retain the physical geometry for grouping.
-D117 canvas display/picking use the same laterally inset directional bands from those spans.
+D117/D118 canvas display/picking use shared `conflictBandOutline` directional bands, inset
+0.5 m normal to each rail (capped at 20% of local width). `conflictMouthBands` intersects
+P1–P4 cap triangles with the named attached Link lane, deriving Link station spans through
+P3–P4. Physical polygons retain cap intersections; visual bands follow the attached lane.
+`conflict_polygon_math` supplies shared convex clipping and cap triangulation. No Connector
+station extends past its authored length. Mixed-site group controls skip read-only branching;
+commands stage all changes and refuse new merge-order cycles before publishing the candidate.
 Grouping uses physical polygon contact. Branching is a read-only derived editor kind;
 codec/commands reject it as an authored control. Merge runtime extents/rules stay unchanged.
 Separate locations remain separate groups. D114 restores geometry-derived runtime paths;

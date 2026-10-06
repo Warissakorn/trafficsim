@@ -112,12 +112,13 @@ struct AutomaticConflict {
 std::vector<AutomaticConflict> automaticConflicts(const Network&);
 
 // Derived UI groups: one connected place of a pair of road objects. Lane pairs and their
-// reservations remain separate. Mixed authored/passive members share one selectable group.
+// reservations remain separate. Mixed authored/passive and crossing/merge/branching members share one selectable group.
 struct ConflictGroup {
     std::string key, firstOwner, secondOwner;
     ConflictKind kind{ConflictKind::crossing};
     std::vector<std::string> areaIds, automaticKeys;
     ConflictGeometryKind geometryKind{ConflictGeometryKind::crossing};
+    std::vector<ConflictKind> kinds; // includes read-only branching members
 };
 std::string conflictOwner(const ControlPathRef&);
 std::vector<ConflictGroup> conflictGroups(const Network&, const std::vector<AutomaticConflict>&);

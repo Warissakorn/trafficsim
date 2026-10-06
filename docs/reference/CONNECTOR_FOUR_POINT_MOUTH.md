@@ -61,6 +61,17 @@ of the old 75.522488-degree square fallback. Both are removed. Near 180 degrees 
 really does grow without bound; a retained intersection is not a claim of a drivable turn.
 The body-corner miter limit remains; it is not a mouth-angle fallback.
 
+## Conflict-band continuation (D118)
+
+The Conflict tool continues directional bands along the named attached Link lanes through
+P3–P4. It intersects each valid cap with the attached lane and maps that cap's support to
+finite Link station spans; offset bands then follow those lane rails. Cap triangles retain
+physical overlap geometry for grouping, distinct from the full directional band over a span.
+The cap may lie before or after the join depending on angle/handedness. Neither Connector
+stations beyond its length nor a second runtime lane path is invented. Undefined/folded caps
+have no fabricated band. Saved entryStation–exitStation and runtime reservations are unchanged;
+full physical-mouth admission/clearance remains M3.2.4e.
+
 ## Singular lines and folds
 
 Coincident parallel edge lines use the Link attachment station to define a continuous straight

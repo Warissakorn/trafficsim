@@ -1,6 +1,9 @@
 #include "../src/shell/editor_window.hpp"
 #include "../tools/t_junction_network.hpp"
 #include "../src/model/network/right_of_way.hpp"
+#include "../src/model/network/conflict_display.hpp"
+#include "../src/model/network/connector_surface.hpp"
+#include "../src/commands/connector_commands.hpp"
 #include <nlohmann/json.hpp>
 #include <QAction>
 #include <QApplication>
@@ -225,7 +228,7 @@ int main(int argc, char** argv) {
             require(p.size()==4,"The straight probe is not a quad");
             for(int i=0;i<2;++i) {
                 const auto a=p[i],b=p[3-i];const double width=std::hypot(b.x-a.x,b.y-a.y);
-                const double t=std::min(0.3/width,0.2);
+                const double t=std::min(0.5/width,0.2);
                 p[i]={a.x+t*(b.x-a.x),a.y+t*(b.y-a.y)};
                 p[3-i]={b.x+t*(a.x-b.x),b.y+t*(a.y-b.y)};
             }
@@ -270,6 +273,47 @@ int main(int argc, char** argv) {
         require(network().rightOfWay.conflictAreas.size()==1,"The exact intersection cannot be authored");
         require(c->conflictsAt({outside.x(),outside.y()}).empty(),"Authored picking includes the blank rail offset");
         act(w,"editorUndo")->trigger();QApplication::processEvents();
+        }
+        // One real Link/Connector site contains branching, crossing and merge lane pairs.
+        // Its Link continuation must be painted/pickable through the actual P3-P4 station span.
+        for(const auto handed:{DrivingSide::left,DrivingSide::right}) {
+            ProjectDocument mouth;mouth.network.drivingSide=handed;
+            const auto road=addLink(mouth,{{0,0},{200,0}},3,3.5);
+            const auto& l=mouth.network.links.front();
+            const auto connector=addConnector(mouth,{road,l.lanes.front().id,100},{road,l.lanes.back().id,110});
+            const auto original=mouth.network.connectors.front();
+            changeConnectorGeometry(mouth,connector,{laneAttachment(mouth.network,original.from,true),laneAttachment(mouth.network,original.to,false)});
+            const auto file=temp.filePath("mouth-"+QString::number(static_cast<int>(handed))+".traffic.json");
+            {QFile f(file);require(f.open(QIODevice::WriteOnly),"Mouth fixture open failed");f.write(QByteArray::fromStdString(documentJson(mouth).dump()));}
+            w.openFile(file);QApplication::processEvents();key(w,Qt::Key_A);
+            const auto automatic=automaticConflicts(network());const auto groups=conflictGroups(network(),automatic);
+            require(groups.size()==1 && groups.front().kinds.size()==3,"The three real kinds were not grouped");
+            require(table->rowCount()==1 && table->item(0,2)->text().count(" / ")==2,"The mixed row does not list all three kinds");
+            const auto& connectorRef=network().connectors.front();
+            const ControlPathRef pathRef{"","",connectorRef.id,connectorRef.from.laneId,connectorRef.to.laneId};
+            const auto caps=conflictMouthBands(network(),pathRef,false,true);
+            require(!caps.empty(),"No target mouth continuation");
+            const auto surface=connectorSurface(network(),connectorRef);require(surface.target.has_value(),"No target P3-P4");
+            const auto& link=network().links.front();
+            const double at=(stationOfClosestPoint(link.geometry,surface.target->points[2])+stationOfClosestPoint(link.geometry,surface.target->points[3]))/2;
+            const auto lane=laneGeometry(link,connectorRef.to.laneId,handed);
+            const auto probe=pointAlong(lane,matchedStation(link.geometry,lane,at));
+            bool painted=false;
+            for(auto* item:c->scene()->items())if(item->data(0).toString()=="auto-conflict" &&
+                item->data(4).toString()=="merge" && item->data(5).toString()==QString::fromStdString(connectorRef.id)) {
+                const auto* band=dynamic_cast<QGraphicsPathItem*>(item);
+                painted|=band && band->path().contains(QPointF(probe.x,probe.y));
+            }
+            require(painted && c->automaticAt(probe)==groups.front().key,"P3-P4 Link continuation display/picking disagree");
+            table->selectRow(0);QApplication::processEvents();
+            require(act(w,"editorCyclePriority")->isEnabled(),"Mixed site priority action is disabled");
+            act(w,"editorCyclePriority")->trigger();QApplication::processEvents();
+            const auto branches=std::count_if(automatic.begin(),automatic.end(),[](const auto& a){return a.kind==ConflictKind::branching;});
+            require(network().rightOfWay.conflictAreas.size()==automatic.size()-static_cast<std::size_t>(branches),"Mixed site did not author all editable members");
+            for(const auto& a:network().rightOfWay.conflictAreas)require(a.kind!=ConflictKind::branching,"A branching control was authored");
+            require(!c->conflictsAt(probe).empty(),"The authored P3-P4 continuation is not pickable");
+            act(w,"editorUndo")->trigger();QApplication::processEvents();
+            require(w.history().document()==mouth,"Mixed site authoring is not one Undo");
         }
         std::cout << "conflict auto ui tests passed\n";
         return 0;

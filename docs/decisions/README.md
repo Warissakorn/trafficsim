@@ -8,7 +8,7 @@ and their evidence before reopening a choice. IDs remain stable even when record
 |---|---|
 | Product scope, stack, naming and owner gates | D1–D17, D34, D38, D49, D51–D53 |
 | Formats, validation and diagnostics | D18a–D18d, D19a–D19d, D21, D54–D56 |
-| Link/Connector geometry and lifecycle | D20–D23, D26, D55, D72–D80, D86, D106–D110, D114–D117 |
+| Link/Connector geometry and lifecycle | D20–D23, D26, D55, D72–D80, D86, D106–D110, D114–D118 |
 | Demand and routing | D25, D32–D33, D37, D42–D46, D71, D93–D94, D111–D113 |
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
 | Following, commitment and lane changes | D69, D71, D87–D95, D98, D101–D102, D105, D108 |
@@ -41,4 +41,4 @@ not automatically the current contract. Current interfaces live in the reference
 For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_POSE.md) and the
 2026-10-05 phase entries in PROGRESS; those entries do not invent new D-numbers.
 
-[D116](RECORD.md#d116) · [D117](RECORD.md#d117)
+[D116](RECORD.md#d116) · [D117](RECORD.md#d117) · [D118](RECORD.md#d118)

@@ -54,17 +54,21 @@ std::vector<ConflictGroup> conflictGroups(const Network& n,const std::vector<Aut
     const auto root=[&](std::size_t i){while(roots[i]!=i)i=roots[i]=roots[roots[i]];return i;};
     for(std::size_t i=0;i<pieces.size();++i)for(std::size_t j=i+1;j<pieces.size();++j) {
         const auto& a=pieces[i];const auto& b=pieces[j];
-        if(a.geometryKind!=b.geometryKind || a.firstOwner!=b.firstOwner || a.secondOwner!=b.secondOwner)continue;
+        if(a.firstOwner!=b.firstOwner || a.secondOwner!=b.secondOwner)continue;
         if(touches(a.polygons,b.polygons))roots[root(j)]=root(i);
     }
     std::vector<ConflictGroup> result;std::vector<std::size_t> owners;
     for(std::size_t i=0;i<pieces.size();++i) {
         const auto r=root(i);const auto at=std::find(owners.begin(),owners.end(),r);
-        if(at==owners.end()){owners.push_back(r);result.push_back({{},pieces[i].firstOwner,pieces[i].secondOwner,pieces[i].kind,{},{},pieces[i].geometryKind});}
+        if(at==owners.end()){owners.push_back(r);result.push_back({{},pieces[i].firstOwner,pieces[i].secondOwner,pieces[i].kind,{},{},pieces[i].geometryKind,{}});}
         auto& g=result[static_cast<std::size_t>(std::find(owners.begin(),owners.end(),r)-owners.begin())];
+        if(std::find(g.kinds.begin(),g.kinds.end(),pieces[i].kind)==g.kinds.end())g.kinds.push_back(pieces[i].kind);
+        if(g.kind==ConflictKind::branching && pieces[i].kind!=ConflictKind::branching) {
+            g.kind=pieces[i].kind;g.geometryKind=pieces[i].geometryKind;
+        }
         (pieces[i].automatic?g.automaticKeys:g.areaIds).push_back(pieces[i].id);
     }
-    for(auto& g:result)g.key=!g.areaIds.empty()?g.areaIds.front():g.automaticKeys.front();
+    for(auto& g:result){g.key=!g.areaIds.empty()?g.areaIds.front():g.automaticKeys.front();std::sort(g.kinds.begin(),g.kinds.end());}
     // Keep authored rows before suggestions, as the existing table does across Undo/Redo.
     std::sort(result.begin(),result.end(),[](const auto& a,const auto& b){
         if(a.areaIds.empty()!=b.areaIds.empty())return !a.areaIds.empty();

@@ -32,16 +32,25 @@ must display which pairs it controls. A Connector lane pair which resolves to ze
 multiple paths is unresolved; a changed lane count never silently retargets it by ordinal.
 No route's Link/Connector authoring contract changes, and no lane-changing decision is added.
 
-D109 groups connected lane-pair areas of the same Link/Connector owner pair and kind in the
-canvas and table. D117 restores separate bands along each participant's lane, cut at the
-measured overlap station spans. The painted rails are inset laterally by 0.30 m per side,
-capped at 20% of local width; longitudinal ends are not eroded, so short mouths remain
-visible. A 3 × 3 crossing keeps nine lane-pair reservations and one control group; each
-pair has two directional bands (yielding is hatched). Picking uses the same visible band
-union. Physical grouping still uses D115's exact measured polygons, not the inset bands.
-Group edits apply to every member in one Undo; differing existing settings are shown as
-mixed. Separate locations and different owner pairs stay separate. No group or polygon is
-persisted: rails are the sole geometry source, and stored stations remain runtime inputs.
+D109/D118 group connected lane-pair areas of the same Link/Connector owner pair across
+crossing, merge and branching kinds in the canvas/table. Separated physical sites stay separate.
+D117/D118 display separate directional bands cut at measured spans, inset 0.5 m **normal**
+to each painted rail, capped at 20% of local normal width for narrow/tapered lanes. Longitudinal
+cuts are not eroded. Mouth bands continue through P3–P4 on the named attached Link lane;
+cap intersections supply Link station spans, never out-of-range Connector stations. A cap may
+lie on either side of its attachment station. Display follows the lane over those spans, while
+physical grouping uses the union of measured body/cap intersections. Folded or undefined caps
+produce no invented continuation. Picking uses the same visible band union.
+A 3 × 3 crossing keeps nine lane-pair reservations and one control group. Mixed-site edits
+apply to Crossing/Merge members by yielding **owner ID**, regardless of side ordering;
+Branching is selectable/read-only and is never authored. Its original-order status does not
+make the editable priority/parameters falsely mixed. Existing editable differences remain
+visible as mixed; the first takeover aligns newly authored site members to one decision.
+Group edits stage a candidate, validate it and reject new merge-order cycles atomically; the
+whole action is one Undo. Merge takeover still materializes the complete topology group;
+other owner pairs retain their fallback order. Undetermined/incomplete controls remain drafts
+with the existing Run-blocking diagnostics. No derived group or cap is persisted; stored
+entryStation–exitStation, schema, runtime lane paths and solver extents are unchanged.
 
 Connector coverage uses the same final painted lane rails that define runtime lane centres
 (D114). `surfaceOverlaps` retains clipped convex polygons and corresponding authored station

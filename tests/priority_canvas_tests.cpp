@@ -123,9 +123,9 @@ int main(int argc, char** argv) {
             bool found = false;
             for (auto* item : sides(w, first.id)) {
                 const auto r = item->path().boundingRect();
-                if (std::abs(r.left() - minX - 0.3) < 0.05 && std::abs(r.right() - maxX + 0.3) < 0.05) found = true;
+                if (std::abs(r.left() - minX - 0.5) < 0.05 && std::abs(r.right() - maxX + 0.5) < 0.05) found = true;
             }
-            require(found, "The band does not stand 0.3 m inside the lane rails");
+            require(found, "The band does not stand 0.5 m inside the lane rails");
         }
         click(w, inside);
         require(c->selected() == a || c->selected() == b, "Select did not pick a Link at the crossing");

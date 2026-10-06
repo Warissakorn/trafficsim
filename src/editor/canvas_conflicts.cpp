@@ -22,28 +22,19 @@ QPainterPath outlinePath(const std::vector<Point>& points) {
 }
 // Offset laterally inside the painted rails, retaining the measured entry/exit cuts.
 // Cap the inset at 20% of local width so narrow/tapered lanes and short mouths remain visible.
-QPainterPath bandPath(const Network& n,const std::vector<ConflictSide>& spans) {
+QPainterPath bandPath(const Network& n,const std::vector<ConflictSide>& spans,const std::vector<ConflictMouthBand>& mouths) {
     QPainterPath shape;
-    for(const auto& side:spans) {
-        const auto surface=conflictSurface(n,side.path);if(!surface)continue;
-        auto left=surface->left,right=surface->right;
-        if(left.size()!=right.size() || left.size()!=surface->base.size())continue;
-        for(std::size_t i=0;i<left.size();++i) {
-            const auto a=left[i],b=right[i];const double width=std::hypot(b.x-a.x,b.y-a.y);
-            if(width<=1e-12)continue;
-            const double fraction=std::min(0.3/width,0.2);
-            left[i]={a.x+fraction*(b.x-a.x),a.y+fraction*(b.y-a.y)};
-            right[i]={b.x+fraction*(a.x-b.x),b.y+fraction*(a.y-b.y)};
-        }
-        auto outline=polylineSpan(left,matchedStation(surface->base,left,side.entryStation),matchedStation(surface->base,left,side.exitStation));
-        const auto other=polylineSpan(right,matchedStation(surface->base,right,side.entryStation),matchedStation(surface->base,right,side.exitStation));
-        outline.insert(outline.end(),other.rbegin(),other.rend());
-        if(outline.size()>=3)shape=shape.united(outlinePath(outline));
-    }
+    const auto add=[&](const ConflictSide& side) {
+        const auto outline=conflictBandOutline(n,side),full=conflictSideOutline(n,side);
+        if(outline.size()>=3 && full.size()>=3)shape=shape.united(outlinePath(outline).intersected(outlinePath(full)));
+    };
+    for(const auto& side:spans)add(side);
+    // The physical cap determines the Link span, while the directional band follows its lane.
+    for(const auto& mouth:mouths)add(mouth.lane);
     return shape;
 }
 QPainterPath displayPath(const Network& n,const ConflictAreaGeometry& geometry) {
-    return bandPath(n,geometry.first).united(bandPath(n,geometry.second));
+    return bandPath(n,geometry.first,geometry.firstMouth).united(bandPath(n,geometry.second,geometry.secondMouth));
 }
 int levelOf(const Network& n, const ControlPathRef& ref) {
     for (const auto& l : n.links) if (l.id == ref.linkId) return l.level;
@@ -174,7 +165,7 @@ void EditorCanvas::drawConflicts() {
         const auto geometry=conflictAreaGeometry(n,kind,first,second);
         const bool branching=geometryKind==ConflictGeometryKind::branching;
         for(const auto* side:{&first,&second}) {
-            const auto shape=bandPath(n,side==&first?geometry.first:geometry.second);if(shape.isEmpty())continue;
+            const auto shape=bandPath(n,side==&first?geometry.first:geometry.second,side==&first?geometry.firstMouth:geometry.secondMouth);if(shape.isEmpty())continue;
             const int level=levelOf(n,side->path);
             const bool undecided=priority==ConflictPriority::undetermined;
             const bool yields=(side==&first)==(priority==ConflictPriority::firstYields);
@@ -191,6 +182,7 @@ void EditorCanvas::drawConflicts() {
             item->setData(1,QString::fromStdString(key));
             if(automatic)item->setData(2,QString::fromLatin1(branching?"branching":undecided?"passive":"merge"));
             item->setData(4,QString::fromLatin1(branching?"branching":geometryKind==ConflictGeometryKind::merge?"merge":"crossing"));
+            item->setData(5,QString::fromStdString(conflictOwner(side->path))); // directional participant
             item->setData(3,QString::fromStdString(id)); // lane-pair identity, independent of group selection
         }
     };

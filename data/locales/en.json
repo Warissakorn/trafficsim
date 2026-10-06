@@ -556,5 +556,6 @@
   "EDIT_BRANCHING_PRIORITY": "A branching area keeps the original vehicle order; it has no separate priority control.",
   "editorRouteFinishHelp": "Trace the roads to choose a branch, then click the destination to save. Backspace goes back; Esc cancels. Ctrl + right-click appends; Enter saves.",
   "editorInputRateUnit": "veh/h",
-  "editorInputCanvasPeriods": "%1 periods"
+  "editorInputCanvasPeriods": "%1 periods",
+  "editorConflictGroupReadOnly": "Branching members are read-only."
 }

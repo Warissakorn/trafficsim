@@ -65,7 +65,10 @@ TEST(conflict_geometry, a_mouth_keeps_its_geometry_and_classifies_the_two_ends) 
     const auto merge=std::find_if(automatic.begin(),automatic.end(),[](const auto& a){return a.kind==ConflictKind::merge;});
     CHECK(merge!=automatic.end() && !merge->polygons.empty());
     const auto mouth=classifiedOverlaps(d.network,ref(c),{c.to.linkId,c.to.laneId,"","",""});
-    test::near(area(merge->polygons),area(mouth[0].polygons));
+    // D118 retains body clips and also measures the cap on the attached Link.
+    for(const auto& polygon:mouth[0].polygons)
+        CHECK(std::find(merge->polygons.begin(),merge->polygons.end(),polygon)!=merge->polygons.end());
+    CHECK(merge->polygons.size()>mouth[0].polygons.size());
     const auto geometry=conflictAreaGeometry(d.network,merge->kind,merge->first,merge->second);
     CHECK(geometry.polygons==merge->polygons && geometry.first.size()==1 && geometry.second.size()==1);
     const auto& span=merge->first.path==ref(c)?geometry.first.front():geometry.second.front();
