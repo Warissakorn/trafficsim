@@ -549,5 +549,9 @@
   "editorTypeRules": "Vehicle type routing…",
   "editorTypeRulesHelp": "Overrides use complete target weights. Unchecked types inherit default flows. All-zero periods use that type’s whole-period weights. Selection uses scheduled demand time, before queueing.",
   "editorTypeRuleOverride": "Override default flows for this type",
-  "editorTypeRulesTargetsHelp": "Save targets first. With type overrides, use explicit periods to edit shared counts; remove overrides before changing targets or compact counts."
+  "editorTypeRulesTargetsHelp": "Save targets first. With type overrides, use explicit periods to edit shared counts; remove overrides before changing targets or compact counts.",
+  "editorConflictBranching": "Branching",
+  "editorConflictOriginalOrder": "Original vehicle order",
+  "editorConflictBranchingStatus": "Branching: original order; no separate priority control",
+  "EDIT_BRANCHING_PRIORITY": "A branching area keeps the original vehicle order; it has no separate priority control."
 }

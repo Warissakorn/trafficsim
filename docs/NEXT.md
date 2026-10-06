@@ -7,6 +7,19 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## Conflict overlap priority — owner instruction, 2026-10-06
+
+The owner authorized the overlap/type/display plan. M3.2.4d (D115) retains exact polygon
+clips, labels merge/branching/continuation mouths and shares geometry between fill, picking
+and grouping. Review the PR's native Linux/Windows CI separately. On the owner's desktop,
+inspect an oblique crossing, a Connector landing mid-Link across another lane, and two
+Connectors leaving the same lane: fills must stay within the measured surfaces; branching
+is selectable with no priority editing. Check geometry edits, Undo/Redo and save/reopen.
+The D110 full-width strips and D72 inset are superseded by this request. Existing merge
+station extents/engine rules remain unchanged; M3.2.4e requires a separate admission contract
+and failure-first clearance tests before widening runtime reservations to the physical mouth.
+After this review, retain the Demand review queue below. No merge or owner gate is closed.
+
 ## Demand priority — owner instruction, 2026-10-05
 
 The owner explicitly asked to start Demand improvements. This takes priority over
@@ -64,8 +77,8 @@ In order:
   Automated Linux/Windows results belong to the PR; an owner look remains separate.
 
 - **D109/D110 conflict controls and Bézier coverage:** inspect a curved Connector after an interior
-  geometry drag: paired highlights, coverage and physical waiting positions follow
-  the edited lane rails/centres (D114). Inspect a 3 × 3 crossing: eighteen separate side outlines, one row, nine
+  geometry drag: overlap highlights, coverage and physical waiting positions follow
+  the edited lane rails/centres (D114). Inspect a 3 × 3 crossing: nine exact overlap polygons with paired priority layers, one row, nine
   lane-pair controls, group edit/Delete
   and Undo. Two separated intersections of the same owners must remain two rows. Check
   Windows native CI and owner appearance before claiming cross-platform verification.

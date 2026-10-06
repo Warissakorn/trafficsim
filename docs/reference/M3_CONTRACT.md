@@ -33,21 +33,36 @@ multiple paths is unresolved; a changed lane count never silently retargets it b
 No route's Link/Connector authoring contract changes, and no lane-changing decision is added.
 
 D109 groups connected lane-pair areas of the same Link/Connector owner pair and kind in the
-canvas and table. D110 retains separate painted strips/insets for every lane-pair side: a
-3 × 3 crossing has eighteen side outlines, one control group and nine lane-pair reservations. Group edits
-apply to every member in one Undo; differing existing settings are shown as mixed. Separate
-locations and different owner pairs stay separate. Using three single-lane Links per road
-therefore keeps nine groups, but is a different network topology. No group is persisted.
+canvas and table. D115 replaces D110's full-width side strips and D72's display inset with
+exact overlap polygons. A 3 × 3 crossing keeps nine lane-pair reservations and one control
+group; each pair's two priority layers use the same clipped polygon (yielding is hatched).
+Display and picking use its union, including edges up to normal floating-point accuracy.
+Group edits apply to every member in one Undo; differing existing settings are shown as
+mixed. Separate locations and different owner pairs stay separate. No group or polygon is
+persisted: rails are the sole geometry source, and stored stations remain runtime inputs.
 
-Connector crossing calculation uses the same final painted lane rails that define runtime
-lane centres (D114). Drawing edits and widths can change coverage and physical waiting positions.
-Stored stations remain metres on the authored polyline; `matchedStation` maps leg fractions
-onto runtime lane distances for extents and physical setbacks. Highlights use these same rails.
-Unsupported folded strips remain named blockers. Common rooted
-merge/diverge mouths are excluded by shared `crossingOverlaps` in suggestions, Add, geometry
-following and Run coverage checks; downstream merges retain their
-topological arbitration, and a pure diverge needs no competing-arrival reservation. Sharing
-a lane at different attachment stations does not exclude a crossing elsewhere.
+Connector coverage uses the same final painted lane rails that define runtime lane centres
+(D114). `surfaceOverlaps` retains clipped convex polygons and corresponding authored station
+intervals. `classifiedOverlaps` retains those pieces and labels an attachment mouth as merge,
+branching or single-stream continuation using directed named-lane attachments. Interior Link
+traffic is the other stream at a mid-body join; Connector pairs must share the same lane AND
+attachment station. Neighbouring lanes swept before a join and separate interior crossings
+remain crossings. `crossingOverlaps` is the crossing-only view used by Add, following and Run.
+Unsupported folded strips remain named blockers; tangencies do not create positive areas.
+
+The automatic editor shows crossing, merge and branching separately. A branching polygon
+is selectable, red-red and labelled as original-order behavior, with priority/Edit/Delete
+unavailable. It introduces no new core reservation. A continuation is measured but does not
+create a conflict row. A derived-only `ConflictKind::branching` is rejected by authored commands,
+structural validation and the codec; authored kinds and file schemas remain crossing/merge.
+
+Merge display uses actual terminal overlap polygons, not the one-metre admission strips.
+When two arriving Connectors meet only on an edge, their overlap with the common receiving
+lane supplies the mouth polygons. If no supported positive geometry can be measured, there
+is no guessed fill; a topological merge still has its table row and existing arbitration.
+The D50/D59 merge station extents, waiting positions and engine rules stay unchanged in
+M3.2.4d. Extending merge occupancy to the full physical overlap is the separate M3.2.4e slice:
+this display change does not claim swept-body collision protection or a new merge solver.
 
 Older authored extents are checked against the new surface on load, without silently changing
 priority or coverage. If coverage is stale, recreate the crossing with Delete and P (or Add

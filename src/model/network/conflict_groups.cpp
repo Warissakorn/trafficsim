@@ -31,30 +31,36 @@ bool touches(const std::vector<Point>& a,const std::vector<Point>& b) {
     }
     return contains(a,b.front())||contains(b,a.front());
 }
-struct Piece {std::string id,firstOwner,secondOwner;ConflictKind kind;bool automatic;std::vector<Point> first,second;};
+bool touches(const ConflictPolygons& a,const ConflictPolygons& b) {
+    for(const auto& first:a)for(const auto& second:b)if(touches(first,second))return true;
+    return false;
+}
+struct Piece {std::string id,firstOwner,secondOwner;ConflictKind kind;bool automatic;
+    ConflictPolygons polygons;ConflictGeometryKind geometryKind;};
 }
 std::vector<ConflictGroup> conflictGroups(const Network& n,const std::vector<AutomaticConflict>& automatic) {
     std::vector<Piece> pieces;
-    const auto add=[&](const std::string& id,ConflictKind kind,const ConflictSide& a,const ConflictSide& b,bool automatic) {
+    const auto add=[&](const std::string& id,ConflictKind kind,const ConflictSide& a,const ConflictSide& b,bool automatic,ConflictGeometryKind geometryKind,ConflictPolygons polygons) {
         auto first=conflictOwner(a.path),second=conflictOwner(b.path);
-        auto f=conflictRuntimeOutline(n,a),s=conflictRuntimeOutline(n,b);
-        if(second<first){std::swap(first,second);std::swap(f,s);}
-        pieces.push_back({id,first,second,kind,automatic,std::move(f),std::move(s)});
+        if(second<first)std::swap(first,second);
+        pieces.push_back({id,first,second,kind,automatic,std::move(polygons),geometryKind});
     };
-    for(const auto& a:n.rightOfWay.conflictAreas)add(a.id,a.kind,a.first,a.second,false);
-    for(const auto& a:automatic)add(a.key,a.kind,a.first,a.second,true);
+    for(const auto& a:n.rightOfWay.conflictAreas)add(a.id,a.kind,a.first,a.second,false,
+        a.kind==ConflictKind::crossing?ConflictGeometryKind::crossing:ConflictGeometryKind::merge,
+        conflictAreaPolygons(n,a.kind,a.first,a.second));
+    for(const auto& a:automatic)add(a.key,a.kind,a.first,a.second,true,a.geometryKind,a.polygons);
     std::sort(pieces.begin(),pieces.end(),[](const auto& a,const auto& b){return a.id<b.id;});
     std::vector<std::size_t> roots(pieces.size());std::iota(roots.begin(),roots.end(),0);
     const auto root=[&](std::size_t i){while(roots[i]!=i)i=roots[i]=roots[roots[i]];return i;};
     for(std::size_t i=0;i<pieces.size();++i)for(std::size_t j=i+1;j<pieces.size();++j) {
         const auto& a=pieces[i];const auto& b=pieces[j];
-        if(a.kind!=b.kind || a.firstOwner!=b.firstOwner || a.secondOwner!=b.secondOwner)continue;
-        if(touches(a.first,b.first) && touches(a.second,b.second))roots[root(j)]=root(i);
+        if(a.geometryKind!=b.geometryKind || a.firstOwner!=b.firstOwner || a.secondOwner!=b.secondOwner)continue;
+        if(touches(a.polygons,b.polygons))roots[root(j)]=root(i);
     }
     std::vector<ConflictGroup> result;std::vector<std::size_t> owners;
     for(std::size_t i=0;i<pieces.size();++i) {
         const auto r=root(i);const auto at=std::find(owners.begin(),owners.end(),r);
-        if(at==owners.end()){owners.push_back(r);result.push_back({{},pieces[i].firstOwner,pieces[i].secondOwner,pieces[i].kind,{},{}});}
+        if(at==owners.end()){owners.push_back(r);result.push_back({{},pieces[i].firstOwner,pieces[i].secondOwner,pieces[i].kind,{},{},pieces[i].geometryKind});}
         auto& g=result[static_cast<std::size_t>(std::find(owners.begin(),owners.end(),r)-owners.begin())];
         (pieces[i].automatic?g.automaticKeys:g.areaIds).push_back(pieces[i].id);
     }

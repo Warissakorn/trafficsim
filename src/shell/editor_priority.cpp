@@ -143,9 +143,10 @@ void EditorWindow::refreshConflicts() {
             for(const auto& key:g.automaticKeys) {
                 const auto at=std::find_if(automatic_.begin(),automatic_.end(),[&](const auto& a){return a.key==key;});
                 const auto& a=*at;
-                members.push_back({QString(),a.priority==ConflictPriority::undetermined?text("editorConflictPassive"):
+                const bool branching=a.geometryKind==ConflictGeometryKind::branching;
+                members.push_back({QString(),branching?text("editorConflictOriginalOrder"):a.priority==ConflictPriority::undetermined?text("editorConflictPassive"):
                     text("editorConflictGivesWay").arg(owner(a.priority==ConflictPriority::firstYields?a.first.path:a.second.path)),
-                    QString(),QString(),text(a.kind==ConflictKind::crossing?"editorConflictPassiveStatus":"editorConflictAutomaticStatus"),QString()});
+                    QString(),QString(),text(branching?"editorConflictBranchingStatus":a.kind==ConflictKind::crossing?"editorConflictPassiveStatus":"editorConflictAutomaticStatus"),QString()});
             }
             const auto common=[&](int column) {
                 const auto value=members.front()[column];
@@ -153,7 +154,7 @@ void EditorWindow::refreshConflicts() {
                 return value;
             };
             const QStringList values{g.areaIds.empty()?QStringLiteral("\u2014"):QString::fromStdString(g.key),common(0),
-                text(g.kind==ConflictKind::crossing?"editorConflictCrossing":"editorConflictMerge"),common(1),common(2),common(3),
+                text(g.geometryKind==ConflictGeometryKind::branching?"editorConflictBranching":g.kind==ConflictKind::crossing?"editorConflictCrossing":"editorConflictMerge"),common(1),common(2),common(3),
                 blocked.isEmpty()?common(4):blocked,common(5)};
             for(int c=0;c<values.size();++c) {
                 auto* cell=new QTableWidgetItem(values[c]);cell->setData(Qt::UserRole,QString::fromStdString(g.key));
@@ -176,7 +177,9 @@ void EditorWindow::refreshConflicts() {
     actions_.at("editorTakeOverMerge")->setEnabled(canvas_->selectedConnector() != nullptr);
     const auto chosen = selectedConflict();
     const bool automatic = isAutomaticKey(chosen);
-    for (const auto* key : {"editorEditConflict", "editorCyclePriority"}) actions_.at(key)->setEnabled(!chosen.empty());
+    const auto group=std::find_if(groups.begin(),groups.end(),[&](const auto& g){return g.key==chosen;});
+    const bool branching=group!=groups.end() && group->geometryKind==ConflictGeometryKind::branching;
+    for (const auto* key : {"editorEditConflict", "editorCyclePriority"}) actions_.at(key)->setEnabled(!chosen.empty() && !branching);
     for (const auto* key : {"editorRestorePriority", "editorDeleteConflict"}) actions_.at(key)->setEnabled(!chosen.empty() && !automatic);
 }
 void EditorWindow::showConflicts() { objects_->setCurrentIndex(kConflictTab); refreshConflicts(); }
@@ -184,6 +187,8 @@ bool EditorWindow::automaticShown() const {
     return tool_->currentIndex() == static_cast<int>(EditorCanvas::Tool::conflict) || objects_->currentIndex() == kConflictTab;
 }
 void EditorWindow::authorConflict(const std::string& key) {
+    for(const auto& g:conflictGroups(history_.document().network,automatic_))
+        if(conflictGroupContains(g,key) && g.geometryKind==ConflictGeometryKind::branching){selectConflict(g.key);return;}
     const auto defaults = priorityDefaults();
     std::string created;
     if (execute("editorAuthorConflict", [&](auto& d) { created = authorConflictGroup(d, key, defaults); })) selectConflict(created);

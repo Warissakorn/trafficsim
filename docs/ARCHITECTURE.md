@@ -208,9 +208,12 @@ returns the same final rails used by paint and lane handles. D114 crossing cover
 motion and coverage. Authored cross-section stations map onto the derived lane paths.
 D109 `conflictGroups` derives connected groups for one road-owner pair and kind; commands
 author/edit/delete every member atomically, while the resolver keeps individual lane-pair zones.
-D110 paints every lane-pair side separately, retaining shared group selection/control.
-`crossingOverlaps` applies one attachment-mouth exclusion to automatic detection, Add,
-geometry following and Run validation; `surfaceOverlaps` remains raw geometry.
+D115 retains the convex polygon clips in `surfaceOverlaps`; `classifiedOverlaps` labels
+mouths as merge, branching or continuation without discarding their geometry. The crossing-only
+`crossingOverlaps` view remains shared by Add, following and Run. `conflictAreaPolygons`
+supplies authored display/picking; automatic suggestions carry the same derived polygons.
+Grouping uses physical polygon contact. Branching is a read-only derived editor kind;
+codec/commands reject it as an authored control. Merge runtime extents/rules stay unchanged.
 Separate locations remain separate groups. D114 restores geometry-derived runtime paths;
 project schema remains unchanged, with explicit authoring-to-runtime station adapters.
 

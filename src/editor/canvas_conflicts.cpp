@@ -4,7 +4,6 @@
 #include <QApplication>
 #include <QGraphicsPathItem>
 #include <QMouseEvent>
-#include <QPainterPathStroker>
 #include <QPen>
 #include <algorithm>
 #include <cmath>
@@ -19,9 +18,12 @@ QPainterPath outlinePath(const std::vector<Point>& points) {
     shape.closeSubpath();
     return shape;
 }
-// D72: the fill stands this far inside its lane edges so the Link and Connector outlines stay
-// readable around it. Display only -- hit-testing and the runtime keep the full outline.
-constexpr double kConflictInset = 0.3; // m
+// Both display and picking use the union of the same clipped convex pieces.
+QPainterPath overlapPath(const ConflictPolygons& polygons) {
+    QPainterPath shape;
+    for(const auto& polygon:polygons)if(polygon.size()>=3)shape=shape.united(outlinePath(polygon));
+    return shape;
+}
 int levelOf(const Network& n, const ControlPathRef& ref) {
     for (const auto& l : n.links) if (l.id == ref.linkId) return l.level;
     for (const auto& c : n.connectors) if (c.id == ref.connectorId) return c.level;
@@ -41,14 +43,15 @@ std::vector<std::string> EditorCanvas::conflictsAt(Point p) const {
     std::vector<std::string> found;
     if (!document_) return found;
     const auto& n = document_->network;
-    for (const auto& area : n.rightOfWay.conflictAreas)
-        for (const auto* side : {&area.first, &area.second}) {
-            if (!levelVisible(levelOf(n, side->path))) continue;
-            const auto outline = conflictSideOutline(n, *side);
-            if (outline.size() >= 3 && outlinePath(outline).contains(QPointF(p.x, p.y))) { std::string key=area.id;
-                for(const auto& g:conflictGroups_)if(conflictGroupContains(g,area.id)){key=g.key;break;}
-                found.push_back(key); break; }
+    for (const auto& area : n.rightOfWay.conflictAreas) {
+        if(!levelVisible(levelOf(n,area.first.path)) || !levelVisible(levelOf(n,area.second.path)))continue;
+        const auto shape=overlapPath(conflictAreaPolygons(n,area.kind,area.first,area.second));
+        if(shape.contains(QPointF(p.x,p.y))) {
+            std::string key=area.id;
+            for(const auto& g:conflictGroups_)if(conflictGroupContains(g,area.id)){key=g.key;break;}
+            found.push_back(key);
         }
+    }
     std::sort(found.begin(), found.end());
     found.erase(std::unique(found.begin(),found.end()),found.end());
     return found;
@@ -90,7 +93,13 @@ bool EditorCanvas::conflictPress(QMouseEvent* e) {
     if (areas.empty()) {
         // No authored area here: an automatic one is authored by the click (D68), as Vissim's
         // first click sets a passive area's priority.
-        if (const auto key = automaticAt(p); change && !key.empty()) { if (conflictAuthored) conflictAuthored(key); return true; }
+        if(const auto key=automaticAt(p);!key.empty()) {
+            if(conflictPicked)conflictPicked(key);
+            const auto group=std::find_if(conflictGroups_.begin(),conflictGroups_.end(),[&](const auto& g){return g.key==key;});
+            const bool branching=group!=conflictGroups_.end() && group->geometryKind==ConflictGeometryKind::branching;
+            if(change && !branching && conflictAuthored)conflictAuthored(key);
+            return true;
+        }
         clearSelection(false); return true;
     }
     const bool current = std::find(areas.begin(), areas.end(), highlightedConflict_) != areas.end();
@@ -123,50 +132,50 @@ void EditorCanvas::setAutomaticConflicts(std::vector<AutomaticConflict> automati
 std::string EditorCanvas::automaticAt(Point p) const {
     if (!document_ || tool_ != Tool::conflict) return {};
     const auto& n = document_->network;
-    for (const auto& a : automatic_)
-        for (const auto* side : {&a.first, &a.second}) {
-            if (!levelVisible(levelOf(n, side->path))) continue;
-            const auto outline = conflictSideOutline(n, *side);
-            if (outline.size() >= 3 && outlinePath(outline).contains(QPointF(p.x, p.y))) {
-                for(const auto& g:conflictGroups_)if(conflictGroupContains(g,a.key))return g.key;
-                return a.key;
-            }
+    for(const auto& a:automatic_) {
+        if(!levelVisible(levelOf(n,a.first.path)) || !levelVisible(levelOf(n,a.second.path)))continue;
+        if(overlapPath(a.polygons).contains(QPointF(p.x,p.y))) {
+            for(const auto& g:conflictGroups_)if(conflictGroupContains(g,a.key))return g.key;
+            return a.key;
         }
+    }
     return {};
 }
 void EditorCanvas::drawConflicts() {
     if (!document_) return;
     const auto& n = document_->network;
     conflictGroups_=conflictGroups(n,automatic_);
-    // Each lane pair retains its own painted sides and inset. Only selection and controls group.
-    const auto draw=[&](const std::string& id,ConflictPriority priority,const ConflictSide& first,const ConflictSide& second,bool automatic) {
+    // Each lane pair retains its clipped overlap. Only selection and controls group.
+    const auto draw=[&](const std::string& id,ConflictPriority priority,const ConflictSide& first,const ConflictSide& second,bool automatic,ConflictGeometryKind geometryKind,const ConflictPolygons& polygons) {
         std::string key=id;
         for(const auto& g:conflictGroups_)if(conflictGroupContains(g,id)){key=g.key;break;}
+        if(!levelVisible(levelOf(n,first.path)) || !levelVisible(levelOf(n,second.path)))return;
+        const auto shape=overlapPath(polygons);if(shape.isEmpty())return;
+        const bool branching=geometryKind==ConflictGeometryKind::branching;
         for(const auto* side:{&first,&second}) {
-            const int level=levelOf(n,side->path);if(!levelVisible(level))continue;
-            const auto outline=conflictSideOutline(n,*side);if(outline.size()<3)continue;
+            const int level=levelOf(n,side->path);
             const bool undecided=priority==ConflictPriority::undetermined;
             const bool yields=(side==&first)==(priority==ConflictPriority::firstYields);
             const bool lit=key==highlightedConflict_,hover=key==hoverConflict_ || key==hoverAutomatic_;
-            QColor tint=undecided?(automatic?canvasStyle::ink():canvasStyle::warning()):yields?canvasStyle::error():canvasStyle::ok();
+            QColor tint=branching?canvasStyle::error():undecided?(automatic?canvasStyle::ink():canvasStyle::warning()):yields?canvasStyle::error():canvasStyle::ok();
             tint.setAlpha(automatic?(undecided?90:80):150);
-            const bool hatched=!automatic && yields;
+            const bool hatched=!branching && !undecided && yields;
             QPen pen(lit?canvasStyle::selection():hover?canvasStyle::hover():tint.darker(150),lit?2.5:hover?2:1,
                      automatic?Qt::DashLine:Qt::SolidLine);pen.setCosmetic(true);
-            const auto shape=outlinePath(outline);
-            QPainterPathStroker stroker;stroker.setWidth(2*kConflictInset);stroker.setJoinStyle(Qt::MiterJoin);
-            auto inset=shape.subtracted(stroker.createStroke(shape)).simplified();if(inset.isEmpty())inset=shape;
-            auto* item=scene_.addPath(inset,pen,QBrush(tint,hatched?Qt::BDiagPattern:Qt::SolidPattern));
-            item->setZValue(level*100.+(automatic?5.5:hatched?6.5:6));item->setToolTip(QString::fromStdString(key));
+            auto* item=scene_.addPath(shape,pen,QBrush(tint,hatched?Qt::BDiagPattern:Qt::SolidPattern));
+            item->setZValue(level*100.+(automatic?(hatched?5.6:5.5):hatched?6.5:6));item->setToolTip(QString::fromStdString(key));
             item->setData(0,QStringLiteral("conflict-area"));
             if(automatic && key.rfind("auto/",0)==0)item->setData(0,QStringLiteral("auto-conflict"));
             item->setData(1,QString::fromStdString(key));
-            if(automatic)item->setData(2,QString::fromLatin1(undecided?"passive":"merge"));
+            if(automatic)item->setData(2,QString::fromLatin1(branching?"branching":undecided?"passive":"merge"));
+            item->setData(4,QString::fromLatin1(branching?"branching":geometryKind==ConflictGeometryKind::merge?"merge":"crossing"));
             item->setData(3,QString::fromStdString(id)); // lane-pair identity, independent of group selection
         }
     };
-    for(const auto& a:n.rightOfWay.conflictAreas)draw(a.id,a.priority,a.first,a.second,false);
-    if(tool_==Tool::conflict)for(const auto& a:automatic_)draw(a.key,a.priority,a.first,a.second,true);
+    for(const auto& a:n.rightOfWay.conflictAreas)draw(a.id,a.priority,a.first,a.second,false,
+        a.kind==ConflictKind::crossing?ConflictGeometryKind::crossing:ConflictGeometryKind::merge,
+        conflictAreaPolygons(n,a.kind,a.first,a.second));
+    if(tool_==Tool::conflict)for(const auto& a:automatic_)draw(a.key,a.priority,a.first,a.second,true,a.geometryKind,a.polygons);
     for (const auto& line : n.rightOfWay.waitingLines) {
         const int level = levelOf(n, line.point.path);
         if (!levelVisible(level)) continue;

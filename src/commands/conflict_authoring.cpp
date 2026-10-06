@@ -165,6 +165,7 @@ void removeConflictArea(ProjectDocument& d, const std::string& areaId) {
 }
 namespace trafficsim {
 std::string authorAutomaticConflict(ProjectDocument& d, const AutomaticConflict& automatic, const PriorityDefaults& defaults) {
+    if(automatic.kind==ConflictKind::branching || automatic.geometryKind==ConflictGeometryKind::branching)throw std::invalid_argument("EDIT_BRANCHING_PRIORITY");
     requireDefaults(defaults);
     if (automatic.kind == ConflictKind::merge) {
         // The take-over stores the whole group exactly as shown; the clicked pair is returned.
@@ -177,8 +178,9 @@ std::string authorAutomaticConflict(ProjectDocument& d, const AutomaticConflict&
     }
     // Still passive? A stale click on a pair authored since is refused rather than doubled.
     const auto now = automaticConflicts(d.network);
-    if (std::none_of(now.begin(), now.end(), [&](const auto& x) { return x.key == automatic.key; }))
-        throw std::invalid_argument("EDIT_NO_CROSSING");
+    const auto current=std::find_if(now.begin(),now.end(),[&](const auto& x){return x.key==automatic.key;});
+    if(current==now.end())throw std::invalid_argument("EDIT_NO_CROSSING");
+    if(current->kind==ConflictKind::branching)throw std::invalid_argument("EDIT_BRANCHING_PRIORITY");
     // A lane's crossing areas share one waiting line before the first of them (D63): reuse the
     // line this path already waits at, moved upstream when the new area comes first.
     const auto lineFor = [&](const ConflictSide& side) {
@@ -194,7 +196,7 @@ std::string authorAutomaticConflict(ProjectDocument& d, const AutomaticConflict&
         }
         return putWaitingLine(d, {"", "", {side.path, station}});
     };
-    auto first = automatic.first, second = automatic.second;
+    auto first = current->first, second = current->second;
     first.waitingLineId = lineFor(first);
     second.waitingLineId = lineFor(second);
     // Who gives way first: a turning Connector yields to a Link, as a side road yields to the

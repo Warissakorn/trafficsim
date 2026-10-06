@@ -14,7 +14,7 @@ ControlPathRef connectorRef(const Connector& c){return {"","",c.id,c.from.laneId
 int pairCount(const Network& n,const std::string& a,const std::string& b) {
     int count=0;for(const auto& c:automaticConflicts(n)) {
         const auto first=conflictOwner(c.first.path),second=conflictOwner(c.second.path);
-        count+=(first==a && second==b)||(first==b && second==a);
+        if(c.kind!=ConflictKind::branching)count+=(first==a && second==b)||(first==b && second==a);
     }return count;
 }
 ProjectDocument curved(int points) {

@@ -97,14 +97,19 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
             const auto& a = paths[i]; const auto& b = paths[j];
             if(a.owner==b.owner || a.level!=b.level)continue;
             if (a.hi.x < b.lo.x || b.hi.x < a.lo.x || a.hi.y < b.lo.y || b.hi.y < a.lo.y) continue;
-            const auto pieces = crossingOverlaps(n, a.ref, b.ref);
+            const auto pieces = classifiedOverlaps(n, a.ref, b.ref);
+            std::size_t crossingIndex=0,branchingIndex=0;
             for (std::size_t k = 0; k < pieces.size(); ++k) {
                 const auto& o = pieces[k];
                 if (o.status != SurfaceOverlap::Status::overlap) continue; // no guessed area (§1)
-                if (authoredCovers(n, a.ref, b.ref, o)) continue;
-                result.push_back({ConflictKind::crossing, {a.ref, o.first.from, o.first.to, ""}, {b.ref, o.second.from, o.second.to, ""},
+                if(o.geometryKind==ConflictGeometryKind::merge || o.geometryKind==ConflictGeometryKind::continuation)continue;
+                const auto index=o.geometryKind==ConflictGeometryKind::crossing?crossingIndex++:branchingIndex++;
+                if(o.geometryKind==ConflictGeometryKind::crossing && authoredCovers(n, a.ref, b.ref, o))continue;
+                result.push_back({o.geometryKind==ConflictGeometryKind::branching?ConflictKind::branching:ConflictKind::crossing, {a.ref, o.first.from, o.first.to, ""}, {b.ref, o.second.from, o.second.to, ""},
                                   ConflictPriority::undetermined,
-                                  "auto/" + a.key + "|" + b.key + (k ? "#" + std::to_string(k) : std::string{}), ""});
+                                  "auto/" + a.key + "|" + b.key +
+                                      (o.geometryKind==ConflictGeometryKind::branching?"/branching":"") +
+                                      (index?"#"+std::to_string(index):std::string{}), "", o.geometryKind, o.polygons});
             }
         }
     const auto table = runtimeSections(n);
@@ -117,7 +122,10 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
             for (std::size_t i = 0; i < j; ++i)
                 result.push_back({ConflictKind::merge, {sides[j].path, sides[j].entry, sides[j].exit, ""},
                                   {sides[i].path, sides[i].entry, sides[i].exit, ""}, ConflictPriority::firstYields,
-                                  "auto/" + g.section + "/" + std::to_string(j) + "/" + std::to_string(i), g.section});
+                                  "auto/" + g.section + "/" + std::to_string(j) + "/" + std::to_string(i), g.section, ConflictGeometryKind::merge,
+                                  conflictAreaPolygons(n,ConflictKind::merge,
+                                      {sides[j].path,sides[j].entry,sides[j].exit,""},
+                                      {sides[i].path,sides[i].entry,sides[i].exit,""})});
     }
     std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.key < b.key; });
     return result;

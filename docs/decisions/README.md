@@ -8,7 +8,7 @@ and their evidence before reopening a choice. IDs remain stable even when record
 |---|---|
 | Product scope, stack, naming and owner gates | D1–D17, D34, D38, D49, D51–D53 |
 | Formats, validation and diagnostics | D18a–D18d, D19a–D19d, D21, D54–D56 |
-| Link/Connector geometry and lifecycle | D20–D23, D26, D55, D72–D80, D86, D106–D110, D114 |
+| Link/Connector geometry and lifecycle | D20–D23, D26, D55, D72–D80, D86, D106–D110, D114–D115 |
 | Demand and routing | D25, D32–D33, D37, D42–D46, D71, D93–D94, D111–D113 |
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
 | Following, commitment and lane changes | D69, D71, D87–D95, D98, D101–D102, D105, D108 |
@@ -36,7 +36,7 @@ not automatically the current contract. Current interfaces live in the reference
 [D75](RECORD.md#d75) · [D76](RECORD.md#d76) · [D77](RECORD.md#d77) · [D78](RECORD.md#d78) · [D79](RECORD.md#d79) · [D80](RECORD.md#d80) · [D81](RECORD.md#d81) · [D82](RECORD.md#d82) · [D83](RECORD.md#d83) · [D84](RECORD.md#d84)
 [D85](RECORD.md#d85) · [D86](RECORD.md#d86) · [D87](RECORD.md#d87) · [D88](RECORD.md#d88) · [D89](RECORD.md#d89) · [D90](RECORD.md#d90) · [D91](RECORD.md#d91) · [D92](RECORD.md#d92) · [D93](RECORD.md#d93) · [D94](RECORD.md#d94)
 [D95](RECORD.md#d95) · [D96](RECORD.md#d96) · [D97](RECORD.md#d97) · [D98](RECORD.md#d98) · [D99](RECORD.md#d99) · [D100](RECORD.md#d100) · [D101](RECORD.md#d101) · [D102](RECORD.md#d102) · [D103](RECORD.md#d103) · [D104](RECORD.md#d104)
-[D105](RECORD.md#d105) · [D106](RECORD.md#d106) · [D107](RECORD.md#d107) · [D108](RECORD.md#d108) · [D109](RECORD.md#d109) · [D110](RECORD.md#d110) · [D111](RECORD.md#d111) · [D112](RECORD.md#d112) · [D113](RECORD.md#d113) · [D114](RECORD.md#d114)
+[D105](RECORD.md#d105) · [D106](RECORD.md#d106) · [D107](RECORD.md#d107) · [D108](RECORD.md#d108) · [D109](RECORD.md#d109) · [D110](RECORD.md#d110) · [D111](RECORD.md#d111) · [D112](RECORD.md#d112) · [D113](RECORD.md#d113) · [D114](RECORD.md#d114) · [D115](RECORD.md#d115)
 
 For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_POSE.md) and the
 2026-10-05 phase entries in PROGRESS; those entries do not invent new D-numbers.

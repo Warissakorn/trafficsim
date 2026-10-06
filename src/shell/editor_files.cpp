@@ -18,7 +18,9 @@
 namespace trafficsim {
 void EditorWindow::openFile(const QString& file) {
     auto document=readEditorDocument(file); // Decode and validate before touching the live document.
-    clearRecovery(); clearRun(); history_.reset(std::move(document));file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
+    clearRecovery(); clearRun(); history_.reset(std::move(document));
+    automaticRevision_=conflictRevision_=UINT64_MAX;
+    file_=file;error_->clear();canvas_->select("");refresh();canvas_->fitNetwork();
 }
 void EditorWindow::openFileOrReport(const QString& file) {
     try { openFile(file); } catch (const std::exception& e) { showError(e); }

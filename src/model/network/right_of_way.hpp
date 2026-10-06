@@ -30,14 +30,22 @@ std::optional<ControlLocation> locateControlPoint(const Network&, const RuntimeS
 // cross twice), a strip folded on a tight bend, boundaries that do not correspond -- and
 // `unresolved` a path that does not name exactly one lane or Connector path.
 struct StationInterval { double from{}, to{}; };
+// Derived geometry only. Continuation is a one-stream attachment, not a traffic conflict.
+// Branching is displayed/selected but has no authored priority or new engine reservation.
+enum class ConflictGeometryKind { crossing, merge, branching, continuation };
+using ConflictPolygons = std::vector<std::vector<Point>>;
 struct SurfaceOverlap {
     enum class Status { overlap, none, unsupported, unresolved } status{Status::unresolved};
     StationInterval first, second;
+    ConflictPolygons polygons; // Convex clipped pieces; their union is the measured overlap.
+    ConflictGeometryKind geometryKind{ConflictGeometryKind::crossing};
 };
 SurfaceOverlap surfaceOverlap(const Network&, const ControlPathRef& first, const ControlPathRef& second);
 // D72: each separate overlap of the two surfaces, ordered along `first`. Every element has status
 // `overlap`, or the result is a single element carrying none/unsupported/unresolved.
 std::vector<SurfaceOverlap> surfaceOverlaps(const Network&, const ControlPathRef& first, const ControlPathRef& second);
+// Retains every raw piece, classifying attachment mouths from directed lane topology.
+std::vector<SurfaceOverlap> classifiedOverlaps(const Network&, const ControlPathRef&, const ControlPathRef&);
 // Crossing candidates exclude the connected overlap rooted at an actual shared attachment.
 // Raw surfaceOverlaps remains available for geometric measurement. Merge topology owns mouths.
 std::vector<SurfaceOverlap> crossingOverlaps(const Network&, const ControlPathRef& first, const ControlPathRef& second);
@@ -47,6 +55,9 @@ bool authoredCovers(const Network&, const ControlPathRef& first, const ControlPa
 // its entry and exit as a closed outline; a waiting line is a bar across its lane. Empty when the
 // reference does not resolve -- the editor draws nothing rather than a guess.
 std::vector<Point> conflictSideOutline(const Network&, const ConflictSide&);
+// Exact overlap polygons for display/picking. Stored stations still control the runtime.
+// Merge polygons come from terminal mouths, not the old one-metre admission markers.
+ConflictPolygons conflictAreaPolygons(const Network&, ConflictKind, const ConflictSide&, const ConflictSide&);
 std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const ControlPoint&);
 // M3.2.4b: the polyline a ControlPoint's station is measured on (a Link's reference polyline, a
 // Connector's base polyline), so a drag commits the station waitingLineBar and the resolver read.
@@ -94,6 +105,8 @@ struct AutomaticConflict {
     ConflictSide first, second;
     ConflictPriority priority{ConflictPriority::undetermined};
     std::string key, mergeSection;
+    ConflictGeometryKind geometryKind{ConflictGeometryKind::crossing};
+    ConflictPolygons polygons;
     bool operator==(const AutomaticConflict&) const = default;
 };
 std::vector<AutomaticConflict> automaticConflicts(const Network&);
@@ -104,6 +117,7 @@ struct ConflictGroup {
     std::string key, firstOwner, secondOwner;
     ConflictKind kind{ConflictKind::crossing};
     std::vector<std::string> areaIds, automaticKeys;
+    ConflictGeometryKind geometryKind{ConflictGeometryKind::crossing};
 };
 std::string conflictOwner(const ControlPathRef&);
 std::vector<ConflictGroup> conflictGroups(const Network&, const std::vector<AutomaticConflict>&);

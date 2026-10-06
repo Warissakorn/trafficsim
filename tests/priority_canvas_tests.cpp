@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         // Select never hit-tests areas: at the crossing it still picks a Link. The forcing first:
         // the point really is inside an area.
         require(c->conflictsAt(inside) == std::vector<std::string>{first.id}, "The probe point is not inside the first area");
-        // D72: the fill stands 0.3 m inside the lane edges; picking still uses the whole outline.
+        // D115: display and picking use the full measured overlap, with no strip/inset spill.
         {
             const auto outline = conflictSideOutline(network(), first.second);
             double minX = INFINITY, maxX = -INFINITY;
@@ -123,10 +123,10 @@ int main(int argc, char** argv) {
             bool found = false;
             for (auto* item : sides(w, first.id)) {
                 const auto r = item->path().boundingRect();
-                if (std::abs(r.left() - (minX + 0.3)) < 0.05 && std::abs(r.right() - (maxX - 0.3)) < 0.05) found = true;
+                if (std::abs(r.left() - minX) < 0.05 && std::abs(r.right() - maxX) < 0.05) found = true;
             }
-            require(found, "The conflict area was not drawn 0.3 m inside its lane");
-            require(c->conflictsAt({minX + 0.1, inside.y}) == std::vector<std::string>{first.id}, "The inset margin is not pickable");
+            require(found, "The conflict area does not cover its measured intersection");
+            require(c->conflictsAt({minX + 0.1, inside.y}) == std::vector<std::string>{first.id}, "The measured overlap edge is not pickable");
         }
         click(w, inside);
         require(c->selected() == a || c->selected() == b, "Select did not pick a Link at the crossing");

@@ -189,6 +189,7 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
         const auto qa = quadsOf(*a), qb = quadsOf(*b);
         if (!qa || !qb) return {failed};
         std::vector<StationInterval> onA, onB;
+        ConflictPolygons clipped;
         for (const auto& x : *qa)
             for (const auto& y : *qb) {
                 if (x.hi.x < y.lo.x || y.hi.x < x.lo.x || x.hi.y < y.lo.y || y.hi.y < x.lo.y) continue;
@@ -201,7 +202,7 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
                     sa = {std::min(sa.from, u), std::max(sa.to, u)};
                     sb = {std::min(sb.from, v), std::max(sb.to, v)};
                 }
-                onA.push_back(sa); onB.push_back(sb);
+                onA.push_back(sa); onB.push_back(sb); clipped.push_back(piece);
             }
         if (onA.empty()) { SurfaceOverlap none; none.status = SurfaceOverlap::Status::none; return {none}; }
         // Union-find over pieces touching on both paths.
@@ -217,10 +218,11 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
         for (std::size_t i = 0; i < onA.size(); ++i) {
             const auto r = find(i);
             const auto at = std::find(owner.begin(), owner.end(), r);
-            if (at == owner.end()) { owner.push_back(r); result.push_back({SurfaceOverlap::Status::overlap, onA[i], onB[i]}); continue; }
+            if (at == owner.end()) { owner.push_back(r); result.push_back({SurfaceOverlap::Status::overlap, onA[i], onB[i], {clipped[i]}}); continue; }
             auto& o = result[static_cast<std::size_t>(at - owner.begin())];
             o.first = {std::min(o.first.from, onA[i].from), std::max(o.first.to, onA[i].to)};
             o.second = {std::min(o.second.from, onB[i].from), std::max(o.second.to, onB[i].to)};
+            o.polygons.push_back(clipped[i]);
         }
         std::sort(result.begin(), result.end(), [](const auto& x, const auto& y) {
             return x.first.from != y.first.from ? x.first.from < y.first.from : x.second.from < y.second.from; });
@@ -229,35 +231,16 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
     return {failed};
 }
 SurfaceOverlap surfaceOverlap(const Network& n, const ControlPathRef& first, const ControlPathRef& second) {
-    SurfaceOverlap result;
-    const auto a = stripOf(n, first), b = stripOf(n, second);
-    if (!a || !b) return result;
-    result.status = SurfaceOverlap::Status::unsupported;
-    try {
-        const auto qa = quadsOf(*a), qb = quadsOf(*b);
-        if (!qa || !qb) return result;
-        std::vector<StationInterval> onA, onB;
-        for (const auto& x : *qa)
-            for (const auto& y : *qb) {
-                if (x.hi.x < y.lo.x || y.hi.x < x.lo.x || x.hi.y < y.lo.y || y.hi.y < x.lo.y) continue;
-                const auto piece = clip(x.ccw, y.ccw);
-                if (piece.size() < 3 || area(piece) < kMinOverlapArea) continue;
-                StationInterval sa{INFINITY, -INFINITY}, sb{INFINITY, -INFINITY};
-                // The station at each corner bounds the piece: a cross-section is a straight line,
-                // so the extreme cross-sections of a convex piece pass through its corners.
-                for (const auto& p : piece) {
-                    const double u = stationIn(x,p);
-                    const double v = stationIn(y,p);
-                    sa = {std::min(sa.from, u), std::max(sa.to, u)};
-                    sb = {std::min(sb.from, v), std::max(sb.to, v)};
-                }
-                onA.push_back(sa); onB.push_back(sb);
-            }
-        if (onA.empty()) { result.status = SurfaceOverlap::Status::none; return result; }
-        const auto ja = joined(onA), jb = joined(onB);
-        if (!ja || !jb) return result; // they cross twice: which area was meant is a guess
-        result = {SurfaceOverlap::Status::overlap, *ja, *jb};
-    } catch (const std::exception&) {}
-    return result;
+    const auto pieces = surfaceOverlaps(n, first, second);
+    if (pieces.front().status != SurfaceOverlap::Status::overlap) return pieces.front();
+    std::vector<StationInterval> onA, onB;
+    ConflictPolygons polygons;
+    for (const auto& p : pieces) {
+        onA.push_back(p.first); onB.push_back(p.second);
+        polygons.insert(polygons.end(), p.polygons.begin(), p.polygons.end());
+    }
+    const auto a = joined(onA), b = joined(onB);
+    if (!a || !b) return {SurfaceOverlap::Status::unsupported, {}, {}};
+    return {SurfaceOverlap::Status::overlap, *a, *b, std::move(polygons)};
 }
 }

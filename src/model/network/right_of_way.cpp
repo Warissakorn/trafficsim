@@ -9,7 +9,11 @@
 #include <tuple>
 
 namespace trafficsim {
-const char* conflictKindName(ConflictKind kind) { return kind == ConflictKind::crossing ? "crossing" : "merge"; }
+const char* conflictKindName(ConflictKind kind) {
+    if(kind==ConflictKind::crossing)return "crossing";
+    if(kind==ConflictKind::merge)return "merge";
+    throw std::invalid_argument("INVALID_ENUM"); // Branching has no authored/runtime contract.
+}
 const char* conflictPriorityName(ConflictPriority priority) {
     switch (priority) {
     case ConflictPriority::firstYields: return "firstYields";
@@ -123,6 +127,7 @@ std::vector<ValidationIssue> rightOfWayStructuralIssues(const Network& n) {
         const auto& a = row.conflictAreas[i];
         const auto path = "rightOfWay.conflictAreas[" + std::to_string(i) + "]";
         id(a.id, path); areas.insert(a.id);
+        if(a.kind!=ConflictKind::crossing && a.kind!=ConflictKind::merge)add("INVALID_ENUM",path+".kind");
         for (const auto& [side, name] : {std::pair{&a.first, ".first"}, std::pair{&a.second, ".second"}}) {
             pathRef(side->path, path + name + ".path");
             if (!finite(side->entryStation) || !finite(side->exitStation) || side->entryStation >= side->exitStation)
