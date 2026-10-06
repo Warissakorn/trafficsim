@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-07 — Proven source and lateral passages (D124)
+
+M3.3.1b2b1 replays unique start-of-tick lane maps from prior front/type positions;
+terminal survivors/sinks establish longitudinal passage, including insertion ticks.
+Lateral jumps never count. Upstream membership changes invalidate estimates;
+ambiguous maps/terminals and source sinks without type evidence remain unavailable.
+No display traces, engine/schema changes or frozen fixture regeneration. See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-passage.md).
+
+The original observer fails 5 of 8 new forcing fixtures. The final suite passes
+85 GCC/Linux tests; real source/lateral copies preserve dynamics at .1/.2 s.
+Four seed-42 project legacy JSON/stop-line outputs and input manifests match the parent. Guards pass; local CMake/Ninja/Qt are absent. Parent #119 workflow 458
+passed Linux/Windows; candidate CI is independent. BA05, M0/M6 and owner gates stay open.
+
+---
+
 ## 2026-10-06 — Captured discharge inputs and physical-prefix recognition (D123)
 
 M3.3.1b2a emits parsed-byte SHA-256/size/read counts for project, actual catalog
@@ -465,21 +480,6 @@ including architecture and file-size guards. Against main `3403b72`, crossing ev
 and reports match byte-for-byte for seeds 0, 42, 43 and 4294967295; seed-42 reports/CSVs
 also match for four-leg-signalised, t-junction-priority, lane-change-lab and m2.6-study-template.
 Windows CI is pending; owner appearance and axle-model work remain open in NEXT.
-
----
-
-## 2026-10-05 — Shared mouth classification and separate lane-pair paint (D110)
-
-Owner reported Connector/Link endpoint conflicts and clarified that grouping shares priority,
-not filled outlines. Reproduced: a one-lane internal join is an automatic merge, but Add
-crossing creates a duplicate crossing there. `crossingOverlaps` now excludes actual rooted
-mouths for automatic suggestions, Add, geometry following and Run coverage; raw geometric
-measurements stay available. Neighbour-lane crossings and separate later intersections stay
-eligible. Old explicit mouth crossings report CONFLICT_NO_OVERLAP until removed/recreated
-as the actual merge. Canvas draws each lane pair's two original strips/insets; all share group
-selection and priority edits, including one Undo. Nine pairs have eighteen painted sides.
-Linux headless/desktop checks and regressions are recorded in the follow-up PR. No core,
-schema, topology or frozen fixture changes; Windows and owner appearance checks remain open.
 
 ---
 

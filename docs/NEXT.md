@@ -19,14 +19,18 @@ headway as selected-type throughput; original ranks/predecessors remain intact.
 M3.3.1b2a captures parsed-byte project/catalog/queue hashes and supports positioned
 route recognition on identical physical prefixes (D123). Diversions suppress raw
 old-head crossing inference; see [evidence](evidence/discharge-provenance.md).
-The checkout hash regression has explicit LF/CRLF fixtures; confirm this head's
-native Linux/Windows jobs before advancing.
-Next do **M3.3.1b2b passage completion**: reconstruct lateral changes and insertion-
-tick source crossings with explicit event/snapshot contracts and fixtures. Keep
-ambiguous cases unavailable; BA05 remains open until those cases are demonstrated
-or its scope is explicitly narrowed with owner review. Native Linux/Windows CI is
-independent. Future behavior classes/PCU conversion are not implemented.
-Only after that gate follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently.
+Parent #119 workflow 458 passed all three Linux and both Windows jobs, including
+the LF/CRLF checkout regression. M3.3.1b2b1 (D124) reconstructs proven source and
+post-remap longitudinal passages without reading display traces; upstream lane
+changes still invalidate estimates. See [passage evidence](evidence/discharge-passage.md).
+Confirm this candidate's native Linux/Windows jobs independently.
+Next do **M3.3.1b2b2 source-sink identity**: define how an inserted vehicle's type
+is retained when it reaches the sink in its generation tick, with neither survivor
+nor prior pending record. Add failure-first mixed-input fixtures and preserve
+legacy events/trajectory contracts; never infer type from a nonunique route/input.
+BA05 remains open until source identity and platform evidence are demonstrated.
+Then follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently. Future behavior
+classes/PCU conversion and owner/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

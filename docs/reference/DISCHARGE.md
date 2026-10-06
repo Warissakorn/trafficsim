@@ -33,12 +33,13 @@ eligible. An initial observed green is conservatively unavailable, including
 one starting at time zero; an unfinished last cycle is unavailable. Repeated
 observation of the same tick is ignored; missing/out-of-order ticks or changed
 Scenario identity throw. The caller must not replace a snapshot within a tick.
-Lane changes or route choices that change the physical prefix through a head
-make that whole cycle unavailable; shared-prefix route recognition is supported
-as defined below. Source departures already beyond the head or arriving within the
-insertion tick conservatively invalidate it because the prior position/type
-snapshot is absent. Sink arrivals of previously upstream tracked vehicles are
-counted explicitly, even without a survivor snapshot.
+Remaps that change upstream lane membership make the affected cycle unavailable.
+Shared-prefix routing preserves membership. Proven post-remap longitudinal motion
+is reconstructed as specified below; a lateral station jump is never passage.
+Source departures start at distance zero and use survivor or prior pending type
+evidence. Missing/contradictory source, remap or terminal evidence suppresses raw
+inference and invalidates affected cycles. A same-tick source sink with no survivor
+or prior pending type remains unavailable. Tracked sink arrivals are counted.
 
 ## Estimator
 
@@ -66,7 +67,7 @@ The CLI emits captured project/catalog hashes as defined below. Retain the
 original inputs and exact executable commit/toolchain alongside that JSON.
 
 BA03 has type-selection/window evidence; future vehicle classes are not assigned.
-BA05 remains open: complete remap/source passage tracking is still pending. Native/desktop CI and empirical/owner validation are separate gates.
+BA05 remains open: same-tick source-sink type evidence is still pending. Native/desktop CI and empirical/owner validation are separate gates.
 See [delivery rows](../plans/DRIVING_BEHAVIOUR.md) and
 [local evidence](../evidence/discharge-measurement.md).
 
@@ -94,7 +95,8 @@ startup ranks 1..k is selected. Otherwise headway can remain available while
 startup is null with `mixed_type_startup_prefix`. The JSON emits this separate
 startup reason and the selection/rate definitions. Unfiltered defaults retain the
 previous numeric results. Captured input hashes and supported shared-prefix recognition are defined below.
-Complete lateral/source reconstruction remains the next slice; BA05 stays open.
+Proven lateral/source reconstruction is delivered in M3.3.1b2b1; source-sink type
+evidence remains M3.3.1b2b2 and BA05 stays open.
 
 ## Captured input provenance (M3.3.1b2a)
 
@@ -123,9 +125,33 @@ A positioned `RoutingEvent` can preserve the queue and crossings when source and
 target routes have an identical physical segment prefix through this head.
 Recognizing a different suffix does not move the front off that shared lane; keep
 its original queued-at-Go membership and count a subsequent passage once.
-Changing the physical prefix through a head, including diverting to a suffix
-without that head, remains unavailable for that cycle. Such remaps suppress raw
-crossing inference too: arrival on a diverted route is not passage of the old head.
-Lane changes and ambiguous insertion-tick source passages remain conservative
-unavailable cases. Complete lateral/source passage reconstruction is still BA05
-work; this supported shared-prefix case does not close that gate.
+Changing upstream membership through a head invalidates its cycle estimator.
+Proven longitudinal motion before/after a remap remains observable separately
+from that queue gate. Ambiguous remaps suppress raw passage inference; an arrival
+on a diverted route alone never proves passage of the old head. See reconstruction
+below. Same-tick source sinks without type evidence remain BA05 work.
+
+## Passage reconstruction contract (M3.3.1b2b1)
+
+Reconstruct longitudinal motion from observer-owned prior route/front/type
+positions, source departures and current survivors/sink events. Source insertion
+starts at route distance zero. Identify type from a survivor or the previous
+pending record; a same-tick sink with neither remains ambiguous, never guessed
+from a mixed input. A source at the head is not a front crossing from upstream.
+
+Start-of-tick lane changes precede motion. Match their route pair and prior body
+position to the engine's lane-change spans. Use the unique mapped target station;
+no matching span or disagreeing overlapping maps is ambiguous. Do not read the
+Run view's display-only LaneChangeTrace or infer passage from a lateral jump.
+End-of-tick routing must agree with its decision station and terminal position.
+Count movement from the post-remap upstream front through a head to a survivor
+or sink once, including a vehicle inserted that tick. Preserve half-open green
+boundaries and end-of-tick timestamps; source vehicles are not queued at Go.
+
+A remap that removes or adds upstream lane membership invalidates the affected
+cycle's estimator, while proven longitudinal crossings remain in the raw stream.
+Unrelated/downstream changes do not invalidate other heads. Ambiguous passage
+suppresses that vehicle's raw inference and invalidates affected cycles. Repeated
+passage by one ID in a cycle is unavailable and never duplicated in the stream.
+Complete source-type evidence for same-tick sinks remains M3.3.1b2b2 and a BA05
+gate. See [the local evidence](../evidence/discharge-passage.md).
