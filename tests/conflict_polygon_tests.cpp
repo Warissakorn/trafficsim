@@ -4,6 +4,7 @@
 #include "../src/commands/right_of_way_commands.hpp"
 #include "../src/commands/history.hpp"
 #include "../src/model/network/right_of_way.hpp"
+#include "../src/model/network/conflict_display.hpp"
 #include <algorithm>
 using namespace trafficsim;
 namespace {
@@ -65,6 +66,11 @@ TEST(conflict_geometry, a_mouth_keeps_its_geometry_and_classifies_the_two_ends) 
     CHECK(merge!=automatic.end() && !merge->polygons.empty());
     const auto mouth=classifiedOverlaps(d.network,ref(c),{c.to.linkId,c.to.laneId,"","",""});
     test::near(area(merge->polygons),area(mouth[0].polygons));
+    const auto geometry=conflictAreaGeometry(d.network,merge->kind,merge->first,merge->second);
+    CHECK(geometry.polygons==merge->polygons && geometry.first.size()==1 && geometry.second.size()==1);
+    const auto& span=merge->first.path==ref(c)?geometry.first.front():geometry.second.front();
+    test::near(span.entryStation,mouth[0].first.from);
+    test::near(span.exitStation,mouth[0].first.to);
 }
 TEST(conflict_geometry, branching_is_selectable_data_but_cannot_author_a_priority) {
     auto d=join();const auto automatic=automaticConflicts(d.network);

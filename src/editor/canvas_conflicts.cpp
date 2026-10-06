@@ -1,6 +1,8 @@
 #include "canvas.hpp"
 #include "canvas_style.hpp"
 #include "../model/network/right_of_way.hpp"
+#include "../model/network/conflict_display.hpp"
+#include "../model/network/conflict_surface.hpp"
 #include <QApplication>
 #include <QGraphicsPathItem>
 #include <QMouseEvent>
@@ -18,11 +20,30 @@ QPainterPath outlinePath(const std::vector<Point>& points) {
     shape.closeSubpath();
     return shape;
 }
-// Both display and picking use the union of the same clipped convex pieces.
-QPainterPath overlapPath(const ConflictPolygons& polygons) {
+// Offset laterally inside the painted rails, retaining the measured entry/exit cuts.
+// Cap the inset at 20% of local width so narrow/tapered lanes and short mouths remain visible.
+QPainterPath bandPath(const Network& n,const std::vector<ConflictSide>& spans) {
     QPainterPath shape;
-    for(const auto& polygon:polygons)if(polygon.size()>=3)shape=shape.united(outlinePath(polygon));
+    for(const auto& side:spans) {
+        const auto surface=conflictSurface(n,side.path);if(!surface)continue;
+        auto left=surface->left,right=surface->right;
+        if(left.size()!=right.size() || left.size()!=surface->base.size())continue;
+        for(std::size_t i=0;i<left.size();++i) {
+            const auto a=left[i],b=right[i];const double width=std::hypot(b.x-a.x,b.y-a.y);
+            if(width<=1e-12)continue;
+            const double fraction=std::min(0.3/width,0.2);
+            left[i]={a.x+fraction*(b.x-a.x),a.y+fraction*(b.y-a.y)};
+            right[i]={b.x+fraction*(a.x-b.x),b.y+fraction*(a.y-b.y)};
+        }
+        auto outline=polylineSpan(left,matchedStation(surface->base,left,side.entryStation),matchedStation(surface->base,left,side.exitStation));
+        const auto other=polylineSpan(right,matchedStation(surface->base,right,side.entryStation),matchedStation(surface->base,right,side.exitStation));
+        outline.insert(outline.end(),other.rbegin(),other.rend());
+        if(outline.size()>=3)shape=shape.united(outlinePath(outline));
+    }
     return shape;
+}
+QPainterPath displayPath(const Network& n,const ConflictAreaGeometry& geometry) {
+    return bandPath(n,geometry.first).united(bandPath(n,geometry.second));
 }
 int levelOf(const Network& n, const ControlPathRef& ref) {
     for (const auto& l : n.links) if (l.id == ref.linkId) return l.level;
@@ -45,7 +66,7 @@ std::vector<std::string> EditorCanvas::conflictsAt(Point p) const {
     const auto& n = document_->network;
     for (const auto& area : n.rightOfWay.conflictAreas) {
         if(!levelVisible(levelOf(n,area.first.path)) || !levelVisible(levelOf(n,area.second.path)))continue;
-        const auto shape=overlapPath(conflictAreaPolygons(n,area.kind,area.first,area.second));
+        const auto shape=displayPath(n,conflictAreaGeometry(n,area.kind,area.first,area.second));
         if(shape.contains(QPointF(p.x,p.y))) {
             std::string key=area.id;
             for(const auto& g:conflictGroups_)if(conflictGroupContains(g,area.id)){key=g.key;break;}
@@ -134,7 +155,7 @@ std::string EditorCanvas::automaticAt(Point p) const {
     const auto& n = document_->network;
     for(const auto& a:automatic_) {
         if(!levelVisible(levelOf(n,a.first.path)) || !levelVisible(levelOf(n,a.second.path)))continue;
-        if(overlapPath(a.polygons).contains(QPointF(p.x,p.y))) {
+        if(displayPath(n,conflictAreaGeometry(n,a.kind,a.first,a.second)).contains(QPointF(p.x,p.y))) {
             for(const auto& g:conflictGroups_)if(conflictGroupContains(g,a.key))return g.key;
             return a.key;
         }
@@ -145,14 +166,15 @@ void EditorCanvas::drawConflicts() {
     if (!document_) return;
     const auto& n = document_->network;
     conflictGroups_=conflictGroups(n,automatic_);
-    // Each lane pair retains its clipped overlap. Only selection and controls group.
-    const auto draw=[&](const std::string& id,ConflictPriority priority,const ConflictSide& first,const ConflictSide& second,bool automatic,ConflictGeometryKind geometryKind,const ConflictPolygons& polygons) {
+    // Separate bands follow each participant's driving direction; grouping uses measured polygons.
+    const auto draw=[&](const std::string& id,ConflictKind kind,ConflictPriority priority,const ConflictSide& first,const ConflictSide& second,bool automatic,ConflictGeometryKind geometryKind) {
         std::string key=id;
         for(const auto& g:conflictGroups_)if(conflictGroupContains(g,id)){key=g.key;break;}
         if(!levelVisible(levelOf(n,first.path)) || !levelVisible(levelOf(n,second.path)))return;
-        const auto shape=overlapPath(polygons);if(shape.isEmpty())return;
+        const auto geometry=conflictAreaGeometry(n,kind,first,second);
         const bool branching=geometryKind==ConflictGeometryKind::branching;
         for(const auto* side:{&first,&second}) {
+            const auto shape=bandPath(n,side==&first?geometry.first:geometry.second);if(shape.isEmpty())continue;
             const int level=levelOf(n,side->path);
             const bool undecided=priority==ConflictPriority::undetermined;
             const bool yields=(side==&first)==(priority==ConflictPriority::firstYields);
@@ -172,10 +194,9 @@ void EditorCanvas::drawConflicts() {
             item->setData(3,QString::fromStdString(id)); // lane-pair identity, independent of group selection
         }
     };
-    for(const auto& a:n.rightOfWay.conflictAreas)draw(a.id,a.priority,a.first,a.second,false,
-        a.kind==ConflictKind::crossing?ConflictGeometryKind::crossing:ConflictGeometryKind::merge,
-        conflictAreaPolygons(n,a.kind,a.first,a.second));
-    if(tool_==Tool::conflict)for(const auto& a:automatic_)draw(a.key,a.priority,a.first,a.second,true,a.geometryKind,a.polygons);
+    for(const auto& a:n.rightOfWay.conflictAreas)draw(a.id,a.kind,a.priority,a.first,a.second,false,
+        a.kind==ConflictKind::crossing?ConflictGeometryKind::crossing:ConflictGeometryKind::merge);
+    if(tool_==Tool::conflict)for(const auto& a:automatic_)draw(a.key,a.kind,a.priority,a.first,a.second,true,a.geometryKind);
     for (const auto& line : n.rightOfWay.waitingLines) {
         const int level = levelOf(n, line.point.path);
         if (!levelVisible(level)) continue;

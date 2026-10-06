@@ -203,11 +203,12 @@ int main(int argc, char** argv) {
         require(network().rightOfWay==grouped,"Group delete was not one Undo");
         // Leave no unsaved document for window teardown.
         act(w,"editorUndo")->trigger();QApplication::processEvents();
-        // Oblique crossing: no rectangular spill outside the true intersection, and picking
-        // agrees with the painted shape both before and after authoring.
+        // Oblique crossing: separate rail-inset bands follow each driving direction, and
+        // picking agrees with the visible bands both before and after authoring.
+        for(const double laneWidth:{3.5,0.5}) {
         ProjectDocument oblique;
-        addLink(oblique,{{0,0},{200,0}},1,3.5);addLink(oblique,{{0,-100},{200,100}},1,3.5);
-        const auto obliqueFile=temp.filePath("oblique.traffic.json");
+        addLink(oblique,{{0,0},{200,0}},1,laneWidth);addLink(oblique,{{0,-100},{200,100}},1,laneWidth);
+        const auto obliqueFile=temp.filePath("oblique-"+QString::number(laneWidth)+".traffic.json");
         {QFile f(obliqueFile);require(f.open(QIODevice::WriteOnly),"Oblique fixture open failed");
             f.write(QByteArray::fromStdString(documentJson(oblique).dump()));}
         w.openFile(obliqueFile);QApplication::processEvents();key(w,Qt::Key_A);
@@ -220,8 +221,19 @@ int main(int argc, char** argv) {
         };
         const auto firstShape=path(conflictSideOutline(network(),crossing.first));
         const auto secondShape=path(conflictSideOutline(network(),crossing.second));
-        const auto expected=firstShape.intersected(secondShape);
-        require(!expected.isEmpty() && !firstShape.subtracted(expected).isEmpty(),"The oblique probe has no strip spill");
+        const auto inset=[](std::vector<Point> p) {
+            require(p.size()==4,"The straight probe is not a quad");
+            for(int i=0;i<2;++i) {
+                const auto a=p[i],b=p[3-i];const double width=std::hypot(b.x-a.x,b.y-a.y);
+                const double t=std::min(0.3/width,0.2);
+                p[i]={a.x+t*(b.x-a.x),a.y+t*(b.y-a.y)};
+                p[3-i]={b.x+t*(a.x-b.x),b.y+t*(a.y-b.y)};
+            }
+            return p;
+        };
+        const auto firstBand=path(inset(conflictSideOutline(network(),crossing.first)));
+        const auto secondBand=path(inset(conflictSideOutline(network(),crossing.second)));
+        const auto expected=firstBand.united(secondBand);
         const auto pathArea=[](const QPainterPath& p) {
             double total=0;
             for(const auto& polygon:p.toSubpathPolygons()) {
@@ -234,25 +246,31 @@ int main(int argc, char** argv) {
             }
             return total;
         };
+        int firstCount=0,secondCount=0;
+        const auto difference=[&](const QPainterPath& a,const QPainterPath& b) {
+            return pathArea(a.subtracted(b))+pathArea(b.subtracted(a));
+        };
         for(auto* item:c->scene()->items())if(item->data(0).toString()=="auto-conflict") {
             auto* shape=dynamic_cast<QGraphicsPathItem*>(item);require(shape,"Conflict is not a path");
             // Qt and model clipping can differ at the last floating-point bits of an edge.
-            require(pathArea(shape->path().subtracted(expected))+pathArea(expected.subtracted(shape->path()))<1e-7,
-                    "The painted conflict does not equal the intersection");
+            firstCount+=difference(shape->path(),firstBand)<1e-7;
+            secondCount+=difference(shape->path(),secondBand)<1e-7;
         }
+        require(firstCount==1 && secondCount==1,"Conflict bands do not separately follow both driving directions");
         QPointF outside;bool foundOutside=false;const auto bounds=firstShape.boundingRect();
         for(int x=1;x<20 && !foundOutside;++x)for(int y=1;y<20 && !foundOutside;++y) {
             const QPointF point{bounds.left()+bounds.width()*x/20,bounds.top()+bounds.height()*y/20};
             if(firstShape.contains(point) && !expected.contains(point)){outside=point;foundOutside=true;}
         }
-        require(foundOutside,"No point outside the true overlap was found");
-        require(c->automaticAt({outside.x(),outside.y()}).empty(),"Picking includes the old strip spill");
+        require(foundOutside,"No point in the rail offset was found");
+        require(c->automaticAt({outside.x(),outside.y()}).empty(),"Picking includes the blank rail offset");
         c->fitNetwork();c->scale(4,4);QApplication::processEvents();
         c->centerOn(expected.boundingRect().center());QApplication::processEvents();
         author(w,centre(crossing.polygons.front()));
         require(network().rightOfWay.conflictAreas.size()==1,"The exact intersection cannot be authored");
-        require(c->conflictsAt({outside.x(),outside.y()}).empty(),"Authored picking includes the old strip spill");
+        require(c->conflictsAt({outside.x(),outside.y()}).empty(),"Authored picking includes the blank rail offset");
         act(w,"editorUndo")->trigger();QApplication::processEvents();
+        }
         std::cout << "conflict auto ui tests passed\n";
         return 0;
     } catch (const std::exception& e) {

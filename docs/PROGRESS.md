@@ -8,6 +8,25 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Conflict bands follow driving lanes with rail offsets (D117)
+
+Owner refined D115 display to separate directional lane bands, with appropriate offset
+from road edges. Exact intersection polygons and mouth classification are retained for
+measurement/grouping; `conflictAreaGeometry` also exposes per-side measured station spans.
+Canvas bands follow the painted rails through those spans, inset laterally by 0.30 m per
+side capped at 20% of local width. Longitudinal cuts remain unchanged, keeping short
+mouths visible. Picking uses the same visible band union. Merge bands use measured mouth
+spans rather than the unchanged one-metre runtime admission extents. No schema or solver
+rule changes. Updated oblique UI tests require two distinct directional bands and blank
+offset margins to be unpickable; narrow 0.5 m lanes test adaptive offsets. Model regressions
+compare merge band spans directly with measured Connector/Link mouth stations.
+The oldest docs-tidy history block is moved whole into archive to retain live-file headroom.
+Validation: GCC 13.3/C++20 and Qt 6.4.2; the complete local desktop CTest suite passes
+**89/89 groups**, including Qt offscreen UI, frozen references and repository guards.
+Native CI and owner desktop appearance remain separate; no owner/fidelity gate closes.
+
+---
+
 ## 2026-10-06 — Road crossbars and hover-traced Routes (D116)
 
 The owner requested a simpler common appearance: Routes, Vehicle inputs and signal
@@ -448,31 +467,6 @@ Validation: documentation links/anchors, retained content, file sizes and `git d
 CTest could not run: this environment has no `ctest`; no application code changed.
 
 ---
-
-## 2026-10-04 — Docs tidy: a map, no broken links, NEXT regrouped
-
-At the user's request ("tidy the docs"), the owner chose a tidy in place: no file moves, so no
-path changes. Docs only.
-- **`docs/README.md`** is new. It lists every file in `docs/` by purpose: start here, current
-  reference, milestone plans and gates, dated audits, folders. CLAUDE.md's read table and the
-  root README point at it.
-- **Links:** 7 relative links in `archive/` broke when their files moved there, and now carry
-  `../`. `PROGRESS-2026-09-28-d79-mouth.md` was missing from `archive/README.md`. A link and
-  reference sweep of every `*.md` finds no broken link. The remaining name mismatches are history
-  quoting old file names, or a proposed file (`evidence/m6-benchmark-options.md`).
-- **NEXT.md** is regrouped, with no item dropped: 0 the owner's order question (O1), 1 one
-  numbered checklist of owner looks on Windows, 2 owner decisions, 3 session work, 4 working
-  notes, 5 do not retry. The roadmap review's corrections are carried over: WSL is not
-  installed here, `Veytrix` was set aside, PRs #76–#78, M2.7 is open. D104 is recorded as part of
-  the review's S3.
-- **Root README:** its status still said M1 acceptance was open, the name waited on "the end of
-  M1", and lane changes, conflicts and priority were future work. It now states D49/D51–D53, an
-  open M0, and what the editor does, and its "Implemented" table matches `src/`.
-- **NETWORK_EDITOR.md** gains the Results tab and D104's export, which no current doc described.
-- **PROGRESS:** D97, D98 and the route table Length entry moved to
-  `archive/PROGRESS-2026-10-02-d97-d98.md` (488 → 376 lines).
-- The branch merged `main` first (the roadmap review, `cf8fb22`), so none of its 63 corrections
-  is undone.
 
 ## Backlog (M0, in order)
 

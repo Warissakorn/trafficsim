@@ -33,10 +33,12 @@ multiple paths is unresolved; a changed lane count never silently retargets it b
 No route's Link/Connector authoring contract changes, and no lane-changing decision is added.
 
 D109 groups connected lane-pair areas of the same Link/Connector owner pair and kind in the
-canvas and table. D115 replaces D110's full-width side strips and D72's display inset with
-exact overlap polygons. A 3 × 3 crossing keeps nine lane-pair reservations and one control
-group; each pair's two priority layers use the same clipped polygon (yielding is hatched).
-Display and picking use its union, including edges up to normal floating-point accuracy.
+canvas and table. D117 restores separate bands along each participant's lane, cut at the
+measured overlap station spans. The painted rails are inset laterally by 0.30 m per side,
+capped at 20% of local width; longitudinal ends are not eroded, so short mouths remain
+visible. A 3 × 3 crossing keeps nine lane-pair reservations and one control group; each
+pair has two directional bands (yielding is hatched). Picking uses the same visible band
+union. Physical grouping still uses D115's exact measured polygons, not the inset bands.
 Group edits apply to every member in one Undo; differing existing settings are shown as
 mixed. Separate locations and different owner pairs stay separate. No group or polygon is
 persisted: rails are the sole geometry source, and stored stations remain runtime inputs.
@@ -50,15 +52,15 @@ attachment station. Neighbouring lanes swept before a join and separate interior
 remain crossings. `crossingOverlaps` is the crossing-only view used by Add, following and Run.
 Unsupported folded strips remain named blockers; tangencies do not create positive areas.
 
-The automatic editor shows crossing, merge and branching separately. A branching polygon
+The automatic editor shows crossing, merge and branching separately. A branching band
 is selectable, red-red and labelled as original-order behavior, with priority/Edit/Delete
 unavailable. It introduces no new core reservation. A continuation is measured but does not
 create a conflict row. A derived-only `ConflictKind::branching` is rejected by authored commands,
 structural validation and the codec; authored kinds and file schemas remain crossing/merge.
 
-Merge display uses actual terminal overlap polygons, not the one-metre admission strips.
+Merge display uses station spans of the actual terminal overlaps, not the one-metre admission strips.
 When two arriving Connectors meet only on an edge, their overlap with the common receiving
-lane supplies the mouth polygons. If no supported positive geometry can be measured, there
+lane supplies the mouth polygons and each incoming band's span. If no supported positive geometry can be measured, there
 is no guessed fill; a topological merge still has its table row and existing arbitration.
 The D50/D59 merge station extents, waiting positions and engine rules stay unchanged in
 M3.2.4d. Extending merge occupancy to the full physical overlap is the separate M3.2.4e slice:

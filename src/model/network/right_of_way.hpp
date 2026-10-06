@@ -55,7 +55,7 @@ bool authoredCovers(const Network&, const ControlPathRef& first, const ControlPa
 // its entry and exit as a closed outline; a waiting line is a bar across its lane. Empty when the
 // reference does not resolve -- the editor draws nothing rather than a guess.
 std::vector<Point> conflictSideOutline(const Network&, const ConflictSide&);
-// Exact overlap polygons for display/picking. Stored stations still control the runtime.
+// Exact measured overlap polygons for physical grouping. Stored stations control the runtime.
 // Merge polygons come from terminal mouths, not the old one-metre admission markers.
 ConflictPolygons conflictAreaPolygons(const Network&, ConflictKind, const ConflictSide&, const ConflictSide&);
 std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const ControlPoint&);

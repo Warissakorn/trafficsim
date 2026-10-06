@@ -215,8 +215,10 @@ D109 `conflictGroups` derives connected groups for one road-owner pair and kind;
 author/edit/delete every member atomically, while the resolver keeps individual lane-pair zones.
 D115 retains the convex polygon clips in `surfaceOverlaps`; `classifiedOverlaps` labels
 mouths as merge, branching or continuation without discarding their geometry. The crossing-only
-`crossingOverlaps` view remains shared by Add, following and Run. `conflictAreaPolygons`
-supplies authored display/picking; automatic suggestions carry the same derived polygons.
+`crossingOverlaps` view remains shared by Add, following and Run. `conflictAreaGeometry`
+in `conflict_display.hpp` supplies measured polygons and separate per-side station spans;
+`conflictAreaPolygons` and automatic suggestions retain the physical geometry for grouping.
+D117 canvas display/picking use the same laterally inset directional bands from those spans.
 Grouping uses physical polygon contact. Branching is a read-only derived editor kind;
 codec/commands reject it as an authored control. Merge runtime extents/rules stay unchanged.
 Separate locations remain separate groups. D114 restores geometry-derived runtime paths;
