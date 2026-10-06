@@ -1,6 +1,9 @@
 #include "../src/shell/editor_window.hpp"
 #include "../tools/t_junction_network.hpp"
 #include "../src/model/network/right_of_way.hpp"
+#include "../src/model/network/conflict_display.hpp"
+#include "../src/model/network/connector_surface.hpp"
+#include "../src/commands/connector_commands.hpp"
 #include <nlohmann/json.hpp>
 #include <QAction>
 #include <QApplication>
@@ -203,11 +206,12 @@ int main(int argc, char** argv) {
         require(network().rightOfWay==grouped,"Group delete was not one Undo");
         // Leave no unsaved document for window teardown.
         act(w,"editorUndo")->trigger();QApplication::processEvents();
-        // Oblique crossing: no rectangular spill outside the true intersection, and picking
-        // agrees with the painted shape both before and after authoring.
+        // Oblique crossing: separate rail-inset bands follow each driving direction, and
+        // picking agrees with the visible bands both before and after authoring.
+        for(const double laneWidth:{3.5,0.5}) {
         ProjectDocument oblique;
-        addLink(oblique,{{0,0},{200,0}},1,3.5);addLink(oblique,{{0,-100},{200,100}},1,3.5);
-        const auto obliqueFile=temp.filePath("oblique.traffic.json");
+        addLink(oblique,{{0,0},{200,0}},1,laneWidth);addLink(oblique,{{0,-100},{200,100}},1,laneWidth);
+        const auto obliqueFile=temp.filePath("oblique-"+QString::number(laneWidth)+".traffic.json");
         {QFile f(obliqueFile);require(f.open(QIODevice::WriteOnly),"Oblique fixture open failed");
             f.write(QByteArray::fromStdString(documentJson(oblique).dump()));}
         w.openFile(obliqueFile);QApplication::processEvents();key(w,Qt::Key_A);
@@ -220,8 +224,19 @@ int main(int argc, char** argv) {
         };
         const auto firstShape=path(conflictSideOutline(network(),crossing.first));
         const auto secondShape=path(conflictSideOutline(network(),crossing.second));
-        const auto expected=firstShape.intersected(secondShape);
-        require(!expected.isEmpty() && !firstShape.subtracted(expected).isEmpty(),"The oblique probe has no strip spill");
+        const auto inset=[](std::vector<Point> p) {
+            require(p.size()==4,"The straight probe is not a quad");
+            for(int i=0;i<2;++i) {
+                const auto a=p[i],b=p[3-i];const double width=std::hypot(b.x-a.x,b.y-a.y);
+                const double t=std::min(0.5/width,0.2);
+                p[i]={a.x+t*(b.x-a.x),a.y+t*(b.y-a.y)};
+                p[3-i]={b.x+t*(a.x-b.x),b.y+t*(a.y-b.y)};
+            }
+            return p;
+        };
+        const auto firstBand=path(inset(conflictSideOutline(network(),crossing.first)));
+        const auto secondBand=path(inset(conflictSideOutline(network(),crossing.second)));
+        const auto expected=firstBand.united(secondBand);
         const auto pathArea=[](const QPainterPath& p) {
             double total=0;
             for(const auto& polygon:p.toSubpathPolygons()) {
@@ -234,25 +249,72 @@ int main(int argc, char** argv) {
             }
             return total;
         };
+        int firstCount=0,secondCount=0;
+        const auto difference=[&](const QPainterPath& a,const QPainterPath& b) {
+            return pathArea(a.subtracted(b))+pathArea(b.subtracted(a));
+        };
         for(auto* item:c->scene()->items())if(item->data(0).toString()=="auto-conflict") {
             auto* shape=dynamic_cast<QGraphicsPathItem*>(item);require(shape,"Conflict is not a path");
             // Qt and model clipping can differ at the last floating-point bits of an edge.
-            require(pathArea(shape->path().subtracted(expected))+pathArea(expected.subtracted(shape->path()))<1e-7,
-                    "The painted conflict does not equal the intersection");
+            firstCount+=difference(shape->path(),firstBand)<1e-7;
+            secondCount+=difference(shape->path(),secondBand)<1e-7;
         }
+        require(firstCount==1 && secondCount==1,"Conflict bands do not separately follow both driving directions");
         QPointF outside;bool foundOutside=false;const auto bounds=firstShape.boundingRect();
         for(int x=1;x<20 && !foundOutside;++x)for(int y=1;y<20 && !foundOutside;++y) {
             const QPointF point{bounds.left()+bounds.width()*x/20,bounds.top()+bounds.height()*y/20};
             if(firstShape.contains(point) && !expected.contains(point)){outside=point;foundOutside=true;}
         }
-        require(foundOutside,"No point outside the true overlap was found");
-        require(c->automaticAt({outside.x(),outside.y()}).empty(),"Picking includes the old strip spill");
+        require(foundOutside,"No point in the rail offset was found");
+        require(c->automaticAt({outside.x(),outside.y()}).empty(),"Picking includes the blank rail offset");
         c->fitNetwork();c->scale(4,4);QApplication::processEvents();
         c->centerOn(expected.boundingRect().center());QApplication::processEvents();
         author(w,centre(crossing.polygons.front()));
         require(network().rightOfWay.conflictAreas.size()==1,"The exact intersection cannot be authored");
-        require(c->conflictsAt({outside.x(),outside.y()}).empty(),"Authored picking includes the old strip spill");
+        require(c->conflictsAt({outside.x(),outside.y()}).empty(),"Authored picking includes the blank rail offset");
         act(w,"editorUndo")->trigger();QApplication::processEvents();
+        }
+        // One real Link/Connector site contains branching, crossing and merge lane pairs.
+        // Its Link continuation must be painted/pickable through the actual P3-P4 station span.
+        for(const auto handed:{DrivingSide::left,DrivingSide::right}) {
+            ProjectDocument mouth;mouth.network.drivingSide=handed;
+            const auto road=addLink(mouth,{{0,0},{200,0}},3,3.5);
+            const auto& l=mouth.network.links.front();
+            const auto connector=addConnector(mouth,{road,l.lanes.front().id,100},{road,l.lanes.back().id,110});
+            const auto original=mouth.network.connectors.front();
+            changeConnectorGeometry(mouth,connector,{laneAttachment(mouth.network,original.from,true),laneAttachment(mouth.network,original.to,false)});
+            const auto file=temp.filePath("mouth-"+QString::number(static_cast<int>(handed))+".traffic.json");
+            {QFile f(file);require(f.open(QIODevice::WriteOnly),"Mouth fixture open failed");f.write(QByteArray::fromStdString(documentJson(mouth).dump()));}
+            w.openFile(file);QApplication::processEvents();key(w,Qt::Key_A);
+            const auto automatic=automaticConflicts(network());const auto groups=conflictGroups(network(),automatic);
+            require(groups.size()==1 && groups.front().kinds.size()==3,"The three real kinds were not grouped");
+            require(table->rowCount()==1 && table->item(0,2)->text().count(" / ")==2,"The mixed row does not list all three kinds");
+            const auto& connectorRef=network().connectors.front();
+            const ControlPathRef pathRef{"","",connectorRef.id,connectorRef.from.laneId,connectorRef.to.laneId};
+            const auto caps=conflictMouthBands(network(),pathRef,false,true);
+            require(!caps.empty(),"No target mouth continuation");
+            const auto surface=connectorSurface(network(),connectorRef);require(surface.target.has_value(),"No target P3-P4");
+            const auto& link=network().links.front();
+            const double at=(stationOfClosestPoint(link.geometry,surface.target->points[2])+stationOfClosestPoint(link.geometry,surface.target->points[3]))/2;
+            const auto lane=laneGeometry(link,connectorRef.to.laneId,handed);
+            const auto probe=pointAlong(lane,matchedStation(link.geometry,lane,at));
+            bool painted=false;
+            for(auto* item:c->scene()->items())if(item->data(0).toString()=="auto-conflict" &&
+                item->data(4).toString()=="merge" && item->data(5).toString()==QString::fromStdString(connectorRef.id)) {
+                const auto* band=dynamic_cast<QGraphicsPathItem*>(item);
+                painted|=band && band->path().contains(QPointF(probe.x,probe.y));
+            }
+            require(painted && c->automaticAt(probe)==groups.front().key,"P3-P4 Link continuation display/picking disagree");
+            table->selectRow(0);QApplication::processEvents();
+            require(act(w,"editorCyclePriority")->isEnabled(),"Mixed site priority action is disabled");
+            act(w,"editorCyclePriority")->trigger();QApplication::processEvents();
+            const auto branches=std::count_if(automatic.begin(),automatic.end(),[](const auto& a){return a.kind==ConflictKind::branching;});
+            require(network().rightOfWay.conflictAreas.size()==automatic.size()-static_cast<std::size_t>(branches),"Mixed site did not author all editable members");
+            for(const auto& a:network().rightOfWay.conflictAreas)require(a.kind!=ConflictKind::branching,"A branching control was authored");
+            require(!c->conflictsAt(probe).empty(),"The authored P3-P4 continuation is not pickable");
+            act(w,"editorUndo")->trigger();QApplication::processEvents();
+            require(w.history().document()==mouth,"Mixed site authoring is not one Undo");
+        }
         std::cout << "conflict auto ui tests passed\n";
         return 0;
     } catch (const std::exception& e) {

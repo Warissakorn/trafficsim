@@ -55,7 +55,7 @@ bool authoredCovers(const Network&, const ControlPathRef& first, const ControlPa
 // its entry and exit as a closed outline; a waiting line is a bar across its lane. Empty when the
 // reference does not resolve -- the editor draws nothing rather than a guess.
 std::vector<Point> conflictSideOutline(const Network&, const ConflictSide&);
-// Exact overlap polygons for display/picking. Stored stations still control the runtime.
+// Exact measured overlap polygons for physical grouping. Stored stations control the runtime.
 // Merge polygons come from terminal mouths, not the old one-metre admission markers.
 ConflictPolygons conflictAreaPolygons(const Network&, ConflictKind, const ConflictSide&, const ConflictSide&);
 std::optional<std::pair<Point, Point>> waitingLineBar(const Network&, const ControlPoint&);
@@ -112,12 +112,13 @@ struct AutomaticConflict {
 std::vector<AutomaticConflict> automaticConflicts(const Network&);
 
 // Derived UI groups: one connected place of a pair of road objects. Lane pairs and their
-// reservations remain separate. Mixed authored/passive members share one selectable group.
+// reservations remain separate. Mixed authored/passive and crossing/merge/branching members share one selectable group.
 struct ConflictGroup {
     std::string key, firstOwner, secondOwner;
     ConflictKind kind{ConflictKind::crossing};
     std::vector<std::string> areaIds, automaticKeys;
     ConflictGeometryKind geometryKind{ConflictGeometryKind::crossing};
+    std::vector<ConflictKind> kinds; // includes read-only branching members
 };
 std::string conflictOwner(const ControlPathRef&);
 std::vector<ConflictGroup> conflictGroups(const Network&, const std::vector<AutomaticConflict>&);

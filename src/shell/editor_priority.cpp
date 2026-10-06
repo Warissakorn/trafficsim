@@ -123,7 +123,7 @@ void EditorWindow::refreshConflicts() {
         const auto verdict = row.conflictAreas.empty() ? RightOfWayResolution{} : resolveRightOfWay(n, runtimeSections(n), {1, 1});
         for (int r=0;r<rows;++r) {
             const auto& g=groups[static_cast<std::size_t>(r)];
-            std::vector<QStringList> members;
+            std::vector<QStringList> members;std::vector<bool> editable;
             QString blocked;
             for(const auto& id:g.areaIds) {
                 const auto at=std::find_if(row.conflictAreas.begin(),row.conflictAreas.end(),[&](const auto& a){return a.id==id;});
@@ -134,6 +134,7 @@ void EditorWindow::refreshConflicts() {
                 }
                 const auto rule=std::find_if(row.priorityRules.begin(),row.priorityRules.end(),[&](const auto& x){return x.conflictAreaId==id;});
                 const auto control=controlOf(row,id);
+                editable.push_back(true);
                 members.push_back({QString::fromStdString(a.name),a.priority==ConflictPriority::undetermined?text("editorConflictUndetermined"):
                     text("editorConflictGivesWay").arg(owner(a.priority==ConflictPriority::firstYields?a.first.path:a.second.path)),
                     rule==row.priorityRules.end()?QString():QString::number(rule->gapTime,'f',1),
@@ -144,21 +145,30 @@ void EditorWindow::refreshConflicts() {
                 const auto at=std::find_if(automatic_.begin(),automatic_.end(),[&](const auto& a){return a.key==key;});
                 const auto& a=*at;
                 const bool branching=a.geometryKind==ConflictGeometryKind::branching;
+                editable.push_back(!branching);
                 members.push_back({QString(),branching?text("editorConflictOriginalOrder"):a.priority==ConflictPriority::undetermined?text("editorConflictPassive"):
                     text("editorConflictGivesWay").arg(owner(a.priority==ConflictPriority::firstYields?a.first.path:a.second.path)),
                     QString(),QString(),text(branching?"editorConflictBranchingStatus":a.kind==ConflictKind::crossing?"editorConflictPassiveStatus":"editorConflictAutomaticStatus"),QString()});
             }
             const auto common=[&](int column) {
-                const auto value=members.front()[column];
-                for(const auto& m:members)if(m[column]!=value)return text("editorConflictMixed");
-                return value;
+                const bool hasEditable=std::find(editable.begin(),editable.end(),true)!=editable.end();
+                std::optional<QString> value;
+                for(std::size_t i=0;i<members.size();++i) {
+                    if(column!=4 && hasEditable && !editable[i])continue;
+                    if(value && members[i][column]!=*value)return text("editorConflictMixed");
+                    value=members[i][column];
+                }
+                return value.value_or(QString());
             };
+            QStringList kinds;
+            for(const auto kind:g.kinds)kinds.push_back(text(kind==ConflictKind::branching?"editorConflictBranching":kind==ConflictKind::crossing?"editorConflictCrossing":"editorConflictMerge"));
             const QStringList values{g.areaIds.empty()?QStringLiteral("\u2014"):QString::fromStdString(g.key),common(0),
-                text(g.geometryKind==ConflictGeometryKind::branching?"editorConflictBranching":g.kind==ConflictKind::crossing?"editorConflictCrossing":"editorConflictMerge"),common(1),common(2),common(3),
+                kinds.join(" / "),common(1),common(2),common(3),
                 blocked.isEmpty()?common(4):blocked,common(5)};
             for(int c=0;c<values.size();++c) {
                 auto* cell=new QTableWidgetItem(values[c]);cell->setData(Qt::UserRole,QString::fromStdString(g.key));
-                cell->setToolTip(text("editorConflictGroupPairs").arg(g.areaIds.size()+g.automaticKeys.size()));
+                cell->setToolTip(text("editorConflictGroupPairs").arg(g.areaIds.size()+g.automaticKeys.size())+
+                    (std::find(g.kinds.begin(),g.kinds.end(),ConflictKind::branching)!=g.kinds.end()?"\n"+text("editorConflictGroupReadOnly"):QString()));
                 if(c==0||c==4||c==5)editorDesign::setNumericText(cell,c>0);
                 conflictTable_->setItem(r,c,cell);
             }
@@ -240,8 +250,15 @@ void EditorWindow::editConflict(const std::string& id) {
     headway->setRange(0.1, 500); headway->setDecimals(1); headway->setSuffix(" m");
     headway->setValue(rule != row.priorityRules.end() ? rule->headway : std::max(0.1, defaults.headway));
     std::size_t pairCount=1;
-    for(const auto& g:conflictGroups(history_.document().network,automatic_))if(conflictGroupContains(g,id))pairCount=g.areaIds.size()+g.automaticKeys.size();
+    bool hasBranching=false;
+    for(const auto& g:conflictGroups(history_.document().network,automatic_))if(conflictGroupContains(g,id)) {
+        pairCount=g.areaIds.size();
+        for(const auto& key:g.automaticKeys)for(const auto& a:automatic_)if(a.key==key) {
+            if(a.kind==ConflictKind::branching)hasBranching=true;else ++pairCount;
+        }
+    }
     form->addRow(new QLabel(text("editorConflictGroupEdit").arg(pairCount), &dialog));
+    if(hasBranching)form->addRow(new QLabel(text("editorConflictGroupReadOnly"),&dialog));
     form->addRow(text("editorColumnName"), name);
     form->addRow(text("editorConflictPriority"), priority);
     form->addRow("gapTime", gap);

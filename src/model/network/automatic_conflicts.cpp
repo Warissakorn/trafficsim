@@ -109,7 +109,9 @@ std::vector<AutomaticConflict> automaticConflicts(const Network& n) {
                                   ConflictPriority::undetermined,
                                   "auto/" + a.key + "|" + b.key +
                                       (o.geometryKind==ConflictGeometryKind::branching?"/branching":"") +
-                                      (index?"#"+std::to_string(index):std::string{}), "", o.geometryKind, o.polygons});
+                                      (index?"#"+std::to_string(index):std::string{}), "", o.geometryKind, conflictAreaPolygons(n,
+                                      o.geometryKind==ConflictGeometryKind::branching?ConflictKind::branching:ConflictKind::crossing,
+                                      {a.ref,o.first.from,o.first.to,""},{b.ref,o.second.from,o.second.to,""})});
             }
         }
     const auto table = runtimeSections(n);

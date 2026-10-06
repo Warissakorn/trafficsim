@@ -1,5 +1,6 @@
 #include "right_of_way.hpp"
 #include "conflict_surface.hpp"
+#include "conflict_polygon_math.hpp"
 #include <algorithm>
 #include <cmath>
 #include <optional>
@@ -63,38 +64,10 @@ std::optional<std::vector<Quad>> quadsOf(const Strip& s) {
     }
     return quads;
 }
-// Sutherland-Hodgman: a convex polygon clipped by a convex counter-clockwise one.
-std::vector<Point> clip(std::vector<Point> subject, const std::vector<Point>& by) {
-    for (std::size_t e = 0; e < by.size() && !subject.empty(); ++e) {
-        const auto a = by[e], edge = sub(by[(e + 1) % by.size()], a);
-        const auto input = std::move(subject);
-        subject.clear();
-        for (std::size_t i = 0; i < input.size(); ++i) {
-            const auto p = input[i], q = input[(i + 1) % input.size()];
-            const double sp = cross(edge, sub(p, a)), sq = cross(edge, sub(q, a));
-            if (sp >= 0) subject.push_back(p);
-            if ((sp >= 0) != (sq >= 0)) {
-                const double t = sp / (sp - sq);
-                subject.push_back({p.x + t * (q.x - p.x), p.y + t * (q.y - p.y)});
-            }
-        }
-    }
-    return subject;
-}
 // The station of a point inside a quad: the t whose cross-section, from lerp(l0,l1,t) to
 // lerp(r0,r1,t), passes through it. The same proportional convention matchedStation uses.
-double stationIn(const Quad& q, Point p) {
-    const auto e = sub(q.l1, q.l0), g = sub(q.r0, q.l0), h = sub(p, q.l0), k = sub(sub(q.r1, q.r0), e);
-    const double a = -cross(k, e), b = cross(k, h) - cross(g, e), c = cross(g, h);
-    double t;
-    if (std::abs(a) <= kStraight * (std::abs(b) + std::abs(c)) || a == 0) t = b == 0 ? 0 : -c / b;
-    else {
-        const double root = std::sqrt(std::max(0.0, b * b - 4 * a * c));
-        const double t1 = (-b + root) / (2 * a), t2 = (-b - root) / (2 * a);
-        const auto off = [](double x) { return x < 0 ? -x : x > 1 ? x - 1 : 0; };
-        t = off(t1) <= off(t2) ? t1 : t2;
-    }
-    return q.start + std::clamp(t, 0.0, 1.0) * q.length;
+double stationIn(const Quad& q,Point p) {
+    return stationInLaneQuad(q.l0,q.l1,q.r0,q.r1,p,q.start,q.length);
 }
 // The overlap along one path as one interval, or empty when it comes in pieces.
 std::optional<StationInterval> joined(std::vector<StationInterval> pieces) {
@@ -193,7 +166,7 @@ std::vector<SurfaceOverlap> surfaceOverlaps(const Network& n, const ControlPathR
         for (const auto& x : *qa)
             for (const auto& y : *qb) {
                 if (x.hi.x < y.lo.x || y.hi.x < x.lo.x || x.hi.y < y.lo.y || y.hi.y < x.lo.y) continue;
-                const auto piece = clip(x.ccw, y.ccw);
+                const auto piece = intersectConvexPolygons(x.ccw, y.ccw);
                 if (piece.size() < 3 || area(piece) < kMinOverlapArea) continue;
                 StationInterval sa{INFINITY, -INFINITY}, sb{INFINITY, -INFINITY};
                 for (const auto& p : piece) {
