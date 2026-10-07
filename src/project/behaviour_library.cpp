@@ -181,25 +181,41 @@ std::vector<SegmentBehaviour> compileBehaviourAssignments(const Network& network
     for (const auto& c : network.connectors) if (c.behaviourTypeId) owner[c.id] = *c.behaviourTypeId;
     std::vector<SegmentBehaviour> result;
     if (owner.empty()) return result;
-    std::map<std::string, std::string> classOf;
-    for (const auto& c : d.vehicleClasses) for (const auto& t : c.vehicleTypeIds) classOf[t] = c.id;
+    std::map<std::string, std::vector<RoadBehaviour>> byType; // resolved once per behaviour type
     const auto select = [&](const std::string& segment, const std::string& road) {
         const auto assigned = owner.find(road);
         if (assigned == owner.end()) return;
-        const auto type = std::find_if(d.linkBehaviourTypes.begin(), d.linkBehaviourTypes.end(),
-                                       [&](const auto& t) { return t.id == assigned->second; });
-        // Validation guarantees the reference; an unknown one stays refused, never defaulted.
-        if (type == d.linkBehaviourTypes.end()) throw ValidationError({{"UNKNOWN_BEHAVIOUR_TYPE", road}});
-        for (const auto& vehicle : d.vehicleTypes) {
-            auto behaviour = type->defaultBehaviourId;
-            if (const auto group = classOf.find(vehicle.id); group != classOf.end())
-                for (const auto& o : type->overrides) if (o.classId == group->second) behaviour = o.behaviourId;
-            result.push_back({segment, vehicle.id, behaviour});
-        }
+        auto at = byType.find(assigned->second);
+        if (at == byType.end()) at = byType.emplace(assigned->second, effectiveRoadBehaviours(d, assigned->second)).first;
+        for (const auto& r : at->second) result.push_back({segment, r.vehicleTypeId, r.behaviourId});
     };
     const auto table = runtimeSections(network);
     for (const auto& section : table.sections) select(section.id, section.linkId);
     for (std::size_t p = 0; p < table.paths.size(); ++p) select(table.paths[p].id, table.pathConnector[p]);
+    return result;
+}
+std::vector<RoadBehaviour> effectiveRoadBehaviours(const AuthoringDefinition& d, const std::optional<std::string>& id) {
+    std::vector<RoadBehaviour> result;
+    const LinkBehaviourType* type = nullptr;
+    if (id) {
+        const auto found = std::find_if(d.linkBehaviourTypes.begin(), d.linkBehaviourTypes.end(),
+                                        [&](const auto& t) { return t.id == *id; });
+        // Validation guarantees the reference; an unknown one stays refused, never defaulted.
+        if (found == d.linkBehaviourTypes.end()) throw ValidationError({{"UNKNOWN_BEHAVIOUR_TYPE", *id}});
+        type = &*found;
+    }
+    std::map<std::string, std::string> classOf;
+    for (const auto& c : d.vehicleClasses) for (const auto& t : c.vehicleTypeIds) classOf[t] = c.id;
+    for (const auto& vehicle : d.vehicleTypes) {
+        RoadBehaviour r{vehicle.id, vehicle.behaviourId, BehaviourSource::inherited};
+        if (type) {
+            r = {vehicle.id, type->defaultBehaviourId, BehaviourSource::typeDefault};
+            if (const auto group = classOf.find(vehicle.id); group != classOf.end())
+                for (const auto& o : type->overrides)
+                    if (o.classId == group->second) r = {vehicle.id, o.behaviourId, BehaviourSource::classOverride};
+        }
+        result.push_back(std::move(r));
+    }
     return result;
 }
 }

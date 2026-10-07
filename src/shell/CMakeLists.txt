@@ -1,5 +1,5 @@
 add_library(trafficsim_shell STATIC editor_style.cpp editor_appearance.cpp editor_workspace.cpp editor_window.cpp editor_commands.cpp editor_signal.cpp signal_timing_view.cpp editor_inspector.cpp editor_connectors.cpp editor_files.cpp editor_history.cpp editor_rotation.cpp
-    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_demand_preview.cpp editor_catalog.cpp demand_catalog_dialog.cpp demand_type_rules_dialog.cpp demand_period_editor.cpp editor_input.cpp editor_decision.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_results.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
+    editor_tables.cpp editor_diagnostics.cpp editor_demand.cpp editor_demand_preview.cpp editor_catalog.cpp demand_catalog_dialog.cpp behaviour_library_dialog.cpp editor_behaviour.cpp demand_type_rules_dialog.cpp demand_period_editor.cpp editor_input.cpp editor_decision.cpp editor_routing.cpp editor_control.cpp editor_run.cpp editor_results.cpp editor_storage.cpp editor_recovery.cpp editor_palette.cpp editor_creation.cpp
     ../editor/canvas_feedback.cpp ../editor/canvas_spatial.cpp ../editor/canvas_rotation.cpp ../editor/canvas.cpp ../editor/canvas_lanes.cpp ../editor/canvas_input.cpp ../editor/canvas_connectors.cpp ../editor/canvas_select.cpp ../editor/canvas_run.cpp ../editor/vehicle_shape.cpp ../editor/canvas_display.cpp ../editor/canvas_demand.cpp ../editor/canvas_cache.cpp ../editor/canvas_heads.cpp ../editor/canvas_conflicts.cpp ../editor/canvas_counters.cpp editor_priority.cpp editor_counters.cpp)
 target_sources(trafficsim_shell PRIVATE ../editor/road_crossbar.cpp ../editor/canvas_decisions.cpp)
 target_link_libraries(trafficsim_shell PUBLIC trafficsim_commands Qt6::Widgets PRIVATE trafficsim_vehicle_pose trafficsim_options)
@@ -116,6 +116,12 @@ target_precompile_headers(trafficsim-demand-ui-tests REUSE_FROM trafficsim_shell
     add_test(NAME demand-catalog-ui COMMAND trafficsim-demand-catalog-ui-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(demand-catalog-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_dependencies(check trafficsim-demand-catalog-ui-tests)
+    add_executable(trafficsim-behaviour-library-ui-tests ../../tests/behaviour_library_ui_tests.cpp)
+    target_link_libraries(trafficsim-behaviour-library-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    target_precompile_headers(trafficsim-behaviour-library-ui-tests REUSE_FROM trafficsim_shell)
+    add_test(NAME behaviour-library-ui COMMAND trafficsim-behaviour-library-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(behaviour-library-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-behaviour-library-ui-tests)
     add_executable(trafficsim-demand-edit-ui-tests ../../tests/demand_edit_ui_tests.cpp)
     target_link_libraries(trafficsim-demand-edit-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
     target_precompile_headers(trafficsim-demand-edit-ui-tests REUSE_FROM trafficsim_shell)

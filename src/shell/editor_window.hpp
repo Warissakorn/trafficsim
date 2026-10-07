@@ -26,6 +26,7 @@ class QListWidget;
 class QLockFile;
 class QAction;
 class QComboBox;
+class QVBoxLayout;
 class QSpinBox;
 class QDoubleSpinBox;
 class QLineEdit;
@@ -94,6 +95,13 @@ private:
     void editRoute(const std::string& id = {}, const std::vector<std::string>& initial = {});
     void showDemandPreview();
     void editDemandCatalog();
+    // M3.3.2c (D128): driving-behaviour library dialog and Link/Connector assignment.
+    void openBehaviourLibrary();
+    void buildBehaviourInspector(QVBoxLayout*);
+    void refreshBehaviourInspector();
+    std::vector<std::string> selectedRoads() const; // selected Links and Connectors, in selection order
+    QComboBox* behaviourType_{};
+    QLabel* effectiveBehaviour_{};
     void editInput(const std::string& id = {}, const std::string& preselectedRoute = {}, const std::string& preselectedLink = {});
     void editProgram(const std::string& id = {}); // legacy programs only (M2.7b)
     // M2.7b, src/shell/editor_signal.cpp. Returns the id committed, empty on cancel.

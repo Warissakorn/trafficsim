@@ -278,7 +278,7 @@ void EditorWindow::refresh(bool modelChanged) {
     // multi-selection look as if lane or geometry changes will apply to all of it.
     if (canvas_->selection().size()>1)
         selectionInfo_->setText(text("editorSelectionCount").arg(canvas_->selection().size()));
-    refreshConnector();refreshAppearance();
+    refreshConnector();refreshAppearance();refreshBehaviourInspector();
     {const QSignalBlocker block(side_);side_->setCurrentIndex(history_.document().network.drivingSide==DrivingSide::left?0:1);}
     const auto& b=history_.document().background;
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);

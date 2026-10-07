@@ -194,3 +194,32 @@ TEST(behaviourlibrary, every_new_code_is_translated_in_english_and_thai) {
             CHECK(locale.contains(code) && locale.at(code).is_string() && !locale.at(code).get<std::string>().empty());
     }
 }
+// M3.3.2c (D128): the inspector and the compiler read one precedence.
+TEST(behaviourlibrary, effective_road_behaviours_report_value_and_source) {
+    const auto d = library(); const auto& def = *d.definition;
+    const auto lookup = [](const std::vector<RoadBehaviour>& all, const std::string& type) {
+        return *std::find_if(all.begin(), all.end(), [&](const auto& r) { return r.vehicleTypeId == type; });
+    };
+    const auto inherited = effectiveRoadBehaviours(def, std::nullopt);
+    CHECK(lookup(inherited, "car") == RoadBehaviour{"car", kDefault, BehaviourSource::inherited});
+    const auto urban = effectiveRoadBehaviours(def, std::string("urban"));
+    CHECK(lookup(urban, "car") == RoadBehaviour{"car", kDefault, BehaviourSource::typeDefault});
+    CHECK(lookup(urban, "heavy-vehicle") == RoadBehaviour{"heavy-vehicle", "slow", BehaviourSource::classOverride});
+    test::throws([&] { effectiveRoadBehaviours(def, std::string("rural")); }, "UNKNOWN_BEHAVIOUR_TYPE");
+    for (const auto& s : compileBehaviourAssignments(d.network, def))
+        CHECK(s.behaviourId == lookup(urban, s.vehicleTypeId).behaviourId);
+}
+TEST(behaviourlibrary, editor_keys_are_translated_in_english_and_thai) {
+    for (const char* language : {"en", "th"}) {
+        std::ifstream file(test::root() / "data/locales" / (std::string(language) + ".json"));
+        CHECK(file.is_open()); Json locale; file >> locale;
+        for (const char* key : {"editorBehaviourLibrary", "editorBehaviourHelp", "editorBehaviourTabBehaviours",
+                 "editorBehaviourTabClasses", "editorBehaviourTabTypes", "editorBehaviourDuplicate", "editorBehaviourUsedBy",
+                 "editorBehaviourUnused", "editorBehaviourReplacement", "editorBehaviourMembers", "editorBehaviourDefault",
+                 "editorBehaviourOverrides", "editorBehaviourClassColumn", "editorBehaviourInherit", "editorBehaviourType",
+                 "editorApplyBehaviourType", "editorEffectiveBehaviour", "editorBehaviourSourceOverride",
+                 "editorBehaviourSourceDefault", "editorBehaviourSourceInherited", "editorBehaviourMissing"})
+            CHECK(locale.contains(key) && locale.at(key).is_string() && !locale.at(key).get<std::string>().empty());
+        CHECK(locale.at("editorBehaviourUsedBy").get<std::string>().find("%1") != std::string::npos);
+    }
+}

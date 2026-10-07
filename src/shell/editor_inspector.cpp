@@ -104,6 +104,7 @@ void EditorWindow::buildInspector() {
     side_=new QComboBox(body);side_->addItems({"",""});label(appearanceForm,"editorDrivingSide",side_);
     connect(side_,&QComboBox::currentIndexChanged,this,[this](int index){execute("editorDrivingSide",[&](auto& d){changeDrivingSide(d,index==0?DrivingSide::left:DrivingSide::right);});});
     buildAppearance(appearanceForm);
+    buildBehaviourInspector(layout);
     properties_=new QTabWidget(body);properties_->setObjectName("editorPropertyTabs");layout->addWidget(properties_,1);
     const auto addPage=[this](QWidget* page){
         auto* scroll=new QScrollArea(properties_);scroll->setWidgetResizable(true);

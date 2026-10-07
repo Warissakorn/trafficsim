@@ -37,10 +37,19 @@ are unchanged and the interim Run refusal is gone. See
 and [evidence](evidence/behaviour-selection.md). Confirm this PR's native
 Linux/Windows CI independently. BA14 (positioned routing) and BA17 (Stop service)
 hold by construction but still need focused fixtures.
-Next do **M3.3.2c**: the library/assignment editor (BA19–BA20) — library dialog with
-Duplicate/users-first edit/delete-with-replacement, bulk road assignment in the
-inspector, effective vs inherited values, EN/TH, Linux/Windows UI checks, then the
-owner's appearance review. W74/W99 (M3.3.3) still need contracts before code.
+M3.3.2c (D128) adds the *Driving behaviours* dialog on the Inputs toolbar (staged,
+one History step, users-first edits, delete with replacement) and the inspector's
+*Behaviour type* that assigns every selected Link/Connector at once and shows each
+vehicle type's effective behaviour and its source; see
+[contract §9](reference/DRIVING_BEHAVIOUR.md#9-implemented-editor-m332c-d128) and
+[evidence](evidence/behaviour-editor.md). Confirm this PR's Windows UI jobs.
+**Owner review (Windows):** open a project, capture the catalogs via the dialog,
+duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type with an
+override, assign it to several roads, check the effective list, Undo/Redo, delete
+with replacement, switch to Thai, save and reopen, then run.
+Next do the open **BA14/BA17 fixtures** (positioned routing line and Stop service under
+a changing profile), then write the **M3.3.3a W74 contract** (equations, state, traits,
+model switch) before any W74 code. PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06
