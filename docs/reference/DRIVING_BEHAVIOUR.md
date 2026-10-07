@@ -2,8 +2,8 @@
 
 Design before implementation, 2026-10-06 (D120). This contract owns the proposed
 M3.3 assignment seam, not a claim that W74/W99, motorcycles or these UI controls
-already run. §7 records what M3.3.2a implemented (storage and editing) and §8 the
-M3.3.2b runtime selection. [ROADMAP](../ROADMAP.md#m33--driving-behaviour-library-and-models)
+already run. §7 records what M3.3.2a implemented (storage and editing), §8 the
+M3.3.2b runtime selection and §9 the M3.3.2c editor. [ROADMAP](../ROADMAP.md#m33--driving-behaviour-library-and-models)
 owns milestone status; [the delivery plan](../plans/DRIVING_BEHAVIOUR.md) owns
 acceptance rows. Existing [SIMULATION](SIMULATION.md),
 [M3_8_CONTRACT](M3_8_CONTRACT.md) and [POSITIONED_ROUTING](POSITIONED_ROUTING.md)
@@ -193,7 +193,7 @@ the proprietary implementation or a TrafficSim equivalence claim:
 
 M3.3.2a stores and edits §1 in the project file and History; M3.3.2b (§8) compiles
 and runs the assignments, replacing 2a's interim Run refusal. A library with no
-assigned road leaves the compiled Scenario unchanged. No UI exists yet (M3.3.2c).
+assigned road leaves the compiled Scenario unchanged. The editor is §9.
 
 Schema 21 is written only when a library feature is used; otherwise the previous
 version rule and bytes are kept. A file below 21 carrying any key below is refused
@@ -255,3 +255,33 @@ Positioned routing (D119) is applied before that snapshot; an unselected suffix 
 never read. The evaluation diagnostics (`lane_changes`, `dead_end_waits`) use the
 same function. Zone chaining's waiting room takes the largest standstill among the
 legacy and assigned behaviours of each type. Physical safety checks are unchanged.
+
+## 9. Implemented editor (M3.3.2c, D128)
+
+**Library dialog.** *Driving behaviours* on the Inputs toolbar, beside the demand
+catalog, opens three tabs: Behaviours, Vehicle classes and Link behaviour types,
+each with Add, Duplicate, Edit and Delete. Every button edits a staged copy of the
+document through `behaviour_commands`; nothing reaches History until Confirm.
+Confirm dry-runs `validateDocument` and keeps the dialog open with the reason when
+the staged library is invalid; otherwise the whole session commits as one History
+step (`editorBehaviourLibrary`). Cancel discards it, and Confirm without an edit
+makes no revision. A project still using the installed catalogs has its behaviours
+and vehicle types captured into the staged copy (compositions are not touched), so
+that capture is part of the same step and one Undo restores external ownership.
+
+The behaviour editor shows who uses the set before any change (users first) and
+labels every parameter with its project-file key, untranslated; optional parameters
+have a checkbox (absent = not used). A class lists every vehicle type; a type already
+in another class is shown but cannot be ticked. A behaviour type has a default and
+one override choice per class, where *Inherit* means no override. Deleting an entry
+that something uses asks for a replacement; Cancel there keeps the entry.
+
+**Road assignment.** The inspector's *Behaviour type* choice applies to every
+selected Link and Connector in one History step (`editorApplyBehaviourType`) — the
+one property edit that acts on the whole selection. *Inherit* clears the assignment;
+an id with no behaviour type is listed as missing. Below it, the primary road's
+effective behaviour per vehicle type and its source (class override, behaviour type
+default, or inherited from the vehicle type) come from `effectiveRoadBehaviours`,
+the function the compiler uses (§8), so the display cannot disagree with the run.
+Assignment is disabled while the catalogs are external. EN and TH texts are in
+`data/locales`; the owner's visual review of the dialog is a separate gate.

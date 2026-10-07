@@ -20,5 +20,14 @@ std::vector<ValidationIssue> behaviourLibraryIssues(const ProjectDocument&);
 // Link's assignment; every path of a Connector the Connector's own. A segment has exactly one
 // owner, so routes can never disagree about it. Empty when no road is assigned.
 std::vector<SegmentBehaviour> compileBehaviourAssignments(const Network&, const AuthoringDefinition&);
+// The behaviour each vehicle type uses on a road with this assignment, and why (M3.3.2c shows it
+// beside the road; the compiler above uses the same function, so the two cannot disagree).
+// Unassigned: every type's own behaviourId. An unknown behaviour type is UNKNOWN_BEHAVIOUR_TYPE.
+enum class BehaviourSource { inherited, typeDefault, classOverride };
+struct RoadBehaviour {
+    std::string vehicleTypeId, behaviourId; BehaviourSource source{};
+    bool operator==(const RoadBehaviour&) const = default;
+};
+std::vector<RoadBehaviour> effectiveRoadBehaviours(const AuthoringDefinition&, const std::optional<std::string>& behaviourTypeId);
 inline constexpr const char* kPrototypeBehaviourModel = "prototype";
 }
