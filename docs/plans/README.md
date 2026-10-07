@@ -11,6 +11,7 @@ the live queue. Owner observations are distinct from automated checks.
 | [M2_GATE.md](M2_GATE.md) | M2 gate record |
 | [M3_PLAN.md](M3_PLAN.md) | M3 delivery plan |
 | [M3_ACCEPTANCE.md](M3_ACCEPTANCE.md) | M3 acceptance design and evidence record |
+| [DRIVING_BEHAVIOUR.md](DRIVING_BEHAVIOUR.md) | M3.3 staged behavior delivery and failure-first acceptance design |
 | [DEMAND_IMPROVEMENT.md](DEMAND_IMPROVEMENT.md) | Demand improvement — 2026-10-05 |
 
 Return to [the task reading map](../README.md#read-by-task).

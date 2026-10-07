@@ -7,6 +7,19 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## Driving behaviour improvement — owner instruction, 2026-10-06
+
+The owner authorized the staged plan (D120). M3.3.0 writes the
+[assignment contract](reference/DRIVING_BEHAVIOUR.md) and
+[delivery/acceptance design](plans/DRIVING_BEHAVIOUR.md); it implements no behavior.
+Next do **M3.3.1 measurement only**: define lane/cycle/class crossing records,
+steady-discharge and startup windows, then BA01–BA05 failure-first fixtures before
+extending `StopLineAccumulator`. Preserve its existing diagnostic output and all
+trajectories. Record input hashes, commit/toolchain, quantization and unavailable
+estimates. No PCU/calibration target is inferred from the suggested Thai presets.
+After this slice, follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently.
+Keep the owner's existing reviews below; no observation/validation gate closes.
+
 ## Positioned routing decisions — owner instruction, 2026-10-06
 
 D119 implements M2.1.3 ([contract](reference/POSITIONED_ROUTING.md)). Check this PR's

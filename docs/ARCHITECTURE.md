@@ -242,6 +242,11 @@ with the normal at the mapped runtime lane station. See
 
 ## Remaining systems
 
+M3.3 proposes one effective behavior resolver for compiled segment/type assignments;
+[DRIVING_BEHAVIOUR](reference/DRIVING_BEHAVIOUR.md) defines class/default/legacy
+precedence and tick selection. It is not implemented: `behaviourOfType` remains
+current. Measurement comes first; model state and lateral occupancy are later slices.
+
 M3's right-of-way seam ([M3_CONTRACT.md](reference/M3_CONTRACT.md)) has landed in slices M3.2.2a–M3.2.6:
 authored waiting lines, conflict areas, priority rules (gap time/headway), Stop/Yield controls and
 queue counters are project-codec objects; `resolveRightOfWay` resolves them once into runtime

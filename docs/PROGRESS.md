@@ -8,6 +8,24 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Driving behaviour contract before implementation (D120)
+
+Owner authorized the staged plan following the supplied Driving Behavior design.
+M3.3.0 records class/default/legacy precedence, compiler/runtime ownership,
+front-segment tick selection, source and D119 routing integration, shared catalog
+lifecycle, and the capability map separating prototype support from W74/W99/lateral
+work. BA01–BA20 are pending failure-first rows, not passed runtime tests. Measurement
+specifies lane/cycle/rank headways and startup estimation before changing diagnostic
+code; presets and PCU target ranges remain unvalidated. No engine/schema/UI changed.
+
+Validation: baseline and edited docs/navigation, file-size and architecture guards
+compiled/run directly with GCC on Linux; all passed. `git diff --check` passed.
+CMake/Ninja are absent on this host, so native/desktop CTest was not run locally;
+CI is required independently. Existing prototype fixtures are unchanged. No owner,
+M0 or M6 gate closes; current resolver remains type-based.
+
+---
+
 ## 2026-10-06 — Routes recognized at clicked Link stations (D119)
 
 Owner authorized choosing a destination when vehicles reach the first Route click.

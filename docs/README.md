@@ -12,6 +12,7 @@ selects additional context; read related decisions and evidence only when needed
 
 | Task | Read before editing | Code entry points |
 |---|---|---|
+| Behavior library, class/road assignment or new following models | [DRIVING_BEHAVIOUR contract](reference/DRIVING_BEHAVIOUR.md); [delivery rows](plans/DRIVING_BEHAVIOUR.md); SIMULATION and M3 contracts below | `src/core/`, `src/model/`, `src/project/` |
 | Engine, following, lane changes or safety | [SIMULATION](reference/SIMULATION.md); [M3_CONTRACT](reference/M3_CONTRACT.md); [M3_8_CONTRACT](reference/M3_8_CONTRACT.md); [M3_ACCEPTANCE](plans/M3_ACCEPTANCE.md) | `src/core/`, `src/model/network/`, `tests/` |
 | Link/Connector geometry | [CONNECTOR_FOUR_POINT_MOUTH](reference/CONNECTOR_FOUR_POINT_MOUTH.md); [NETWORK_EDITOR_CONNECTORS](reference/NETWORK_EDITOR_CONNECTORS.md); [CONNECTOR_PARITY_AUDIT](audits/CONNECTOR_PARITY_AUDIT.md) | `src/model/network/`, `src/editor/`, `src/commands/` |
 | Demand, catalogs or routing | [DEMAND_IMPROVEMENT](plans/DEMAND_IMPROVEMENT.md); [DEMAND_CATALOGS](reference/DEMAND_CATALOGS.md); [DEMAND_TIME_TYPES](reference/DEMAND_TIME_TYPES.md); [POSITIONED_ROUTING](reference/POSITIONED_ROUTING.md); [SIMULATION](reference/SIMULATION.md) | `src/project/`, `src/model/demand/`, `src/model/network/routing.cpp` |
