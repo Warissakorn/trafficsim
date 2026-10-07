@@ -1,5 +1,6 @@
 #pragma once
 #include "movement.hpp"
+#include "discharge_passage.hpp"
 #include <set>
 
 namespace trafficsim {
@@ -45,7 +46,6 @@ private:
         std::vector<double> atRoute;
         std::optional<DischargeCycle> cycle;
         std::set<std::uint64_t> queue;
-        std::map<std::uint64_t, double> upstream;
     };
     DischargeSpec spec_;
     QueueDefinition queue_;
@@ -53,6 +53,7 @@ private:
     std::optional<std::uint64_t> tick_;
     std::vector<Head> heads_;
     std::vector<DischargeCycle> closed_;
-    std::map<std::uint64_t,std::size_t> types_;
+    DischargePositions previous_;
+    DischargePending pending_;
 };
 }

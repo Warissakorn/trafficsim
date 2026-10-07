@@ -8,6 +8,36 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-07 — Rank-scoped remap invalidation and source-sink identity (D125)
+
+M3.3.1b2b2 completes measurement. A remap invalidates a cycle only when it moves a
+vehicle queued at Go while ranks 1..steadyLast are open; unqueued changers are
+already caught by `queue_not_sustained`. Same-tick source sinks get their exact type
+from core's new pure `upcomingArrivals` replay plus a route/scheduled-time/speed
+fingerprint. Overlapping lateral spans stay ambiguous (engine choice depends on
+safety checks). See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-identity.md).
+
+Headless CTest 63/63 on GCC 13.3; the BA05 forcing case fails without the replay.
+Seed-42 legacy JSON and manifests match the parent; usable cycles 20→30 (four-leg)
+and 91→113 (m2.6). Engine, schema and frozen fixtures unchanged. Native CI separate.
+
+---
+
+## 2026-10-07 — Proven source and lateral passages (D124)
+
+M3.3.1b2b1 replays unique start-of-tick lane maps from prior front/type positions;
+terminal survivors/sinks establish longitudinal passage, including insertion ticks.
+Lateral jumps never count. Upstream membership changes invalidate estimates;
+ambiguous maps/terminals and source sinks without type evidence remain unavailable.
+No display traces, engine/schema changes or frozen fixture regeneration. See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-passage.md).
+
+The original observer fails 5 of 8 new forcing fixtures. The final suite passes
+85 GCC/Linux tests; real source/lateral copies preserve dynamics at .1/.2 s.
+Four seed-42 project legacy JSON/stop-line outputs and input manifests match the parent. Guards pass; local CMake/Ninja/Qt are absent. Parent #119 workflow 458
+passed Linux/Windows; candidate CI is independent. BA05, M0/M6 and owner gates stay open.
+
+---
+
 ## 2026-10-06 — Captured discharge inputs and physical-prefix recognition (D123)
 
 M3.3.1b2a emits parsed-byte SHA-256/size/read counts for project, actual catalog
@@ -437,49 +467,6 @@ reports/CSVs for four projects are byte-identical to main `5d823be`. The Run-vie
 benchmark completes 3000 M2.6 Steps in both versions; concurrent build/test load means
 no timing claim. Headless and Windows CI results belong to the PR.
 Owner appearance and subsequent engine slices remain in NEXT.
-
----
-
-## 2026-10-05 — Continuous vehicle headings across route segments
-
-Owner authorized phase 1 of the vehicle-position audit: repair heading discontinuities
-before introducing axle kinematics. The old Run view used a front tangent when local
-station was below vehicle length, then switched to a chord inside the segment. On the
-90-degree test curve that switched by 4.28 degrees for a 4.5 m car and 11.52 degrees for
-a 12 m vehicle; exiting onto the straight target also switched to its tangent.
-
-`vehicle_pose.*` now samples the complete ordered route at front distance and one type
-length upstream, using the existing Link geometry and direct Connector equation. The
-initial tangent extends behind route entry; coincident samples use a finite front
-tangent fallback. Missing geometry has no drawable pose. Canvas shares per-frame route
-parts with its lane-change slide; it keeps the true type length for heading at low zoom.
-The new Qt-free target has headless geometry regressions, and the Qt suite checks actual
-scene-item poses at both joins and the former length thresholds for both shipped types.
-Both the extracted legacy formula and the original Canvas fail the new join regression.
-
-This remains a display chord approximation. The upstream arc sample is not the actual
-rear bumper or axle, and no wheelbase, overhang, steering or articulated trailer model
-is introduced. Core state/events, runtime equations, schema and frozen fixtures are
-unchanged. Linux GCC 13.3 / Qt 6.4.2 Debug: headless 56/56 and desktop 81/81 pass,
-including architecture and file-size guards. Against main `3403b72`, crossing event logs
-and reports match byte-for-byte for seeds 0, 42, 43 and 4294967295; seed-42 reports/CSVs
-also match for four-leg-signalised, t-junction-priority, lane-change-lab and m2.6-study-template.
-Windows CI is pending; owner appearance and axle-model work remain open in NEXT.
-
----
-
-## 2026-10-05 — Shared mouth classification and separate lane-pair paint (D110)
-
-Owner reported Connector/Link endpoint conflicts and clarified that grouping shares priority,
-not filled outlines. Reproduced: a one-lane internal join is an automatic merge, but Add
-crossing creates a duplicate crossing there. `crossingOverlaps` now excludes actual rooted
-mouths for automatic suggestions, Add, geometry following and Run coverage; raw geometric
-measurements stay available. Neighbour-lane crossings and separate later intersections stay
-eligible. Old explicit mouth crossings report CONFLICT_NO_OVERLAP until removed/recreated
-as the actual merge. Canvas draws each lane pair's two original strips/insets; all share group
-selection and priority edits, including one Undo. Nine pairs have eighteen painted sides.
-Linux headless/desktop checks and regressions are recorded in the follow-up PR. No core,
-schema, topology or frozen fixture changes; Windows and owner appearance checks remain open.
 
 ---
 

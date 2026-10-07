@@ -79,6 +79,7 @@ void DischargeAccumulator::observe(const SimState& state) {
             heads_.push_back(std::move(h));
         }
     }
+    const auto motions=tick_?dischargeMotions(state,previous_,pending_):std::map<std::uint64_t,DischargeMotion>{};
     for(std::size_t i=0;i<heads_.size();++i) {
         auto& h=heads_[i]; const auto& head=scenario_->signalHeads[i];
         std::map<std::uint64_t,double> nextUpstream;
@@ -86,58 +87,45 @@ void DischargeAccumulator::observe(const SimState& state) {
             const auto at=h.atRoute.at(v.routeIndex);
             if(std::isfinite(at)&&v.distance<at)nextUpstream.emplace(v.id,at-v.distance);
         }
-        const auto record=[&](std::uint64_t id,std::size_t type) {
-            if(h.cycle)h.cycle->crossings.push_back({id,scenario_->vehicleTypes.at(type).id,
-                                                    state.time,h.queue.contains(id)});
+        const auto upstream=[&](const DischargePosition& p) {
+            return p.route<h.atRoute.size()&&std::isfinite(h.atRoute[p.route])&&p.distance<h.atRoute[p.route];
         };
-        // A suffix choice keeps the same front coordinate on a shared physical prefix.
-        // A lateral/diverted remap does not establish passage of the old head.
-        const auto sharedPrefix=[&](const std::string& from,const std::string& to) {
-            const auto find=[&](const auto& id) {
-                return std::find_if(scenario_->routes.begin(),scenario_->routes.end(),
-                                    [&](const auto& route){return route.id==id;});
-            };
-            const auto source=find(from),target=find(to);
-            if(source==scenario_->routes.end()||target==scenario_->routes.end())return false;
-            for(std::size_t j=0;j<source->segmentIds.size();++j) {
-                if(j>=target->segmentIds.size()||source->segmentIds[j]!=target->segmentIds[j])return false;
-                if(source->segmentIds[j]==head.segmentId)return true;
-            }
-            return false;
-        };
-        std::set<std::uint64_t> unplaced;
-        for(const auto& e:state.events) {
-            std::visit([&](const auto& event) {
-                using T=std::decay_t<decltype(event)>;
-                if constexpr(std::is_same_v<T,LaneChangeEvent>||std::is_same_v<T,RoutingEvent>) {
-                    if(!h.upstream.contains(event.vehicleId))return;
-                    if constexpr(std::is_same_v<T,RoutingEvent>)
-                        if(sharedPrefix(event.fromRouteId,event.toRouteId))return;
-                    unplaced.insert(event.vehicleId);
-                    if(h.cycle)h.cycle->unavailable="route_or_lane_change";
+        // D125: only ranks 1..steadyLast feed an estimate, and estimateDischarge already rejects a
+        // vehicle there that was not queued at Go. Once those ranks are recorded nothing can change
+        // them; before that, only a QUEUED vehicle leaving can silently shift them.
+        const bool ranksOpen=h.cycle&&h.cycle->crossings.size()<spec_.steadyLast;
+        for(const auto& [id,m]:motions) {
+            bool affected=(m.start&&upstream(*m.start));
+            for(const auto& [from,to]:m.remaps) {
+                const bool changesMembership=upstream(from)||upstream(to);
+                // Identical physical prefixes and equal stations keep the same lane membership.
+                bool samePrefix=from.distance==to.distance;
+                if(from.route>=scenario_->routes.size()||to.route>=scenario_->routes.size())samePrefix=false;
+                else {
+                    const auto& a=scenario_->routes[from.route].segmentIds;
+                    const auto& b=scenario_->routes[to.route].segmentIds;bool found=false;
+                    for(std::size_t j=0;samePrefix&&j<a.size();++j) {
+                        if(j>=b.size()||a[j]!=b[j]) {samePrefix=false;break;}
+                        if(a[j]==head.segmentId) {found=true;break;}
+                    }
+                    samePrefix&=found;
                 }
-            },e);
-        }
-        // A source can be downstream of a head, or pass it within its insertion tick.
-        // Without the source station/type snapshot we cannot distinguish those cases.
-        for(const auto& e:state.events)if(const auto* departed=std::get_if<DepartedEvent>(&e)) {
-            const auto route=std::find_if(scenario_->routes.begin(),scenario_->routes.end(),
-                [&](const auto& r){return r.id==departed->routeId;});
-            if(h.cycle&&route!=scenario_->routes.end()&&
-               std::isfinite(h.atRoute[route-scenario_->routes.begin()])&&
-               !nextUpstream.contains(departed->vehicleId))
-                h.cycle->unavailable="untracked_source_passage";
-        }
-        for(const auto& v:state.vehicles)
-            if(h.upstream.contains(v.id)&&!unplaced.contains(v.id)&&!nextUpstream.contains(v.id)&&
-               std::isfinite(h.atRoute.at(v.routeIndex)))record(v.id,v.typeIndex);
-        // At a route sink no survivor snapshot exists. The Arrived event and previously
-        // tracked head establish passage, rather than dropping the last vehicle.
-        for(const auto& e:state.events)if(const auto* a=std::get_if<ArrivedEvent>(&e))
-            if(h.upstream.contains(a->vehicleId)&&!unplaced.contains(a->vehicleId)) {
-                const auto type=types_.find(a->vehicleId);
-                if(type!=types_.end())record(a->vehicleId,type->second);
+                affected|=changesMembership;
+                if(ranksOpen&&h.queue.contains(id)&&changesMembership&&!samePrefix)h.cycle->unavailable="route_or_lane_change";
             }
+            if(m.ambiguous) {
+                // Missing start evidence can hide a crossing on the terminal route.
+                affected|=m.end&&(upstream(*m.end)||
+                    ((!m.start||m.start->route!=m.end->route)&&m.end->route<h.atRoute.size()&&std::isfinite(h.atRoute[m.end->route])));
+                if(ranksOpen&&affected)h.cycle->unavailable=m.source?"untracked_source_passage":"route_or_lane_change";
+                continue;
+            }
+            if(!h.cycle||!m.start||!m.end||!upstream(*m.start)||m.end->distance<h.atRoute[m.start->route])continue;
+            if(std::any_of(h.cycle->crossings.begin(),h.cycle->crossings.end(),[&](const auto& c){return c.vehicleId==id;})) {
+                h.cycle->unavailable="repeated_head_passage";continue;
+            }
+            h.cycle->crossings.push_back({id,scenario_->vehicleTypes.at(m.start->type).id,state.time,h.queue.contains(id)});
+        }
         for(const auto& e:state.events)if(const auto* signal=std::get_if<SignalEvent>(&e)) {
             if(signal->signalId!=head.id)continue;
             if(signal->color!=SignalColor::green&&h.cycle) {
@@ -162,10 +150,11 @@ void DischargeAccumulator::observe(const SimState& state) {
                 }
             }
         }
-        h.upstream=std::move(nextUpstream);
         if(h.cycle)h.cycle->end=state.time;
     }
-    types_.clear(); for(const auto& v:state.vehicles)types_.emplace(v.id,v.typeIndex);
+    previous_.clear();for(const auto& v:state.vehicles)previous_.emplace(v.id,DischargePosition{v.routeIndex,v.typeIndex,v.distance});
+    pending_.clear();for(const auto& input:state.inputs)for(const auto& v:input.queue)pending_.emplace(v.id,v);
+    for(const auto& v:upcomingArrivals(state))pending_.emplace(v.id,v); // same-tick source sinks (D125)
     tick_=state.tick;
 }
 std::vector<DischargeCycle> DischargeAccumulator::report() const {

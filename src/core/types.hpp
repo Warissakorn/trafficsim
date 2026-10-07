@@ -372,4 +372,8 @@ bool waitingAtDeadEnd(const ScenarioIndex&, std::size_t route, const Vehicle&, c
 bool deadEndGoverns(const ScenarioIndex&, std::size_t route, const Vehicle&, const VehicleType&, const DriverBehaviour&);
 const RouteLaneChange* laneChangeTargetOf(const ScenarioIndex&, std::size_t route, double front, double rear);
 double mappedOnto(const RouteLaneChange&, double at);
+// M3.3.1b2b2 (D125): the pending vehicles the next step generates at its start, in id order,
+// replayed on a scratch copy -- the state is not changed. Lets an observer name the type of a
+// vehicle generated, inserted and sunk within one tick. Defined in demand.cpp.
+std::vector<PendingVehicle> upcomingArrivals(const SimState&);
 }

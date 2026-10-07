@@ -14,7 +14,8 @@ slices add diagnostics and CLI settings without changing engine behavior or sche
 | M3.3.1a (P1) | [Discharge observer/CLI](../reference/DISCHARGE.md) delivered | BA01/BA02/BA04 focused evidence; existing StopLine output unchanged |
 | M3.3.1b1 (P1) | Vehicle-type follower selection and declared CLI windows/ranks delivered | BA03 type/window evidence; no behavior classes or PCU inference |
 | M3.3.1b2a (P1) | Captured input hashes and shared-prefix recognition delivered | [Provenance/passage evidence](../evidence/discharge-provenance.md); raw diverted sink inference suppressed |
-| M3.3.1b2b (P1) | Lateral/insertion-tick passage reconstruction | BA05 remains open; native CI required |
+| M3.3.1b2b1 (P1) | Proven lateral/insertion-tick passages reconstructed | [Passage evidence](../evidence/discharge-passage.md) |
+| M3.3.1b2b2 (P1) | Rank-scoped remap invalidation and same-tick source-sink type identity delivered | [Identity evidence](../evidence/discharge-identity.md); BA05 focused evidence; native CI per PR |
 | M3.3.2a (P2a) | Project library/class/behaviour-type contracts and codec | BA06–BA09; portable schema/legacy behavior before UI |
 | M3.3.2b (P2b) | Compile assignment and select prototype per road/type | BA10–BA18; one effective resolver for all consumers |
 | M3.3.2c (P2c) | Library/assignment editor | BA19–BA20; EN/TH, Linux/Windows automated checks and independent owner review |
@@ -59,7 +60,8 @@ or 2,100–2,300 PCU/h gate follows from the owner's suggested parameter sheet.
 
 BA01/BA02/BA04 have focused Linux evidence in [M3.3.1a](../evidence/discharge-measurement.md).
 BA03 has [type/window evidence](../evidence/discharge-controls.md), with future class assignment deferred.
-BA05 is partial and remains open; all later rows are pending. P0 writing a row does not pass it. Record exact fixture/input hashes, commit, compiler/flags, commands,
+BA05 has [proven-motion](../evidence/discharge-passage.md) and [source-sink identity](../evidence/discharge-identity.md)
+evidence; all later rows are pending. P0 writing a row does not pass it. Record exact fixture/input hashes, commit, compiler/flags, commands,
 assertions and platform in evidence when the corresponding slice lands.
 
 | Row | Fixture / forcing condition | Required outcome |

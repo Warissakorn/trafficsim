@@ -195,8 +195,10 @@ TEST(discharge, shared_prefix_routing_keeps_queue_and_counts_passage_once) {
     auto a=test::withVehicles(s,{{1,"route",18,0}});DischargeAccumulator d(spec(),{.5,1,10});d.observe(a);
     a.tick=1;a.time=.1;a.events={SignalEvent{.1,"head",SignalColor::green}};d.observe(a);
     a.tick=2;a.time=.2;a.vehicles[0].routeIndex=0; // canonical route 'other'
-    a.vehicles[0].distance=19.1;a.events={RoutingEvent{.2,1,"choice","route","other"}};
+    a.vehicles[0].distance=18.5;a.events={RoutingEvent{.2,1,"choice","route","other"}};
     CHECK(a.scenario->routes[a.vehicles[0].routeIndex].id=="other");d.observe(a);d.observe(a);
+    CHECK(d.report()[0].crossings.empty());
+    a.tick=3;a.time=.3;a.vehicles[0].distance=19.1;a.events.clear();d.observe(a);
     const auto row=d.report()[0];CHECK(row.unavailable.empty());CHECK(row.crossings.size()==1);
     CHECK(row.crossings[0].queuedAtGo);CHECK(row.crossings[0].vehicleTypeId=="car");
 }

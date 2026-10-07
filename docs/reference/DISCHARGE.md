@@ -33,12 +33,14 @@ eligible. An initial observed green is conservatively unavailable, including
 one starting at time zero; an unfinished last cycle is unavailable. Repeated
 observation of the same tick is ignored; missing/out-of-order ticks or changed
 Scenario identity throw. The caller must not replace a snapshot within a tick.
-Lane changes or route choices that change the physical prefix through a head
-make that whole cycle unavailable; shared-prefix route recognition is supported
-as defined below. Source departures already beyond the head or arriving within the
-insertion tick conservatively invalidate it because the prior position/type
-snapshot is absent. Sink arrivals of previously upstream tracked vehicles are
-counted explicitly, even without a survivor snapshot.
+While ranks `1..steadyLast` are still open, a remap that changes the upstream
+membership of a vehicle queued at Go makes the affected cycle unavailable (D125).
+Shared-prefix routing preserves membership. Proven post-remap longitudinal motion
+is reconstructed as specified below; a lateral station jump is never passage.
+Source departures start at distance zero and use survivor, prior pending or exact
+generation-replay type evidence. Missing/contradictory source, remap or terminal
+evidence suppresses raw inference and, while ranks are open, invalidates affected
+cycles. Tracked sink arrivals are counted.
 
 ## Estimator
 
@@ -66,7 +68,7 @@ The CLI emits captured project/catalog hashes as defined below. Retain the
 original inputs and exact executable commit/toolchain alongside that JSON.
 
 BA03 has type-selection/window evidence; future vehicle classes are not assigned.
-BA05 remains open: complete remap/source passage tracking is still pending. Native/desktop CI and empirical/owner validation are separate gates.
+BA05 has focused same-tick source-sink evidence (D125). Native/desktop CI and empirical/owner validation are separate gates.
 See [delivery rows](../plans/DRIVING_BEHAVIOUR.md) and
 [local evidence](../evidence/discharge-measurement.md).
 
@@ -94,7 +96,8 @@ startup ranks 1..k is selected. Otherwise headway can remain available while
 startup is null with `mixed_type_startup_prefix`. The JSON emits this separate
 startup reason and the selection/rate definitions. Unfiltered defaults retain the
 previous numeric results. Captured input hashes and supported shared-prefix recognition are defined below.
-Complete lateral/source reconstruction remains the next slice; BA05 stays open.
+Proven lateral/source reconstruction is delivered in M3.3.1b2b1; source-sink type
+evidence remains M3.3.1b2b2 and BA05 stays open.
 
 ## Captured input provenance (M3.3.1b2a)
 
@@ -123,9 +126,58 @@ A positioned `RoutingEvent` can preserve the queue and crossings when source and
 target routes have an identical physical segment prefix through this head.
 Recognizing a different suffix does not move the front off that shared lane; keep
 its original queued-at-Go membership and count a subsequent passage once.
-Changing the physical prefix through a head, including diverting to a suffix
-without that head, remains unavailable for that cycle. Such remaps suppress raw
-crossing inference too: arrival on a diverted route is not passage of the old head.
-Lane changes and ambiguous insertion-tick source passages remain conservative
-unavailable cases. Complete lateral/source passage reconstruction is still BA05
-work; this supported shared-prefix case does not close that gate.
+Changing a queued vehicle's upstream membership while ranks are open invalidates
+its cycle estimator (rank scope below).
+Proven longitudinal motion before/after a remap remains observable separately
+from that queue gate. Ambiguous remaps suppress raw passage inference; an arrival
+on a diverted route alone never proves passage of the old head. See reconstruction
+below.
+
+## Passage reconstruction contract (M3.3.1b2b1)
+
+Reconstruct longitudinal motion from observer-owned prior route/front/type
+positions, source departures and current survivors/sink events. Source insertion
+starts at route distance zero. Identify type from a survivor, the previous
+pending record, or `upcomingArrivals` (below); otherwise it is ambiguous, never
+guessed from a route or mixed input. A source at the head is not a front crossing
+from upstream.
+
+Start-of-tick lane changes precede motion. Match their route pair and prior body
+position to the engine's lane-change spans. Use the unique mapped target station;
+no matching span or disagreeing overlapping maps is ambiguous. Do not read the
+Run view's display-only LaneChangeTrace or infer passage from a lateral jump.
+End-of-tick routing must agree with its decision station and terminal position.
+Count movement from the post-remap upstream front through a head to a survivor
+or sink once, including a vehicle inserted that tick. Preserve half-open green
+boundaries and end-of-tick timestamps; source vehicles are not queued at Go.
+
+Proven longitudinal crossings always remain in the raw stream. Unrelated or
+downstream changes do not invalidate other heads. Ambiguous passage suppresses
+that vehicle's raw inference. Repeated passage by one ID in a cycle is unavailable
+and never duplicated in the stream. See [the local evidence](../evidence/discharge-passage.md).
+
+## Rank-scoped invalidation and source-sink identity (M3.3.1b2b2, D125)
+
+An estimate reads only ranks `1..steadyLast`, and every one of them must be
+queued at Go. Invalidation is therefore scoped to what can change those ranks:
+
+- Once a cycle holds `steadyLast` crossings, no later remap or ambiguity can
+  change them; the cycle is not invalidated. Raw crossings after that rank can
+  still be incomplete and are never an estimator input.
+- Before that, a remap that adds or removes upstream membership of a vehicle
+  **queued at Go** (other than shared-prefix routing) invalidates the cycle: its
+  missing crossing would silently shift the ranks.
+- A non-queued vehicle changing lane in or out does not invalidate the cycle.
+  If it crosses within the ranks it is recorded as not queued at Go and the
+  estimate is `queue_not_sustained`; otherwise it cannot affect the estimate.
+- Ambiguous motion stays conservative while ranks are open: an unseen crossing
+  could hide a non-queued vehicle inside the ranks.
+
+A vehicle can be generated, inserted and reach the route sink within one tick,
+leaving no survivor and no previous queue entry. Core's pure
+`upcomingArrivals(const SimState&)` replays the next step's arrival generation on
+a scratch copy (same RNG, id counter and inputs; the state is not changed), so the
+observer records each new pending vehicle's exact type. A departure uses that type
+only when its route slot, scheduled time and desired speed match the record
+exactly; a mismatch is contradictory evidence and stays `untracked_source_passage`.
+Type is never inferred from a route or composition.

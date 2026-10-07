@@ -1,4 +1,6 @@
 #include "detail.hpp"
+#include "routes.hpp"
+#include "simulation.hpp"
 #include <cmath>
 #include <numbers>
 
@@ -48,5 +50,28 @@ void generateArrivals(SimState& state) {
             current.nextArrival = arrival < input.endTime ? std::optional(arrival) : std::nullopt;
         }
     }
+}
+}
+namespace trafficsim {
+std::vector<PendingVehicle> upcomingArrivals(const SimState& state) {
+    // Mirrors stepSimulation's preconditions and its first action, on a scratch state, so the
+    // caller's inputs, RNG and id counter are never touched. Most ticks generate nothing.
+    if (!state.scenario || state.inputs.size() != state.scenario->inputs.size() ||
+        state.tick >= totalTicks(*state.scenario) ||
+        std::none_of(state.inputs.begin(), state.inputs.end(),
+                     [&](const auto& i) { return i.nextArrival && *i.nextArrival <= state.time; }))
+        return {};
+    SimState scratch;
+    scratch.scenario = state.scenario;
+    scratch.index = state.index ? state.index
+                                : std::make_shared<const ScenarioIndex>(buildScenarioIndex(*state.scenario));
+    scratch.randomState = state.randomState; scratch.nextVehicleId = state.nextVehicleId;
+    scratch.time = state.time; scratch.inputs = state.inputs;
+    detail::generateArrivals(scratch);
+    std::vector<PendingVehicle> result;
+    for (const auto& input : scratch.inputs)
+        for (const auto& v : input.queue) if (v.id >= state.nextVehicleId) result.push_back(v);
+    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
+    return result;
 }
 }
