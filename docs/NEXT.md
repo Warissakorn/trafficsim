@@ -47,8 +47,13 @@ vehicle type's effective behaviour and its source; see
 duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type with an
 override, assign it to several roads, check the effective list, Undo/Redo, delete
 with replacement, switch to Thai, save and reopen, then run.
-Next write the **M3.3.3a W74 contract** (equations, state, traits,
-model switch) before any W74 code. PCU/calibration gates remain open.
+The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)); nothing runs yet.
+Next implement it rows-first: BA21–BA22 as pure-function tests of a new
+`w74Acceleration` in `src/core/` (hand-computed values, every equality side), then the
+schema-22 codec and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
+timestep sensitivity. Keep prototype runs byte-identical (BA18); do not ship a preset
+in the same slice. The owner may want to read §5 (traits) and §7 (sign hysteresis) before
+code. PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

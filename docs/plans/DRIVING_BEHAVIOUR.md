@@ -19,7 +19,8 @@ slices add diagnostics and CLI settings without changing engine behavior or sche
 | M3.3.2a (P2a) | Project library/class/behaviour-type contracts and codec delivered (D126) | [Library evidence](../evidence/behaviour-library.md): BA06–BA09 focused evidence; Run refuses assigned roads until 2b |
 | M3.3.2b (P2b) | Compile assignment and select prototype per road/type delivered (D127) | [Selection evidence](../evidence/behaviour-selection.md): BA10–BA18 focused |
 | M3.3.2c (P2c) | Library/assignment editor delivered (D128) | [Editor evidence](../evidence/behaviour-editor.md): BA19/BA20 automated Linux evidence; Windows CI per PR; owner visual review open |
-| M3.3.3a/b (P3) | W74 then W99 | Equations/state/traits/model-switch contracts before code; analytic transition/replay and timestep cases; M0 observation remains independent |
+| M3.3.3a (P3) | W74: [contract](../reference/W74.md) written (D129); implementation next | BA21–BA29 failure-first before code; analytic transition/replay and timestep cases; M0 observation remains independent |
+| M3.3.3b (P3) | W99 | Own equations/state/traits contract before code, after M3.3.3a |
 
 Later plan portions belong to their owning systems: signal behavior P4 to M4;
 physical-mouth/anticipation P5 to M3.2.4e/M3.2.8a.1; extended lane changes P6 to
@@ -63,7 +64,7 @@ BA03 has [type/window evidence](../evidence/discharge-controls.md), with future 
 BA05 has [proven-motion](../evidence/discharge-passage.md) and [source-sink identity](../evidence/discharge-identity.md)
 evidence. BA06–BA09 have [library/codec evidence](../evidence/behaviour-library.md). BA10–BA18 have
 [selection evidence](../evidence/behaviour-selection.md).
-BA19/BA20 have automated [editor evidence](../evidence/behaviour-editor.md); the owner's visual verdict stays open. All later rows are pending. P0 writing a row does not pass it. Record exact fixture/input hashes, commit, compiler/flags, commands,
+BA19/BA20 have automated [editor evidence](../evidence/behaviour-editor.md); the owner's visual verdict stays open. BA21–BA29 are the [W74 contract](../reference/W74.md)'s rows (D129). All later rows are pending. P0 writing a row does not pass it. Record exact fixture/input hashes, commit, compiler/flags, commands,
 assertions and platform in evidence when the corresponding slice lands.
 
 | Row | Fixture / forcing condition | Required outcome |
@@ -88,6 +89,15 @@ assertions and platform in evidence when the corresponding slice lands.
 | BA18 | Legacy prototype fixtures, immutable copy and same-build replay | Existing exact/tolerance contracts pass; baselines never regenerated to hide failures |
 | BA19 | Dialog cancel/no-op/edit, bulk road assignment, rename/delete | Atomic History and revision invalidation; effective/inherited values distinguishable; local changes not leaked |
 | BA20 | EN/TH, save/reopen, Linux/Windows UI and owner appearance | Parameter names preserved; automated platform evidence separate from owner's visual verdict |
+| BA21 | W74 pure function: inputs placed at each regime row of contract §4 and on both sides of every equality | Regime and acceleration match hand-computed values; `g = ABX` emergency, `dv = CLDV` following, `dv = OPDV`/`dv = SDV`/`g = DMAX` free |
+| BA22 | Emergency inside `AX`, approaching below comfortable, free above `maxAcceleration` | Bounds hold exactly; type limits, not behaviour keys, cap acceleration |
+| BA23 | Standing queue and a moving platoon held for 600 s | Oscillation stays inside `±bNull`; D105 keeps a stopped vehicle with `g ≤ ax` still; no clamp in an uncongested platoon |
+| BA24 | Prototype→`w74`→prototype→`w74` along one route; front exactly at each join | Selection per D127; state initialised on entry, cleared on exit, re-initialised on re-entry; same-model boundary keeps state |
+| BA25 | `w74` follower behind prototype leader and the reverse; static obstacle | Follower reads only gap/speed/acceleration; leader model never changes the result |
+| BA26 | Trait hash: copied state, replayed run, two compilers, mixed scenario | Bit-identical traits; `randomState` sequence and prototype vehicles unchanged versus the same scenario without `w74` traits needed |
+| BA27 | Queue discharge fixture at dt 0.1/0.25/0.5 via `--discharge` | Sensitivity recorded with seeds 42–81; no claimed bound, no calibration inference |
+| BA28 | Forced red, conflict hold, dead end, Stop and source D108 with a `w74` behaviour | Hard cap, counted clamps, Stop service and first-step rule unchanged; accessors replace prototype fields |
+| BA29 | Missing/extra/out-of-range keys, prototype keys on `w74`, `w74` in schema 21, unused invalid behaviour | Atomic rejection with path; schema 22 only when used; older bytes preserved |
 
 Future W74/W99 rows must force each transition/limit, mixed-model following,
 profile/model boundary state transfer, distribution sampling and physical safety.

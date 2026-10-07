@@ -111,7 +111,8 @@ conflict, body-spacing and emergency constraints. Do not weaken physical checks
 to make a newly selected profile appear smoother.
 
 Switching following **models** is deferred until each model defines its state
-initialization/transfer and driver traits. All future dynamic/attention/amber
+initialization/transfer and driver traits; [W74](W74.md#7-state-and-model-switch)
+defines them for `w74` (D129, not yet implemented). All future dynamic/attention/amber
 state belongs in `SimState`; sampling cadence and stable processing order must
 be explicit. Copy/replay never depends on paint order or wall clock.
 
@@ -124,7 +125,7 @@ not appear as a working setting just because the catalog can store a number.
 | Target from owner design | Shipped capability / required work |
 |---|---|
 | DB_01–DB_07 library, Duplicate, region assignment | Owned behaviours exist; named library workflows/class/road assignment are M3.3 work |
-| W74 ax, bx_add, bx_mult | Similar prototype fields exist; full W74 dynamics and trait distribution are not implemented |
+| W74 ax, bx_add, bx_mult | Similar prototype fields exist; full W74 dynamics and traits are contracted in [W74](W74.md) (D129), not implemented |
 | W99 CC0–CC9 | Planned following model; none are aliases of `followingTime` or other prototype fields |
 | Desired speed / type length and width | Existing type fields; additional distribution families and motorcycle occupation are separate work |
 | Transit acceleration CC8/CC9 | Type has scalar acceleration limits; speed-dependent model acceleration needs a contract; no transit-stop/articulation claim |
