@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Declared discharge windows and type selection (D122)
+
+M3.3.1b1 exposes CLI windows/warmup/ranks and repeatable vehicle-type selection.
+Headways retain original follower/predecessor pairs and ranks; filtered samples
+cannot bridge skipped types. Raw crossings stay intact. A mixed startup prefix
+has a separate unavailable reason without discarding valid selected headways.
+Unknown types and invalid/orphan controls reject before stepping the engine.
+Input-hash output and complete remap/source passage tracking remain M3.3.1b2.
+See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-controls.md).
+
+Validation: 15 focused GCC/Linux tests pass, including the existing trajectory
+comparison. CLI integration and repository guards are recorded in the evidence.
+Native/desktop Linux/Windows CI remains independent; no owner/calibration gate closes.
+
+---
+
 ## 2026-10-06 — Queue discharge and startup measurement (D121)
 
 M3.3.1a adds a stdlib-only observer, pure rank estimator and CLI `--discharge` JSON.
@@ -457,23 +473,6 @@ and bulk commands share the group; nine runtime lane-pair reservations remain ni
 Schema/core/frozen baselines are unchanged. The editable T-junction example is rebuilt for
 new extents. Linux model and Qt verification is recorded in the PR; Windows/owner gates
 remain open. Existing saved coverage is validated, never silently migrated or widened.
-
----
-
-## 2026-10-04 — Source entries wait until their first step fits (D108)
-
-NEXT's M3.2.8a.1 source slice: ordinary following/integration from rest must fit the
-snapshot leader clearance beyond the unchanged standstill buffer before entry. Otherwise
-keep the same sampled vehicle pending; no departure/clamp or RNG draw. Equality admits,
-including a zero step at the standstill boundary. Moving merge anticipation stays open.
-Contract/tests/input hashes were committed in 6375ad2 before implementation and seed
-outputs. Two source regressions fail before and pass after; three tests cover held queue,
-release, copied replay/accounting and exact bounds. Linux Release check passes 54/54,
-with frozen baselines unchanged. D107 baseline: 120 stress runs pass replay/body/swept/
-braking checks; source clamps 3 → 0, moving minor 21 → 21, all clamps 226 → 223, all drain.
-Four projects × 40 seeds preserve counts/delay; two reports remain identical. Lab/M2.6
-clamps fall 19 → 1 / 858 → 837; max travel-time difference 0.002857143 s. Detailed
-[evidence](evidence/source-first-step.md) records limits. M3/M6 owner gates remain open.
 
 ---
 

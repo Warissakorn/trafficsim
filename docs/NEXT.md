@@ -13,11 +13,14 @@ The owner authorized the staged plan (D120). M3.3.0 writes the
 [assignment contract](reference/DRIVING_BEHAVIOUR.md) and
 [delivery/acceptance design](plans/DRIVING_BEHAVIOUR.md); it implements no behavior.
 M3.3.1a adds the [measurement observer](reference/DISCHARGE.md) and CLI `--discharge`.
-Next do **M3.3.1b measurement completion**: declare class filtering without creating
-fictitious gaps across skipped ranks, expose CLI windows/warmup/ranks, and retain
-input hashes. Replace conservative route/lane/source exclusions with supported
-passage tracking and fixtures, or explicitly narrow BA05 with owner review.
-BA03/BA05 and full native CI remain open; see [evidence](evidence/discharge-measurement.md).
+M3.3.1b1 adds vehicle-type follower selection and CLI windows/warmup/ranks (D122);
+see [evidence](evidence/discharge-controls.md). Do not treat inverse selected-type
+headway as selected-type throughput; original ranks/predecessors remain intact.
+Next do **M3.3.1b2 measurement completion**: emit project/catalog input hashes,
+then replace conservative route/lane/source exclusions with supported passage
+tracking and fixtures, or explicitly narrow BA05 with owner review. BA05 remains
+open; native Linux/Windows CI is independent. Future behavior classes are not yet
+assigned and PCU conversion is not implemented.
 Only after that gate follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 

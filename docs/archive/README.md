@@ -96,6 +96,8 @@ entry behind what you are changing, not the directory.
 
 - [`PROGRESS-2026-10-04-connector-equation.md`](PROGRESS-2026-10-04-connector-equation.md) — oldest live D107 history block, moved whole 2026-10-06
 
+- [`PROGRESS-2026-10-04-source-insertion.md`](PROGRESS-2026-10-04-source-insertion.md) — oldest live D108 history block, moved whole 2026-10-06
+
 ## Other docs
 
 - [`MIGRATION-D15.md`](MIGRATION-D15.md) — former migration reference, including the original UI mapping and implementation horizon; retained 2026-10-05

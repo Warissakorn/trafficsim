@@ -40,6 +40,14 @@ name after `bin/`.
 | `--data-dir DIR` | Vehicle/behaviour catalogs; desktop also reads locales here | Data beside executable, then working directory |
 | `--events FILE` | Stream all events as JSON Lines | No trajectory file |
 | `--help` | Usage without loading assets or running a simulation | — |
+| `--project FILE --discharge` | Unvalidated lane/cycle queue headways and startup estimates | Off |
+| `--discharge-start S`, `--discharge-end S`, `--discharge-warmup S` | Declared measurement window and warmup; requires `--discharge` | Full run, zero warmup |
+| `--discharge-steady-first N`, `--discharge-steady-last N`, `--discharge-startup-last N` | Original one-based crossing ranks | 3, 5, 2 |
+| `--discharge-type ID` | Repeatable selection of original follower gaps by vehicle type | All types |
+
+See [the discharge contract](../docs/reference/DISCHARGE.md) for raw crossings,
+unavailable results and selection semantics. `discharge_options.hpp` owns CLI
+syntax; scientific validation and estimation stay in `eval/discharge.*`.
 
 Stdout contains a JSON diagnostic; errors go to stderr with a nonzero exit code.
 Invalid/overflow/fractional seeds are rejected. Missing files, wrong JSON field types,

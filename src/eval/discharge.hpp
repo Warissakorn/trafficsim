@@ -7,6 +7,7 @@ namespace trafficsim {
 struct DischargeSpec {
     double windowStart{}, windowEnd{}, warmup{};
     std::size_t steadyFirst{3}, steadyLast{5}, startupLast{2}; // one-based crossing ranks
+    std::set<std::string> vehicleTypeIds; // empty: all; select follower gaps without reranking
 };
 struct DischargeCrossing {
     std::uint64_t vehicleId{};
@@ -26,6 +27,8 @@ struct DischargeEstimate {
     std::string reason;
     std::size_t samples{};
     std::optional<double> meanHeadway, dischargeVehiclesPerHour, startupLostTime;
+    std::vector<std::size_t> sampledRanks;
+    std::string startupUnavailableReason;
 };
 void validateDischargeSpec(const DischargeSpec&);
 DischargeEstimate estimateDischarge(const DischargeCycle&, const DischargeSpec&);
