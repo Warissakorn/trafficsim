@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-07 — Project-owned behaviour library and road assignment storage (D126)
+
+M3.3.2a adds schema 21: model-tagged owned behaviours with names, vehicle classes,
+link behaviour types (default + per-class overrides) and a `behaviourType` on Links
+and Connectors, plus `behaviour_commands` for put/duplicate/assign/users/delete with
+replacement. Owner decisions: the library needs project-owned catalogs, and Run
+refuses an assigned road until M3.3.2b. See [contract §7](reference/DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)
+and [evidence](evidence/behaviour-library.md).
+
+Headless CTest passes with 7 `behaviourlibrary` cases (BA06–BA09, Run refusal,
+EN/TH codes); seven targeted mutations each fail a case. Shipped projects re-save
+unchanged and their seed-42 CLI output is byte-identical. No engine or catalog data change.
+
+---
+
 ## 2026-10-07 — Rank-scoped remap invalidation and source-sink identity (D125)
 
 M3.3.1b2b2 completes measurement. A remap invalidates a cycle only when it moves a
@@ -435,38 +450,6 @@ lane-change diagnostics and CSVs (seed 42) match phase-2 `de9aee3` byte-for-byte
 Linux GCC 13.3 / Qt 6.4.2 Debug: 58/58 headless and 83/83 desktop suites pass;
 final guide/Canvas reruns follow the tangent-walk repair. Architecture and size guards
 pass. Windows CI results belong to the PR. Owner appearance review stays open. Two old display-scale entries moved whole to the archive.
-
----
-
-## 2026-10-05 — Rear-axle display reference (phase 2)
-
-Owner authorized the next turning slice after phase 1 merged (#103). The route still
-prescribes the traffic front bumper; its scalar station/length contract is unchanged.
-`RearAxlePath` solves the rear no-slip equation using the bumper-to-rear lever, with
-rigid axle/body offsets. Canvas items now originate at the rear axle, with the nose
-kept at its station, including low zoom. This is a bumper-guided approximation, not
-front-wheel tracking, swept-body collision clearance or measured Vissim fidelity.
-
-Optional complete type `axles` data is parsed, validated and retained on save. Missing
-old-file data stays omitted and resolves 60/20/20 percent proportions. The shipped car
-and rigid heavy dimensions are explicit modelling assumptions. Catalog/inline type
-extension is additive; network schema remains 17. No engine motion equations changed.
-
-Heading is solved on fixed spatial steps, split at joins/vertices and read without
-vehicle history. One derived track per route/type is retained against immutable Scenario
-ownership and Run-network replacement, never a document revision (D28). Memory is
-bounded; disconnected/missing paths draw none. Existing lane-change slide/yaw remains
-an overlay outside the no-slip equation. The full contract is in VEHICLE_POSE.md.
-
-Original type catalog bytes are preserved beside the old sweep evidence. Its guard
-permits only added display axles, rejecting changed traffic fields; no fixture/result
-is regenerated. Linux GCC 13.3 / Qt 6.4.2 Debug: all 82 desktop suites pass across the
-full run and four repair reruns; architecture/size guards pass. A chord substitution
-fails the analytic-turn regression. Crossing logs/reports for four seeds and seed-42
-reports/CSVs for four projects are byte-identical to main `5d823be`. The Run-view
-benchmark completes 3000 M2.6 Steps in both versions; concurrent build/test load means
-no timing claim. Headless and Windows CI results belong to the PR.
-Owner appearance and subsequent engine slices remain in NEXT.
 
 ---
 

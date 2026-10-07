@@ -565,5 +565,21 @@
   "ROUTING_POSITION_AFTER_DIVERGENCE": "The routing line must be before every route departs this Link.",
   "ROUTING_PREFIX_MISMATCH": "Routing alternatives do not share the same road before the decision.",
   "editorDemandDeferredRoute": "Chosen at routing line",
-  "ROUTING_POSITION_IN_CONFLICT": "Place the routing line outside an active conflict area."
+  "ROUTING_POSITION_IN_CONFLICT": "Place the routing line outside an active conflict area.",
+  "UNSUPPORTED_BEHAVIOUR_MODEL": "This driving behaviour names a following model this version cannot run. Only \"prototype\" is supported; the file is not opened rather than run with a different model.",
+  "EXTERNAL_BEHAVIOUR_CATALOG": "Vehicle classes, link behaviour types and road assignments need the project's own behaviours and vehicle types. Copy the catalogs into the project first.",
+  "DUPLICATE_CLASS_MEMBERSHIP": "This vehicle type is already in another vehicle class. A type belongs to at most one class.",
+  "MISSING_DEFAULT_BEHAVIOUR": "Every link behaviour type needs a default driving behaviour, even when no road uses it yet.",
+  "UNKNOWN_VEHICLE_CLASS": "This override names a vehicle class that does not exist.",
+  "DUPLICATE_OVERRIDE": "This link behaviour type already has an override for this vehicle class.",
+  "UNKNOWN_BEHAVIOUR_TYPE": "This road names a link behaviour type that does not exist.",
+  "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT": "This road has a link behaviour type, but the simulation does not apply road assignments yet. Saving is supported; clear the assignment to run.",
+  "EDIT_EXTERNAL_CATALOG": "The behaviour library edits the project's own catalogs. Copy the vehicle types and behaviours into the project first.",
+  "EDIT_UNKNOWN_BEHAVIOUR": "That driving behaviour no longer exists.",
+  "EDIT_UNKNOWN_VEHICLE_CLASS": "That vehicle class no longer exists.",
+  "EDIT_UNKNOWN_BEHAVIOUR_TYPE": "That link behaviour type no longer exists.",
+  "EDIT_REFERENCED_BEHAVIOUR": "Vehicle types or link behaviour types still use this driving behaviour. Choose a replacement to delete it.",
+  "EDIT_REFERENCED_VEHICLE_CLASS": "Link behaviour type overrides still use this vehicle class. Choose a replacement to delete it.",
+  "EDIT_REFERENCED_BEHAVIOUR_TYPE": "Links or connectors still use this link behaviour type. Choose a replacement to delete it.",
+  "EDIT_INVALID_REPLACEMENT": "An entry cannot replace itself. Choose a different replacement."
 }

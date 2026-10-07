@@ -186,7 +186,9 @@ Network parseNetwork(const Json& value, int schemaVersion) {
     network.drivingSide = side == "left" ? DrivingSide::left : DrivingSide::right;
     for (const auto& item : array(value, "links")) {
         const auto path="links["+std::to_string(network.links.size())+"]";
-        knownFields(item,{"id","geometry","lanes","level","displayType","laneOffset","name","boundaryMarkings"},path,schemaVersion);
+        // `behaviourType` exists from schema 21 (M3.3.2a).
+        if(schemaVersion>=21)knownFields(item,{"id","geometry","lanes","level","displayType","laneOffset","name","boundaryMarkings","behaviourType"},path,schemaVersion);
+        else knownFields(item,{"id","geometry","lanes","level","displayType","laneOffset","name","boundaryMarkings"},path,schemaVersion);
         Link link{field<std::string>(item, "id"), points(item,schemaVersion), {}};
         for (const auto& lane : array(item, "lanes")) {
             knownFields(lane,{"id","width"},path+".lanes["+std::to_string(link.lanes.size())+"]",schemaVersion);
@@ -200,12 +202,15 @@ Network parseNetwork(const Json& value, int schemaVersion) {
             if(!m.is_string())throw std::invalid_argument("INVALID_MARKING");
             link.boundaryMarkings.push_back(markingFromName(m.get<std::string>()));
         }
+        if(schemaVersion>=21 && item.contains("behaviourType"))link.behaviourTypeId=field<std::string>(item,"behaviourType");
         network.links.push_back(std::move(link));
     }
     for (const auto& c : array(value, "connectors")) {
         const auto where="connectors["+std::to_string(network.connectors.size())+"]";
         // `laneChangeSide` exists from schema 17 (M3.2.9a, D73).
-        if(schemaVersion>=17)knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
+        if(schemaVersion>=21)knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
+            "laneBlend","name","laneWidths","laneMarkings","laneChangeSide","behaviourType"},where,schemaVersion);
+        else if(schemaVersion>=17)knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
             "laneBlend","name","laneWidths","laneMarkings","laneChangeSide"},where,schemaVersion);
         else knownFields(c,{"id","from","to","geometry","fromLaneCount","toLaneCount","level","displayType",
             "laneBlend","name","laneWidths","laneMarkings"},where,schemaVersion);
@@ -233,6 +238,7 @@ Network parseNetwork(const Json& value, int schemaVersion) {
             if(side!="left" && side!="right")throw ValidationError({{"EDIT_LANE_RANGE",where+".laneChangeSide"}});
             network.connectors.back().laneChangeSide=side=="left"?LaneSide::left:LaneSide::right;
         }
+        if(schemaVersion>=21 && c.contains("behaviourType"))network.connectors.back().behaviourTypeId=field<std::string>(c,"behaviourType");
     }
     for (const auto& h : array(value, "signalHeads")) {
         knownFields(h,{"id","lane","position","programId","connectorId","name","controllerId","groupNumber"},
@@ -267,6 +273,9 @@ Network parseNetwork(const Json& value, int schemaVersion) {
         network.queueCounters.push_back(std::move(counter));
     }
     return network;
+}
+void requireKnownFields(const Json& value,std::initializer_list<const char*> keys,const std::string& path) {
+    knownFields(value,keys,path,21);
 }
 PriorityDefaults parsePriorityDefaults(const Json& value) {
     return {field<double>(value, "gapTime"), field<double>(value, "headway")};
