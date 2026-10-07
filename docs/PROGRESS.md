@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-07 — BA14/BA17 focused fixtures
+
+Six `behaviourselection` cases in `tests/behaviour_selection_edge_tests.cpp` close the two
+rows D127 left "by construction": selection follows the recognized route at source-zero,
+mid-Link and consecutive lines and at a line just short of a join, with routing draws
+unchanged; a served Stop keeps its service while the front crosses into a tighter set,
+composes with the denied area and the receiving queue (read under the current set), and a
+genuine clamp is still reported. Tests only; no engine change. Fixture obstacles need
+desired speed 0, or a placed "standing" vehicle drives away. Four mutations caught; the
+receiving-queue case survived one until its room was narrowed below the legacy set's need.
+See [evidence](evidence/behaviour-selection.md). Headless 65/65 (Linux, GCC 13.3).
+
+---
+
 ## 2026-10-07 — Behaviour library editor and road assignment UI (D128)
 
 M3.3.2c adds the *Driving behaviours* dialog (Behaviours / Vehicle classes / Link
