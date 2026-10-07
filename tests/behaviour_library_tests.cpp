@@ -164,18 +164,18 @@ TEST(behaviourlibrary, referenced_delete_needs_one_validated_reassignment_transa
     // An unreferenced entry deletes without a replacement.
     CHECK(h.execute("unused", [](auto& d) { deleteLinkBehaviourType(d, "rural"); }));
 }
-TEST(behaviourlibrary, run_refuses_assigned_roads_and_an_unassigned_library_changes_nothing) {
+// M3.3.2b (D127) replaced the M3.3.2a Run refusal: an assigned road now compiles into selections.
+TEST(behaviourlibrary, assigned_roads_compile_and_an_unassigned_library_changes_nothing) {
     const auto assigned = library();
-    test::throws([&] { compileDocument(assigned, test::root() / "data"); }, "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT");
+    const auto compiled = compileDocument(assigned, test::root() / "data").scenario;
+    CHECK(!compiled.segmentBehaviours.empty());
     const auto rows = runDiagnostics(assigned, test::root() / "data");
-    const auto blocked = std::count_if(rows.begin(), rows.end(), [](const auto& r) {
-        return r.code == "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT" && r.severity == DiagnosticSeverity::runtime && !r.selectId.empty();
-    });
-    CHECK(blocked == 2);
+    CHECK(std::none_of(rows.begin(), rows.end(), [](const auto& r) { return r.severity == DiagnosticSeverity::runtime; }));
     auto unassigned = assigned;
     for (auto& l : unassigned.network.links) l.behaviourTypeId.reset();
     for (auto& c : unassigned.network.connectors) c.behaviourTypeId.reset();
     CHECK(usesBehaviourLibrary(unassigned)); // still schema 21: the library itself is kept
+    CHECK(compileDocument(unassigned, test::root() / "data").scenario.segmentBehaviours.empty());
     unassigned.definition->behaviourNames.clear(); unassigned.definition->vehicleClasses.clear();
     unassigned.definition->linkBehaviourTypes.clear();
     auto withLibrary = unassigned; putVehicleClass(withLibrary, {"heavy", "", {"heavy-vehicle"}});
@@ -188,7 +188,7 @@ TEST(behaviourlibrary, every_new_code_is_translated_in_english_and_thai) {
         CHECK(file.is_open()); Json locale; file >> locale;
         for (const char* code : {"UNSUPPORTED_BEHAVIOUR_MODEL", "EXTERNAL_BEHAVIOUR_CATALOG", "DUPLICATE_CLASS_MEMBERSHIP",
                  "MISSING_DEFAULT_BEHAVIOUR", "UNKNOWN_VEHICLE_CLASS", "DUPLICATE_OVERRIDE", "UNKNOWN_BEHAVIOUR_TYPE",
-                 "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT", "EDIT_EXTERNAL_CATALOG", "EDIT_UNKNOWN_BEHAVIOUR",
+                 "EDIT_EXTERNAL_CATALOG", "EDIT_UNKNOWN_BEHAVIOUR",
                  "EDIT_UNKNOWN_VEHICLE_CLASS", "EDIT_UNKNOWN_BEHAVIOUR_TYPE", "EDIT_REFERENCED_BEHAVIOUR",
                  "EDIT_REFERENCED_VEHICLE_CLASS", "EDIT_REFERENCED_BEHAVIOUR_TYPE", "EDIT_INVALID_REPLACEMENT"})
             CHECK(locale.contains(code) && locale.at(code).is_string() && !locale.at(code).get<std::string>().empty());

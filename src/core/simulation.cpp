@@ -136,7 +136,6 @@ SimState stepSimulation(SimState&& state, double dt) {
         const auto& route = scenario.routes[pending.routeIndex];
         if (!attemptedSources.insert(route.segmentIds.front()).second) continue;
         const auto& type = scenario.vehicleTypes[pending.typeIndex];
-        const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         if (!spansBuilt) {
             candidateRefs = resolveRefs(scenario, vehicles, index);
             candidateSpans = occupiedSpans(scenario, vehicles, index, candidateRefs);
@@ -146,6 +145,10 @@ SimState stepSimulation(SimState&& state, double dt) {
         Vehicle vehicle;
         static_cast<PendingVehicle&>(vehicle) = pending;
         vehicle.enteredTime = startTime;
+        // The entry segment's behaviour (M3.3.2b) -- the type's own without assignments, the very
+        // slot byId found before. The pending record is only read: nothing is redrawn while it waits.
+        const auto behaviourSlot = effectiveBehaviour(index, vehicle);
+        const auto& behaviour = scenario.behaviours[behaviourSlot];
         const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route), candidateSpans,
                                            candidateBuckets);
         if (leader && leader->gap < behaviour.standstillDistance) continue;
@@ -158,7 +161,7 @@ SimState stepSimulation(SimState&& state, double dt) {
         }
         const VehicleRefs inserted{static_cast<std::size_t>(&route - scenario.routes.data()),
                                    static_cast<std::size_t>(&type - scenario.vehicleTypes.data()),
-                                   static_cast<std::size_t>(&behaviour - scenario.behaviours.data())};
+                                   behaviourSlot};
         vehicles.push_back(vehicle);
         candidateRefs.push_back(inserted);
         appendVehicleSpans(candidateSpans, scenario, index, vehicle, inserted);

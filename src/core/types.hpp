@@ -159,6 +159,13 @@ struct RouteDecision {
     std::vector<RoutingChoice> choices;
     bool operator==(const RouteDecision&) const = default;
 };
+// M3.3.2b (D127), COMPILED from Link/Connector behaviour-type assignments, never authored: the
+// behaviour a vehicle type uses while its FRONT is on this segment. Ids, not slots, because
+// createSimulation re-sorts segments, types and behaviours; the index resolves them once.
+struct SegmentBehaviour {
+    std::string segmentId, vehicleTypeId, behaviourId;
+    bool operator==(const SegmentBehaviour&) const = default;
+};
 struct ScenarioDefinition {
     double duration{}, timeStep{};
     std::vector<Route> routes;
@@ -184,6 +191,9 @@ struct ScenarioDefinition {
     std::vector<LaneChangeSpan> laneChanges;
     std::vector<RouteDeadEnd> routeDeadEnds;
     std::vector<RouteDecision> routeDecisions;
+    // M3.3.2b, last again. Empty without an assigned road, which then runs exactly the legacy
+    // type-only selection: same slots, same order of operations, same random draws.
+    std::vector<SegmentBehaviour> segmentBehaviours;
     // Value equality, so callers can tell "this edit changed nothing" without serialising.
     bool operator==(const ScenarioDefinition&) const = default;
 };
@@ -239,6 +249,9 @@ struct ScenarioIndex {
     // at all once the type is known. The sorted routeOfId/typeOfId tables that used to live here
     // are gone with the string ids they existed to resolve: a vehicle carries its slots.
     std::vector<std::size_t> behaviourOfType;        // parallel to Scenario::vehicleTypes
+    // M3.3.2b: segments x types, row-major, a behaviour slot each -- behaviourOfType overridden by
+    // Scenario::segmentBehaviours. EMPTY when nothing is assigned: then the type alone decides.
+    std::vector<std::size_t> behaviourOfSegmentType;
     // The slots a released vehicle is stamped with. An input's route and type never change, so
     // resolving them per input per tick -- which is what generateArrivals did once the vehicle
     // stopped carrying ids -- was the same lookup in a new place.
@@ -372,6 +385,14 @@ bool waitingAtDeadEnd(const ScenarioIndex&, std::size_t route, const Vehicle&, c
 bool deadEndGoverns(const ScenarioIndex&, std::size_t route, const Vehicle&, const VehicleType&, const DriverBehaviour&);
 const RouteLaneChange* laneChangeTargetOf(const ScenarioIndex&, std::size_t route, double front, double rear);
 double mappedOnto(const RouteLaneChange&, double at);
+// M3.3.2b (D127, DRIVING_BEHAVIOUR.md §3): the one behaviour every consumer uses -- following,
+// source clearance, own and trailing lane-change checks, courtesy, stop service, receiving space
+// and the evaluation diagnostics. Chosen by the FRONT's segment on the vehicle's current route:
+// a front exactly at a join belongs to the downstream segment, at or past the route end to the
+// last. Without assignments it is behaviourOfType[type], unchanged. Defined in routes.cpp.
+std::size_t effectiveBehaviour(const ScenarioIndex&, const Vehicle&);
+// The route part a front at `distance` is on, by that same convention.
+const RoutePart& frontPart(const std::vector<RoutePart>& parts, double distance);
 // M3.3.1b2b2 (D125): the pending vehicles the next step generates at its start, in id order,
 // replayed on a scratch copy -- the state is not changed. Lets an observer name the type of a
 // vehicle generated, inserted and sunk within one tick. Defined in demand.cpp.

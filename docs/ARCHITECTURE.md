@@ -246,8 +246,9 @@ M3.3 proposes one effective behavior resolver for compiled segment/type assignme
 [DRIVING_BEHAVIOUR](reference/DRIVING_BEHAVIOUR.md) defines class/default/legacy
 precedence and tick selection. M3.3.2a stores the project-owned library and road
 assignments (schema 21, `project/behaviour_library`, `commands/behaviour_commands`);
-the resolver is not implemented: `behaviourOfType` remains current and Run refuses an
-assigned road until M3.3.2b. Model state and lateral occupancy are later slices.
+M3.3.2b compiles them into `segmentBehaviours` and every consumer selects through
+`effectiveBehaviour` (front segment, legacy type-only when unassigned). Model state
+and lateral occupancy are later slices.
 
 M3's right-of-way seam ([M3_CONTRACT.md](reference/M3_CONTRACT.md)) has landed in slices M3.2.2a–M3.2.6:
 authored waiting lines, conflict areas, priority rules (gap time/headway), Stop/Yield controls and

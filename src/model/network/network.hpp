@@ -279,6 +279,7 @@ struct LaneSection {
 struct RuntimeSections {
     std::vector<ConnectorPath> paths;
     std::vector<std::string> pathNext;   // parallel to paths: the section each path arrives on
+    std::vector<std::string> pathConnector; // parallel to paths: the Connector each path belongs to
     std::vector<LaneSection> sections;   // link order, then lane order, then station order
     // Connector ids whose interior attachment leaves no runnable section, so Run must still
     // refuse them. Recorded here rather than recomputed, so the gate and the table cannot

@@ -15,7 +15,10 @@ void parseBehaviourLibrary(const Json& definition, AuthoringDefinition&);
 void addBehaviourLibraryJson(const AuthoringDefinition&, Json& definition);
 // Every rule applies to unused entries too. Empty when the document uses no library feature.
 std::vector<ValidationIssue> behaviourLibraryIssues(const ProjectDocument&);
-// Until M3.3.2b selects behaviour by road, an assigned road would be a silent no-op: Run refuses it.
-std::vector<ValidationIssue> behaviourAssignmentIssues(const Network&);
+// M3.3.2b (D127): one entry per runtime segment of an assigned road and per vehicle type -- the
+// type's class override, else the behaviour type's default. Every section of a Link inherits the
+// Link's assignment; every path of a Connector the Connector's own. A segment has exactly one
+// owner, so routes can never disagree about it. Empty when no road is assigned.
+std::vector<SegmentBehaviour> compileBehaviourAssignments(const Network&, const AuthoringDefinition&);
 inline constexpr const char* kPrototypeBehaviourModel = "prototype";
 }

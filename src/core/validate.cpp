@@ -307,6 +307,16 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
         number(head.position, p + ".position", true);
         if (segment != segments.end() && head.position > segment->second->length) add("INVALID_POSITION", p + ".position");
     }
+    // M3.3.2b: one compiled selection per segment and vehicle type, naming things that exist.
+    std::set<std::pair<std::string, std::string>> selected;
+    for (std::size_t i = 0; i < s.segmentBehaviours.size(); ++i) {
+        const auto& e = s.segmentBehaviours[i];
+        const auto p = "segmentBehaviours[" + std::to_string(i) + "]";
+        if (!segments.contains(e.segmentId)) add("UNKNOWN_SEGMENT", p + ".segmentId");
+        if (!types.contains(e.vehicleTypeId)) add("UNKNOWN_VEHICLE_TYPE", p + ".vehicleTypeId");
+        if (!behaviours.contains(e.behaviourId)) add("UNKNOWN_BEHAVIOUR", p + ".behaviourId");
+        if (!selected.insert({e.segmentId, e.vehicleTypeId}).second) add("DUPLICATE_ID", p);
+    }
     // M3.2.8b: compiled lateral spans and dead ends, once the routes they name are known good.
     if (routes.size() == s.routes.size())
         for (auto& issue : laneChangeIssues(s)) issues.push_back(std::move(issue));

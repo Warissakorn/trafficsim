@@ -30,7 +30,10 @@ RuntimeSections runtimeSections(const Network& network) {
         // connectorPaths throws on a range that no longer fits its link. A caller past the draft
         // validation never sees that, but diagnostics must not throw, so skip rather than fail.
         try { paths = connectorPaths(network, network.connectors[c]); } catch (const std::exception&) { continue; }
-        for (auto& path : paths) { table.paths.push_back(std::move(path)); owner.push_back(c); }
+        for (auto& path : paths) {
+            table.paths.push_back(std::move(path)); owner.push_back(c);
+            table.pathConnector.push_back(network.connectors[c].id);
+        }
     }
     for (const auto& link : network.links) for (const auto& lane : link.lanes) {
         // Verbatim the expression buildScenario used for a whole lane, so an uncut lane's length

@@ -573,7 +573,6 @@
   "UNKNOWN_VEHICLE_CLASS": "This override names a vehicle class that does not exist.",
   "DUPLICATE_OVERRIDE": "This link behaviour type already has an override for this vehicle class.",
   "UNKNOWN_BEHAVIOUR_TYPE": "This road names a link behaviour type that does not exist.",
-  "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT": "This road has a link behaviour type, but the simulation does not apply road assignments yet. Saving is supported; clear the assignment to run.",
   "EDIT_EXTERNAL_CATALOG": "The behaviour library edits the project's own catalogs. Copy the vehicle types and behaviours into the project first.",
   "EDIT_UNKNOWN_BEHAVIOUR": "That driving behaviour no longer exists.",
   "EDIT_UNKNOWN_VEHICLE_CLASS": "That vehicle class no longer exists.",

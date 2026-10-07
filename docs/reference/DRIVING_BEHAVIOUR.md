@@ -2,7 +2,8 @@
 
 Design before implementation, 2026-10-06 (D120). This contract owns the proposed
 M3.3 assignment seam, not a claim that W74/W99, motorcycles or these UI controls
-already run. §7 records what M3.3.2a implemented (storage and editing only). [ROADMAP](../ROADMAP.md#m33--driving-behaviour-library-and-models)
+already run. §7 records what M3.3.2a implemented (storage and editing) and §8 the
+M3.3.2b runtime selection. [ROADMAP](../ROADMAP.md#m33--driving-behaviour-library-and-models)
 owns milestone status; [the delivery plan](../plans/DRIVING_BEHAVIOUR.md) owns
 acceptance rows. Existing [SIMULATION](SIMULATION.md),
 [M3_8_CONTRACT](M3_8_CONTRACT.md) and [POSITIONED_ROUTING](POSITIONED_ROUTING.md)
@@ -190,11 +191,9 @@ the proprietary implementation or a TrafficSim equivalence claim:
 
 ## 7. Implemented library and codec (M3.3.2a, D126)
 
-M3.3.2a stores and edits §1 in the project file and History. It selects nothing at
-runtime: M3.3.2b compiles assignments (§2–3). Until then **Run refuses a project
-whose Link or Connector carries a behaviour type** (`UNSUPPORTED_BEHAVIOUR_ASSIGNMENT`,
-a selectable runtime diagnostic), so an assignment is never a silent no-op. A library
-with no assigned road leaves the compiled Scenario unchanged. No UI exists yet (M3.3.2c).
+M3.3.2a stores and edits §1 in the project file and History; M3.3.2b (§8) compiles
+and runs the assignments, replacing 2a's interim Run refusal. A library with no
+assigned road leaves the compiled Scenario unchanged. No UI exists yet (M3.3.2c).
 
 Schema 21 is written only when a library feature is used; otherwise the previous
 version rule and bytes are kept. A file below 21 carrying any key below is refused
@@ -222,3 +221,37 @@ delete for behaviours, classes and behaviour types. Duplicate creates
 entry is deleted only with an explicit replacement, rewritten everywhere in the
 same transaction (`EDIT_REFERENCED_*`, `EDIT_INVALID_REPLACEMENT`); one Undo
 restores it. Evidence: [behaviour-library](../evidence/behaviour-library.md).
+
+## 8. Implemented runtime selection (M3.3.2b, D127)
+
+`compileBehaviourAssignments` (project layer) turns road assignments into
+`ScenarioDefinition::segmentBehaviours`: one `{segmentId, vehicleTypeId, behaviourId}`
+per runtime segment of an assigned road and per vehicle type — the type's class
+override, else the behaviour type's default. Every section of a Link (section cuts
+included) inherits the Link's assignment; every lane path of a Connector inherits
+the Connector's own. Each segment has exactly one owner, so expanded routes cannot
+disagree. The table holds ids, because `createSimulation` re-sorts segments, types
+and behaviours; `buildScenarioIndex` resolves it once into a dense segment × type
+slot table, built only when the table is non-empty. `validateScenario` reports
+`UNKNOWN_SEGMENT`, `UNKNOWN_VEHICLE_TYPE`, `UNKNOWN_BEHAVIOUR` and a repeated
+segment/type pair (`DUPLICATE_ID`).
+
+`effectiveBehaviour(index, vehicle)` (declared in `core/types.hpp`) is the one
+selection. With no table it is `behaviourOfType[type]`, so unassigned runs keep
+their exact slots, operation order and random draws. Otherwise it reads the
+segment of the part holding the **front** on the vehicle's current route
+(`frontPart`, shared with `locateVehicle`): a front exactly at a join is on the
+downstream segment, at or past the route end on the last one; no tolerance. The
+rear's position never matters.
+
+Consumers: `resolveRefs` (following, courtesy and cooperative braking, own and
+trailing lane-change checks — the trailing check reads the follower's own refs —
+discretionary changes, Stop service, receiving space) and source insertion, which
+evaluates the entry segment for the waiting pending vehicle without redrawing it.
+References are rebuilt where the engine already rebuilds them: after source-zero
+routing and after accepted lane changes, so a new road's set is used from the next
+snapshot that sees the front there, up to one timestep after the crossing.
+Positioned routing (D119) is applied before that snapshot; an unselected suffix is
+never read. The evaluation diagnostics (`lane_changes`, `dead_end_waits`) use the
+same function. Zone chaining's waiting room takes the largest standstill among the
+legacy and assigned behaviours of each type. Physical safety checks are unchanged.

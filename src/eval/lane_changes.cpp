@@ -77,7 +77,7 @@ void LaneChangeAccumulator::observe(const SimState& state) {
     previous_.clear();
     for (const auto& v : state.vehicles) {
         previous_[v.id] = {v.routeIndex, v.distance};
-        const auto& behaviour = s.behaviours[index.behaviourOfType[v.typeIndex]];
+        const auto& behaviour = s.behaviours[effectiveBehaviour(index, v)]; // as the engine selects it
         if (!waitingAtDeadEnd(index, v.routeIndex, v, behaviour)) {
             if (const auto tally = open_.find(v.id); tally != open_.end()) tally->second.run = 0;
             continue;

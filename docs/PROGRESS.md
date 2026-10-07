@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-07 — Front-segment behaviour selection (D127)
+
+M3.3.2b compiles Link/Connector assignments into `segmentBehaviours` (ids; class
+override else default; every section and Connector path inherits its owner) and
+selects every consumer's behaviour through `effectiveBehaviour` by the front's
+segment, sharing `locateVehicle`'s boundary rule. Without assignments the index
+table is empty and the legacy type slot is used unchanged. D126's Run refusal is gone.
+See [contract §8](reference/DRIVING_BEHAVIOUR.md#8-implemented-runtime-selection-m332b-d127) and [evidence](evidence/behaviour-selection.md).
+
+Headless 65/65 CTest including frozen TS baselines; six `behaviourselection` cases,
+six of seven mutations caught (the unneeded canonical sort was removed). Seed-42 CLI
+output equals a `main` Release build for the four projects; benchmark per vehicle-tick
+unchanged within noise. BA14/BA17 focused fixtures remain open.
+
+---
+
 ## 2026-10-07 — Project-owned behaviour library and road assignment storage (D126)
 
 M3.3.2a adds schema 21: model-tagged owned behaviours with names, vehicle classes,
