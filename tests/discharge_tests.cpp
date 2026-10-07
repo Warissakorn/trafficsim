@@ -186,3 +186,48 @@ TEST(discharge, cli_invalid_or_orphan_options_reject) {
     test::throws([&]{options({"--discharge","--discharge-end","61"}).forDuration(60);});
     test::throws([&]{options({"--discharge","--discharge-start","60"}).forDuration(60);});
 }
+
+TEST(discharge, shared_prefix_routing_keeps_queue_and_counts_passage_once) {
+    auto s=network();s.segments={{"lane",20,{"exit-a","exit-b"}},{"exit-a",20,{}},{"exit-b",20,{}}};
+    s.routes={{"route",{"lane","exit-a"}},{"other",{"lane","exit-b"}}};
+    s.signalHeads[0].position=19;
+    s.routeDecisions={{"choice","route",18.5,{},{{"other",1,{}}}}};
+    auto a=test::withVehicles(s,{{1,"route",18,0}});DischargeAccumulator d(spec(),{.5,1,10});d.observe(a);
+    a.tick=1;a.time=.1;a.events={SignalEvent{.1,"head",SignalColor::green}};d.observe(a);
+    a.tick=2;a.time=.2;a.vehicles[0].routeIndex=0; // canonical route 'other'
+    a.vehicles[0].distance=19.1;a.events={RoutingEvent{.2,1,"choice","route","other"}};
+    CHECK(a.scenario->routes[a.vehicles[0].routeIndex].id=="other");d.observe(a);d.observe(a);
+    const auto row=d.report()[0];CHECK(row.unavailable.empty());CHECK(row.crossings.size()==1);
+    CHECK(row.crossings[0].queuedAtGo);CHECK(row.crossings[0].vehicleTypeId=="car");
+}
+TEST(discharge, diverted_route_sink_does_not_invent_old_head_passage) {
+    auto s=network();s.segments={{"lane",20,{"old","new"}},{"old",20,{}},{"new",20,{}}};
+    s.routes={{"route",{"lane","old"}},{"other",{"lane","new"}}};
+    s.signalHeads[0].segmentId="old";s.signalHeads[0].position=10;
+    s.routeDecisions={{"choice","route",10,{},{{"other",1,{}}}}};
+    auto a=test::withVehicles(s,{{1,"route",9,0}});DischargeAccumulator d(spec(),{.5,1,30});d.observe(a);
+    a.tick=1;a.time=.1;a.events={SignalEvent{.1,"head",SignalColor::green}};d.observe(a);
+    a.tick=2;a.time=.2;a.vehicles.clear();
+    a.events={RoutingEvent{.2,1,"choice","route","other"},ArrivedEvent{.2,1,"other",0,0,0}};
+    d.observe(a);CHECK(d.report()[0].crossings.empty());
+    CHECK(d.report()[0].unavailable=="route_or_lane_change");
+}
+
+TEST(discharge, real_routing_observation_preserves_seeded_trajectory) {
+    auto s=network();s.segments={{"lane",20,{"exit-a","exit-b"}},{"exit-a",20,{}},{"exit-b",20,{}}};
+    s.routes={{"route",{"lane","exit-a"}},{"other",{"lane","exit-b"}}};
+    s.signalPrograms[0].phases={{.1,SignalColor::red},{20,SignalColor::green},{9.9,SignalColor::red}};
+    s.routeDecisions={{"choice","route",18.5,{},{{"other",1,{}}}}};
+    auto a=test::withVehicles(s,{{1,"route",17,0}});auto b=a;
+    DischargeAccumulator d(spec(),{.5,1,10});d.observe(a);bool recognized=false;
+    for(int i=0;i<220;++i) {
+        a=stepSimulation(std::move(a));b=stepSimulation(std::move(b));d.observe(a);
+        recognized|=std::any_of(a.events.begin(),a.events.end(),[](const auto& e){return std::holds_alternative<RoutingEvent>(e);});
+        CHECK(a.vehicles==b.vehicles && a.events==b.events && a.inputs==b.inputs);
+        CHECK(a.randomState==b.randomState && a.completed==b.completed && a.nextVehicleId==b.nextVehicleId);
+        CHECK(a.tick==b.tick && a.time==b.time && a.seed==b.seed && a.stopService==b.stopService);
+    }
+    CHECK(recognized);CHECK(a.completed==1);const auto row=d.report()[0];
+    CHECK(row.complete && row.unavailable.empty());CHECK(row.crossings.size()==1);
+    CHECK(row.crossings[0].queuedAtGo);
+}

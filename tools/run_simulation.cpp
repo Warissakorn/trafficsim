@@ -1,5 +1,6 @@
 #include "../src/core/simulation.hpp"
 #include "discharge_options.hpp"
+#include "../src/project/input_manifest.hpp"
 #include "../src/project/load.hpp"
 #include "../src/project/evaluation.hpp"
 #include "../src/project/json.hpp"
@@ -16,12 +17,15 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
                double phaseBin, bool waitCauses, const DischargeOptions& discharge) { // phaseBin 0: no --arrival-phases
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
-    const auto document = parseDocument(Json::parse(stream));
-    const auto snapshot = compileDocument(document, data);
+    InputManifest inputs;
+    auto* manifest=discharge.enabled?&inputs:nullptr;
+    const auto document = parseDocument(manifest?readInputJson(file,"project",manifest):Json::parse(stream));
+    const auto snapshot = compileDocument(document, data,manifest);
     // Refuse to overwrite before spending the run, as --events does.
     if (!csvFile.empty() && std::filesystem::exists(csvFile))
         throw std::invalid_argument("CSV output already exists: " + csvFile.string());
-    const auto spec = evaluationSpec(document, snapshot, data);
+    const auto spec = evaluationSpec(document, snapshot, data,manifest);
+    if(manifest)manifest->validate();
     MovementAccumulator movements(spec);
     std::optional<LaneChangeAccumulator> changes;
     if (laneChanges) changes.emplace(spec);
@@ -56,7 +60,10 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
         if (!csv) throw std::runtime_error("Failed writing CSV output");
     }
     auto result = movementJson(report);
-    if (release) result["discharge"] = dischargeJson(release->report(), dischargeSpec);
+    if (release) {
+        result["discharge"] = dischargeJson(release->report(), dischargeSpec);
+        result["discharge"]["inputManifest"]=inputs.json();
+    }
     result["engineVersion"] = std::string(TRAFFICSIM_VERSION) + "-cpp-m0";
     result["compiler"] = TRAFFICSIM_COMPILER;
     result["seed"] = seed;

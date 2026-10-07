@@ -16,11 +16,16 @@ M3.3.1a adds the [measurement observer](reference/DISCHARGE.md) and CLI `--disch
 M3.3.1b1 adds vehicle-type follower selection and CLI windows/warmup/ranks (D122);
 see [evidence](evidence/discharge-controls.md). Do not treat inverse selected-type
 headway as selected-type throughput; original ranks/predecessors remain intact.
-Next do **M3.3.1b2 measurement completion**: emit project/catalog input hashes,
-then replace conservative route/lane/source exclusions with supported passage
-tracking and fixtures, or explicitly narrow BA05 with owner review. BA05 remains
-open; native Linux/Windows CI is independent. Future behavior classes are not yet
-assigned and PCU conversion is not implemented.
+M3.3.1b2a captures parsed-byte project/catalog/queue hashes and supports positioned
+route recognition on identical physical prefixes (D123). Diversions suppress raw
+old-head crossing inference; see [evidence](evidence/discharge-provenance.md).
+The checkout hash regression has explicit LF/CRLF fixtures; confirm this head's
+native Linux/Windows jobs before advancing.
+Next do **M3.3.1b2b passage completion**: reconstruct lateral changes and insertion-
+tick source crossings with explicit event/snapshot contracts and fixtures. Keep
+ambiguous cases unavailable; BA05 remains open until those cases are demonstrated
+or its scope is explicitly narrowed with owner review. Native Linux/Windows CI is
+independent. Future behavior classes/PCU conversion are not implemented.
 Only after that gate follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 

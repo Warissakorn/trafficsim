@@ -1,4 +1,5 @@
 #include "run.hpp"
+#include "input_manifest.hpp"
 #include "diagnostics.hpp"
 #include "demand_paths.hpp"
 #include "../core/validate.hpp"
@@ -23,15 +24,16 @@ std::vector<Diagnostic> runDiagnostics(const ProjectDocument& d, const std::file
         return {{e.what(),"catalogs",{},{},DiagnosticSeverity::runtime}};
     }
 }
-RunSnapshot compileDocument(const ProjectDocument& d, const std::filesystem::path& data) {
+RunSnapshot compileDocument(const ProjectDocument& d, const std::filesystem::path& data,InputManifest* manifest) {
     validateDocument(d);
     if (!d.definition) throw std::invalid_argument("EDIT_NO_DEFINITION");
     if (d.definition->inputs.empty()) throw std::invalid_argument("EDIT_NO_INPUTS");
     // An input left out for an unknown or broken composition must stop Run, not vanish from it.
-    if(auto issues=compositionIssues(*d.definition,data);!issues.empty())throw ValidationError(std::move(issues));
+    if(auto issues=compositionIssues(*d.definition,data,manifest);!issues.empty())throw ValidationError(std::move(issues));
     // Resolve once: every part of this snapshot uses the same catalog values.
     if(auto issues=routelessIssues(d.network,*d.definition).blocking;!issues.empty())throw ValidationError(std::move(issues));
-    const auto definition=expandRouteless(d.network,*d.definition,resolveCatalogs(*d.definition,data));
+    const auto definition=expandRouteless(d.network,*d.definition,resolveCatalogs(*d.definition,data,manifest));
+    if(manifest)manifest->validate();
     return {d.revision,d.network,compileScenario(d.network,definition)};
 }
 }

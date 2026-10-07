@@ -1,4 +1,5 @@
 #include "evaluation.hpp"
+#include "input_manifest.hpp"
 #include "json.hpp"
 #include "../model/network/right_of_way.hpp"
 #include <nlohmann/json.hpp>
@@ -12,11 +13,10 @@
 #include <stdexcept>
 
 namespace trafficsim {
-QueueDefinition loadQueueDefinition(const std::filesystem::path& dataDirectory) {
+QueueDefinition loadQueueDefinition(const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     try {
-        std::ifstream stream(dataDirectory / "evaluation" / "queue-counter.json");
-        if (!stream) throw std::runtime_error("missing");
-        const auto j = Json::parse(stream);
+        const auto j=readInputJson(dataDirectory / "evaluation" / "queue-counter.json",
+                                   "evaluation/queue-counter.json",manifest);
         QueueDefinition q{j.at("beginSpeed").get<double>() / 3.6, j.at("endSpeed").get<double>() / 3.6,
                           j.at("maxHeadway").get<double>()};
         for (const double v : {q.beginSpeed, q.endSpeed, q.maxGap})
@@ -45,9 +45,9 @@ std::vector<std::string> replacedApproaches(const Network& network, const Author
     return links;
 }
 EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot& snapshot,
-                              const std::filesystem::path& dataDirectory) {
+                              const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     EvaluationSpec spec;
-    spec.queue = loadQueueDefinition(dataDirectory);
+    spec.queue = loadQueueDefinition(dataDirectory,manifest);
     std::map<std::string, std::size_t> movementOfAuthored;
     if (document.definition) {
         std::map<std::pair<std::string, std::string>, std::size_t> movementOfPair;

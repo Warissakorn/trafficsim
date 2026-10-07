@@ -8,6 +8,28 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-06 — Captured discharge inputs and physical-prefix recognition (D123)
+
+M3.3.1b2a emits parsed-byte SHA-256/size/read counts for project, actual catalog
+reads and queue definitions, with logical names and optional fallback scopes.
+Changed repeated reads reject before stepping; no hashing/I/O reaches core/eval.
+Positioned suffix choices on the same physical prefix retain queue membership;
+diverted/lateral remaps suppress raw old-head crossing inference and stay unavailable.
+Complete lateral/source reconstruction remains M3.3.1b2b; BA05 does not close.
+See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-provenance.md).
+
+Validation: 72 focused/relevant legacy GCC/Linux tests pass, including frozen
+reference fixtures; seeded CLI/hash parity and guards pass (see evidence). Parent PRs #117/#118 pass
+native CI; the candidate's native/desktop CI is separate. CMake/Qt are absent locally.
+No engine/schema/frozen data changed; no owner or calibration gate closes.
+
+Follow-up: workflow 457 passed Linux but both Windows jobs failed the LF-only fixture hash.
+The test now reads actual checkout bytes; controlled LF/CRLF JSON retains distinct hashes.
+The old assertion fails on a CRLF copy; the corrected suite passes 73 Linux tests and
+7 CRLF-copy provenance tests. See evidence; fresh native Windows CI remains required.
+
+---
+
 ## 2026-10-06 — Declared discharge windows and type selection (D122)
 
 M3.3.1b1 exposes CLI windows/warmup/ranks and repeatable vehicle-type selection.
@@ -458,21 +480,6 @@ as the actual merge. Canvas draws each lane pair's two original strips/insets; a
 selection and priority edits, including one Undo. Nine pairs have eighteen painted sides.
 Linux headless/desktop checks and regressions are recorded in the follow-up PR. No core,
 schema, topology or frozen fixture changes; Windows and owner appearance checks remain open.
-
----
-
-## 2026-10-05 — Bézier conflict coverage and connected editor groups (D109)
-
-Owner requested runtime-equation coverage with painted highlights and one group for 3 × 3.
-Crossing strips now refine the mapped cubic and its width rails independently of drawing
-vertices. Broad-phase bounds use those rails; shared-lane exclusions apply only at the same
-attachment mouth, not to distinct stations or later separated intersections. Waiting lines
-retain physical setbacks under drawing edits. Grouping requires the same owner pair/kind
-and connected surfaces on both sides; two locations remain separate. Table/canvas selection
-and bulk commands share the group; nine runtime lane-pair reservations remain nine.
-Schema/core/frozen baselines are unchanged. The editable T-junction example is rebuilt for
-new extents. Linux model and Qt verification is recorded in the PR; Windows/owner gates
-remain open. Existing saved coverage is validated, never silently migrated or widened.
 
 ---
 
