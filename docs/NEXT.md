@@ -19,18 +19,17 @@ headway as selected-type throughput; original ranks/predecessors remain intact.
 M3.3.1b2a captures parsed-byte project/catalog/queue hashes and supports positioned
 route recognition on identical physical prefixes (D123). Diversions suppress raw
 old-head crossing inference; see [evidence](evidence/discharge-provenance.md).
-Parent #119 workflow 458 passed all three Linux and both Windows jobs, including
-the LF/CRLF checkout regression. M3.3.1b2b1 (D124) reconstructs proven source and
-post-remap longitudinal passages without reading display traces; upstream lane
-changes still invalidate estimates. See [passage evidence](evidence/discharge-passage.md).
-Confirm this candidate's native Linux/Windows jobs independently.
-Next do **M3.3.1b2b2 source-sink identity**: define how an inserted vehicle's type
-is retained when it reaches the sink in its generation tick, with neither survivor
-nor prior pending record. Add failure-first mixed-input fixtures and preserve
-legacy events/trajectory contracts; never infer type from a nonunique route/input.
-BA05 remains open until source identity and platform evidence are demonstrated.
-Then follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently. Future behavior
-classes/PCU conversion and owner/calibration gates remain open.
+M3.3.1b2b1 (D124) reconstructs proven source and post-remap longitudinal passages
+without reading display traces; see [passage evidence](evidence/discharge-passage.md).
+M3.3.1b2b2 (D125) scopes remap invalidation to vehicles queued at Go while ranks
+1..steadyLast are open, and names same-tick source-sink types through core's pure
+`upcomingArrivals` replay with an exact fingerprint; see
+[identity evidence](evidence/discharge-identity.md). Measurement (M3.3.1) is complete
+pending native CI on the merged stack; BA05 has focused evidence, not owner validation.
+Next do **M3.3.2a**: project library/class/behaviour-type contracts and codec
+(BA06–BA09) per [the assignment contract](reference/DRIVING_BEHAVIOUR.md), with
+failure-first fixtures and a portable schema before any UI. Then M3.3.2b/c independently.
+Future behavior classes/PCU conversion and owner/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

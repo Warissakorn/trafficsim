@@ -90,6 +90,10 @@ void DischargeAccumulator::observe(const SimState& state) {
         const auto upstream=[&](const DischargePosition& p) {
             return p.route<h.atRoute.size()&&std::isfinite(h.atRoute[p.route])&&p.distance<h.atRoute[p.route];
         };
+        // D125: only ranks 1..steadyLast feed an estimate, and estimateDischarge already rejects a
+        // vehicle there that was not queued at Go. Once those ranks are recorded nothing can change
+        // them; before that, only a QUEUED vehicle leaving can silently shift them.
+        const bool ranksOpen=h.cycle&&h.cycle->crossings.size()<spec_.steadyLast;
         for(const auto& [id,m]:motions) {
             bool affected=(m.start&&upstream(*m.start));
             for(const auto& [from,to]:m.remaps) {
@@ -107,13 +111,13 @@ void DischargeAccumulator::observe(const SimState& state) {
                     samePrefix&=found;
                 }
                 affected|=changesMembership;
-                if(h.cycle&&changesMembership&&!samePrefix)h.cycle->unavailable="route_or_lane_change";
+                if(ranksOpen&&h.queue.contains(id)&&changesMembership&&!samePrefix)h.cycle->unavailable="route_or_lane_change";
             }
             if(m.ambiguous) {
                 // Missing start evidence can hide a crossing on the terminal route.
                 affected|=m.end&&(upstream(*m.end)||
                     ((!m.start||m.start->route!=m.end->route)&&m.end->route<h.atRoute.size()&&std::isfinite(h.atRoute[m.end->route])));
-                if(h.cycle&&affected)h.cycle->unavailable=m.source?"untracked_source_passage":"route_or_lane_change";
+                if(ranksOpen&&affected)h.cycle->unavailable=m.source?"untracked_source_passage":"route_or_lane_change";
                 continue;
             }
             if(!h.cycle||!m.start||!m.end||!upstream(*m.start)||m.end->distance<h.atRoute[m.start->route])continue;
@@ -149,7 +153,8 @@ void DischargeAccumulator::observe(const SimState& state) {
         if(h.cycle)h.cycle->end=state.time;
     }
     previous_.clear();for(const auto& v:state.vehicles)previous_.emplace(v.id,DischargePosition{v.routeIndex,v.typeIndex,v.distance});
-    pending_.clear();for(const auto& input:state.inputs)for(const auto& v:input.queue)pending_.emplace(v.id,v.typeIndex);
+    pending_.clear();for(const auto& input:state.inputs)for(const auto& v:input.queue)pending_.emplace(v.id,v);
+    for(const auto& v:upcomingArrivals(state))pending_.emplace(v.id,v); // same-tick source sinks (D125)
     tick_=state.tick;
 }
 std::vector<DischargeCycle> DischargeAccumulator::report() const {

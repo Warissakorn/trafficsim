@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-07 — Rank-scoped remap invalidation and source-sink identity (D125)
+
+M3.3.1b2b2 completes measurement. A remap invalidates a cycle only when it moves a
+vehicle queued at Go while ranks 1..steadyLast are open; unqueued changers are
+already caught by `queue_not_sustained`. Same-tick source sinks get their exact type
+from core's new pure `upcomingArrivals` replay plus a route/scheduled-time/speed
+fingerprint. Overlapping lateral spans stay ambiguous (engine choice depends on
+safety checks). See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-identity.md).
+
+Headless CTest 63/63 on GCC 13.3; the BA05 forcing case fails without the replay.
+Seed-42 legacy JSON and manifests match the parent; usable cycles 20→30 (four-leg)
+and 91→113 (m2.6). Engine, schema and frozen fixtures unchanged. Native CI separate.
+
+---
+
 ## 2026-10-07 — Proven source and lateral passages (D124)
 
 M3.3.1b2b1 replays unique start-of-tick lane maps from prior front/type positions;
@@ -452,34 +467,6 @@ reports/CSVs for four projects are byte-identical to main `5d823be`. The Run-vie
 benchmark completes 3000 M2.6 Steps in both versions; concurrent build/test load means
 no timing claim. Headless and Windows CI results belong to the PR.
 Owner appearance and subsequent engine slices remain in NEXT.
-
----
-
-## 2026-10-05 — Continuous vehicle headings across route segments
-
-Owner authorized phase 1 of the vehicle-position audit: repair heading discontinuities
-before introducing axle kinematics. The old Run view used a front tangent when local
-station was below vehicle length, then switched to a chord inside the segment. On the
-90-degree test curve that switched by 4.28 degrees for a 4.5 m car and 11.52 degrees for
-a 12 m vehicle; exiting onto the straight target also switched to its tangent.
-
-`vehicle_pose.*` now samples the complete ordered route at front distance and one type
-length upstream, using the existing Link geometry and direct Connector equation. The
-initial tangent extends behind route entry; coincident samples use a finite front
-tangent fallback. Missing geometry has no drawable pose. Canvas shares per-frame route
-parts with its lane-change slide; it keeps the true type length for heading at low zoom.
-The new Qt-free target has headless geometry regressions, and the Qt suite checks actual
-scene-item poses at both joins and the former length thresholds for both shipped types.
-Both the extracted legacy formula and the original Canvas fail the new join regression.
-
-This remains a display chord approximation. The upstream arc sample is not the actual
-rear bumper or axle, and no wheelbase, overhang, steering or articulated trailer model
-is introduced. Core state/events, runtime equations, schema and frozen fixtures are
-unchanged. Linux GCC 13.3 / Qt 6.4.2 Debug: headless 56/56 and desktop 81/81 pass,
-including architecture and file-size guards. Against main `3403b72`, crossing event logs
-and reports match byte-for-byte for seeds 0, 42, 43 and 4294967295; seed-42 reports/CSVs
-also match for four-leg-signalised, t-junction-priority, lane-change-lab and m2.6-study-template.
-Windows CI is pending; owner appearance and axle-model work remain open in NEXT.
 
 ---
 

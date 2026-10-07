@@ -79,8 +79,10 @@ TEST(discharge, actual_lateral_motion_counts_target_crossing_not_departed_lane) 
         d.observe(a);d.observe(a);equalDynamic(a,b);
         auto rows=d.report();CHECK(rows.size()==2);CHECK(rows[0].headId=="head");
         CHECK(rows[0].crossings.size()==1 && !rows[0].crossings[0].queuedAtGo);
-        CHECK(rows[1].crossings.empty());CHECK(rows[0].unavailable=="route_or_lane_change");
-        CHECK(rows[1].unavailable=="route_or_lane_change");
+        // D125: a moving, never-queued changer cannot shift queued ranks; the arrival is kept as
+        // an unqueued crossing (which estimateDischarge rejects inside the ranks) instead.
+        CHECK(rows[1].crossings.empty());CHECK(rows[0].unavailable.empty());CHECK(rows[1].unavailable.empty());
+        CHECK(estimateDischarge(rows[0],passageSpec()).reason=="partial_cycle");
         for(int i=0;i<15;++i) {a=stepSimulation(std::move(a));b=stepSimulation(std::move(b));d.observe(a);equalDynamic(a,b);}
         CHECK(a.completed==1);CHECK(d.report()[0].crossings.size()==1);
     }

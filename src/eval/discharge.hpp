@@ -54,6 +54,6 @@ private:
     std::vector<Head> heads_;
     std::vector<DischargeCycle> closed_;
     DischargePositions previous_;
-    std::map<std::uint64_t,std::size_t> pending_;
+    DischargePending pending_;
 };
 }

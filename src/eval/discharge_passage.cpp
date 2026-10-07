@@ -6,7 +6,7 @@
 
 namespace trafficsim {
 std::map<std::uint64_t,DischargeMotion> dischargeMotions(
-    const SimState& state,const DischargePositions& previous,const std::map<std::uint64_t,std::size_t>& pending) {
+    const SimState& state,const DischargePositions& previous,const DischargePending& pending) {
     const auto& s=*state.scenario;const auto& index=*state.index;
     constexpr auto unknown=std::numeric_limits<std::size_t>::max();
     const auto slot=[&](const std::string& id) {
@@ -29,8 +29,11 @@ std::map<std::uint64_t,DischargeMotion> dischargeMotions(
         if(m.start||r==unknown) {m.ambiguous=true;continue;}
         auto type=m.end?m.end->type:unknown;
         if(const auto p=pending.find(d->vehicleId);p!=pending.end()) {
-            if(type!=unknown&&type!=p->second)m.ambiguous=true;
-            type=p->second;
+            const auto& v=p->second;
+            // An exact fingerprint, never a route/input guess: a mismatch is contradictory evidence.
+            if(v.routeIndex!=r||v.scheduledTime!=d->scheduledTime||v.desiredSpeed!=d->desiredSpeed||
+               (type!=unknown&&type!=v.typeIndex))m.ambiguous=true;
+            type=v.typeIndex;
         }
         m.start=DischargePosition{r,type,0};
         if(type==unknown||!near(d->time,state.time-s.timeStep))m.ambiguous=true;
