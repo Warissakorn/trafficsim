@@ -19,6 +19,8 @@ Network parseNetwork(const Json& value, int schemaVersion);
 ScenarioDefinition parseDefinition(const Json& value);
 DriverBehaviour parseBehaviour(const Json& value);
 PriorityDefaults parsePriorityDefaults(const Json& value);
+// EDIT_UNSUPPORTED_FIELD for any key outside `keys`, whatever the schema (M3.3.2a strict sections).
+void requireKnownFields(const Json& value, std::initializer_list<const char*> keys, const std::string& path);
 VehicleType parseVehicleType(const Json& value);
 Composition parseComposition(const Json& value);
 std::vector<RoutingDecision> parseRoutingDecisions(const Json& definition); // M2.4

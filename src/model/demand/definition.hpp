@@ -92,6 +92,21 @@ struct SignalController {
     std::string id, name; double cycle{90}, offset{}; std::vector<SignalGroup> groups;
     bool operator==(const SignalController&) const = default;
 };
+// M3.3.2a (D126, DRIVING_BEHAVIOUR.md §1). Authoring only: nothing here reaches the engine until
+// M3.3.2b compiles it. A class groups vehicle types for assignment; a type is in at most one.
+struct VehicleClass {
+    std::string id, name; std::vector<std::string> vehicleTypeIds;
+    bool operator==(const VehicleClass&) const = default;
+};
+struct BehaviourOverride {
+    std::string classId, behaviourId;
+    bool operator==(const BehaviourOverride&) const = default;
+};
+// Vissim's link behaviour type: a required default behaviour and at most one override per class.
+struct LinkBehaviourType {
+    std::string id, name, defaultBehaviourId; std::vector<BehaviourOverride> overrides;
+    bool operator==(const LinkBehaviourType&) const = default;
+};
 struct AuthoringDefinition : ScenarioDefinition {
     bool externalVehicleTypes{true}, externalBehaviours{true};
     bool externalCompositions{true};
@@ -99,6 +114,10 @@ struct AuthoringDefinition : ScenarioDefinition {
     std::map<std::string,std::string> vehicleTypeNames;
     std::vector<RoutingDecision> routingDecisions; // M2.4
     std::vector<SignalController> signalControllers; // M2.7b; `signalPrograms` keeps only legacy ones
+    // M3.3.2a, schema 21: owned-behaviour display names, classes and link behaviour types.
+    std::map<std::string,std::string> behaviourNames;
+    std::vector<VehicleClass> vehicleClasses;
+    std::vector<LinkBehaviourType> linkBehaviourTypes;
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
     bool operator==(const AuthoringDefinition&) const = default;
 };

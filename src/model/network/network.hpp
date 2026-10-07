@@ -23,6 +23,8 @@ struct Link {
     // One value per boundary in lane order (N+1), or empty for solid edges/dashed dividers.
     // Shared boundaries are authored once, not independently on the two adjacent lanes.
     std::vector<MarkingType> boundaryMarkings{};
+    // M3.3.2a, schema 21: a link behaviour type id; absent keeps each type's own behaviour.
+    std::optional<std::string> behaviourTypeId{};
     bool operator==(const Link&) const = default;
 };
 struct LaneReference {
@@ -55,6 +57,8 @@ struct Connector {
     // by exactly one lane. Empty means the kerb side, which is what the proportional pairing of
     // schemas 1-16 always produced for a one-lane difference. Meaningless otherwise (D73).
     std::optional<LaneSide> laneChangeSide{};
+    // M3.3.2a, schema 21: the Connector's own assignment, independent of the Links it joins.
+    std::optional<std::string> behaviourTypeId{};
     bool operator==(const Connector&) const = default;
 };
 // One authored connector owns a contiguous range at each end. Individual runtime

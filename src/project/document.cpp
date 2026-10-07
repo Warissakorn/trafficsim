@@ -1,5 +1,6 @@
 #include "document.hpp"
 #include "demand_time_types.hpp"
+#include "behaviour_library.hpp"
 #include "../core/validate.hpp"
 #include "../model/network/diagnostics.hpp"
 #include <nlohmann/json.hpp>
@@ -68,6 +69,7 @@ Json documentJson(const ProjectDocument& d) {
         for (const auto& lane : l.lanes) lanes.push_back({{"id", lane.id}, {"width", lane.width}});
         network["links"].push_back({{"id", l.id}, {"geometry", points(l.geometry)}, {"lanes", lanes}, {"level",l.level}, {"displayType",l.displayType}, {"laneOffset",l.laneOffset}, {"name",l.name},
             {"boundaryMarkings",markingNames(l.boundaryMarkings)}});
+        if (l.behaviourTypeId) network["links"].back()["behaviourType"] = *l.behaviourTypeId; // M3.3.2a, schema 21
     }
     for (const auto& c : d.network.connectors) {
         network["connectors"].push_back({{"id", c.id}, {"from", reference(c.from)}, {"to", reference(c.to)}, {"geometry", points(c.geometry)}, {"fromLaneCount",c.fromLaneCount}, {"toLaneCount",c.toLaneCount},
@@ -75,6 +77,7 @@ Json documentJson(const ProjectDocument& d) {
             {"laneWidths",c.laneWidths}, {"laneMarkings",markingNames(c.laneMarkings)}});
         // M3.2.9a, schema 17: only when chosen, so the kerb-side default keeps a file's keys.
         if (c.laneChangeSide) network["connectors"].back()["laneChangeSide"] = *c.laneChangeSide == LaneSide::left ? "left" : "right";
+        if (c.behaviourTypeId) network["connectors"].back()["behaviourType"] = *c.behaviourTypeId;
     }
     for (const auto& h : d.network.signalHeads) {
         network["signalHeads"].push_back({{"id", h.id}, {"lane", reference(h.lane)}, {"position", h.position}, {"programId", h.programId}, {"connectorId",h.connectorId}, {"name",h.name}});
@@ -99,10 +102,14 @@ Json documentJson(const ProjectDocument& d) {
     const auto& b = d.background;
     // Preserve legacy bytes; use 18 for owned catalogs and 19 for time/type rules.
     const bool positioned=d.definition && std::any_of(d.definition->routingDecisions.begin(),d.definition->routingDecisions.end(),[](const auto& x){return x.position.has_value();});
-    const int schema=positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    // M3.3.2a: 21 only when the behaviour library or a road assignment is used (D126).
+    const bool library=usesBehaviourLibrary(d);
+    const int schema=library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
+    Json definition = d.definition ? definitionJson(*d.definition) : Json(nullptr);
+    if (library && d.definition) addBehaviourLibraryJson(*d.definition, definition);
     return {{"format", "TrafficSim"}, {"schemaVersion", schema}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
-        {"definition", d.definition ? definitionJson(*d.definition) : Json(nullptr)}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
+        {"definition", definition}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
 }
 void validateDocument(const ProjectDocument& d) {
@@ -117,6 +124,7 @@ void validateDocument(const ProjectDocument& d) {
         b.opacity < 0 || b.opacity > 1 || b.pngBase64->size() > 32 * 1024 * 1024)
         throw std::invalid_argument("EDIT_BACKGROUND_INVALID");
     validateAuthoredDemand(d);
+    if (auto issues = behaviourLibraryIssues(d); !issues.empty()) throw ValidationError(std::move(issues));
 }
 ProjectDocument parseDocument(const Json& j) {
     ProjectDocument d;
@@ -124,7 +132,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 20) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 21) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -143,9 +151,12 @@ ProjectDocument parseDocument(const Json& j) {
     if(j.contains("schemaVersion") && j.at("schemaVersion")<20 && present(j,"definition") && present(j.at("definition"),"routingDecisions") && j.at("definition").at("routingDecisions").is_array())
         for(const auto& x:j.at("definition").at("routingDecisions"))
             if(x.contains("position"))throw std::invalid_argument("UNSUPPORTED_FIELD: routingDecision.position");
-    d.network = parseNetwork(j.at("network"), j.contains("schemaVersion") ? j.at("schemaVersion").get<int>() : 0);
+    const int version = j.contains("schemaVersion") ? j.at("schemaVersion").get<int>() : 0;
+    if (version < 21) rejectBehaviourLibraryBefore21(j);
+    d.network = parseNetwork(j.at("network"), version);
     if (present(j, "definition")) {
         d.definition = parseAuthoringDefinition(j.at("definition"));
+        if (version >= 21) parseBehaviourLibrary(j.at("definition"), *d.definition);
         // Schema 7 and earlier stored a route as lanes and Connector paths. Schema 8 stores the
         // Links and Connectors those belong to, so that narrowing a Connector cannot invalidate
         // a route. The mapping is idempotent, which is what lets it run on every read.

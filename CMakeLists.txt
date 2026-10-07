@@ -59,7 +59,7 @@ add_library(trafficsim_eval STATIC src/eval/discharge.cpp src/eval/discharge_pas
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
 add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
     src/project/document.cpp src/project/signal_migration.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp
-    src/project/input_sha256.cpp src/project/input_manifest.cpp src/project/discharge_json.cpp src/project/evaluation.cpp src/project/demand_paths.cpp src/project/demand_preview.cpp src/project/demand_catalog.cpp src/project/demand_time_types.cpp src/project/station_routing.cpp)
+    src/project/input_sha256.cpp src/project/input_manifest.cpp src/project/behaviour_library.cpp src/project/discharge_json.cpp src/project/evaluation.cpp src/project/demand_paths.cpp src/project/demand_preview.cpp src/project/demand_catalog.cpp src/project/demand_time_types.cpp src/project/station_routing.cpp)
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
@@ -73,7 +73,7 @@ target_precompile_headers(trafficsim_project PRIVATE <nlohmann/json.hpp>)
 
 add_library(trafficsim_commands STATIC src/commands/history.cpp src/commands/network_commands.cpp
     src/commands/split_link.cpp src/commands/connector_commands.cpp src/commands/delete_objects.cpp
-    src/commands/demand_commands.cpp src/commands/catalog_commands.cpp src/commands/appearance_commands.cpp src/commands/link_geometry_commands.cpp
+    src/commands/demand_commands.cpp src/commands/catalog_commands.cpp src/commands/behaviour_commands.cpp src/commands/appearance_commands.cpp src/commands/link_geometry_commands.cpp
     src/commands/right_of_way_commands.cpp src/commands/conflict_authoring.cpp
     src/commands/conflict_follow.cpp src/commands/conflict_group_commands.cpp)
 target_link_libraries(trafficsim_commands PUBLIC trafficsim_project PRIVATE trafficsim_options)
@@ -155,7 +155,7 @@ if(BUILD_TESTING)
     target_link_libraries(trafficsim-vehicle-pose-tests PRIVATE trafficsim_vehicle_pose trafficsim_options)
     add_test(NAME vehicle-pose COMMAND trafficsim-vehicle-pose-tests)
     add_dependencies(check trafficsim-vehicle-pose-tests)
-    add_executable(trafficsim-tests tests/main.cpp tests/input_manifest_tests.cpp tests/discharge_tests.cpp tests/discharge_passage_tests.cpp tests/discharge_identity_tests.cpp tests/core_tests.cpp tests/station_routing_tests.cpp tests/source_insertion_tests.cpp
+    add_executable(trafficsim-tests tests/main.cpp tests/behaviour_library_tests.cpp tests/input_manifest_tests.cpp tests/discharge_tests.cpp tests/discharge_passage_tests.cpp tests/discharge_identity_tests.cpp tests/core_tests.cpp tests/station_routing_tests.cpp tests/source_insertion_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
         tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/demand_correctness_tests.cpp tests/demand_catalog_tests.cpp tests/demand_time_types_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_geometry_tests.cpp tests/conflict_polygon_tests.cpp tests/conflict_mouth_group_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp tests/lane_change_lab_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
@@ -164,7 +164,7 @@ if(BUILD_TESTING)
     target_sources(trafficsim-tests PRIVATE tests/history_tests.cpp tests/rotation_tests.cpp tests/connector_surface_tests.cpp tests/lane_correspondence_tests.cpp tests/connector_mouth_sweep_tests.cpp tests/connector_lane_centre_tests.cpp tests/connector_equation_tests.cpp tests/connector_edit_motion_tests.cpp)
     # One ctest test per group, so `ctest -j` spreads them; a single unfiltered run was 60 s of
     # serial wall time and repeated every named group.
-    set(TRAFFICSIM_TEST_GROUPS provenance discharge core stationrouting network reference project editor connectors mouths points
+    set(TRAFFICSIM_TEST_GROUPS behaviourlibrary provenance discharge core stationrouting network reference project editor connectors mouths points
         diagnostics demand ranges attachments authoring lifecycle history rotation fourleg movement
         routeless signals m26study m26study_merge rightofway rightofway_lifecycle rightofway_resolution
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position

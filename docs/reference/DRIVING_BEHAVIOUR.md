@@ -2,7 +2,7 @@
 
 Design before implementation, 2026-10-06 (D120). This contract owns the proposed
 M3.3 assignment seam, not a claim that W74/W99, motorcycles or these UI controls
-already run. [ROADMAP](../ROADMAP.md#m33--driving-behaviour-library-and-models)
+already run. §7 records what M3.3.2a implemented (storage and editing only). [ROADMAP](../ROADMAP.md#m33--driving-behaviour-library-and-models)
 owns milestone status; [the delivery plan](../plans/DRIVING_BEHAVIOUR.md) owns
 acceptance rows. Existing [SIMULATION](SIMULATION.md),
 [M3_8_CONTRACT](M3_8_CONTRACT.md) and [POSITIONED_ROUTING](POSITIONED_ROUTING.md)
@@ -187,3 +187,38 @@ the proprietary implementation or a TrafficSim equivalence claim:
 - [Driving behavior sets and class/road assignments](https://cgi.ptvgroup.com/vision-help/VISSIM_2026_EN-DE/en-us/Content/4_BasisdatenSim/Fahrverhaltensparameter_def.htm)
 - [Signal behavior, One decision and red-amber](https://cgi.ptvgroup.com/vision-help/VISSIM_2026_EN-DE/en-us/Content/4_BasisdatenSim/FahrverhaltensparameterLichtsignalanlagen.htm)
 - [Conflict types and driver planning](https://cgi.ptvgroup.com/vision-help/VISSIM_2026_EN-DE/en-us/Content/5_Netzbearbeiten/Konfliktflaechen_modellieren.htm)
+
+## 7. Implemented library and codec (M3.3.2a, D126)
+
+M3.3.2a stores and edits §1 in the project file and History. It selects nothing at
+runtime: M3.3.2b compiles assignments (§2–3). Until then **Run refuses a project
+whose Link or Connector carries a behaviour type** (`UNSUPPORTED_BEHAVIOUR_ASSIGNMENT`,
+a selectable runtime diagnostic), so an assignment is never a silent no-op. A library
+with no assigned road leaves the compiled Scenario unchanged. No UI exists yet (M3.3.2c).
+
+Schema 21 is written only when a library feature is used; otherwise the previous
+version rule and bytes are kept. A file below 21 carrying any key below is refused
+(`EDIT_UNSUPPORTED_FIELD`), never read and dropped. From 21, every owned behaviour,
+vehicle type, class, behaviour type and override rejects unknown keys.
+
+| Location | Key | Meaning |
+|---|---|---|
+| `definition.behaviours[]` | `model` | Required from 21; only `"prototype"` (the shipped prototype). Anything else or absent → `UNSUPPORTED_BEHAVIOUR_MODEL` |
+| `definition.behaviours[]` | `name` | Optional display name |
+| `definition.vehicleClasses[]` | `id`, `name`, `vehicleTypeIds` | A type is in at most one class |
+| `definition.linkBehaviourTypes[]` | `id`, `name`, `defaultBehaviourId`, `overrides[] {classId, behaviourId}` | Default required, at most one override per class |
+| `network.links[]`, `network.connectors[]` | `behaviourType` | Optional behaviour-type id; absent means legacy `VehicleType.behaviourId` |
+
+The library requires project-owned `behaviours` and `vehicleTypes`
+(`EXTERNAL_BEHAVIOUR_CATALOG`; commands `EDIT_EXTERNAL_CATALOG`), so a file is
+portable. Load and History reject atomically, unused entries included, with
+`INVALID_ID`, `DUPLICATE_ID`, `UNKNOWN_VEHICLE_TYPE`, `DUPLICATE_CLASS_MEMBERSHIP`,
+`MISSING_DEFAULT_BEHAVIOUR`, `UNKNOWN_BEHAVIOUR`, `UNKNOWN_VEHICLE_CLASS`,
+`DUPLICATE_OVERRIDE` and `UNKNOWN_BEHAVIOUR_TYPE`. An empty referenced id is invalid.
+
+`src/commands/behaviour_commands.hpp` provides put, duplicate, assign, users and
+delete for behaviours, classes and behaviour types. Duplicate creates
+`<id>-copy[-n]` with independent values; a class copy has no members. A referenced
+entry is deleted only with an explicit replacement, rewritten everywhere in the
+same transaction (`EDIT_REFERENCED_*`, `EDIT_INVALID_REPLACEMENT`); one Undo
+restores it. Evidence: [behaviour-library](../evidence/behaviour-library.md).

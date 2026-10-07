@@ -26,10 +26,17 @@ M3.3.1b2b2 (D125) scopes remap invalidation to vehicles queued at Go while ranks
 `upcomingArrivals` replay with an exact fingerprint; see
 [identity evidence](evidence/discharge-identity.md). Measurement (M3.3.1) is complete
 pending native CI on the merged stack; BA05 has focused evidence, not owner validation.
-Next do **M3.3.2a**: project library/class/behaviour-type contracts and codec
-(BA06–BA09) per [the assignment contract](reference/DRIVING_BEHAVIOUR.md), with
-failure-first fixtures and a portable schema before any UI. Then M3.3.2b/c independently.
-Future behavior classes/PCU conversion and owner/calibration gates remain open.
+M3.3.2a (D126) stores the project-owned behaviour library in schema 21 — model-tagged
+behaviours, vehicle classes, link behaviour types and Link/Connector assignment — with
+History commands for put/duplicate/assign/delete-with-replacement; see
+[contract §7](reference/DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)
+and [evidence](evidence/behaviour-library.md). Run refuses an assigned road
+(`UNSUPPORTED_BEHAVIOUR_ASSIGNMENT`) until the resolver exists. Confirm this PR's
+native Linux/Windows CI independently.
+Next do **M3.3.2b**: compile assignments into numeric segment/type tables and one
+`effectiveBehaviour` used by every consumer (§2–3, BA10–BA18), failure-first, keeping
+legacy RNG/trajectories when nothing is assigned; then lift the Run refusal. M3.3.2c
+(UI, BA19–BA20) follows independently. Future PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

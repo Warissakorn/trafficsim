@@ -1,0 +1,183 @@
+#include "behaviour_library.hpp"
+#include "../core/validate.hpp"
+#include <nlohmann/json.hpp>
+#include <algorithm>
+#include <set>
+
+namespace trafficsim {
+namespace {
+std::string at(const char* base, std::size_t i) { return std::string(base) + "[" + std::to_string(i) + "]"; }
+bool blank(const std::string& id) { return id.find_first_not_of(" \t\r\n") == std::string::npos; }
+const Json& list(const Json& object, const char* key) {
+    if (!object.at(key).is_array()) throw std::invalid_argument("EDIT_CATALOG_READ");
+    return object.at(key);
+}
+std::string text(const Json& object, const char* key, bool required = true) {
+    if (!object.contains(key)) {
+        if (required) throw std::invalid_argument(std::string("Missing field: ") + key);
+        return {};
+    }
+    if (!object.at(key).is_string()) throw std::invalid_argument(std::string("Expected text: ") + key);
+    return object.at(key).get<std::string>();
+}
+std::vector<std::string> texts(const Json& object, const char* key) {
+    std::vector<std::string> result;
+    for (const auto& item : list(object, key)) {
+        if (!item.is_string()) throw std::invalid_argument(std::string("Expected text: ") + key);
+        result.push_back(item.get<std::string>());
+    }
+    return result;
+}
+template<class Road> bool assigned(const std::vector<Road>& roads) {
+    return std::any_of(roads.begin(), roads.end(), [](const auto& r) { return r.behaviourTypeId.has_value(); });
+}
+// Every assigned road, or with `known` only those naming an unknown behaviour type.
+template<class Road> void roadIssues(const std::vector<Road>& roads, const char* base, const std::set<std::string>* known,
+                                     const char* code, std::vector<ValidationIssue>& issues) {
+    for (std::size_t i = 0; i < roads.size(); ++i)
+        if (roads[i].behaviourTypeId && (!known || !known->contains(*roads[i].behaviourTypeId)))
+            issues.push_back({code, at(base, i) + ".behaviourType"});
+}
+}
+bool usesBehaviourLibrary(const ProjectDocument& d) {
+    if (assigned(d.network.links) || assigned(d.network.connectors)) return true;
+    return d.definition && (!d.definition->behaviourNames.empty() || !d.definition->vehicleClasses.empty() ||
+                            !d.definition->linkBehaviourTypes.empty());
+}
+void rejectBehaviourLibraryBefore21(const Json& j) {
+    if (!j.contains("definition") || !j.at("definition").is_object()) return;
+    const auto& definition = j.at("definition");
+    for (const char* key : {"vehicleClasses", "linkBehaviourTypes"})
+        if (definition.contains(key)) throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", std::string("definition.") + key}});
+    if (!definition.contains("behaviours") || !definition.at("behaviours").is_array()) return;
+    const auto& behaviours = definition.at("behaviours");
+    for (std::size_t i = 0; i < behaviours.size(); ++i)
+        for (const char* key : {"name", "model"})
+            if (behaviours[i].is_object() && behaviours[i].contains(key))
+                throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", at("behaviours", i) + "." + key}});
+}
+void parseBehaviourLibrary(const Json& j, AuthoringDefinition& d) {
+    if (j.contains("behaviours")) {
+        const auto& behaviours = list(j, "behaviours");
+        for (std::size_t i = 0; i < behaviours.size(); ++i) {
+            const auto& b = behaviours[i]; const auto path = at("behaviours", i);
+            requireKnownFields(b, {"id", "name", "model", "standstillDistance", "additiveSafetyDistance",
+                "multiplicativeSafetyDistance", "followingTime", "speedThreshold", "maxDecelerationCooperativeBraking",
+                "discretionaryLaneChangeThreshold", "acceptedDecelerationTrailingVehicle", "discretionaryLaneChangeHoldTime"}, path);
+            // The model is explicit from schema 21: a missing or future model is never read as the prototype.
+            if (!b.contains("model") || !b.at("model").is_string() || b.at("model") != kPrototypeBehaviourModel)
+                throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", path + ".model"}});
+            if (const auto name = text(b, "name", false); !name.empty()) d.behaviourNames[text(b, "id")] = name;
+        }
+    }
+    if (j.contains("vehicleTypes")) {
+        const auto& types = list(j, "vehicleTypes");
+        for (std::size_t i = 0; i < types.size(); ++i)
+            requireKnownFields(types[i], {"id", "name", "length", "width", "desiredSpeed", "maxAcceleration",
+                "comfortableDeceleration", "maxDeceleration", "behaviourId", "axles"}, at("vehicleTypes", i));
+    }
+    if (j.contains("vehicleClasses")) {
+        const auto& classes = list(j, "vehicleClasses");
+        for (std::size_t i = 0; i < classes.size(); ++i) {
+            const auto& c = classes[i];
+            requireKnownFields(c, {"id", "name", "vehicleTypeIds"}, at("vehicleClasses", i));
+            d.vehicleClasses.push_back({text(c, "id"), text(c, "name", false), texts(c, "vehicleTypeIds")});
+        }
+    }
+    if (j.contains("linkBehaviourTypes")) {
+        const auto& types = list(j, "linkBehaviourTypes");
+        for (std::size_t i = 0; i < types.size(); ++i) {
+            const auto& t = types[i]; const auto path = at("linkBehaviourTypes", i);
+            requireKnownFields(t, {"id", "name", "defaultBehaviourId", "overrides"}, path);
+            LinkBehaviourType type{text(t, "id"), text(t, "name", false), text(t, "defaultBehaviourId", false), {}};
+            if (t.contains("overrides")) {
+                const auto& overrides = list(t, "overrides");
+                for (std::size_t k = 0; k < overrides.size(); ++k) {
+                    requireKnownFields(overrides[k], {"classId", "behaviourId"}, path + at(".overrides", k));
+                    type.overrides.push_back({text(overrides[k], "classId"), text(overrides[k], "behaviourId")});
+                }
+            }
+            d.linkBehaviourTypes.push_back(std::move(type));
+        }
+    }
+}
+void addBehaviourLibraryJson(const AuthoringDefinition& d, Json& j) {
+    if (!d.externalBehaviours && j.contains("behaviours"))
+        for (auto& b : j["behaviours"]) {
+            b["model"] = kPrototypeBehaviourModel;
+            if (const auto name = d.behaviourNames.find(b.at("id").get<std::string>()); name != d.behaviourNames.end())
+                b["name"] = name->second;
+        }
+    if (!d.vehicleClasses.empty()) {
+        j["vehicleClasses"] = Json::array();
+        for (const auto& c : d.vehicleClasses) {
+            Json item{{"id", c.id}, {"vehicleTypeIds", c.vehicleTypeIds}};
+            if (!c.name.empty()) item["name"] = c.name;
+            j["vehicleClasses"].push_back(std::move(item));
+        }
+    }
+    if (!d.linkBehaviourTypes.empty()) {
+        j["linkBehaviourTypes"] = Json::array();
+        for (const auto& t : d.linkBehaviourTypes) {
+            Json overrides = Json::array();
+            for (const auto& o : t.overrides) overrides.push_back({{"classId", o.classId}, {"behaviourId", o.behaviourId}});
+            Json item{{"id", t.id}, {"defaultBehaviourId", t.defaultBehaviourId}, {"overrides", overrides}};
+            if (!t.name.empty()) item["name"] = t.name;
+            j["linkBehaviourTypes"].push_back(std::move(item));
+        }
+    }
+}
+std::vector<ValidationIssue> behaviourLibraryIssues(const ProjectDocument& d) {
+    std::vector<ValidationIssue> issues;
+    if (!usesBehaviourLibrary(d)) return issues;
+    std::set<std::string> behaviourTypes;
+    if (d.definition) for (const auto& t : d.definition->linkBehaviourTypes) behaviourTypes.insert(t.id);
+    roadIssues(d.network.links, "links", &behaviourTypes, "UNKNOWN_BEHAVIOUR_TYPE", issues);
+    roadIssues(d.network.connectors, "connectors", &behaviourTypes, "UNKNOWN_BEHAVIOUR_TYPE", issues);
+    if (!d.definition) return issues;
+    const auto& def = *d.definition;
+    // Portable ownership: the library names behaviours and types the file itself carries (BA09).
+    if (def.externalBehaviours || def.externalVehicleTypes) {
+        issues.push_back({"EXTERNAL_BEHAVIOUR_CATALOG", "definition"});
+        return issues;
+    }
+    std::set<std::string> behaviours, types, classes, typeIds;
+    for (const auto& b : def.behaviours) behaviours.insert(b.id);
+    for (const auto& t : def.vehicleTypes) types.insert(t.id);
+    for (const auto& [id, name] : def.behaviourNames)
+        if (!behaviours.contains(id)) issues.push_back({"UNKNOWN_BEHAVIOUR", "behaviourNames." + id});
+    std::set<std::string> members;
+    for (std::size_t i = 0; i < def.vehicleClasses.size(); ++i) {
+        const auto& c = def.vehicleClasses[i]; const auto path = at("vehicleClasses", i);
+        if (blank(c.id)) issues.push_back({"INVALID_ID", path + ".id"});
+        else if (!classes.insert(c.id).second) issues.push_back({"DUPLICATE_ID", path + ".id"});
+        for (std::size_t k = 0; k < c.vehicleTypeIds.size(); ++k) {
+            const auto& type = c.vehicleTypeIds[k]; const auto where = path + at(".vehicleTypeIds", k);
+            if (!types.contains(type)) issues.push_back({"UNKNOWN_VEHICLE_TYPE", where});
+            else if (!members.insert(type).second) issues.push_back({"DUPLICATE_CLASS_MEMBERSHIP", where});
+        }
+    }
+    for (std::size_t i = 0; i < def.linkBehaviourTypes.size(); ++i) {
+        const auto& t = def.linkBehaviourTypes[i]; const auto path = at("linkBehaviourTypes", i);
+        if (blank(t.id)) issues.push_back({"INVALID_ID", path + ".id"});
+        else if (!typeIds.insert(t.id).second) issues.push_back({"DUPLICATE_ID", path + ".id"});
+        // A default is required on every behaviour type, used or not; there is no silent fallback.
+        if (t.defaultBehaviourId.empty()) issues.push_back({"MISSING_DEFAULT_BEHAVIOUR", path + ".defaultBehaviourId"});
+        else if (!behaviours.contains(t.defaultBehaviourId)) issues.push_back({"UNKNOWN_BEHAVIOUR", path + ".defaultBehaviourId"});
+        std::set<std::string> overridden;
+        for (std::size_t k = 0; k < t.overrides.size(); ++k) {
+            const auto& o = t.overrides[k]; const auto where = path + at(".overrides", k);
+            if (!classes.contains(o.classId)) issues.push_back({"UNKNOWN_VEHICLE_CLASS", where + ".classId"});
+            else if (!overridden.insert(o.classId).second) issues.push_back({"DUPLICATE_OVERRIDE", where + ".classId"});
+            if (!behaviours.contains(o.behaviourId)) issues.push_back({"UNKNOWN_BEHAVIOUR", where + ".behaviourId"});
+        }
+    }
+    return issues;
+}
+std::vector<ValidationIssue> behaviourAssignmentIssues(const Network& network) {
+    std::vector<ValidationIssue> issues;
+    roadIssues(network.links, "links", nullptr, "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT", issues);
+    roadIssues(network.connectors, "connectors", nullptr, "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT", issues);
+    return issues;
+}
+}
