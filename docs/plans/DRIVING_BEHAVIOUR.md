@@ -91,12 +91,12 @@ assertions and platform in evidence when the corresponding slice lands.
 | BA20 | EN/TH, save/reopen, Linux/Windows UI and owner appearance | Parameter names preserved; automated platform evidence separate from owner's visual verdict |
 | BA21 | W74 pure function: inputs placed at each regime row of contract §4 and on both sides of every equality | Regime and acceleration match hand-computed values; `g = ABX` emergency, `dv = CLDV` following, `dv = OPDV`/`dv = SDV`/`g = DMAX` free |
 | BA22 | Emergency inside `AX`, approaching below comfortable, free above `maxAcceleration` | Bounds hold exactly; type limits, not behaviour keys, cap acceleration |
-| BA23 | Standing queue and a moving platoon held for 600 s | Oscillation stays inside `±bNull`; D105 keeps a stopped vehicle with `g ≤ ax` still; no clamp in an uncongested platoon |
+| BA23 | Standing queue, its discharge when the head leaves, and a moving platoon held for 600 s | Oscillation stays inside `±bNull`; D105 keeps a stopped vehicle with `g ≤ ax` still; a queued vehicle inside `ABX` starts only once `g > ABX` (emergency `dv²` term, recorded); no clamp in an uncongested platoon |
 | BA24 | Prototype→`w74`→prototype→`w74` along one route; front exactly at each join | Selection per D127; state initialised on entry, cleared on exit, re-initialised on re-entry; same-model boundary keeps state |
 | BA25 | `w74` follower behind prototype leader and the reverse; static obstacle | Follower reads only gap/speed/acceleration; leader model never changes the result |
-| BA26 | Trait hash: copied state, replayed run, two compilers, mixed scenario | Bit-identical traits; `randomState` sequence and prototype vehicles unchanged versus the same scenario without `w74` traits needed |
+| BA26 | Trait hash: copied state, replayed run, two compilers, mixed scenario | Bit-identical traits; in a mixed scenario the `randomState` draw sequence is unchanged; a prototype-only scenario is byte-identical to the build without W74 |
 | BA27 | Queue discharge fixture at dt 0.1/0.25/0.5 via `--discharge` | Sensitivity recorded with seeds 42–81; no claimed bound, no calibration inference |
-| BA28 | Forced red, conflict hold, dead end, Stop and source D108 with a `w74` behaviour | Hard cap, counted clamps, Stop service and first-step rule unchanged; accessors replace prototype fields |
+| BA28 | Forced red, conflict hold, dead end, Stop and source D108 with a `w74` behaviour; vehicle braking to rest in the following band before a Stop line; courtesy/cooperative second obstacle winning and tying | Hard cap, counted clamps, Stop service and first-step rule unchanged; the standstill `s = +1` rule brings it within `stopLineReach` and the Stop is served; stored regime is the kept result's, the vehicle ahead on a tie; every `Leader` carries its acceleration (0 when static) |
 | BA29 | Missing/extra/out-of-range keys, prototype keys on `w74`, `w74` in schema 21, unused invalid behaviour | Atomic rejection with path; schema 22 only when used; older bytes preserved |
 
 Future W74/W99 rows must force each transition/limit, mixed-model following,

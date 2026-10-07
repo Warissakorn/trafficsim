@@ -38,6 +38,13 @@ baselines and prototype vehicles in mixed scenarios keep their draws, and an Irw
 normal avoids `log`/`cos` cross-compiler drift; `driverFactor` already is PTV's `z`. The
 following sign is hysteresis (−1 after approaching/emergency, +1 after free), the only
 state W74 needs. Not resolved here: preset values, timestep sensitivity (BA27 records it).
+A self-review then fixed six defects before any code: a vehicle resting in the
+following band with `s = −1` behind a static obstacle never moved again and could
+miss its Stop service (now `s = +1` at standstill); `Leader` has no acceleration,
+so the contract now adds and fills it everywhere; the stored regime with a second
+obstacle is the kept result's; `bxAdd > 0` prevents `BX = 0`; the hash's modulo
+and summation order are fixed; BA23/BA26/BA28 now state the emergency start-up
+delay, the real mixed-scenario guarantee and the new cases.
 
 ---
 
