@@ -11,7 +11,8 @@ schema or runtime settings. Read [the contract](../reference/DRIVING_BEHAVIOUR.m
 | Slice | System and result | Prerequisite / closing evidence |
 |---|---|---|
 | M3.3.0 (P0) | Assignment contract, capability map and acceptance design | Docs/navigation guards; baseline provenance; no runtime completion inference |
-| M3.3.1 (P1) | Stop-line measurement contract and diagnostic fixture | BA01–BA05; inspect existing `StopLineAccumulator` before extending it |
+| M3.3.1a (P1) | [Discharge observer/CLI](../reference/DISCHARGE.md) delivered | BA01/BA02/BA04 focused evidence; existing StopLine output unchanged |
+| M3.3.1b (P1) | Class filters, CLI windows, provenance and complete passage tracking | BA03/BA05 remain open; native CI required |
 | M3.3.2a (P2a) | Project library/class/behaviour-type contracts and codec | BA06–BA09; portable schema/legacy behavior before UI |
 | M3.3.2b (P2b) | Compile assignment and select prototype per road/type | BA10–BA18; one effective resolver for all consumers |
 | M3.3.2c (P2c) | Library/assignment editor | BA19–BA20; EN/TH, Linux/Windows automated checks and independent owner review |
@@ -54,8 +55,8 @@ or 2,100–2,300 PCU/h gate follows from the owner's suggested parameter sheet.
 
 ## 3. Failure-first acceptance rows
 
-All rows below are **pending implementation/evidence**. P0 writing a row does
-not pass it. Record exact fixture/input hashes, commit, compiler/flags, commands,
+BA01/BA02/BA04 have focused Linux evidence in [M3.3.1a](../evidence/discharge-measurement.md).
+BA03/BA05 are partial and remain open; all later rows are pending. P0 writing a row does not pass it. Record exact fixture/input hashes, commit, compiler/flags, commands,
 assertions and platform in evidence when the corresponding slice lands.
 
 | Row | Fixture / forcing condition | Required outcome |

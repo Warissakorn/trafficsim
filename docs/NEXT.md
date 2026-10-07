@@ -12,12 +12,13 @@ the log. Rewrite this file; do not append to it.
 The owner authorized the staged plan (D120). M3.3.0 writes the
 [assignment contract](reference/DRIVING_BEHAVIOUR.md) and
 [delivery/acceptance design](plans/DRIVING_BEHAVIOUR.md); it implements no behavior.
-Next do **M3.3.1 measurement only**: define lane/cycle/class crossing records,
-steady-discharge and startup windows, then BA01–BA05 failure-first fixtures before
-extending `StopLineAccumulator`. Preserve its existing diagnostic output and all
-trajectories. Record input hashes, commit/toolchain, quantization and unavailable
-estimates. No PCU/calibration target is inferred from the suggested Thai presets.
-After this slice, follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently.
+M3.3.1a adds the [measurement observer](reference/DISCHARGE.md) and CLI `--discharge`.
+Next do **M3.3.1b measurement completion**: declare class filtering without creating
+fictitious gaps across skipped ranks, expose CLI windows/warmup/ranks, and retain
+input hashes. Replace conservative route/lane/source exclusions with supported
+passage tracking and fixtures, or explicitly narrow BA05 with owner review.
+BA03/BA05 and full native CI remain open; see [evidence](evidence/discharge-measurement.md).
+Only after that gate follow M3.3.2a/b/c (catalog, compiler/resolver, UI) independently.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

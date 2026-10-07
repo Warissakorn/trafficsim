@@ -19,7 +19,7 @@ selects additional context; read related decisions and evidence only when needed
 | Editor UI, gestures or Undo/Redo | [NETWORK_EDITOR](reference/NETWORK_EDITOR.md); [EDITOR_WORKFLOW](reference/EDITOR_WORKFLOW.md); [VISSIM_PARITY](audits/VISSIM_PARITY.md); [UI_REDESIGN_AUDIT](audits/UI_REDESIGN_AUDIT.md) | `src/editor/`, `src/shell/`, `src/commands/` |
 | Vehicle display and turning | [VEHICLE_POSE](reference/VEHICLE_POSE.md); [SIMULATION](reference/SIMULATION.md) | `src/editor/vehicle_pose.*`, `rear_axle_pose.*`, `lane_change_pose.*` |
 | Load/save or schema changes | [NETWORK_EDITOR](reference/NETWORK_EDITOR.md) save/recovery; relevant Demand/geometry contract; [MIGRATION](reference/MIGRATION.md) | `src/project/`, `tests/project_tests.cpp` |
-| Evaluation or reporting | [PROBLEM](PROBLEM.md); [SIMULATION](reference/SIMULATION.md); [ROADMAP](ROADMAP.md) M5/M6; [M2_PLAN](plans/M2_PLAN.md) | `src/eval/`, `src/project/evaluation.*`, `src/runner/`, `src/report/` |
+| Evaluation or reporting | [DISCHARGE](reference/DISCHARGE.md); [PROBLEM](PROBLEM.md); [SIMULATION](reference/SIMULATION.md); [ROADMAP](ROADMAP.md) M5/M6; [M2_PLAN](plans/M2_PLAN.md) | `src/eval/`, `src/project/evaluation.*`, `src/runner/`, `src/report/` |
 | Build or portability | [BUILDING](BUILDING.md); [MIGRATION](reference/MIGRATION.md); tools README | `CMakeLists.txt`, `CMakePresets.json`, `.github/workflows/` |
 
 Resolve the document names through the indexes below. `src/runner/` and `src/report/`

@@ -1,5 +1,6 @@
 #pragma once
 #include "run.hpp"
+#include "../eval/discharge.hpp"
 #include "../eval/lane_changes.hpp"
 #include "../eval/movement.hpp"
 #include "../eval/segment_times.hpp"
@@ -35,6 +36,7 @@ Json laneChangeJson(const LaneChangeReport&);
 Json segmentTimeJson(const SegmentTimeReport&);
 // M3.2.8c step 3: each signal head's stop-line discharge as JSON (CLI --stop-lines).
 Json stopLineJson(const StopLineReport&);
+Json dischargeJson(const std::vector<DischargeCycle>&, const DischargeSpec&);
 // M3.2.8c step 4: cycle phase of segment entries and first stops as JSON (CLI --arrival-phases).
 Json arrivalPhaseJson(const ArrivalPhaseReport&);
 // M3.2.8c (D92): each movement's dead-end waits by cause, count and seconds (CLI --wait-causes).
