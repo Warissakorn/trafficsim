@@ -30,13 +30,17 @@ M3.3.2a (D126) stores the project-owned behaviour library in schema 21 — model
 behaviours, vehicle classes, link behaviour types and Link/Connector assignment — with
 History commands for put/duplicate/assign/delete-with-replacement; see
 [contract §7](reference/DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)
-and [evidence](evidence/behaviour-library.md). Run refuses an assigned road
-(`UNSUPPORTED_BEHAVIOUR_ASSIGNMENT`) until the resolver exists. Confirm this PR's
-native Linux/Windows CI independently.
-Next do **M3.3.2b**: compile assignments into numeric segment/type tables and one
-`effectiveBehaviour` used by every consumer (§2–3, BA10–BA18), failure-first, keeping
-legacy RNG/trajectories when nothing is assigned; then lift the Run refusal. M3.3.2c
-(UI, BA19–BA20) follows independently. Future PCU/calibration gates remain open.
+and [evidence](evidence/behaviour-library.md). M3.3.2b (D127) compiles road assignments into per-segment selections and every
+consumer uses one `effectiveBehaviour` chosen by the front segment; unassigned runs
+are unchanged and the interim Run refusal is gone. See
+[contract §8](reference/DRIVING_BEHAVIOUR.md#8-implemented-runtime-selection-m332b-d127)
+and [evidence](evidence/behaviour-selection.md). Confirm this PR's native
+Linux/Windows CI independently. BA14 (positioned routing) and BA17 (Stop service)
+hold by construction but still need focused fixtures.
+Next do **M3.3.2c**: the library/assignment editor (BA19–BA20) — library dialog with
+Duplicate/users-first edit/delete-with-replacement, bulk road assignment in the
+inspector, effective vs inherited values, EN/TH, Linux/Windows UI checks, then the
+owner's appearance review. W74/W99 (M3.3.3) still need contracts before code.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

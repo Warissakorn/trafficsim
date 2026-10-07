@@ -11,11 +11,18 @@ constexpr double kLineReach = 0.1;      // m: beyond the standstill distance, st
 const ZoneSide& sideOf(const ConflictZone& z, ZoneRole role) { return role == ZoneRole::major ? z.major : z.minor; }
 }
 double waitingRoom(const Scenario& scenario) {
-    double room = 0;
-    for (const auto& type : scenario.vehicleTypes) {
+    const auto standstill = [&](const std::string& id) {
         const auto behaviour = std::find_if(scenario.behaviours.begin(), scenario.behaviours.end(),
-                                            [&](const auto& b) { return b.id == type.behaviourId; });
-        room = std::max(room, type.length + (behaviour == scenario.behaviours.end() ? 0 : behaviour->standstillDistance));
+                                            [&](const auto& b) { return b.id == id; });
+        return behaviour == scenario.behaviours.end() ? 0 : behaviour->standstillDistance;
+    };
+    double room = 0;
+    for (const auto& type : scenario.vehicleTypes) room = std::max(room, type.length + standstill(type.behaviourId));
+    // M3.3.2b: an assigned behaviour can need more room to wait; chaining stays conservative.
+    for (const auto& entry : scenario.segmentBehaviours) {
+        const auto type = std::find_if(scenario.vehicleTypes.begin(), scenario.vehicleTypes.end(),
+                                       [&](const auto& t) { return t.id == entry.vehicleTypeId; });
+        if (type != scenario.vehicleTypes.end()) room = std::max(room, type->length + standstill(entry.behaviourId));
     }
     return room;
 }

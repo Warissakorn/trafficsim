@@ -2,6 +2,7 @@
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
+#include <map>
 #include <set>
 
 namespace trafficsim {
@@ -31,12 +32,12 @@ std::vector<std::string> texts(const Json& object, const char* key) {
 template<class Road> bool assigned(const std::vector<Road>& roads) {
     return std::any_of(roads.begin(), roads.end(), [](const auto& r) { return r.behaviourTypeId.has_value(); });
 }
-// Every assigned road, or with `known` only those naming an unknown behaviour type.
-template<class Road> void roadIssues(const std::vector<Road>& roads, const char* base, const std::set<std::string>* known,
-                                     const char* code, std::vector<ValidationIssue>& issues) {
+// Every road naming a behaviour type that does not exist.
+template<class Road> void roadIssues(const std::vector<Road>& roads, const char* base, const std::set<std::string>& known,
+                                     std::vector<ValidationIssue>& issues) {
     for (std::size_t i = 0; i < roads.size(); ++i)
-        if (roads[i].behaviourTypeId && (!known || !known->contains(*roads[i].behaviourTypeId)))
-            issues.push_back({code, at(base, i) + ".behaviourType"});
+        if (roads[i].behaviourTypeId && !known.contains(*roads[i].behaviourTypeId))
+            issues.push_back({"UNKNOWN_BEHAVIOUR_TYPE", at(base, i) + ".behaviourType"});
 }
 }
 bool usesBehaviourLibrary(const ProjectDocument& d) {
@@ -132,8 +133,8 @@ std::vector<ValidationIssue> behaviourLibraryIssues(const ProjectDocument& d) {
     if (!usesBehaviourLibrary(d)) return issues;
     std::set<std::string> behaviourTypes;
     if (d.definition) for (const auto& t : d.definition->linkBehaviourTypes) behaviourTypes.insert(t.id);
-    roadIssues(d.network.links, "links", &behaviourTypes, "UNKNOWN_BEHAVIOUR_TYPE", issues);
-    roadIssues(d.network.connectors, "connectors", &behaviourTypes, "UNKNOWN_BEHAVIOUR_TYPE", issues);
+    roadIssues(d.network.links, "links", behaviourTypes, issues);
+    roadIssues(d.network.connectors, "connectors", behaviourTypes, issues);
     if (!d.definition) return issues;
     const auto& def = *d.definition;
     // Portable ownership: the library names behaviours and types the file itself carries (BA09).
@@ -174,10 +175,31 @@ std::vector<ValidationIssue> behaviourLibraryIssues(const ProjectDocument& d) {
     }
     return issues;
 }
-std::vector<ValidationIssue> behaviourAssignmentIssues(const Network& network) {
-    std::vector<ValidationIssue> issues;
-    roadIssues(network.links, "links", nullptr, "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT", issues);
-    roadIssues(network.connectors, "connectors", nullptr, "UNSUPPORTED_BEHAVIOUR_ASSIGNMENT", issues);
-    return issues;
+std::vector<SegmentBehaviour> compileBehaviourAssignments(const Network& network, const AuthoringDefinition& d) {
+    std::map<std::string, std::string> owner; // road id -> behaviour type id
+    for (const auto& l : network.links) if (l.behaviourTypeId) owner[l.id] = *l.behaviourTypeId;
+    for (const auto& c : network.connectors) if (c.behaviourTypeId) owner[c.id] = *c.behaviourTypeId;
+    std::vector<SegmentBehaviour> result;
+    if (owner.empty()) return result;
+    std::map<std::string, std::string> classOf;
+    for (const auto& c : d.vehicleClasses) for (const auto& t : c.vehicleTypeIds) classOf[t] = c.id;
+    const auto select = [&](const std::string& segment, const std::string& road) {
+        const auto assigned = owner.find(road);
+        if (assigned == owner.end()) return;
+        const auto type = std::find_if(d.linkBehaviourTypes.begin(), d.linkBehaviourTypes.end(),
+                                       [&](const auto& t) { return t.id == assigned->second; });
+        // Validation guarantees the reference; an unknown one stays refused, never defaulted.
+        if (type == d.linkBehaviourTypes.end()) throw ValidationError({{"UNKNOWN_BEHAVIOUR_TYPE", road}});
+        for (const auto& vehicle : d.vehicleTypes) {
+            auto behaviour = type->defaultBehaviourId;
+            if (const auto group = classOf.find(vehicle.id); group != classOf.end())
+                for (const auto& o : type->overrides) if (o.classId == group->second) behaviour = o.behaviourId;
+            result.push_back({segment, vehicle.id, behaviour});
+        }
+    };
+    const auto table = runtimeSections(network);
+    for (const auto& section : table.sections) select(section.id, section.linkId);
+    for (std::size_t p = 0; p < table.paths.size(); ++p) select(table.paths[p].id, table.pathConnector[p]);
+    return result;
 }
 }

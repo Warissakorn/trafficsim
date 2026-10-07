@@ -8,10 +8,8 @@ namespace trafficsim {
 namespace {
 // Shared by both overloads so the cached and uncached paths cannot diverge.
 VehicleLocation locate(const std::vector<RoutePart>& parts, const Vehicle& vehicle) {
-    for (const auto& part : parts)
-        if (vehicle.distance < part.start + part.length)
-            return {part.segmentId, std::clamp(vehicle.distance - part.start, 0.0, part.length)};
-    return {parts.back().segmentId, parts.back().length};
+    const auto& part = frontPart(parts, vehicle.distance);
+    return {part.segmentId, std::clamp(vehicle.distance - part.start, 0.0, part.length)};
 }
 void appendSpans(std::vector<OccupiedSpan>& spans, const std::vector<RoutePart>& parts,
                  const Vehicle& vehicle, double length) {
@@ -30,6 +28,18 @@ void appendSpans(std::vector<OccupiedSpan>& spans, const std::vector<RoutePart>&
             std::max(0.0, rear - part->start),
             std::min(part->length, vehicle.distance - part->start), vehicle.speed});
 }
+}
+const RoutePart& frontPart(const std::vector<RoutePart>& parts, double distance) {
+    // Strictly less than: a front exactly at a join is on the downstream part. Past the end, the
+    // last part -- the sink rule. One loop for locate and behaviour selection, so they cannot differ.
+    for (const auto& part : parts)
+        if (distance < part.start + part.length) return part;
+    return parts.back();
+}
+std::size_t effectiveBehaviour(const ScenarioIndex& index, const Vehicle& vehicle) {
+    if (index.behaviourOfSegmentType.empty()) return index.behaviourOfType[vehicle.typeIndex];
+    const auto& part = frontPart(index.parts[vehicle.routeIndex], vehicle.distance);
+    return index.behaviourOfSegmentType[part.segmentIndex * index.behaviourOfType.size() + vehicle.typeIndex];
 }
 std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route) {
     double start = 0;
@@ -76,6 +86,22 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
         const auto& behaviour = detail::byId(scenario.behaviours, type.behaviourId);
         index.behaviourOfType.push_back(static_cast<std::size_t>(&behaviour - scenario.behaviours.data()));
     }
+    // M3.3.2b: built only when something is assigned, so an unassigned run never takes the lookup.
+    if (!scenario.segmentBehaviours.empty()) {
+        const auto types = scenario.vehicleTypes.size();
+        index.behaviourOfSegmentType.reserve(scenario.segments.size() * types);
+        for (std::size_t s = 0; s < scenario.segments.size(); ++s)
+            index.behaviourOfSegmentType.insert(index.behaviourOfSegmentType.end(),
+                                                index.behaviourOfType.begin(), index.behaviourOfType.end());
+        for (const auto& entry : scenario.segmentBehaviours) {
+            const auto& segment = detail::byId(scenario.segments, entry.segmentId);
+            const auto& type = detail::byId(scenario.vehicleTypes, entry.vehicleTypeId);
+            const auto& behaviour = detail::byId(scenario.behaviours, entry.behaviourId);
+            index.behaviourOfSegmentType[static_cast<std::size_t>(&segment - scenario.segments.data()) * types +
+                                         static_cast<std::size_t>(&type - scenario.vehicleTypes.data())] =
+                static_cast<std::size_t>(&behaviour - scenario.behaviours.data());
+        }
+    }
     // Through byId, so a slot names the element the id named -- its first occurrence.
     index.routeOfInput.reserve(scenario.inputs.size());
     index.typeOfInput.reserve(scenario.inputs.size());
@@ -116,7 +142,7 @@ std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector
     std::vector<VehicleRefs> refs;
     refs.reserve(vehicles.size());
     for (const auto& vehicle : vehicles)
-        refs.push_back({vehicle.routeIndex, vehicle.typeIndex, index.behaviourOfType[vehicle.typeIndex]});
+        refs.push_back({vehicle.routeIndex, vehicle.typeIndex, effectiveBehaviour(index, vehicle)});
     return refs;
 }
 std::vector<OccupiedSpan> occupiedSpans(const Scenario& scenario, const std::vector<Vehicle>& vehicles,

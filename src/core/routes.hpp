@@ -17,9 +17,9 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario);
 const std::vector<RoutePart>& partsFor(const ScenarioIndex& index, const Scenario& scenario, const Route& route);
 // Callers that already hold the route's parts avoid a route lookup entirely.
 VehicleLocation locateOnParts(const std::vector<RoutePart>& parts, const Vehicle& vehicle);
-// Resolves each vehicle's route/type/behaviour indices through the index's id tables rather than
-// by scanning the scenario, so this is O(vehicles) lookups instead of O(vehicles x ids) string
-// comparisons. It selects the same element a scan would for every input, duplicate ids included.
+// Each vehicle's route/type slots and its effectiveBehaviour at this snapshot (M3.3.2b). Called
+// again wherever a tick rebuilds references -- after source-zero routing and accepted lane
+// changes -- so a new road's behaviour is used from the next snapshot that sees the front there.
 std::vector<VehicleRefs> resolveRefs(const Scenario& scenario, const std::vector<Vehicle>& vehicles,
                                      const ScenarioIndex& index);
 VehicleLocation locateVehicle(const Scenario& scenario, const Vehicle& vehicle);

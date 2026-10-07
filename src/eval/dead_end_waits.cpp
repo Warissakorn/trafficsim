@@ -73,7 +73,7 @@ void DeadEndWaitAccumulator::observe(const SimState& state) {
         auto& tally = open_[vehicle.id];
         if (tally.route != vehicle.routeIndex) { tally.route = vehicle.routeIndex; tally.unhelped = true; tally.waiting.reset(); }
         const auto& type = s.vehicleTypes[vehicle.typeIndex];
-        const auto& behaviour = s.behaviours[index.behaviourOfType[vehicle.typeIndex]];
+        const auto& behaviour = s.behaviours[effectiveBehaviour(index, vehicle)]; // as the engine selects it
         if (!waitingAtDeadEnd(index, vehicle.routeIndex, vehicle, behaviour)) {
             tally.waiting.reset();
             if (vehicle.speed >= kWaitingSpeed && deadEndGoverns(index, vehicle.routeIndex, vehicle, type, behaviour) &&
