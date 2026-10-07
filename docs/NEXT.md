@@ -35,8 +35,8 @@ consumer uses one `effectiveBehaviour` chosen by the front segment; unassigned r
 are unchanged and the interim Run refusal is gone. See
 [contract §8](reference/DRIVING_BEHAVIOUR.md#8-implemented-runtime-selection-m332b-d127)
 and [evidence](evidence/behaviour-selection.md). Confirm this PR's native
-Linux/Windows CI independently. BA14 (positioned routing) and BA17 (Stop service)
-hold by construction but still need focused fixtures.
+Linux/Windows CI independently. BA14 (positioned routing) and BA17 (Stop service
+under a changing profile) now have focused fixtures in the same evidence.
 M3.3.2c (D128) adds the *Driving behaviours* dialog on the Inputs toolbar (staged,
 one History step, users-first edits, delete with replacement) and the inspector's
 *Behaviour type* that assigns every selected Link/Connector at once and shows each
@@ -47,8 +47,7 @@ vehicle type's effective behaviour and its source; see
 duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type with an
 override, assign it to several roads, check the effective list, Undo/Redo, delete
 with replacement, switch to Thai, save and reopen, then run.
-Next do the open **BA14/BA17 fixtures** (positioned routing line and Stop service under
-a changing profile), then write the **M3.3.3a W74 contract** (equations, state, traits,
+Next write the **M3.3.3a W74 contract** (equations, state, traits,
 model switch) before any W74 code. PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
