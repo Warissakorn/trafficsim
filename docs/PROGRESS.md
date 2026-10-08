@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — Multi-seed batches from one command, M5.2 (D136, D137)
+
+The owner asked for a recommendation and chose the batch runner, answering ROADMAP O1 with (a).
+`src/runner` runs a compiled scenario once per seed with the single-run loop and aggregates per
+movement and approach: n, mean, SD and the 95 % Student-t half-width, sorted by seed so any
+seed order gives the same bits, n counting only seeds with a value. `trafficsim-cli --project F
+--seeds A-B [--csv F]` prints it with one accounting row per seed; ten four-leg seeds take 1.3 s
+(Release). A new architecture rule keeps the runner to core and eval. CLI output now names the
+configured commit; otherwise single-run bytes are unchanged. New `runner` group: hand-computed
+statistics, t quantiles, permutation, one-seed batch = single run, accounting; zero-filling
+absent delays fails it. LOS, the editor's "Run N seeds" and copy/export remain.
+
+---
+
 ## 2026-10-08 — The UI catches up: W74 editing, queue discharge and clamps in Results (D134, D135)
 
 The owner asked for the UI to match the engine and chose all three gaps. **D134:** the

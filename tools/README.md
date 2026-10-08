@@ -63,10 +63,21 @@ Seed 42 outputs 31 completed trips, 0 active, 0 pending, mean delay
 29.249359418430977 seconds and 0 safety clamps after 180 simulated seconds.
 This is an unvalidated completed-trip diagnostic, **not HCM control delay or LOS**.
 
+**Batch (M5.2, D136).** `trafficsim-cli --project FILE --seeds A-B [--csv FILE]` runs every seed
+from A to B (at most 10,000), each measured exactly as a single `--project` run, and reports per
+movement and approach `n`, `mean`, `sd` and `halfWidth95` (95 % Student-t), the run-level mean
+delay, completed trips and clamps, and a `runs` row per seed (`generated`, `completed`, `active`,
+`pending`, `notInMovement`, `safetyClamps`, `meanDelay`). `n` counts the seeds that have a value:
+a movement with no completed trip in a seed is absent there, not 0. A seed list in any order
+gives the same output. `--seeds` refuses a single seed and the per-run diagnostic flags. The CSV
+starts with the not-validated marker, then movements, approaches and the per-seed rows. Ten
+seeds of the four-leg project take about 1.3 s (Release, Linux, 2026-10-08).
+
 | Output field | Interpretation |
 |---|---|
 | `validation` | Always `not-yet-validated` in M0 |
 | `engineVersion` | Native engine generation; store with future report runs |
+| `commit` | Git commit the executable was configured from (D137); `unknown` without git; uncommitted changes are not detected |
 | `compiler` | Compiler identifier/version used to build the executable |
 | `seed`, `time` | Input seed and final simulated time |
 | `completed` | Vehicles whose front reached the route sink |

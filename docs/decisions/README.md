@@ -12,7 +12,8 @@ and their evidence before reopening a choice. IDs remain stable even when record
 | Demand and routing | D25, D32–D33, D37, D42–D46, D71, D93–D94, D111–D113 |
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
 | Following, commitment and lane changes | D133, D132, D131, D130, D129, D127, D126, D125, D124, D123, D122, D121, D120, D69, D71, D87–D95, D98, D101–D102, D105, D108 |
-| UI, gestures, display and results | D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
+| UI, gestures, display and results | D135, D134, D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
+| Evaluation, batches and provenance | D136, D137, D104, D121 |
 | Performance, checks and documentation | D27–D29, D31, D70, D82, D85, D91, D99 |
 
 ## Reading a historical choice
@@ -70,3 +71,11 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D132](RECORD.md#d132) — W74 traits hashed at generation only when a scenario holds `w74`; `W74State` and BA24/BA25 move to the composition slice.
 
 [D133](RECORD.md#d133) — W74 runs: one `follow` dispatcher and gap accessors for every consumer, `Leader` acceleration from the snapshot, state from the kept result; D131's refusal lifted.
+
+[D134](RECORD.md#d134) — W74 edited in the Driving behaviours dialog: model choice, empty-able key fields, no code defaults.
+
+[D135](RECORD.md#d135) — Results inner tabs: queue discharge with the CLI defaults and one row per safety clamp.
+
+[D136](RECORD.md#d136) — multi-seed batches through a pure `src/runner`: seed-sorted aggregation, n per figure, Student-t half-width, per-seed accounting.
+
+[D137](RECORD.md#d137) — the configured git commit on CLI output; `engineVersion` kept.

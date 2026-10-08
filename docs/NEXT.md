@@ -7,6 +7,18 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## M5 evaluation first — owner answer to O1, 2026-10-08
+
+Asked for a recommendation, the owner chose the multi-seed batch: ROADMAP O1 is answered (a),
+M5 goes ahead. **M5.2 (S1) is done** (D136, D137): `trafficsim-cli --project F --seeds A-B`
+gives n, mean, SD and the 95 % half-width per movement and approach, with per-seed accounting
+and the commit. **Next, S2:** "Run N seeds" in the editor over `runSeeds`/`aggregate` on a copy
+of the run snapshot, on a worker thread, Results showing n / mean / ±95 %; an edit invalidates
+it and Cancel leaves no table claiming N runs. Then S3 (copy/export of the batch table, bytes
+equal to the CLI's) and LOS from threshold data (ask the owner which jurisdiction's table, O2/Q4).
+Gridlock has no defined criterion: the batch shows each seed's active/pending instead (D136);
+ask the owner before adding a flag.
+
 ## Driving behaviour improvement — owner instruction, 2026-10-06
 
 The owner authorized the staged plan (D120). M3.3.0 writes the

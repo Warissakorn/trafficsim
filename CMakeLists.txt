@@ -57,10 +57,12 @@ add_library(trafficsim_vehicle_pose STATIC src/editor/vehicle_pose.cpp src/edito
 target_link_libraries(trafficsim_vehicle_pose PUBLIC trafficsim_model PRIVATE trafficsim_options)
 add_library(trafficsim_eval STATIC src/eval/discharge.cpp src/eval/discharge_passage.cpp src/eval/summary.cpp src/eval/movement.cpp src/eval/lane_changes.cpp src/eval/segment_times.cpp src/eval/stop_lines.cpp src/eval/arrival_phases.cpp src/eval/dead_end_waits.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
-add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
+add_library(trafficsim_runner STATIC src/runner/runner.cpp)
+target_link_libraries(trafficsim_runner PUBLIC trafficsim_eval PRIVATE trafficsim_options)
+add_library(trafficsim_project STATIC src/project/batch_output.cpp src/project/load.cpp src/project/parse.cpp src/project/output.cpp
     src/project/document.cpp src/project/signal_migration.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp
     src/project/input_sha256.cpp src/project/input_manifest.cpp src/project/behaviour_library.cpp src/project/discharge_json.cpp src/project/evaluation.cpp src/project/demand_paths.cpp src/project/demand_preview.cpp src/project/demand_catalog.cpp src/project/demand_time_types.cpp src/project/station_routing.cpp)
-target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval
+target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval trafficsim_runner
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
 # nlohmann/json is a large header-only template library: 1.47 s to parse and instantiate here,
@@ -88,6 +90,31 @@ add_custom_target(trafficsim-data ALL
 
 add_executable(trafficsim-cli tools/run_simulation.cpp)
 target_link_libraries(trafficsim-cli PRIVATE trafficsim_project trafficsim_options)
+# D137: the commit a CLI result came from. Stamped at configure time, and only on the CLI so a new
+# commit does not rebuild every library; HEAD and its ref are configure dependencies, so a commit
+# or checkout reconfigures. Without git (a source archive) the stamp is "unknown". Uncommitted
+# changes are not detected: a result from a dirty tree names the commit it started from.
+set(TRAFFICSIM_COMMIT "unknown")
+find_package(Git QUIET)
+if(GIT_FOUND AND IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
+    execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --short=12 HEAD WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        OUTPUT_VARIABLE trafficsim_head OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET RESULT_VARIABLE trafficsim_git)
+    if(trafficsim_git EQUAL 0 AND trafficsim_head)
+        set(TRAFFICSIM_COMMIT "${trafficsim_head}")
+    endif()
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/.git/HEAD")
+    file(READ "${PROJECT_SOURCE_DIR}/.git/HEAD" trafficsim_head_file)
+    if(trafficsim_head_file MATCHES "^ref: ([^\n]+)")
+        string(STRIP "${CMAKE_MATCH_1}" trafficsim_ref)
+        if(EXISTS "${PROJECT_SOURCE_DIR}/.git/${trafficsim_ref}")
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/.git/${trafficsim_ref}")
+        endif()
+    endif()
+    if(EXISTS "${PROJECT_SOURCE_DIR}/.git/packed-refs")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/.git/packed-refs")
+    endif()
+endif()
+target_compile_definitions(trafficsim-cli PRIVATE TRAFFICSIM_COMMIT="${TRAFFICSIM_COMMIT}")
 trafficsim_runtime_data(trafficsim-cli)
 install(TARGETS trafficsim-cli RUNTIME DESTINATION bin)
 install(DIRECTORY data/ DESTINATION bin/data)
@@ -164,7 +191,7 @@ if(BUILD_TESTING)
     add_dependencies(check trafficsim-vehicle-pose-tests)
     add_executable(trafficsim-tests tests/main.cpp tests/behaviour_library_tests.cpp tests/behaviour_selection_tests.cpp tests/behaviour_selection_edge_tests.cpp tests/input_manifest_tests.cpp tests/discharge_tests.cpp tests/discharge_passage_tests.cpp tests/discharge_identity_tests.cpp tests/core_tests.cpp tests/station_routing_tests.cpp tests/source_insertion_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/demand_correctness_tests.cpp tests/demand_catalog_tests.cpp tests/demand_time_types_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_geometry_tests.cpp tests/conflict_polygon_tests.cpp tests/conflict_mouth_group_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp tests/lane_change_lab_tests.cpp tests/w74_tests.cpp tests/w74_codec_tests.cpp tests/w74_traits_tests.cpp tests/w74_run_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/demand_correctness_tests.cpp tests/demand_catalog_tests.cpp tests/demand_time_types_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_geometry_tests.cpp tests/conflict_polygon_tests.cpp tests/conflict_mouth_group_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp tests/lane_change_lab_tests.cpp tests/w74_tests.cpp tests/w74_codec_tests.cpp tests/w74_traits_tests.cpp tests/w74_run_tests.cpp tests/runner_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
@@ -177,7 +204,7 @@ if(BUILD_TESTING)
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict conflict_geometry
         rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep conflict_follow
-        discretionary lanelab lane_centres equation w74 w74codec w74traits w74run)
+        discretionary lanelab lane_centres equation w74 w74codec w74traits w74run runner)
     foreach(group ${TRAFFICSIM_TEST_GROUPS})
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
@@ -196,6 +223,10 @@ if(BUILD_TESTING)
     add_test(NAME cli-help COMMAND trafficsim-cli --help)
     add_test(NAME cli-project COMMAND trafficsim-cli 42 --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json")
     set_tests_properties(cli-project PROPERTIES PASS_REGULAR_EXPRESSION "North approach .* West exit")
+    add_test(NAME cli-batch COMMAND trafficsim-cli --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json" --seeds 42-43)
+    set_tests_properties(cli-batch PROPERTIES PASS_REGULAR_EXPRESSION "2 seeds; mean, SD and 95% Student-t half-width.*halfWidth95")
+    add_test(NAME cli-batch-refused COMMAND trafficsim-cli --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json" --seeds 42-43 --discharge)
+    set_tests_properties(cli-batch-refused PROPERTIES WILL_FAIL TRUE)
     add_dependencies(check trafficsim-tests)
 endif()
 

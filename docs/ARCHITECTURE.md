@@ -48,7 +48,7 @@ unchanged. See [VEHICLE_POSE.md](reference/VEHICLE_POSE.md).
 | `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-20 authoring codec (reads schemas 1–20); evaluation spec and report output; revision run snapshots; optional captured-byte input manifests/SHA-256 |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
-| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`), plus `--discharge` controls and captured input hashes |
+| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/runner/core/eval | Headless runner (one seed, or `--seeds A-B` batches through `src/runner`, D136), JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`), plus `--discharge` controls and captured input hashes |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
 Connector widths and runtime paths share topology-only `connectorLanePairs`; the surface
@@ -260,8 +260,8 @@ M3.1 `PriorityRule`s (D59).
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
 | Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 added intervals, compositions, routing decisions with per-interval turning proportions (M2.1.1–M2.4) and fixed-time Signal Controllers (M2.7b); partial/dynamic routing (M2.1) and actuated control (M4) remain |
-| Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); LOS, multi-seed means and travel-time sections remain |
-| Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
+| Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); LOS and travel-time sections remain |
+| Batch runner | `src/runner/` | **Implemented (M5.2, D136):** `runSeeds`/`aggregate`, sequential, seed-sorted aggregation; includes only core and eval (checked). Its JSON/CSV formatting lives in `src/project/batch_output.*` beside `movementCsv`, not in `src/report/` |
 | Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
 
 Adding a command must never teach `project/` its implementation. The corresponding boundary check now runs with the M1 document/command implementation.

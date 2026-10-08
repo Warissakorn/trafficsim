@@ -33,6 +33,20 @@ bool check(const std::string& source, const std::filesystem::path& directory) {
     }
     return true;
 }
+// M5.2 (D136): the batch runner may read the core and eval contracts and nothing else -- no
+// project, model, Qt, I/O or clock. Those two layers' existing headers become a harmless standard
+// include, and the rest is the same restricted check as core and eval.
+bool runnerBoundary(std::string source, const std::filesystem::path& root) {
+    const std::regex layer(R"re(^\s*#\s*include\s*"\.\./(core|eval)/([A-Za-z0-9_]+\.hpp)"\s*(//.*)?$)re");
+    std::istringstream stream(source); std::string line, rewritten;
+    while (std::getline(stream, line)) {
+        std::smatch match;
+        if (std::regex_match(line, match, layer) && std::filesystem::is_regular_file(root / "src" / match[1].str() / match[2].str()))
+            line = "#include <vector>";
+        rewritten += line + '\n';
+    }
+    return check(rewritten, root / "src" / "runner");
+}
 // Project persistence may read model contracts, but must never know command implementations.
 bool projectBoundary(const std::string& source) {
     const std::regex directive(R"(^\s*#\s*(include|include_next)\b.*)");
@@ -59,6 +73,9 @@ int main(int argc, char** argv) {
         for (const auto* bad : {"#include \"../commands/history.hpp\"", "#include <QFile>", "#include HEADER"})
             if (projectBoundary(bad)) return 1;
         if (!projectBoundary("#include \"../model/network/network.hpp\"\n#include <nlohmann/json.hpp>")) return 1;
+        for (const auto* bad : {"#include \"../project/run.hpp\"", "#include \"../model/network/network.hpp\"",
+                "#include <fstream>", "#include <thread>", "auto t = std::chrono::steady_clock::now();"})
+            if (runnerBoundary(bad, ".")) { std::cerr << "Runner guard accepted: " << bad << '\n'; return 1; }
         return check("#include <vector>\n#include <cmath>\n", {}) ? 0 : 1;
     }
     bool valid = true;
@@ -76,6 +93,11 @@ int main(int argc, char** argv) {
             }
             if (!file || !check(source, directory)) { std::cerr << "Boundary violation: " << entry.path() << '\n'; valid = false; }
         }
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(argv[1]) / "src/runner")) {
+        if (entry.path().extension() != ".hpp" && entry.path().extension() != ".cpp") continue;
+        std::ifstream file(entry.path()); std::string source((std::istreambuf_iterator<char>(file)), {});
+        if (!file || !runnerBoundary(source, argv[1])) { std::cerr << "Runner boundary violation: " << entry.path() << '\n'; valid = false; }
     }
     for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(argv[1]) / "src/project")) {
         if (entry.path().extension() != ".hpp" && entry.path().extension() != ".cpp") continue;

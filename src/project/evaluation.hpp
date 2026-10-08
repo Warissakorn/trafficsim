@@ -43,4 +43,7 @@ Json arrivalPhaseJson(const ArrivalPhaseReport&);
 Json waitCauseJson(const WaitCauseReport&);
 // The report as CSV. The first line states what the numbers are not.
 std::string movementCsv(const MovementReport&);
+// CSV cells as movementCsv writes them: a quoted text, a figure to two decimals (empty: absent).
+std::string csvQuoted(const std::string&);
+std::string csvFigure(const std::optional<double>&);
 }

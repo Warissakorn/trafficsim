@@ -120,6 +120,7 @@ entry behind what you are changing, not the directory.
 
 ## Other docs
 
+- [`ROADMAP-review-2026-10-03-corrections.md`](ROADMAP-review-2026-10-03-corrections.md) — ROADMAP review §3, the corrections list, moved whole 2026-10-08
 - [`MIGRATION-D15.md`](MIGRATION-D15.md) — former migration reference, including the original UI mapping and implementation horizon; retained 2026-10-05
 - [`AUTHORING_EXTENSIONS-M1.21.md`](AUTHORING_EXTENSIONS-M1.21.md) — former M1.21 reference before current codec/reversal/marking clarification; retained 2026-10-05
 
