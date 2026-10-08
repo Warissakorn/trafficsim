@@ -275,6 +275,7 @@ struct ScenarioIndex {
     // M3.3.2b: segments x types, row-major, a behaviour slot each -- behaviourOfType overridden by
     // Scenario::segmentBehaviours. EMPTY when nothing is assigned: then the type alone decides.
     std::vector<std::size_t> behaviourOfSegmentType;
+    bool w74{};                                      // any behaviour is w74: vehicles carry traits
     // The slots a released vehicle is stamped with. An input's route and type never change, so
     // resolving them per input per tick -- which is what generateArrivals did once the vehicle
     // stopped carrying ids -- was the same lookup in a new place.
@@ -296,6 +297,9 @@ struct PendingVehicle {
     static constexpr std::uint32_t kNoInput = 0xffffffffU;
     std::uint32_t inputIndex{kNoInput}, routeIndex{}, typeIndex{};
     double scheduledTime{}, desiredSpeed{}, driverFactor{};
+    // M3.3.3a (D137): hashed at generation, never redrawn; present iff the scenario holds any
+    // w74 behaviour (docs/reference/W74.md §5). Last, so brace-initialisation keeps its meaning.
+    std::optional<W74Traits> w74Traits;
     bool operator==(const PendingVehicle&) const = default;
 };
 // D101: a vehicle's last lane change, of either kind -- the tick it started and the route it left.

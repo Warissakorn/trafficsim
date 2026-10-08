@@ -295,7 +295,9 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
 ## Step and motion: a vehicle's input, process and output
 
 **What a vehicle carries** (`Vehicle`, `types.hpp`): input, route and type slots;
-`scheduledTime`, `enteredTime`; `desiredSpeed` and `driverFactor`, drawn once at generation; and
+`scheduledTime`, `enteredTime`; `desiredSpeed` and `driverFactor`, drawn once at generation;
+`w74Traits`, hashed at generation only when the scenario holds a `w74` behaviour ([W74 §5](W74.md#5-parameters-and-traits),
+D137; checkpoints carry it only then); and
 `distance` along its route, `speed`, `acceleration`, `mode`. It has no lane, no x/y and no memory
 of past decisions: only `distance`, `speed` and `routeIndex` are read back next tick
 (`acceleration` and `mode` are outputs only). Admission grants, commitment and courtesy are

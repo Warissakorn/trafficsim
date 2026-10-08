@@ -26,6 +26,11 @@ W74Result w74Acceleration(double speed, double desiredSpeed, const VehicleType& 
     const W74Parameters& parameters, const W74Traits& traits, std::optional<W74State> previous,
     std::optional<Leader> obstacle = {});
 
+// Contract §5: zBx is the driver's existing driverFactor; the other four are hashed from
+// (seed, vehicle id) with integer arithmetic only, so every compiler gives the same bits and the
+// run's random stream is never touched.
+W74Traits w74Traits(std::uint32_t seed, std::uint64_t vehicleId, double driverFactor);
+
 // The 18 W74 keys, in contract §5 order: the one list the codec, the validator and the serializer
 // read, so a key name exists once (hard rule 3).
 struct W74Key { const char* name; double W74Parameters::* member; };

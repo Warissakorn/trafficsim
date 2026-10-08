@@ -8,6 +8,19 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 driver traits, BA26 (D137)
+
+Third M3.3.3a slice. `w74Traits(seed, id, driverFactor)` implements §5's splitmix64 hash and
+Irwin–Hall `zOp`; `generateArrivals` stores it on `PendingVehicle` when any behaviour is
+`w74`. Golden values match an independent Python implementation bit for bit, and GCC and
+Clang agree on 1,000 traits. A mixed run keeps every prototype draw. Writing the
+`upcomingArrivals` row exposed that its scratch state did not copy `seed`; it does now.
+`W74State` and BA24/BA25 are deferred to composition, their only writer and reader (D137).
+Checkpoints gain `w74Traits` only when present. Headless 68/68, desktop 99/99 (Linux),
+CLI seed 42 identical. See [evidence](evidence/w74-traits.md).
+
+---
+
 ## 2026-10-08 — W74 schema-22 codec, BA29 (D136)
 
 The second M3.3.3a slice, codec only by the owner's choice. `DriverBehaviour::w74`

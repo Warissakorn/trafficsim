@@ -75,3 +75,5 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D135](RECORD.md#d135) — W74 lands first as a pure, unwired function with type bounds and D105 inside it; `Leader::acceleration` added, 0 until BA28.
 
 [D136](RECORD.md#d136) — schema-22 `w74` codec from one key table; Run refuses a `w74` behaviour in use until BA28; dialog read-only.
+
+[D137](RECORD.md#d137) — W74 traits hashed at generation only when a scenario holds `w74`; `W74State` and BA24/BA25 move to the composition slice.

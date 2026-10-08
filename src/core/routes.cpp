@@ -125,6 +125,8 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
     for (std::size_t r = 0; r < scenario.routes.size(); ++r) index.routeZones.push_back(zoneIncidence(scenario, index.parts[r]));
     index.stopZones = std::any_of(scenario.conflictZones.begin(), scenario.conflictZones.end(),
                                   [](const auto& z) { return z.control == ZoneControl::stop; });
+    index.w74 = std::any_of(scenario.behaviours.begin(), scenario.behaviours.end(),
+                            [](const auto& b) { return b.w74.has_value(); });
     indexLaneChanges(scenario, index);
     return index;
 }

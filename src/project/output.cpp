@@ -19,9 +19,13 @@ const char* modeName(FollowingMode mode) {
 Json pendingJson(const Scenario& scenario, const PendingVehicle& v) {
     const std::string inputId = v.inputIndex == PendingVehicle::kNoInput ? std::string{}
                                                                         : scenario.inputs[v.inputIndex].id;
-    return {{"id", v.id}, {"inputId", inputId}, {"routeId", scenario.routes[v.routeIndex].id},
+    Json j{{"id", v.id}, {"inputId", inputId}, {"routeId", scenario.routes[v.routeIndex].id},
             {"vehicleTypeId", scenario.vehicleTypes[v.typeIndex].id},
             {"scheduledTime", v.scheduledTime}, {"desiredSpeed", v.desiredSpeed}, {"driverFactor", v.driverFactor}};
+    // Only when present (W74.md §9), so prototype checkpoints keep their bytes.
+    if (const auto& t = v.w74Traits)
+        j["w74Traits"] = {{"zBx", t->zBx}, {"zEx", t->zEx}, {"zCx", t->zCx}, {"zOp", t->zOp}, {"zOsc", t->zOsc}};
+    return j;
 }
 Json optionalNumber(const std::optional<double>& value) { return value ? Json(*value) : Json(nullptr); }
 }
