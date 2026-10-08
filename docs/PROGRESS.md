@@ -8,6 +8,24 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 pure function, BA21–BA22 (D135)
+
+Review first: a clean checkout configured only after installing `nlohmann-json3-dev`
+(BUILDING lists it); headless was then 65/65. The decision record's table had blank lines
+between rows from D12 onwards, so GitHub rendered every later row as plain pipe text; the
+blank lines are removed in a separate commit, no row changed.
+
+Then the first M3.3.3a code, rows-first as NEXT ordered: `src/core/w74.hpp/.cpp` implement
+contract §3 thresholds, the §4 seven-row classification and accelerations, the §7 sign and
+the §6 bounds (type clamp, then D105) as one pure function. `Leader` gains `acceleration`,
+0 everywhere until BA28 fills it; the prototype ignores it. `tests/w74_tests.cpp` (group
+`w74`) checks every regime row against hand values and every equality side on the value
+and one ULP away; five seeded boundary mutations each fail it. Why a pure, unwired function
+first and why the bounds live inside it: D135. Headless 66/66, CLI seed 42 byte-identical;
+Linux only. See [evidence](evidence/w74-pure-function.md).
+
+---
+
 ## 2026-10-09 — M5.5 LOS letters from section delay (D134)
 
 Section delay now gets a letter, and only section delay. The owner chose an author-set control

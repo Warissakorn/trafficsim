@@ -72,3 +72,4 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D133](RECORD.md#d133) — M5.4 travel-time sections (schema 23): Link-wide start/end lines, interpolated crossings, delay against the vehicle's desired speed.
 
 [D134](RECORD.md#d134) — M5.5 LOS: HCM pack as data, author-set control type (schema 24), approaches by start Link, vehicle-weighted.
+[D135](RECORD.md#d135) — W74 lands first as a pure, unwired function with type bounds and D105 inside it; `Leader::acceleration` added, 0 until BA28.
