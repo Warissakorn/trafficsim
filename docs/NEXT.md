@@ -277,7 +277,12 @@ In order:
 6. **The M2.6 template** (`data/projects/m2.6-study-template.traffic.json`) has placeholder
    volumes, a guessed timing-window-to-approach mapping and no aerial image. Replace them before
    using it for a real study.
-7. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
+7. **Amber and the standstill cap** ([W74 clamp trace](evidence/w74-clamps.md), 2026-10-08):
+   a non-green head holds as red with no commitment test, and the hard cap treats a moving
+   leader as standing. Both clamp in every model; W74 meets them more. Changing either needs
+   its own contract and failure-first rows and moves prototype trajectories (BA18). Not
+   required for W74; decide only if the clamp counts matter for a study.
+8. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
    Thai counts are motorcycle-heavy); continuous-time or multiple same-Link routing stations beyond M2.1.3.
 
 M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's use in M2.6);
