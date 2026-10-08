@@ -119,6 +119,9 @@ target_precompile_headers(trafficsim-t-junction-sweep REUSE_FROM trafficsim-four
 add_executable(trafficsim-w74-discharge-sweep tools/w74_discharge_sweep.cpp)
 target_link_libraries(trafficsim-w74-discharge-sweep PRIVATE trafficsim_commands trafficsim_options)
 target_precompile_headers(trafficsim-w74-discharge-sweep REUSE_FROM trafficsim-four-leg-fixture)
+add_executable(trafficsim-w74-clamp-trace tools/w74_clamp_trace.cpp)
+target_link_libraries(trafficsim-w74-clamp-trace PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-w74-clamp-trace REUSE_FROM trafficsim-four-leg-fixture)
 # D105: clamp traces and checked 40-seed evidence, not part of check or an M5 batch API.
 add_executable(trafficsim-t-junction-clamps tools/t_junction_clamps.cpp)
 target_link_libraries(trafficsim-t-junction-clamps PRIVATE trafficsim_commands trafficsim_options)
