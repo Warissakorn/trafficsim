@@ -8,6 +8,24 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 pure function, BA21–BA22 (D130)
+
+Review first: a clean checkout configured only after installing `nlohmann-json3-dev`
+(BUILDING lists it); headless was then 65/65. The decision record's table had blank lines
+between rows from D12 onwards, so GitHub rendered every later row as plain pipe text; the
+blank lines are removed in a separate commit, no row changed.
+
+Then the first M3.3.3a code, rows-first as NEXT ordered: `src/core/w74.hpp/.cpp` implement
+contract §3 thresholds, the §4 seven-row classification and accelerations, the §7 sign and
+the §6 bounds (type clamp, then D105) as one pure function. `Leader` gains `acceleration`,
+0 everywhere until BA28 fills it; the prototype ignores it. `tests/w74_tests.cpp` (group
+`w74`) checks every regime row against hand values and every equality side on the value
+and one ULP away; five seeded boundary mutations each fail it. Why a pure, unwired function
+first and why the bounds live inside it: D130. Headless 66/66, CLI seed 42 byte-identical;
+Linux only. See [evidence](evidence/w74-pure-function.md).
+
+---
+
 ## 2026-10-08 — Engine run cost: observe and publish
 
 Measured on Windows (MSVC 14.51 Release, P-cores pinned) with temporary probes on the M2.6
@@ -450,26 +468,6 @@ Network Editor's existing D38 edit is now explicit in README/manifest, retaining
 original hash plus a retained-copy hash and its authorizing commit.
 Validation: local Markdown links/anchors, source-spec hashes, file-size guard and
 `git diff --check`. No local CTest claim: CMake/CTest are unavailable in this workspace.
-
----
-
-## 2026-10-05 — Time-varying compositions and type-conditioned routing (D113)
-
-Owner asked to continue after #107; all five of its native CI jobs passed. Slice 6
-adds schema-19 composition periods and complete per-type routing matrices. Input
-volume remains authoritative. Gaps use base composition; missing type rules inherit
-default flows; zero counted totals use that type's whole-period weights. Splitting
-by type precedes conditioned routing, including downstream decisions, at scheduled
-demand time. Source queueing never reselects the destination. Legacy ordering, IDs,
-file bytes and random stream are preserved when no new rules are present.
-[DEMAND_TIME_TYPES.md](reference/DEMAND_TIME_TYPES.md) records interfaces and gates. Staged UI
-edits commit through History; reference checks include periods and type rules.
-Failure-first tests exposed missing serialization/validation. Breakpoint conservation,
-queue retention, replay and UI verification accompany this change. No new core RNG,
-dynamics, exact-count mode or reporting is added. Linux GCC / Qt 6.4.2 Debug:
-the required `check` target passes all 86 checks, including 56 Demand cases and
-the new time/type UI suite. Frozen fixtures remain unchanged. Native CI and owner
-review remain separate. Two older dated entries moved whole for D82 headroom.
 
 ---
 
