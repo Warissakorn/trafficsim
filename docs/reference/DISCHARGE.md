@@ -56,7 +56,12 @@ insufficient crossings, non-queued ranks, invalid identities/timestamps,
 nonpositive headways and conservative remap/source exclusions return an explicit
 reason with absent numeric estimates. Consumers must display unavailable as such.
 
-## CLI and remaining gate
+## CLI, editor and remaining gate
+
+The editor's Results tab has a *Queue discharge* page (D135) fed by the same observer with
+these CLI defaults: one row per head and lane with greens, greens with an estimate, the means
+over those (headway, rate, startup lost time) and the unavailable reasons with their counts.
+It carries the same not-validated statement. A *Safety clamps* page lists each clamp event.
 
 `trafficsim-cli --project FILE.traffic.json --discharge` adds `discharge` JSON.
 Defaults are the full run window, zero warmup, steady ranks 3–5 and startup ranks

@@ -66,7 +66,7 @@ QStringList column(QTableWidget* t, int c) {
 QStringList queueRows(EditorWindow& w) {
     auto* t = w.findChild<QTableWidget*>("editorQueueTable"); require(t, "No queue table");
     // The Results tab is rebuilt only while it can be seen, so read it open.
-    w.findChild<QTabWidget*>("editorObjectTabs")->setCurrentWidget(t->parentWidget());
+    w.findChild<QTabWidget*>("editorObjectTabs")->setCurrentWidget(w.findChild<QTabWidget*>("editorResultsTabs")->parentWidget());
     act(w, "editorStep")->trigger(); QApplication::processEvents();
     return column(t, 0);
 }

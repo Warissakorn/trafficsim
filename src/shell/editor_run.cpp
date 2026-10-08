@@ -3,6 +3,7 @@
 #include "../editor/ui_design_tokens.hpp"
 #include <QVBoxLayout>
 #include "../core/simulation.hpp"
+#include "../core/routes.hpp"
 #include "../project/load.hpp"
 #include <QAction>
 #include <QComboBox>
@@ -15,8 +16,23 @@ namespace trafficsim {
 // Every path that advances the run funnels through here. SimState::events holds the latest
 // step only, so a step whose events are not accumulated is one whose clamps are lost for good.
 void EditorWindow::observeRun() {
-    for (const auto& event : runState_.events) runSummary_.add(event);
+    for (const auto& event : runState_.events) {
+        runSummary_.add(event);
+        if (const auto* clamp = std::get_if<SafetyClampEvent>(&event)) {
+            ClampRow row{clamp->time, clamp->vehicleId, {}, {}, {}};
+            const auto& vehicles = runState_.vehicles; // sorted by id
+            const auto v = std::lower_bound(vehicles.begin(), vehicles.end(), clamp->vehicleId,
+                                            [](const auto& x, std::uint64_t id) { return x.id < id; });
+            if (v != vehicles.end() && v->id == clamp->vehicleId) {
+                const auto& scenario = *runState_.scenario;
+                row.typeId = scenario.vehicleTypes[v->typeIndex].id; row.routeId = scenario.routes[v->routeIndex].id;
+                row.segmentId = locateVehicle(scenario, *v, *runState_.index).segmentId;
+            }
+            runClamps_.push_back(std::move(row));
+        }
+    }
     if (runMovements_) runMovements_->observe(runState_);
+    if (runDischarge_) runDischarge_->observe(runState_);
 }
 void EditorWindow::buildRunControls() {
     auto* bar=addToolBar(QString());bar->setObjectName("editorRunToolbar");texts_["editorRunToolbar"]=bar;
@@ -44,7 +60,8 @@ void EditorWindow::buildRunControls() {
 }
 void EditorWindow::pauseRun(){runTimer_.stop();runCredit_=0;refreshRun();}
 void EditorWindow::clearRun(){
-    runTimer_.stop();runCredit_=0;runSnapshot_.reset();runState_={};runSummary_={};runMovements_.reset();canvas_->clearRunFrame();refreshRun();
+    runTimer_.stop();runCredit_=0;runSnapshot_.reset();runState_={};runSummary_={};runMovements_.reset();
+    runDischarge_.reset();runDischargeError_.clear();runClamps_.clear();canvas_->clearRunFrame();refreshRun();
 }
 bool EditorWindow::prepareRun() {
     if(runSnapshot_)return true;
@@ -53,11 +70,17 @@ bool EditorWindow::prepareRun() {
         try{seed=parseSeed(runSeed_->text().toStdString());}catch(const std::exception&){throw std::invalid_argument("invalidSeed");}
         auto snapshot=compileDocument(history_.document(),data_);
         auto state=createSimulation(snapshot.scenario,seed);
-        MovementAccumulator movements(evaluationSpec(history_.document(),snapshot,data_));
+        const auto evaluation=evaluationSpec(history_.document(),snapshot,data_);
+        MovementAccumulator movements(evaluation);
+        // The CLI's --discharge defaults: the whole run, no warmup, ranks 3-5 steady and 1-2 startup.
+        try {
+            DischargeSpec discharge; discharge.windowEnd=snapshot.scenario.duration; validateDischargeSpec(discharge);
+            runDischarge_.emplace(discharge,evaluation.queue);
+        }catch(const std::exception& e){runDischarge_.reset();runDischargeError_=e.what();}
         runSnapshot_=std::move(snapshot);runState_=std::move(state);runMovements_.emplace(std::move(movements));
         // createSimulation can already emit events at t=0; start the count from them, not from
         // the first step, or a departure at time zero is missing from every later figure.
-        runSummary_={};observeRun();
+        runSummary_={};runClamps_.clear();observeRun();
         canvas_->setRunNetwork(runSnapshot_->network);canvas_->setRunFrame(runState_);
         error_->clear();return true;
     }catch(const std::exception& e){

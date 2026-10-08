@@ -63,10 +63,14 @@ at dt 0.1, 14.8 at dt 0.5, prototype ≈5.5); the [trace](evidence/w74-clamps.md
 W74 defect**: 83–96 % are amber heads (held as red, no commitment test) met more often by
 W74's slower fixture discharge, the rest the standstill cap treating a moving leader as
 standing (D105's recorded case) met by W74's gentle emergency braking. Changing either rule
-is an owner decision with its own contract (it moves prototype trajectories, BA18). Next, as
-the owner chooses: W74 parameter editing in the dialog, or a cited, uncalibrated `w74` preset
-in `data/driver-behaviour/` (its values need a source; the fixture's 15 uncited values are
-not one; rerun `trafficsim-w74-clamp-trace` with them). Then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs
+is an owner decision with its own contract (it moves prototype trajectories, BA18).
+**UI catch-up (D134, D135):** W74 behaviours are edited in the dialog (model choice, 18 keys,
+no code defaults), and Results has *Queue discharge* and *Safety clamps* tabs.
+**Owner review (Windows):** switch a behaviour to W74 (empty fields, range errors), switch it
+back, then run the four-leg project and read the two new Results tabs in EN and TH. Next:
+a cited, uncalibrated `w74` preset in `data/driver-behaviour/` (its values need a source; the
+fixture's 15 uncited values are not one; rerun `trafficsim-w74-clamp-trace` with them), or the
+M3.3.3b W99 contract. Then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs
 in §1. Keep prototype runs byte-identical (BA18). PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 

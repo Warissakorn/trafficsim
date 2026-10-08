@@ -4,6 +4,7 @@
 #include "../project/diagnostics.hpp"
 #include "../project/run.hpp"
 #include "../eval/summary.hpp"
+#include "../eval/discharge.hpp"
 #include "../project/evaluation.hpp"
 #include "../project/display.hpp"
 #include "../commands/appearance_commands.hpp"
@@ -140,8 +141,19 @@ private:
     SummaryAccumulator runSummary_;
     // M2.5: per-movement delay and approach queues, fed the same states as runSummary_.
     std::optional<MovementAccumulator> runMovements_;
-    QTableWidget *movementTable_{}, *queueTable_{};
-    QLabel* resultsNote_{};
+    // D135: queue discharge with the CLI's default spec, fed the same states; the reason it
+    // could not be set up, if any, is shown instead of a table.
+    std::optional<DischargeAccumulator> runDischarge_;
+    std::string runDischargeError_;
+    // D135: one row per SafetyClampEvent, read off the published vehicle (blank once it left).
+    struct ClampRow { double time{}; std::uint64_t vehicleId{}; std::string typeId, routeId, segmentId; };
+    std::vector<ClampRow> runClamps_;
+    QWidget* resultsPage_{};
+    QTabWidget* resultsTabs_{};
+    QTableWidget *movementTable_{}, *queueTable_{}, *dischargeTable_{}, *clampTable_{};
+    QLabel *resultsNote_{}, *dischargeNote_{}, *clampNote_{};
+    void refreshDischarge();
+    void refreshClamps();
     void buildResults();
     void translateResults();
     void refreshResults();

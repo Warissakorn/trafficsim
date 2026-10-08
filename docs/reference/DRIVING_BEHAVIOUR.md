@@ -272,7 +272,8 @@ that capture is part of the same step and one Undo restores external ownership.
 
 The behaviour editor shows who uses the set before any change (users first) and
 labels every parameter with its project-file key, untranslated; optional parameters
-have a checkbox (absent = not used). A class lists every vehicle type; a type already
+have a checkbox (absent = not used). A *Model* choice switches between the prototype
+keys and the 18 W74 keys (D134, [W74 §9](W74.md#9-persistence)). A class lists every vehicle type; a type already
 in another class is shown but cannot be ticked. A behaviour type has a default and
 one override choice per class, where *Inherit* means no override. Deleting an entry
 that something uses asks for a replacement; Cancel there keeps the entry.
