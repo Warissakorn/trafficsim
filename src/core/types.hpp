@@ -322,6 +322,9 @@ struct Vehicle : PendingVehicle {
     std::optional<LastLaneChange> lastLaneChange;
     std::vector<LaneChangeTrace> laneChangeTrace;
     std::vector<std::string> passedDecisions; // one selection per passage; routes cannot cycle
+    // W74.md §7 (D138): the previous tick's regime and sign while its front is on a w74 road;
+    // written only at publish, cleared on a prototype one.
+    std::optional<W74State> w74State;
     bool operator==(const Vehicle&) const = default;
 };
 // Parallel to Scenario::inputs, one entry each and in that order: createSimulation builds it

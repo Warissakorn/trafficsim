@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 composed into the tick, BA23–BA25/BA28 (D138)
+
+Fourth M3.3.3a slice: W74 now runs. `follow` dispatches by `DriverBehaviour::w74`;
+`standstillGap`/`desiredGap` replace every direct prototype-field read in the tick (source
+and D108, motion, second obstacle, lane-change checks, dead end, discretionary gain,
+waiting room, receiving space, `stopLineReach`). Leader acceleration rides on
+`OccupiedSpan` and `CourtesyHold`; static obstacles write 0. `Vehicle::w74State` comes from
+the kept result at publish. D136's Run refusal and its message are gone. A first run-level
+Stop test passed without the standstill override; the §7 case (at rest 3.3 m short) was
+added and now fails without it. Prototype bytes unchanged. Headless 69/69, desktop 100/100
+(Linux). See [evidence](evidence/w74-composition.md). Not validated.
+
+---
+
 ## 2026-10-08 — W74 driver traits, BA26 (D137)
 
 Third M3.3.3a slice. `w74Traits(seed, id, driverFactor)` implements §5's splitmix64 hash and

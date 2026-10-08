@@ -14,7 +14,7 @@ double waitingRoom(const Scenario& scenario) {
     const auto standstill = [&](const std::string& id) {
         const auto behaviour = std::find_if(scenario.behaviours.begin(), scenario.behaviours.end(),
                                             [&](const auto& b) { return b.id == id; });
-        return behaviour == scenario.behaviours.end() ? 0 : behaviour->standstillDistance;
+        return behaviour == scenario.behaviours.end() ? 0 : standstillGap(*behaviour);
     };
     double room = 0;
     for (const auto& type : scenario.vehicleTypes) room = std::max(room, type.length + standstill(type.behaviourId));
@@ -105,7 +105,7 @@ std::optional<double> zoneHold(const Scenario& scenario, const ScenarioIndex& in
             // Receiving space: a standing leader must leave room for the whole vehicle past the
             // exit -- the chain's last exit -- or it would be admitted only to stop inside.
             const bool exitTaken = leader && leader->speed < kStoppedSpeed &&
-                vehicle.distance + leader->gap - rz.clearAt < type.length + behaviour.standstillDistance;
+                vehicle.distance + leader->gap - rz.clearAt < type.length + standstillGap(behaviour);
             // A driver who cannot stop at the line goes, unless the area is physically taken.
             const bool blocked = committed(vehicle.speed, std::max(0.0, gap), type) ? state.majorInside : state.majorBlocks;
             if (!unserved && !blocked && !exitTaken) continue;
@@ -121,8 +121,7 @@ std::optional<double> zoneHold(const Scenario& scenario, const ScenarioIndex& in
     return hold;
 }
 double stopLineReach(const DriverBehaviour& b, double driverFactor) {
-    return b.standstillDistance + (b.additiveSafetyDistance + b.multiplicativeSafetyDistance * driverFactor) *
-           std::sqrt(kStoppedSpeed) + kLineReach;
+    return desiredGap(b, driverFactor, kStoppedSpeed) + kLineReach;
 }
 std::vector<StopService> refreshStops(const Scenario& scenario, const ScenarioIndex& index,
                                       const std::vector<Vehicle>& vehicles, const std::vector<VehicleRefs>& refs,
@@ -188,10 +187,10 @@ std::vector<ZoneCap> resolveRequests(const Scenario& scenario, const ScenarioInd
             const auto& other = leaders[requests[j].vehicle];
             if (capped[j] || !other || other->vehicleId != leader->vehicleId) continue;
             const auto& r = refs[requests[j].vehicle];
-            taken += scenario.vehicleTypes[r.type].length + scenario.behaviours[r.behaviour].standstillDistance;
+            taken += scenario.vehicleTypes[r.type].length + standstillGap(scenario.behaviours[r.behaviour]);
         }
         const auto& own = refs[requests[i].vehicle];
-        const double need = scenario.vehicleTypes[own.type].length + scenario.behaviours[own.behaviour].standstillDistance;
+        const double need = scenario.vehicleTypes[own.type].length + standstillGap(scenario.behaviours[own.behaviour]);
         const double room = vehicles[requests[i].vehicle].distance + leader->gap - requests[i].clearAt;
         if (taken > 0 && room - taken < need) capped[i] = true;
     }

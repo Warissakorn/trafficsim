@@ -128,7 +128,7 @@ TEST(w74codec, external_catalog_entries_read_the_model_key_and_default_to_the_pr
     item.erase("ax"); test::throws([&] { parseBehaviour(item); }, "INVALID_BEHAVIOUR_PARAMETER");
 }
 
-TEST(w74codec, run_refuses_a_w74_behaviour_in_use_and_ignores_an_unused_one) { // D136
+TEST(w74codec, a_w74_behaviour_in_use_runs_and_an_unused_one_changes_nothing) { // D136, D138
     const auto data = test::root() / "data";
     // Unused: the run is the plain project's, vehicle for vehicle.
     const auto plain = compileDocument(owned(), data).scenario, unused = compileDocument(withW74(), data).scenario;
@@ -136,18 +136,24 @@ TEST(w74codec, run_refuses_a_w74_behaviour_in_use_and_ignores_an_unused_one) { /
     const auto a = runSimulation(plain, 42), b = runSimulation(unused, 42);
     // Equal but for the hashed traits (D137), which only a scenario holding w74 carries.
     auto traitless = b.vehicles;
-    for (auto& v : traitless) { CHECK(v.w74Traits.has_value()); v.w74Traits.reset(); }
+    for (auto& v : traitless) { CHECK(v.w74Traits.has_value()); CHECK(!v.w74State); v.w74Traits.reset(); }
     CHECK(!a.vehicles.empty()); CHECK(a.vehicles == traitless); CHECK(a.time == b.time);
-    // A vehicle type using it: the document still saves and loads, Run refuses.
+    // In use, by a vehicle type or by a road: D136's interim Run refusal is lifted (D138).
     auto byType = withW74();
     for (auto& t : byType.definition->vehicleTypes) if (t.id == "car") t.behaviourId = "urban-w74";
     validateDocument(byType);
     CHECK(parseDocument(documentJson(byType)).definition->vehicleTypes == byType.definition->vehicleTypes);
-    test::throws([&] { compileDocument(byType, data); }, "UNSUPPORTED_BEHAVIOUR_MODEL_RUN");
-    // A road assignment using it.
     auto byRoad = withW74();
     putLinkBehaviourType(byRoad, {"urban", "Urban", "urban-w74", {}});
     assignBehaviourType(byRoad, byRoad.network.links[0].id, "urban");
     validateDocument(byRoad);
-    test::throws([&] { compileDocument(byRoad, data); }, "UNSUPPORTED_BEHAVIOUR_MODEL_RUN");
+    for (const auto* d : {&byType, &byRoad}) {
+        auto state = createSimulation(compileDocument(*d, data).scenario, 42);
+        bool sawState = false;
+        while (state.tick < totalTicks(*state.scenario)) {
+            state = stepSimulation(std::move(state));
+            for (const auto& v : state.vehicles) sawState = sawState || v.w74State.has_value();
+        }
+        CHECK(sawState);
+    }
 }

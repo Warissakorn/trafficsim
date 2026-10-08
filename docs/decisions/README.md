@@ -77,3 +77,5 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D136](RECORD.md#d136) — schema-22 `w74` codec from one key table; Run refuses a `w74` behaviour in use until BA28; dialog read-only.
 
 [D137](RECORD.md#d137) — W74 traits hashed at generation only when a scenario holds `w74`; `W74State` and BA24/BA25 move to the composition slice.
+
+[D138](RECORD.md#d138) — W74 runs: one `follow` dispatcher and gap accessors for every consumer, `Leader` acceleration from the snapshot, state from the kept result; D136's refusal lifted.

@@ -233,12 +233,6 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
             for (auto& issue : w74ParameterIssues(*b.w74, p)) issues.push_back(std::move(issue));
             if (b.maxDecelerationCooperativeBraking)
                 number(*b.maxDecelerationCooperativeBraking, p + ".maxDecelerationCooperativeBraking");
-            // D136, interim: the tick cannot run W74 until the composition slice (BA28), so a
-            // behaviour some vehicle would use refuses Run rather than run as something else.
-            const auto uses = [&](const auto& list) {
-                return std::any_of(list.begin(), list.end(), [&](const auto& x) { return x.behaviourId == b.id; });
-            };
-            if (uses(s.vehicleTypes) || uses(s.segmentBehaviours)) add("UNSUPPORTED_BEHAVIOUR_MODEL_RUN", p + ".model");
             continue;
         }
         number(b.standstillDistance, p + ".standstillDistance");

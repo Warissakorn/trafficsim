@@ -297,10 +297,11 @@ interval in which every flow is 0 (nothing counted) uses the whole-period `relat
 **What a vehicle carries** (`Vehicle`, `types.hpp`): input, route and type slots;
 `scheduledTime`, `enteredTime`; `desiredSpeed` and `driverFactor`, drawn once at generation;
 `w74Traits`, hashed at generation only when the scenario holds a `w74` behaviour ([W74 §5](W74.md#5-parameters-and-traits),
-D137; checkpoints carry it only then); and
-`distance` along its route, `speed`, `acceleration`, `mode`. It has no lane, no x/y and no memory
-of past decisions: only `distance`, `speed` and `routeIndex` are read back next tick
-(`acceleration` and `mode` are outputs only). Admission grants, commitment and courtesy are
+D137; checkpoints carry it only then); `w74State`, the previous tick's W74 regime and sign while
+its front is on a `w74` road (D138, [W74 §7](W74.md#7-state-and-model-switch)); and
+`distance` along its route, `speed`, `acceleration`, `mode`. It has no lane, no x/y and no other memory
+of past decisions: `distance`, `speed`, `routeIndex` and `w74State` are read back next tick,
+and `acceleration` only as a W74 follower's `aL` (the prototype ignores it); `mode` is output only. Admission grants, commitment and courtesy are
 re-derived from each snapshot. The one carried table is `SimState::stopService`, outside the vehicle.
 `driverFactor` scales only the safety distance (below and `stopLineReach`); gap acceptance,
 acceleration and lane changing are the same for every driver of a type.
@@ -335,7 +336,8 @@ this does not introduce a between-lanes engine state.
    since a nearer moving leader would otherwise hide it. Cooperative braking is a second leader
    at the changer's speed, with no cap, and its braking is bounded by
    `maxDecelerationCooperativeBraking`.
-4. `followingAcceleration` behind that obstacle, then ballistic integration (no negative
+4. `follow` behind that obstacle — the prototype's `followingAcceleration`, or W74's
+   ([W74 §6](W74.md#6-composition-with-the-shipped-tick), D138) for a `w74` behaviour — then ballistic integration (no negative
    speed), with speed capped at `desiredSpeed`.
 5. A move beyond `allowedDistance` is cut to it and stops: `safety-clamp`.
 6. A vehicle resting at a Stop line is held at zero (`restsAtStop`), which is not a clamp.
