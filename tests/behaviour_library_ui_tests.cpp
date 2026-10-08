@@ -156,26 +156,81 @@ int main(int argc, char** argv) {
         const auto saved = documentJson(w.history().document());
         w.saveFile(path); w.openFile(path);
         require(documentJson(w.history().document()) == saved, "Library save/reopen failed");
-        // D136: a w74 behaviour opens read-only -- a note instead of prototype fields; only its name
-        // changes, and the file stays schema 25.
+        // D139: a w74 behaviour is edited in the dialog -- its 18 keys, its model, inline range checks.
         auto withW74 = w.history().document();
         DriverBehaviour w74{"w74-set"};
         w74.w74 = W74Parameters{2, 2, 1, 2, .5, 16, 4, .5, .5, 20, 1, 1, 3, .25, .5, -1, .5, .25};
         putBehaviour(withW74, w74, ""); validateDocument(withW74);
         QFile g(path); require(g.open(QIODevice::WriteOnly), "Fixture write failed");
         g.write(QByteArray::fromStdString(documentJson(withW74).dump())); g.close(); w.openFile(path);
-        modal([&] { item<QAction>(w, "editorBehaviourLibrary")->trigger(); }, [](QDialog& d) {
+        const auto behaviour = [&](const char* id) -> const DriverBehaviour& {
+            const auto& all = w.history().document().definition->behaviours;
+            return *std::find_if(all.begin(), all.end(), [&](const auto& b) { return b.id == id; });
+        };
+        const auto library = [&](const std::function<void(QDialog&)>& inside) {
+            modal([&] { item<QAction>(w, "editorBehaviourLibrary")->trigger(); }, [&](QDialog& d) { inside(d); confirm(d); });
+        };
+        // Edit one key and the name; an out-of-range value keeps the editor open with the reason.
+        library([](QDialog& d) {
             modal([&] { click(d, "editorBehaviours", "catalogEdit", "w74-set"); }, [](QDialog& e) {
-                require(!item<QLabel>(e, "editorBehaviourW74ReadOnly")->text().isEmpty(), "Missing w74 note");
-                require(!e.findChild<QDoubleSpinBox*>("followingTime"), "Prototype fields shown for w74");
+                require(item<QComboBox>(e, "editorBehaviourModel")->currentIndex() == 1, "w74 not shown as W74");
+                require(item<QLineEdit>(e, "exAdd")->text() == "2", "w74 value not shown");
+                item<QLineEdit>(e, "exAdd")->setText("0.5"); confirm(e);
+                require(e.isVisible(), "Out-of-range w74 value accepted");
+                require(item<QLabel>(e, "editorBehaviourEditError")->text().contains("behaviour.exAdd"), "Range error not shown");
+                item<QLineEdit>(e, "exAdd")->setText("1.25");
                 item<QLineEdit>(e, "editorBehaviourName")->setText("Urban W74"); confirm(e);
             });
-            confirm(d);
         });
-        const auto& renamed = *w.history().document().definition;
-        require(renamed.behaviourNames.at("w74-set") == "Urban W74", "w74 name not edited");
-        require(std::find(renamed.behaviours.begin(), renamed.behaviours.end(), w74) != renamed.behaviours.end(), "w74 values changed");
+        require(behaviour("w74-set").w74 && behaviour("w74-set").w74->exAdd == 1.25, "w74 key not edited");
+        require(w.history().document().definition->behaviourNames.at("w74-set") == "Urban W74", "w74 name not edited");
         require(documentJson(w.history().document())["schemaVersion"] == 25, "w74 file not schema 25");
+        // Prototype -> W74: the fields start empty (no code defaults); an empty one is refused.
+        library([](QDialog& d) {
+            modal([&] { click(d, "editorBehaviours", "catalogEdit", kDefault); }, [](QDialog& e) {
+                item<QComboBox>(e, "editorBehaviourModel")->setCurrentIndex(1);
+                require(item<QLineEdit>(e, "ax")->text().isEmpty(), "W74 field pre-filled by code");
+                confirm(e); require(e.isVisible(), "Empty w74 field accepted");
+                require(item<QLabel>(e, "editorBehaviourEditError")->text().contains("ax"), "Empty-field error not shown");
+                const std::vector<std::pair<const char*, const char*>> values{{"ax", "2"}, {"bxAdd", "2"}, {"bxMult", "3"},
+                    {"exAdd", "1.5"}, {"exMult", "1"}, {"cxAdd", "25"}, {"cxMult", "15"}, {"opdvAdd", "1.5"}, {"opdvMult", "0.5"},
+                    {"dMax", "150"}, {"bMaxAdd", "1.5"}, {"bMaxMult", "0.5"}, {"bMaxSpeedRoot", "4"}, {"bNullAdd", "0.2"},
+                    {"bNullMult", "0.2"}, {"bMinAdd", "-1"}, {"leaderAccelerationWeight", "0.5"}, {"emergencyLeaderWeight", "0.5"}};
+                for (const auto& [key, value] : values) item<QLineEdit>(e, key)->setText(value);
+                confirm(e);
+            });
+        });
+        require(behaviour(kDefault).w74 && behaviour(kDefault).w74->bMinAdd == -1, "Model not switched to w74");
+        require(behaviour(kDefault).followingTime == 0 && !behaviour(kDefault).discretionaryLaneChangeThreshold,
+                "Prototype keys kept on a w74 behaviour");
+        // W74 -> prototype: values come from the library's first prototype behaviour (data).
+        library([](QDialog& d) {
+            modal([&] { click(d, "editorBehaviours", "catalogEdit", kDefault); }, [](QDialog& e) {
+                item<QComboBox>(e, "editorBehaviourModel")->setCurrentIndex(0); confirm(e);
+            });
+        });
+        const auto& back = behaviour(kDefault);
+        const auto& source = *std::find_if(w.history().document().definition->behaviours.begin(),
+            w.history().document().definition->behaviours.end(), [](const auto& b) { return !b.w74 && b.id != kDefault; });
+        require(!back.w74 && back.followingTime == source.followingTime && back.standstillDistance == source.standstillDistance,
+                "Prototype values not taken from the library");
+        // Cancel in the editor leaves the document as it was.
+        const auto before = documentJson(w.history().document());
+        library([](QDialog& d) {
+            modal([&] { click(d, "editorBehaviours", "catalogEdit", "w74-set"); }, [](QDialog& e) {
+                item<QLineEdit>(e, "ax")->setText("9"); e.reject();
+            });
+        });
+        require(documentJson(w.history().document()) == before, "Cancel changed the behaviour");
+        // EN/TH: the model and the W74 help are translated.
+        item<QComboBox>(w, "editorLanguage")->setCurrentIndex(1); QApplication::processEvents();
+        library([](QDialog& d) {
+            modal([&] { click(d, "editorBehaviours", "catalogEdit", "w74-set"); }, [](QDialog& e) {
+                require(item<QLabel>(e, "editorBehaviourW74Help")->text().contains("W74"), "W74 help missing");
+                require(item<QComboBox>(e, "editorBehaviourModel")->itemText(0) == "Prototype", "Model item missing");
+                e.reject();
+            });
+        });
         std::cout << "behaviour library UI tests passed\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

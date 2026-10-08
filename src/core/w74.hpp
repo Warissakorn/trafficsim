@@ -6,8 +6,8 @@
 
 namespace trafficsim {
 // Wiedemann-74-structured car-following (M3.3.3a, D129). The contract, including every equation,
-// equality side and the sign hysteresis, is docs/reference/W74.md. Not wired into the tick yet
-// (D135): a behaviour can be `w74` in a file (schema 25), but Run refuses one in use (D136).
+// equality side and the sign hysteresis, is docs/reference/W74.md. Runs through `follow` (D138);
+// stored in schema 25 (D136); edited in the Driving behaviours dialog (D139). Not validated.
 
 // §3's values for one follower and obstacle, exposed so callers and tests read the same numbers
 // the classification compares against.
