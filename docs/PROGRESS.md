@@ -473,25 +473,6 @@ review remain separate. Two older dated entries moved whole for D82 headroom.
 
 ---
 
-## 2026-10-05 — Project vehicle/composition catalogs (D112)
-
-Owner asked to continue Demand improvements after PR #106. Its five native CI jobs
-passed. Slice 5 captures types, behaviors and compositions into one undoable project
-edit. Schema 18 adds owned compositions and authoring names; absence retains external
-catalog behavior and schema-17 fixture bytes on save. All owned compositions, including unused ones, validate IDs, weights
-and type references. Existing core checks validate dimensions, axles, speeds and
-behavior references. The staging UI offers add/edit/delete, stable IDs, names and
-engine/axle parameters. Cancel keeps ownership and History unchanged; referenced
-entries cannot be deleted. Input selection, Run and Preview share the ownership resolver.
-[DEMAND_CATALOGS.md](reference/DEMAND_CATALOGS.md) records the interface and gates. No dynamics
-or report model is added. Regression tests first exposed missing serialization and
-validation; portable compilation, rollback, ownership Undo/Redo and Qt staging are tested.
-Linux GCC/Qt 6.4.2 Debug: all 85 desktop checks pass, including 44 Demand cases and
-the new catalog UI suite. Frozen reference files remain unchanged; this slice's
-native CI and owner appearance are separate.
-
----
-
 ## Backlog (M0, in order)
 
 The [historical checklist](archive/PROGRESS-M0-backlog-and-questions.md#backlog-m0-in-order)
