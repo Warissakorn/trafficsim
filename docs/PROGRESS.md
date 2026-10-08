@@ -23,6 +23,31 @@ dominate (NEXT). Windows only; Linux is CI's.
 
 ---
 
+## 2026-10-07 — W74 car-following contract (D129)
+
+[`reference/W74.md`](reference/W74.md) writes the M3.3.3a contract NEXT asked for before any
+W74 code: net-gap thresholds (AX, BX, ABX, SDX, SDV, CLDV, OPDV, DMAX), a seven-row regime
+table with every equality side named, per-regime accelerations, 18 required behaviour keys,
+driver traits, `W74State`, model switch, composition with the hard cap/D105/D108/Stop, and
+schema 22. Rows BA21–BA29 are in the delivery plan. Docs only; no code, schema or behaviour
+change. Sources are public: PTV's W74 parameter page for vocabulary and SUMO's open
+`MSCFModel_Wiedemann` (citing Olstam & Tapani 2004) for the decision tree; neither is a
+parity target. Why the choices (D129): PTV hides the internal constants, so each is a key
+rather than a code default; traits come from a splitmix64 hash so the run stream, frozen
+baselines and prototype vehicles in mixed scenarios keep their draws, and an Irwin–Hall
+normal avoids `log`/`cos` cross-compiler drift; `driverFactor` already is PTV's `z`. The
+following sign is hysteresis (−1 after approaching/emergency, +1 after free), the only
+state W74 needs. Not resolved here: preset values, timestep sensitivity (BA27 records it).
+A self-review then fixed six defects before any code: a vehicle resting in the
+following band with `s = −1` behind a static obstacle never moved again and could
+miss its Stop service (now `s = +1` at standstill); `Leader` has no acceleration,
+so the contract now adds and fills it everywhere; the stored regime with a second
+obstacle is the kept result's; `bxAdd > 0` prevents `BX = 0`; the hash's modulo
+and summation order are fixed; BA23/BA26/BA28 now state the emergency start-up
+delay, the real mixed-scenario guarantee and the new cases.
+
+---
+
 ## 2026-10-07 — BA14/BA17 focused fixtures
 
 Six `behaviourselection` cases in `tests/behaviour_selection_edge_tests.cpp` close the two
@@ -445,41 +470,6 @@ dynamics, exact-count mode or reporting is added. Linux GCC / Qt 6.4.2 Debug:
 the required `check` target passes all 86 checks, including 56 Demand cases and
 the new time/type UI suite. Frozen fixtures remain unchanged. Native CI and owner
 review remain separate. Two older dated entries moved whole for D82 headroom.
-
----
-
-## 2026-10-05 — Project vehicle/composition catalogs (D112)
-
-Owner asked to continue Demand improvements after PR #106. Its five native CI jobs
-passed. Slice 5 captures types, behaviors and compositions into one undoable project
-edit. Schema 18 adds owned compositions and authoring names; absence retains external
-catalog behavior and schema-17 fixture bytes on save. All owned compositions, including unused ones, validate IDs, weights
-and type references. Existing core checks validate dimensions, axles, speeds and
-behavior references. The staging UI offers add/edit/delete, stable IDs, names and
-engine/axle parameters. Cancel keeps ownership and History unchanged; referenced
-entries cannot be deleted. Input selection, Run and Preview share the ownership resolver.
-[DEMAND_CATALOGS.md](reference/DEMAND_CATALOGS.md) records the interface and gates. No dynamics
-or report model is added. Regression tests first exposed missing serialization and
-validation; portable compilation, rollback, ownership Undo/Redo and Qt staging are tested.
-Linux GCC/Qt 6.4.2 Debug: all 85 desktop checks pass, including 44 Demand cases and
-the new catalog UI suite. Frozen reference files remain unchanged; this slice's
-native CI and owner appearance are separate.
-
----
-
-## 2026-10-05 — Demand correctness, interval preservation and preview (D111)
-
-Owner requested a detailed Demand-only review and authorized implementation.
-[DEMAND_IMPROVEMENT.md](plans/DEMAND_IMPROVEMENT.md) records the contract and six slices;
-this branch implements 1–4, with catalog and time/type extensions still planned.
-Zero lane weights now exclude a lane; invalid weights cannot silently fall back.
-Positive stale weights retain D32's fallback with an advisory. Decision/input dialogs
-preserve irregular intervals and offer explicit period editing. Missing active count
-cells are rejected. Preview compiles Run's snapshot and shows expected demand,
-including composition and lane expansion. Scheduled-time routing remains unchanged.
-New failure-first lane cases, conservation and Qt preservation/Undo tests accompany
-these changes. Frozen fixtures remain untouched. Linux verification and Windows
-native/owner review status are recorded with the branch; no M2 gate is reclosed.
 
 ---
 
