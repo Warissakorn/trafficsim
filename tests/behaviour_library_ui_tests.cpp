@@ -224,8 +224,11 @@ int main(int argc, char** argv) {
         require(documentJson(w.history().document()) == before, "Cancel changed the behaviour");
         // EN/TH: the model and the W74 help are translated.
         item<QComboBox>(w, "editorLanguage")->setCurrentIndex(1); QApplication::processEvents();
-        library([](QDialog& d) {
-            modal([&] { click(d, "editorBehaviours", "catalogEdit", "w74-set"); }, [](QDialog& e) {
+        const std::string shot = argc > 2 ? argv[2] : "";
+        library([&](QDialog& d) {
+            modal([&] { click(d, "editorBehaviours", "catalogEdit", "w74-set"); }, [&](QDialog& e) {
+                // Optional: the W74 page as the owner will see it (argv[2], a PNG path).
+                if (!shot.empty()) { QApplication::processEvents(); require(e.grab().save(QString::fromStdString(shot)), "Screenshot failed"); }
                 require(item<QLabel>(e, "editorBehaviourW74Help")->text().contains("W74"), "W74 help missing");
                 require(item<QComboBox>(e, "editorBehaviourModel")->itemText(0) == "Prototype", "Model item missing");
                 e.reject();
