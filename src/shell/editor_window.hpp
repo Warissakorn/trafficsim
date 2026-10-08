@@ -158,6 +158,8 @@ private:
     QLabel *resultsNote_{}, *dischargeNote_{}, *clampNote_{};
     void refreshDischarge();
     void refreshClamps();
+    // M5.4 (D139): what part of the run the figures cover, and how many trips fell outside it.
+    QString windowNote(const std::optional<MeasurementWindow>&, std::optional<std::uint64_t> outside = {}) const;
     void buildResults();
     void translateResults();
     void refreshResults();

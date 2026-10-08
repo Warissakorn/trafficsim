@@ -110,7 +110,7 @@ TEST(w74codec, w74_below_schema_22_and_a_future_schema_are_refused) { // BA29
     const auto j = documentJson(withW74()); const auto i = w74Index(j);
     auto old = j; old["schemaVersion"] = 21;
     refused(old, "UNSUPPORTED_BEHAVIOUR_MODEL", "behaviours[" + std::to_string(i) + "].model");
-    auto future = j; future["schemaVersion"] = 23;
+    auto future = j; future["schemaVersion"] = 24;
     test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
 }
 

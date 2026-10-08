@@ -6,6 +6,7 @@ entry behind what you are changing, not the directory.
 ## PROGRESS
 
 - [`PROGRESS-2026-10-06-d114.md`](PROGRESS-2026-10-06-d114.md) — D114 edited Connector lanes entry, moved whole 2026-10-08
+- [`PROGRESS-2026-10-06-d115.md`](PROGRESS-2026-10-06-d115.md) — D115 exact conflict polygons entry, moved whole 2026-10-08
 - [`PROGRESS-2026-10-05-contracts-separated.md`](PROGRESS-2026-10-05-contracts-separated.md) — contracts separated from obsolete reference text entry, moved whole 2026-10-08
 - [`PROGRESS-2026-10-05-d112.md`](PROGRESS-2026-10-05-d112.md) — D112 oldest live catalog entry, moved whole 2026-10-08
 - [`PROGRESS-2026-10-05-d113.md`](PROGRESS-2026-10-05-d113.md) — D113 time-varying compositions entry, moved whole 2026-10-08

@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
 #include <QDir>
 #include <QComboBox>
 #include <QDialog>
@@ -123,6 +124,7 @@ int main(int argc, char** argv) {
         std::cout << "Movements with no ±95% (n < 2): " << (absent ? "some" : "none") << '\n';
         require(note->text().contains("Not yet validated") && note->text().contains("not HCM control delay or LOS")
                 && note->text().contains("3 seeds (42–44)"), "The English note lost the marker or the seeds");
+        require(note->text().contains("No evaluation period declared"), "The note does not say the whole run was measured");
         require(runSeeds->isEnabled() && !cancel->isVisible(), "A finished batch must allow the next one");
         if (argc > 2) {
             w.resize(1280, 860); QTest::qWait(50); require(w.grab().save(QString::fromUtf8(argv[2]) + "-batch.png"), "Screenshot failed");
@@ -164,6 +166,31 @@ int main(int argc, char** argv) {
         // 4. Seeds past 2^32-1 are refused before anything runs.
         require(!w.startBatch(4294967295u, 2) && !w.batchRunning(), "An overflowing seed range was accepted");
         require(!item<QLabel>(w, "editorError")->text().isEmpty(), "The refusal was not shown");
+
+        // 6. M5.4 (D139): an evaluation period from Run settings. Checked with empty fields it is
+        //    refused and nothing changes; with both values the batch measures that window only.
+        const auto period = [&](const char* warmup, const char* end) {
+            answer([=](QDialog& d) {
+                item<QCheckBox>(d, "editorEvalPeriod")->setChecked(true);
+                item<QLineEdit>(d, "editorEvalWarmup")->setText(warmup); item<QLineEdit>(d, "editorEvalEnd")->setText(end);
+            });
+            item<QAction>(w, "editorRunSettings")->trigger();
+        };
+        const auto unchanged = w.history().revision();
+        period("", "");
+        require(w.history().revision() == unchanged && !w.history().document().definition->evaluationPeriod, "An empty period was accepted");
+        period("300", "900");
+        require(w.history().document().definition->evaluationPeriod == EvaluationPeriod{300, 900}, "The period was not set");
+        start("42", 2);
+        require(waitFor([&] { return !w.batchRunning(); }, 60000) && w.batchReport(), "The windowed batch did not finish");
+        const auto windowed = compileDocument(w.history().document(), data);
+        const auto windowedSpec = evaluationSpec(w.history().document(), windowed, data);
+        require(windowedSpec.window == MeasurementWindow{300, 900}, "The spec did not take the period");
+        require(*w.batchReport() == aggregate(trafficsim::runSeeds(windowed.scenario, windowedSpec, {42, 43})),
+                "The windowed editor batch differs from runSeeds/aggregate");
+        require(note->text().contains("Measured from 300 s (after the warm-up) to 900 s"), "The note does not name the window");
+        item<QAction>(w, "editorUndo")->trigger();
+        require(!w.history().document().definition->evaluationPeriod && !w.batchReport(), "Undo kept the period or the batch");
 
         // 5. Closing with a batch running stops it (the destructor joins after the current seed).
         start("42", 10);

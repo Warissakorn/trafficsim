@@ -12,15 +12,17 @@ Json estimateJson(const Estimate& e) {
 std::string cells(const Estimate& e) {
     return std::to_string(e.n) + ',' + csvFigure(e.mean) + ',' + csvFigure(e.sd) + ',' + csvFigure(e.halfWidth95);
 }
-std::string measure(std::size_t seeds) {
-    return "simulated movement delay, not HCM control delay or LOS; " + std::to_string(seeds) +
-           " seeds; mean, SD and 95% Student-t half-width across seeds; completed trips only";
+std::string measure(const BatchReport& r) {
+    return "simulated movement delay, not HCM control delay or LOS; " + std::to_string(r.runs.size()) +
+           " seeds; mean, SD and 95% Student-t half-width across seeds; completed trips only" +
+           (r.runs.empty() ? std::string() : windowText(r.runs.front().report.window));
 }
 }
 Json batchJson(const BatchReport& r) {
     Json j;
     j["validated"] = false;
-    j["measure"] = measure(r.runs.size());
+    j["measure"] = measure(r);
+    if (!r.runs.empty() && r.runs.front().report.window) j["window"] = windowJson(*r.runs.front().report.window);
     j["seeds"] = Json::array();
     for (const auto& run : r.runs) j["seeds"].push_back(run.seed);
     j["movements"] = Json::array();
@@ -39,12 +41,13 @@ Json batchJson(const BatchReport& r) {
         j["runs"].push_back({{"seed", run.seed}, {"generated", run.generated}, {"completed", x.completed},
             {"active", x.active}, {"pending", x.pending}, {"notInMovement", x.unassigned},
             {"safetyClamps", x.safetyClamps}, {"meanDelay", value(x.meanDelay)}, {"time", x.time}});
+        if (x.window) j["runs"].back()["outsideWindow"] = x.outsideWindow;
     }
     return j;
 }
 std::string batchCsv(const BatchReport& r) {
     std::ostringstream out;
-    auto marker = measure(r.runs.size()); marker[0] = 'S'; // a sentence, as movementCsv's is
+    auto marker = measure(r); marker[0] = 'S'; // a sentence, as movementCsv's is
     out << "# TrafficSim - not yet validated. " << marker << ".\n";
     out << "movement,delay_n,meanDelay_s,meanDelay_sd_s,meanDelay_halfWidth95_s,"
            "travel_n,meanTravelTime_s,meanTravelTime_sd_s,meanTravelTime_halfWidth95_s,meanVehicles\n";

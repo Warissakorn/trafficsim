@@ -128,6 +128,8 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
         if (!counter.lines.empty()) spec.counters.push_back(std::move(counter));
     }
     for (auto& c : authored) spec.counters.push_back(std::move(c));
+    if (document.definition && document.definition->evaluationPeriod) // M5.4 (D139)
+        spec.window = MeasurementWindow{document.definition->evaluationPeriod->warmup, document.definition->evaluationPeriod->end};
     return spec;
 }
 std::string csvQuoted(const std::string& text) {
@@ -139,6 +141,12 @@ std::string csvFigure(const std::optional<double>& value) {
     if (!value) return "";
     std::ostringstream s; s << std::fixed << std::setprecision(2) << *value; return s.str();
 }
+std::string windowText(const std::optional<MeasurementWindow>& w) {
+    if (!w) return {};
+    std::ostringstream s; s << "; measured from " << w->warmup << " s (after the warm-up) to " << w->end << " s, trips by arrival time";
+    return s.str();
+}
+Json windowJson(const MeasurementWindow& w) { return {{"warmup", w.warmup}, {"end", w.end}}; }
 Json movementJson(const MovementReport& r) {
     Json j;
     j["validated"] = false;
@@ -154,6 +162,7 @@ Json movementJson(const MovementReport& r) {
     j["completed"] = r.completed; j["notInMovement"] = r.unassigned; j["meanDelay"] = r.meanDelay ? Json(*r.meanDelay) : Json(nullptr);
     j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
     j["laneChanges"] = r.laneChanges;
+    if (r.window) { j["window"] = windowJson(*r.window); j["outsideWindow"] = r.outsideWindow; }
     return j;
 }
 Json laneChangeJson(const LaneChangeReport& r) {
@@ -244,7 +253,7 @@ Json arrivalPhaseJson(const ArrivalPhaseReport& r) {
 }
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
-    out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";
+    out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run" << windowText(r.window) << ".\n";
     out << "movement,vehicles,meanDelay_s,meanTravelTime_s\n";
     for (const auto& m : r.movements)
         out << csvQuoted(m.name) << ',' << m.vehicles << ',' << csvFigure(m.meanDelay) << ',' << csvFigure(m.meanTravelTime) << '\n';
@@ -253,6 +262,7 @@ std::string movementCsv(const MovementReport& r) {
         out << csvQuoted(q.name) << ',' << csvFigure(q.meanLength) << ',' << csvFigure(q.maxLength) << '\n';
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
         << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges << '\n';
+    if (r.window) out << "outsideWindow," << r.outsideWindow << '\n';
     return out.str();
 }
 }

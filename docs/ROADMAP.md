@@ -300,7 +300,10 @@ The reason the whole project exists (`PROBLEM.md` §4).
 `trafficsim-cli --project F --seeds A-B` gives per movement and approach n, mean, SD and the 95 %
 Student-t half-width, with per-seed accounting and the build's commit (D136, D137). **S2
 delivered (D138):** Simulation ▸ Run N seeds… shows the same batch in Results. Still open: LOS
-(thresholds as data), copy/export of the batch from Results (S3).
+(thresholds as data), copy/export of the batch from Results (S3). **O8 answered and delivered (D139):**
+an author-declared warm-up and measurement window. On O3 the owner asked whether HCM belongs at
+the analytical level; the recommendation is HCM as M6's computed reference beside the simulation,
+not letters on simulated delay; O3 stays open.
 
 ---
 
@@ -408,7 +411,7 @@ Recommendations are this review's; the choice is the owner's. Grouped so one cha
 | O5 | Closure wording (rule 1) | M2 closed with M2.1/M2.7 carried as open sub-milestones, or open · M1.26 "implemented; gate open" instead of CLOSED · per-approach queue (D40) satisfies M2, per-movement queue to M5 · M1's unpassed written exercise carved or recorded · M2.0's commits before the criteria (`c1b122f`, `4e1567e` before `811e0db`): an allowed exception or a recorded lapse | M2 closed; M1.26 relabelled; queue to M5; record M1's ruling; M2.0 an exception (no gate observation was affected) |
 | O6 | What closes M3.2? | Diverges: a numbered slice, or a ruling with an **acceptance-fixture row** (the D98 lab is a development bed, not evidence) · calibrated gap acceptance carved into M6 · M3.2.8c's remainder (visibility, `laneChangeDistance`, between-lanes state, D95 route (i)) into a new milestone · M3.2.9 to an editor milestone · the five T-junction clamps a numbered item or a NEXT note | Carve gap acceptance to M6 and the M3.2.8c remainder out, so M3.2 can close on M3.2.7d and its gate rows |
 | O7 | Who owns W74/W99 car-following (PROBLEM §2)? No milestone builds it | (a) a numbered milestone, a new behaviour preset, frozen baselines pinned to the prototype · (b) M6 validates the prototype and PROBLEM §2 changes · (c) Later | **(a)** after M0's observation, before M6. Its screens must say permanently that Vissim-calibrated parameter sets do not carry over (rule 4) |
-| O8 | Evaluation period: warm-up, evaluation window, unfinished trips | No code has a warm-up or window; the M2.6 template starts empty and runs its demand period; delay counts completed trips only, which reads low when a movement saturates | Decide before any LOS column (O3) |
+| O8 | Evaluation period: warm-up, evaluation window, unfinished trips. **Answered 2026-10-08:** a warm-up and window the user declares, no code default (D139, delivered) | No code has a warm-up or window; the M2.6 template starts empty and runs its demand period; delay counts completed trips only, which reads low when a movement saturates | Decide before any LOS column (O3) |
 | O9 | Seeds: keep "ten seeds" in M5/PROBLEM §4, or a CI half-width target? | (a) fixed 10 · (b) target half-width · (c) default 10, always show n and half-width | **(c).** The seed-to-seed SD of one movement's delay is unmeasured; D88's 7 s is the SD of a *change* between engine versions and does not size a table. Scenario comparison stays under "Later" (one random stream, so same-seed pairing across scenarios is not common random numbers) |
 | O10 | One-line rulings | Close Q2 (D71/D95) · Q5 name, and whether registration (Q6) follows · plain `Tab` → focus as a Vissim departure (no D-row for `ed74268`) · 3D: non-goal (PROBLEM §5) or "Later" · M5.1's transit/crosswalks vs "Later" · amber stop-or-go and intergreens written into M4's scope (D36, `plans/M2_PLAN.md`) · scenario-JSON export from the editor wanted? · canvas below `workspace-ui`'s floor at 1080p/150 % · narrow M1.22's list; refresh `SPEC_AUDIT` (it predates M3.2) before it gates M1.22 · what M1.23's "CSV" means · count sheet typed once vs D46 (the input's volume is the authority by owner request) · NEXT's ordering, and whether a non-gate look may ever close without the owner (only as a new D-row) | — |
 

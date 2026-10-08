@@ -42,6 +42,9 @@ Json arrivalPhaseJson(const ArrivalPhaseReport&);
 // M3.2.8c (D92): each movement's dead-end waits by cause, count and seconds (CLI --wait-causes).
 Json waitCauseJson(const WaitCauseReport&);
 // The report as CSV. The first line states what the numbers are not.
+// M5.4 (D139): "; measured from W s ... to E s ..." for a declared window, else empty; and its JSON.
+std::string windowText(const std::optional<MeasurementWindow>&);
+Json windowJson(const MeasurementWindow&);
 std::string movementCsv(const MovementReport&);
 // CSV cells as movementCsv writes them: a quoted text, a figure to two decimals (empty: absent).
 std::string csvQuoted(const std::string&);

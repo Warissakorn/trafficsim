@@ -16,6 +16,8 @@ void deleteProgram(ProjectDocument&, const std::string&); // Reject referenced p
 std::string putSignalController(ProjectDocument&, SignalController);
 void deleteSignalController(ProjectDocument&, const std::string&);
 void changeRunSettings(ProjectDocument&, double duration, double timeStep);
+// M5.4 (D139): set or clear the measured part of the run; History's validation checks it.
+void changeEvaluationPeriod(ProjectDocument&, std::optional<EvaluationPeriod>);
 std::string putSignalHead(ProjectDocument&, NetworkSignalHead);
 void deleteSignalHead(ProjectDocument&, const std::string&);
 // Slides a head -- its stop line -- along the lane or path it stands on. The station is

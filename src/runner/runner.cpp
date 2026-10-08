@@ -66,7 +66,8 @@ BatchReport aggregate(std::vector<SeedRun> runs) {
     const auto& first = runs.front().report;
     for (const auto& run : runs) {
         const auto& r = run.report;
-        bool same = r.movements.size() == first.movements.size() && r.queues.size() == first.queues.size();
+        bool same = r.movements.size() == first.movements.size() && r.queues.size() == first.queues.size() &&
+                    r.window == first.window;
         for (std::size_t i = 0; same && i < r.movements.size(); ++i) same = r.movements[i].name == first.movements[i].name;
         for (std::size_t i = 0; same && i < r.queues.size(); ++i) same = r.queues[i].name == first.queues[i].name;
         if (!same) throw std::invalid_argument("BATCH_MISMATCH");

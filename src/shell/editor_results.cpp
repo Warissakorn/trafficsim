@@ -118,6 +118,7 @@ void EditorWindow::refreshResults() {
     const bool finished=runFinished();
     QString note=text("editorResultsNote").arg(report->active).arg(report->pending)
         .arg(report->unassigned).arg(report->safetyClamps);
+    note+=" "+windowNote(report->window,report->outsideWindow);
     if(!finished) note=text("editorResultsPartial").arg(report->time,0,'f',1)+" "+note;
     resultsNote_->setText(note);
 }
@@ -169,6 +170,12 @@ void EditorWindow::refreshClamps() {
         clampTable_->setItem(r,4,new QTableWidgetItem(QString::fromStdString(c.segmentId)));
     }
     clampNote_->setText(text("editorClampNote").arg(runClamps_.size()));
+}
+QString EditorWindow::windowNote(const std::optional<MeasurementWindow>& w, std::optional<std::uint64_t> outside) const {
+    if(!w)return text("editorEvalWhole");
+    auto note=text("editorEvalWindow").arg(w->warmup,0,'g',15).arg(w->end,0,'g',15);
+    if(outside)note+=" "+text("editorEvalOutside").arg(*outside);
+    return note;
 }
 bool EditorWindow::runFinished() const {
     return runState_.scenario && runState_.tick>=totalTicks(*runState_.scenario);

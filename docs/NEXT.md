@@ -13,11 +13,15 @@ Asked for a recommendation, the owner chose the multi-seed batch: ROADMAP O1 is 
 M5 goes ahead. **M5.2 (S1) is done** (D136, D137): `trafficsim-cli --project F --seeds A-B`
 gives n, mean, SD and the 95 % half-width per movement and approach, with per-seed accounting
 and the commit. **S2 is done** (D138): Simulation ▸ Run N seeds… shows the same batch in a
-*Seeds batch* Results tab ([evidence](evidence/editor-batch.md)). **Next, S3:** copy/export of
-the batch table from Results, bytes equal to `trafficsim-cli --seeds --csv` (`batchCsv`), and a
-copy of the selected rows. Then LOS from threshold data (ask the owner which jurisdiction's
-table, O2/Q4). **Owner check (Windows):** run 10 seeds of the four-leg project, cancel one
-batch, edit during another.
+*Seeds batch* Results tab ([evidence](evidence/editor-batch.md)). **O8 is answered and done**
+(D139): an author-declared warm-up and window in Run settings, schema 23
+([evidence](evidence/evaluation-period.md)). **Next, S3:** copy/export of the batch table from
+Results, bytes equal to `trafficsim-cli --seeds --csv` (`batchCsv`), and a copy of the selected
+rows. **LOS waits on O3**: the owner asked whether HCM belongs at the analytical (meso/macro)
+level; the recommendation given is HCM as M6's computed reference beside the simulation (O2 (a)),
+with letters on simulated delay only if the owner later chooses section-bounded delay (O3 (b)).
+**Owner check (Windows):** run 10 seeds of the four-leg project, cancel one batch, edit during
+another; set a 300–900 s period and compare.
 Gridlock has no defined criterion: the batch shows each seed's active/pending instead (D136);
 ask the owner before adding a flag.
 

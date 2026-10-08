@@ -107,7 +107,7 @@ void EditorWindow::refreshBatch() {
                      :text("empty");
     };
     batchNote_->setText(text("editorBatchNote").arg(b.runs.size()).arg(b.runs.front().seed).arg(b.runs.back().seed)
-        .arg(run(b.meanDelay,2)).arg(run(b.completed,1)).arg(run(b.safetyClamps,1)));
+        .arg(run(b.meanDelay,2)).arg(run(b.completed,1)).arg(run(b.safetyClamps,1))+" "+windowNote(b.runs.front().report.window));
 }
 void EditorWindow::runBatchDialog() {
     QDialog dialog(this); dialog.setObjectName("editorBatchDialog"); dialog.setWindowTitle(text("editorRunSeeds"));

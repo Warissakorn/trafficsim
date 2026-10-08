@@ -16,11 +16,18 @@ struct QueueDefinition {
 // here, so a head-derived counter and an authored one are the same measurement.
 struct CounterLine { std::string segmentId; double position{}; bool operator==(const CounterLine&) const = default; };
 struct QueueCounter { std::string name; std::vector<CounterLine> lines; };
+// M5.4 (D139): the measured part of a run. A trip counts when it arrives after `warmup` and no
+// later than `end`; a queue sample when its state's time lies in the same interval.
+struct MeasurementWindow {
+    double warmup{}, end{};
+    bool operator==(const MeasurementWindow&) const = default;
+};
 struct EvaluationSpec {
     std::vector<std::string> movementNames;
     std::map<std::string, std::size_t> movementOfRoute; // runtime route id -> movement
     std::vector<QueueCounter> counters;
     QueueDefinition queue;
+    std::optional<MeasurementWindow> window; // absent: the whole run, as before M5.4
 };
 struct MovementRow {
     std::string name; std::uint64_t vehicles{};
@@ -39,6 +46,11 @@ struct MovementReport {
     std::size_t pending{}, active{};
     double time{};
     std::uint64_t laneChanges{}; // M3.2.8b
+    // M5.4: with a window, movements, unassigned, meanDelay and queues are the window's;
+    // completed, clamps and lane changes stay the whole run's, and outsideWindow counts the
+    // completed trips that arrived before or after it.
+    std::optional<MeasurementWindow> window;
+    std::uint64_t outsideWindow{};
     bool operator==(const MovementReport&) const = default;
 };
 // Delay a completed trip contributes: the same term as the run summary, so movements add up.
@@ -68,6 +80,9 @@ private:
     std::vector<double> delay_, travel_;
     std::uint64_t unassigned_{}, observed_{};
     std::vector<double> queueSum_, queueMax_;
+    std::uint64_t outside_{}, inWindow_{};
+    double windowDelay_{}, tolerance_{};
+    bool inWindow(double time) const;
     // Last observed queue state, sorted by vehicle id: a vector, not a map, because it is rebuilt
     // every tick and a node per vehicle was most of observe()'s cost.
     std::vector<std::pair<std::uint64_t, bool>> queued_;

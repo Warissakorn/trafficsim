@@ -1,6 +1,10 @@
 #include "editor_window.hpp"
 #include "../editor/ui_design_tokens.hpp"
+#include <QCheckBox>
 #include <QComboBox>
+#include <QDoubleValidator>
+#include <QLineEdit>
+#include <QLocale>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
@@ -27,10 +31,34 @@ void EditorWindow::editRunSettings() {
     auto* duration=number(dialog,0.001,10000000,def.duration,"editorDuration");
     auto* dt=number(dialog,0.001,0.5,def.timeStep,"editorTimeStep");
     form->addRow(text("editorDuration"),duration);form->addRow(text("editorTimeStep"),dt);
+    // M5.4 (D139): the measured part of the run. The fields start empty: no warm-up or window
+    // comes from code, and with the box unchecked the whole run is measured, as before.
+    auto* period=new QCheckBox(text("editorEvalPeriod"),&dialog);period->setObjectName("editorEvalPeriod");
+    period->setChecked(def.evaluationPeriod.has_value());form->addRow(period);
+    const auto seconds=[&](const char* name,std::optional<double> value){
+        auto* field=new QLineEdit(&dialog);field->setObjectName(name);field->setFont(editorDesign::numericFont());
+        auto* validator=new QDoubleValidator(field);validator->setLocale(QLocale::c());field->setValidator(validator);
+        if(value)field->setText(QString::number(*value,'g',15));
+        return field;
+    };
+    auto* warmup=seconds("editorEvalWarmup",def.evaluationPeriod?std::optional(def.evaluationPeriod->warmup):std::nullopt);
+    auto* end=seconds("editorEvalEnd",def.evaluationPeriod?std::optional(def.evaluationPeriod->end):std::nullopt);
+    form->addRow(text("editorEvalWarmup"),warmup);form->addRow(text("editorEvalEnd"),end);
+    const auto enable=[=]{warmup->setEnabled(period->isChecked());end->setEnabled(period->isChecked());};
+    connect(period,&QCheckBox::toggled,&dialog,enable);enable();
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
-    if(dialog.exec()==QDialog::Accepted)execute("editorRunSettings",[&](auto& d){changeRunSettings(d,duration->value(),dt->value());});
+    if(dialog.exec()!=QDialog::Accepted)return;
+    std::optional<EvaluationPeriod> chosen;
+    if(period->isChecked()){
+        bool a=false,b=false;
+        const double w=QLocale::c().toDouble(warmup->text(),&a),e=QLocale::c().toDouble(end->text(),&b);
+        if(!a||!b){showError(std::invalid_argument("EVAL_PERIOD_INVALID"));return;}
+        chosen=EvaluationPeriod{w,e};
+    }
+    // One History step: a shorter run and a window it would cut are judged together.
+    execute("editorRunSettings",[&](auto& d){changeRunSettings(d,duration->value(),dt->value());changeEvaluationPeriod(d,chosen);});
 }
 void EditorWindow::editProgram(const std::string& id) {
     SignalProgram value{id,0,{{30,SignalColor::red},{30,SignalColor::green},{3,SignalColor::amber}}};

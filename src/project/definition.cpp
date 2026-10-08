@@ -28,6 +28,13 @@ AuthoringDefinition parseAuthoringDefinition(const Json& j) {
     }
     if (j.contains("routingDecisions")) d.routingDecisions = parseRoutingDecisions(j);
     if (j.contains("signalControllers")) d.signalControllers = parseSignalControllers(j);
+    if (j.contains("evaluationPeriod")) { // M5.4: both values or neither, never one filled in by code
+        const auto& p = j.at("evaluationPeriod");
+        if (!p.is_object() || p.size() != 2 || !p.contains("warmup") || !p.contains("end") ||
+            !p.at("warmup").is_number() || !p.at("end").is_number())
+            throw ValidationError({{"EVAL_PERIOD_INVALID", "definition.evaluationPeriod"}});
+        d.evaluationPeriod = EvaluationPeriod{p.at("warmup").get<double>(), p.at("end").get<double>()};
+    }
     return d;
 }
 Json definitionJson(const AuthoringDefinition& d) {
@@ -143,6 +150,7 @@ Json definitionJson(const AuthoringDefinition& d) {
             j["compositions"].push_back(std::move(item));
         }
     }
+    if (d.evaluationPeriod) j["evaluationPeriod"] = {{"warmup", d.evaluationPeriod->warmup}, {"end", d.evaluationPeriod->end}};
     return j;
 }
 void migrateRoutesToObjects(const Network& network, AuthoringDefinition& definition) {
@@ -293,6 +301,12 @@ AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
 }
 void validateAuthoredDemand(const ProjectDocument& d) {
     if (!d.definition) return;
+    // M5.4: 0 <= warmup < end <= duration, both on the time-step grid, so a window edge is a tick.
+    if (const auto& p = d.definition->evaluationPeriod) {
+        if (!std::isfinite(p->warmup) || !std::isfinite(p->end) || p->warmup < 0 || p->end <= p->warmup || p->end > d.definition->duration)
+            throw ValidationError({{"EVAL_PERIOD_RANGE", "definition.evaluationPeriod"}});
+        if (!onTimeGrid(p->warmup, d.definition->timeStep) || !onTimeGrid(p->end, d.definition->timeStep)) throw ValidationError({{"EVAL_PERIOD_GRID", "definition.evaluationPeriod"}});
+    }
     for(const auto& decision:d.definition->routingDecisions)if(decision.position) {
         const auto link=std::find_if(d.network.links.begin(),d.network.links.end(),[&](const auto& x){return x.id==decision.linkId;});
         if(link==d.network.links.end() || !std::isfinite(*decision.position) || *decision.position<0 || *decision.position>=polylineLength(link->geometry))

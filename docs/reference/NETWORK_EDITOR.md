@@ -314,7 +314,13 @@ Levels only affect display and selection; they do not change runtime conflicts.
 4. Signal programs edits ordered duration/color phases and cycle offset. Add a signal
    head on a lane or derived connector path, choose a program and position in metres.
    Program deletion is blocked while a head references it.
-5. Run settings edits duration and fixed timeStep together. All demand/control changes
+5. Run settings edits duration and fixed timeStep together, and optionally an **evaluation
+   period** (M5.4, D139): `definition.evaluationPeriod {warmup, end}` in seconds, both required,
+   `0 ≤ warmup < end ≤ duration`, on the time-step grid (`EVAL_PERIOD_INVALID`/`_RANGE`/`_GRID`).
+   With it, movement figures, the run-level mean delay and queues cover trips arriving in
+   (warmup, end] and states sampled there; completed, clamps and lane changes stay whole-run, and
+   `outsideWindow` counts the completed trips outside it. Without it the whole run is measured,
+   as before; no warm-up comes from code. All demand/control changes
    validate and commit through the same Undo/Redo history as network edits.
 
 Vehicle types and driver behaviours normally resolve from `data/`; Embed catalogs stores
@@ -413,10 +419,10 @@ Unknown future versions are rejected.
 | Opened by | Editor (or `trafficsim-cli --scenario`) | Editor |
 | Runs | Editor, or `trafficsim-cli` | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and project schemas 1–21. Saving uses schema 17
+The editor opens bare M0 authoring files and project schemas 1–23. Saving uses schema 17
 by default, 18 for owned composition catalogs or embedded vehicle names, and 19 for
 composition periods or type-conditioned routing; schema 20 when a routing decision has `position`; schema 21 when the behaviour library
-or a road behaviour-type assignment is used ([DRIVING_BEHAVIOUR](DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)). This is selected from the document's
+or a road behaviour-type assignment is used ([DRIVING_BEHAVIOUR](DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)); schema 22 when an owned behaviour is `w74`; schema 23 when an evaluation period is declared (D139). This is selected from the document's
 features, not the version of the file opened. See [Demand catalogs](DEMAND_CATALOGS.md)
 and [time/type rules](DEMAND_TIME_TYPES.md); old feature-free fixtures retain schema-17 bytes.
 Schema 4 introduced lane bundle offset and Connector interpolation weights; older versions

@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — Evaluation period: author-declared warm-up and window, M5.4 (D139)
+
+The owner answered O8: a warm-up and window the user defines. Schema 23 adds
+`definition.evaluationPeriod {warmup, end}` (both required, on the grid, within the run); Run
+settings edits it in one History step with duration and dt. Movement figures, the run-level
+mean delay and queues then cover trips arriving in (warmup, end] and states sampled there;
+completed, clamps and lane changes stay whole-run and `outsideWindow` closes the count. No
+period: byte-identical outputs and schema. On the four-leg project a 300 s warm-up raises mean
+delay from 50.1 to 52.7 s over ten seeds ([evidence](evidence/evaluation-period.md)). On O3 the
+owner asked whether HCM belongs at the analytical level; recommended: HCM as M6's computed
+reference, not letters on simulated delay. New `evalperiod` group; both failure-first mutants fail it.
+
+---
+
 ## 2026-10-08 — "Run N seeds" in the editor, M5.3 (D138)
 
 ROADMAP S2. Simulation ▸ Run N seeds… compiles the document as Run does and starts one worker
@@ -439,35 +453,6 @@ tracing, cancellation, one-command Undo and Edit/Run signal geometry. All 89 tes
 across the full run and five affected-test reruns after fixing adjacent-lane hit spill;
 architecture, file-size, documentation and whitespace checks passed. Native Windows CI
 and owner appearance review remain separate; no simulation or owner gate is closed.
-
-## 2026-10-06 — Exact conflict polygons and classified mouths (D115)
-
-Owner authorized the geometry/type/display slice after inspecting why measured
-Connector/Link mouth overlaps were excluded from crossings. Quad clipping now retains
-convex polygon pieces beside both station intervals. Classification distinguishes crossing,
-merge, branching and one-stream continuation without discarding measured mouth geometry.
-Automatic crossing keys and topology-derived merge priorities/extents remain stable;
-branching is derived/read-only and continuation adds no control. Two arriving Connectors
-with only an edge contact can display their measured common receiving-lane mouths.
-
-Canvas fill, hit testing and connected-place grouping use the retained polygon union;
-the former full side strips and 0.3 m display/pick inset are superseded. Each lane pair
-still has its own reservation and paired priority layers. Branching rows are translated
-in English/Thai and reject priority authoring in both UI and commands, including a
-disguised/stale suggestion. Polygons are recomputed from network geometry, never added
-to the file schema. Geometry edits and Undo restore their derived shapes.
-New/Open/Recover also invalidate the conflict cache across document revision resets.
-
-Validation: GCC 13.3/C++20 local desktop build with Qt 6.4.2 and strict floating point;
-all model tests pass **486 cases, 0 failures**. New analytical oblique-area, source/target
-mouth, continuation, branching refusal, codec and edit/Undo regressions accompany Qt
-offscreen canvas/picking/grouping tests. Qt/model edge comparisons allow only numerical
-area tolerance; explicit outside-overlap probes must remain unpickable.
-The complete local desktop CTest suite passes **88/88 groups**, including documentation,
-architecture, file-size and frozen-reference checks.
-Native Linux/Windows CI and owner appearance review remain separate gates. This is
-M3.2.4d; full physical-mouth merge admission/clearance is M3.2.4e, not implemented here.
-No cross-path swept-body, fidelity or owner/milestone closure claim is made.
 
 ---
 

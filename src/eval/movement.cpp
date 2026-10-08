@@ -28,11 +28,16 @@ MovementAccumulator::MovementAccumulator(EvaluationSpec spec)
     : spec_(std::move(spec)), count_(spec_.movementNames.size()),
       delay_(spec_.movementNames.size()), travel_(spec_.movementNames.size()),
       queueSum_(spec_.counters.size()), queueMax_(spec_.counters.size()) {}
+bool MovementAccumulator::inWindow(double time) const {
+    return !spec_.window || (time > spec_.window->warmup + tolerance_ && time <= spec_.window->end + tolerance_);
+}
 void MovementAccumulator::bind(const SimState& state) {
     // Slots are resolved once per scenario; a run never swaps its scenario.
     if (bound_ == state.scenario.get()) return;
     bound_ = state.scenario.get();
     const auto& s = *state.scenario;
+    tolerance_ = 1e-6 * s.timeStep; // window edges are ticks; event times carry rounding
+
     movementOfSlot_.assign(s.routes.size(), npos);
     for (std::size_t r = 0; r < s.routes.size(); ++r)
         if (const auto it = spec_.movementOfRoute.find(s.routes[r].id); it != spec_.movementOfRoute.end())
@@ -56,6 +61,8 @@ void MovementAccumulator::observe(const SimState& state) {
         summary_.add(event);
         const auto* arrived = std::get_if<ArrivedEvent>(&event);
         if (!arrived) continue;
+        if (!inWindow(arrived->time)) { ++outside_; continue; }
+        ++inWindow_; windowDelay_ += tripDelay(*arrived);
         if (slotOfRoute.empty())
             for (std::size_t r = 0; r < s.routes.size(); ++r) slotOfRoute[s.routes[r].id] = r;
         const auto slot = slotOfRoute.find(arrived->routeId);
@@ -102,6 +109,8 @@ void MovementAccumulator::observe(const SimState& state) {
         if (!anyQueued) continue;
         length[line.counter] = std::max(length[line.counter], walkQueue(behind_, spec_.queue.maxGap));
     }
+    // The hysteresis above runs on every state; only the window's states are sampled.
+    if (!inWindow(state.time)) return;
     for (std::size_t c = 0; c < length.size(); ++c) {
         queueSum_[c] += length[c]; queueMax_[c] = std::max(queueMax_[c], length[c]);
     }
@@ -125,6 +134,10 @@ MovementReport MovementAccumulator::report(const SimState& end) const {
     r.laneChanges = summary.laneChanges;
     r.unassigned = unassigned_;
     r.pending = pendingCount(end); r.active = end.vehicles.size(); r.time = end.time;
+    if (spec_.window) {
+        r.window = spec_.window; r.outsideWindow = outside_;
+        r.meanDelay = inWindow_ ? std::optional(windowDelay_ / static_cast<double>(inWindow_)) : std::nullopt;
+    }
     return r;
 }
 }
