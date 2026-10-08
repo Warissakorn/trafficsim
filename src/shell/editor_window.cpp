@@ -58,7 +58,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     error_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
     layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
-    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset();
+    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); clearBatch(); history_.reset();
         automaticRevision_=conflictRevision_=UINT64_MAX;
         file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
@@ -69,8 +69,8 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     files->addAction(action("editorSave",QKeySequence::Save,[this]{saveDialog();}));
     action("editorSaveAs",QKeySequence::SaveAs,[this]{saveDialog(true);});
     files->addSeparator();
-    files->addAction(action("editorUndo",QKeySequence::Undo,[this]{clearRun();history_.undo();refresh();}));
-    files->addAction(action("editorRedo",QKeySequence::Redo,[this]{clearRun();history_.redo();refresh();}));
+    files->addAction(action("editorUndo",QKeySequence::Undo,[this]{clearRun();clearBatch();history_.undo();refresh();}));
+    files->addAction(action("editorRedo",QKeySequence::Redo,[this]{clearRun();clearBatch();history_.redo();refresh();}));
     buildHistory();
     auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
@@ -217,7 +217,7 @@ void EditorWindow::translate() {
     error_->clear(); refresh();
 }
 bool EditorWindow::execute(const std::string& name,const std::function<void(ProjectDocument&)>& change) {
-    try {const bool changed=history_.execute(name,change);if(changed)clearRun();error_->clear();rejected_.clear();refresh();return changed;}
+    try {const bool changed=history_.execute(name,change);if(changed){clearRun();clearBatch();}error_->clear();rejected_.clear();refresh();return changed;}
     catch(const std::exception& e){showError(e);canvas_->setDocument(&history_.document());return false;}
 }
 void EditorWindow::deleteSelected() {

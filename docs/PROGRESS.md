@@ -8,6 +8,19 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — "Run N seeds" in the editor, M5.3 (D138)
+
+ROADMAP S2. Simulation ▸ Run N seeds… compiles the document as Run does and starts one worker
+thread on a copy of the scenario; it calls the CLI's `runSeeds`/`aggregate` seed by seed, so a
+new *Seeds batch* tab in Results equals `trafficsim-cli --seeds` (tested to `batchCsv` bytes).
+The tab shows progress and no rows until every seed has finished. Cancel and any document change
+drop the job: it stops after its current seed (1.5 s in Debug), cannot publish, and its thread
+is joined when it finishes or at close. The Results table helpers moved to `result_table.hpp`.
+New `batch-run-ui`; removing both the stop flag and the publish guard fails it
+([evidence](evidence/editor-batch.md)). No engine change; CLI bytes unchanged.
+
+---
+
 ## 2026-10-08 — Multi-seed batches from one command, M5.2 (D136, D137)
 
 The owner asked for a recommendation and chose the batch runner, answering ROADMAP O1 with (a).

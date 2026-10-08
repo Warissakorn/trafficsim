@@ -298,8 +298,9 @@ The reason the whole project exists (`PROBLEM.md` §4).
 
 **Status (2026-10-08):** the owner answered O1 with (a), M5 ahead. **M5.2 (S1) delivered:**
 `trafficsim-cli --project F --seeds A-B` gives per movement and approach n, mean, SD and the 95 %
-Student-t half-width, with per-seed accounting and the build's commit (D136, D137). Still open:
-LOS (thresholds as data), "Run N seeds" in the editor (S2), copy/export from Results (S3).
+Student-t half-width, with per-seed accounting and the build's commit (D136, D137). **S2
+delivered (D138):** Simulation ▸ Run N seeds… shows the same batch in Results. Still open: LOS
+(thresholds as data), copy/export of the batch from Results (S3).
 
 ---
 

@@ -12,10 +12,12 @@ the log. Rewrite this file; do not append to it.
 Asked for a recommendation, the owner chose the multi-seed batch: ROADMAP O1 is answered (a),
 M5 goes ahead. **M5.2 (S1) is done** (D136, D137): `trafficsim-cli --project F --seeds A-B`
 gives n, mean, SD and the 95 % half-width per movement and approach, with per-seed accounting
-and the commit. **Next, S2:** "Run N seeds" in the editor over `runSeeds`/`aggregate` on a copy
-of the run snapshot, on a worker thread, Results showing n / mean / ±95 %; an edit invalidates
-it and Cancel leaves no table claiming N runs. Then S3 (copy/export of the batch table, bytes
-equal to the CLI's) and LOS from threshold data (ask the owner which jurisdiction's table, O2/Q4).
+and the commit. **S2 is done** (D138): Simulation ▸ Run N seeds… shows the same batch in a
+*Seeds batch* Results tab ([evidence](evidence/editor-batch.md)). **Next, S3:** copy/export of
+the batch table from Results, bytes equal to `trafficsim-cli --seeds --csv` (`batchCsv`), and a
+copy of the selected rows. Then LOS from threshold data (ask the owner which jurisdiction's
+table, O2/Q4). **Owner check (Windows):** run 10 seeds of the four-leg project, cancel one
+batch, edit during another.
 Gridlock has no defined criterion: the batch shows each seed's active/pending instead (D136);
 ask the owner before adding a flag.
 

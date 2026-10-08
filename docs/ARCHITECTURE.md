@@ -110,8 +110,9 @@ eight typed event structs (`RoutingEvent` appended last, D119). States retain on
 
 The desktop uses a Qt timer to schedule fixed steps. Playback time never enters the
 engine. The M0 workload runs on the UI thread; playback credit is capped per callback.
-A future worker handoff must retain snapshots and deterministic step order. First
-parallelize independent batch seeds when M5 is implemented.
+A future worker handoff must retain snapshots and deterministic step order. The one worker
+thread so far is the editor's "Run N seeds" (D138): it runs `src/runner` seed by seed on its own
+copy of the compiled scenario and hands results back as queued calls; seeds still run in sequence.
 
 `EditorCanvas` is the only surface that draws a run. It reads model geometry and runtime
 snapshots and owns no edits, signals, arrival generation or simulation timer. `src/render/`

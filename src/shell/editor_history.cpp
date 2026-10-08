@@ -76,7 +76,7 @@ void EditorWindow::refreshHistory() {
 void EditorWindow::restoreHistory(std::uint64_t revision) {
     try {
         if (!history_.restore(revision)) return;
-        clearRun();
+        clearRun(); clearBatch();
         rejected_.clear(); error_->clear();
         refresh();
     } catch (const std::exception& error) { showError(error); }

@@ -72,6 +72,7 @@ a movement with no completed trip in a seed is absent there, not 0. A seed list 
 gives the same output. `--seeds` refuses a single seed and the per-run diagnostic flags. The CSV
 starts with the not-validated marker, then movements, approaches and the per-seed rows. Ten
 seeds of the four-leg project take about 1.3 s (Release, Linux, 2026-10-08).
+The editor runs the same batch from Simulation ▸ Run N seeds… (D138).
 
 | Output field | Interpretation |
 |---|---|

@@ -6,6 +6,7 @@
 #include "../eval/summary.hpp"
 #include "../eval/discharge.hpp"
 #include "../project/evaluation.hpp"
+#include "../runner/runner.hpp"
 #include "../project/display.hpp"
 #include "../commands/appearance_commands.hpp"
 #include "../commands/demand_commands.hpp"
@@ -16,6 +17,8 @@
 #include <QMainWindow>
 #include <QJsonObject>
 #include <map>
+#include <memory>
+#include <thread>
 #include <filesystem>
 #include <functional>
 #include <vector>
@@ -36,6 +39,7 @@ class QFormLayout;
 class QCloseEvent;
 class QTabWidget;
 class QTableWidget;
+class QPushButton;
 namespace trafficsim {
 class EditorWindow : public QMainWindow {
 public:
@@ -159,6 +163,25 @@ private:
     void refreshResults();
     bool runFinished() const;
     void observeRun();
+    // M5.3 (D138), src/shell/editor_batch.cpp: N seeds of a copied snapshot on a worker thread.
+    // Only the job still in batchJob_ may publish; an edit or Cancel drops it, so no table ever
+    // claims N runs that did not all finish on the current document.
+    struct BatchJob;
+    std::shared_ptr<BatchJob> batchJob_;
+    std::vector<std::pair<std::shared_ptr<BatchJob>, std::thread>> batchThreads_; // joined once finished, or at exit
+    std::optional<BatchReport> batch_;
+    std::size_t batchDone_{}, batchCount_{};
+    bool batchCancelled_{};
+    QTableWidget *batchMovementTable_{}, *batchQueueTable_{}, *batchSeedTable_{};
+    QLabel* batchNote_{};
+    QPushButton* batchCancel_{};
+    QTabWidget* batchSide_{};
+    void buildBatch(QTabWidget* tabs);
+    void translateBatch();
+    void refreshBatch();
+    void runBatchDialog();
+    void clearBatch(bool cancelled = false);
+    void joinBatchThreads(bool all);
     // M3.2.4, src/shell/editor_priority.cpp: the Conflict areas tab, its dialogs and actions.
     QTableWidget* conflictTable_{};
     QLabel* runProtection_{};
@@ -201,6 +224,11 @@ public:
     }
     // The finished run's report as the CLI's CSV, replaced atomically; throws before the end.
     void exportResults(const QString& file) const;
+    // M5.3: start seeds first..first+count-1 (the action's dialog calls this), and what it gave.
+    bool startBatch(std::uint32_t first, std::uint32_t count);
+    bool batchRunning() const { return batchJob_ != nullptr; }
+    bool batchThreadsJoined() const { return batchThreads_.empty(); } // every dropped job has stopped too
+    const std::optional<BatchReport>& batchReport() const { return batch_; }
 private:
     QString file_;
     std::map<QString,QJsonObject> locales_;

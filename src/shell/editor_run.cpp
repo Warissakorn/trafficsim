@@ -41,6 +41,7 @@ void EditorWindow::buildRunControls() {
     auto* space=action("editorStepSpace",QKeySequence(Qt::Key_Space),[this]{pauseRun();stepRun();});
     space->setShortcutContext(Qt::WidgetWithChildrenShortcut);canvas_->addAction(space);
     bar->addAction(action("editorReset",{},[this]{clearRun();prepareRun();refreshRun();}));
+    action("editorRunSeeds",{},[this]{runBatchDialog();}); // Simulation menu (M5.3, D138)
     runSeed_=new QLineEdit("42",bar);runSeed_->setObjectName("editorSeed");runSeed_->setMaxLength(10);runSeed_->setMaximumWidth(80);
     runSeed_->setFont(editorDesign::numericFont());runSeed_->setProperty("numeric",true);
     auto* seedLabel=new QLabel(bar);texts_["editorSeedLabel"]=seedLabel;seedLabel->setBuddy(runSeed_);bar->addWidget(seedLabel);bar->addWidget(runSeed_);

@@ -3,6 +3,7 @@
 #include "../core/simulation.hpp"
 #include <map>
 #include "editor_storage.hpp"
+#include "result_table.hpp"
 #include <QFileDialog>
 #include <QToolBar>
 #include <QHeaderView>
@@ -16,16 +17,9 @@ namespace trafficsim {
 // M2.5: the per-movement table and the approach queues, beside what they are not. The note is
 // never optional: these are one unvalidated run of a prototype car-following model (rule 4).
 namespace {
-QTableWidget* resultTable(QWidget* parent, const char* name, int columns) {
-    auto* table=new QTableWidget(0,columns,parent); table->setObjectName(name);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->verticalHeader()->setVisible(false);
-    // The names take the room; each figure column is exactly as wide as its header needs.
-    table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    table->horizontalHeader()->setSectionResizeMode(0,QHeaderView::Stretch);
-    return table;
-}
+using results::figure;
+QTableWidget* resultTable(QWidget* parent, const char* name, int columns) { return results::table(parent,name,columns); }
+QLabel* noteLabel(QWidget* parent,const char* name) { return results::note(parent,name); }
 // The Results page, which tells its owner when it becomes visible: a tab switch, the dock being
 // shown again, or the window itself. refreshResults() skips work while it is hidden.
 class ResultsPage : public QWidget {
@@ -36,15 +30,6 @@ protected:
 private:
     std::function<void()> shown_;
 };
-QLabel* noteLabel(QWidget* parent,const char* name) {
-    auto* label=new QLabel(parent); label->setObjectName(name); label->setWordWrap(true); return label;
-}
-QTableWidgetItem* figure(const std::optional<double>& value,int decimals=1) {
-    auto* item=new QTableWidgetItem(value?QString::number(*value,'f',decimals):QString());
-    editorDesign::setNumericText(item,true);
-    item->setTextAlignment(Qt::AlignRight|Qt::AlignVCenter);
-    return item;
-}
 }
 void EditorWindow::buildResults() {
     auto* page=new ResultsPage(objects_,[this]{refreshResults();}); auto* layout=new QVBoxLayout(page);
@@ -78,6 +63,7 @@ void EditorWindow::buildResults() {
         table->horizontalHeader()->setSectionResizeMode(0,QHeaderView::ResizeToContents);
         table->horizontalHeader()->setSectionResizeMode(column,QHeaderView::Stretch);
     }
+    buildBatch(resultsTabs_);
     connect(resultsTabs_,&QTabWidget::currentChanged,this,[this]{refreshResults();});
     objects_->addTab(page,QString());
 }
@@ -90,11 +76,13 @@ void EditorWindow::translateResults() {
     resultsTabs_->setTabText(0,text("editorResultsTabMovements"));
     resultsTabs_->setTabText(1,text("editorResultsTabDischarge"));
     resultsTabs_->setTabText(2,text("editorResultsTabClamps"));
+    resultsTabs_->setTabText(3,text("editorResultsTabBatch"));
     dischargeTable_->setHorizontalHeaderLabels({text("editorDischargeHead"),text("editorDischargeLane"),
         text("editorDischargeGreens"),text("editorDischargeEstimates"),text("editorDischargeHeadway"),
         text("editorDischargeRate"),text("editorDischargeStartup"),text("editorDischargeReasons")});
     clampTable_->setHorizontalHeaderLabels({text("editorClampTime"),text("editorClampVehicle"),
         text("editorClampType"),text("editorClampRoute"),text("editorClampSegment")});
+    translateBatch();
     refreshResults();
 }
 void EditorWindow::refreshResults() {
@@ -103,7 +91,7 @@ void EditorWindow::refreshResults() {
     // 3,000 Steps): -11% of the Run view's time per Step, -28% of the action.
     if(!resultsPage_ || !resultsPage_->isVisible())return;
     // Only the inner tab on show is rebuilt; switching tabs refreshes the new one.
-    refreshDischarge(); refreshClamps();
+    refreshDischarge(); refreshClamps(); refreshBatch();
     if(!movementTable_->isVisible())return;
     const auto report=runReport();
     if(!report){
