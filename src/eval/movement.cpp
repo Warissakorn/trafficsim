@@ -8,7 +8,8 @@ namespace { constexpr auto npos = std::numeric_limits<std::size_t>::max(); }
 double tripDelay(const ArrivedEvent& a) {
     return std::max(0.0, a.travelTime + a.departureDelay - a.freeFlowTime);
 }
-double queueLength(std::vector<QueuedVehicle> vehicles, double maxGap) {
+namespace {
+double walkQueue(std::vector<QueuedVehicle>& vehicles, double maxGap) {
     std::sort(vehicles.begin(), vehicles.end(), [](const auto& a, const auto& b) {
         return a.upstream < b.upstream;
     });
@@ -21,6 +22,8 @@ double queueLength(std::vector<QueuedVehicle> vehicles, double maxGap) {
     }
     return length;
 }
+}
+double queueLength(std::vector<QueuedVehicle> vehicles, double maxGap) { return walkQueue(vehicles, maxGap); }
 MovementAccumulator::MovementAccumulator(EvaluationSpec spec)
     : spec_(std::move(spec)), count_(spec_.movementNames.size()),
       delay_(spec_.movementNames.size()), travel_(spec_.movementNames.size()),
@@ -77,15 +80,20 @@ void MovementAccumulator::observe(const SimState& state) {
     queued_ = std::move(queued);
     // Per line, the vehicles whose route crosses it; an approach is the max over its lines.
     std::vector<double> length(spec_.counters.size());
+    // A front already past the line never enters the walk, and with no queued vehicle the walk
+    // stops at its first one, so both are settled here without sorting.
     for (const auto& line : lines_) {
-        std::vector<QueuedVehicle> behind;
+        behind_.clear();
+        bool anyQueued = false;
         for (std::size_t i = 0; i < state.vehicles.size(); ++i) {
             const auto& v = state.vehicles[i];
             const double at = line.atRoute[v.routeIndex];
-            if (std::isnan(at)) continue;
-            behind.push_back({at - v.distance, s.vehicleTypes[v.typeIndex].length, queuedNow[i]});
+            if (std::isnan(at) || at - v.distance < 0) continue;
+            anyQueued = anyQueued || queuedNow[i];
+            behind_.push_back({at - v.distance, s.vehicleTypes[v.typeIndex].length, queuedNow[i]});
         }
-        length[line.counter] = std::max(length[line.counter], queueLength(std::move(behind), spec_.queue.maxGap));
+        if (!anyQueued) continue;
+        length[line.counter] = std::max(length[line.counter], walkQueue(behind_, spec_.queue.maxGap));
     }
     for (std::size_t c = 0; c < length.size(); ++c) {
         queueSum_[c] += length[c]; queueMax_[c] = std::max(queueMax_[c], length[c]);

@@ -71,5 +71,7 @@ private:
     // Last observed queue state, sorted by vehicle id: a vector, not a map, because it is rebuilt
     // every tick and a node per vehicle was most of observe()'s cost.
     std::vector<std::pair<std::uint64_t, bool>> queued_;
+    // One line's candidates, reused across lines and ticks so observe() allocates nothing here.
+    std::vector<QueuedVehicle> behind_;
 };
 }
