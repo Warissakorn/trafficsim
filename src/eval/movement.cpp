@@ -68,9 +68,16 @@ void MovementAccumulator::observe(const SimState& state) {
     std::vector<bool> queuedNow(state.vehicles.size());
     std::vector<std::pair<std::uint64_t, bool>> queued;
     queued.reserve(state.vehicles.size());
+    // Both lists are in id order from the engine, so one forward walk finds every previous entry;
+    // a hand-built fleet out of order falls back to a search from the start.
+    auto cursor = queued_.begin();
+    bool ordered = true;
     for (std::size_t i = 0; i < state.vehicles.size(); ++i) {
         const auto& v = state.vehicles[i];
-        const auto before = std::lower_bound(queued_.begin(), queued_.end(), std::pair{v.id, false}, byId);
+        if (i && v.id < state.vehicles[i - 1].id) ordered = false;
+        if (ordered) while (cursor != queued_.end() && cursor->first < v.id) ++cursor;
+        const auto before = ordered ? cursor
+            : std::lower_bound(queued_.begin(), queued_.end(), std::pair{v.id, false}, byId);
         const bool was = before != queued_.end() && before->first == v.id && before->second;
         queuedNow[i] = was ? v.speed <= spec_.queue.endSpeed : v.speed < spec_.queue.beginSpeed;
         queued.emplace_back(v.id, queuedNow[i]);
