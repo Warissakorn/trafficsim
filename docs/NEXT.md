@@ -58,14 +58,15 @@ hashed onto each vehicle when a scenario holds `w74` (D132, BA26,
 [evidence](evidence/w74-composition.md)): one `follow` dispatcher, gap accessors, leader
 acceleration and `w74State`; the Run refusal is lifted. Not validated. BA27 is recorded
 ([evidence](evidence/w74-discharge.md)) and a winning courtesy hold now has a fixture; every
-BA21–BA29 row has focused evidence. The record found **W74 clamps more** on the four-leg
-project (9.4 per run at dt 0.1, 14.8 at dt 0.5, against the prototype's ≈5.5), with
-uncited fixture parameter values. Next, before any preset: trace those clamps (which
-obstacle, regime and step; `tools/t_junction_clamps.cpp` is the pattern) and write
-failure-first rows if one is an engine defect rather than the parameter set. Then, as the
-owner chooses: W74 parameter editing in the dialog, or a cited, uncalibrated `w74` preset
+BA21–BA29 row has focused evidence. W74 clamps more on the four-leg project (9.4 per run
+at dt 0.1, 14.8 at dt 0.5, prototype ≈5.5); the [trace](evidence/w74-clamps.md) found **no
+W74 defect**: 83–96 % are amber heads (held as red, no commitment test) met more often by
+W74's slower fixture discharge, the rest the standstill cap treating a moving leader as
+standing (D105's recorded case) met by W74's gentle emergency braking. Changing either rule
+is an owner decision with its own contract (it moves prototype trajectories, BA18). Next, as
+the owner chooses: W74 parameter editing in the dialog, or a cited, uncalibrated `w74` preset
 in `data/driver-behaviour/` (its values need a source; the fixture's 15 uncited values are
-not one). Then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs
+not one; rerun `trafficsim-w74-clamp-trace` with them). Then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs
 in §1. Keep prototype runs byte-identical (BA18). PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
@@ -270,7 +271,12 @@ In order:
 6. **The M2.6 template** (`data/projects/m2.6-study-template.traffic.json`) has placeholder
    volumes, a guessed timing-window-to-approach mapping and no aerial image. Replace them before
    using it for a real study.
-7. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
+7. **Amber and the standstill cap** ([W74 clamp trace](evidence/w74-clamps.md), 2026-10-08):
+   a non-green head holds as red with no commitment test, and the hard cap treats a moving
+   leader as standing. Both clamp in every model; W74 meets them more. Changing either needs
+   its own contract and failure-first rows and moves prototype trajectories (BA18). Not
+   required for W74; decide only if the clamp counts matter for a study.
+8. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
    Thai counts are motorcycle-heavy); continuous-time or multiple same-Link routing stations beyond M2.1.3.
 
 M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's use in M2.6);

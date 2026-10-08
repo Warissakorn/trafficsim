@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — The extra W74 clamps traced: no W74 defect
+
+Evidence only; no engine change. `tools/w74_clamp_trace.cpp` attributes every safety clamp
+of the BA27 runs (2,053, all moving) to the obstacle setting the smallest allowance, from the
+tick's rebuilt snapshot, and records each amber onset. All 240 runs match BA27's counts; none
+is unexplained. 83–96 % are amber heads, held as red with no commitment test: W74's slower
+fixture discharge leaves a queue at 16–19 % of amber onsets (prototype under 0.1 %), so more
+onsets catch a vehicle that cannot stop. The rest are the standstill cap treating a moving
+leader as standing (D105's recorded case), met by W74's gentle emergency braking near `AX`.
+Neither rule changed (BA18); NEXT §2 holds it as an owner decision. The sweep now shares its
+document setup with the trace and stays byte-identical. See [evidence](evidence/w74-clamps.md).
+
+---
+
 ## 2026-10-08 — W74 timestep record, BA27, and the courtesy fixture
 
 Evidence only; no engine change. `tools/w74_discharge_sweep.cpp` runs the four-leg project,
@@ -452,26 +466,6 @@ nlohmann/json are local build dependencies, not committed repository changes. Qt
 unavailable locally; native desktop CI and owner appearance remain separate. These checks
 are interval/segment checks, not cross-path 2D collision proof. No owner/M0/M3/M6 gate or
 fidelity claim is closed.
-
----
-
-## 2026-10-05 — Current contracts separated from obsolete reference text
-
-Owner requested removal of unnecessary/stale documentation content. The old migration
-and M1.21 reference snapshots and the complete historical M0 backlog/question register
-are retained in archive; current references no longer act as a second live queue.
-NETWORK_EDITOR now states codec reads 1–19 and writes 17/18/19 by feature, matching
-document.cpp. Unsupported topology is distinguished from supported merge/crossing
-controls; owner gates link to their maintained status rather than repeating stale claims.
-SIMULATION's summary, Connector equation/section geometry, downstream routing and
-scheduled-demand semantics are reconciled with the existing contracts and code.
-Route-only Link reversal is documented with its actual positional-reference blockers;
-lane removal, markings and accent-colour guidance are corrected from commands/tests/style.
-Dated audit findings remain dated, and all decision/gate/source-spec/evidence/fixture
-records are preserved. No runtime code, gate result or task priority changes.
-Validation: documentation links/anchors/index coverage, retained archive blocks and
-regression evidence, source-spec/data/fixture hashes, file-size guard and diff whitespace.
-Native CI runs separately; no local CTest claim (CMake/CTest are unavailable).
 
 ---
 
