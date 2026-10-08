@@ -8,6 +8,7 @@ entry behind what you are changing, not the directory.
 - [`PROGRESS-2026-10-05-d112.md`](PROGRESS-2026-10-05-d112.md) — D112 oldest live catalog entry, moved whole 2026-10-08
 - [`PROGRESS-2026-10-05-d113.md`](PROGRESS-2026-10-05-d113.md) — D113 time-varying compositions entry, moved whole 2026-10-08
 - [`PROGRESS-2026-10-05-ai-instructions.md`](PROGRESS-2026-10-05-ai-instructions.md) — shared AI instructions and documentation authority entry, moved whole 2026-10-08
+- [`PROGRESS-2026-10-05-doc-folders.md`](PROGRESS-2026-10-05-doc-folders.md) — documentation folders and indexed decision record entry, moved whole 2026-10-08
 
 - [`PROGRESS-2026-10-05-d111.md`](PROGRESS-2026-10-05-d111.md) — D111 oldest live Demand correctness entry, moved whole 2026-10-07
 

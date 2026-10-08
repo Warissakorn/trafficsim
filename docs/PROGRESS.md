@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 composed into the tick, BA23–BA25/BA28 (D133)
+
+Fourth M3.3.3a slice: W74 now runs. `follow` dispatches by `DriverBehaviour::w74`;
+`standstillGap`/`desiredGap` replace every direct prototype-field read in the tick (source
+and D108, motion, second obstacle, lane-change checks, dead end, discretionary gain,
+waiting room, receiving space, `stopLineReach`). Leader acceleration rides on
+`OccupiedSpan` and `CourtesyHold`; static obstacles write 0. `Vehicle::w74State` comes from
+the kept result at publish. D131's Run refusal and its message are gone. A first run-level
+Stop test passed without the standstill override; the §7 case (at rest 3.3 m short) was
+added and now fails without it. Prototype bytes unchanged. Headless 69/69, desktop 100/100
+(Linux). See [evidence](evidence/w74-composition.md). Not validated.
+
+---
+
 ## 2026-10-08 — W74 driver traits, BA26 (D132)
 
 Third M3.3.3a slice. `w74Traits(seed, id, driverFactor)` implements §5's splitmix64 hash and
@@ -458,27 +472,6 @@ Existing evidence and frozen fixtures are retained. Decision-ID navigation is wr
 for source readability without changing any link or decision row.
 Validation: documentation guard, file-size guard, retained source-spec hashes,
 Git ignore checks for generated output versus evidence and `git diff --check`.
-
----
-
-## 2026-10-05 — Documentation folders and indexed decision record
-
-Second part of the owner's authorized documentation plan. Current references/contracts,
-milestone plans/gates and dated audits now have separate indexed folders. The complete
-decision rows move once into decisions/RECORD with stable D-number anchors; PROGRESS's
-Decisions heading remains a compatibility pointer. Historical backlog/questions remain
-marked as dated context, not another live queue. Relative links and source-comment doc
-pointers follow the moves; supplied spec parts, evidence data and frozen tests stay intact.
-ROADMAP keeps its consolidated dated review, respecting the prior owner's instruction.
-NEXT's Demand priority, owner checks and work ordering are unchanged.
-Validation: Markdown links/anchors and index coverage, three retained source-spec hashes,
-decision/session retention, unchanged fixtures/data, file-size guard and diff whitespace.
-No local CTest claim; CMake/CTest are unavailable. Native CI and owner observations remain
-separate, and no milestone is closed by this maintenance.
-The Qt-free C++ documentation guard is included in `check`/CTest on Linux and Windows.
-Its positive/negative fixtures cover broken paths, stale/duplicate/explicit anchors,
-encoded fragments, fenced examples and missing index entries; GCC compilation and
-direct guard/self-test execution pass locally.
 
 ---
 

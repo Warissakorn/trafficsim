@@ -9,6 +9,7 @@ struct VehicleLocation { std::string segmentId; double position{}; };
 struct OccupiedSpan {
     std::uint64_t vehicleId{}; std::size_t segmentIndex{};
     double rear{}, front{}, speed{};
+    double acceleration{}; // the snapshot's, so a follower's Leader carries it (W74.md §2)
 };
 std::vector<RoutePart> routeParts(const Scenario& scenario, const Route& route);
 // Resolved once per run; parts[i] corresponds to scenario.routes[i].

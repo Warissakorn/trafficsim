@@ -29,6 +29,7 @@ std::vector<LaneChange> decideLaneChanges(const Scenario&, const ScenarioIndex&,
 struct CourtesyHold {
     double gap{std::numeric_limits<double>::infinity()}, speed{};
     bool moving{};
+    double acceleration{}; // a moving changer's; 0 for a waiting one (W74.md §2)
 };
 // Cooperation (contract §2): for each vehicle, the nearest place it holds back from; gap
 // +infinity for none. For a stub vehicle waiting at its dead end, the nearest vehicle behind its

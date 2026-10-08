@@ -70,6 +70,11 @@ Json checkpointJson(const SimState& state) {
         if(!vehicle.passedDecisions.empty())j["passedDecisions"]=vehicle.passedDecisions;
         j["enteredTime"] = vehicle.enteredTime; j["distance"] = vehicle.distance;
         j["speed"] = vehicle.speed; j["acceleration"] = vehicle.acceleration; j["mode"] = modeName(vehicle.mode);
+        // Only on a w74 road (W74.md §9), so prototype checkpoints keep their bytes.
+        if (const auto& w = vehicle.w74State) {
+            static constexpr const char* regimes[] = {"free", "approaching", "following", "emergency"};
+            j["w74State"] = {{"regime", regimes[static_cast<int>(w->regime)]}, {"sign", w->sign}};
+        }
         vehicles.push_back(std::move(j));
     }
     for (std::size_t i = 0; i < state.inputs.size(); ++i) {

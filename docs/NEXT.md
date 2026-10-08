@@ -54,13 +54,14 @@ still 0 everywhere. The schema-22 codec and BA29 are done (D131,
 [evidence](evidence/w74-codec.md)): a file stores `w74` behaviours, Run refuses one in use
 (`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), the dialog shows it read-only. Driver traits are
 hashed onto each vehicle when a scenario holds `w74` (D132, BA26,
-[evidence](evidence/w74-traits.md)); nothing reads them yet. Next, the composition slice:
-fill `Leader::acceleration` at every construction site (BA28's last clause, failure-first),
-add `Vehicle::w74State` written only at publish, the `standstillGap`/`desiredGap` accessors
-and one `followingAcceleration(..., behaviour, ...)` dispatcher for every consumer (W74.md
-§6–§7), then lift the Run refusal; rows BA23–BA25 and BA28. Record BA27's timestep
-sensitivity after it. It is the largest slice: split off the `Leader` filling first if it
-grows. W74 parameter editing in the dialog is a separate UI slice. Keep prototype runs
+[evidence](evidence/w74-traits.md)). **W74 runs** since D133 (BA23–BA25/BA28,
+[evidence](evidence/w74-composition.md)): one `follow` dispatcher, gap accessors, leader
+acceleration and `w74State`; the Run refusal is lifted. Not validated. Next: record BA27 —
+a queue-discharge fixture with a `w74` behaviour at dt 0.1/0.25/0.5 via `--discharge`,
+seeds 42–81, sensitivity recorded with no bound or calibration claim; add a courtesy-tie
+fixture for a w74 follower (D133 left it uncovered). Then, as the owner chooses: W74
+parameter editing in the dialog, or a cited, uncalibrated `w74` preset in
+`data/driver-behaviour/`. The owner's Windows look at a `w74` run belongs in §1. W74 parameter editing in the dialog is a separate UI slice. Keep prototype runs
 byte-identical (BA18); do not ship a preset in the same slice. The owner may want to
 read §5 (traits) and §7 (sign hysteresis) before the runtime slices. PCU/calibration
 gates remain open.

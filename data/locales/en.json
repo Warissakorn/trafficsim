@@ -567,7 +567,6 @@
   "editorDemandDeferredRoute": "Chosen at routing line",
   "ROUTING_POSITION_IN_CONFLICT": "Place the routing line outside an active conflict area.",
   "UNSUPPORTED_BEHAVIOUR_MODEL": "This driving behaviour names a following model this version cannot read. Only \"prototype\", and \"w74\" from schema 22, are supported; the file is not opened rather than run with a different model.",
-  "UNSUPPORTED_BEHAVIOUR_MODEL_RUN": "This driving behaviour uses the w74 model, which can be saved but not simulated yet. Give the vehicle types and roads that use it a prototype behaviour to run.",
   "INVALID_BEHAVIOUR_PARAMETER": "This w74 parameter is missing, not a number, or outside its allowed range.",
   "EXTERNAL_BEHAVIOUR_CATALOG": "Vehicle classes, link behaviour types and road assignments need the project's own behaviours and vehicle types. Copy the catalogs into the project first.",
   "DUPLICATE_CLASS_MEMBERSHIP": "This vehicle type is already in another vehicle class. A type belongs to at most one class.",
