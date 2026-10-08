@@ -3,9 +3,10 @@
 //
 //   trafficsim-w74-clamp-trace <w74 behaviour.json> <project.traffic.json> <data dir> <out.jsonl>
 //
-// One line per SafetyClampEvent, prototype and w74 x dt 0.1/0.25/0.5 x seeds 42-81. Each
-// obstacle the tick's phase 1 caps a move by is recomputed from the pre-step snapshot with
-// core's public functions; the clamp is attributed to the one setting the smallest allowance.
+// One "clamp" line per SafetyClampEvent and one "onset" line per head turning amber, prototype
+// and w74 x dt 0.1/0.25/0.5 x seeds 42-81. Each obstacle the tick's phase 1 caps a move by is
+// recomputed from the pre-step snapshot with core's public functions; the clamp is attributed to
+// the one setting the smallest allowance.
 // The published move must equal that allowance, else the line says phase-2 (a later cap) or
 // unexplained -- never dropped. Lane changes and route decisions inside the tick are flagged.
 #include "w74_fixture_document.hpp"
@@ -16,6 +17,7 @@
 #include "../src/core/simulation.hpp"
 #include "../src/project/run.hpp"
 #include <iostream>
+#include <set>
 using namespace trafficsim;
 namespace {
 void require(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
@@ -83,7 +85,7 @@ void trace(std::ostream& out, const std::string& model, double dt, std::uint32_t
         const auto& behaviour = scenario.behaviours[refs[v].behaviour];
         const auto& parts = index.parts[refs[v].route];
         const bool inserted = has<DepartedEvent>(after, vehicle.id);
-        nlohmann::ordered_json j{{"model", model}, {"dt", dt}, {"seed", seed}, {"tick", before.tick},
+        nlohmann::ordered_json j{{"kind", "clamp"}, {"model", model}, {"dt", dt}, {"seed", seed}, {"tick", before.tick},
             {"time", before.time}, {"vehicleId", vehicle.id}, {"type", scenario.vehicleTypes[refs[v].type].id},
             {"route", scenario.routes[refs[v].route].id}, {"inserted", inserted},
             {"laneChange", has<LaneChangeEvent>(after, vehicle.id)}, {"distance", vehicle.distance},
@@ -184,6 +186,36 @@ void trace(std::ostream& out, const std::string& model, double dt, std::uint32_t
         out << j.dump() << '\n';
     }
 }
+// Each head turning amber at this tick's start: who is upstream of it within kOnsetReach. A
+// vehicle "cannot stop" when its stopping distance at type.maxDeceleration, after the tick's
+// own step at its current speed, passes the line -- the amber clamp's precondition, approximately.
+constexpr double kOnsetReach = 150, kQueuedSpeed = 2;
+void onsets(std::ostream& out, const std::string& model, double dt, std::uint32_t seed, const SimState& s) {
+    const auto& scenario = *s.scenario; const auto& index = *s.index;
+    for (std::size_t h = 0; h < scenario.signalHeads.size(); ++h) {
+        const auto& program = scenario.signalPrograms[index.programOfHead[h]];
+        if (s.tick == 0 || signalColorAt(program, s.time) != SignalColor::amber ||
+            signalColorAt(program, s.time - dt) != SignalColor::green) continue;
+        std::size_t upstream = 0, queued = 0, cannotStop = 0;
+        std::optional<std::pair<double, double>> nearest; // gap, speed
+        std::set<std::uint64_t> seen;
+        for (const auto& v : s.vehicles)
+            for (const auto& rh : index.routeHeads[v.routeIndex]) {
+                if (rh.headIndex != h || seen.contains(v.id)) continue;
+                const double gap = rh.partStart + scenario.signalHeads[h].position - v.distance;
+                if (gap < -1e-9 || gap > kOnsetReach) continue;
+                seen.insert(v.id); ++upstream; queued += v.speed < kQueuedSpeed;
+                const double stop = v.speed * dt + v.speed * v.speed / (2 * scenario.vehicleTypes[v.typeIndex].maxDeceleration);
+                cannotStop += stop > gap;
+                if (!nearest || gap < nearest->first) nearest = std::pair{gap, v.speed};
+            }
+        nlohmann::ordered_json j{{"kind", "onset"}, {"model", model}, {"dt", dt}, {"seed", seed}, {"tick", s.tick},
+            {"time", s.time}, {"head", scenario.signalHeads[h].id}, {"upstream", upstream}, {"queued", queued},
+            {"cannotStop", cannotStop}};
+        if (nearest) j["nearest"] = {{"gap", nearest->first}, {"speed", nearest->second}};
+        out << j.dump() << '\n';
+    }
+}
 }
 int main(int argc, char** argv) {
     if (argc != 5) {
@@ -203,6 +235,7 @@ int main(int argc, char** argv) {
                 for (std::uint32_t seed = 42; seed <= 81; ++seed) {
                     auto s = createSimulation(snap.scenario, seed);
                     while (s.tick < totalTicks(snap.scenario)) {
+                        onsets(out, model, dt, seed, s);
                         auto next = stepSimulation(s);
                         trace(out, model, dt, seed, s, next);
                         s = std::move(next);
