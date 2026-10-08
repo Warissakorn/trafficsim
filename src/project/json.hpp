@@ -17,7 +17,13 @@ bool present(const Json& value, const char* name); // an absent or null member i
 // the key alone would silently turn "0.4" of a lane into 0.4 metres.
 Network parseNetwork(const Json& value, int schemaVersion);
 ScenarioDefinition parseDefinition(const Json& value);
-DriverBehaviour parseBehaviour(const Json& value);
+// The `model` key selects the keys (D131): absent or "prototype" reads the prototype's, "w74" the
+// 18 W74 keys (INVALID_BEHAVIOUR_PARAMETER when one is missing). Each model's keys are refused on
+// the other (EDIT_UNSUPPORTED_FIELD); any other model is UNSUPPORTED_BEHAVIOUR_MODEL. `path`
+// names the entry in those issues.
+DriverBehaviour parseBehaviour(const Json& value, const std::string& path = "behaviour");
+inline constexpr const char* kPrototypeBehaviourModel = "prototype";
+inline constexpr const char* kW74BehaviourModel = "w74";
 PriorityDefaults parsePriorityDefaults(const Json& value);
 // EDIT_UNSUPPORTED_FIELD for any key outside `keys`, whatever the schema (M3.3.2a strict sections).
 void requireKnownFields(const Json& value, std::initializer_list<const char*> keys, const std::string& path);

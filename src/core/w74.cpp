@@ -3,6 +3,51 @@
 #include <cmath>
 
 namespace trafficsim {
+namespace {
+// Contract §5 ranges, one per key.
+enum class Range { positive, nonNegative, atLeastOne, nonPositive, unit };
+struct KeyRange { W74Key key; Range range; };
+const std::vector<KeyRange>& keyRanges() {
+    using P = W74Parameters;
+    static const std::vector<KeyRange> table{
+        {{"ax", &P::ax}, Range::positive}, {{"bxAdd", &P::bxAdd}, Range::positive},
+        {{"bxMult", &P::bxMult}, Range::nonNegative}, {{"exAdd", &P::exAdd}, Range::atLeastOne},
+        {{"exMult", &P::exMult}, Range::nonNegative}, {{"cxAdd", &P::cxAdd}, Range::positive},
+        {{"cxMult", &P::cxMult}, Range::nonNegative}, {{"opdvAdd", &P::opdvAdd}, Range::positive},
+        {{"opdvMult", &P::opdvMult}, Range::nonNegative}, {{"dMax", &P::dMax}, Range::positive},
+        {{"bMaxAdd", &P::bMaxAdd}, Range::positive}, {{"bMaxMult", &P::bMaxMult}, Range::nonNegative},
+        {{"bMaxSpeedRoot", &P::bMaxSpeedRoot}, Range::nonNegative}, {{"bNullAdd", &P::bNullAdd}, Range::positive},
+        {{"bNullMult", &P::bNullMult}, Range::nonNegative}, {{"bMinAdd", &P::bMinAdd}, Range::nonPositive},
+        {{"leaderAccelerationWeight", &P::leaderAccelerationWeight}, Range::unit},
+        {{"emergencyLeaderWeight", &P::emergencyLeaderWeight}, Range::unit}};
+    return table;
+}
+bool inRange(double v, Range range) {
+    if (!std::isfinite(v)) return false;
+    switch (range) {
+    case Range::positive: return v > 0;
+    case Range::nonNegative: return v >= 0;
+    case Range::atLeastOne: return v >= 1;
+    case Range::nonPositive: return v <= 0;
+    case Range::unit: return v >= 0 && v <= 1;
+    }
+    return false;
+}
+}
+const std::vector<W74Key>& w74ParameterKeys() {
+    static const std::vector<W74Key> keys = [] {
+        std::vector<W74Key> result;
+        for (const auto& k : keyRanges()) result.push_back(k.key);
+        return result;
+    }();
+    return keys;
+}
+std::vector<ValidationIssue> w74ParameterIssues(const W74Parameters& p, const std::string& path) {
+    std::vector<ValidationIssue> issues;
+    for (const auto& k : keyRanges())
+        if (!inRange(p.*k.key.member, k.range)) issues.push_back({"INVALID_BEHAVIOUR_PARAMETER", path + "." + k.key.name});
+    return issues;
+}
 W74Thresholds w74Thresholds(double speed, double gap, const VehicleType& type,
     const W74Parameters& p, const W74Traits& z) {
     W74Thresholds t{};

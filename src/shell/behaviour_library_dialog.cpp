@@ -50,6 +50,14 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
     struct Field { double* value; QDoubleSpinBox* spin; };
     std::vector<Field> fields;
     auto staged = b;
+    // D131: a w74 behaviour's keys are not editable here yet; only its name is, and its values
+    // pass through unchanged.
+    if (b.w74) {
+        note(dialog, form, text("editorBehaviourW74ReadOnly").toStdString(), "editorBehaviourW74ReadOnly");
+        okCancel(dialog, form, text);
+        if (dialog.exec() != QDialog::Accepted) return false;
+        name = label->text().trimmed().toStdString(); return true;
+    }
     for (const auto& [key, value] : std::vector<std::pair<const char*, double*>>{
              {"standstillDistance", &staged.standstillDistance}, {"additiveSafetyDistance", &staged.additiveSafetyDistance},
              {"multiplicativeSafetyDistance", &staged.multiplicativeSafetyDistance}, {"followingTime", &staged.followingTime},

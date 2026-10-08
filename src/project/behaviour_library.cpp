@@ -1,5 +1,6 @@
 #include "behaviour_library.hpp"
 #include "../core/validate.hpp"
+#include "../core/w74.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <map>
@@ -40,8 +41,12 @@ template<class Road> void roadIssues(const std::vector<Road>& roads, const char*
             issues.push_back({"UNKNOWN_BEHAVIOUR_TYPE", at(base, i) + ".behaviourType"});
 }
 }
+bool ownsW74Behaviour(const ProjectDocument& d) {
+    return d.definition && !d.definition->externalBehaviours &&
+        std::any_of(d.definition->behaviours.begin(), d.definition->behaviours.end(), [](const auto& b) { return b.w74.has_value(); });
+}
 bool usesBehaviourLibrary(const ProjectDocument& d) {
-    if (assigned(d.network.links) || assigned(d.network.connectors)) return true;
+    if (assigned(d.network.links) || assigned(d.network.connectors) || ownsW74Behaviour(d)) return true;
     return d.definition && (!d.definition->behaviourNames.empty() || !d.definition->vehicleClasses.empty() ||
                             !d.definition->linkBehaviourTypes.empty());
 }
@@ -57,16 +62,35 @@ void rejectBehaviourLibraryBefore21(const Json& j) {
             if (behaviours[i].is_object() && behaviours[i].contains(key))
                 throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", at("behaviours", i) + "." + key}});
 }
+void rejectW74Before22(const Json& j) {
+    if (!j.contains("definition") || !j.at("definition").is_object()) return;
+    const auto& definition = j.at("definition");
+    if (!definition.contains("behaviours") || !definition.at("behaviours").is_array()) return;
+    const auto& behaviours = definition.at("behaviours");
+    for (std::size_t i = 0; i < behaviours.size(); ++i)
+        if (behaviours[i].is_object() && behaviours[i].contains("model") && behaviours[i].at("model") == kW74BehaviourModel)
+            throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", at("behaviours", i) + ".model"}});
+}
 void parseBehaviourLibrary(const Json& j, AuthoringDefinition& d) {
     if (j.contains("behaviours")) {
         const auto& behaviours = list(j, "behaviours");
         for (std::size_t i = 0; i < behaviours.size(); ++i) {
             const auto& b = behaviours[i]; const auto path = at("behaviours", i);
-            requireKnownFields(b, {"id", "name", "model", "standstillDistance", "additiveSafetyDistance",
-                "multiplicativeSafetyDistance", "followingTime", "speedThreshold", "maxDecelerationCooperativeBraking",
-                "discretionaryLaneChangeThreshold", "acceptedDecelerationTrailingVehicle", "discretionaryLaneChangeHoldTime"}, path);
-            // The model is explicit from schema 21: a missing or future model is never read as the prototype.
-            if (!b.contains("model") || !b.at("model").is_string() || b.at("model") != kPrototypeBehaviourModel)
+            // Every model's keys are known here; parseBehaviour already refused the other model's.
+            for (const auto& [key, unused] : b.items()) {
+                (void)unused;
+                static constexpr const char* common[] = {"id", "name", "model", "standstillDistance",
+                    "additiveSafetyDistance", "multiplicativeSafetyDistance", "followingTime", "speedThreshold",
+                    "maxDecelerationCooperativeBraking", "discretionaryLaneChangeThreshold",
+                    "acceptedDecelerationTrailingVehicle", "discretionaryLaneChangeHoldTime"};
+                const auto& w74 = w74ParameterKeys();
+                if (std::none_of(std::begin(common), std::end(common), [&](const char* k) { return key == k; }) &&
+                    std::none_of(w74.begin(), w74.end(), [&](const auto& k) { return key == k.name; }))
+                    throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", path + "." + key}});
+            }
+            // The model is explicit from schema 21: a missing or unknown model is never read as the prototype.
+            if (!b.contains("model") || !b.at("model").is_string() ||
+                (b.at("model") != kPrototypeBehaviourModel && b.at("model") != kW74BehaviourModel))
                 throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", path + ".model"}});
             if (const auto name = text(b, "name", false); !name.empty()) d.behaviourNames[text(b, "id")] = name;
         }
@@ -105,7 +129,9 @@ void parseBehaviourLibrary(const Json& j, AuthoringDefinition& d) {
 void addBehaviourLibraryJson(const AuthoringDefinition& d, Json& j) {
     if (!d.externalBehaviours && j.contains("behaviours"))
         for (auto& b : j["behaviours"]) {
-            b["model"] = kPrototypeBehaviourModel;
+            const auto id = b.at("id").get<std::string>();
+            const auto owned = std::find_if(d.behaviours.begin(), d.behaviours.end(), [&](const auto& x) { return x.id == id; });
+            b["model"] = owned != d.behaviours.end() && owned->w74 ? kW74BehaviourModel : kPrototypeBehaviourModel;
             if (const auto name = d.behaviourNames.find(b.at("id").get<std::string>()); name != d.behaviourNames.end())
                 b["name"] = name->second;
         }

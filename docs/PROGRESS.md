@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 schema-22 codec, BA29 (D131)
+
+The second M3.3.3a slice, codec only by the owner's choice. `DriverBehaviour::w74`
+(`std::optional<W74Parameters>`) is the model tag; the W74 value types moved into
+`types.hpp` so it can hold them. `parseBehaviour` dispatches on `model`, refuses each
+model's keys on the other, and reads the 18 keys from `w74ParameterKeys()`, the same table
+the serializer and §5 range check use. Schema 22 is written only when an owned behaviour is
+`w74`; below 22 one is `UNSUPPORTED_BEHAVIOUR_MODEL`. Run refuses a `w74` behaviour a
+vehicle type or road selection uses (`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), never runs it as the
+prototype; an unused one changes nothing. The dialog shows a `w74` behaviour read-only
+except its name. Why each choice: D131. Qt was installed in this container, so desktop
+UI suites ran (Linux offscreen): headless 67/67, desktop 98/98, CLI seed 42 and shipped
+projects byte-identical. See [evidence](evidence/w74-codec.md).
+
+---
+
 ## 2026-10-08 — W74 pure function, BA21–BA22 (D130)
 
 Review first: a clean checkout configured only after installing `nlohmann-json3-dev`
@@ -450,24 +466,6 @@ The Qt-free C++ documentation guard is included in `check`/CTest on Linux and Wi
 Its positive/negative fixtures cover broken paths, stale/duplicate/explicit anchors,
 encoded fragments, fenced examples and missing index entries; GCC compilation and
 direct guard/self-test execution pass locally.
-
----
-
-## 2026-10-05 — Shared AI instructions and documentation authority
-
-Owner authorized the documentation organization plan. AGENTS.md is the shared entry
-point; CLAUDE.md delegates to it. Standing rules and model invariants are retained,
-while detailed status is read from NEXT/ROADMAP. The documentation map now selects
-context by task and the decision index locates existing D-numbers without copying
-their reasoning. README's codec range is corrected to schemas 1–19, matching
-`documentFromJson`; feature-dependent legacy save versions remain unchanged.
-The owner's current task explicitly takes priority over the standing session queue.
-No product scope, gate, owner review or engine behaviour is changed.
-Three pre-existing archive links are repaired. The source-spec parts stay byte-identical:
-Network Editor's existing D38 edit is now explicit in README/manifest, retaining the
-original hash plus a retained-copy hash and its authorizing commit.
-Validation: local Markdown links/anchors, source-spec hashes, file-size guard and
-`git diff --check`. No local CTest claim: CMake/CTest are unavailable in this workspace.
 
 ---
 

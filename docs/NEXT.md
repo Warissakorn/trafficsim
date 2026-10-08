@@ -49,12 +49,14 @@ override, assign it to several roads, check the effective list, Undo/Redo, delet
 with replacement, switch to Thai, save and reopen, then run.
 The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)). The pure
 `w74Acceleration`/`w74Thresholds` exist in `src/core/w74.hpp` with BA21–BA22 focused
-evidence (D130, [evidence](evidence/w74-pure-function.md)); no run calls them and
-`Leader::acceleration` is still 0 everywhere. Next, one slice each: the schema-22 codec
-and BA29 (a `model` key on `DriverBehaviour` holding `std::optional<W74Parameters>`;
-prototype/W74 key exclusivity; `UNSUPPORTED_BEHAVIOUR_MODEL` below 22; schema 22 only
-when used), then the trait hash/state and BA24–BA26, composition and BA28 (fill every
-`Leader` site first), and record BA27's timestep sensitivity. Keep prototype runs
+evidence (D130, [evidence](evidence/w74-pure-function.md)); `Leader::acceleration` is
+still 0 everywhere. The schema-22 codec and BA29 are done (D131,
+[evidence](evidence/w74-codec.md)): a file stores `w74` behaviours, Run refuses one in use
+(`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), the dialog shows it read-only. Next, one slice
+each: the §5 trait hash (`W74Traits` on `PendingVehicle`, splitmix64 + Irwin–Hall, never
+touching `randomState`) with `W74State` on `Vehicle`, and BA24–BA26; then composition and
+BA28 (fill every `Leader` site first, then lift the Run refusal), and record BA27's
+timestep sensitivity. W74 parameter editing in the dialog is a separate UI slice. Keep prototype runs
 byte-identical (BA18); do not ship a preset in the same slice. The owner may want to
 read §5 (traits) and §7 (sign hysteresis) before the runtime slices. PCU/calibration
 gates remain open.
