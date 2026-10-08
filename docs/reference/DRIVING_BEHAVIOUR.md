@@ -203,7 +203,7 @@ vehicle type, class, behaviour type and override rejects unknown keys.
 
 | Location | Key | Meaning |
 |---|---|---|
-| `definition.behaviours[]` | `model` | Required from 21; only `"prototype"` (the shipped prototype). Anything else or absent → `UNSUPPORTED_BEHAVIOUR_MODEL` |
+| `definition.behaviours[]` | `model` | Required from 21: `"prototype"`, or `"w74"` from schema 22 ([W74 §9](W74.md#9-persistence), D136). Anything else or absent → `UNSUPPORTED_BEHAVIOUR_MODEL` |
 | `definition.behaviours[]` | `name` | Optional display name |
 | `definition.vehicleClasses[]` | `id`, `name`, `vehicleTypeIds` | A type is in at most one class |
 | `definition.linkBehaviourTypes[]` | `id`, `name`, `defaultBehaviourId`, `overrides[] {classId, behaviourId}` | Default required, at most one override per class |

@@ -8,6 +8,22 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 schema-22 codec, BA29 (D136)
+
+The second M3.3.3a slice, codec only by the owner's choice. `DriverBehaviour::w74`
+(`std::optional<W74Parameters>`) is the model tag; the W74 value types moved into
+`types.hpp` so it can hold them. `parseBehaviour` dispatches on `model`, refuses each
+model's keys on the other, and reads the 18 keys from `w74ParameterKeys()`, the same table
+the serializer and §5 range check use. Schema 22 is written only when an owned behaviour is
+`w74`; below 22 one is `UNSUPPORTED_BEHAVIOUR_MODEL`. Run refuses a `w74` behaviour a
+vehicle type or road selection uses (`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), never runs it as the
+prototype; an unused one changes nothing. The dialog shows a `w74` behaviour read-only
+except its name. Why each choice: D136. Qt was installed in this container, so desktop
+UI suites ran (Linux offscreen): headless 67/67, desktop 98/98, CLI seed 42 and shipped
+projects byte-identical. See [evidence](evidence/w74-codec.md).
+
+---
+
 ## 2026-10-08 — W74 pure function, BA21–BA22 (D135)
 
 Review first: a clean checkout configured only after installing `nlohmann-json3-dev`

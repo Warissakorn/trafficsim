@@ -1,5 +1,6 @@
 #include "demand_paths.hpp"
 #include "document.hpp"
+#include "../core/w74.hpp"
 #include "demand_catalog.hpp"
 #include "demand_time_types.hpp"
 #include "../model/demand/signal_control.hpp"
@@ -110,6 +111,13 @@ Json definitionJson(const AuthoringDefinition& d) {
     if (!d.externalBehaviours) {
         j["behaviours"] = Json::array();
         for (const auto& b : d.behaviours) {
+            if (b.w74) { // D136: the W74 keys only; addBehaviourLibraryJson tags the model
+                Json item{{"id",b.id}};
+                for (const auto& key : w74ParameterKeys()) item[key.name] = (*b.w74).*key.member;
+                if (b.maxDecelerationCooperativeBraking) item["maxDecelerationCooperativeBraking"] = *b.maxDecelerationCooperativeBraking;
+                j["behaviours"].push_back(std::move(item));
+                continue;
+            }
             Json item{{"id",b.id},{"standstillDistance",b.standstillDistance},
                 {"additiveSafetyDistance",b.additiveSafetyDistance},{"multiplicativeSafetyDistance",b.multiplicativeSafetyDistance},
                 {"followingTime",b.followingTime},{"speedThreshold",b.speedThreshold}};

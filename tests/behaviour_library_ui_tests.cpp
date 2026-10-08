@@ -1,4 +1,5 @@
 #include "../src/shell/editor_window.hpp"
+#include "../src/commands/behaviour_commands.hpp"
 #include "../src/commands/connector_commands.hpp"
 #include "../src/commands/demand_commands.hpp"
 #include "../src/commands/network_commands.hpp"
@@ -155,6 +156,26 @@ int main(int argc, char** argv) {
         const auto saved = documentJson(w.history().document());
         w.saveFile(path); w.openFile(path);
         require(documentJson(w.history().document()) == saved, "Library save/reopen failed");
+        // D136: a w74 behaviour opens read-only -- a note instead of prototype fields; only its name
+        // changes, and the file stays schema 25.
+        auto withW74 = w.history().document();
+        DriverBehaviour w74{"w74-set"};
+        w74.w74 = W74Parameters{2, 2, 1, 2, .5, 16, 4, .5, .5, 20, 1, 1, 3, .25, .5, -1, .5, .25};
+        putBehaviour(withW74, w74, ""); validateDocument(withW74);
+        QFile g(path); require(g.open(QIODevice::WriteOnly), "Fixture write failed");
+        g.write(QByteArray::fromStdString(documentJson(withW74).dump())); g.close(); w.openFile(path);
+        modal([&] { item<QAction>(w, "editorBehaviourLibrary")->trigger(); }, [](QDialog& d) {
+            modal([&] { click(d, "editorBehaviours", "catalogEdit", "w74-set"); }, [](QDialog& e) {
+                require(!item<QLabel>(e, "editorBehaviourW74ReadOnly")->text().isEmpty(), "Missing w74 note");
+                require(!e.findChild<QDoubleSpinBox*>("followingTime"), "Prototype fields shown for w74");
+                item<QLineEdit>(e, "editorBehaviourName")->setText("Urban W74"); confirm(e);
+            });
+            confirm(d);
+        });
+        const auto& renamed = *w.history().document().definition;
+        require(renamed.behaviourNames.at("w74-set") == "Urban W74", "w74 name not edited");
+        require(std::find(renamed.behaviours.begin(), renamed.behaviours.end(), w74) != renamed.behaviours.end(), "w74 values changed");
+        require(documentJson(w.history().document())["schemaVersion"] == 25, "w74 file not schema 25");
         std::cout << "behaviour library UI tests passed\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

@@ -73,3 +73,5 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 
 [D134](RECORD.md#d134) — M5.5 LOS: HCM pack as data, author-set control type (schema 24), approaches by start Link, vehicle-weighted.
 [D135](RECORD.md#d135) — W74 lands first as a pure, unwired function with type bounds and D105 inside it; `Leader::acceleration` added, 0 until BA28.
+
+[D136](RECORD.md#d136) — schema-22 `w74` codec from one key table; Run refuses a `w74` behaviour in use until BA28; dialog read-only.

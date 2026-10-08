@@ -14,6 +14,26 @@ struct Route {
     std::string id; std::vector<std::string> segmentIds;
     bool operator==(const Route&) const = default;
 };
+// M3.3.3a W74 (docs/reference/W74.md, D129). Every key is required data (hard rule 5); there
+// are deliberately no defaults.
+struct W74Parameters {
+    double ax, bxAdd, bxMult, exAdd, exMult, cxAdd, cxMult, opdvAdd, opdvMult, dMax;
+    double bMaxAdd, bMaxMult, bMaxSpeedRoot, bNullAdd, bNullMult, bMinAdd;
+    double leaderAccelerationWeight, emergencyLeaderWeight;
+    bool operator==(const W74Parameters&) const = default;
+};
+// Per-driver draws in [0, 1], fixed when the vehicle is generated (contract §5).
+struct W74Traits {
+    double zBx, zEx, zCx, zOp, zOsc;
+    bool operator==(const W74Traits&) const = default;
+};
+enum class W74Regime : std::uint8_t { free, approaching, following, emergency };
+// The previous tick's regime and the oscillation sign it used (0 outside following), §7.
+struct W74State {
+    W74Regime regime{};
+    std::int8_t sign{};
+    bool operator==(const W74State&) const = default;
+};
 struct DriverBehaviour {
     std::string id;
     double standstillDistance{}, additiveSafetyDistance{}, multiplicativeSafetyDistance{};
@@ -29,6 +49,9 @@ struct DriverBehaviour {
     // D101: seconds after a vehicle's last lane change (either kind) during which it makes no
     // discretionary change. Ours; Vissim has none. Without it there is no hold.
     std::optional<double> discretionaryLaneChangeHoldTime;
+    // Present iff the behaviour's model is `w74` (schema 25, D136); its prototype fields are then
+    // unused and never written. Last, so every existing brace-initialisation keeps its meaning.
+    std::optional<W74Parameters> w74;
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };

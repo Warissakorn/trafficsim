@@ -142,7 +142,7 @@ TEST(traveltime, schema23_codec) { // TT8
     test::throws([&] { parseDocument(negative); }, "INVALID_POSITION");
     auto clash = j; clash["network"]["travelTimeSections"][0]["id"] = "link-1";
     test::throws([&] { parseDocument(clash); }, "DUPLICATE_ID");
-    auto newer = j; newer["schemaVersion"] = 25;
+    auto newer = j; newer["schemaVersion"] = 26;
     test::throws([&] { parseDocument(newer); }, "EDIT_VERSION");
 }
 TEST(traveltime, commands_and_cascades) { // TT9
