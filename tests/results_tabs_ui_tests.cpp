@@ -64,6 +64,12 @@ int main(int argc, char** argv) {
         objects->setCurrentWidget(inner->parentWidget()); inner->setCurrentIndex(1); QApplication::processEvents();
         auto* discharge = item<QTableWidget>(w, "editorDischargeTable");
         require(discharge->isVisible(), "Discharge tab did not open");
+        // Optional screenshots (argv[2] is a path prefix): the discharge page, then the clamps page.
+        const auto shot = [&](const char* suffix) {
+            if (argc <= 2) return;
+            w.resize(1280, 860); QTest::qWait(50);
+            require(w.grab().save(QString::fromUtf8(argv[2]) + suffix), "Screenshot failed");
+        };
         require(discharge->rowCount() == static_cast<int>(heads.size()) && !heads.empty(), "Discharge rows differ from the observer");
         int estimated = 0;
         for (int r = 0; r < discharge->rowCount(); ++r) {
@@ -77,6 +83,7 @@ int main(int argc, char** argv) {
             ++estimated;
         }
         require(estimated > 0, "No head gave an estimate: the comparison was not exercised");
+        shot("-discharge.png");
         require(item<QLabel>(w, "editorDischargeNote")->text().startsWith("Not yet validated"), "Discharge carries no marker");
 
         inner->setCurrentIndex(2); QApplication::processEvents();
@@ -86,7 +93,7 @@ int main(int argc, char** argv) {
         require(clamps->rowCount() == static_cast<int>(count), "Clamp rows differ from the run's count");
         require(!clamps->item(0, 3)->text().isEmpty(), "Clamp row has no route");
         require(item<QLabel>(w, "editorClampNote")->text().startsWith(QString::number(count)), "Clamp note lacks the count");
-        if (argc > 2) { w.resize(1280, 860); QTest::qWait(50); require(w.grab().save(QString::fromUtf8(argv[2])), "Screenshot failed"); }
+        shot("-clamps.png");
 
         // Reset clears both lists; Thai text is present.
         item<QAction>(w, "editorReset")->trigger(); QApplication::processEvents();

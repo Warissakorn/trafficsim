@@ -81,6 +81,11 @@ void EditorWindow::buildResults() {
     queueTable_=resultTable(page,"editorQueueTable",3); row->addWidget(queueTable_,2);
     dischargeTable_=resultTable(page,"editorDischargeTable",8); tab(dischargeNote_,"editorDischargeNote")->addWidget(dischargeTable_,1);
     clampTable_=resultTable(page,"editorClampTable",5); tab(clampNote_,"editorClampNote")->addWidget(clampTable_,1);
+    // The text column takes the room: the reasons, and the route a clamped vehicle was on.
+    for(auto [table,column]:{std::pair{dischargeTable_,7},std::pair{clampTable_,3}}){
+        table->horizontalHeader()->setSectionResizeMode(0,QHeaderView::ResizeToContents);
+        table->horizontalHeader()->setSectionResizeMode(column,QHeaderView::Stretch);
+    }
     buildBatch(bar,movementsBox); // M5.6: the N-seed table takes the single run's place
     connect(resultsTabs_,&QTabWidget::currentChanged,this,[this]{refreshResults();});
     objects_->addTab(page,QString());
