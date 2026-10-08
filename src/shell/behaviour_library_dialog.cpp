@@ -1,4 +1,5 @@
 #include "behaviour_library_dialog.hpp"
+#include "behaviour_editor.hpp"
 #include "../commands/behaviour_commands.hpp"
 #include "../core/validate.hpp"
 #include "../editor/ui_design_tokens.hpp"
@@ -27,11 +28,6 @@ void okCancel(QDialog& dialog, QLayout* layout, const CatalogText& text) {
     QObject::connect(b, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     QObject::connect(b, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 }
-// Parameter names are never translated (AGENTS.md): the label is the project-file key.
-QDoubleSpinBox* number(QWidget* parent, const char* key, double value) {
-    auto* field = new QDoubleSpinBox(parent); field->setObjectName(key); field->setRange(0, std::max(1e9, value));
-    field->setDecimals(6); field->setValue(value); field->setFont(editorDesign::numericFont()); return field;
-}
 std::string usersText(const LibraryUsers& users, const CatalogText& text) {
     QStringList all;
     for (const auto* list : {&users.vehicleTypes, &users.behaviourTypes, &users.roads})
@@ -40,48 +36,6 @@ std::string usersText(const LibraryUsers& users, const CatalogText& text) {
 }
 QLabel* note(QDialog& dialog, QFormLayout* form, const std::string& value, const char* object) {
     auto* label = new QLabel(q(value), &dialog); label->setObjectName(object); label->setWordWrap(true); form->addRow(label); return label;
-}
-bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const std::string& users, const CatalogText& text) {
-    QDialog dialog(parent); dialog.setObjectName("editorBehaviourEditDialog"); dialog.setWindowTitle(text("editorBehaviourTabBehaviours"));
-    auto* form = new QFormLayout(&dialog);
-    note(dialog, form, users, "editorBehaviourUsers"); // users first: a shared edit changes all of them
-    form->addRow(text("editorColumnId"), new QLabel(q(b.id), &dialog));
-    auto* label = new QLineEdit(q(name), &dialog); label->setObjectName("editorBehaviourName"); form->addRow(text("editorColumnName"), label);
-    struct Field { double* value; QDoubleSpinBox* spin; };
-    std::vector<Field> fields;
-    auto staged = b;
-    // D131: a w74 behaviour's keys are not editable here yet; only its name is, and its values
-    // pass through unchanged.
-    if (b.w74) {
-        note(dialog, form, text("editorBehaviourW74ReadOnly").toStdString(), "editorBehaviourW74ReadOnly");
-        okCancel(dialog, form, text);
-        if (dialog.exec() != QDialog::Accepted) return false;
-        name = label->text().trimmed().toStdString(); return true;
-    }
-    for (const auto& [key, value] : std::vector<std::pair<const char*, double*>>{
-             {"standstillDistance", &staged.standstillDistance}, {"additiveSafetyDistance", &staged.additiveSafetyDistance},
-             {"multiplicativeSafetyDistance", &staged.multiplicativeSafetyDistance}, {"followingTime", &staged.followingTime},
-             {"speedThreshold", &staged.speedThreshold}}) {
-        auto* spin = number(&dialog, key, *value); form->addRow(key, spin); fields.push_back({value, spin});
-    }
-    // Optional parameters: absent means the behaviour does not use them (contract §4).
-    struct Optional { std::optional<double>* value; QCheckBox* on; QDoubleSpinBox* spin; };
-    std::vector<Optional> optionals;
-    for (const auto& [key, value] : std::vector<std::pair<const char*, std::optional<double>*>>{
-             {"maxDecelerationCooperativeBraking", &staged.maxDecelerationCooperativeBraking},
-             {"discretionaryLaneChangeThreshold", &staged.discretionaryLaneChangeThreshold},
-             {"acceptedDecelerationTrailingVehicle", &staged.acceptedDecelerationTrailingVehicle},
-             {"discretionaryLaneChangeHoldTime", &staged.discretionaryLaneChangeHoldTime}}) {
-        auto* on = new QCheckBox(key, &dialog); on->setObjectName(QString(key) + "Set"); on->setChecked(value->has_value());
-        auto* spin = number(&dialog, key, value->value_or(0)); spin->setEnabled(on->isChecked());
-        QObject::connect(on, &QCheckBox::toggled, spin, &QWidget::setEnabled);
-        form->addRow(on, spin); optionals.push_back({value, on, spin});
-    }
-    okCancel(dialog, form, text);
-    if (dialog.exec() != QDialog::Accepted) return false;
-    for (const auto& f : fields) *f.value = f.spin->value();
-    for (const auto& o : optionals) *o.value = o.on->isChecked() ? std::optional<double>(o.spin->value()) : std::nullopt;
-    b = std::move(staged); name = label->text().trimmed().toStdString(); return true;
 }
 bool editClass(QWidget* parent, VehicleClass& c, const AuthoringDefinition& d, const CatalogText& text) {
     QDialog dialog(parent); dialog.setObjectName("editorClassEditDialog"); dialog.setWindowTitle(text("editorBehaviourTabClasses"));
@@ -218,7 +172,7 @@ bool editBehaviourLibrary(QWidget* parent, ProjectDocument& staged, const Catalo
             auto value = create ? (d.behaviours.empty() ? DriverBehaviour{} : d.behaviours.front()) : *std::find_if(d.behaviours.begin(), d.behaviours.end(), [&](const auto& b) { return b.id == id; });
             std::string name; if (const auto n = d.behaviourNames.find(value.id); !create && n != d.behaviourNames.end()) name = n->second;
             if (create) value.id = nextId(d.behaviours, "behaviour-");
-            if (editBehaviour(&dialog, value, name, create ? "" : usersText(behaviourUsers(staged, id), text), text))
+            if (editBehaviour(&dialog, value, name, create ? "" : usersText(behaviourUsers(staged, id), text), d.behaviours, text))
                 attempt([&] { putBehaviour(staged, value, name); });
         };
         return Actions{[edit] { edit(true); }, [&, table] { const auto id = selected(table); if (!id.empty()) attempt([&] { duplicateBehaviour(staged, id); }); },
