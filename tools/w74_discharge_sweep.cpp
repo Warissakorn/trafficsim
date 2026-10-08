@@ -7,10 +7,7 @@
 // Both models run on the same project with its catalogs captured as owned; the w74 arm adds the
 // given behaviour and points every vehicle type at it. The discharge spec is the CLI default.
 #include "discharge_options.hpp"
-#include "../src/commands/behaviour_commands.hpp"
-#include "../src/commands/catalog_commands.hpp"
-#include "../src/commands/demand_commands.hpp"
-#include "../src/project/demand_catalog.hpp"
+#include "w74_fixture_document.hpp"
 #include "../src/project/evaluation.hpp"
 #include "../src/core/simulation.hpp"
 #include "../src/project/run.hpp"
@@ -24,11 +21,6 @@ std::string figure(const std::optional<double>& v) {
     if (!v) return "";
     std::ostringstream out; out << std::setprecision(10) << *v; return out.str();
 }
-Json read(const std::filesystem::path& file) {
-    std::ifstream in(file);
-    if (!in) throw std::runtime_error("Cannot read " + file.string());
-    return Json::parse(in);
-}
 }
 int main(int argc, char** argv) {
     if (argc != 5) {
@@ -38,22 +30,13 @@ int main(int argc, char** argv) {
     try {
         const std::filesystem::path data = argv[3], out = argv[4];
         if (std::filesystem::exists(out)) throw std::invalid_argument("Output already exists: " + out.string());
-        const auto w74 = parseBehaviour(read(argv[1]));
-        if (!w74.w74) throw std::invalid_argument("The behaviour file must be a w74 behaviour");
-        auto base = parseDocument(read(argv[2]));
-        putDemandCatalog(base, resolveDemandCatalog(*base.definition, data));
-        const double duration = base.definition->duration;
+        const auto w74 = w74fixture::behaviour(argv[1]);
+        const auto base = w74fixture::base(argv[2], data);
         std::ofstream csv(out);
         csv << "model,dt,seed,head,lane,go,complete,reason,samples,meanHeadway,vehiclesPerHour,startupLostTime,startupReason,runClamps\n";
         for (const std::string model : {"prototype", "w74"})
             for (const double dt : {0.1, 0.25, 0.5}) {
-                auto d = base;
-                if (model == "w74") {
-                    putBehaviour(d, w74, "W74 discharge fixture");
-                    for (auto& t : d.definition->vehicleTypes) t.behaviourId = w74.id;
-                }
-                changeRunSettings(d, duration, dt);
-                validateDocument(d);
+                const auto d = w74fixture::arm(base, model == "w74" ? &w74 : nullptr, dt);
                 const auto snapshot = compileDocument(d, data);
                 const auto spec = evaluationSpec(d, snapshot, data);
                 const auto discharge = DischargeOptions{}.forDuration(snapshot.scenario.duration);
