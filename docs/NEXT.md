@@ -56,15 +56,17 @@ still 0 everywhere. The schema-22 codec and BA29 are done (D131,
 hashed onto each vehicle when a scenario holds `w74` (D132, BA26,
 [evidence](evidence/w74-traits.md)). **W74 runs** since D133 (BA23–BA25/BA28,
 [evidence](evidence/w74-composition.md)): one `follow` dispatcher, gap accessors, leader
-acceleration and `w74State`; the Run refusal is lifted. Not validated. Next: record BA27 —
-a queue-discharge fixture with a `w74` behaviour at dt 0.1/0.25/0.5 via `--discharge`,
-seeds 42–81, sensitivity recorded with no bound or calibration claim; add a courtesy-tie
-fixture for a w74 follower (D133 left it uncovered). Then, as the owner chooses: W74
-parameter editing in the dialog, or a cited, uncalibrated `w74` preset in
-`data/driver-behaviour/`. The owner's Windows look at a `w74` run belongs in §1. W74 parameter editing in the dialog is a separate UI slice. Keep prototype runs
-byte-identical (BA18); do not ship a preset in the same slice. The owner may want to
-read §5 (traits) and §7 (sign hysteresis) before the runtime slices. PCU/calibration
-gates remain open.
+acceleration and `w74State`; the Run refusal is lifted. Not validated. BA27 is recorded
+([evidence](evidence/w74-discharge.md)) and a winning courtesy hold now has a fixture; every
+BA21–BA29 row has focused evidence. The record found **W74 clamps more** on the four-leg
+project (9.4 per run at dt 0.1, 14.8 at dt 0.5, against the prototype's ≈5.5), with
+uncited fixture parameter values. Next, before any preset: trace those clamps (which
+obstacle, regime and step; `tools/t_junction_clamps.cpp` is the pattern) and write
+failure-first rows if one is an engine defect rather than the parameter set. Then, as the
+owner chooses: W74 parameter editing in the dialog, or a cited, uncalibrated `w74` preset
+in `data/driver-behaviour/` (its values need a source; the fixture's 15 uncited values are
+not one). Then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs
+in §1. Keep prototype runs byte-identical (BA18). PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06

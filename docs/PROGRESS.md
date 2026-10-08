@@ -8,6 +8,19 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 timestep record, BA27, and the courtesy fixture
+
+Evidence only; no engine change. `tools/w74_discharge_sweep.cpp` runs the four-leg project,
+prototype and `w74` (fixture values in `evidence/w74-discharge-behaviour.json`: three are
+PTV's W74 defaults, fifteen are uncited), at dt 0.1/0.25/0.5, seeds 42–81, with the CLI's
+discharge spec. Its prototype arm at dt 0.1 seed 42 equals the Debug CLI in all 90 cycles,
+and a rerun is byte-identical. Mean headway rises with dt in both models, about twice as
+much for W74; W74 runs clamp more (9.4 → 14.8 per run), which NEXT now asks to trace before
+any preset. A `w74run` case checks that a winning courtesy hold stores its own state; a
+mutation keeping the leader's state fails it. See [evidence](evidence/w74-discharge.md).
+
+---
+
 ## 2026-10-08 — W74 composed into the tick, BA23–BA25/BA28 (D133)
 
 Fourth M3.3.3a slice: W74 now runs. `follow` dispatches by `DriverBehaviour::w74`;
@@ -459,19 +472,6 @@ records are preserved. No runtime code, gate result or task priority changes.
 Validation: documentation links/anchors/index coverage, retained archive blocks and
 regression evidence, source-spec/data/fixture hashes, file-size guard and diff whitespace.
 Native CI runs separately; no local CTest claim (CMake/CTest are unavailable).
-
----
-
-## 2026-10-05 — Repository housekeeping
-
-Owner asked to clean the project files. Removed the committed local Qt installer log
-from the root and ignored future installer output, temporary editor files and desktop
-metadata. JSONL run output remains ignored by default, but `docs/evidence/*.jsonl`
-is explicitly allowed so a new measurement record is not silently omitted from Git.
-Existing evidence and frozen fixtures are retained. Decision-ID navigation is wrapped
-for source readability without changing any link or decision row.
-Validation: documentation guard, file-size guard, retained source-spec hashes,
-Git ignore checks for generated output versus evidence and `git diff --check`.
 
 ---
 
