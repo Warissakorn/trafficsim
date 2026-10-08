@@ -1,5 +1,8 @@
 #include "test.hpp"
+#include "lane_fixture.hpp"
 #include "../src/core/conflicts.hpp"
+#include "../src/core/lanes.hpp"
+#include "../src/core/routes.hpp"
 #include "../src/core/w74.hpp"
 #include <algorithm>
 #include <map>
@@ -219,4 +222,37 @@ TEST(w74run, a_w74_run_replays_exactly) { // BA26/BA28: state and traits copied 
     }
     CHECK(sawState);
     CHECK(test::finish(createSimulation(s, 42)).vehicles == test::finish(createSimulation(s, 42)).vehicles);
+}
+
+TEST(w74run, a_courtesy_hold_that_wins_stores_its_own_state) { // BA28, W74.md §7 second obstacle
+    // A35's road: a changer waiting at its dead end beside a 10 m/s stream, every behaviour w74.
+    auto road = test::lanes();
+    for (auto& b : road.behaviours) b = w74(b.id);
+    std::vector<test::Placement> list{test::on(1, "stubA", 198, 0)};
+    for (std::uint64_t k = 0; k < 15; ++k) list.push_back(test::on(10 + k, "full", 190 - 12 * static_cast<double>(k), 10));
+    auto s = test::withVehicles(road, list);
+    for (auto& v : s.vehicles) v.w74Traits = w74Traits(s.seed, v.id, v.driverFactor);
+    std::size_t won = 0;
+    for (int t = 0; t < 600; ++t) {
+        const auto refs = resolveRefs(*s.scenario, s.vehicles, *s.index);
+        const auto spans = occupiedSpans(*s.scenario, s.vehicles, *s.index, refs);
+        const auto holds = courtesyHolds(*s.scenario, *s.index, s.vehicles, refs, spans, bucketSpans(spans, s.scenario->segments.size()));
+        std::map<std::uint64_t, FollowingResult> held;
+        for (std::size_t v = 0; v < holds.size(); ++v)
+            if (std::isfinite(holds[v].gap)) {
+                const auto& x = s.vehicles[v];
+                held[x.id] = follow(x.speed, x, x.w74State, s.scenario->vehicleTypes[refs[v].type],
+                                    s.scenario->behaviours[refs[v].behaviour],
+                                    Leader{holds[v].gap, holds[v].speed, holds[v].acceleration});
+            }
+        s = stepSimulation(s);
+        for (const auto& v : s.vehicles) {
+            const auto h = held.find(v.id);
+            const bool clampedHere = std::any_of(s.events.begin(), s.events.end(), [&](const auto& e) {
+                const auto* c = std::get_if<SafetyClampEvent>(&e); return c && c->vehicleId == v.id; });
+            if (h == held.end() || clampedHere || v.acceleration != h->second.acceleration) continue;
+            CHECK(v.w74State == h->second.w74); ++won;
+        }
+    }
+    CHECK(won > 0); // the forcing: the courtesy obstacle really was the kept result
 }

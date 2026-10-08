@@ -8,6 +8,19 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — W74 timestep record, BA27, and the courtesy fixture
+
+Evidence only; no engine change. `tools/w74_discharge_sweep.cpp` runs the four-leg project,
+prototype and `w74` (fixture values in `evidence/w74-discharge-behaviour.json`: three are
+PTV's W74 defaults, fifteen are uncited), at dt 0.1/0.25/0.5, seeds 42–81, with the CLI's
+discharge spec. Its prototype arm at dt 0.1 seed 42 equals the Debug CLI in all 90 cycles,
+and a rerun is byte-identical. Mean headway rises with dt in both models, about twice as
+much for W74; W74 runs clamp more (9.4 → 14.8 per run), which NEXT now asks to trace before
+any preset. A `w74run` case checks that a winning courtesy hold stores its own state; a
+mutation keeping the leader's state fails it. See [evidence](evidence/w74-discharge.md).
+
+---
+
 ## 2026-10-08 — W74 composed into the tick, BA23–BA25/BA28 (D138)
 
 Fourth M3.3.3a slice: W74 now runs. `follow` dispatches by `DriverBehaviour::w74`;

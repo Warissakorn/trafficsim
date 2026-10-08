@@ -1,0 +1,22 @@
+{
+  "id": "w74-discharge-fixture",
+  "model": "w74",
+  "ax": 2,
+  "bxAdd": 2,
+  "bxMult": 3,
+  "exAdd": 1.5,
+  "exMult": 1,
+  "cxAdd": 25,
+  "cxMult": 15,
+  "opdvAdd": 1.5,
+  "opdvMult": 0.5,
+  "dMax": 150,
+  "bMaxAdd": 1.5,
+  "bMaxMult": 0.5,
+  "bMaxSpeedRoot": 4,
+  "bNullAdd": 0.2,
+  "bNullMult": 0.2,
+  "bMinAdd": -1,
+  "leaderAccelerationWeight": 0.5,
+  "emergencyLeaderWeight": 0.5
+}
