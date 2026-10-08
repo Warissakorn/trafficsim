@@ -132,7 +132,10 @@ TEST(w74codec, run_refuses_a_w74_behaviour_in_use_and_ignores_an_unused_one) { /
     const auto plain = compileDocument(owned(), data).scenario, unused = compileDocument(withW74(), data).scenario;
     CHECK(unused.behaviours.size() == plain.behaviours.size() + 1);
     const auto a = runSimulation(plain, 42), b = runSimulation(unused, 42);
-    CHECK(a.vehicles == b.vehicles); CHECK(a.time == b.time);
+    // Equal but for the hashed traits (D132), which only a scenario holding w74 carries.
+    auto traitless = b.vehicles;
+    for (auto& v : traitless) { CHECK(v.w74Traits.has_value()); v.w74Traits.reset(); }
+    CHECK(!a.vehicles.empty()); CHECK(a.vehicles == traitless); CHECK(a.time == b.time);
     // A vehicle type using it: the document still saves and loads, Run refuses.
     auto byType = withW74();
     for (auto& t : byType.definition->vehicleTypes) if (t.id == "car") t.behaviourId = "urban-w74";

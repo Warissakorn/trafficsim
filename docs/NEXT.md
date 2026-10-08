@@ -52,11 +52,15 @@ The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)). The pur
 evidence (D130, [evidence](evidence/w74-pure-function.md)); `Leader::acceleration` is
 still 0 everywhere. The schema-22 codec and BA29 are done (D131,
 [evidence](evidence/w74-codec.md)): a file stores `w74` behaviours, Run refuses one in use
-(`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), the dialog shows it read-only. Next, one slice
-each: the §5 trait hash (`W74Traits` on `PendingVehicle`, splitmix64 + Irwin–Hall, never
-touching `randomState`) with `W74State` on `Vehicle`, and BA24–BA26; then composition and
-BA28 (fill every `Leader` site first, then lift the Run refusal), and record BA27's
-timestep sensitivity. W74 parameter editing in the dialog is a separate UI slice. Keep prototype runs
+(`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), the dialog shows it read-only. Driver traits are
+hashed onto each vehicle when a scenario holds `w74` (D132, BA26,
+[evidence](evidence/w74-traits.md)); nothing reads them yet. Next, the composition slice:
+fill `Leader::acceleration` at every construction site (BA28's last clause, failure-first),
+add `Vehicle::w74State` written only at publish, the `standstillGap`/`desiredGap` accessors
+and one `followingAcceleration(..., behaviour, ...)` dispatcher for every consumer (W74.md
+§6–§7), then lift the Run refusal; rows BA23–BA25 and BA28. Record BA27's timestep
+sensitivity after it. It is the largest slice: split off the `Leader` filling first if it
+grows. W74 parameter editing in the dialog is a separate UI slice. Keep prototype runs
 byte-identical (BA18); do not ship a preset in the same slice. The owner may want to
 read §5 (traits) and §7 (sign hysteresis) before the runtime slices. PCU/calibration
 gates remain open.

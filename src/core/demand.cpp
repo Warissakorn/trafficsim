@@ -1,6 +1,7 @@
 #include "detail.hpp"
 #include "routes.hpp"
 #include "simulation.hpp"
+#include "w74.hpp"
 #include <cmath>
 #include <numbers>
 
@@ -45,6 +46,11 @@ void generateArrivals(SimState& state) {
             current.queue.push_back({state.nextVehicleId++, static_cast<std::uint32_t>(i),
                 routeIndex, typeIndex, *current.nextArrival, desiredSpeed,
                 std::clamp(0.5 + 0.15 * gaussian, 0.0, 1.0)});
+            // Hashed, not drawn: randomState's sequence is the same with or without W74 (D129).
+            if (state.index->w74) {
+                auto& v = current.queue.back();
+                v.w74Traits = w74Traits(state.seed, v.id, v.driverFactor);
+            }
             const double arrival = *current.nextArrival - std::log(random(state.randomState)) *
                                                          3600 / input.vehiclesPerHour;
             current.nextArrival = arrival < input.endTime ? std::optional(arrival) : std::nullopt;
@@ -65,7 +71,7 @@ std::vector<PendingVehicle> upcomingArrivals(const SimState& state) {
     scratch.scenario = state.scenario;
     scratch.index = state.index ? state.index
                                 : std::make_shared<const ScenarioIndex>(buildScenarioIndex(*state.scenario));
-    scratch.randomState = state.randomState; scratch.nextVehicleId = state.nextVehicleId;
+    scratch.seed = state.seed; scratch.randomState = state.randomState; scratch.nextVehicleId = state.nextVehicleId;
     scratch.time = state.time; scratch.inputs = state.inputs;
     detail::generateArrivals(scratch);
     std::vector<PendingVehicle> result;
