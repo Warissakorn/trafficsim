@@ -303,9 +303,15 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
   9.1% state copy is gone (D91).
   - Before any new baseline replaces 4.35G, run a **same-compiler** callgrind at `b472e05`,
     `f9964f1` and HEAD. The 4.01G was GCC 15.2 against D70's 13.3, so not comparable.
-  - Next candidates: the per-tick span rebuild (8.5%, `appendSpans` 6.8%) and `observe` (20%).
-    Before changing `observe`, measure whether its cost is the per-line walk or `queueLength`'s
-    per-line `behind` allocation.
+  - 2026-10-08, MSVC Release on P-cores, M2.6 CLI run (wall median 634 → 568 ms): `observe`'s
+    per-line walk and queue matching (155 → 97 ms) and publish's vehicle copy (98 → 88 ms) are
+    done. Split now: compile ≈116, step ≈316, observe ≈97 ms.
+  - Next candidates, measured but not changed: **compile** walks `routelessChains` 100 times per
+    Run (≈0.9 ms each; `connectorPaths` is only 20 ms of it), because `validateDocument`,
+    `routelessIssues` and `expandRouteless` each walk every input × time/type slice — share or
+    memoise the walk. Then the double refs/spans build on ticks with a source candidate
+    (`simulation.cpp` arrivals vs the main snapshot, ≈40 ms) and phase 1 (≈110 ms). The
+    `MovedEvent::segmentId` string copy would need an event-interface decision.
 - **Linux replay of D91–D94:** CI (`native.yml`) is the evidence.
 - **`plans/M3_ACCEPTANCE.md` §4:** the rows a session can fill ([ROADMAP review §7, S5](ROADMAP.md#7-proposed-sequence--owner-free-sessions-after-o1)).
 - The entry-acceleration bias in movement delay needs travel-time sections (M5), not a correction

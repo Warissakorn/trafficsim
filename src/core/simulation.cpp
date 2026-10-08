@@ -357,20 +357,23 @@ SimState stepSimulation(SimState&& state, double dt) {
     next.vehicles.clear();
     next.vehicles.reserve(vehicles.size()); // At most one survivor per vehicle; arrivals already in.
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
-        const auto& vehicle = vehicles[v];
+        auto& vehicle = vehicles[v];
         const auto& oldParts = index.parts[refs[v].route];
         const auto& move = moves[v];
         if (move.clamped) events.emplace_back(SafetyClampEvent{time, vehicle.id});
-        auto moved = vehicle;
+        // The working copy is not read after this vehicle is published, so its lists move rather
+        // than copy; its scalars (id, times, desired speed) stay readable below. The pending decision
+        // is found first, because it reads the passed-decision list.
+        const auto* decision = scenario.routeDecisions.empty() ? nullptr : nextRouteDecision(scenario, vehicle);
+        const double startDistance = vehicle.distance;
+        auto moved = std::move(vehicle);
         moved.distance += move.distance; moved.speed = move.speed;
         moved.acceleration = move.acceleration; moved.mode = move.mode;
         for (std::size_t i = 1; i < oldParts.size(); ++i)
-            if (vehicle.distance < oldParts[i].start && moved.distance >= oldParts[i].start)
-                events.emplace_back(SegmentEnteredEvent{time, vehicle.id, oldParts[i].segmentId});
-        if(!scenario.routeDecisions.empty())
-            if(const auto* decision=nextRouteDecision(scenario,vehicle))
-                if(moved.distance>=decision->at-1e-9)
-                    applyRouteDecision(scenario,moved,*decision,time,next.randomState,events);
+            if (startDistance < oldParts[i].start && moved.distance >= oldParts[i].start)
+                events.emplace_back(SegmentEnteredEvent{time, moved.id, oldParts[i].segmentId});
+        if (decision && moved.distance >= decision->at - 1e-9)
+            applyRouteDecision(scenario, moved, *decision, time, next.randomState, events);
         const auto& parts=index.parts[moved.routeIndex];
         const double routeLength = parts.back().start + parts.back().length;
         // A stub's dead end may be its last metre; standing there is waiting, never arriving.
@@ -381,8 +384,8 @@ SimState stepSimulation(SimState&& state, double dt) {
                 time - vehicle.enteredTime,
                 vehicle.enteredTime - vehicle.scheduledTime, routeLength / vehicle.desiredSpeed});
         } else {
-            next.vehicles.push_back(std::move(moved));
             const auto location = locateOnParts(parts, moved);
+            next.vehicles.push_back(std::move(moved));
             events.emplace_back(MovedEvent{time, vehicle.id, location.segmentId, location.position, move.speed, move.acceleration});
         }
     }
