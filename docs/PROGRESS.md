@@ -8,6 +8,19 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-08 — M5 first: owner answers and the M5 slice plan (D130)
+
+The owner asked for a plan that makes the program usable for real work as fast as possible.
+The 2026-10-03 review had found the back half of PROBLEM §4 (ten seeds, LOS, a table to
+paste) without product code. The owner answered O1 (a), O3 (b), O8 (warm-up default 900 s,
+unfinished trips counted and warned) and O9 (c); D130 records them and waives Q4's "decide
+before M5" for M5 only. [M5_PLAN](plans/M5_PLAN.md) numbers M5.2–M5.7; NEXT puts M5.2 first
+and parks W74. Why section delay before letters: whole-route delay includes source waiting
+and entry acceleration (D39), so a letter on it would read worse than the junction is.
+Docs only; no code, schema, gate or baseline changed. The D113 entry moved to the archive.
+
+---
+
 ## 2026-10-08 — Engine run cost: observe and publish
 
 Measured on Windows (MSVC 14.51 Release, P-cores pinned) with temporary probes on the M2.6
@@ -450,26 +463,6 @@ Network Editor's existing D38 edit is now explicit in README/manifest, retaining
 original hash plus a retained-copy hash and its authorizing commit.
 Validation: local Markdown links/anchors, source-spec hashes, file-size guard and
 `git diff --check`. No local CTest claim: CMake/CTest are unavailable in this workspace.
-
----
-
-## 2026-10-05 — Time-varying compositions and type-conditioned routing (D113)
-
-Owner asked to continue after #107; all five of its native CI jobs passed. Slice 6
-adds schema-19 composition periods and complete per-type routing matrices. Input
-volume remains authoritative. Gaps use base composition; missing type rules inherit
-default flows; zero counted totals use that type's whole-period weights. Splitting
-by type precedes conditioned routing, including downstream decisions, at scheduled
-demand time. Source queueing never reselects the destination. Legacy ordering, IDs,
-file bytes and random stream are preserved when no new rules are present.
-[DEMAND_TIME_TYPES.md](reference/DEMAND_TIME_TYPES.md) records interfaces and gates. Staged UI
-edits commit through History; reference checks include periods and type rules.
-Failure-first tests exposed missing serialization/validation. Breakpoint conservation,
-queue retention, replay and UI verification accompany this change. No new core RNG,
-dynamics, exact-count mode or reporting is added. Linux GCC / Qt 6.4.2 Debug:
-the required `check` target passes all 86 checks, including 56 Demand cases and
-the new time/type UI suite. Frozen fixtures remain unchanged. Native CI and owner
-review remain separate. Two older dated entries moved whole for D82 headroom.
 
 ---
 

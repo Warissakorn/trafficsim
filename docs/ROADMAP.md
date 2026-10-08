@@ -269,7 +269,7 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](plans/M3_PLAN.md); next: `NEXT.md`
 
 ### M3.3 — Driving behaviour library and models
 
-**Status:** M3.3.0 contracts delivered (D120); M3.3.1a queue discharge/startup observer and CLI delivered (D121), no engine behavior changed. **Scope/gates:** M3.3.1b1 type selection/CLI controls delivered (D122); M3.3.1b2a captured input hashes/shared-prefix recognition delivered (D123), with LF/CRLF checkout regression coverage; M3.3.1b2b1 proven lateral/source passage tracking delivered (D124); M3.3.1b2b2 rank-scoped remap invalidation and same-tick source-sink type identity delivered (D125; BA05 focused evidence, native CI per PR; [contract](reference/DISCHARGE.md)), M3.3.2a owned library/class/road-assignment storage and editing delivered (D126; BA06–BA09 focused evidence; Run refuses assigned roads), M3.3.2b compiled front-segment prototype selection delivered (D127; BA10–BA18 focused), M3.3.2c library dialog and bulk road assignment delivered (D128; BA19/BA20 automated, owner visual review open), M3.3.3a W74 equations/parameters/traits/state/model-switch contract written (D129; [W74](reference/W74.md), BA21–BA29 pending), W74 implementation next, then the M3.3.3b W99 contract before code. [Delivery rows](plans/DRIVING_BEHAVIOUR.md) and [interface](reference/DRIVING_BEHAVIOUR.md) define evidence; native checks and owner reviews remain distinct. M0/M6 gates, D102's off state and legacy baselines remain unchanged; signals/lateral/batches retain their own milestones.
+**Status:** M3.3.0 contracts delivered (D120); M3.3.1a queue discharge/startup observer and CLI delivered (D121), no engine behavior changed. **Scope/gates:** M3.3.1b1 type selection/CLI controls delivered (D122); M3.3.1b2a captured input hashes/shared-prefix recognition delivered (D123), with LF/CRLF checkout regression coverage; M3.3.1b2b1 proven lateral/source passage tracking delivered (D124); M3.3.1b2b2 rank-scoped remap invalidation and same-tick source-sink type identity delivered (D125; BA05 focused evidence, native CI per PR; [contract](reference/DISCHARGE.md)), M3.3.2a owned library/class/road-assignment storage and editing delivered (D126; BA06–BA09 focused evidence; Run refuses assigned roads), M3.3.2b compiled front-segment prototype selection delivered (D127; BA10–BA18 focused), M3.3.2c library dialog and bulk road assignment delivered (D128; BA19/BA20 automated, owner visual review open), M3.3.3a W74 equations/parameters/traits/state/model-switch contract written (D129; [W74](reference/W74.md), BA21–BA29 pending), W74 implementation parked behind M5 (D130), then the M3.3.3b W99 contract before code. [Delivery rows](plans/DRIVING_BEHAVIOUR.md) and [interface](reference/DRIVING_BEHAVIOUR.md) define evidence; native checks and owner reviews remain distinct. M0/M6 gates, D102's off state and legacy baselines remain unchanged; signals/lateral/batches retain their own milestones.
 
 ## M4 — Signal control
 
@@ -287,7 +287,7 @@ Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-b
 
 ## M5 — Evaluation and reporting
 
-The reason the whole project exists (`PROBLEM.md` §4).
+The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) is parked behind them.
 
 - Movement-level delay, LOS, queue length, travel time.
 - Multi-seed batch runs with means and confidence intervals.

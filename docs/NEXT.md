@@ -7,6 +7,18 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## M5 first — owner instruction, 2026-10-08
+
+The owner asked for the shortest path to real study use and answered O1 (a), O3 (b),
+O8 (warm-up default 900 s) and O9 (c) (D130). **This queue now comes before every section
+below.** Work [M5_PLAN](plans/M5_PLAN.md) §2 in order, one slice per session:
+**M5.2** batch runner and `--seeds` → M5.3 evaluation period → M5.4 travel-time sections →
+M5.5 LOS pack as data → M5.6 editor Run N seeds, Copy and Export → M5.7 owner rehearsal.
+Start M5.2 from `tools/run_simulation.cpp`'s project path, `compileDocument` and
+`evaluationSpec`; write `src/runner/`'s interface and the aggregate test first. A one-seed
+batch must equal today's `--project` bytes. W74 (below) is parked, not cancelled; owner
+looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
+
 ## Driving behaviour improvement — owner instruction, 2026-10-06
 
 The owner authorized the staged plan (D120). M3.3.0 writes the
@@ -48,7 +60,7 @@ duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type wi
 override, assign it to several roads, check the effective list, Undo/Redo, delete
 with replacement, switch to Thai, save and reopen, then run.
 The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)); nothing runs yet.
-Next implement it rows-first: BA21–BA22 as pure-function tests of a new
+**Parked behind M5 (D130).** When resumed, implement it rows-first: BA21–BA22 as pure-function tests of a new
 `w74Acceleration` in `src/core/` (hand-computed values, every equality side), then the
 schema-22 codec and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
 timestep sensitivity. Keep prototype runs byte-identical (BA18); do not ship a preset
@@ -126,7 +138,7 @@ sentence has no product code and no commit since 2026-09-25: 10 seeds, LOS, and 
   copy/export.
 - **D104 has done part of S3:** a single run's CSV export, with bytes equal to the CLI's. The
   clipboard copy and the batch export are still to do.
-- Until the owner answers, this file's order stands.
+- **Answered 2026-10-08 (D130):** O1 (a), O3 (b), O8, O9 (c); see the M5 section at the top.
 - S4 (the input row's lane-share figure) is done (2026-10-03, `laneSplit`). S5 (the T-junction
   clamps, plus the session-fillable `plans/M3_ACCEPTANCE.md` §4 rows) needs no answer; it is in §3.
 
