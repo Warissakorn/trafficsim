@@ -125,7 +125,7 @@ Implemented: links and connectors persist a level and named display type; render
 
 ### M1.22 — Remaining authoring and interaction requirements
 
-**Open.** Link spline/arc construction and curve parameters, extend/merge and safe referenced reversal; tapered cross-sections, shoulders/median/sidewalk display; per-Link driving-side semantics; snap priorities, alignment/angle constraints; layer locks, multi-property inspector, context menus, shortcuts and accessibility. History, nudging and rotation are implemented below. **Gate:** command/reference roundtrips plus both-side gesture tests and keyboard-only owner exercise. Settle the conflicts in SPEC_AUDIT before changing geometry or gestures.
+**Open, narrowed by D143 (R8) to what is unbuilt** (checked in code 2026-10-09): Link spline/arc construction and curve parameters; extending and merging Links; reversing a Link that carries references (`reverseLink` refuses one today); shoulders/median/sidewalk display; per-Link driving side (the Network has one); snap priorities and angle constraints; layer locks; a multi-property inspector beyond bulk behaviour assignment (D128); object context menus beyond the demand menu; shortcut customisation and an accessibility pass. Built and no longer listed: History, nudging, rotation, Connector tapers, route-safe reversal, the fixed shortcut set and the Ctrl+K palette. **Gate:** command/reference roundtrips plus both-side gesture tests and keyboard-only owner exercise. Settle the conflicts in SPEC_AUDIT before changing geometry or gestures.
 
 #### M1.22.1–M1.22.2 — History, keyboard editing and selection rotation
 
@@ -133,19 +133,25 @@ Implemented: a bilingual History dock with named Undo/Redo and saved-state marke
 
 ### M1.23 — Interchange, document workflow and measured rendering
 
-**Open.** Native-to-GeoJSON/CSV/PNG exports; GeoJSON/OSM/Shapefile import and CRS mapping; recent files/tabs, spatial indexing/culling/LOD and optional renderer acceleration. Competitor-format imports and 3D require an explicit scope revision before implementation. **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
+**Open.** Native-to-GeoJSON/CSV/PNG exports — "CSV" means the object tables (Links, Connectors, inputs, routes, decisions), as defined by D143 (R8); results CSV is M5's and exists (D104, D141); GeoJSON/OSM/Shapefile import and CRS mapping; recent files/tabs, spatial indexing/culling/LOD and optional renderer acceleration. Competitor-format imports and 3D require an explicit scope revision before implementation. **Gate:** known-coordinate import/export fixtures, multi-document recovery isolation and a reproducible real-network benchmark. Do not claim 10k/100k-object performance in advance.
 
-### M1.26–M1.27 — Carriageway demand, per-lane shares, optimization · **CLOSED**
+### M1.26–M1.27 — Carriageway demand, per-lane shares, optimization · **M1.27 closed; M1.26 implemented, gate open**
 
-Full entries in [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md) (moved 2026-09-24). **M1.26:** a route names Links and Connectors and is compiled per lane; an input is the Link total. **M1.26.1:** optional `laneShares` (D32). **M1.27:** build, redraw and engine optimization, and the counted gesture walkthrough. **Gate still open for M1.26:** the keyboard-only equivalents of the route and vehicle-input gestures (NEXT.md). The owner's timed exercise in `plans/M1_ACCEPTANCE.md` was ruled on by D49: M1 usability accepted by owner ruling, not passed as written. Whether "CLOSED" stands with that gate open is the owner's call (see [review §4, O5](archive/ROADMAP-review-2026-10-03.md#4-verified-but-the-owners-call)).
+Full entries in [`archive/ROADMAP-M1-implemented.md`](archive/ROADMAP-M1-implemented.md) (moved 2026-09-24). **M1.26:** a route names Links and Connectors and is compiled per lane; an input is the Link total. **M1.26.1:** optional `laneShares` (D32). **M1.27:** build, redraw and engine optimization, and the counted gesture walkthrough. **Gate still open for M1.26:** the keyboard-only equivalents of the route and vehicle-input gestures (NEXT.md). The owner's timed exercise in `plans/M1_ACCEPTANCE.md` was ruled on by D49: M1 usability accepted by owner ruling, not passed as written. D143 (R5) relabelled it: M1.26 is implemented with its gate open until the keyboard-only equivalents exist; M1's written exercise stays recorded as ruled on by D49, not passed.
 
 ---
 
-## M2 — Demand, run, first numbers · **GATE**
+## M2 — Demand, run, first numbers · **CLOSED** (gate passed, D53; closed by D143)
 
 Vehicle inputs per interval, compositions, turning proportions. Press Run, get average delay and queue per movement.
 
 **Done when:** the M1 intersection, loaded with counted volumes, runs and produces a delay table.
+
+**Closed 2026-10-09 by the owner's R5 answer (D143).** The done-condition and the gate (D53) are
+met; M2.1, M2.7 and M2.8 continue as open sub-milestones and do not reopen M2. The per-approach
+queue (D40) satisfies M2; a per-movement queue belongs to M5. M2.0's commits made before the
+criteria were registered (`c1b122f`, `4e1567e` before `811e0db`) are an allowed exception: no gate
+observation was affected.
 
 **GATE — the honesty check.** Before M3 starts, a practising traffic engineer completes a small **real** study in this tool, and the result shows whether the tool is usable for real engineering work. No criterion compares it with another tool (C2 withdrawn, D51; C4, D52).
 
@@ -233,7 +239,7 @@ LOS, warm-up and multiple-seed summaries belong to M5.
 
 ### M3.2 — Lane changing and crossing-conflict control
 
-**Open.** Explicit priority rules/conflict areas, lane-change distances/emergency stopping, cooperation, visibility and calibrated gap acceptance. Specify signal/right-of-way interaction without disabling collision constraints; account explicitly for any removed blocked vehicle. **Gate:** controlled merges, diverges and crossing conflicts, congestion/no-overlap regression, deterministic replay and the M3 owner exercise; scientific claims remain gated by M6.
+**Open.** Explicit priority rules/conflict areas, lane-change distances/emergency stopping and cooperation. By D143 (R7), calibrated gap acceptance moved to M6 and the M3.2.8c remainder to M3.4; M3.2 closes on the M3.2.7d owner exercise and its gate rows, with a diverge acceptance-fixture row still to write. Specify signal/right-of-way interaction without disabling collision constraints; account explicitly for any removed blocked vehicle. **Gate:** controlled merges, diverges and crossing conflicts, congestion/no-overlap regression, deterministic replay and the M3 owner exercise; scientific claims remain gated by M6.
 
 #### M3.2.1-M3.2.9 — Ordered implementation slices
 
@@ -269,6 +275,16 @@ M2 gate passed (D53). Contracts: [M3_PLAN.md](plans/M3_PLAN.md); next: `NEXT.md`
 
 ---
 
+### M3.4 — Lane-change behaviour refinements
+
+**Open; carved out of M3.2.8c by D143 (R7).** Visibility at conflict areas, a between-lanes state
+(a change is instantaneous in the engine), `laneChangeDistance` where changes are measured late
+(D87/D89), D95's booked route (i) if discretionary changes are reopened (owner, sitting B2), and
+Vissim's cooperative lane change. **Gate:** contract and failure-first rows per item in the
+lane-change lab (D98), then acceptance fixtures; prototype baselines change only by a recorded decision.
+
+---
+
 ### M3.3 — Driving behaviour library and models
 
 **Status:** M3.3.0 contracts delivered (D120); M3.3.1a queue discharge/startup observer and CLI delivered (D121), no engine behavior changed. **Scope/gates:** M3.3.1b1 type selection/CLI controls delivered (D122); M3.3.1b2a captured input hashes/shared-prefix recognition delivered (D123), with LF/CRLF checkout regression coverage; M3.3.1b2b1 proven lateral/source passage tracking delivered (D124); M3.3.1b2b2 rank-scoped remap invalidation and same-tick source-sink type identity delivered (D125; BA05 focused evidence, native CI per PR; [contract](reference/DISCHARGE.md)), M3.3.2a owned library/class/road-assignment storage and editing delivered (D126; BA06–BA09 focused evidence; Run refuses assigned roads), M3.3.2b compiled front-segment prototype selection delivered (D127; BA10–BA18 focused), M3.3.2c library dialog and bulk road assignment delivered (D128; BA19/BA20 automated, owner visual review open), M3.3.3a W74 equations/parameters/traits/state/model-switch contract written (D129; [W74](reference/W74.md), BA21–BA29 delivered with focused evidence), W74 implemented and runnable in schema 25, not validated (D135–D139; built in parallel with M5 and replayed on top of it 2026-10-09), next a cited preset, then the M3.3.3b W99 contract before code. [Delivery rows](plans/DRIVING_BEHAVIOUR.md) and [interface](reference/DRIVING_BEHAVIOUR.md) define evidence; native checks and owner reviews remain distinct. M0/M6 gates, D102's off state and legacy baselines remain unchanged; signals/lateral/batches retain their own milestones.
@@ -287,12 +303,24 @@ Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-b
 
 ---
 
+### M4.2 — Amber stop-or-go
+
+**Open; carved out by D143 (R2), next after M5.9.** D36 runs amber as red, which biases every
+signalised delay an M5 table reports. Contract first: a stop-or-go decision at amber onset (can
+the vehicle stop at a stated deceleration before the stop line?), intergreen handling, and
+failure-first rows. It moves prototype trajectories, so frozen baselines and BA18 change only by a
+recorded decision. **Gate:** analytic amber fixtures, both outcomes; before/after over at least 40
+seeds (D88); same-build replay.
+
+---
+
 ## M5 — Evaluation and reporting
 
-The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) was built in parallel and now sits on top of them in schema 25 (D135–D139); it does not block M5.6. M5.2 (batch runner, `--seeds`, 95 % CI) is implemented (D131), and M5.3–M5.6 after it (D132–D134, D141: the editor's Run seeds, Copy and Export); M5.7, the owner's rehearsal, is next. The M5 gate stays open.
+The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) was built in parallel and now sits on top of them in schema 25 (D135–D139); it does not block M5.6. M5.2 (batch runner, `--seeds`, 95 % CI) is implemented (D131), and M5.3–M5.6 after it (D132–D134, D141: the editor's Run seeds, Copy and Export); M5.7, the owner's rehearsal, is next; by D143 sessions then take M5.9 (evaluation cool-down), M4.2, M6.0 and M5.8 ([M5_PLAN](plans/M5_PLAN.md) §3). The M5 gate stays open.
 
 - Movement-level delay, LOS, queue length, travel time.
 - Multi-seed batch runs with means and confidence intervals.
+- Scenario comparison: base, with-project and mitigated on one seed list (M5.8, D143 R1).
 - Report tables that go into an impact study without passing through a spreadsheet.
 - LOS thresholds as swappable per-jurisdiction data, never compiled in.
 
@@ -302,13 +330,15 @@ The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruc
 
 ### M5.1 — Additional network objects and evaluated outputs
 
-**Open.** Evaluation nodes/stop lines, movement measurements/overlays and reports. Parking, transit stops, crosswalks and multimodal behavior from the supplied documents require their own runtime and calibration contracts, not merely stored object types. **Gate:** event-accounting and known analytical scenarios, reference cleanup and multi-run output checks. Keep completed-trip delay distinct from HCM control delay/LOS.
+**Open.** Evaluation nodes/stop lines, movement measurements/overlays and reports. Parking, transit stops, crosswalks and multimodal behaviour moved to *Later* by D143 (R8). **Gate:** event-accounting and known analytical scenarios, reference cleanup and multi-run output checks. Keep completed-trip delay distinct from HCM control delay/LOS.
 
 ---
 
 ## M6 — Calibration and validation · **GATE**
 
 **Done when:** the engine reproduces published benchmark results — capacity and delay for a signalized approach, gap-acceptance capacity for an unsignalized minor movement — within a stated tolerance, and the tolerance is published in the docs and shown in the app.
+
+**M6.0 — benchmark option sheet** (D143, R2): docs only, at least two published options per benchmark kind, no engine numbers and no tolerance, so the choice stays pre-registered. Calibrated gap acceptance (moved from M3.2 by R7) is validated here.
 
 **This is a hard gate.** Numbers from an unvalidated engine must never reach a regulator. Until M6 passes, every results screen carries a permanent "not yet validated" marker.
 
@@ -330,9 +360,9 @@ Offline install, native file dialogs, no server required.
 
 Recorded so nobody starts them opportunistically:
 
-- Pedestrian and public-transport modelling
+- Pedestrian and public-transport modelling, parking, transit stops and crosswalks (from M5.1, D143)
 - Regional/macroscopic assignment
-- Scenario management and comparison
+- Scenario management beyond M5.8's comparison (a scenario manager, variant trees)
 - 3D presentation
 - Collaboration
 

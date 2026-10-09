@@ -1,6 +1,6 @@
 # Archived roadmap review — 2026-10-03
 
-Moved whole from ROADMAP on 2026-10-09, when the [2026-10-09 review](../audits/ROADMAP_REVIEW-2026-10-09.md) replaced it. Its findings describe `eeb9c5c`; O1–O10 keep their numbers.
+Moved whole from ROADMAP on 2026-10-09, when the [2026-10-09 review](../audits/ROADMAP_REVIEW-2026-10-09.md) replaced it. Its findings describe `eeb9c5c`; O1–O10 keep their numbers. O1, O3, O8 and O9 were answered by D130; O5, O6 and O10's remaining items by D143 (as R5, R7, R8); O2 (Q4) becomes M6.0; O4 waits in the owner sitting.
 
 ## Review record — 2026-10-03
 

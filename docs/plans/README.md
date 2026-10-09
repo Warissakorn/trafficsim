@@ -6,6 +6,7 @@ the live queue. Owner observations are distinct from automated checks.
 
 | Document | Scope |
 |---|---|
+| [OWNER_SITTING.md](OWNER_SITTING.md) | Every item waiting on the owner, for one sitting (D143) |
 | [M1_ACCEPTANCE.md](M1_ACCEPTANCE.md) | M1 owner acceptance record |
 | [M2_PLAN.md](M2_PLAN.md) | M2 plan — and the M1 review it starts from |
 | [M2_GATE.md](M2_GATE.md) | M2 gate record |

@@ -13,7 +13,7 @@ and their evidence before reopening a choice. IDs remain stable even when record
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
 | Following, commitment and lane changes | D138, D137, D136, D135, D129, D127, D126, D125, D124, D123, D122, D121, D120, D69, D71, D87–D95, D98, D101–D102, D105, D108 |
 | UI, gestures, display and results | D141, D139, D134, D133, D132, D131, D130, D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
-| Performance, checks and documentation | D140, D27–D29, D31, D70, D82, D85, D91, D99 |
+| Performance, checks and documentation | D143, D140, D27–D29, D31, D70, D82, D85, D91, D99 |
 
 ## Reading a historical choice
 
@@ -87,3 +87,5 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D141](RECORD.md#d141) — Editor Run N seeds: one worker thread over value copies, the CLI's batch formatter for Export and Copy (TSV), cancelled or edited-away batches discarded.
 
 [D142](RECORD.md#d142) — Opt-in `volumeFromCounts`: an input's volume from its entry decision's turning counts (schema 26); D46 otherwise.
+
+[D143](RECORD.md#d143) — Owner accepted R1–R8: queue M5.9 → M4.2 → M6.0 → M5.8 after M5.7; one owner sitting; M2 closed; M3.4 and M6 carve-outs; M1.22/M1.23/M5.1 scope.

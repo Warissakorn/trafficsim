@@ -8,6 +8,20 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — Owner's answers to the roadmap review (D143)
+
+The owner accepted every recommendation, R1–R8. Documents only, no code: D143; ROADMAP closes M2
+(gate D53, sub-milestones carried), relabels M1.26, narrows M1.22 to what `src/` lacks (checked:
+no spline/arc, extend/merge, layer locks or per-Link driving side; reversal refuses referenced
+Links), defines M1.23's CSV, moves M5.1's transit/crosswalks and scenario management beyond M5.8
+to *Later*, and adds M3.4 (the M3.2.8c remainder), M4.2 (amber) and M6.0 (benchmark sheet, which
+now owns calibrated gap acceptance). M5_PLAN gains M5.8 and M5.9 and the order after M5.7.
+PROBLEM gains §8 (motorcycles). `plans/OWNER_SITTING.md` is now the single list of owner items
+(gates, chat decisions, 22 desktop looks, each dated with a yes/no failure question); NEXT keeps
+only the session queue and points there. `check`: docs and file sizes clean.
+
+---
+
 ## 2026-10-09 — Volume from turning counts (D142, schema 26)
 
 The owner answered ROADMAP O10's "count sheet typed once vs D46": an input may take its volume
@@ -460,22 +474,6 @@ The old assertion fails on a CRLF copy; the corrected suite passes 73 Linux test
 
 ---
 
-## 2026-10-06 — Declared discharge windows and type selection (D122)
-
-M3.3.1b1 exposes CLI windows/warmup/ranks and repeatable vehicle-type selection.
-Headways retain original follower/predecessor pairs and ranks; filtered samples
-cannot bridge skipped types. Raw crossings stay intact. A mixed startup prefix
-has a separate unavailable reason without discarding valid selected headways.
-Unknown types and invalid/orphan controls reject before stepping the engine.
-Input-hash output and complete remap/source passage tracking remain M3.3.1b2.
-See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-controls.md).
-
-Validation: 15 focused GCC/Linux tests pass, including the existing trajectory
-comparison. CLI integration and repository guards are recorded in the evidence.
-Native/desktop Linux/Windows CI remains independent; no owner/calibration gate closes.
-
----
-
 ## Backlog (M0, in order)
 
 The [historical checklist](archive/PROGRESS-M0-backlog-and-questions.md#backlog-m0-in-order)
@@ -484,7 +482,7 @@ is archived. Current work lives in [NEXT](NEXT.md); milestone gates live in [ROA
 ## Open questions
 
 The [historical register](archive/PROGRESS-M0-backlog-and-questions.md#open-questions)
-is archived. Use [NEXT — Owner decisions](NEXT.md#2--owner-decisions) for current questions.
+is archived. Use [the owner sitting, §B](plans/OWNER_SITTING.md#b--decisions-in-chat-one-line-each) for current questions.
 
 ## Decisions
 
