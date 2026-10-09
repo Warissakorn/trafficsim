@@ -3,14 +3,31 @@
 #include <cmath>
 #include <deque>
 #include <optional>
+#include <stdexcept>
 
 namespace trafficsim {
+ConnectorPathTable::ConnectorPathTable(const Network& network)
+    : network_(network), paths_(network.connectors.size()) {}
+const std::vector<ConnectorPath>& ConnectorPathTable::at(std::size_t index) const {
+    auto& slot = paths_.at(index);
+    if (!slot) {
+        slot.emplace();
+        try { *slot = connectorPaths(network_, network_.connectors[index]); } catch (const std::exception&) {}
+    }
+    return *slot;
+}
+const std::vector<ConnectorPath>& ConnectorPathTable::of(const Connector& connector) const {
+    const auto* first = network_.connectors.data();
+    if (&connector < first || &connector >= first + network_.connectors.size())
+        throw std::logic_error("ConnectorPathTable: a Connector of another Network");
+    return at(static_cast<std::size_t>(&connector - first));
+}
 namespace {
 // What an author names in a route: Links and Connectors, never a lane and never a path. A
 // Connector's lane count is a drawing decision the author keeps changing, so a route that named
 // one would stop meaning anything the moment the Connector was narrowed.
 struct RouteObject { std::string id; std::vector<std::string> next; };
-std::vector<RouteObject> routeObjects(const Network& network) {
+std::vector<RouteObject> routeObjects(const Network& network, const ConnectorPathTable& table) {
     std::vector<RouteObject> objects;
     for (const auto& link : network.links) objects.push_back({link.id, {}});
     for (const auto& connector : network.connectors) objects.push_back({connector.id, {}});
@@ -22,9 +39,7 @@ std::vector<RouteObject> routeObjects(const Network& network) {
     // Two Links are joined only through a Connector, which is the whole point of the object:
     // Vissim's Link is one carriageway and every turn between two of them is a Connector.
     for (const auto& connector : network.connectors) {
-        std::vector<ConnectorPath> paths;
-        try { paths = connectorPaths(network, connector); } catch (const std::exception&) { continue; }
-        for (const auto& path : paths) {
+        for (const auto& path : table.of(connector)) {
             add(path.from.linkId, connector.id);
             add(connector.id, path.to.linkId);
         }
@@ -57,13 +72,13 @@ const Link* linkById(const Network& network, const std::string& id) {
 }
 std::vector<std::string> routeContinuations(const Network& network,
                                             const std::vector<std::string>& authored) {
-    return continuations(routeObjects(network), authored);
+    return continuations(routeObjects(network, ConnectorPathTable(network)), authored);
 }
 std::vector<std::string> routeChainTo(const Network& network,
                                       const std::vector<std::string>& authored,
                                       const std::string& target) {
     if (target.empty()) return {};
-    const auto objects = routeObjects(network);
+    const auto objects = routeObjects(network, ConnectorPathTable(network));
     // Breadth first over the same continuation rule, so the shortest chain wins and a longer
     // detour never hides it. Bounded: one click must not walk a large network forever.
     constexpr std::size_t kMaxChain = 20;
@@ -90,9 +105,13 @@ std::vector<std::string> routeChainTo(const Network& network,
 }
 std::vector<std::vector<std::string>> routeShortestChains(const Network& network, const std::string& from,
                                                           const std::string& target) {
+    return routeShortestChains(network, ConnectorPathTable(network), from, target);
+}
+std::vector<std::vector<std::string>> routeShortestChains(const Network& network, const ConnectorPathTable& table,
+                                                          const std::string& from, const std::string& target) {
     // The object graph is built once per search: rebuilding it per chain, through
     // routeContinuations, was 9% of an M2.6 Run.
-    const auto objects = routeObjects(network);
+    const auto objects = routeObjects(network, table);
     constexpr std::size_t kMaxDepth = 20, kMaxLevel = 4096;
     std::vector<std::vector<std::string>> level{{from}};
     for (std::size_t depth = 0; depth < kMaxDepth && !level.empty(); ++depth) {
@@ -111,16 +130,18 @@ std::vector<std::vector<std::string>> routeShortestChains(const Network& network
 std::vector<FamilyChain> routeLaneFamily(const Network& network, const std::vector<std::string>& objectIds,
                                          std::vector<std::string>* ambiguous) {
     if (objectIds.empty()) return {};
+    return routeLaneFamily(network, ConnectorPathTable(network), objectIds, ambiguous);
+}
+std::vector<FamilyChain> routeLaneFamily(const Network& network, const ConnectorPathTable& table,
+                                         const std::vector<std::string>& objectIds,
+                                         std::vector<std::string>* ambiguous) {
+    if (objectIds.empty()) return {};
     // A chain in progress: the lane-level ids so far, where the vehicle currently is, the lane it
     // started on, and whether it has stopped on a lane the next object does not leave (M3.2.8b).
     struct Chain { std::vector<std::string> ids; LaneReference at; bool onConnector{}; std::size_t lane{}; bool stub{}; };
     std::vector<Chain> chains;
     const auto* firstLink = linkById(network, objectIds.front());
-    const auto pathsOf = [&](const Connector& connector) {
-        std::vector<ConnectorPath> paths;
-        try { paths = connectorPaths(network, connector); } catch (const std::exception&) { return paths; }
-        return paths;
-    };
+    const auto pathsOf = [&](const Connector& connector) -> const std::vector<ConnectorPath>& { return table.of(connector); };
     // The route covers EVERY lane of the Link it starts on. That is the authored meaning: a
     // routing decision belongs to the carriageway, not to one lane of it.
     if (firstLink) {
@@ -205,6 +226,13 @@ std::vector<std::vector<std::string>> routeLaneChains(const Network& network,
                                                       std::vector<std::string>* ambiguous) {
     std::vector<std::vector<std::string>> result;
     for (auto& chain : routeLaneFamily(network, objectIds, ambiguous))
+        if (!chain.stub) result.push_back(std::move(chain.ids));
+    return result;
+}
+std::vector<std::vector<std::string>> routeLaneChains(const Network& network, const ConnectorPathTable& table,
+                                                      const std::vector<std::string>& objectIds) {
+    std::vector<std::vector<std::string>> result;
+    for (auto& chain : routeLaneFamily(network, table, objectIds))
         if (!chain.stub) result.push_back(std::move(chain.ids));
     return result;
 }

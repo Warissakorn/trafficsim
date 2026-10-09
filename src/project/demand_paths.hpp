@@ -13,6 +13,11 @@ std::vector<PlacedDecision> placedDecisions(const Network&, const AuthoringDefin
                                             std::vector<ValidationIssue>* issues = nullptr,
                                             std::optional<double> at = std::nullopt,
                                             const std::string& vehicleTypeId = {});
+// The same over a table already built for this Network (D140).
+std::vector<PlacedDecision> placedDecisions(const Network&, const ConnectorPathTable&, const AuthoringDefinition&,
+                                            std::vector<ValidationIssue>* issues = nullptr,
+                                            std::optional<double> at = std::nullopt,
+                                            const std::string& vehicleTypeId = {});
 // Every input with a linkId (or naming a placed decision, which withRoutingDecisions turns into
 // one) becomes one input per complete path, each on an already-expanded runtime route
 // `link:<id>/path-k` that buildScenario passes through. An input whose walk has a problem is left

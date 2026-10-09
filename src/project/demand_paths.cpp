@@ -57,6 +57,10 @@ std::string routelessRouteId(const std::string& linkId, std::size_t k, std::size
 }
 std::vector<PlacedDecision> placedDecisions(const Network& network, const AuthoringDefinition& d,
                                             std::vector<ValidationIssue>* issues, std::optional<double> time,const std::string& type) {
+    return placedDecisions(network, ConnectorPathTable(network), d, issues, time, type);
+}
+std::vector<PlacedDecision> placedDecisions(const Network& network, const ConnectorPathTable& table, const AuthoringDefinition& d,
+                                            std::vector<ValidationIssue>* issues, std::optional<double> time,const std::string& type) {
     std::vector<PlacedDecision> result;
     const auto report = [&](std::string code, std::string path) { if (issues) issues->push_back({std::move(code), std::move(path)}); };
     for (std::size_t k = 0; k < d.routingDecisions.size(); ++k) {
@@ -74,13 +78,13 @@ std::vector<PlacedDecision> placedDecisions(const Network& network, const Author
             std::vector<std::vector<std::string>> chains;
             if (!entry.destinationLinkId.empty()) {
                 if (!hasLink(network, entry.destinationLinkId)) { report("UNKNOWN_LINK", at); continue; }
-                chains = routeShortestChains(network, decision.linkId, entry.destinationLinkId);
+                chains = routeShortestChains(network, table, decision.linkId, entry.destinationLinkId);
             } else {
                 const auto route = std::find_if(d.routes.begin(), d.routes.end(), [&](const auto& r) { return r.id == entry.routeId; });
                 if (route == d.routes.end()) continue; // routingDecisionIssues names it
                 chains = {route->segmentIds};
             }
-            std::erase_if(chains, [&](const auto& c) { return routeLaneChains(network, c).empty(); });
+            std::erase_if(chains, [&](const auto& c) { return routeLaneChains(network, table, c).empty(); });
             if (chains.empty()) { report("ROUTING_DECISION_UNREACHABLE", at); continue; }
             const double weight = decision.position?1.:typeDecisionFlowAt(decision,j,time.value_or(-1),type);
             if (weight > 0) placed.destinations.push_back({std::move(chains), weight});
@@ -121,19 +125,20 @@ std::vector<VolumeInterval> cutPeriods(const VehicleInput& input, const std::vec
 RoutelessIssues routelessIssues(const Network& network, const AuthoringDefinition& d) {
     RoutelessIssues result;
     const auto cut = slices(d);
+    const ConnectorPathTable pathTable(network); // one walk over one unchanged Network (D140)
     // Reachability does not depend on the flows, so the static pass reports it once.
-    std::vector<std::vector<PlacedDecision>> placed{placedDecisions(network, d, &result.blocking)};
-    if (cut.times.front()) for (const auto& t : cut.times) placed.push_back(placedDecisions(network, d, nullptr, t));
+    std::vector<std::vector<PlacedDecision>> placed{placedDecisions(network, pathTable, d, &result.blocking)};
+    if (cut.times.front()) for (const auto& t : cut.times) placed.push_back(placedDecisions(network, pathTable, d, nullptr, t));
     std::set<std::string> typeIds;
     for(const auto& x:d.routingDecisions)for(const auto& rule:x.typeRules)typeIds.insert(rule.vehicleTypeId);
-    for(const auto& type:typeIds)for(const auto& t:cut.times)placed.push_back(placedDecisions(network,d,nullptr,t,type));
+    for(const auto& type:typeIds)for(const auto& t:cut.times)placed.push_back(placedDecisions(network, pathTable, d,nullptr,t,type));
     std::map<std::string, bool> walked;
     for (std::size_t i = 0; i < d.inputs.size(); ++i) {
         const auto link = routelessLink(d, d.inputs[i]);
         if (link.empty()) continue;
         const auto field = "inputs[" + std::to_string(i) + "]." + (d.inputs[i].linkId.empty() ? "routingDecisionId" : "linkId");
         for (const auto& decisions : placed) {
-            const auto walk = routelessChains(network, link, decisions);
+            const auto walk = routelessChains(network, pathTable, link, decisions);
             for (const auto& issue : walk.issues)
                 if (std::find(result.blocking.begin(), result.blocking.end(), ValidationIssue{issue.code, field}) == result.blocking.end())
                     result.blocking.push_back({issue.code, field});
@@ -154,6 +159,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
     const auto cut = slices(authored);
     const bool typed=hasTypeRouting(authored);
     const auto table = runtimeSections(network);
+    const ConnectorPathTable pathTable(network); // one expansion over one unchanged Network (D140)
     // Per Link: the union of every slice's paths, in order of first appearance, so one runtime
     // route serves a path in every slice; and each slice's share of each path.
     // M3.2.8b: `stub` and `family` per path, so an entry decision's destination gets its lateral
@@ -169,7 +175,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
         if (input.linkId.empty()) { inputs.push_back(input); continue; }
         const auto type=typed?input.vehicleTypeId:std::string{};
         auto [context, newType]=placements.try_emplace(type);
-        if(newType)for(const auto& t:cut.times)context->second.push_back(placedDecisions(network,authored,nullptr,t,type));
+        if(newType)for(const auto& t:cut.times)context->second.push_back(placedDecisions(network, pathTable, authored,nullptr,t,type));
         const auto& placed=context->second;
         const auto routeId=[&](std::size_t k,std::size_t n){
             const auto base=routelessRouteId(input.linkId,k,n);
@@ -179,7 +185,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
         auto& w = it->second;
         if (fresh) {
             for (std::size_t s = 0; s < placed.size(); ++s) {
-                const auto walk = routelessChains(network, input.linkId, placed[s]);
+                const auto walk = routelessChains(network, pathTable, input.linkId, placed[s]);
                 if (!walk.issues.empty()) { w.failed = true; break; }
                 w.byDestination = w.byDestination || walk.byDestination;
                 for (const auto& c : walk.chains) {

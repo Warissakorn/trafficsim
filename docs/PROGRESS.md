@@ -8,7 +8,7 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
-## 2026-10-09 — Optimization pass: lld
+## 2026-10-09 — Optimization pass: lld, D140
 
 Measured first (Linux, 4 cores, Qt offscreen): the engine (0.15–0.30 µs per vehicle-tick, linear
 to 96 crossings), the run view (~3.3 ms per Step) and redraw (3.6 ms at 40 crossings) are not
@@ -18,6 +18,16 @@ executables, and GNU ld was most of an incremental Debug build. `trafficsim-test
 4.5 s with ld and 0.57 s with lld; touching `src/shell/editor_demand.cpp` rebuilt in 31.3 s
 before and 13.0–13.5 s after, `src/model/network/routing.cpp` 28.7 s → 10.7–11.1 s. CI's Linux
 apt line installs `lld`; without it the default linker is kept silently.
+
+**D140: Connector paths once per expansion.** `History` validates every command, and validating
+the M2.6 study template took 21.6 ms against 1.0 ms for four-leg on the same network: callgrind
+put 85 % of it in `connectorPaths`, recomputed by every `routeShortestChains`, `routeLaneFamily`
+and `routelessChains` call inside one `expandRouteless`. `ConnectorPathTable` (lazy, local, never
+stored) is now built once by `expandRouteless` and `routelessIssues` and passed down; the old
+signatures build their own, so editor and compile callers are unchanged. Validation 21.6 → 5.0 ms
+(median of 15; four-leg 1.03 → 0.91 ms). `--seeds 1-3` output of all four shipped projects is
+identical apart from the build stamp; the ten-seed study batch and the engine benchmark are
+unchanged within noise (an interleaved ld/lld engine run ruled out the linker).
 
 ---
 
@@ -454,28 +464,6 @@ rerunning that affected group. New core/compiler coverage includes nine station 
 Qt offscreen coverage verifies gesture, overlay clipping, grouping, drag/cancel, Undo and
 save/reopen. Frozen references and architecture/file-size/documentation guards pass.
 Native Linux/Windows CI and owner appearance/fidelity remain separate gates.
-
----
-
-## 2026-10-06 — Mixed conflict sites and P3–P4 continuation (D118)
-
-Owner authorized grouping all three kinds for a connected owner-pair site, 0.5 m per-side
-rail offsets and directional continuation through P3–P4. Groups now retain their full kind
-list; Crossing/Merge share controls by owner ID, Branching stays derived/read-only. The
-mixed table/dialog identifies it separately from editable parameters. Direct group commands
-stage and validate the candidate and reject newly introduced merge-order cycles atomically;
-History still publishes one Undo step. Merge takeover preserves complete topology controls.
-Offsets are normal to rails, capped at 20% of normal local width for narrow/tapered lanes.
-Shared band outlines feed paint/picking. Valid mouth caps are clipped to their attached Link
-lanes; cap pieces support physical grouping and finite Link stations support directional
-continuation. Caps can lie on either side of a join, so no source/target station-side clamp
-is imposed. Stored entryStation–exitStation, schema, runtime paths and solver remain unchanged.
-M3.2.4f is carved separately; physical-mouth admission remains M3.2.4e. Regression coverage
-adds both traffic sides, oblique offsets, mixed real sites, atomic rejection, geometry Undo,
-and Qt display/picking/one-Undo checks. Oldest roadmap session block moved whole to archive.
-Validation: GCC 13.3/C++20 and Qt 6.4.2 on Linux; full local desktop CTest passes
-**89/89 groups**, including Qt offscreen UI, frozen references and repository guards.
-Native Linux/Windows CI and owner appearance remain separate; no owner/fidelity gate closes.
 
 ---
 

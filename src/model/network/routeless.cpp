@@ -21,6 +21,7 @@ std::string familyName(const PlacedDecision& d, const PlacedDecision::Destinatio
 }
 struct Walk {
     const Network& network;
+    const ConnectorPathTable& table;
     const std::vector<PlacedDecision>& decisions;
     const std::vector<ConnectorPath>& paths; // every connector path in the drawing, in connector order
     std::string start;                       // the Link the walk enters on
@@ -74,7 +75,7 @@ struct Walk {
         double sum = 0;
         for (const auto& destination : d.destinations) {
             std::vector<std::vector<FamilyChain>> family;
-            for (const auto& objects : destination.chains) family.push_back(routeLaneFamily(network, objects));
+            for (const auto& objects : destination.chains) family.push_back(routeLaneFamily(network, table, objects));
             const auto name = familyName(d, destination);
             decisionOf[name] = d.path;
             const auto* leg = legFrom(family, laneId, false);
@@ -114,7 +115,7 @@ struct Walk {
         for (const auto& destination : d.destinations) {
             bool served = false;
             for (const auto& objects : destination.chains) {
-                for (auto& leg : routeLaneChains(network, objects))
+                for (auto& leg : routeLaneChains(network, table, objects))
                     if (!leg.empty() && leg.front() == laneId) {
                         legs.push_back({std::move(leg), destination.weight}); sum += destination.weight; served = true; break;
                     }
@@ -157,7 +158,7 @@ struct Walk {
         for (const auto& destination : d->destinations) {
             Served s{destination.weight, familyName(*d, destination), {}};
             std::vector<std::vector<FamilyChain>> family;
-            for (const auto& objects : destination.chains) family.push_back(routeLaneFamily(network, objects));
+            for (const auto& objects : destination.chains) family.push_back(routeLaneFamily(network, table, objects));
             for (std::size_t k = 0; k < start.lanes.size(); ++k) {
                 const auto* leg = legFrom(family, start.lanes[k].id, false);
                 if (!leg) leg = legFrom(family, start.lanes[k].id, true);
@@ -231,16 +232,19 @@ Fixed unkeptStubs(const RoutelessResult& r, const std::string& start) {
 }
 RoutelessResult routelessChains(const Network& network, const std::string& linkId,
                                 const std::vector<PlacedDecision>& decisions) {
+    return routelessChains(network, ConnectorPathTable(network), linkId, decisions);
+}
+RoutelessResult routelessChains(const Network& network, const ConnectorPathTable& table, const std::string& linkId,
+                                const std::vector<PlacedDecision>& decisions) {
     std::vector<ConnectorPath> paths;
-    for (const auto& connector : network.connectors) {
-        try { for (auto& p : connectorPaths(network, connector)) paths.push_back(std::move(p)); }
-        catch (const std::exception&) {} // a broken Connector is reported by its own diagnostics
-    }
+    // A broken Connector has no paths in the table; its own diagnostics report it.
+    for (std::size_t c = 0; c < network.connectors.size(); ++c)
+        paths.insert(paths.end(), table.at(c).begin(), table.at(c).end());
     // Walk, drop the downstream stubs rule 4 does not keep, and walk again until none is dropped.
     // Each pass drops at least one, so this ends; with no downstream decision it is one pass.
     Fixed fixed;
     for (;;) {
-        Walk walk{network, decisions, paths, linkId, fixed, {}, false, {}, {}};
+        Walk walk{network, table, decisions, paths, linkId, fixed, {}, false, {}, {}};
         const auto* start = walk.link(linkId);
         if (!start) { walk.result.issues.push_back({"UNKNOWN_LINK", {}}); return walk.result; }
         if (!walk.entryDecision(*start))
