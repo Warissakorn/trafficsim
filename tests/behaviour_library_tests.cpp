@@ -81,7 +81,7 @@ TEST(behaviourlibrary, older_schemas_and_unknown_keys_are_refused_not_dropped) {
     }
     auto missing = j; missing["definition"]["behaviours"][0].erase("model");
     test::throws([&] { parseDocument(missing); }, "UNSUPPORTED_BEHAVIOUR_MODEL");
-    auto future = j; future["schemaVersion"] = 22; test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
+    auto future = j; future["schemaVersion"] = 25; test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
 }
 TEST(behaviourlibrary, invalid_entries_reject_load_and_edit_atomically_even_when_unused) {
     const auto j = documentJson(library());

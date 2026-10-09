@@ -15,7 +15,7 @@
 namespace trafficsim {
 class EditorCanvas : public QGraphicsView {
 public:
-    enum class Tool { select, draw, split, measure, calibrate, connect, route, input, head, conflict, counter };
+    enum class Tool { select, draw, split, measure, calibrate, connect, route, input, head, conflict, counter, section };
     explicit EditorCanvas(QWidget* parent = nullptr);
     void setDisplayCatalog(DisplayCatalog catalog) { display_=std::move(catalog); redraw(); }
     void setVisibleLevel(std::optional<int> level);
@@ -110,6 +110,10 @@ public:
     std::function<void(std::vector<MeasurementLine>)> counterDraftCommitted;
     const std::vector<MeasurementLine>& counterDraft() const { return counterDraft_; }
     void commitCounterDraft();
+    // M5.4b, the Section tool (src/editor/canvas_sections.cpp): two Ctrl+right-clicks on Links
+    // hand over a start and an end line; Esc drops a half-placed one.
+    std::function<void(SectionLine start, SectionLine end)> sectionCommitted;
+    const std::optional<SectionLine>& sectionStart() const { return sectionStart_; }
     std::function<void(Point)> duplicateRequested;
     std::function<void(Point)> translateRequested;
     std::function<void(Point,double)> rotateRequested;
@@ -179,6 +183,10 @@ private:
     bool counterPress(QMouseEvent*);
     std::optional<MeasurementLine> counterLineAt(Point) const;
     void drawCounters();
+    std::optional<SectionLine> sectionStart_;
+    bool sectionPress(QMouseEvent*);
+    std::optional<SectionLine> sectionLineAt(Point) const;
+    void drawSections();
     void drawRouteOverlay(const std::vector<std::string>&, const std::string& id, bool preview);
     std::string objectAt(Point) const;
     bool isLink(const std::string& objectId) const;

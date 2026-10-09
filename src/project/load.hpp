@@ -17,4 +17,7 @@ struct ScenarioLoadError : std::runtime_error {
 LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesystem::path& dataDirectory);
 std::filesystem::path findDataDirectory(const std::filesystem::path& executable);
 std::uint32_t parseSeed(const std::string& text);
+// `42-51`, `1,5,9` or a mix (`1,3-4`), in the order written (M5.2). Rejects an empty item, a
+// reversed range, a repeated seed and more than 1000 seeds, each as "Invalid seed list: ...".
+std::vector<std::uint32_t> parseSeedList(const std::string& text);
 }

@@ -19,6 +19,10 @@ bool needsCatalog(const std::string& code) {
     return code == "UNKNOWN_VEHICLE_TYPE" || code == "UNKNOWN_BEHAVIOUR";
 }
 }
+bool onlyRunSettings(const AuthoringDefinition& d) {
+    return d.routes.empty() && d.inputs.empty() && d.routingDecisions.empty() &&
+           d.signalControllers.empty() && d.signalPrograms.empty();
+}
 std::vector<Diagnostic> documentDiagnostics(const ProjectDocument& document) {
     std::vector<Diagnostic> result;
     try {
@@ -34,8 +38,11 @@ std::vector<Diagnostic> documentDiagnostics(const ProjectDocument& document) {
             result.push_back({"EDIT_RUNTIME_SKIPPED", {}, {}, {}, DiagnosticSeverity::runtime});
             return result;
         }
-        if (!document.definition) {
-            result.push_back({"EDIT_NO_DEFINITION", "definition", {}, {}, DiagnosticSeverity::runtime});
+        // A new project (M5.3) has run settings but no route or input yet: still only a drawing.
+        const auto& def = document.definition;
+        if (!def || onlyRunSettings(*def)) {
+            if (def) result.push_back({"EDIT_NO_INPUTS", "inputs", {}, {}, DiagnosticSeverity::runtime});
+            else result.push_back({"EDIT_NO_DEFINITION", "definition", {}, {}, DiagnosticSeverity::runtime});
             // Compiling against a default ScenarioDefinition reports INVALID_NUMBER for timeStep
             // and duration, so the probe carries usable values and only topology rows are kept.
             ScenarioDefinition probe; probe.timeStep = 0.1; probe.duration = 1;

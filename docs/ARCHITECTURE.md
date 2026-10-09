@@ -45,10 +45,11 @@ unchanged. See [VEHICLE_POSE.md](reference/VEHICLE_POSE.md).
 | `trafficsim_core` | `src/core/` | Standard C++ library only | M0 engine implemented; crossing admission (`conflicts.*`, M3.2.3a); mandatory lane changes and cooperation (`lanes.*`, M3.2.8b) — spans and dead ends arrive as data, the core never sees a lane |
 | `trafficsim_model` | `src/model/network/`, `src/model/demand/` | Core contracts/validation | M0 authoring model and compiler implemented; fixed-time Signal Controllers compiled to core programs (`signal_control.*`, M2.7b); authored right-of-way controls (`control.hpp`, `right_of_way.*`, M3.2.2a); lane families and lateral spans (`routeLaneFamily` in `routing.cpp`, `lane_family.cpp`, M3.2.8b) |
 | `trafficsim_eval` | `src/eval/` | Core events and states | Completed-trip diagnostic; per-movement delay/travel time and approach queues for one run (M2.5); M3.2.8c diagnostics (lane changes, segment times, stop-line discharge, arrival phases, dead-end waits); queue discharge/startup observer with type selection, shared-prefix routing, proven lateral/source passage reconstruction and rank-scoped remap invalidation; same-tick source-sink types come from core's pure `upcomingArrivals` replay |
-| `trafficsim_project` | `src/project/` | Model, evaluation types, nlohmann/json | M0 loading/output; the schema-20 authoring codec (reads schemas 1–20); evaluation spec and report output; revision run snapshots; optional captured-byte input manifests/SHA-256 |
+| `trafficsim_runner` | `src/runner/` | Core and eval only | Multi-seed batches and their seed-ordered aggregate (M5.2, [BATCH](reference/BATCH.md)) |
+| `trafficsim_project` | `src/project/` | Model, evaluation types, runner, nlohmann/json | M0 loading/output; the schema-24 authoring codec (reads schemas 1–24); evaluation spec and report output, single-run and batch (`batch_output.*`, sharing `csv_format.hpp` and the LOS pack/formatting in `los_output.*`); revision run snapshots; optional captured-byte input manifests/SHA-256 |
 | `trafficsim_commands` | `src/commands/` | Project document | Atomic named edits, Undo/Redo, network, demand, control and appearance operations |
 | `trafficsim_shell` | `src/shell/`, `src/editor/` | Commands, Qt Widgets | The native editor — the application's only window since M1.24 |
-| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless single-seed runner, JSONL export, `--project` movement report and CSV, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`), plus `--discharge` controls and captured input hashes |
+| `trafficsim-cli` | `tools/run_simulation.cpp` | Project/core/eval | Headless runner: single seed, JSONL export, `--project` movement report and CSV, `--seeds` batches with 95 % CI and `buildCommit`, and the M3.2.8c diagnostic flags (`--lane-changes`, `--segment-times`, `--stop-lines`, `--arrival-phases`, `--wait-causes`), plus `--discharge` controls and captured input hashes |
 | `trafficsim-desktop` | `src/shell/main.cpp` | Shell | Native desktop entry point; opens the editor |
 
 Connector widths and runtime paths share topology-only `connectorLanePairs`; the surface
@@ -260,9 +261,9 @@ M3.1 `PriorityRule`s (D59).
 |---|---|---|
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
 | Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 added intervals, compositions, routing decisions with per-interval turning proportions (M2.1.1–M2.4) and fixed-time Signal Controllers (M2.7b); partial/dynamic routing (M2.1) and actuated control (M4) remain |
-| Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); LOS, multi-seed means and travel-time sections remain |
-| Batch runner | `src/runner/` | Independent seeds, deterministic aggregation |
-| Reports | `src/report/` | Format evaluated measurements, no new simulation logic |
+| Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); multi-seed means are M5.2's runner; travel-time sections are `sections.*` (M5.4), owned by `MovementAccumulator`; LOS letters and groups are pure `los.*` (M5.5) |
+| Batch runner | `src/runner/` | Implemented (M5.2): independent seeds, deterministic aggregation; editor use is M5.6 |
+| Reports | `src/report/` | Reserved for the M5.5/M5.6 LOS report table; data formatting stays in `src/project/` (D131) |
 
 Adding a command must never teach `project/` its implementation. The corresponding boundary check now runs with the M1 document/command implementation.
 
@@ -276,7 +277,7 @@ Adding a command must never teach `project/` its implementation. The correspondi
   `loadDisplayCatalog`. Model objects store IDs/levels; rendering owns their appearance.
   These values never alter simulation topology or conflict handling.
 - `data/compositions/` (M2.3), `data/priority-rules/` (gap time and headway for derived rules),
-  `data/evaluation/queue-counter.json` (queue-counter conditions), `data/vehicle-appearance/`
+  `data/evaluation/queue-counter.json` (queue-counter conditions), `data/los/hcm.json` (LOS bounds, M5.5), `data/vehicle-appearance/`
   (display only, D97), `data/fonts/` (the bundled UI face) and `data/projects/` (shipped example
   projects that tests and the CLI run).
 - `data/locales/`: English key source and Thai UI text, copied with runtime data.

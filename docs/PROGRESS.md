@@ -8,6 +8,104 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M5.5 LOS letters from section delay (D134)
+
+Section delay now gets a letter, and only section delay. The owner chose an author-set control
+type (`signalised`/`unsignalised`, schema 24) over a derived guess, and approaches grouped by
+start Link. Bounds are content: `data/los/hcm.json` (HCM 6th edition, A–E upper bounds; equal
+takes the better letter), read only when some section has a type so other projects' manifests
+stay unchanged. `src/eval/los.*` is pure (`losLetter`, vehicle-weighted `losGroups`);
+`src/project/los_output.*` loads the pack strictly and writes the shared JSON `los` object and
+the CSV block under the line `# LOS (pack hcm) from simulated section delay, not HCM control
+delay; not validated (M6)`. Section blocks gain `controlType,los`. Batches letter the mean over
+seeds. HCM's v/c > 1 rule is not applied (no v/c is simulated); unfinished trips stay visible.
+The editor's section dialog sets the type in the same History step as the name. W74 → schema 25.
+Contract and rows L1–L7 ([LOS](reference/LOS.md)) came first. Evidence: group `los` (6 cases —
+every bound on both sides for both types; a stricter pack turns D into F on the same measured
+delay; eight malformed packs refused; weighting by hand) and `section-ui`. Linux GCC 13.3:
+headless 71/71, desktop 103/103 offscreen. A 10-seed four-leg batch with three signalised
+sections: west through 48.3 s D, north left 57.6 s E, east through 43.0 s D; the intersection
+row 46.4 s D equals the hand-weighted mean. Windows evidence is CI's.
+
+---
+
+## 2026-10-09 — M5.4 travel-time sections (D133)
+
+The quantity M5.5's LOS will read now exists. A section is `network.travelTimeSections[]`
+(schema 23 only when present): a start and an end line, each a cross-section of one Link at a
+station, spanning every lane so a lane change inside is timed once. The contract
+([TRAVEL_TIME_SECTIONS](reference/TRAVEL_TIME_SECTIONS.md)) and its rows TT1–TT11 were written
+before the code. `SectionAccumulator` (`src/eval/sections.*`, owned by `MovementAccumulator`, so
+batches get it free) interpolates each crossing between the two observed states, treats a new
+vehicle as entering at distance 0 at `enteredTime`, and times an end line crossed in the arrival
+step from the last speed. Delay is `max(0, travel − length/desiredSpeed)`, the whole-trip term
+restricted to the section; trips count by their end crossing (D132's rule). Outputs gain a
+`section` block only with a section, so every other project keeps its bytes (TT10 checks the
+four-leg report equals the section-less one). Link delete removes, split moves, reverse refuses,
+like other controls. Editor: Section tool (`T`), two Ctrl+right-clicks make one Undo step, and a
+*Travel-time sections* tab renames and deletes; en/th strings. Results-tab rows for sections wait
+for M5.6. W74 moves to schema 24.
+Evidence: group `traveltime` (11 cases — a lone vehicle at desired speed gives exactly 100/15 s
+and zero delay; a red held to 30 s gives 20.01 s against an analytic floor of 16.67 s; the
+period's equality sides; a hand-built lane change) and `section-ui`. Linux GCC 13.3: headless
+70/70, desktop 102/102 offscreen. A 10-seed batch of the four-leg project with a west-through
+section gives 48.3 ± 4.3 s against 52.8 ± 4.3 s whole-route movement delay, with the same 121
+mean vehicles: the gap is the entry acceleration the section excludes. Windows evidence is CI's.
+
+---
+
+## 2026-10-09 — M5.3 evaluation period and unfinished trips (D132)
+
+Projects can now say which part of the run the results describe: `definition.evaluation
+{warmup, end?}`, schema 22 only when set. Movement rows count trips that end in the period and
+queues average its ticks; run totals stay whole-run so every vehicle is still accounted for.
+Each movement reports `unfinished` (active or pending on its routes), and batches warn when a
+movement's unfinished share passes 5 %. Owner's choices: no key means warm-up 0 (old results
+unchanged), and new editor projects start with 900 s warm-up over 4500 s. Run settings gains a
+Warm-up field, applied with duration and time step in one History step. Making the new window's
+document carry a definition exposed that a demand-less definition took the runtime Problems
+path and lost the drawing's topology rows (`tables-ui`); `runDiagnostics`/`documentDiagnostics`
+now treat a definition holding only run settings (`onlyRunSettings`) as a drawing, with `EDIT_NO_INPUTS`.
+`connector-ui` now checks its intent (lane widths keep the file's schema) instead of the literal
+17, and the behaviour-library "future schema" pin moved from 22 to 23. W74's planned schema is 23.
+Tests first: group `evaluationperiod` (9 cases; both equality sides of the window, a red wholly
+inside the warm-up, unfinished = active + pending, schema-22 refusal below 22) and a Run settings
+UI check in `signal-ui`. Linux GCC 13.3: headless 69/69 and, with Qt 6.4.2 installed locally,
+desktop 100/100 offscreen. Single-run JSON for the four projects keeps every number; the CSV
+gains only the `unfinished` column and the period line. Windows evidence is CI's. The oldest live PROGRESS entry moved whole to the archive.
+
+---
+
+## 2026-10-09 — M5.2 multi-seed batches and `--seeds` (D131)
+
+`src/runner/` now holds the first M5 product code: `runSeed`/`runSeeds` run one compiled project
+over independent seeds with the CLI's own loop, and `aggregate` reports n, mean, sample SD and the
+95 % half-width (tabulated Student t) per movement and approach, summing in seed order. The CLI
+takes `--project F --seeds 42-51 [--csv F]`; the JSON carries per-seed accounting and a
+build-time `buildCommit`. Seeds with over 5 % of generated vehicles still pending are flagged and
+kept in the means, by the owner's choice: dropping them would hide the worst seeds. Why the
+formatter sits in `src/project/` and why the t table only widens: D131. Tests were written first
+(group `batch`, 9 cases: hand statistics, permutation, one seed equal to the single run,
+generated = completed + active + pending, a saturated input flagged, seed-list parsing, marker).
+Linux GCC 13.3 headless Debug: 68/68 ctest, including `cli-batch`; single-run `--project` JSON
+for the four projects, the M0 run and the four-leg CSV are byte-identical to before. Ten seeds
+of the four-leg take ~10 s in Debug. No desktop or Windows claim; native CI is separate.
+
+---
+
+## 2026-10-08 — M5 first: owner answers and the M5 slice plan (D130)
+
+The owner asked for a plan that makes the program usable for real work as fast as possible.
+The 2026-10-03 review had found the back half of PROBLEM §4 (ten seeds, LOS, a table to
+paste) without product code. The owner answered O1 (a), O3 (b), O8 (warm-up default 900 s,
+unfinished trips counted and warned) and O9 (c); D130 records them and waives Q4's "decide
+before M5" for M5 only. [M5_PLAN](plans/M5_PLAN.md) numbers M5.2–M5.7; NEXT puts M5.2 first
+and parks W74. Why section delay before letters: whole-route delay includes source waiting
+and entry acceleration (D39), so a letter on it would read worse than the junction is.
+Docs only; no code, schema, gate or baseline changed. The D113 entry moved to the archive.
+
+---
+
 ## 2026-10-08 — Engine run cost: observe and publish
 
 Measured on Windows (MSVC 14.51 Release, P-cores pinned) with temporary probes on the M2.6
@@ -378,98 +476,6 @@ nlohmann/json are local build dependencies, not committed repository changes. Qt
 unavailable locally; native desktop CI and owner appearance remain separate. These checks
 are interval/segment checks, not cross-path 2D collision proof. No owner/M0/M3/M6 gate or
 fidelity claim is closed.
-
----
-
-## 2026-10-05 — Current contracts separated from obsolete reference text
-
-Owner requested removal of unnecessary/stale documentation content. The old migration
-and M1.21 reference snapshots and the complete historical M0 backlog/question register
-are retained in archive; current references no longer act as a second live queue.
-NETWORK_EDITOR now states codec reads 1–19 and writes 17/18/19 by feature, matching
-document.cpp. Unsupported topology is distinguished from supported merge/crossing
-controls; owner gates link to their maintained status rather than repeating stale claims.
-SIMULATION's summary, Connector equation/section geometry, downstream routing and
-scheduled-demand semantics are reconciled with the existing contracts and code.
-Route-only Link reversal is documented with its actual positional-reference blockers;
-lane removal, markings and accent-colour guidance are corrected from commands/tests/style.
-Dated audit findings remain dated, and all decision/gate/source-spec/evidence/fixture
-records are preserved. No runtime code, gate result or task priority changes.
-Validation: documentation links/anchors/index coverage, retained archive blocks and
-regression evidence, source-spec/data/fixture hashes, file-size guard and diff whitespace.
-Native CI runs separately; no local CTest claim (CMake/CTest are unavailable).
-
----
-
-## 2026-10-05 — Repository housekeeping
-
-Owner asked to clean the project files. Removed the committed local Qt installer log
-from the root and ignored future installer output, temporary editor files and desktop
-metadata. JSONL run output remains ignored by default, but `docs/evidence/*.jsonl`
-is explicitly allowed so a new measurement record is not silently omitted from Git.
-Existing evidence and frozen fixtures are retained. Decision-ID navigation is wrapped
-for source readability without changing any link or decision row.
-Validation: documentation guard, file-size guard, retained source-spec hashes,
-Git ignore checks for generated output versus evidence and `git diff --check`.
-
----
-
-## 2026-10-05 — Documentation folders and indexed decision record
-
-Second part of the owner's authorized documentation plan. Current references/contracts,
-milestone plans/gates and dated audits now have separate indexed folders. The complete
-decision rows move once into decisions/RECORD with stable D-number anchors; PROGRESS's
-Decisions heading remains a compatibility pointer. Historical backlog/questions remain
-marked as dated context, not another live queue. Relative links and source-comment doc
-pointers follow the moves; supplied spec parts, evidence data and frozen tests stay intact.
-ROADMAP keeps its consolidated dated review, respecting the prior owner's instruction.
-NEXT's Demand priority, owner checks and work ordering are unchanged.
-Validation: Markdown links/anchors and index coverage, three retained source-spec hashes,
-decision/session retention, unchanged fixtures/data, file-size guard and diff whitespace.
-No local CTest claim; CMake/CTest are unavailable. Native CI and owner observations remain
-separate, and no milestone is closed by this maintenance.
-The Qt-free C++ documentation guard is included in `check`/CTest on Linux and Windows.
-Its positive/negative fixtures cover broken paths, stale/duplicate/explicit anchors,
-encoded fragments, fenced examples and missing index entries; GCC compilation and
-direct guard/self-test execution pass locally.
-
----
-
-## 2026-10-05 — Shared AI instructions and documentation authority
-
-Owner authorized the documentation organization plan. AGENTS.md is the shared entry
-point; CLAUDE.md delegates to it. Standing rules and model invariants are retained,
-while detailed status is read from NEXT/ROADMAP. The documentation map now selects
-context by task and the decision index locates existing D-numbers without copying
-their reasoning. README's codec range is corrected to schemas 1–19, matching
-`documentFromJson`; feature-dependent legacy save versions remain unchanged.
-The owner's current task explicitly takes priority over the standing session queue.
-No product scope, gate, owner review or engine behaviour is changed.
-Three pre-existing archive links are repaired. The source-spec parts stay byte-identical:
-Network Editor's existing D38 edit is now explicit in README/manifest, retaining the
-original hash plus a retained-copy hash and its authorizing commit.
-Validation: local Markdown links/anchors, source-spec hashes, file-size guard and
-`git diff --check`. No local CTest claim: CMake/CTest are unavailable in this workspace.
-
----
-
-## 2026-10-05 — Time-varying compositions and type-conditioned routing (D113)
-
-Owner asked to continue after #107; all five of its native CI jobs passed. Slice 6
-adds schema-19 composition periods and complete per-type routing matrices. Input
-volume remains authoritative. Gaps use base composition; missing type rules inherit
-default flows; zero counted totals use that type's whole-period weights. Splitting
-by type precedes conditioned routing, including downstream decisions, at scheduled
-demand time. Source queueing never reselects the destination. Legacy ordering, IDs,
-file bytes and random stream are preserved when no new rules are present.
-[DEMAND_TIME_TYPES.md](reference/DEMAND_TIME_TYPES.md) records interfaces and gates. Staged UI
-edits commit through History; reference checks include periods and type rules.
-Failure-first tests exposed missing serialization/validation. Breakpoint conservation,
-queue retention, replay and UI verification accompany this change. No new core RNG,
-dynamics, exact-count mode or reporting is added. Linux GCC / Qt 6.4.2 Debug:
-the required `check` target passes all 86 checks, including 56 Demand cases and
-the new time/type UI suite. Frozen fixtures remain unchanged. Native CI and owner
-review remain separate. Two older dated entries moved whole for D82 headroom.
 
 ---
 

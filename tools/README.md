@@ -30,6 +30,7 @@ name after `bin/`.
 ./build/headless/bin/trafficsim-cli --seed 123
 ./build/headless/bin/trafficsim-cli --scenario data/scenarios/crossing.json --data-dir data
 ./build/headless/bin/trafficsim-cli 42 --events run-42.jsonl
+./build/headless/bin/trafficsim-cli --project data/projects/four-leg-signalised.traffic.json --seeds 42-51 --csv four-leg-10.csv
 ./build/headless/bin/trafficsim-cli --help
 ```
 
@@ -40,6 +41,7 @@ name after `bin/`.
 | `--data-dir DIR` | Vehicle/behaviour catalogs; desktop also reads locales here | Data beside executable, then working directory |
 | `--events FILE` | Stream all events as JSON Lines | No trajectory file |
 | `--help` | Usage without loading assets or running a simulation | — |
+| `--project FILE --seeds LIST` | Multi-seed batch (`42-51`, `1,5,9`): n, mean, SD and 95 % CI per movement/approach, per-seed accounting, overloaded seeds flagged and kept, `buildCommit`; `--csv` writes the batch table. See [BATCH](../docs/reference/BATCH.md) | Off |
 | `--project FILE --discharge` | Unvalidated lane/cycle queue headways and startup estimates | Off |
 | `--discharge-start S`, `--discharge-end S`, `--discharge-warmup S` | Declared measurement window and warmup; requires `--discharge` | Full run, zero warmup |
 | `--discharge-steady-first N`, `--discharge-steady-last N`, `--discharge-startup-last N` | Original one-based crossing ranks | 3, 5, 2 |
@@ -66,7 +68,7 @@ This is an unvalidated completed-trip diagnostic, **not HCM control delay or LOS
 | Output field | Interpretation |
 |---|---|
 | `validation` | Always `not-yet-validated` in M0 |
-| `engineVersion` | Native engine generation; store with future report runs |
+| `engineVersion` | Native engine generation; store with report runs |
 | `compiler` | Compiler identifier/version used to build the executable |
 | `seed`, `time` | Input seed and final simulated time |
 | `completed` | Vehicles whose front reached the route sink |

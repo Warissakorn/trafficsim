@@ -7,6 +7,26 @@ The single live to-do for this project. [`PROGRESS.md`](PROGRESS.md) is the sess
 to do next is the duplication hard rule 3 forbids, and the copy that rots is always the one in
 the log. Rewrite this file; do not append to it.
 
+## M5 first — owner instruction, 2026-10-08
+
+The owner asked for the shortest path to real study use and answered O1 (a), O3 (b),
+O8 (warm-up default 900 s) and O9 (c) (D130). **This queue now comes before every section
+below.** Work [M5_PLAN](plans/M5_PLAN.md) §2 in order, one slice per session:
+**M5.2** batch runner and `--seeds` → M5.3 evaluation period → M5.4 travel-time sections →
+M5.5 LOS pack as data → M5.6 editor Run N seeds, Copy and Export → M5.7 owner rehearsal.
+**M5.2–M5.4 (D131–D133) passed native Linux/Windows CI; confirm M5.5 (D134) on this PR's CI.**
+M5.5 is implemented ([LOS](reference/LOS.md)): `data/los/hcm.json` holds HCM 6th-edition bounds
+as content, the author sets each section's control type (schema 24) in the *Travel-time sections*
+dialog, and single-run and batch output letter each section, each approach (start Link) and each
+control type's intersection row, vehicle-weighted, under their own not-validated marker line.
+Next is **M5.6**, the editor's Run N seeds, Copy and Export: a shell action over `runSeeds` on a
+worker thread with a snapshot copy, progress and cancel (an edit invalidates the result); a
+Results view of n, mean, ±95 %, section LOS, queues and seed flags; Copy (TSV) and Export (CSV)
+through the CLI's formatters with the marker line first. Contract and UI acceptance rows first
+(rows equal the CLI batch; cancel leaves no table claiming N runs; export bytes equal the CLI's).
+Then M5.7, the owner's rehearsal. W74 (below) is parked, not cancelled, and takes schema 25;
+owner looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
+
 ## Driving behaviour improvement — owner instruction, 2026-10-06
 
 The owner authorized the staged plan (D120). M3.3.0 writes the
@@ -48,9 +68,9 @@ duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type wi
 override, assign it to several roads, check the effective list, Undo/Redo, delete
 with replacement, switch to Thai, save and reopen, then run.
 The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)); nothing runs yet.
-Next implement it rows-first: BA21–BA22 as pure-function tests of a new
+**Parked behind M5 (D130).** When resumed, implement it rows-first: BA21–BA22 as pure-function tests of a new
 `w74Acceleration` in `src/core/` (hand-computed values, every equality side), then the
-schema-22 codec and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
+schema-25 codec (22 went to M5.3, D132; 23 to M5.4, D133; 24 to M5.5, D134) and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
 timestep sensitivity. Keep prototype runs byte-identical (BA18); do not ship a preset
 in the same slice. The owner may want to read §5 (traits) and §7 (sign hysteresis) before
 code. PCU/calibration gates remain open.
@@ -126,7 +146,7 @@ sentence has no product code and no commit since 2026-09-25: 10 seeds, LOS, and 
   copy/export.
 - **D104 has done part of S3:** a single run's CSV export, with bytes equal to the CLI's. The
   clipboard copy and the batch export are still to do.
-- Until the owner answers, this file's order stands.
+- **Answered 2026-10-08 (D130):** O1 (a), O3 (b), O8, O9 (c); see the M5 section at the top.
 - S4 (the input row's lane-share figure) is done (2026-10-03, `laneSplit`). S5 (the T-junction
   clamps, plus the session-fillable `plans/M3_ACCEPTANCE.md` §4 rows) needs no answer; it is in §3.
 

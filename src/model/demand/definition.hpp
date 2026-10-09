@@ -107,6 +107,12 @@ struct LinkBehaviourType {
     std::string id, name, defaultBehaviourId; std::vector<BehaviourOverride> overrides;
     bool operator==(const LinkBehaviourType&) const = default;
 };
+// M5.3, schema 22: the part of the run that results describe. Movement rows count trips that end
+// in [warmup, end]; queues average its ticks. No `end` means the end of the run (D132).
+struct EvaluationPeriod {
+    double warmup{}; std::optional<double> end;
+    bool operator==(const EvaluationPeriod&) const = default;
+};
 struct AuthoringDefinition : ScenarioDefinition {
     bool externalVehicleTypes{true}, externalBehaviours{true};
     bool externalCompositions{true};
@@ -118,6 +124,7 @@ struct AuthoringDefinition : ScenarioDefinition {
     std::map<std::string,std::string> behaviourNames;
     std::vector<VehicleClass> vehicleClasses;
     std::vector<LinkBehaviourType> linkBehaviourTypes;
+    std::optional<EvaluationPeriod> evaluation; // M5.3; absent is warm-up 0 to the end of the run
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
     bool operator==(const AuthoringDefinition&) const = default;
 };

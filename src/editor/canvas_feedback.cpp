@@ -90,6 +90,7 @@ void EditorCanvas::updateHover(QPoint position) {
         }
         if (!waiting.empty()) cursor = Qt::SizeAllCursor;
     } else if (tool_ == Tool::counter && counterLineAt(p)) object = hit(p).first;
+    else if (tool_ == Tool::section && sectionLineAt(p)) object = hit(p).first;
     const bool changed = object != hoverObject_ || conflict != hoverConflict_ || automatic != hoverAutomatic_ ||
         waiting != hoverWaitingLine_ || vertex != hoverVertex_ || laneKind != hoverLaneKind_ || laneLocation != hoverLaneLocation_;
     hoverObject_ = std::move(object); hoverConflict_ = std::move(conflict);

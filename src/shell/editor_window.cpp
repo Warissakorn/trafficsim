@@ -1,6 +1,7 @@
 #include "editor_window.hpp"
 #include "path.hpp"
 #include "editor_style.hpp"
+#include "../project/evaluation_period.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QApplication>
 #include <QMenu>
@@ -58,7 +59,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     error_->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
     layout->addWidget(error_); setCentralWidget(central);
     auto* files=addToolBar(QString());texts_["editorFiles"]=files; files->setObjectName("editorFiles");
-    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset();
+    files->addAction(action("editorNew",QKeySequence::New,[this]{ if(confirmDiscard()){ clearRecovery(); clearRun(); history_.reset(newProjectDocument());
         automaticRevision_=conflictRevision_=UINT64_MAX;
         file_.clear(); canvas_->select(""); refresh(); canvas_->fitNetwork(); } }));
     files->addAction(action("editorOpen",QKeySequence::Open,[this]{
@@ -74,7 +75,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
     buildHistory();
     auto* tools=addToolBar(QString());texts_["editorTools"]=tools; tools->setObjectName("editorTools");
     tool_=new QComboBox(this); tool_->setObjectName("editorTool");
-    for(int i=0;i<11;++i) tool_->addItem("",i);
+    for(int i=0;i<12;++i) tool_->addItem("",i);
     tool_->hide();
     tools->addAction(action("editorFit",QKeySequence(Qt::Key_F),[this]{canvas_->fitNetwork();}));
     tools->addAction(action("editorRotate",QKeySequence(Qt::CTRL|Qt::SHIFT|Qt::Key_R),[this]{rotateSelection();}));
@@ -102,6 +103,7 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         else if (index==1 || index==2) properties_->setCurrentIndex(0);
         else if (index==9) showConflicts(); // the tool edits what that tab lists
         else if (index==10) showCounters();
+        else if (index==11) showSections();
     });
     connect(grid_,&QDoubleSpinBox::valueChanged,this,[this](double n){canvas_->grid=n;canvas_->redraw();});
     canvas_->selectionChanged=[this]{
@@ -165,9 +167,9 @@ EditorWindow::EditorWindow(const std::filesystem::path& data,const QString& lang
         execute("editorMoveHead",[&](auto& d){moveSignalHead(d,id,station);});
     };
     canvas_->measured=[this](Point a,Point b,bool calibration){measure(a,b,calibration);};
-    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildConflicts(); buildCounters(); buildRecovery(); buildPalette();
+    buildDemandTables(); buildRouting(); buildRunControls(); buildResults(); buildConflicts(); buildCounters(); buildSections(); buildRecovery(); buildPalette();
     resize(1440,900);buildWorkspace();
-    history_.reset(); translate(); refresh();canvas_->centerOn(0,0);
+    history_.reset(newProjectDocument()); translate(); refresh();canvas_->centerOn(0,0);
 }
 QAction* EditorWindow::action(const std::string& key,const QKeySequence& shortcut,const std::function<void()>& run) {
     auto* a=new QAction(this); a->setObjectName(QString::fromStdString(key)); a->setShortcut(shortcut);
@@ -195,8 +197,8 @@ void EditorWindow::translate() {
         else if(auto* menu=qobject_cast<QMenu*>(w)) menu->setTitle(text(key));
     }
     for(const auto& refreshValidation:validationRefresh_)refreshValidation();
-    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool"};
-    for(int i=0;i<11;++i) tool_->setItemText(i,text(modes[i]));
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool","editorSectionTool"};
+    for(int i=0;i<12;++i) tool_->setItemText(i,text(modes[i]));
     const char* tabs[]={"editorLinksTab","editorConnectorsTab","editorBackgroundTab"};
     for (int i=0;i<3;++i) properties_->setTabText(i,text(tabs[i]));
     side_->setItemText(0,text("editorLeft"));side_->setItemText(1,text("editorRight"));
@@ -209,7 +211,7 @@ void EditorWindow::translate() {
         if(english)for(int column=0;column<table->columnCount();++column)
             if(auto* item=table->horizontalHeaderItem(column))item->setText(item->text().toUpper());
     }
-    translateDemand(); translateResults(); translateConflicts(); translateCounters(); translatePalette(); refreshToolHint();
+    translateDemand(); translateResults(); translateConflicts(); translateCounters(); translateSections(); translatePalette(); refreshToolHint();
     canvas_->setDemandLabels(text("editorInputRateUnit"),text("editorInputCanvasPeriods"));
     canvas_->setAccessibleName(text("editorTitle")); grid_->setAccessibleName(text("editorGrid"));
     language_->setAccessibleName(text("language"));
@@ -284,6 +286,6 @@ void EditorWindow::refresh(bool modelChanged) {
     bgX_->setValue(b.x);bgY_->setValue(b.y);bgScale_->setValue(b.metresPerPixel);bgAngle_->setValue(b.rotation);bgOpacity_->setValue(b.opacity);
     actions_.at("editorDeleteSelected")->setEnabled(!canvas_->selection().empty());
     actions_.at("editorRotate")->setEnabled(canvas_->rotationPivot().has_value());
-    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshConflicts();refreshCounters();refreshDiagnostics();refreshRun();
+    refreshTables(modelChanged);if(modelChanged)refreshDemand();refreshConflicts();refreshCounters();refreshSections();refreshDiagnostics();refreshRun();
 }
 }

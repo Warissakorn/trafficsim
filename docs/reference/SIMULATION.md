@@ -447,7 +447,8 @@ after `createSimulation` and once after every `stepSimulation`). `core/` does no
     LOS**.
   - **Known bias:** a vehicle enters the network from standstill, so an unimpeded trip already
     carries about `v/(2a)` of acceleration delay (≈3 s for the car type). The analytic test pins
-    this rather than hiding it. Cross-section travel-time sections, which remove it, are M5's.
+    this rather than hiding it. Travel-time sections (M5.4, [TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md))
+    remove it by timing between two lines placed after the entry.
 - **Queue** per approach follows Vissim's queue counter at each signal head's stop line (D40).
   - A vehicle enters queue state below `beginSpeed` and leaves it above `endSpeed`.
   - Walking upstream from the line along each route that crosses it, the queue ends at the first
@@ -459,11 +460,19 @@ after `createSimulation` and once after every `stepSimulation`). `core/` does no
     Vissim's defaults of 5, 10 and 20.
 - **Unserved demand:** vehicles still in the network (`active`), vehicles waiting to enter
   (`pending`) and safety clamps are reported beside every table. Incomplete trips are not in any
-  delay.
+  delay; since M5.3 each movement row also counts its own `unfinished` (active or pending on
+  its routes when the run ends).
+- **Evaluation period (M5.3, D132):** `definition.evaluation {warmup, end?}` (schema 22). Movement
+  rows count trips that **end** in `[warmup, end]`, and queue mean/max use only ticks in it (queue
+  hysteresis still runs every tick). No `end` is the end of the run; no period is warm-up 0, the
+  whole run, exactly as before. Run totals (`completed`, `pending`, `active`, `safetyClamps`,
+  network `meanDelay`) stay whole-run so the vehicle accounting closes. A new editor project
+  starts with warm-up 900 s and duration 4500 s; the period must lie inside the run
+  (`EVALUATION_PERIOD_INVALID`). JSON carries `evaluationPeriod`, the CSV an `evaluationPeriod_s` line.
 
 The editor shows this in the **Results** tab, and `trafficsim-cli --project FILE [--csv FILE]`
-prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds,
-confidence intervals and LOS letters are M5.
+prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds
+and confidence intervals are M5.2 ([BATCH](BATCH.md)); LOS letters are M5.5.
 
 Catalog content lives under `data/vehicle-types`, `data/driver-behaviour` and
 `data/scenarios`. The compiled boundary allows editor/project work without importing its

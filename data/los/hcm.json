@@ -1,0 +1,8 @@
+{
+  "id": "hcm",
+  "description": "Level-of-service bounds after HCM 6th edition control delay, in seconds: upper bounds of A-E, F above. Signalised intersections and two-way/all-way stop control. Applied by TrafficSim to simulated travel-time section delay, which is not HCM control delay; not validated. The v/c > 1 rule is not applied.",
+  "controlTypes": {
+    "signalised": [10, 20, 35, 55, 80],
+    "unsignalised": [10, 15, 25, 35, 50]
+  }
+}

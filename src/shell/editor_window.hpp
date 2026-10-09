@@ -178,6 +178,15 @@ private:
     void editCounter(const std::string& id);
     void addCounter(std::vector<MeasurementLine> lines);
     std::string selectedCounter() const;
+    // M5.4b, src/shell/editor_sections.cpp: the Travel-time sections tab and the tool's commit.
+    QTableWidget* sectionTable_{};
+    std::uint64_t sectionRevision_{UINT64_MAX};
+    void buildSections();
+    void translateSections();
+    void refreshSections();
+    void showSections();
+    void editSection(const std::string& id);
+    std::string selectedSection() const;
     QLineEdit* runSeed_{};
     QComboBox* runSpeed_{};
     QLabel* runInfo_{};

@@ -91,7 +91,7 @@ void EditorCanvas::resetGesture() {
     creating_=false;decisionDrag_.reset();headDrag_.reset();lineDrag_.reset();hoverHead_.reset();gestureFrom_.reset();rangeCorner_=0;laneResize_.reset();previewLinkCount_=0;
     draft_.clear(); preview_.clear(); original_.clear(); vertex_ = -1; band_.reset();
     connectorFrom_.reset(); connectorHover_.reset(); dragging_ = false; panning_ = false;
-    clearRouteDraft(); counterDraft_.clear();
+    clearRouteDraft(); counterDraft_.clear(); sectionStart_.reset();
     if (connectorDraftChanged) connectorDraftChanged();
 }
 Point EditorCanvas::world(QPoint position, bool snapped) const {
@@ -153,6 +153,7 @@ void EditorCanvas::redraw() {
     drawCopyPreview();drawRotationPreview();drawDemandOverlay();
     drawConflicts();
     drawCounters();
+    drawSections();
     drawHeads();
     if (band_) {
         QPen pen(canvasStyle::active(),1,Qt::DashLine); pen.setCosmetic(true);

@@ -5,6 +5,16 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-05-current-contracts.md`](PROGRESS-2026-10-05-current-contracts.md) — oldest live entry (2026-10-05 — Current contracts separated from obsolete reference text), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-05-housekeeping.md`](PROGRESS-2026-10-05-housekeeping.md) — oldest live entry (2026-10-05 — Repository housekeeping), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-05-documentation-folders.md`](PROGRESS-2026-10-05-documentation-folders.md) — oldest live entry (2026-10-05 — Documentation folders and indexed decision record), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-05-ai-instructions.md`](PROGRESS-2026-10-05-ai-instructions.md) — oldest live documentation-authority entry, moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-05-d113.md`](PROGRESS-2026-10-05-d113.md) — D113 oldest live time/type entry, moved whole 2026-10-08
+
 - [`PROGRESS-2026-10-05-d112.md`](PROGRESS-2026-10-05-d112.md) — D112 oldest live catalog entry, moved whole 2026-10-08
 
 - [`PROGRESS-2026-10-05-d111.md`](PROGRESS-2026-10-05-d111.md) — D111 oldest live Demand correctness entry, moved whole 2026-10-07

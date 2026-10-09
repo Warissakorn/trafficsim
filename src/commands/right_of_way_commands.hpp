@@ -17,6 +17,9 @@ void deleteStopControl(ProjectDocument&, const std::string& id);
 // M3.2.6b. Empty id allocates ("counter-N"); the same id replaces.
 std::string putQueueCounter(ProjectDocument&, AuthoredQueueCounter);
 void deleteQueueCounter(ProjectDocument&, const std::string& id);
+// M5.4 (D133). Empty id allocates ("section-N"); the same id replaces.
+std::string putTravelTimeSection(ProjectDocument&, TravelTimeSection);
+void deleteTravelTimeSection(ProjectDocument&, const std::string& id);
 // Refused (EDIT_REFERENCED) while a conflict side still waits at it or a Stop/Yield control names it;
 // a queue counter measuring there loses that line.
 void deleteWaitingLine(ProjectDocument&, const std::string& id);

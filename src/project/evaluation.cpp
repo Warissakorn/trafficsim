@@ -1,7 +1,10 @@
 #include "evaluation.hpp"
+#include "csv_format.hpp"
 #include "input_manifest.hpp"
+#include "los_output.hpp"
 #include "json.hpp"
 #include "../model/network/right_of_way.hpp"
+#include "../model/network/travel_time.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <cmath>
@@ -48,6 +51,10 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
                               const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     EvaluationSpec spec;
     spec.queue = loadQueueDefinition(dataDirectory,manifest);
+    if (document.definition && document.definition->evaluation) {
+        spec.warmup = document.definition->evaluation->warmup;
+        spec.end = document.definition->evaluation->end; // none: the end of the run, unbounded
+    }
     std::map<std::string, std::size_t> movementOfAuthored;
     if (document.definition) {
         std::map<std::pair<std::string, std::string>, std::size_t> movementOfPair;
@@ -128,18 +135,24 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
         if (!counter.lines.empty()) spec.counters.push_back(std::move(counter));
     }
     for (auto& c : authored) spec.counters.push_back(std::move(c));
+    // M5.4 (D133): every authored section is a row, even one whose lines no longer resolve.
+    for (const auto& section : network.travelTimeSections) {
+        SectionSpec s{section.name.empty() ? section.id : section.name, {}, {}, {}, linkLabel(document.network, section.start.linkId)};
+        if (section.controlType) s.controlType = sectionControlName(*section.controlType); // M5.5
+        for (const auto& at : locateSectionLine(network, table, section.start)) s.start.push_back({at.segment, at.position});
+        for (const auto& at : locateSectionLine(network, table, section.end)) s.end.push_back({at.segment, at.position});
+        spec.sections.push_back(std::move(s));
+    }
+    // M5.5 (D134): the pack is read only when a letter can be given, so other projects' input
+    // manifests are unchanged.
+    if (std::any_of(spec.sections.begin(), spec.sections.end(), [](const auto& s) { return s.controlType.has_value(); }))
+        spec.los = loadLosPack(dataDirectory, manifest);
     return spec;
 }
-namespace {
-std::string quoted(const std::string& text) {
-    std::string out = "\"";
-    for (const char c : text) { if (c == '"') out += '"'; out += c; }
-    return out + '"';
-}
-std::string number(const std::optional<double>& value) {
-    if (!value) return "";
-    std::ostringstream s; s << std::fixed << std::setprecision(2) << *value; return s.str();
-}
+std::vector<LosInput> losInputs(const MovementReport& r) {
+    std::vector<LosInput> inputs;
+    for (const auto& s : r.sections) inputs.push_back({s.approach, s.controlType, static_cast<double>(s.vehicles), s.meanDelay});
+    return inputs;
 }
 Json movementJson(const MovementReport& r) {
     Json j;
@@ -149,13 +162,27 @@ Json movementJson(const MovementReport& r) {
     for (const auto& m : r.movements)
         j["movements"].push_back({{"movement", m.name}, {"vehicles", m.vehicles},
                                   {"meanDelay", m.meanDelay ? Json(*m.meanDelay) : Json(nullptr)},
-                                  {"meanTravelTime", m.meanTravelTime ? Json(*m.meanTravelTime) : Json(nullptr)}});
+                                  {"meanTravelTime", m.meanTravelTime ? Json(*m.meanTravelTime) : Json(nullptr)},
+                                  {"unfinished", m.unfinished}});
     j["queues"] = Json::array();
     for (const auto& q : r.queues)
         j["queues"].push_back({{"approach", q.name}, {"meanLength", q.meanLength}, {"maxLength", q.maxLength}});
     j["completed"] = r.completed; j["notInMovement"] = r.unassigned; j["meanDelay"] = r.meanDelay ? Json(*r.meanDelay) : Json(nullptr);
     j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
     j["laneChanges"] = r.laneChanges;
+    j["evaluationPeriod"] = {{"warmup", r.warmup}, {"end", r.evaluationEnd}}; // M5.3
+    if (!r.sections.empty()) { // M5.4: only with a section, so other projects keep their bytes
+        j["sections"] = Json::array();
+        for (const auto& row : r.sections)
+            j["sections"].push_back({{"section", row.name}, {"vehicles", row.vehicles},
+                                     {"meanTravelTime", row.meanTravelTime ? Json(*row.meanTravelTime) : Json(nullptr)},
+                                     {"meanDelay", row.meanDelay ? Json(*row.meanDelay) : Json(nullptr)},
+                                     {"unfinished", row.unfinished},
+                                     {"controlType", row.controlType ? Json(*row.controlType) : Json(nullptr)},
+                                     {"los", losCell(row.meanDelay, row.controlType, r.los).empty() ? Json(nullptr)
+                                                                                                  : Json(losCell(row.meanDelay, row.controlType, r.los))}});
+        addLosJson(j, losInputs(r), r.los); // M5.5
+    }
     return j;
 }
 Json laneChangeJson(const LaneChangeReport& r) {
@@ -247,14 +274,23 @@ Json arrivalPhaseJson(const ArrivalPhaseReport& r) {
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";
-    out << "movement,vehicles,meanDelay_s,meanTravelTime_s\n";
+    out << "movement,vehicles,meanDelay_s,meanTravelTime_s,unfinished\n";
     for (const auto& m : r.movements)
-        out << quoted(m.name) << ',' << m.vehicles << ',' << number(m.meanDelay) << ',' << number(m.meanTravelTime) << '\n';
+        out << csvQuoted(m.name) << ',' << m.vehicles << ',' << csvNumber(m.meanDelay) << ',' << csvNumber(m.meanTravelTime) << ',' << m.unfinished << '\n';
     out << "\napproach,meanQueue_m,maxQueue_m\n";
     for (const auto& q : r.queues)
-        out << quoted(q.name) << ',' << number(q.meanLength) << ',' << number(q.maxLength) << '\n';
+        out << csvQuoted(q.name) << ',' << csvNumber(q.meanLength) << ',' << csvNumber(q.maxLength) << '\n';
+    if (!r.sections.empty()) { // M5.4
+        out << "\nsection,vehicles,meanTravelTime_s,meanDelay_s,unfinished,controlType,los\n";
+        for (const auto& row : r.sections)
+            out << csvQuoted(row.name) << ',' << row.vehicles << ',' << csvNumber(row.meanTravelTime) << ','
+                << csvNumber(row.meanDelay) << ',' << row.unfinished << ',' << row.controlType.value_or("") << ','
+                << losCell(row.meanDelay, row.controlType, r.los) << '\n';
+        writeLosCsv(out, losInputs(r), r.los); // M5.5
+    }
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
-        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges << '\n';
+        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges
+        << "\nevaluationPeriod_s," << csvNumber(r.warmup) << ',' << csvNumber(r.evaluationEnd) << '\n';
     return out.str();
 }
 }

@@ -1,5 +1,6 @@
 #include "network.hpp"
 #include "right_of_way.hpp"
+#include "travel_time.hpp"
 #include "../../core/validate.hpp"
 #include <algorithm>
 #include <cmath>
@@ -132,6 +133,7 @@ std::vector<ValidationIssue> validateNetwork(const Network& network) {
     }
     // M3.2.2: authored controls. Structural only; what cannot run yet is a runtime issue.
     for (auto& issue : rightOfWayStructuralIssues(network)) issues.push_back(std::move(issue));
+    for (auto& issue : travelTimeSectionIssues(network)) issues.push_back(std::move(issue)); // M5.4
     return issues;
 }
 void assertValidNetwork(const Network& network) {

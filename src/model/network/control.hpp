@@ -75,6 +75,19 @@ struct AuthoredQueueCounter {
     std::string id, name; std::vector<MeasurementLine> lines;
     bool operator==(const AuthoredQueueCounter&) const = default;
 };
+// M5.4 (D133): a travel-time section, from a start line to an end line. A line is a cross-section
+// of one Link (every lane) at metres along its reference polyline; Connectors carry none.
+struct SectionLine {
+    std::string linkId; double station{};
+    bool operator==(const SectionLine&) const = default;
+};
+// M5.5 (D134): which LOS bounds a section's delay is read against; none means no letter.
+enum class SectionControl { signalised, unsignalised };
+struct TravelTimeSection {
+    std::string id, name; SectionLine start, end;
+    std::optional<SectionControl> controlType; // schema 24
+    bool operator==(const TravelTimeSection&) const = default;
+};
 const char* conflictKindName(ConflictKind);
 const char* conflictPriorityName(ConflictPriority);
 // Throw std::invalid_argument("INVALID_ENUM") on anything else, so a bad file fails to load.
@@ -82,4 +95,6 @@ ConflictKind conflictKindFromName(const std::string&);
 ConflictPriority conflictPriorityFromName(const std::string&);
 const char* stopModeName(StopMode);
 StopMode stopModeFromName(const std::string&);
+const char* sectionControlName(SectionControl);
+SectionControl sectionControlFromName(const std::string&); // INVALID_ENUM otherwise
 }

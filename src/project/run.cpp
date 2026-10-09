@@ -6,7 +6,9 @@
 #include "../core/validate.hpp"
 namespace trafficsim {
 std::vector<Diagnostic> runDiagnostics(const ProjectDocument& d, const std::filesystem::path& data) {
-    if (!d.definition) return documentDiagnostics(d);
+    // A new project carries run settings (M5.3) but no demand yet: it is still a drawing, and the
+    // drawing's own problems are the useful list, exactly as with no definition at all.
+    if (!d.definition || onlyRunSettings(*d.definition)) return documentDiagnostics(d);
     try {
         auto rows=runtimeDiagnostics(d.network,expandRouteless(d.network,*d.definition,resolveCatalogs(*d.definition,data)));
         for(const auto& issue:demandAdvisories(d.network,*d.definition))
