@@ -4,7 +4,7 @@ Not a schedule. A **sequence**, so that any session can see where it sits and wh
 
 This is the single roadmap and review document. Milestone scopes and gates below remain authoritative; the dated review records evidence and proposals, not additional approvals. `NEXT.md` remains the one live session queue.
 
-Navigation: [M0](#m0--vertical-slice) · [M5](#m5--evaluation-and-reporting) · [Reviews](#reviews): [2026-10-09](audits/ROADMAP_REVIEW-2026-10-09.md) (R1–R8) · [2026-10-03](archive/ROADMAP-review-2026-10-03.md) (O1–O10, S0–S5).
+Navigation: [M0](#m0--vertical-slice) · [M5](#m5--evaluation-and-reporting) · [M8–M12](#m8m12--multi-level-modelling-micro-meso-macro-d145) · [Reviews](#reviews): [2026-10-09](audits/ROADMAP_REVIEW-2026-10-09.md) (R1–R8) · [2026-10-03](archive/ROADMAP-review-2026-10-03.md) (O1–O10, S0–S5).
 
 **Two rules, inherited from a prior effort that broke both and paid for it:**
 
@@ -330,7 +330,7 @@ The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruc
 
 ### M5.1 — Additional network objects and evaluated outputs
 
-**Open.** Evaluation nodes/stop lines, movement measurements/overlays and reports. Parking, transit stops, crosswalks and multimodal behaviour moved to *Later* by D143 (R8). **Gate:** event-accounting and known analytical scenarios, reference cleanup and multi-run output checks. Keep completed-trip delay distinct from HCM control delay/LOS.
+**Open.** Evaluation nodes/stop lines, movement measurements/overlays and reports. Transit stops, crosswalks and multimodal behaviour moved to *Later* by D143 (R8); parking is M8 since D145. **Gate:** event-accounting and known analytical scenarios, reference cleanup and multi-run output checks. Keep completed-trip delay distinct from HCM control delay/LOS.
 
 ---
 
@@ -356,12 +356,60 @@ Offline install, native file dialogs, no server required.
 
 ---
 
+## M8–M12 — Multi-level modelling: Micro, Meso, Macro (D145)
+
+**Booked by the owner on 2026-10-09; starts after the D143 queue** (M5.9 → M4.2 → M6.0 → M5.8).
+Design, decisions and slices: [`plans/MULTI_LEVEL_MODELLING.md`](plans/MULTI_LEVEL_MODELLING.md).
+One authoring network and one demand compile to three views; each engine imports nothing; every
+result of every level carries the not-yet-validated marker until that level's M6 benchmark
+passes. None is started; each slice begins with its contract and acceptance rows.
+
+### M8 — Zones, OD matrices and parking lots
+
+**Open, not started.** Zone, ZoneConnector and OdMatrix shared by every level; OD expanded into
+Micro inputs and routes; ParkingLot as a zone with capacity, gate service and dwell time.
+**Done when:** a development-access study runs from a zone OD matrix through a capacity-limited
+lot; a full lot produces a gate queue and never deletes a vehicle; older files load
+byte-identical; editor tools and the OD table ship in the milestone.
+
+### M9 — Dynamic assignment (Micro)
+
+**Open, not started.** Iterative between-run path-cost loop over the existing routing decisions;
+costs in a separate file with provenance; convergence reported. En-route rerouting is excluded.
+**Done when:** an analytic two-route fixture converges to its equilibrium split within the stated
+tolerance; same inputs give the same bytes; non-convergence is flagged.
+
+### M10 — Macro four-step model
+
+**Open, not started.** Macro network compile with link types and volume-delay functions as data;
+static user-equilibrium assignment; trip generation, gravity distribution with Furness
+balancing, multinomial-logit mode choice; skims, select-link, Results and Export; centreline-only
+Links in the editor. **Done when:** assignment reproduces a published test network's equilibrium
+within a stated relative gap; each step passes a hand-computed fixture; parameters swap with no
+code edit.
+
+### M11 — Meso engine
+
+**Open, not started.** Event-based link queue model (formulation is an owner decision), signals
+and priority as capacity, spill-back, M9's assignment loop reused. **Done when:** analytic queue
+and shockwave fixtures pass; spill-back blocks the upstream link at storage capacity; same seed
+gives the same bytes.
+
+### M12 — Multi-resolution subarea workflow
+
+**Open, not started.** Subarea OD cut from an M10 assignment with gate zones and provenance,
+run in M11 and Micro, with a cross-level consistency report. **Done when:** one cut runs at both
+finer levels with recorded provenance and a reported volume comparison.
+
+---
+
 ## Later, with their own milestones — not to be started inline
 
 Recorded so nobody starts them opportunistically:
 
-- Pedestrian and public-transport modelling, parking, transit stops and crosswalks (from M5.1, D143)
-- Regional/macroscopic assignment
+- Pedestrian and public-transport modelling, transit stops and crosswalks (from M5.1, D143;
+  parking and regional/macroscopic modelling moved to M8–M12 by D145)
+- Activity-based demand and transit assignment beyond M10's four-step model
 - Scenario management beyond M5.8's comparison (a scenario manager, variant trees)
 - 3D presentation
 - Collaboration

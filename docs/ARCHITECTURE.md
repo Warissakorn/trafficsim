@@ -264,6 +264,9 @@ M3.1 `PriorityRule`s (D59).
 | Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); multi-seed means are M5.2's runner; travel-time sections are `sections.*` (M5.4), owned by `MovementAccumulator`; LOS letters and groups are pure `los.*` (M5.5) |
 | Batch runner | `src/runner/` | Implemented (M5.2): independent seeds, deterministic aggregation; editor use is M5.6 |
 | Reports | `src/report/` | Reserved for the M5.5/M5.6 LOS report table; data formatting stays in `src/project/` (D131) |
+| Meso engine | `src/meso/` | Planned (M11, D145): imports nothing; compiled from the same authoring network by `compileMesoNetwork`; seeded and deterministic like core |
+| Macro four-step model | `src/macro/` | Planned (M10, D145): imports nothing; `compileMacroNetwork` derives its graph; generation, distribution, mode choice and assignment parameters are `data/` |
+| Zones, OD and parking | `src/model/demand/` | Planned (M8, D145): Zone, ZoneConnector, OdMatrix and ParkingLot are authoring objects shared by every level; never a second editable network ([design](plans/MULTI_LEVEL_MODELLING.md)) |
 
 Adding a command must never teach `project/` its implementation. The corresponding boundary check now runs with the M1 document/command implementation.
 

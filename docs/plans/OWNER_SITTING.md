@@ -54,6 +54,10 @@ Build for the sitting: `cmake --preset desktop`, `cmake --build --preset desktop
    (R2). Book the cap as its own slice, or leave it? *Owner:*
 6. **Routing stations** (listed 2026-10-06). Continuous-time or several stations on one Link,
    beyond M2.1.3: wanted? *Owner:*
+7. **Multi-level modelling parameters** (listed 2026-10-09, D145). The six questions in
+   [MULTI_LEVEL_MODELLING](MULTI_LEVEL_MODELLING.md) §8: Meso formulation, default VDF and its
+   citation, deterrence form and trip purposes, the mode set (with PROBLEM §8), convergence
+   defaults, on-street parking in M8 or later. M10/M11 contracts wait on 1–5. *Owner:*
 
 ## C — Run view (the 125 % screen)
 

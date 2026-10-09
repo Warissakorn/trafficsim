@@ -18,6 +18,15 @@ intersection redesigns, signal retiming, development-access studies. Their worki
 5. Report **delay, level of service, and queue length per movement**, averaged across runs.
 6. Do it again for the "with project" and "mitigated" scenarios.
 
+When the study's traffic is not given as counts — a new development, a network change, a
+corridor that diverts — the same engineer also needs, before step 2 (D145):
+
+- the trips the site generates, where they go, by which mode and on which roads (a regional
+  **macroscopic** four-step model);
+- how a corridor carries them over the peak, where queues form and spill back (a **mesoscopic**
+  corridor model);
+- the site's car park as an origin and destination with finite capacity.
+
 Today that work is done in **PTV Vissim**. It works, and these users know it well.
 
 ## 2. The problem
@@ -42,11 +51,26 @@ The last two are the deliverable of the entire job: **the two things the user is
 paid to produce.** The first five are what makes those numbers trustworthy for a given
 intersection.
 
+Since D145 the same surface extends to the coarser levels a study feeds from:
+
+| What the engineer needs | Why the study needs it |
+|---|---|
+| **Zones and OD matrices** shared by every level | Trip tables are how site and regional demand is stated; entering them once keeps the levels consistent. |
+| **Parking lots** with capacity, dwell time and a gate | Development-access studies ask whether the car park and its access queue fit the site. |
+| **Dynamic assignment** among alternative paths | When congestion or a scheme changes travel times, traffic diverts; fixed turning shares cannot show it. |
+| **Mesoscopic corridor results** — link travel times, queues and spill-back over time | Corridor and work-zone studies need the whole peak over many junctions, not one junction in detail. |
+| **A four-step macroscopic model** — generation, distribution, mode choice, assignment | Site trip distribution and regional volume/capacity are the inputs and the context of the junction study. |
+
+The micro table above remains the first deliverable; these rows feed it.
+
 ## 3. What this project is
 
 **A traffic microsimulator with its own simulation engine, built to the model Vissim users
 already think in, usable in real engineering work**, with the evaluation output that traffic
-impact reporting requires.
+impact reporting requires — **extended (D145) to model the same network and demand at three
+levels: microscopic, mesoscopic and macroscopic.** The microscopic level comes first; the others
+are milestones M8–M12 in [`ROADMAP.md`](ROADMAP.md), designed in
+[`plans/MULTI_LEVEL_MODELLING.md`](plans/MULTI_LEVEL_MODELLING.md).
 
 Its own engine, so that conflict areas, priority rules, signal placement, driver behaviour,
 and per-movement evaluation are all first-class inputs rather than things worked around.
@@ -64,7 +88,15 @@ The success condition for the whole project, in one sentence:
 > movement-level delay and LOS table they can paste into a report — without opening
 > Vissim and without opening Excel.
 
-Every milestone in [`ROADMAP.md`](ROADMAP.md) is a slice of that sentence.
+Every milestone up to M7 in [`ROADMAP.md`](ROADMAP.md) is a slice of that sentence. The levels
+added by D145 each have their own sentence:
+
+> **Meso:** the engineer runs a corridor of signalised junctions over a two-hour peak and gets
+> link travel times and queue lengths by fifteen-minute slice, with spill-back shown.
+>
+> **Macro:** the engineer enters zones, trip rates and a road network, runs the four-step model,
+> and gets the site's trip distribution, mode shares and link volume/capacity, then cuts the
+> study area out as an OD matrix for the meso or micro model.
 
 ## 5. Non-goals
 
@@ -73,10 +105,10 @@ Stated now so that later sessions do not quietly drift into them:
 | Not doing | Why |
 |---|---|
 | Bit-exact agreement with Vissim | Different code is different code. Every model must be recalibrated to local field data. Claiming parity would be false and would be believed. |
-| Regional/macroscopic assignment (Visum-like) | A different product. Possible later, never inline. |
+| Activity-based demand, transit assignment, national-scale models | The macro level (D145) is a four-step model for a study's region; anything wider is a different product. |
 | 3D presentation | Presentation value only; enormous cost. |
 | Multi-user collaborative editing | Needs its own architecture. Not before the single-user tool is good. |
-| Importing Vissim `.inpx` files | Proprietary, unstable, and would tie the data model to someone else's. Users rebuild networks; that is accepted. |
+| Importing Vissim `.inpx` or Visum `.ver` files | Proprietary, unstable, and would tie the data model to someone else's. Users rebuild networks; that is accepted. |
 | Being a general-purpose simulation platform | Scope is traffic impact study work. Depth over breadth. |
 
 ## 6. Why this can work
@@ -89,8 +121,9 @@ The gap is narrower than it looks:
   network, conflict areas, the object model engineers already know. That is design work,
   and it has already been mapped in detail by the prior effort.
 - **The evaluation layer has to be written either way**, so it is not extra cost here.
-- **Scope is narrow.** Intersections and corridors for impact studies. Not city-wide
-  regional models, not rail, not freight logistics.
+- **Scope is narrow.** Intersections and corridors for impact studies, and since D145 the
+  study-region four-step model that feeds them. Not national models, not rail, not freight
+  logistics.
 
 ## 7. What would make this project wrong
 
