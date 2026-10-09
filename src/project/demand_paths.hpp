@@ -1,6 +1,7 @@
 #pragma once
 #include "document.hpp"
 #include "../model/network/routeless.hpp"
+#include <map>
 #include <optional>
 
 namespace trafficsim {
@@ -13,11 +14,16 @@ std::vector<PlacedDecision> placedDecisions(const Network&, const AuthoringDefin
                                             std::vector<ValidationIssue>* issues = nullptr,
                                             std::optional<double> at = std::nullopt,
                                             const std::string& vehicleTypeId = {});
-// The same over a table already built for this Network (D140).
+// The same over a table already built for this Network (D140). A destination's reachable chains
+// depend on the Network and the two Links only, never on the time or type, so one expansion
+// that places decisions per slice and type resolves each (decision Link, destination) once in
+// `memo`. Like the table, a memo belongs to one walk over one unchanged Network.
+using DestinationChainMemo = std::map<std::pair<std::string, std::string>, std::vector<std::vector<std::string>>>;
 std::vector<PlacedDecision> placedDecisions(const Network&, const ConnectorPathTable&, const AuthoringDefinition&,
                                             std::vector<ValidationIssue>* issues = nullptr,
                                             std::optional<double> at = std::nullopt,
-                                            const std::string& vehicleTypeId = {});
+                                            const std::string& vehicleTypeId = {},
+                                            DestinationChainMemo* memo = nullptr);
 // Every input with a linkId (or naming a placed decision, which withRoutingDecisions turns into
 // one) becomes one input per complete path, each on an already-expanded runtime route
 // `link:<id>/path-k` that buildScenario passes through. An input whose walk has a problem is left
