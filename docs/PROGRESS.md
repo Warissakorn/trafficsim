@@ -31,6 +31,11 @@ unchanged within noise (an interleaved ld/lld engine run ruled out the linker).
 `tools/validate_benchmark.cpp` (`trafficsim-validate-benchmark [project] [repetitions]`) keeps
 that number measurable; like the other benchmarks it prints and is not in `check`.
 
+**Route continuations find their tail once.** After D140, 43 % of study-template validation was
+`continuations` rescanning every route object to find the tail, once per candidate. It now finds
+it once (the last match, as before). Validation 4.97 → 2.75 ms (four-leg 0.85 → 0.72 ms); the
+editor's route hover and gesture use the same function. CLI output identical.
+
 **NEXT.md slimmed** (31.4 → 26.8 KB, −15 %): the five 2026-10-05/06 owner-instruction sections narrated
 finished slices already recorded in ROADMAP (M2.8, M3.2.4, M3.3 status lines), PROGRESS and
 RECORD (D115–D129, D135–D139, each checked before removal). One section keeps every open item

@@ -49,11 +49,14 @@ std::vector<RouteObject> routeObjects(const Network& network, const ConnectorPat
 std::vector<std::string> continuations(const std::vector<RouteObject>& objects,
                                        const std::vector<std::string>& authored) {
     std::vector<std::string> result;
+    // The tail's object, found once rather than per candidate: that rescan was 43 % of validating
+    // the M2.6 study template. The last match wins, as it did when each candidate rescanned.
+    const RouteObject* tail = nullptr;
+    if (!authored.empty()) for (const auto& last : objects) if (last.id == authored.back()) tail = &last;
     for (const auto& object : objects) {
         // An empty route may start anywhere; otherwise only where the tail leads.
-        bool allowed = authored.empty();
-        if (!allowed) for (const auto& last : objects) if (last.id == authored.back())
-            allowed = std::find(last.next.begin(), last.next.end(), object.id) != last.next.end();
+        const bool allowed = authored.empty()
+            || (tail && std::find(tail->next.begin(), tail->next.end(), object.id) != tail->next.end());
         // A route that revisited an object would loop. The dialog refused that and the pointer
         // gesture refuses the same thing, or the two disagree about one network.
         if (allowed && std::find(authored.begin(), authored.end(), object.id) == authored.end())
