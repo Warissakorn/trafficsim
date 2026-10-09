@@ -8,7 +8,7 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
-## 2026-10-09 — Optimization pass: lld, D140
+## 2026-10-09 — Optimization pass: lld, D140, validate benchmark
 
 Measured first (Linux, 4 cores, Qt offscreen): the engine (0.15–0.30 µs per vehicle-tick, linear
 to 96 crossings), the run view (~3.3 ms per Step) and redraw (3.6 ms at 40 crossings) are not
@@ -28,6 +28,8 @@ signatures build their own, so editor and compile callers are unchanged. Validat
 (median of 15; four-leg 1.03 → 0.91 ms). `--seeds 1-3` output of all four shipped projects is
 identical apart from the build stamp; the ten-seed study batch and the engine benchmark are
 unchanged within noise (an interleaved ld/lld engine run ruled out the linker).
+`tools/validate_benchmark.cpp` (`trafficsim-validate-benchmark [project] [repetitions]`) keeps
+that number measurable; like the other benchmarks it prints and is not in `check`.
 
 ---
 

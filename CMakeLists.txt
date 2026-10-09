@@ -119,6 +119,10 @@ add_executable(trafficsim-engine-benchmark tools/engine_benchmark.cpp)
 target_link_libraries(trafficsim-engine-benchmark PRIVATE trafficsim_commands trafficsim_options)
 target_precompile_headers(trafficsim-engine-benchmark PRIVATE <nlohmann/json.hpp>)
 trafficsim_runtime_data(trafficsim-engine-benchmark)
+add_executable(trafficsim-validate-benchmark tools/validate_benchmark.cpp)
+target_link_libraries(trafficsim-validate-benchmark PRIVATE trafficsim_commands trafficsim_options)
+target_precompile_headers(trafficsim-validate-benchmark REUSE_FROM trafficsim-engine-benchmark)
+trafficsim_runtime_data(trafficsim-validate-benchmark)
 
 # Regenerates the committed four-leg fixture from its one source, tools/four_leg_network.hpp.
 add_executable(trafficsim-four-leg-fixture tools/four_leg_fixture.cpp)

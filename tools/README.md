@@ -17,6 +17,7 @@ cmake --build build/headless --target check
 | `check_architecture.cpp` | `trafficsim-check-architecture` | Check core/eval include boundaries and forbidden nondeterministic APIs |
 | `check_file_sizes.cpp` | `trafficsim-check-file-sizes` | Enforce the source-file line budget |
 | `check_docs.cpp` | `trafficsim-check-docs` | Check maintained Markdown local links, anchors and folder indexes; supplied spec parts are excluded |
+| `validate_benchmark.cpp` | `trafficsim-validate-benchmark` | Time `validateDocument`, which every editor command runs (D140); prints, never asserts; not in `check` |
 
 The executables are under `build/headless/bin/` or `build/desktop/bin/` for the Ninja
 presets. On Windows add `.exe`. Multi-configuration generators add the configuration
