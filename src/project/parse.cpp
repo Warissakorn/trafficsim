@@ -275,13 +275,16 @@ Network parseNetwork(const Json& value, int schemaVersion) {
     }
     if(schemaVersion>=23 && present(value,"travelTimeSections"))for(const auto& s:array(value,"travelTimeSections")) {
         const auto path="travelTimeSections["+std::to_string(network.travelTimeSections.size())+"]";
-        knownFields(s,{"id","name","start","end"},path,schemaVersion);
+        // `controlType` from schema 24 (M5.5).
+        if(schemaVersion>=24)knownFields(s,{"id","name","start","end","controlType"},path,schemaVersion);
+        else knownFields(s,{"id","name","start","end"},path,schemaVersion);
         const auto line=[&](const char* name) {
             const auto& l=member(s,name);
             knownFields(l,{"linkId","station"},path+"."+name,schemaVersion);
             return SectionLine{field<std::string>(l,"linkId"),field<double>(l,"station")};
         };
-        network.travelTimeSections.push_back({field<std::string>(s,"id"),present(s,"name")?field<std::string>(s,"name"):"",line("start"),line("end")});
+        network.travelTimeSections.push_back({field<std::string>(s,"id"),present(s,"name")?field<std::string>(s,"name"):"",line("start"),line("end"),{}});
+        if(schemaVersion>=24 && present(s,"controlType"))network.travelTimeSections.back().controlType=sectionControlFromName(field<std::string>(s,"controlType"));
     }
     return network;
 }

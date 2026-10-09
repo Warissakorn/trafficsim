@@ -81,8 +81,11 @@ struct SectionLine {
     std::string linkId; double station{};
     bool operator==(const SectionLine&) const = default;
 };
+// M5.5 (D134): which LOS bounds a section's delay is read against; none means no letter.
+enum class SectionControl { signalised, unsignalised };
 struct TravelTimeSection {
     std::string id, name; SectionLine start, end;
+    std::optional<SectionControl> controlType; // schema 24
     bool operator==(const TravelTimeSection&) const = default;
 };
 const char* conflictKindName(ConflictKind);
@@ -92,4 +95,6 @@ ConflictKind conflictKindFromName(const std::string&);
 ConflictPriority conflictPriorityFromName(const std::string&);
 const char* stopModeName(StopMode);
 StopMode stopModeFromName(const std::string&);
+const char* sectionControlName(SectionControl);
+SectionControl sectionControlFromName(const std::string&); // INVALID_ENUM otherwise
 }

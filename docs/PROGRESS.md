@@ -8,6 +8,27 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M5.5 LOS letters from section delay (D134)
+
+Section delay now gets a letter, and only section delay. The owner chose an author-set control
+type (`signalised`/`unsignalised`, schema 24) over a derived guess, and approaches grouped by
+start Link. Bounds are content: `data/los/hcm.json` (HCM 6th edition, A–E upper bounds; equal
+takes the better letter), read only when some section has a type so other projects' manifests
+stay unchanged. `src/eval/los.*` is pure (`losLetter`, vehicle-weighted `losGroups`);
+`src/project/los_output.*` loads the pack strictly and writes the shared JSON `los` object and
+the CSV block under the line `# LOS (pack hcm) from simulated section delay, not HCM control
+delay; not validated (M6)`. Section blocks gain `controlType,los`. Batches letter the mean over
+seeds. HCM's v/c > 1 rule is not applied (no v/c is simulated); unfinished trips stay visible.
+The editor's section dialog sets the type in the same History step as the name. W74 → schema 25.
+Contract and rows L1–L7 ([LOS](reference/LOS.md)) came first. Evidence: group `los` (6 cases —
+every bound on both sides for both types; a stricter pack turns D into F on the same measured
+delay; eight malformed packs refused; weighting by hand) and `section-ui`. Linux GCC 13.3:
+headless 71/71, desktop 103/103 offscreen. A 10-seed four-leg batch with three signalised
+sections: west through 48.3 s D, north left 57.6 s E, east through 43.0 s D; the intersection
+row 46.4 s D equals the hand-weighted mean. Windows evidence is CI's.
+
+---
+
 ## 2026-10-09 — M5.4 travel-time sections (D133)
 
 The quantity M5.5's LOS will read now exists. A section is `network.travelTimeSections[]`
@@ -455,26 +476,6 @@ nlohmann/json are local build dependencies, not committed repository changes. Qt
 unavailable locally; native desktop CI and owner appearance remain separate. These checks
 are interval/segment checks, not cross-path 2D collision proof. No owner/M0/M3/M6 gate or
 fidelity claim is closed.
-
----
-
-## 2026-10-05 — Current contracts separated from obsolete reference text
-
-Owner requested removal of unnecessary/stale documentation content. The old migration
-and M1.21 reference snapshots and the complete historical M0 backlog/question register
-are retained in archive; current references no longer act as a second live queue.
-NETWORK_EDITOR now states codec reads 1–19 and writes 17/18/19 by feature, matching
-document.cpp. Unsupported topology is distinguished from supported merge/crossing
-controls; owner gates link to their maintained status rather than repeating stale claims.
-SIMULATION's summary, Connector equation/section geometry, downstream routing and
-scheduled-demand semantics are reconciled with the existing contracts and code.
-Route-only Link reversal is documented with its actual positional-reference blockers;
-lane removal, markings and accent-colour guidance are corrected from commands/tests/style.
-Dated audit findings remain dated, and all decision/gate/source-spec/evidence/fixture
-records are preserved. No runtime code, gate result or task priority changes.
-Validation: documentation links/anchors/index coverage, retained archive blocks and
-regression evidence, source-spec/data/fixture hashes, file-size guard and diff whitespace.
-Native CI runs separately; no local CTest claim (CMake/CTest are unavailable).
 
 ---
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "summary.hpp"
 #include "sections.hpp"
+#include "los.hpp"
 #include <map>
 
 namespace trafficsim {
@@ -25,6 +26,7 @@ struct EvaluationSpec {
     // is the end of the run. Run totals in the report stay whole-run.
     double warmup{}; std::optional<double> end;
     std::vector<SectionSpec> sections; // M5.4 (D133), in authored order
+    std::optional<LosPack> los; // M5.5 (D134): read only when a section has a control type
 };
 struct MovementRow {
     std::string name; std::uint64_t vehicles{};
@@ -46,6 +48,7 @@ struct MovementReport {
     std::uint64_t laneChanges{}; // M3.2.8b
     double warmup{}, evaluationEnd{}; // M5.3: the period the rows and queues describe
     std::vector<SectionRow> sections; // M5.4: one per authored section; empty without any
+    std::optional<LosPack> los; // M5.5: the spec's pack, so output can letter the rows
     bool operator==(const MovementReport&) const = default;
 };
 // Delay a completed trip contributes: the same term as the run summary, so movements add up.

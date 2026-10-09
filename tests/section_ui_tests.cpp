@@ -16,7 +16,7 @@
 #include <iostream>
 #include <set>
 using namespace trafficsim;
-// M5.4b (D133, TT11): travel-time sections in the editor. Two Ctrl+right-clicks with the Section
+// M5.4b (D133, TT11) and M5.5 (D134, L7): travel-time sections in the editor. Two Ctrl+right-clicks with the Section
 // tool make one section in one Undo step; the tab renames and deletes it through History; a run
 // accepts it; Save and reopen keep it.
 namespace {
@@ -112,12 +112,19 @@ int main(int argc, char** argv) {
         QTimer::singleShot(0, [&] {
             auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
             require(dialog && dialog->objectName() == "editorSectionDialog", "No section dialog");
-            dialog->findChild<QLineEdit*>("editorSectionName")->setText("West through"); dialog->accept(); ran = true;
+            dialog->findChild<QLineEdit*>("editorSectionName")->setText("West through");
+            auto* control = dialog->findChild<QComboBox*>("editorSectionControl"); require(control, "No control type field");
+            require(control->currentData().toInt() == -1, "A new section already has a control type");
+            control->setCurrentIndex(control->findData(static_cast<int>(SectionControl::signalised)));
+            dialog->accept(); ran = true;
         });
         act(w, "editorEditSection")->trigger(); QApplication::processEvents();
         require(ran && network().travelTimeSections.front().name == "West through", "The section was not renamed");
+        require(network().travelTimeSections.front().controlType == SectionControl::signalised, "The control type was not set");
+        require(table->item(0, 2)->text() == "Signalised", "The tab does not show the control type");
         act(w, "editorUndo")->trigger(); QApplication::processEvents();
-        require(network().travelTimeSections.front().name.empty(), "Rename was not one Undo step");
+        require(network().travelTimeSections.front().name.empty() && !network().travelTimeSections.front().controlType,
+                "Rename and control type were not one Undo step");
         act(w, "editorRedo")->trigger(); QApplication::processEvents();
 
         // A run accepts the section. The Results tab is rebuilt only while it can be seen.

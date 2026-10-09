@@ -1,4 +1,4 @@
-Qt-free M0 loading/output and schema-23 authoring ProjectDocument codec (reads schemas 1–23). The document persists authoring data and optional background; no compiled runtime network is saved. Empty draft networks are valid. Commands depend on this module, never the reverse. The shell owns QSaveFile atomic replacement.
+Qt-free M0 loading/output and schema-24 authoring ProjectDocument codec (reads schemas 1–24). The document persists authoring data and optional background; no compiled runtime network is saved. Empty draft networks are valid. Commands depend on this module, never the reverse. The shell owns QSaveFile atomic replacement.
 
 `input_manifest` optionally records hashes of exact parsed project/catalog/evaluation bytes for CLI discharge studies. Collection is passed explicitly through compilation; loaders keep their legacy path when absent. `input_sha256` has no external dependency. See [measurement/provenance contract](../../docs/reference/DISCHARGE.md).
 

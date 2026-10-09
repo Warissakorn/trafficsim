@@ -1,5 +1,6 @@
 #include "batch_output.hpp"
 #include "csv_format.hpp"
+#include "los_output.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
 
@@ -10,6 +11,12 @@ std::string measure(std::size_t runs) {
            " runs, 95% CI of the mean (Student t)";
 }
 Json value(const std::optional<double>& v) { return v ? Json(*v) : Json(nullptr); }
+// M5.5: letters on the mean over seeds, weighted by the mean vehicles.
+std::vector<LosInput> losInputs(const BatchReport& r) {
+    std::vector<LosInput> inputs;
+    for (const auto& s : r.sections) inputs.push_back({s.approach, s.controlType, s.vehicles.mean.value_or(0), s.meanDelay.mean});
+    return inputs;
+}
 Json estimateJson(const Estimate& e) {
     return {{"n", e.n}, {"mean", value(e.mean)}, {"sd", value(e.sd)}, {"halfWidth95", value(e.halfWidth95)}};
 }
@@ -42,7 +49,11 @@ Json batchJson(const BatchReport& r, const std::vector<SeedRun>& runs) {
         for (const auto& m : r.sections)
             j["sections"].push_back({{"section", m.name}, {"vehicles", estimateJson(m.vehicles)},
                                      {"meanDelay", estimateJson(m.meanDelay)}, {"meanTravelTime", estimateJson(m.meanTravelTime)},
-                                     {"unfinished", estimateJson(m.unfinished)}});
+                                     {"unfinished", estimateJson(m.unfinished)},
+                                     {"controlType", m.controlType ? Json(*m.controlType) : Json(nullptr)},
+                                     {"los", losCell(m.meanDelay.mean, m.controlType, r.los).empty() ? Json(nullptr)
+                                                                                                    : Json(losCell(m.meanDelay.mean, m.controlType, r.los))}});
+        addLosJson(j, losInputs(r), r.los); // M5.5
     }
     j["meanDelay"] = estimateJson(r.meanDelay); j["completed"] = estimateJson(r.completed);
     j["pending"] = estimateJson(r.pending); j["safetyClamps"] = estimateJson(r.safetyClamps);
@@ -86,12 +97,14 @@ std::string batchCsv(const BatchReport& r, const std::vector<SeedRun>& runs) {
             << csvNumber(q.meanLength.halfWidth95) << ',' << csvNumber(q.maxLength.mean) << ','
             << csvNumber(q.maxLength.halfWidth95) << '\n';
     if (!r.sections.empty()) { // M5.4
-        out << "\nsection,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean\n";
+        out << "\nsection,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean,controlType,los\n";
         for (const auto& m : r.sections)
             out << csvQuoted(m.name) << ',' << m.meanDelay.n << ',' << csvNumber(m.meanDelay.mean) << ','
                 << csvNumber(m.meanDelay.halfWidth95) << ',' << csvNumber(m.meanDelay.sd) << ','
                 << csvNumber(m.vehicles.mean) << ',' << csvNumber(m.meanTravelTime.mean) << ','
-                << csvNumber(m.unfinished.mean) << '\n';
+                << csvNumber(m.unfinished.mean) << ',' << m.controlType.value_or("") << ','
+                << losCell(m.meanDelay.mean, m.controlType, r.los) << '\n';
+        writeLosCsv(out, losInputs(r), r.los); // M5.5
     }
     out << "\nseed,generated,completed,active,pending,safetyClamps,overloaded,meanDelay_s\n";
     for (const auto& run : bySeed(runs))

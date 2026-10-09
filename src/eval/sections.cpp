@@ -95,7 +95,7 @@ void SectionAccumulator::observe(const SimState& state) {
 std::vector<SectionRow> SectionAccumulator::report() const {
     std::vector<SectionRow> rows;
     for (std::size_t k = 0; k < sections_.size(); ++k) {
-        SectionRow row{sections_[k].name, count_[k], {}, {}, 0};
+        SectionRow row{sections_[k].name, count_[k], {}, {}, 0, sections_[k].controlType, sections_[k].approach};
         if (count_[k]) {
             row.meanTravelTime = travel_[k] / static_cast<double>(count_[k]);
             row.meanDelay = delay_[k] / static_cast<double>(count_[k]);

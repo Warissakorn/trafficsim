@@ -14,18 +14,18 @@ O8 (warm-up default 900 s) and O9 (c) (D130). **This queue now comes before ever
 below.** Work [M5_PLAN](plans/M5_PLAN.md) §2 in order, one slice per session:
 **M5.2** batch runner and `--seeds` → M5.3 evaluation period → M5.4 travel-time sections →
 M5.5 LOS pack as data → M5.6 editor Run N seeds, Copy and Export → M5.7 owner rehearsal.
-**M5.2 (D131) passed native Linux/Windows CI; confirm M5.3 (D132) and M5.4 (D133) on this
-PR's CI.** M5.4 is implemented: schema-23 travel-time sections
-([contract](reference/TRAVEL_TIME_SECTIONS.md)) — Link-wide start/end lines, interpolated
-crossings, delay against the vehicle's desired speed, single-run and batch `section` blocks, the
-editor's Section tool (`T`) and *Travel-time sections* tab. Next is **M5.5**, the LOS pack as
-data: write the contract first (`data/los/` HCM pack with A–F thresholds by control type, a pure
-`losLetter(delay, controlType, pack)`, a control-type tag — most likely on the section, since LOS
-reads section delay — and volume-weighted approach/intersection rows), with threshold-edge tests
-on both equality sides and a swapped pack changing letters with no code edit. The editor's
-Results tab does not show section rows yet; that is M5.6 (Run N seeds, Copy, Export), after
-M5.5. W74 (below) is parked, not cancelled, and takes schema 24; owner looks stay queued and
-block nothing. No LOS letter on whole-route delay; the marker stays.
+**M5.2–M5.4 (D131–D133) passed native Linux/Windows CI; confirm M5.5 (D134) on this PR's CI.**
+M5.5 is implemented ([LOS](reference/LOS.md)): `data/los/hcm.json` holds HCM 6th-edition bounds
+as content, the author sets each section's control type (schema 24) in the *Travel-time sections*
+dialog, and single-run and batch output letter each section, each approach (start Link) and each
+control type's intersection row, vehicle-weighted, under their own not-validated marker line.
+Next is **M5.6**, the editor's Run N seeds, Copy and Export: a shell action over `runSeeds` on a
+worker thread with a snapshot copy, progress and cancel (an edit invalidates the result); a
+Results view of n, mean, ±95 %, section LOS, queues and seed flags; Copy (TSV) and Export (CSV)
+through the CLI's formatters with the marker line first. Contract and UI acceptance rows first
+(rows equal the CLI batch; cancel leaves no table claiming N runs; export bytes equal the CLI's).
+Then M5.7, the owner's rehearsal. W74 (below) is parked, not cancelled, and takes schema 25;
+owner looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
 
 ## Driving behaviour improvement — owner instruction, 2026-10-06
 
@@ -70,7 +70,7 @@ with replacement, switch to Thai, save and reopen, then run.
 The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)); nothing runs yet.
 **Parked behind M5 (D130).** When resumed, implement it rows-first: BA21–BA22 as pure-function tests of a new
 `w74Acceleration` in `src/core/` (hand-computed values, every equality side), then the
-schema-24 codec (22 went to M5.3, D132; 23 to M5.4, D133) and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
+schema-25 codec (22 went to M5.3, D132; 23 to M5.4, D133; 24 to M5.5, D134) and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
 timestep sensitivity. Keep prototype runs byte-identical (BA18); do not ship a preset
 in the same slice. The owner may want to read §5 (traits) and §7 (sign hysteresis) before
 code. PCU/calibration gates remain open.

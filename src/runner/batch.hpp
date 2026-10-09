@@ -35,6 +35,11 @@ struct BatchMovementRow {
     std::string name; Estimate vehicles, meanDelay, meanTravelTime, unfinished;
     bool operator==(const BatchMovementRow&) const = default;
 };
+// M5.4: a movement row's four estimates; M5.5: the control type and approach the runs carry.
+struct BatchSectionRow : BatchMovementRow {
+    std::optional<std::string> controlType; std::string approach;
+    bool operator==(const BatchSectionRow&) const = default;
+};
 struct BatchQueueRow {
     std::string name; Estimate meanLength, maxLength;
     bool operator==(const BatchQueueRow&) const = default;
@@ -43,7 +48,8 @@ struct BatchReport {
     std::vector<std::uint32_t> seeds, overloadedSeeds; // ascending
     std::vector<BatchMovementRow> movements;
     std::vector<BatchQueueRow> queues;
-    std::vector<BatchMovementRow> sections; // M5.4: a section row has a movement row's four fields
+    std::vector<BatchSectionRow> sections; // M5.4
+    std::optional<LosPack> los; // M5.5: the runs' pack
     Estimate meanDelay, completed, pending, safetyClamps;
     bool operator==(const BatchReport&) const = default;
 };

@@ -108,12 +108,14 @@ BatchReport aggregate(std::vector<SeedRun> runs) {
             over(runs, [i](const SeedRun& s) { return std::optional<double>(s.report.queues[i].maxLength); })});
     for (std::size_t i = 0; i < first.sections.size(); ++i) {
         const auto row = [i](const SeedRun& run) -> const SectionRow& { return run.report.sections[i]; };
-        r.sections.push_back({first.sections[i].name,
+        r.sections.push_back({{first.sections[i].name,
             over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).vehicles)); }),
             over(runs, [&](const SeedRun& s) { return row(s).meanDelay; }),
             over(runs, [&](const SeedRun& s) { return row(s).meanTravelTime; }),
-            over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).unfinished)); })});
+            over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).unfinished)); })},
+            first.sections[i].controlType, first.sections[i].approach});
     }
+    r.los = first.los;
     r.meanDelay = over(runs, [](const SeedRun& s) { return s.report.meanDelay; });
     r.completed = over(runs, [](const SeedRun& s) { return std::optional<double>(static_cast<double>(s.report.completed)); });
     r.pending = over(runs, [](const SeedRun& s) { return std::optional<double>(static_cast<double>(s.report.pending)); });

@@ -58,7 +58,8 @@ JSON on stdout: `validated: false`, `measure`, `seeds`, `overloadedSeeds`, per-m
 `movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean`;
 `approach,n,meanQueue_m,ci95_m,maxQueue_m,maxQueue_ci95_m`; with a travel-time section
 (M5.4, [TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md) §4) a `section,...` block in the movement
-block's columns; and
+block's columns plus `controlType,los` and, with a control type, the LOS block
+([LOS](LOS.md) §4); and
 `seed,generated,completed,active,pending,safetyClamps,overloaded,meanDelay_s`. Cells use the
 single-run CSV's formats (`csv_format.hpp`): quoted names, C-locale numbers with two decimals,
 an empty cell for no value.

@@ -2,8 +2,15 @@
 #include <algorithm>
 #include <cmath>
 #include <set>
+#include <stdexcept>
 
 namespace trafficsim {
+const char* sectionControlName(SectionControl c) { return c == SectionControl::signalised ? "signalised" : "unsignalised"; }
+SectionControl sectionControlFromName(const std::string& name) {
+    if (name == "signalised") return SectionControl::signalised;
+    if (name == "unsignalised") return SectionControl::unsignalised;
+    throw std::invalid_argument("INVALID_ENUM");
+}
 std::vector<ValidationIssue> travelTimeSectionIssues(const Network& n) {
     std::vector<ValidationIssue> issues;
     if (n.travelTimeSections.empty()) return issues;

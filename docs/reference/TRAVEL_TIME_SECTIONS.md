@@ -22,7 +22,8 @@ letter.
   this slice: a turn is measured from its approach Link to its exit Link.
 - The key is written only when there is a section, so a file without one keeps its bytes and
   schema. A file of schema 23 carries it; an older file that does is refused
-  (`EDIT_UNSUPPORTED_FIELD network.travelTimeSections`). Readers accept schemas 1–23.
+  (`EDIT_UNSUPPORTED_FIELD network.travelTimeSections`). Readers accept schemas 1–24; schema 24 adds a section's
+  `controlType` for LOS ([LOS](LOS.md), D134).
 - Structural rules (the load or the edit is refused, the document unchanged): a non-blank id unique
   among all network ids (`INVALID_ID`, `DUPLICATE_ID`); each line's Link exists
   (`UNKNOWN_SECTION_LINK`); each station finite and ≥ 0 (`INVALID_POSITION`); on one Link the start
@@ -63,12 +64,13 @@ Rows: `name`, `vehicles`, `meanTravelTime`, `meanDelay` (null with no vehicle), 
 ## 4. Output
 
 - Single run JSON: a `sections` array of the rows, written only when the project has a section.
-  CSV: a block `section,vehicles,meanTravelTime_s,meanDelay_s,unfinished` after the approach block,
+  CSV: a block `section,vehicles,meanTravelTime_s,meanDelay_s,unfinished,controlType,los` (the last two
+  from M5.5) after the approach block,
   only then. A project without sections writes exactly the bytes it wrote before M5.4.
 - Batch (BATCH §4): `sections` with `vehicles`, `meanTravelTime`, `meanDelay`, `unfinished` as
-  estimates, and the CSV block `section,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean`,
+  estimates, and the CSV block `section,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean,controlType,los`,
   again only with a section. Seeds must carry the same sections, by position and name.
-- The marker line stays first. No LOS letter is written in M5.4.
+- The marker line stays first. Letters and their own marker line are M5.5's ([LOS](LOS.md) §4).
 
 ## 5. Editing (M5.4b)
 

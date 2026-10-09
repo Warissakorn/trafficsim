@@ -10,11 +10,17 @@ namespace trafficsim {
 struct CounterLine { std::string segmentId; double position{}; bool operator==(const CounterLine&) const = default; };
 // M5.4 (D133, docs/reference/TRAVEL_TIME_SECTIONS.md): one section, its lines as the places on
 // every lane they cross. NOT HCM control delay, NOT LOS, not validated (rule 4).
-struct SectionSpec { std::string name; std::vector<CounterLine> start, end; };
+struct SectionSpec {
+    std::string name; std::vector<CounterLine> start, end;
+    // M5.5 (D134): carried to the row for LOS -- the pack's control type and the approach (start
+    // Link) the section is grouped under. Neither changes what is measured.
+    std::optional<std::string> controlType; std::string approach;
+};
 struct SectionRow {
     std::string name; std::uint64_t vehicles{};
     std::optional<double> meanTravelTime, meanDelay;
     std::uint64_t unfinished{};
+    std::optional<std::string> controlType; std::string approach; // M5.5, from the spec
     bool operator==(const SectionRow&) const = default;
 };
 // Section crossings from SimState snapshots alone; MovementAccumulator owns one and calls it once

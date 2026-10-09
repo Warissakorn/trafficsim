@@ -142,7 +142,7 @@ TEST(traveltime, schema23_codec) { // TT8
     test::throws([&] { parseDocument(negative); }, "INVALID_POSITION");
     auto clash = j; clash["network"]["travelTimeSections"][0]["id"] = "link-1";
     test::throws([&] { parseDocument(clash); }, "DUPLICATE_ID");
-    auto newer = j; newer["schemaVersion"] = 24;
+    auto newer = j; newer["schemaVersion"] = 25;
     test::throws([&] { parseDocument(newer); }, "EDIT_VERSION");
 }
 TEST(traveltime, commands_and_cascades) { // TT9
@@ -183,7 +183,7 @@ TEST(traveltime, a_project_section_runs_and_writes_rows) { // TT10
     const auto r = runSeed(snapshot.scenario, spec, 42).report;
     CHECK(r.sections[0].vehicles > 0); CHECK(*r.sections[0].meanDelay >= 0);
     CHECK(movementJson(r)["sections"][0]["section"] == "West through");
-    CHECK(movementCsv(r).find("\nsection,vehicles,meanTravelTime_s,meanDelay_s,unfinished\n\"West through\",") != std::string::npos);
+    CHECK(movementCsv(r).find("\nsection,vehicles,meanTravelTime_s,meanDelay_s,unfinished,controlType,los\n\"West through\",") != std::string::npos);
     // The movement rows are exactly those of the same project without the section.
     const auto plain = parseDocument(fourLegJson());
     const auto plainSnapshot = compileDocument(plain, data);
@@ -201,7 +201,7 @@ TEST(traveltime, batches_aggregate_sections) { // TT10
     test::near(*r.sections[0].meanDelay.mean, 12); test::near(*r.sections[0].meanTravelTime.mean, 32);
     test::near(*r.sections[0].vehicles.mean, 15); test::near(*r.sections[0].unfinished.mean, 2);
     const std::vector<SeedRun> runs{a, b};
-    CHECK(batchCsv(r, runs).find("\nsection,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean\n\"s\",2,12.00,") != std::string::npos);
+    CHECK(batchCsv(r, runs).find("\nsection,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean,controlType,los\n\"s\",2,12.00,") != std::string::npos);
     CHECK(batchJson(r, runs)["sections"][0]["meanDelay"]["mean"] == 12.0);
     auto other = b; other.report.sections[0].name = "t";
     test::throws([&] { aggregate({a, other}); }, "different");

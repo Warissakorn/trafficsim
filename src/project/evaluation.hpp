@@ -25,6 +25,8 @@ EvaluationSpec evaluationSpec(const ProjectDocument&, const RunSnapshot&, const 
 // every Link whose heads it measures (by id, in Link order).
 std::string queueRowName(const AuthoredQueueCounter&);
 std::vector<std::string> replacedApproaches(const Network&, const AuthoredQueueCounter&);
+// M5.5: the report's sections as LOS inputs (approach, type, vehicles, mean delay).
+std::vector<LosInput> losInputs(const MovementReport&);
 // The report as JSON (CLI), with the same honesty labels.
 Json movementJson(const MovementReport&);
 // M3.2.8c step 1: the lane-change diagnostic as JSON (CLI --lane-changes). Per row the change
