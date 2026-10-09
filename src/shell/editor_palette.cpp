@@ -33,13 +33,13 @@ void EditorWindow::buildPalette() {
     struct Group {const char* key;std::initializer_list<int> modes;};
     const Group groups[]={
         {"editorPaletteGeometry",{0,1,5,2}},
-        {"editorPaletteControl",{6,7,8,9,10}},
+        {"editorPaletteControl",{6,7,8,9,10,11}},
         {"editorPaletteTools",{3,4}}
     };
-    const char* shortcuts[]={"S","L","X","M","K","C","R","V","H","A","Q"};
+    const char* shortcuts[]={"S","L","X","M","K","C","R","V","H","A","Q","T"};
     const EditorIcon icons[]={EditorIcon::select,EditorIcon::link,EditorIcon::split,EditorIcon::measure,
         EditorIcon::image,EditorIcon::connector,EditorIcon::route,EditorIcon::input,EditorIcon::signal,
-        EditorIcon::conflict,EditorIcon::counter};
+        EditorIcon::conflict,EditorIcon::counter,EditorIcon::section};
     for(const auto& group:groups){
         auto* root=new QTreeWidgetItem(palette_);root->setData(0,Qt::UserRole,QString::fromLatin1(group.key));
         root->setFlags(Qt::ItemIsEnabled);root->setData(0,Qt::UserRole+1,true);
@@ -97,7 +97,7 @@ void EditorWindow::translatePalette() {
     palette_->setAccessibleName(text("editorNetworkObjects"));
     visibleLevel_->setAccessibleName(text("editorVisibleLevel"));
     canvas_->setAccessibleDescription(text("editorKeyboardHelp"));
-    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool"};
+    const char* modes[]={"editorSelect","editorDraw","editorSplit","editorMeasure","editorCalibrate","editorConnect","editorRouteTable","editorInputTable","editorSignalTable","editorConflictTool","editorCounterTool","editorSectionTool"};
     for(const auto& [mode,entry]:paletteItems_){
         const auto label=text(modes[mode]);const auto shortcut=entry->data(0,Qt::UserRole+2).toString();
         entry->setText(0,label+"  "+shortcut);entry->setToolTip(0,label+" · "+shortcut);

@@ -8,6 +8,31 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M5.4 travel-time sections (D133)
+
+The quantity M5.5's LOS will read now exists. A section is `network.travelTimeSections[]`
+(schema 23 only when present): a start and an end line, each a cross-section of one Link at a
+station, spanning every lane so a lane change inside is timed once. The contract
+([TRAVEL_TIME_SECTIONS](reference/TRAVEL_TIME_SECTIONS.md)) and its rows TT1–TT11 were written
+before the code. `SectionAccumulator` (`src/eval/sections.*`, owned by `MovementAccumulator`, so
+batches get it free) interpolates each crossing between the two observed states, treats a new
+vehicle as entering at distance 0 at `enteredTime`, and times an end line crossed in the arrival
+step from the last speed. Delay is `max(0, travel − length/desiredSpeed)`, the whole-trip term
+restricted to the section; trips count by their end crossing (D132's rule). Outputs gain a
+`section` block only with a section, so every other project keeps its bytes (TT10 checks the
+four-leg report equals the section-less one). Link delete removes, split moves, reverse refuses,
+like other controls. Editor: Section tool (`T`), two Ctrl+right-clicks make one Undo step, and a
+*Travel-time sections* tab renames and deletes; en/th strings. Results-tab rows for sections wait
+for M5.6. W74 moves to schema 24.
+Evidence: group `traveltime` (11 cases — a lone vehicle at desired speed gives exactly 100/15 s
+and zero delay; a red held to 30 s gives 20.01 s against an analytic floor of 16.67 s; the
+period's equality sides; a hand-built lane change) and `section-ui`. Linux GCC 13.3: headless
+70/70, desktop 102/102 offscreen. A 10-seed batch of the four-leg project with a west-through
+section gives 48.3 ± 4.3 s against 52.8 ± 4.3 s whole-route movement delay, with the same 121
+mean vehicles: the gap is the entry acceleration the section excludes. Windows evidence is CI's.
+
+---
+
 ## 2026-10-09 — M5.3 evaluation period and unfinished trips (D132)
 
 Projects can now say which part of the run the results describe: `definition.evaluation
@@ -450,19 +475,6 @@ records are preserved. No runtime code, gate result or task priority changes.
 Validation: documentation links/anchors/index coverage, retained archive blocks and
 regression evidence, source-spec/data/fixture hashes, file-size guard and diff whitespace.
 Native CI runs separately; no local CTest claim (CMake/CTest are unavailable).
-
----
-
-## 2026-10-05 — Repository housekeeping
-
-Owner asked to clean the project files. Removed the committed local Qt installer log
-from the root and ignored future installer output, temporary editor files and desktop
-metadata. JSONL run output remains ignored by default, but `docs/evidence/*.jsonl`
-is explicitly allowed so a new measurement record is not silently omitted from Git.
-Existing evidence and frozen fixtures are retained. Decision-ID navigation is wrapped
-for source readability without changing any link or decision row.
-Validation: documentation guard, file-size guard, retained source-spec hashes,
-Git ignore checks for generated output versus evidence and `git diff --check`.
 
 ---
 
