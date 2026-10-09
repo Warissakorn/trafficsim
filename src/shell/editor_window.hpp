@@ -146,11 +146,11 @@ private:
     SummaryAccumulator runSummary_;
     // M2.5: per-movement delay and approach queues, fed the same states as runSummary_.
     std::optional<MovementAccumulator> runMovements_;
-    // D135: queue discharge with the CLI's default spec, fed the same states; the reason it
+    // D144: queue discharge with the CLI's default spec, fed the same states; the reason it
     // could not be set up, if any, is shown instead of a table.
     std::optional<DischargeAccumulator> runDischarge_;
     std::string runDischargeError_;
-    // D135: one row per SafetyClampEvent, read off the published vehicle (blank once it left).
+    // D144: one row per SafetyClampEvent, read off the published vehicle (blank once it left).
     struct ClampRow { double time{}; std::uint64_t vehicleId{}; std::string typeId, routeId, segmentId; };
     std::vector<ClampRow> runClamps_;
     QWidget* resultsPage_{};

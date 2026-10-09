@@ -65,7 +65,7 @@ void EditorWindow::buildResults() {
     bar->addAction(action("editorCopyResults",QKeySequence(),[this]{
         try{copyResults();}catch(const std::exception& e){showError(e);}
     }));
-    // D135: one tab per kind of figure, each with its own statement of what it is not.
+    // D144: one tab per kind of figure, each with its own statement of what it is not.
     resultsPage_=page; resultsTabs_=new QTabWidget(page); resultsTabs_->setObjectName("editorResultsTabs");
     layout->addWidget(resultsTabs_,1);
     const auto tab=[&](QLabel*& note,const char* noteName){

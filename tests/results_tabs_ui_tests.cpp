@@ -1,4 +1,4 @@
-// D135: the Results tabs for queue discharge and safety clamps, on the four-leg signalised
+// D144: the Results tabs for queue discharge and safety clamps, on the four-leg signalised
 // project (900 s, seed 42). The discharge rows are checked against an independent
 // DischargeAccumulator over the same seed; the clamp rows against the run's own count.
 #include "../src/shell/editor_window.hpp"

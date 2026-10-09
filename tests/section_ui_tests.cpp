@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
 
         // A run accepts the section. The Results tab is rebuilt only while it can be seen.
         auto* queues = w.findChild<QTableWidget*>("editorQueueTable"); require(queues, "No queue table");
-        tabs->setCurrentWidget(queues->parentWidget());
+        tabs->setCurrentWidget(w.findChild<QTabWidget*>("editorResultsTabs")->parentWidget()); // the Results page (D144)
         act(w, "editorStep")->trigger(); QApplication::processEvents();
         require(queues->rowCount() > 0, "The run with a section did not report");
 
