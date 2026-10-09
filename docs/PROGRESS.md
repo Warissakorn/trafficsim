@@ -40,9 +40,14 @@ editor's route hover and gesture use the same function. CLI output identical.
 time slice × vehicle type and resolved the same `routeShortestChains(decision Link, destination)`
 each time, about 86 calls per study-template validation. A `DestinationChainMemo` beside the
 table resolves each pair once. Same-session A/B: 3.32 → 2.46 ms median (five runs of 31 each);
-four-leg unchanged (no destination decisions). CLI output identical. Validation overall this
-session: 21.6 → 2.5 ms. Left: `appendStationRouting` rebuilds `runtimeSections` per call (≈23 %
-of what remains), and `routelessChains` still walks once per input × slice.
+four-leg unchanged (no destination decisions). CLI output identical.
+
+**`appendStationRouting` takes the expansion's `runtimeSections`.** It rebuilt the table on every
+call (≈5 per study-template validation, 23 % of the remaining instructions); `expandRouteless`
+already holds that table and passes it to `appendLaneChanges` beside it. A/B: 2.60 → 1.72 ms
+median (five runs of 31); four-leg unchanged (no positioned decisions). CLI output identical.
+Validation overall this session: 21.6 → 1.7 ms. Left: `routelessChains` still walks once per
+input × slice; at under 2 ms per edit it was not started.
 
 **NEXT.md slimmed** (31.4 → 26.8 KB, −15 %): the five 2026-10-05/06 owner-instruction sections narrated
 finished slices already recorded in ROADMAP (M2.8, M3.2.4, M3.3 status lines), PROGRESS and

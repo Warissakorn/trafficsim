@@ -238,7 +238,7 @@ ScenarioDefinition expandRouteless(const Network& network, const AuthoringDefini
                 for (const auto& [name, members] : families)
                     appendLaneChanges(network, table, members, resolved.laneChanges, resolved.routeDeadEnds);
                 appendDiscretionaryLaneChanges(network, table, full, resolved.laneChanges);
-                appendStationRouting(network,authored,type,stationRoutes,resolved);
+                appendStationRouting(network,table,authored,type,stationRoutes,resolved);
             }
         }
         if (w.failed) continue; // routelessIssues names it

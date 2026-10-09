@@ -287,10 +287,9 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
     Run (≈0.9 ms each; `connectorPaths` is only 20 ms of it), because `validateDocument`,
     `routelessIssues` and `expandRouteless` each walk every input × time/type slice — share or
     memoise the walk. D140 (2026-10-09) computes `connectorPaths` and each destination's chains
-    once per expansion, and route continuations find their tail once (study-template validation
-    21.6 → 2.5 ms, `trafficsim-validate-benchmark`). Still open: the repeated `routelessChains`
-    walk itself, and `appendStationRouting` rebuilding `runtimeSections` per call (≈23 % of what
-    remains). Then the double refs/spans build on ticks with a source candidate
+    once per expansion, route continuations find their tail once, and `appendStationRouting`
+    reuses the expansion's `runtimeSections` (study-template validation 21.6 → 1.7 ms,
+    `trafficsim-validate-benchmark`). Still open: the repeated `routelessChains` walk itself. Then the double refs/spans build on ticks with a source candidate
     (`simulation.cpp` arrivals vs the main snapshot, ≈40 ms) and phase 1 (≈110 ms). The
     `MovedEvent::segmentId` string copy would need an event-interface decision.
 - **Linux replay of D91–D94:** CI (`native.yml`) is the evidence.
