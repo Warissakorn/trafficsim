@@ -305,8 +305,10 @@ Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-b
 
 ### M4.2 — Amber stop-or-go
 
-**Open; carved out by D143 (R2), next now that M5.9 is implemented (D146).** D36 runs amber as red, which biases every
-signalised delay an M5 table reports. Contract first: a stop-or-go decision at amber onset (can
+**Implemented 2026-10-09 (D147, [AMBER](reference/AMBER.md), [gate evidence](evidence/m4.2-amber.md)); native CI per PR.**
+Analytic rows AM1–AM8 cover both outcomes, the 40-seed before/after is recorded, and same-build
+replay is byte-identical; the owner closes the milestone. Carved out by D143 (R2): D36 ran amber
+as red, which biased every signalised delay an M5 table reports. Contract first: a stop-or-go decision at amber onset (can
 the vehicle stop at a stated deceleration before the stop line?), intergreen handling, and
 failure-first rows. It moves prototype trajectories, so frozen baselines and BA18 change only by a
 recorded decision. **Gate:** analytic amber fixtures, both outcomes; before/after over at least 40

@@ -12,6 +12,7 @@ Json ownedFile() {
     const auto route=putRoute(d,{"route",{link}});changeRunSettings(d,120,.1);
     const auto catalog=resolveCatalogs(AuthoringDefinition{},test::root()/"data");
     d.definition->vehicleTypes=catalog.vehicleTypes;d.definition->behaviours=catalog.behaviours;
+    for(auto& b:d.definition->behaviours)b.amberDeceleration.reset(); // M4.2 (D147): an owned amberDeceleration is schema 28 (amber tests); this fixture exercises the schemas before it.
     d.definition->externalVehicleTypes=false;d.definition->externalBehaviours=false;
     VehicleInput input{"in",route,"",600,0,120};input.compositionId="mix";putInput(d,input);
     auto j=documentJson(d);

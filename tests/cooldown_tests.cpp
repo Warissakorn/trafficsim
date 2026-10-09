@@ -61,7 +61,7 @@ TEST(cooldown, cd1_older_schemas_and_bad_cool_downs_are_refused) {
     const auto j = documentJson(d);
     auto older = j; older["schemaVersion"] = 26;
     test::throws([&] { parseDocument(older); }, "definition.evaluation.cooldown");
-    auto newer = j; newer["schemaVersion"] = 28;
+    auto newer = j; newer["schemaVersion"] = 29;
     test::throws([&] { parseDocument(newer); }, "EDIT_VERSION");
     // Written only above 0: a stored 0 is not this writer's file.
     auto zero = j; zero["definition"]["evaluation"]["cooldown"] = 0;

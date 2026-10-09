@@ -54,7 +54,11 @@ void buildLibrary(QDialog& d) {
     modal([&] { click(d, "editorBehaviours", "catalogEdit", std::string(kDefault) + "-copy"); }, [](QDialog& e) {
         require(item<QLabel>(e, "editorBehaviourUsers")->text().size() > 0, "Users are not shown first");
         item<QLineEdit>(e, "editorBehaviourName")->setText("Slow");
-        item<QDoubleSpinBox>(e, "followingTime")->setValue(2.5); confirm(e);
+        item<QDoubleSpinBox>(e, "followingTime")->setValue(2.5);
+        // AM8 (M4.2, D147): the captured catalog's amber deceleration is shown and edited like any optional key.
+        require(item<QCheckBox>(e, "amberDecelerationSet")->isChecked() && item<QDoubleSpinBox>(e, "amberDeceleration")->value() == 3,
+                "Captured amber deceleration not shown");
+        item<QDoubleSpinBox>(e, "amberDeceleration")->setValue(2.5); confirm(e);
     });
     modal([&] { click(d, "editorVehicleClasses", "catalogAdd"); }, [](QDialog& e) {
         item<QLineEdit>(e, "editorClassName")->setText("Heavy");
@@ -107,6 +111,7 @@ int main(int argc, char** argv) {
         require(built.revision != revision && w.history().canUndo(), "Library confirm did not commit");
         require(!def.externalBehaviours && !def.externalVehicleTypes, "Catalogs were not captured");
         require(def.behaviours.size() == 2 && def.behaviourNames.at(std::string(kDefault) + "-copy") == "Slow", "Behaviour copy lost");
+        require(def.behaviours[1].amberDeceleration == 2.5 && def.behaviours[0].amberDeceleration == 3, "Amber deceleration not edited");
         require(def.vehicleClasses.size() == 1 && def.linkBehaviourTypes.size() == 1, "Class or behaviour type lost");
         require(def.linkBehaviourTypes[0].overrides.size() == 1, "Override lost");
         item<QAction>(w, "editorUndo")->trigger();
@@ -184,7 +189,9 @@ int main(int argc, char** argv) {
         });
         require(behaviour("w74-set").w74 && behaviour("w74-set").w74->exAdd == 1.25, "w74 key not edited");
         require(w.history().document().definition->behaviourNames.at("w74-set") == "Urban W74", "w74 name not edited");
-        require(documentJson(w.history().document())["schemaVersion"] == 25, "w74 file not schema 25");
+        // 25 for the w74 behaviour, raised to 28 because the captured catalog behaviour carries
+        // amberDeceleration (M4.2, D147): the schema is the newest feature the file holds.
+        require(documentJson(w.history().document())["schemaVersion"] == 28, "w74 file not schema 28");
         // Prototype -> W74: the fields start empty (no code defaults); an empty one is refused.
         library([](QDialog& d) {
             modal([&] { click(d, "editorBehaviours", "catalogEdit", kDefault); }, [](QDialog& e) {

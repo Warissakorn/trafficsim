@@ -13,6 +13,7 @@ namespace {
 ProjectDocument timedFile() {
     ProjectDocument d;const auto link=addLink(d,{{0,0},{400,0}},2,3.5);putRoute(d,{"route",{link}});changeRunSettings(d,120,.1);
     auto catalog=resolveDemandCatalog(AuthoringDefinition{},test::root()/"data");
+    for(auto& b:catalog.behaviours)b.amberDeceleration.reset(); // M4.2 (D147): an owned amberDeceleration is schema 28 (amber tests); this fixture exercises the schemas before it.
     catalog.compositions={{"mix",{{"car",3},{"heavy-vehicle",1}}}};putDemandCatalog(d,catalog);
     VehicleInput input{"in","route","",600,0,120};input.compositionId="mix";putInput(d,input);return d;
 }

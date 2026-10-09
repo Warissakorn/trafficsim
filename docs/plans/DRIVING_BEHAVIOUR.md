@@ -86,7 +86,7 @@ assertions and platform in evidence when the corresponding slice lands.
 | BA15 | Mandatory/discretionary changer and distinct trailing profiles | Follower uses own physical location/set; recompute after accepted remap; preserve hard safety |
 | BA16 | Source record blocked by first-step clearance; new profile at entry | Same sampled pending vehicle waits/releases; no resample/false departure; equality case covered |
 | BA17 | Served Stop while profile changes; denied conflict and receiving queue | No reset at same served line; physical constraints compose; no suppressed genuine clamp |
-| BA18 | Legacy prototype fixtures, immutable copy and same-build replay | Existing exact/tolerance contracts pass; baselines never regenerated to hide failures |
+| BA18 | Legacy prototype fixtures, immutable copy and same-build replay | Existing exact/tolerance contracts pass; baselines never regenerated to hide failures. M4.2 (D147) leaves them untouched: M0 scenarios keep amber as red |
 | BA19 | Dialog cancel/no-op/edit, bulk road assignment, rename/delete | Atomic History and revision invalidation; effective/inherited values distinguishable; local changes not leaked |
 | BA20 | EN/TH, save/reopen, Linux/Windows UI and owner appearance | Parameter names preserved; automated platform evidence separate from owner's visual verdict |
 | BA21 | W74 pure function: inputs placed at each regime row of contract §4 and on both sides of every equality | Regime and acceleration match hand-computed values; `g = ABX` emergency, `dv = CLDV` following, `dv = OPDV`/`dv = SDV`/`g = DMAX` free |

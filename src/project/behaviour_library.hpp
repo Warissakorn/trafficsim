@@ -12,6 +12,10 @@ void rejectBehaviourLibraryBefore21(const Json& document);
 void rejectW74Before25(const Json& document);
 // Schema 25 is needed exactly when an owned behaviour is `w74`.
 bool ownsW74Behaviour(const ProjectDocument&);
+// M4.2 (D147): schema 28 exactly when an owned behaviour carries `amberDeceleration`; a file below
+// 28 carrying the key in an owned behaviour is refused (EDIT_UNSUPPORTED_FIELD).
+bool ownsAmberBehaviour(const ProjectDocument&);
+void rejectAmberBefore28(const Json& document);
 // Schema 21 and later: reads the library and rejects unknown keys in every owned catalog entry.
 void parseBehaviourLibrary(const Json& definition, AuthoringDefinition&);
 // Adds the schema-21 keys to an already written definition: names, the explicit model tag on

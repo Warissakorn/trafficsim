@@ -17,7 +17,9 @@ ProjectDocument owned() {
     ProjectDocument d; const auto a = addLink(d, {{0, 0}, {200, 0}}, 1, 3.5), b = addLink(d, {{220, 0}, {400, 0}}, 1, 3.5);
     addConnector(d, {a, d.network.links[0].lanes[0].id, {}}, {b, d.network.links[1].lanes[0].id, {}});
     const auto route = putRoute(d, {"route", {a, d.network.connectors[0].id, b}}); changeRunSettings(d, 60, .1);
-    putDemandCatalog(d, resolveDemandCatalog(AuthoringDefinition{}, test::root() / "data"));
+    auto catalog = resolveDemandCatalog(AuthoringDefinition{}, test::root() / "data");
+    for (auto& b : catalog.behaviours) b.amberDeceleration.reset(); // M4.2 (D147): an owned amberDeceleration is schema 28 (amber tests); this fixture exercises the schemas before it.
+    putDemandCatalog(d, catalog);
     putInput(d, {"in", route, "car", 600, 0, 60});
     validateDocument(d);
     return d;
@@ -81,7 +83,7 @@ TEST(behaviourlibrary, older_schemas_and_unknown_keys_are_refused_not_dropped) {
     }
     auto missing = j; missing["definition"]["behaviours"][0].erase("model");
     test::throws([&] { parseDocument(missing); }, "UNSUPPORTED_BEHAVIOUR_MODEL");
-    auto future = j; future["schemaVersion"] = 28; test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
+    auto future = j; future["schemaVersion"] = 29; test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
 }
 TEST(behaviourlibrary, invalid_entries_reject_load_and_edit_atomically_even_when_unused) {
     const auto j = documentJson(library());

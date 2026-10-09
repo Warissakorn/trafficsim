@@ -136,38 +136,59 @@ TEST(fourleg, a_lane_dropped_at_an_ambiguous_implied_step_is_reported) {
     CHECK(rows.front().severity == DiagnosticSeverity::advisory);
     CHECK(compileDocument(d, test::root() / "data").scenario.routes.size() == 23);
 }
-TEST(fourleg, every_safety_clamp_is_a_vehicle_caught_at_its_stop_line_by_amber) {
-    // M2.0.3. The run clamps a handful of vehicles, and every one is the same thing: a vehicle
-    // within a couple of metres of its stop line at speed when the head turns amber. The engine
-    // treats amber as red with no stop-or-go decision (SIMULATION.md), so a vehicle that cannot
-    // stop is halted at the line by the clamp. The frozen TS baselines hold the same clamps
-    // (seeds 43 and 4294967295), which is why fixing it is a decision, not a patch. This test
-    // pins the diagnosis, so a clamp from anything else -- a priority rule, a merge -- fails here.
-    const auto snapshot = compileDocument(parseDocument(committed()), test::root() / "data");
+namespace {
+// Clamps of one four-leg run, and how many are a vehicle held at its stop line when the head is
+// `held` (or the vehicle just behind one, halted with it). A clamp is emitted before the same
+// step's moves, so `last` is the position it acted on.
+struct ClampCount { int clamps{}, explained{}; };
+ClampCount clampsAtTheLine(const Scenario& scenario, SignalColor held) {
     std::map<std::string, const SignalHead*> headOnSegment;
-    for (const auto& head : snapshot.scenario.signalHeads) headOnSegment[head.segmentId] = &head;
+    for (const auto& head : scenario.signalHeads) headOnSegment[head.segmentId] = &head;
     std::map<std::string, SignalColor> color;
     std::map<std::uint64_t, MovedEvent> last;
-    int clamps = 0, explained = 0;
-    std::vector<MovedEvent> atAmber; // where, and when, each explained clamp held its vehicle
-    runSimulation(snapshot.scenario, 42, [&](const SimEvent& e) {
+    ClampCount count;
+    std::vector<MovedEvent> atLine; // where, and when, each explained clamp held its vehicle
+    runSimulation(scenario, 42, [&](const SimEvent& e) {
         if (const auto* s = std::get_if<SignalEvent>(&e)) color[s->signalId] = s->color;
-        // A clamp is emitted before the same step's moves, so `last` is the position it acted on.
         if (const auto* c = std::get_if<SafetyClampEvent>(&e)) {
-            ++clamps;
+            ++count.clamps;
             const auto& before = last[c->vehicleId];
             const auto head = headOnSegment.find(before.segmentId);
-            if (head != headOnSegment.end() && color[head->second->id] == SignalColor::amber &&
+            if (head != headOnSegment.end() && color[head->second->id] == held &&
                 head->second->position - before.position >= 0 &&
-                head->second->position - before.position < 2) { ++explained; atAmber.push_back(before); return; }
-            // The same thing one vehicle back: its leader was just halted at the line by amber,
-            // with no warning, so it is halted behind it (seen since M3.2.8b moved trajectories).
-            if (std::any_of(atAmber.begin(), atAmber.end(), [&](const auto& a) {
+                head->second->position - before.position < 2) { ++count.explained; atLine.push_back(before); return; }
+            // The same thing one vehicle back: its leader was just halted at the line, with no
+            // warning, so it is halted behind it (seen since M3.2.8b moved trajectories).
+            if (std::any_of(atLine.begin(), atLine.end(), [&](const auto& a) {
                     return a.segmentId == before.segmentId && a.position > before.position &&
-                           a.position - before.position < 10 && before.time - a.time < 5; })) ++explained;
+                           a.position - before.position < 10 && before.time - a.time < 5; })) ++count.explained;
         }
         if (const auto* m = std::get_if<MovedEvent>(&e)) last[m->vehicleId] = *m;
     }, true);
-    CHECK(clamps > 0); // The forcing: there is something to explain.
-    CHECK(explained == clamps);
+    return count;
+}
+}
+TEST(fourleg, every_safety_clamp_is_a_vehicle_caught_at_its_stop_line_by_amber) {
+    // M2.0.3 / D36. With amber as red the run clamps a handful of vehicles, and every one is the
+    // same thing: a vehicle within a couple of metres of its stop line at speed when the head
+    // turns amber. The frozen TS baselines hold the same clamps (seeds 43 and 4294967295), which
+    // is why M0 scenarios keep that rule. This pins the diagnosis on the project with the catalog
+    // behaviour's amber decision switched off, as D36 ran it.
+    auto scenario = compileDocument(parseDocument(committed()), test::root() / "data").scenario;
+    for (auto& b : scenario.behaviours) b.amberDeceleration.reset();
+    const auto d36 = clampsAtTheLine(scenario, SignalColor::amber);
+    CHECK(d36.clamps > 0); // The forcing: there is something to explain.
+    CHECK(d36.explained == d36.clamps);
+}
+TEST(fourleg, amber_stop_or_go_removes_the_amber_clamps) {
+    // M4.2 (D147, AMBER.md): a driver who cannot stop at 3 m/s^2 goes on amber, and one who cannot
+    // stop at all goes on red as at a priority rule, so the clamps D36 explained go. Any clamp left
+    // must still be a vehicle at a line its head holds, never a priority rule or a merge.
+    auto scenario = compileDocument(parseDocument(committed()), test::root() / "data").scenario;
+    CHECK(scenario.behaviours[0].amberDeceleration); // the catalog decides at amber
+    const auto now = clampsAtTheLine(scenario, SignalColor::red);
+    for (auto& b : scenario.behaviours) b.amberDeceleration.reset();
+    const auto d36 = clampsAtTheLine(scenario, SignalColor::amber);
+    CHECK(d36.clamps > 0); // the forcing: seed 42 has 7 under D36
+    CHECK(now.clamps == 0); CHECK(now.explained == now.clamps);
 }

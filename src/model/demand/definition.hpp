@@ -127,6 +127,14 @@ struct AuthoringDefinition : ScenarioDefinition {
     std::vector<VehicleClass> vehicleClasses;
     std::vector<LinkBehaviourType> linkBehaviourTypes;
     std::optional<EvaluationPeriod> evaluation; // M5.3; absent is warm-up 0 to the end of the run
+    // M4.2 (D147): where the definition came from, not what it says -- never written and never
+    // compared, so a save and reopen round-trips the content exactly. A bare M0 scenario (no
+    // schemaVersion) sets it; its catalog behaviours then resolve without amberDeceleration, so
+    // the frozen TS baselines keep amber as red. Saved and reopened, the file is a project.
+    struct Provenance {
+        bool legacyAmber{};
+        bool operator==(const Provenance&) const { return true; }
+    } provenance;
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
     bool operator==(const AuthoringDefinition&) const = default;
 };

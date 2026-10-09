@@ -78,7 +78,8 @@ Driving side changes lane ordering and offsets. Connector endpoints must match t
 referenced lane attachment positions within 0.01 m; attachments may be at an interior
 station. Editor changes reanchor Connectors, and stale endpoints fail validation.
 Signal heads can be located anywhere along a lane, including its endpoints. The head's station
-is the stop line: a vehicle is held there while the head is not green. A signal group of a
+is the stop line: a vehicle is held there while the head is not green, except as the amber
+stop-or-go rule allows (M4.2, D147, [AMBER](AMBER.md)); an M0 scenario keeps amber as red. A signal group of a
 fixed-time controller (M2.7b, D48) is compiled into one ordinary `SignalProgram` with id
 `<controllerId>#<groupNumber>` — green from green start to green end in cycle seconds
 `(t + offset) mod cycle`, then amber, red for the rest — so the engine runs exactly the programs
