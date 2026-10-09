@@ -1,4 +1,6 @@
 #include "editor_window.hpp"
+#include "../project/counted_volumes.hpp"
+#include <QCheckBox>
 #include "demand_period_editor.hpp"
 #include "../project/demand_paths.hpp"
 #include "../project/demand_catalog.hpp"
@@ -55,6 +57,27 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
         if(const int at=route->findData(current);at>=0)route->setCurrentIndex(at);
     }
     form->addRow(text("editorInputRoute"),route);
+    // D142: the volume is the entry decision's turning counts, typed once in the decision. Offered
+    // only where there is one to read: a decision named here, or one placed on the chosen Link.
+    auto* fromCounts=new QCheckBox(text("editorInputFromCounts"),&dialog);fromCounts->setObjectName("editorInputFromCounts");
+    fromCounts->setChecked(value.volumeFromCounts);form->addRow(fromCounts);
+    auto* fromCountsTotal=new QLabel(&dialog);fromCountsTotal->setObjectName("editorInputFromCountsTotal");
+    fromCountsTotal->setWordWrap(true);form->addRow(fromCountsTotal);
+    const auto chosenTarget=[&]{
+        auto chosen=value;const auto key=route->currentData().toString();
+        const auto id=key.mid(key.indexOf(':')+1).toStdString();
+        chosen.routeId=key.startsWith("route:")?id:std::string{};
+        chosen.linkId=key.startsWith("link:")?id:std::string{};
+        chosen.routingDecisionId=key.startsWith("decision:")?id:std::string{};
+        return chosen;
+    };
+    const auto countedTarget=[&]()->std::optional<std::vector<VolumeInterval>>{
+        const auto& definition=history_.document().definition;
+        if(!definition)return std::nullopt;
+        const auto* decision=countedDecision(*definition,chosenTarget());
+        if(!decision||decision->position)return std::nullopt;
+        return countedVolumes(*decision);
+    };
     auto* type=new QComboBox(&dialog);type->setObjectName("editorInputType");
     // One list for both (M2.3): a vehicle type, or a composition of types from data/compositions/.
     // The item data says which, so an id shared by a type and a composition cannot be confused.
@@ -159,11 +182,22 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
     connect(counts,&QPlainTextEdit::textChanged,&dialog,[countsDirty]{*countsDirty=true;});
     connect(minutes,&QDoubleSpinBox::valueChanged,&dialog,[countsDirty](double){*countsDirty=true;});
     const auto syncDerived=[&]{
+        const auto periods=countedTarget();
+        fromCounts->setEnabled(periods.has_value());
+        const bool counted=fromCounts->isChecked()&&periods;
+        fromCountsTotal->setVisible(counted);
+        if(counted) {
+            double vehicles=0;for(const auto& p:*periods)vehicles+=p.vehiclesPerHour*(p.endTime-p.startTime)/3600;
+            fromCountsTotal->setText(text("editorInputFromCountsTotal").arg(vehicles,0,'f',0).arg(periods->size()));
+        }
         const bool timed=(!value.intervals.empty() && !*countsDirty) || !counts->toPlainText().trimmed().isEmpty();
-        volume->setEnabled(!timed);start->setEnabled(!timed);end->setEnabled(!timed);
-        minutes->setEnabled(!timed || !counts->toPlainText().trimmed().isEmpty());
+        volume->setEnabled(!timed&&!counted);start->setEnabled(!timed&&!counted);end->setEnabled(!timed&&!counted);
+        minutes->setEnabled(!counted&&(!timed || !counts->toPlainText().trimmed().isEmpty()));
+        counts->setEnabled(!counted);
     };
-    connect(counts,&QPlainTextEdit::textChanged,&dialog,syncDerived);syncDerived();
+    connect(counts,&QPlainTextEdit::textChanged,&dialog,syncDerived);
+    connect(fromCounts,&QCheckBox::toggled,&dialog,syncDerived);
+    connect(route,&QComboBox::currentTextChanged,&dialog,syncDerived);syncDerived();
     auto* periods=new QPushButton(text("editorDemandPeriods"),&dialog);periods->setObjectName("editorInputPeriods");form->addRow(periods);
     connect(periods,&QPushButton::clicked,&dialog,[&]{
         std::vector<std::vector<double>> rows;
@@ -180,7 +214,10 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
         irregularNote->setVisible(!value.intervals.empty());syncDerived();
     });
     periods->setToolTip(text("editorDemandSaveCountsFirst"));
-    const auto syncPeriods=[&]{periods->setEnabled(!*countsDirty);};
+    const auto syncPeriods=[&]{periods->setEnabled(!*countsDirty && !(fromCounts->isChecked()&&fromCounts->isEnabled()));};
+    syncPeriods();
+    connect(fromCounts,&QCheckBox::toggled,&dialog,syncPeriods);
+    connect(route,&QComboBox::currentTextChanged,&dialog,syncPeriods);
     connect(counts,&QPlainTextEdit::textChanged,&dialog,syncPeriods);
     connect(minutes,&QDoubleSpinBox::valueChanged,&dialog,syncPeriods);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
@@ -211,9 +248,10 @@ void EditorWindow::editInput(const std::string& id,const std::string& preselecte
         value.laneShares.clear();
         for(auto* field:*shareFields)value.laneShares.push_back(field->value());
     }
+    value.volumeFromCounts=fromCounts->isChecked()&&fromCounts->isEnabled();
     const auto rawCounts=counts->toPlainText();const double length=minutes->value()*60;
     std::string created;if(execute("editorEditInput",[&](auto& d){
-        if(*countsDirty) {
+        if(*countsDirty && !value.volumeFromCounts) {
             value.intervals.clear();
             const auto items=rawCounts.split(QRegularExpression("[\\s,;]+"),Qt::SkipEmptyParts);
             for(int k=0;k<items.size();++k) {

@@ -103,6 +103,11 @@ struct VehicleInput {
     // network -- an equal share at every branch, and a placed routing decision's flows where they
     // meet one. buildScenario expands it into one core input per complete path.
     std::string linkId;
+    // Authoring only (D142, schema 26): the volume is the entry decision's turning counts, summed
+    // per interval -- a count sheet typed once. `intervals` and the scalars are then DERIVED from
+    // that decision (syncCountedVolumes) and never written; off, the input's volume is the
+    // authority and the counts are proportions only (D46).
+    bool volumeFromCounts{};
     bool operator==(const VehicleInput&) const = default;
 };
 enum class SignalColor { red, amber, green };

@@ -1,3 +1,4 @@
+#include "../project/counted_volumes.hpp"
 #include "demand_commands.hpp"
 #include "detail.hpp"
 #include <algorithm>
@@ -53,7 +54,9 @@ std::string putRoute(ProjectDocument& d, Route value) {
 std::string putInput(ProjectDocument& d, VehicleInput value) {
     if (value.id.empty()) value.id=allocateId(d,"input");
     deriveInputTotals(value); // M2.2: intervals, when given, are the source of the scalars.
-    const auto id=value.id; put(demand(d).inputs,std::move(value)); return id;
+    const auto id=value.id; put(demand(d).inputs,std::move(value));
+    syncCountedVolumes(demand(d)); // D142: a counted input's volume is its decision's
+    return id;
 }
 std::string putProgram(ProjectDocument& d, SignalProgram value) {
     if (value.id.empty()) value.id=allocateId(d,"program");
@@ -66,7 +69,9 @@ void deleteRoute(ProjectDocument& d, const std::string& id) {
 }
 std::string putRoutingDecision(ProjectDocument& d, RoutingDecision value) {
     if (value.id.empty()) value.id=allocateId(d,"decision");
-    const auto id=value.id; put(demand(d).routingDecisions,std::move(value)); return id;
+    const auto id=value.id; put(demand(d).routingDecisions,std::move(value));
+    syncCountedVolumes(demand(d)); // D142: new counts, new volume, in the same command
+    return id;
 }
 void deleteRoutingDecision(ProjectDocument& d, const std::string& id) {
     auto& values=demand(d); remove(values.routingDecisions,id);

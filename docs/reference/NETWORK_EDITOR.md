@@ -352,7 +352,7 @@ from the lane it left.
 
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 
-**Results** tab (M2.5, D39/D40): per-movement vehicles, mean delay and mean travel time beside
+**Results** tab (M2.5, D39/D40; inner pages since D144: *Movements*, *Queue discharge*, *Safety clamps*): per-movement vehicles, mean delay and mean travel time beside
 per-approach mean and maximum queue, for the current run. While the run is still going it shows
 the figures so far with the time reached. The note above the tables is the not-yet-validated
 marker and says what the delay is not (HCM control delay, LOS). **Export results (CSV)…** (D104),
@@ -412,10 +412,10 @@ Unknown future versions are rejected.
 | Opened by | Editor (or `trafficsim-cli --scenario`) | Editor |
 | Runs | Editor, or `trafficsim-cli` | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and project schemas 1–24. Saving uses schema 17
+The editor opens bare M0 authoring files and project schemas 1–26. Saving uses schema 17
 by default, 18 for owned composition catalogs or embedded vehicle names, and 19 for
 composition periods or type-conditioned routing; schema 20 when a routing decision has `position`; schema 21 when the behaviour library
-or a road behaviour-type assignment is used ([DRIVING_BEHAVIOUR](DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)); schema 22 when an evaluation period is set ([SIMULATION](SIMULATION.md#movement-evaluation-m25), D132); schema 23 when a travel-time section exists ([TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md), D133); schema 24 when a section has a control type ([LOS](LOS.md), D134). This is selected from the document's
+or a road behaviour-type assignment is used ([DRIVING_BEHAVIOUR](DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)); schema 22 when an evaluation period is set ([SIMULATION](SIMULATION.md#movement-evaluation-m25), D132); schema 23 when a travel-time section exists ([TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md), D133); schema 24 when a section has a control type ([LOS](LOS.md), D134); schema 25 when an owned behaviour is `w74` (D136); schema 26 when an input takes its volume from its decision's turning counts ([DEMAND_IMPROVEMENT](../plans/DEMAND_IMPROVEMENT.md) §7, D142). This is selected from the document's
 features, not the version of the file opened. See [Demand catalogs](DEMAND_CATALOGS.md)
 and [time/type rules](DEMAND_TIME_TYPES.md); old feature-free fixtures retain schema-17 bytes.
 Schema 4 introduced lane bundle offset and Connector interpolation weights; older versions

@@ -25,7 +25,7 @@ Later milestones are in [`ROADMAP.md`](../ROADMAP.md). The owner explicitly auth
 
 ## Open questions
 
-Historical question register retained below. Check [NEXT](../NEXT.md#2--owner-decisions)
+Historical question register retained below. Check [the owner sitting, §B](../plans/OWNER_SITTING.md#b--decisions-in-chat-one-line-each)
 and the current contracts before treating an old question as unresolved.
 
 Ask these before the milestone they block.

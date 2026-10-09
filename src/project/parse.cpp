@@ -38,6 +38,8 @@ template<class T> T field(const Json& value, const char* name) {
         if (!item.is_number()) throw std::invalid_argument(std::string("Expected number: ") + name);
     } else if constexpr (std::is_same_v<T, std::string>) {
         if (!item.is_string()) throw std::invalid_argument(std::string("Expected text: ") + name);
+    } else if constexpr (std::is_same_v<T, bool>) {
+        if (!item.is_boolean()) throw std::invalid_argument(std::string("Expected true or false: ") + name);
     }
     return item.get<T>();
 }
@@ -433,6 +435,7 @@ ScenarioDefinition parseDefinition(const Json& value) {
         if (i.contains("compositionId")) input.compositionId = field<std::string>(i, "compositionId");
         if (i.contains("routingDecisionId")) input.routingDecisionId = field<std::string>(i, "routingDecisionId");
         if (i.contains("linkId")) input.linkId = field<std::string>(i, "linkId"); // M2.1.1
+        if (i.contains("volumeFromCounts")) input.volumeFromCounts = field<bool>(i, "volumeFromCounts"); // D142
         if (i.contains("intervals")) {
             for (const auto& p : array(i, "intervals"))
                 input.intervals.push_back({field<double>(p, "startTime"), field<double>(p, "endTime"),

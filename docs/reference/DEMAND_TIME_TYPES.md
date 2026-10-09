@@ -6,7 +6,9 @@ Schema 19 adds `Composition.intervals`: sorted, non-overlapping half-open period
 containing a complete `types` weight list. Base `types` applies outside the periods,
 including gaps. Every list is nonempty, has unique type IDs and finite strictly
 positive weights; omit a type to exclude it. An empty/zero period is an error,
-including in an unused owned composition. Input volume periods remain authoritative.
+including in an unused owned composition. Input volume periods remain authoritative, except for
+an input with `volumeFromCounts`, whose periods are its decision's counted intervals (D142,
+[DEMAND_IMPROVEMENT](../plans/DEMAND_IMPROVEMENT.md) §7).
 
 `RoutingDecision.typeRules` is a list of complete overrides. Each rule has one
 `vehicleTypeId`, `relativeFlows` in the decision's route order and route-major

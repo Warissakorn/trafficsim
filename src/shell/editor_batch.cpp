@@ -154,7 +154,7 @@ void EditorWindow::startBatch() {
         }catch(const std::exception& e){ error=e.what(); }
         QMetaObject::invokeMethod(this,[this,generation,result,error]{ finishBatch(generation,result,error); },Qt::QueuedConnection);
     });
-    objects_->setCurrentIndex(objects_->indexOf(batchView_->parentWidget()));
+    objects_->setCurrentIndex(objects_->indexOf(resultsPage_)); resultsTabs_->setCurrentIndex(0); // the Movements tab holds the batch
     refreshRun();
 }
 void EditorWindow::finishBatch(std::uint64_t generation, std::shared_ptr<BatchResult> result, const std::string& error) {

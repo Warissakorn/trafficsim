@@ -29,16 +29,23 @@ One system per session, interface first, build green at each commit.
 | **M5.4** · implemented 2026-10-09 (D133, [TRAVEL_TIME_SECTIONS](../reference/TRAVEL_TIME_SECTIONS.md)); native CI per PR | Travel-time (delay) sections | Contract and acceptance rows in `docs/reference/` first. A section is a start and end line on Links/Connectors; delay = section travel time − free-flow time at desired speed | Analytic fixtures (lone vehicle; one vehicle held by a red of known length); placement shares the counter gesture; save/reopen, Undo/Redo |
 | **M5.5** · implemented 2026-10-09 (D134, [LOS](../reference/LOS.md)); native CI per PR | LOS pack as data | `data/los/` packs with A–F thresholds by control type (rule 5); pure `losLetter(delay, controlType, pack)`; control-type tag on sections (author-set, D134); approach (start Link) and intersection rows volume-weighted | Threshold-edge tests on both equality sides; a swapped pack changes letters with no code edit; LOS appears only on section delay, labelled "simulated section delay, not validated (M6)" |
 | **M5.6** · implemented 2026-10-09 (D141, [BATCH](../reference/BATCH.md) §6); native CI per PR | Editor "Run N seeds", Copy and Export | Shell action over M5.2 on a worker thread with a snapshot copy, progress and cancel; an edit invalidates the result. Results shows n, mean, ±95 %, LOS, queue and seed flags. Copy (TSV) and Export (CSV) share the CLI formatter; the marker line comes first | UI tests: rows equal the CLI batch; cancel leaves no table claiming N runs; export bytes equal the CLI's; Linux and Windows jobs in `native.yml` |
-| **M5.7** | Rehearsal with a real study | The owner runs the §4 sentence on a real aerial image and the M2.6 template with its placeholders replaced (NEXT §2) | File, commit and table recorded; image size against the 32 MiB cap noted; labelled partial until M6 |
+| **M5.7** | Rehearsal with a real study | The owner runs the §4 sentence on a real aerial image and the M2.6 template with its placeholders replaced ([OWNER_SITTING](OWNER_SITTING.md) A3, B4) | File, commit and table recorded; image size against the 32 MiB cap noted; labelled partial until M6 |
+| **M5.8** · booked by D143 (R1) | Scenario comparison (PROBLEM §1 step 6: base, with-project, mitigated) | Contract first: two projects (or two batches) on one seed list; per movement, section and approach, the difference of means with a Welch 95 % CI; rows matched by name, unmatched rows listed, never silently dropped. No common-random-numbers claim (one random stream per run). CLI first (`--compare`), then the editor | Hand-computed difference and Welch interval; swapped order negates the differences; mismatched rows reported; marker line first; Copy/Export through the same formatters as M5.6 |
+| **M5.9** · booked by D143 (R6), next after M5.7's preparation | Evaluation cool-down | Contract first: after the evaluation end, the run continues until every trip that entered inside the window has finished or a bound (author-set, default stated in the contract) is reached; only then is a trip unfinished. Delay rows still count trips by the window. Older files and a zero cool-down give today's bytes | `four-leg-signalised --seeds 42-51` no longer flags in-flight traffic as unfinished while a gridlocked movement still is; analytic fixture (one vehicle entering at the window end); codec/migration tests; frozen baselines unchanged |
 
-## 3. After M5, not blocking first use
+## 3. Order after M5.7 (D143)
 
-- Amber stop-or-go (D36 runs amber as red, which biases delay) and the live
-  [CONNECTOR_PARITY_AUDIT](../audits/CONNECTOR_PARITY_AUDIT.md) §3.5/§3.6 defects.
-- W74 resumes from [NEXT](../NEXT.md) (M3.3.3a); it now takes schema 25 (22 is M5.3's period,
-  23 M5.4's sections, 24 M5.5's control type).
-- The M6 benchmark option sheet and validation; the marker stays until M6 passes.
-- Motorcycles for Thai counts and an installer (M7) need their own milestones.
+The owner's R2 answer: correct the known biases first, then the validation path.
+
+1. **M5.9** evaluation cool-down (above).
+2. **M4.2** amber stop-or-go ([ROADMAP](../ROADMAP.md) M4.2; D36 runs amber as red, which biases
+   every signalised delay).
+3. **M6.0** benchmark option sheet, docs only, no engine numbers; the marker stays until M6 passes.
+4. **M5.8** scenario comparison (above).
+
+Not booked here: W74's cited preset and W99 ([NEXT](../NEXT.md)); the live
+[CONNECTOR_PARITY_AUDIT](../audits/CONNECTOR_PARITY_AUDIT.md) §3.5/§3.6 defects; motorcycles,
+decided after M5.7 (R3, [PROBLEM](../PROBLEM.md) §8); the installer (M7).
 
 ## 4. Verification for every slice
 

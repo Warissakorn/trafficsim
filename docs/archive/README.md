@@ -5,6 +5,12 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-06-d123.md`](PROGRESS-2026-10-06-d123.md) — oldest live entry (2026-10-06 — Captured discharge inputs and physical-prefix recognition (D123)), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-06-d122.md`](PROGRESS-2026-10-06-d122.md) — oldest live entry (2026-10-06 — Declared discharge windows and type selection (D122)), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-06-d121.md`](PROGRESS-2026-10-06-d121.md) — oldest live entry (2026-10-06 — Queue discharge and startup measurement (D121)), moved whole 2026-10-09
+
 - [`PROGRESS-2026-10-06-d120.md`](PROGRESS-2026-10-06-d120.md) — oldest live entry (2026-10-06 — Driving behaviour contract before implementation (D120)), moved whole 2026-10-09
 
 - [`PROGRESS-2026-10-06-d117.md`](PROGRESS-2026-10-06-d117.md) — oldest live entry (2026-10-06 — Conflict bands follow driving lanes with rail offsets (D117)), moved whole 2026-10-09
@@ -146,6 +152,7 @@ entry behind what you are changing, not the directory.
 - [`AUTHORING_EXTENSIONS-M1.21.md`](AUTHORING_EXTENSIONS-M1.21.md) — former M1.21 reference before current codec/reversal/marking clarification; retained 2026-10-05
 
 - [`ROADMAP-M1.11-M3.1-implemented.md`](ROADMAP-M1.11-M3.1-implemented.md) — M1.11, M1.11.1, M1.12 and M3.1 bodies, out of `ROADMAP.md` 2026-09-29
+- [`ROADMAP-review-2026-10-03.md`](ROADMAP-review-2026-10-03.md) — the 2026-10-03 roadmap review (O1–O10, S0–S5), moved whole out of `ROADMAP.md` 2026-10-09
 - [`ROADMAP-M1-implemented.md`](ROADMAP-M1-implemented.md) — M1's implemented slices, out of `ROADMAP.md`
 - [`VISSIM_PARITY-2026-09-15--2026-09-21-follow-ups.md`](VISSIM_PARITY-2026-09-15--2026-09-21-follow-ups.md) — the dated follow-ups, out of `VISSIM_PARITY.md` 2026-09-29
 - [`VISSIM_PARITY-2026-09-16.md`](VISSIM_PARITY-2026-09-16.md), [`VISSIM_PARITY-2026-09-17-wedge-mouth.md`](VISSIM_PARITY-2026-09-17-wedge-mouth.md) — dated `VISSIM_PARITY.md` follow-ups

@@ -106,3 +106,12 @@ Recorded honestly, so it can be checked rather than defended:
 3. **If the effort of the engine starves the UI.** The prior effort's lesson was that
    almost all of the value was in UX. An excellent engine behind a bad interface loses to
    Vissim on day one.
+
+## 8. Open questions
+
+Recorded here so they are decided against this page, not lost in a session queue.
+
+1. **Motorcycles and lane sharing.** The intended users include Thai consultants, whose counts are
+   motorcycle-heavy, and motorcycles share and filter between lanes. Nothing in §2 or the
+   engine represents that. The owner decides after the M5.7 rehearsal whether it becomes a §2 row
+   and a milestone, or a recorded non-goal in §5 (D143, R3).

@@ -8,6 +8,56 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — Branch audit; Results discharge and clamp pages recovered (D144)
+
+Every origin branch ahead of `main` was checked. `main` was re-rooted on 2026-09-28 (four root
+snapshots), so the 38 older branches share no history with it and git's "ahead" counts mean
+nothing; by content, every decision they name is in `main`, and the only files they hold that
+`main` lacks are the retired M0 window (D24) and an unreferenced `data/fonts/NotoSansThai.ttf`.
+PR #128 (`claude/dazzling-gates-df64jc`, closed unmerged) held the one piece of lost work:
+Results inner pages for queue discharge and safety clamps (`9b81b17`, `cbfff89`). Its W74 and
+M5 commits were already replayed or superseded. The two commits were cherry-picked onto the D142
+branch, merged by hand with M5.6 (the batch view sits in the Movements page; `startBatch` selects
+it), renumbered D135 → D144 (and a stray D134 → D139 in DRIVING_BEHAVIOUR), and `section-ui`
+now finds the Results page as the other suites do. `check`: 111/111 (Linux, Qt 6.4.2 offscreen).
+
+---
+
+## 2026-10-09 — Owner's answers to the roadmap review (D143)
+
+The owner accepted every recommendation, R1–R8. Documents only, no code: D143; ROADMAP closes M2
+(gate D53, sub-milestones carried), relabels M1.26, narrows M1.22 to what `src/` lacks (checked:
+no spline/arc, extend/merge, layer locks or per-Link driving side; reversal refuses referenced
+Links), defines M1.23's CSV, moves M5.1's transit/crosswalks and scenario management beyond M5.8
+to *Later*, and adds M3.4 (the M3.2.8c remainder), M4.2 (amber) and M6.0 (benchmark sheet, which
+now owns calibrated gap acceptance). M5_PLAN gains M5.8 and M5.9 and the order after M5.7.
+PROBLEM gains §8 (motorcycles). `plans/OWNER_SITTING.md` is now the single list of owner items
+(gates, chat decisions, 22 desktop looks, each dated with a yes/no failure question); NEXT keeps
+only the session queue and points there. `check`: docs and file sizes clean.
+
+---
+
+## 2026-10-09 — Volume from turning counts (D142, schema 26)
+
+The owner answered ROADMAP O10's "count sheet typed once vs D46": an input may take its volume
+from its entry decision's turning counts. `VehicleInput.volumeFromCounts` is opt-in, so D46 and
+every existing file are untouched. `src/project/counted_volumes.cpp` holds the one rule:
+`countedDecision` (the decision named, or the placed one on the entry Link), `countedVolumes`
+(summed base-route counts × 3600 / length per decision interval) and `syncCountedVolumes`, called
+on read, in `putInput`/`putRoutingDecision`, in `History::execute` and at the top of
+`withRoutingDecisions`, so no path sees a stale volume. The input's intervals are not written for
+such an input. Issues `INPUT_COUNTS_NO_DECISION`, `INPUT_COUNTS_EMPTY` and
+`INPUT_COUNTS_POSITIONED` (a D119 decision is a downstream split, not a source). The input dialog
+gains the checkbox, which locks the typed volume, counts and Periods and shows the counted total;
+the input and decision rows say which feeds which. `field<bool>` now refuses a non-boolean.
+
+Evidence (Linux, GCC, Qt 6.4.2 offscreen, Debug): `demandcounts` 8/8 (VC1–VC7, each movement's
+vehicles equal its counts for unplaced and placed decisions), `counted-volume-ui` (VC8), and the
+D46 test unchanged. CLI `42 --project` output for the four shipped projects equals `origin/main`'s
+(`c7628e8`, built in a scratch worktree) byte for byte. Native Windows CI and the owner look are owed.
+
+---
+
 ## 2026-10-09 — M5.6: the editor's Run seeds, Copy and Export (D141)
 
 The editor now runs the CLI's batch. **Run seeds** parses the *Seeds* field with `parseSeedList`
@@ -417,60 +467,6 @@ passed Linux/Windows; candidate CI is independent. BA05, M0/M6 and owner gates s
 
 ---
 
-## 2026-10-06 — Captured discharge inputs and physical-prefix recognition (D123)
-
-M3.3.1b2a emits parsed-byte SHA-256/size/read counts for project, actual catalog
-reads and queue definitions, with logical names and optional fallback scopes.
-Changed repeated reads reject before stepping; no hashing/I/O reaches core/eval.
-Positioned suffix choices on the same physical prefix retain queue membership;
-diverted/lateral remaps suppress raw old-head crossing inference and stay unavailable.
-Complete lateral/source reconstruction remains M3.3.1b2b; BA05 does not close.
-See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-provenance.md).
-
-Validation: 72 focused/relevant legacy GCC/Linux tests pass, including frozen
-reference fixtures; seeded CLI/hash parity and guards pass (see evidence). Parent PRs #117/#118 pass
-native CI; the candidate's native/desktop CI is separate. CMake/Qt are absent locally.
-No engine/schema/frozen data changed; no owner or calibration gate closes.
-
-Follow-up: workflow 457 passed Linux but both Windows jobs failed the LF-only fixture hash.
-The test now reads actual checkout bytes; controlled LF/CRLF JSON retains distinct hashes.
-The old assertion fails on a CRLF copy; the corrected suite passes 73 Linux tests and
-7 CRLF-copy provenance tests. See evidence; fresh native Windows CI remains required.
-
----
-
-## 2026-10-06 — Declared discharge windows and type selection (D122)
-
-M3.3.1b1 exposes CLI windows/warmup/ranks and repeatable vehicle-type selection.
-Headways retain original follower/predecessor pairs and ranks; filtered samples
-cannot bridge skipped types. Raw crossings stay intact. A mixed startup prefix
-has a separate unavailable reason without discarding valid selected headways.
-Unknown types and invalid/orphan controls reject before stepping the engine.
-Input-hash output and complete remap/source passage tracking remain M3.3.1b2.
-See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-controls.md).
-
-Validation: 15 focused GCC/Linux tests pass, including the existing trajectory
-comparison. CLI integration and repository guards are recorded in the evidence.
-Native/desktop Linux/Windows CI remains independent; no owner/calibration gate closes.
-
----
-
-## 2026-10-06 — Queue discharge and startup measurement (D121)
-
-M3.3.1a adds a stdlib-only observer, pure rank estimator and CLI `--discharge` JSON.
-Lane/cycle records retain type identity and queued-at-Go membership; tracked sink
-arrivals are counted. Windows, ranks, timestep, signed startup estimates and
-unavailable reasons are explicit. StopLine output and engine code are unchanged.
-BA03 class filters and BA05 complete remap/source support remain M3.3.1b; neither
-measurement nor owner/calibration gates close. See [contract](reference/DISCHARGE.md)
-and [local test evidence](evidence/discharge-measurement.md).
-
-Validation: 10 GCC/Linux tests pass; direct full CLI link and seeded JSON parity;
-documentation, architecture and file-size guards. CMake/Ninja/Qt are absent; native/desktop
-CTest must run in CI. No frozen baseline was regenerated.
-
----
-
 ## Backlog (M0, in order)
 
 The [historical checklist](archive/PROGRESS-M0-backlog-and-questions.md#backlog-m0-in-order)
@@ -479,7 +475,7 @@ is archived. Current work lives in [NEXT](NEXT.md); milestone gates live in [ROA
 ## Open questions
 
 The [historical register](archive/PROGRESS-M0-backlog-and-questions.md#open-questions)
-is archived. Use [NEXT — Owner decisions](NEXT.md#2--owner-decisions) for current questions.
+is archived. Use [the owner sitting, §B](plans/OWNER_SITTING.md#b--decisions-in-chat-one-line-each) for current questions.
 
 ## Decisions
 
