@@ -8,6 +8,21 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — Three modelling levels designed and booked (D145)
+
+The owner asked for more capability chosen by what studies need — parking lots, dynamic
+assignment, then Micro, Meso and Macro levels, Macro as a full four-step model, after the D143
+queue. Docs only, no code: [design](plans/MULTI_LEVEL_MODELLING.md) (study → output matrix, one
+authoring network compiled to three views, shared Zone/OD demand, parking lots as zones with
+capacity, between-run dynamic assignment, pure `src/meso/` and `src/macro/` engines, subarea
+cut), ROADMAP M8–M12, PROBLEM §1–§6 amended (the assignment non-goal replaced), ARCHITECTURE
+planned rows, OWNER_SITTING B7 for the design's open parameters. Parking and regional modelling
+left *Later*. Reasoning in [D145](decisions/RECORD.md#d145). The D124/D125 entries moved whole
+to `archive/`. Checks: `trafficsim-check-docs` and `trafficsim-check-file-sizes` built directly
+with GCC 13.3 (the headless preset lacks nlohmann/json on this machine); no engine build claimed.
+
+---
+
 ## 2026-10-09 — Branch audit; Results discharge and clamp pages recovered (D144)
 
 Every origin branch ahead of `main` was checked. `main` was re-rooted on 2026-09-28 (four root
@@ -434,36 +449,6 @@ and [evidence](evidence/behaviour-library.md).
 Headless CTest passes with 7 `behaviourlibrary` cases (BA06–BA09, Run refusal,
 EN/TH codes); seven targeted mutations each fail a case. Shipped projects re-save
 unchanged and their seed-42 CLI output is byte-identical. No engine or catalog data change.
-
----
-
-## 2026-10-07 — Rank-scoped remap invalidation and source-sink identity (D125)
-
-M3.3.1b2b2 completes measurement. A remap invalidates a cycle only when it moves a
-vehicle queued at Go while ranks 1..steadyLast are open; unqueued changers are
-already caught by `queue_not_sustained`. Same-tick source sinks get their exact type
-from core's new pure `upcomingArrivals` replay plus a route/scheduled-time/speed
-fingerprint. Overlapping lateral spans stay ambiguous (engine choice depends on
-safety checks). See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-identity.md).
-
-Headless CTest 63/63 on GCC 13.3; the BA05 forcing case fails without the replay.
-Seed-42 legacy JSON and manifests match the parent; usable cycles 20→30 (four-leg)
-and 91→113 (m2.6). Engine, schema and frozen fixtures unchanged. Native CI separate.
-
----
-
-## 2026-10-07 — Proven source and lateral passages (D124)
-
-M3.3.1b2b1 replays unique start-of-tick lane maps from prior front/type positions;
-terminal survivors/sinks establish longitudinal passage, including insertion ticks.
-Lateral jumps never count. Upstream membership changes invalidate estimates;
-ambiguous maps/terminals and source sinks without type evidence remain unavailable.
-No display traces, engine/schema changes or frozen fixture regeneration. See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-passage.md).
-
-The original observer fails 5 of 8 new forcing fixtures. The final suite passes
-85 GCC/Linux tests; real source/lateral copies preserve dynamics at .1/.2 s.
-Four seed-42 project legacy JSON/stop-line outputs and input manifests match the parent. Guards pass; local CMake/Ninja/Qt are absent. Parent #119 workflow 458
-passed Linux/Windows; candidate CI is independent. BA05, M0/M6 and owner gates stay open.
 
 ---
 

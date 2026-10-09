@@ -32,6 +32,14 @@ The owner accepted every recommendation, R1–R8 ([review](audits/ROADMAP_REVIEW
 Then, as the owner chooses: the W74 cited preset and W99 contract (below), M3.4 (R7, §3 below).
 Motorcycles wait for M5.7 (R3; the question is in [PROBLEM](PROBLEM.md) §8).
 
+**After the D143 queue — multi-level modelling (D145).** The owner booked Micro, Meso and Macro
+(four-step) levels as M8–M12 ([design](plans/MULTI_LEVEL_MODELLING.md), ROADMAP M8–M12). Do not
+start them before items 2–5 above. First session: **M8.1**, the Zone/ZoneConnector/OdMatrix/
+ParkingLot contract in `docs/reference/` and failure-first rows (a full lot queues at the gate and
+never deletes a vehicle; older files byte-identical), no code. Then M8.2 onward in the design's §5
+order. The six open questions in the design's §8 go to the owner's sitting; M10 and M11 cannot
+start their contracts before questions 1–5 are answered.
+
 **Owner items** — gates, chat decisions and every desktop look — are in one sheet,
 [OWNER_SITTING](plans/OWNER_SITTING.md) (R4). After the sitting, items still open and older than
 14 days become ROADMAP carve-outs. **Native CI** of M5.5 (D134), M5.6 (D141) and D142 is checked
