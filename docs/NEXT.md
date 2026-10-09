@@ -28,122 +28,59 @@ Then M5.7, the owner's rehearsal. W74 (below) now runs on top of M5 in schema 25
 #128's editor batch (its commit e957169) was not merged; read it as a reference for M5.6. Owner
 looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
 
-## Driving behaviour improvement — owner instruction, 2026-10-06
+## Earlier owner instructions, 2026-10-05/06 — what is still open
 
-The owner authorized the staged plan (D120). M3.3.0 writes the
-[assignment contract](reference/DRIVING_BEHAVIOUR.md) and
-[delivery/acceptance design](plans/DRIVING_BEHAVIOUR.md); it implements no behavior.
-M3.3.1a adds the [measurement observer](reference/DISCHARGE.md) and CLI `--discharge`.
-M3.3.1b1 adds vehicle-type follower selection and CLI windows/warmup/ranks (D122);
-see [evidence](evidence/discharge-controls.md). Do not treat inverse selected-type
-headway as selected-type throughput; original ranks/predecessors remain intact.
-M3.3.1b2a captures parsed-byte project/catalog/queue hashes and supports positioned
-route recognition on identical physical prefixes (D123). Diversions suppress raw
-old-head crossing inference; see [evidence](evidence/discharge-provenance.md).
-M3.3.1b2b1 (D124) reconstructs proven source and post-remap longitudinal passages
-without reading display traces; see [passage evidence](evidence/discharge-passage.md).
-M3.3.1b2b2 (D125) scopes remap invalidation to vehicles queued at Go while ranks
-1..steadyLast are open, and names same-tick source-sink types through core's pure
-`upcomingArrivals` replay with an exact fingerprint; see
-[identity evidence](evidence/discharge-identity.md). Measurement (M3.3.1) is complete
-pending native CI on the merged stack; BA05 has focused evidence, not owner validation.
-M3.3.2a (D126) stores the project-owned behaviour library in schema 21 — model-tagged
-behaviours, vehicle classes, link behaviour types and Link/Connector assignment — with
-History commands for put/duplicate/assign/delete-with-replacement; see
-[contract §7](reference/DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)
-and [evidence](evidence/behaviour-library.md). M3.3.2b (D127) compiles road assignments into per-segment selections and every
-consumer uses one `effectiveBehaviour` chosen by the front segment; unassigned runs
-are unchanged and the interim Run refusal is gone. See
-[contract §8](reference/DRIVING_BEHAVIOUR.md#8-implemented-runtime-selection-m332b-d127)
-and [evidence](evidence/behaviour-selection.md). Confirm this PR's native
-Linux/Windows CI independently. BA14 (positioned routing) and BA17 (Stop service
-under a changing profile) now have focused fixtures in the same evidence.
-M3.3.2c (D128) adds the *Driving behaviours* dialog on the Inputs toolbar (staged,
-one History step, users-first edits, delete with replacement) and the inspector's
-*Behaviour type* that assigns every selected Link/Connector at once and shows each
-vehicle type's effective behaviour and its source; see
-[contract §9](reference/DRIVING_BEHAVIOUR.md#9-implemented-editor-m332c-d128) and
-[evidence](evidence/behaviour-editor.md). Confirm this PR's Windows UI jobs.
-**Owner review (Windows):** open a project, capture the catalogs via the dialog,
-duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type with an
-override, assign it to several roads, check the effective list, Undo/Redo, delete
-with replacement, switch to Thai, save and reopen, then run.
-The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)). By owner instruction
-(2026-10-09) the W74 slices built in parallel with M5 were replayed on top of M5 and renumbered
-D135–D139, schema 25 (22–24 are M5's). The pure `w74Acceleration`/`w74Thresholds` have BA21–BA22
-evidence (D135, [evidence](evidence/w74-pure-function.md)). The schema-25 codec and BA29 are done
-(D136, [evidence](evidence/w74-codec.md)). Driver traits are hashed onto each vehicle when a
-scenario holds `w74` (D137, BA26, [evidence](evidence/w74-traits.md)). **W74 runs** since D138
-(BA23–BA25/BA28, [evidence](evidence/w74-composition.md)): one `follow` dispatcher, gap
-accessors, leader acceleration and `w74State`. Not validated. BA27 is recorded
-([evidence](evidence/w74-discharge.md)); every BA21–BA29 row has focused evidence. W74 clamps
-more on the four-leg project (9.4 per run at dt 0.1, 14.8 at dt 0.5, prototype ≈5.5); the
-[trace](evidence/w74-clamps.md) found **no W74 defect** (owner review item 7 below). The
-Driving behaviours dialog edits `w74` behaviours (D139). Next, after M5.6/M5.7 and as the owner
-chooses: a cited, uncalibrated `w74` preset in `data/driver-behaviour/` (its values need a
-source; the fixture's 15 uncited values are not one; rerun `trafficsim-w74-clamp-trace` with
-them), then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs in §1.
-Keep prototype runs byte-identical (BA18). PCU/calibration gates remain open.
-Keep the owner's existing reviews below; no observation/validation gate closes.
+What was built is history: [ROADMAP](ROADMAP.md) M2.8/M3.2.4/M3.3 status lines, PROGRESS and
+the [decision record](decisions/RECORD.md) (D115–D129, D135–D139). Only open items stay here.
+No owner, merge or simulation-validation gate below is closed. Native Linux/Windows CI of each
+of these PRs is checked independently of the M5 queue.
 
-## Positioned routing decisions — owner instruction, 2026-10-06
+**Driving behaviour (D120, [plan](plans/DRIVING_BEHAVIOUR.md), [contract](reference/DRIVING_BEHAVIOUR.md)).**
+Do not treat inverse selected-type headway as selected-type throughput; original
+ranks/predecessors remain intact (D122). BA05 has focused evidence, not owner validation.
+W74 runs since D138 and is **not validated**; every BA21–BA29 row has focused evidence and the
+[clamp trace](evidence/w74-clamps.md) found no W74 defect (§2 item 7). Next, after M5.6/M5.7 and
+as the owner chooses: a cited, uncalibrated `w74` preset in `data/driver-behaviour/` (its values
+need a source; the fixture's 15 uncited values are not one; rerun `trafficsim-w74-clamp-trace`
+with them), then the M3.3.3b W99 contract before code. Keep prototype runs byte-identical (BA18).
+PCU/calibration gates remain open.
+- *Owner review (Windows), D128:* open a project, capture the catalogs via the dialog,
+  duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type with an
+  override, assign it to several roads, check the effective list, Undo/Redo, delete with
+  replacement, switch to Thai, save and reopen, then run. Also look at a `w74` run.
 
-D119 implements M2.1.3 ([contract](reference/POSITIONED_ROUTING.md)). Check this PR's
-native Linux/Windows CI independently. On Windows, click a mid-Link source, hover to
-an exit, add a second Route from the same line, edit weights/time/type rules, then run
-routeless input traffic. Verify recognition at the line, downstream lane-change awareness,
-Undo/Redo, line drag/cancellation, save/reopen and legacy files. Review the documented
-one-timestep recognition boundary before using this feature in a study. Multiple points
-on the same Link remain unsupported; a point may be repositioned. No owner or simulation
-validation gate closes. Continue the existing queues below after this review.
+**Positioned routing decisions (D119, [contract](reference/POSITIONED_ROUTING.md)).** On
+Windows, click a mid-Link source, hover to an exit, add a second Route from the same line, edit
+weights/time/type rules, then run routeless input traffic. Verify recognition at the line,
+downstream lane-change awareness, Undo/Redo, line drag/cancellation, save/reopen and legacy
+files. Review the documented one-timestep recognition boundary before using this feature in a
+study. Multiple points on the same Link remain unsupported; a point may be repositioned.
 
-## Road crossbars and Route trace — owner instruction, 2026-10-06
-
-D116 implements the owner's common crossbar appearance and click/hover/click Route gesture.
-Review this PR's native Linux/Windows CI. On Windows at 100/150/200 %, inspect curved and
+**Road crossbars and Route trace (D116).** On Windows at 100/150/200 %, inspect curved and
 multi-lane roads, Connector-mounted heads and overlapping Route/input endpoints. Trace a chosen
 branch, click the destination, Undo/Redo, Backspace, cancel, and save/reopen. Signal Run bars
 must stay at the stop position and change colour with the program; Reset restores Edit bars.
-Input zero-weight lanes must remain unmarked. No owner or simulation-validation gate closes.
-After this review, continue the conflict and Demand review queues below.
+Input zero-weight lanes must remain unmarked.
 
-## Conflict overlap priority — owner instruction, 2026-10-06
+**Conflict overlap display (D115, superseded in display by D117/D118).** On the owner's
+desktop, inspect an oblique crossing, a Connector landing mid-Link across another lane, and two
+Connectors leaving the same lane: bands must follow each lane and leave its rails readable;
+branching is selectable with no priority editing. At a connected site of the same
+Link/Connector pair, all three kinds share one row; edit Crossing/Merge together while
+Branching stays read-only. Inspect source/target P3–P4 band continuation on attached Link lanes
+for both traffic sides, including obtuse/curved mouths, a taper and finite Link ends; a
+narrow/tapered lane and a short mouth must not lose a band to the adaptive offset. Check
+geometry edits, Undo/Redo and save/reopen. Separated sites must remain separate; rejected
+merge-order cycles must leave all members unchanged. Existing merge station extents and engine
+rules remain unchanged: M3.2.4e needs its own admission contract and failure-first clearance
+tests before runtime reservations widen to the physical mouth.
 
-The owner authorized the overlap/type/display plan. M3.2.4d (D115) retains exact polygon
-clips and labels merge/branching/continuation mouths. The owner refined display in D117/D118:
-separate bands follow each driving direction with 0.5 m normal rail offsets capped at
-20% of local width; ends keep measured cuts. Picking follows the visible bands, grouping
-uses physical polygons. Review the PR's native Linux/Windows CI separately. On the owner's desktop,
-inspect an oblique crossing, a Connector landing mid-Link across another lane, and two
-Connectors leaving the same lane: bands must follow each lane and leave its rails readable; branching
-is selectable with no priority editing. At a connected site of the same Link/Connector pair,
-all three kinds share one row; edit Crossing/Merge together while Branching stays read-only.
-Inspect source/target P3–P4 band continuation on attached Link lanes for both traffic sides,
-including obtuse/curved mouths, a taper and finite Link ends. Check geometry edits, Undo/Redo
-and save/reopen. Separated sites must remain separate; rejected merge-order cycles must leave
-all members unchanged.
-Inspect a narrow/tapered lane and short mouth too; the adaptive offset must not erase a band.
-D115's shared polygon fill is superseded by these directional bands. Existing merge
-station extents/engine rules remain unchanged; M3.2.4e requires a separate admission contract
-and failure-first clearance tests before widening runtime reservations to the physical mouth.
-After this review, retain the Demand review queue below. No merge or owner gate is closed.
-
-## Demand priority — owner instruction, 2026-10-05
-
-The owner explicitly asked to start Demand improvements. This takes priority over
-§0's unanswered ordering proposal. [DEMAND_IMPROVEMENT.md](plans/DEMAND_IMPROVEMENT.md)
-defines slices 1–6: correctness, lossless interval editing, explicit periods and
-compiled preview first; project-owned vehicle/composition catalogs and typed/time
-rules next. Reporting, LOS and batch evaluation stay M5. Slices 1–4 (PR #106)
-passed native Linux/Windows CI. Slice 5 (#107) adds project-owned catalogs and editing;
-its five native jobs passed too. Slice 6 adds schema-19 time/type rules and staged
-editors ([DEMAND_TIME_TYPES.md](reference/DEMAND_TIME_TYPES.md)); check this slice's native CI
-and owner appearance independently. The six implementation slices are present;
-M2.8 stays in progress until its own review gates pass. Next review the stacked PRs
-in dependency order (#106, #107, then time/type), retarget after each merge, and
-exercise catalog periods and type overrides in the owner's desktop. No automatic
-merge or whole-Demand completion claim. Additional distributions, exact-count or
-dynamic-routing work requires its own contract; reporting remains M5.
+**Demand ([DEMAND_IMPROVEMENT](plans/DEMAND_IMPROVEMENT.md), [time/type rules](reference/DEMAND_TIME_TYPES.md)).**
+All six slices are present; M2.8 stays in progress until its own review gates pass. Review the
+stacked PRs in dependency order (#106, #107, then time/type), retarget after each merge, and
+exercise catalog periods and type overrides in the owner's desktop. No automatic merge or
+whole-Demand completion claim. Additional distributions, exact-count or dynamic-routing work
+needs its own contract; reporting remains M5.
 
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 
@@ -349,7 +286,9 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
   - Next candidates, measured but not changed: **compile** walks `routelessChains` 100 times per
     Run (≈0.9 ms each; `connectorPaths` is only 20 ms of it), because `validateDocument`,
     `routelessIssues` and `expandRouteless` each walk every input × time/type slice — share or
-    memoise the walk. Then the double refs/spans build on ticks with a source candidate
+    memoise the walk. D140 (2026-10-09) already computes `connectorPaths` once per expansion
+    (study-template validation 21.6 → 5.0 ms, `trafficsim-validate-benchmark`); the repeated
+    walk itself is still open. Then the double refs/spans build on ticks with a source candidate
     (`simulation.cpp` arrivals vs the main snapshot, ≈40 ms) and phase 1 (≈110 ms). The
     `MovedEvent::segmentId` string copy would need an event-interface decision.
 - **Linux replay of D91–D94:** CI (`native.yml`) is the evidence.

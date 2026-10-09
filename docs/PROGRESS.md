@@ -8,7 +8,7 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
-## 2026-10-09 — Optimization pass: lld, D140, validate benchmark
+## 2026-10-09 — Optimization pass: lld, D140, validate benchmark, NEXT
 
 Measured first (Linux, 4 cores, Qt offscreen): the engine (0.15–0.30 µs per vehicle-tick, linear
 to 96 crossings), the run view (~3.3 ms per Step) and redraw (3.6 ms at 40 crossings) are not
@@ -30,6 +30,13 @@ identical apart from the build stamp; the ten-seed study batch and the engine be
 unchanged within noise (an interleaved ld/lld engine run ruled out the linker).
 `tools/validate_benchmark.cpp` (`trafficsim-validate-benchmark [project] [repetitions]`) keeps
 that number measurable; like the other benchmarks it prints and is not in `check`.
+
+**NEXT.md slimmed** (31.4 → 26.8 KB, −15 %): the five 2026-10-05/06 owner-instruction sections narrated
+finished slices already recorded in ROADMAP (M2.8, M3.2.4, M3.3 status lines), PROGRESS and
+RECORD (D115–D129, D135–D139, each checked before removal). One section keeps every open item
+verbatim — the D128/D119/D116/D115–D118 Windows reviews, the Demand PR review order, W74's next
+steps, BA18, the M3.2.4e contract rule and pending native CI. §1–§5 are live owner gates and
+working notes and were not cut, so the planned −40 % was not reached.
 
 ---
 
