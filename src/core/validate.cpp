@@ -2,6 +2,7 @@
 #include "conflicts.hpp"
 #include "lanes.hpp"
 #include "routing.hpp"
+#include "w74.hpp"
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -228,6 +229,12 @@ std::vector<ValidationIssue> validateScenario(const Scenario& s) {
     for (std::size_t i = 0; i < s.behaviours.size(); ++i) {
         const auto& b = s.behaviours[i];
         const auto p = "behaviours[" + std::to_string(i) + "]";
+        if (b.w74) {
+            for (auto& issue : w74ParameterIssues(*b.w74, p)) issues.push_back(std::move(issue));
+            if (b.maxDecelerationCooperativeBraking)
+                number(*b.maxDecelerationCooperativeBraking, p + ".maxDecelerationCooperativeBraking");
+            continue;
+        }
         number(b.standstillDistance, p + ".standstillDistance");
         number(b.additiveSafetyDistance, p + ".additiveSafetyDistance", true);
         number(b.multiplicativeSafetyDistance, p + ".multiplicativeSafetyDistance", true);

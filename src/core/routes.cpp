@@ -26,7 +26,7 @@ void appendSpans(std::vector<OccupiedSpan>& spans, const std::vector<RoutePart>&
     for (auto part = first; part != parts.end() && vehicle.distance >= part->start; ++part)
         spans.push_back({vehicle.id, part->segmentIndex,
             std::max(0.0, rear - part->start),
-            std::min(part->length, vehicle.distance - part->start), vehicle.speed});
+            std::min(part->length, vehicle.distance - part->start), vehicle.speed, vehicle.acceleration});
 }
 }
 const RoutePart& frontPart(const std::vector<RoutePart>& parts, double distance) {
@@ -125,6 +125,8 @@ ScenarioIndex buildScenarioIndex(const Scenario& scenario) {
     for (std::size_t r = 0; r < scenario.routes.size(); ++r) index.routeZones.push_back(zoneIncidence(scenario, index.parts[r]));
     index.stopZones = std::any_of(scenario.conflictZones.begin(), scenario.conflictZones.end(),
                                   [](const auto& z) { return z.control == ZoneControl::stop; });
+    index.w74 = std::any_of(scenario.behaviours.begin(), scenario.behaviours.end(),
+                            [](const auto& b) { return b.w74.has_value(); });
     indexLaneChanges(scenario, index);
     return index;
 }

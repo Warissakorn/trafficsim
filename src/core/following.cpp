@@ -1,6 +1,8 @@
 #include "following.hpp"
+#include "w74.hpp"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace trafficsim {
 // Reduced Wiedemann-inspired prototype, NOT W74/W99. See docs/reference/SIMULATION.md.
@@ -38,6 +40,21 @@ FollowingResult followingAcceleration(double speed, double desiredSpeed, double 
     if (speed == 0 && leader && leader->gap <= behaviour.standstillDistance)
         acceleration = std::min(0.0, acceleration);
     return {std::max(-type.maxDeceleration, acceleration), mode};
+}
+double standstillGap(const DriverBehaviour& b) { return b.w74 ? b.w74->ax : b.standstillDistance; }
+double desiredGap(const DriverBehaviour& b, double driverFactor, double speed) {
+    if (b.w74) return b.w74->ax + (b.w74->bxAdd + b.w74->bxMult * driverFactor) * std::sqrt(std::max(speed, 0.1));
+    return b.standstillDistance + (b.additiveSafetyDistance + b.multiplicativeSafetyDistance * driverFactor) *
+           std::sqrt(std::max(0.0, speed));
+}
+FollowingResult follow(double speed, const PendingVehicle& driver, std::optional<W74State> previous,
+    const VehicleType& type, const DriverBehaviour& behaviour, std::optional<Leader> leader) {
+    if (!behaviour.w74)
+        return followingAcceleration(speed, driver.desiredSpeed, driver.driverFactor, type, behaviour, leader);
+    // Every vehicle of a scenario holding w74 carries traits (D137); one without is a broken state.
+    if (!driver.w74Traits) throw std::logic_error("w74 behaviour without driver traits");
+    const auto r = w74Acceleration(speed, driver.desiredSpeed, type, *behaviour.w74, *driver.w74Traits, previous, leader);
+    return {r.acceleration, r.mode, r.state};
 }
 Motion integrate(double speed, double acceleration, double dt) {
     if (acceleration < 0 && speed + acceleration * dt < 0)

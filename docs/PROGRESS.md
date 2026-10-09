@@ -8,6 +8,109 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — W74 replayed on top of M5: D135–D139, schema 25
+
+W74 (M3.3.3a) and M5 were built in parallel from the same `main` and both used D130–D134 and
+schema 22. By owner instruction the M5 branch is the base and the W74 slices are replayed on it:
+D130–D134 of the W74 branch are now D135–D139 everywhere (record, index, code comments,
+evidence), and `w74` is written in schema 25 (22–24 are M5's evaluation period, sections and
+control type); a file below 25 carrying `"w74"` is refused, and every "future schema" probe is 26.
+The entries below keep their original dates and test counts. D139 (the dialog editing `w74`
+keys, with no code defaults) had no entry of its own; its reasoning is in the record. Not carried
+over from the W74 branch: its own `--seeds`, editor Run N seeds and evaluation period (M5.2–M5.3
+there, superseded by D131–D132 here; the editor batch is a reference for M5.6) and its Results
+tabs (discharge and clamps). The decision record's blank lines between rows are removed again.
+
+---
+
+## 2026-10-08 — The extra W74 clamps traced: no W74 defect
+
+Evidence only; no engine change. `tools/w74_clamp_trace.cpp` attributes every safety clamp
+of the BA27 runs (2,053, all moving) to the obstacle setting the smallest allowance, from the
+tick's rebuilt snapshot, and records each amber onset. All 240 runs match BA27's counts; none
+is unexplained. 83–96 % are amber heads, held as red with no commitment test: W74's slower
+fixture discharge leaves a queue at 16–19 % of amber onsets (prototype under 0.1 %), so more
+onsets catch a vehicle that cannot stop. The rest are the standstill cap treating a moving
+leader as standing (D105's recorded case), met by W74's gentle emergency braking near `AX`.
+Neither rule changed (BA18); NEXT §2 holds it as an owner decision. The sweep now shares its
+document setup with the trace and stays byte-identical. See [evidence](evidence/w74-clamps.md).
+
+---
+
+## 2026-10-08 — W74 timestep record, BA27, and the courtesy fixture
+
+Evidence only; no engine change. `tools/w74_discharge_sweep.cpp` runs the four-leg project,
+prototype and `w74` (fixture values in `evidence/w74-discharge-behaviour.json`: three are
+PTV's W74 defaults, fifteen are uncited), at dt 0.1/0.25/0.5, seeds 42–81, with the CLI's
+discharge spec. Its prototype arm at dt 0.1 seed 42 equals the Debug CLI in all 90 cycles,
+and a rerun is byte-identical. Mean headway rises with dt in both models, about twice as
+much for W74; W74 runs clamp more (9.4 → 14.8 per run), which NEXT now asks to trace before
+any preset. A `w74run` case checks that a winning courtesy hold stores its own state; a
+mutation keeping the leader's state fails it. See [evidence](evidence/w74-discharge.md).
+
+---
+
+## 2026-10-08 — W74 composed into the tick, BA23–BA25/BA28 (D138)
+
+Fourth M3.3.3a slice: W74 now runs. `follow` dispatches by `DriverBehaviour::w74`;
+`standstillGap`/`desiredGap` replace every direct prototype-field read in the tick (source
+and D108, motion, second obstacle, lane-change checks, dead end, discretionary gain,
+waiting room, receiving space, `stopLineReach`). Leader acceleration rides on
+`OccupiedSpan` and `CourtesyHold`; static obstacles write 0. `Vehicle::w74State` comes from
+the kept result at publish. D136's Run refusal and its message are gone. A first run-level
+Stop test passed without the standstill override; the §7 case (at rest 3.3 m short) was
+added and now fails without it. Prototype bytes unchanged. Headless 69/69, desktop 100/100
+(Linux). See [evidence](evidence/w74-composition.md). Not validated.
+
+---
+
+## 2026-10-08 — W74 driver traits, BA26 (D137)
+
+Third M3.3.3a slice. `w74Traits(seed, id, driverFactor)` implements §5's splitmix64 hash and
+Irwin–Hall `zOp`; `generateArrivals` stores it on `PendingVehicle` when any behaviour is
+`w74`. Golden values match an independent Python implementation bit for bit, and GCC and
+Clang agree on 1,000 traits. A mixed run keeps every prototype draw. Writing the
+`upcomingArrivals` row exposed that its scratch state did not copy `seed`; it does now.
+`W74State` and BA24/BA25 are deferred to composition, their only writer and reader (D137).
+Checkpoints gain `w74Traits` only when present. Headless 68/68, desktop 99/99 (Linux),
+CLI seed 42 identical. See [evidence](evidence/w74-traits.md).
+
+---
+
+## 2026-10-08 — W74 schema-25 codec, BA29 (D136)
+
+The second M3.3.3a slice, codec only by the owner's choice. `DriverBehaviour::w74`
+(`std::optional<W74Parameters>`) is the model tag; the W74 value types moved into
+`types.hpp` so it can hold them. `parseBehaviour` dispatches on `model`, refuses each
+model's keys on the other, and reads the 18 keys from `w74ParameterKeys()`, the same table
+the serializer and §5 range check use. Schema 22 is written only when an owned behaviour is
+`w74`; below 25 one is `UNSUPPORTED_BEHAVIOUR_MODEL`. Run refuses a `w74` behaviour a
+vehicle type or road selection uses (`UNSUPPORTED_BEHAVIOUR_MODEL_RUN`), never runs it as the
+prototype; an unused one changes nothing. The dialog shows a `w74` behaviour read-only
+except its name. Why each choice: D136. Qt was installed in this container, so desktop
+UI suites ran (Linux offscreen): headless 67/67, desktop 98/98, CLI seed 42 and shipped
+projects byte-identical. See [evidence](evidence/w74-codec.md).
+
+---
+
+## 2026-10-08 — W74 pure function, BA21–BA22 (D135)
+
+Review first: a clean checkout configured only after installing `nlohmann-json3-dev`
+(BUILDING lists it); headless was then 65/65. The decision record's table had blank lines
+between rows from D12 onwards, so GitHub rendered every later row as plain pipe text; the
+blank lines are removed in a separate commit, no row changed.
+
+Then the first M3.3.3a code, rows-first as NEXT ordered: `src/core/w74.hpp/.cpp` implement
+contract §3 thresholds, the §4 seven-row classification and accelerations, the §7 sign and
+the §6 bounds (type clamp, then D105) as one pure function. `Leader` gains `acceleration`,
+0 everywhere until BA28 fills it; the prototype ignores it. `tests/w74_tests.cpp` (group
+`w74`) checks every regime row against hand values and every equality side on the value
+and one ULP away; five seeded boundary mutations each fail it. Why a pure, unwired function
+first and why the bounds live inside it: D135. Headless 66/66, CLI seed 42 byte-identical;
+Linux only. See [evidence](evidence/w74-pure-function.md).
+
+---
+
 ## 2026-10-09 — M5.5 LOS letters from section delay (D134)
 
 Section delay now gets a letter, and only section delay. The owner chose an author-set control
@@ -360,122 +463,6 @@ and Qt display/picking/one-Undo checks. Oldest roadmap session block moved whole
 Validation: GCC 13.3/C++20 and Qt 6.4.2 on Linux; full local desktop CTest passes
 **89/89 groups**, including Qt offscreen UI, frozen references and repository guards.
 Native Linux/Windows CI and owner appearance remain separate; no owner/fidelity gate closes.
-
----
-
-## 2026-10-06 — Conflict bands follow driving lanes with rail offsets (D117)
-
-Owner refined D115 display to separate directional lane bands, with appropriate offset
-from road edges. Exact intersection polygons and mouth classification are retained for
-measurement/grouping; `conflictAreaGeometry` also exposes per-side measured station spans.
-Canvas bands follow the painted rails through those spans, inset laterally by 0.30 m per
-side capped at 20% of local width. Longitudinal cuts remain unchanged, keeping short
-mouths visible. Picking uses the same visible band union. Merge bands use measured mouth
-spans rather than the unchanged one-metre runtime admission extents. No schema or solver
-rule changes. Updated oblique UI tests require two distinct directional bands and blank
-offset margins to be unpickable; narrow 0.5 m lanes test adaptive offsets. Model regressions
-compare merge band spans directly with measured Connector/Link mouth stations.
-The oldest docs-tidy history block is moved whole into archive to retain live-file headroom.
-Validation: GCC 13.3/C++20 and Qt 6.4.2; the complete local desktop CTest suite passes
-**89/89 groups**, including Qt offscreen UI, frozen references and repository guards.
-Native CI and owner desktop appearance remain separate; no owner/fidelity gate closes.
-
----
-
-## 2026-10-06 — Road crossbars and hover-traced Routes (D116)
-
-The owner requested a simpler common appearance: Routes, Vehicle inputs and signal
-heads are lines across the road. A shared normal/rail-intersection helper places
-these bars on actual road edges, including attached Link rails at Connector mouths.
-Cosmetic pens keep the line readable at zoom; a wider hit area keeps it selectable.
-Inputs mark contiguous served lanes and skip zero-share lanes. Edit heads are neutral
-with a contrasting casing; Run heads reuse their stop geometry and show program colours.
-Reset restores the Edit bars. Selected Routes tint their clipped road surfaces and
-mark both ends, preserving D96's partial-Link rendering.
-
-The Route tool now accepts click start, hover through the chosen branch, click destination.
-Hover remembers a valid lane-connected chain without changing the document; revisiting
-an earlier road trims it. Ambiguous/unreachable extensions are rejected. Backspace,
-Escape, focus/tool/level changes and the existing Ctrl+right/Enter flow remain supported.
-The destination creates one command, so one Undo removes the whole Route. English/Thai
-hints and input labels describe the new interaction. Core behaviour and schemas are unchanged.
-
-Validation: Linux Debug build with GCC 13.3 / Qt 6.4.2; offscreen regression coverage for
-curves, both driving sides, Connector mouths, zoom/picking, zero-share inputs, branched
-tracing, cancellation, one-command Undo and Edit/Run signal geometry. All 89 tests passed
-across the full run and five affected-test reruns after fixing adjacent-lane hit spill;
-architecture, file-size, documentation and whitespace checks passed. Native Windows CI
-and owner appearance review remain separate; no simulation or owner gate is closed.
-
-## 2026-10-06 — Exact conflict polygons and classified mouths (D115)
-
-Owner authorized the geometry/type/display slice after inspecting why measured
-Connector/Link mouth overlaps were excluded from crossings. Quad clipping now retains
-convex polygon pieces beside both station intervals. Classification distinguishes crossing,
-merge, branching and one-stream continuation without discarding measured mouth geometry.
-Automatic crossing keys and topology-derived merge priorities/extents remain stable;
-branching is derived/read-only and continuation adds no control. Two arriving Connectors
-with only an edge contact can display their measured common receiving-lane mouths.
-
-Canvas fill, hit testing and connected-place grouping use the retained polygon union;
-the former full side strips and 0.3 m display/pick inset are superseded. Each lane pair
-still has its own reservation and paired priority layers. Branching rows are translated
-in English/Thai and reject priority authoring in both UI and commands, including a
-disguised/stale suggestion. Polygons are recomputed from network geometry, never added
-to the file schema. Geometry edits and Undo restore their derived shapes.
-New/Open/Recover also invalidate the conflict cache across document revision resets.
-
-Validation: GCC 13.3/C++20 local desktop build with Qt 6.4.2 and strict floating point;
-all model tests pass **486 cases, 0 failures**. New analytical oblique-area, source/target
-mouth, continuation, branching refusal, codec and edit/Undo regressions accompany Qt
-offscreen canvas/picking/grouping tests. Qt/model edge comparisons allow only numerical
-area tolerance; explicit outside-overlap probes must remain unpickable.
-The complete local desktop CTest suite passes **88/88 groups**, including documentation,
-architecture, file-size and frozen-reference checks.
-Native Linux/Windows CI and owner appearance review remain separate gates. This is
-M3.2.4d; full physical-mouth merge admission/clearance is M3.2.4e, not implemented here.
-No cross-path swept-body, fidelity or owner/milestone closure claim is made.
-
----
-
-## 2026-10-06 — Edited Connector lanes drive motion and controls (D114)
-
-Owner reported that reshaping a Connector leaves cars on the endpoint-only cubic,
-authorized the geometry-based correction, then explicitly requested the lane centres
-and other systems use shared data. `connectorPaths` now supplies final adjacent-rail
-midpoints with named lane-centre terminals and no endpoint-only runtime equation.
-Lengths, front positions, rolling rear-axle guides, heads, route overlays and right-of-way
-station mappings use those paths. The cubic remains the default drawing generator.
-Zero points/Reset straight now drive straight; widths, ranges and interior edits can
-change travel lengths and results. IDs, file schemas and core motion code remain unchanged.
-
-`conflictSurface` is the shared source for overlap calculation, outlines and waiting bars,
-using those same final painted rails and authored cross-sections. Physical setbacks map
-to the runtime lane distance. Common mouth pieces remain topology joins even when P1–P4
-cuts lie longitudinally before/after the Link attachment; a finite Link end can truncate
-the painted terminal leg. A separate interior crossing of the attached lane remains a
-crossing. Existing History following and Run invalidation handle edits/Undo/Redo.
-The T-junction example is regenerated by its builder: ten control/extent numbers change;
-network geometry and frozen reference fixtures are unchanged. Old authored conflict areas
-are validated against current coverage on load, not silently repaired.
-
-New fixed-end edit regressions cover both driving sides, both taper directions,
-independently interpolated rail centres, compiled lengths, heads, waiting bars/setbacks,
-file round trips and Undo/Redo. Updated canvas tests check edited lane fronts/body heading
-and replacement of the same canvas's Run network. D107 motion-independence and D109
-coverage-independence expectations are superseded, with their historical evidence retained.
-Validation: GCC 13.3/C++20 Release, strict floating point, Linux headless `check` passes
-**60/60 CTest groups**, architecture/file-size/documentation guards and unchanged frozen
-references. Existing lane-centre sweeps cover 240 seeded curve/taper runs with replay,
-accounting and segment-body separation. T-junction seeds 42–81 × headways 3/7/12 pass
-**120/120** replay/accounting/body/swept-conflict-interval/braking checks;
-[full rows](evidence/connector-edited-centres.jsonl) retain clamp counts and trajectory digests.
-Reproduce with `trafficsim-t-junction-clamps --sweep out.jsonl REPO_ROOT`.
-Local builds disable precompiled headers and use a writable TMPDIR; CMake/Ninja and
-nlohmann/json are local build dependencies, not committed repository changes. Qt is
-unavailable locally; native desktop CI and owner appearance remain separate. These checks
-are interval/segment checks, not cross-path 2D collision proof. No owner/M0/M3/M6 gate or
-fidelity claim is closed.
 
 ---
 

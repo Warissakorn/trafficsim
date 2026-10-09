@@ -14,6 +14,26 @@ struct Route {
     std::string id; std::vector<std::string> segmentIds;
     bool operator==(const Route&) const = default;
 };
+// M3.3.3a W74 (docs/reference/W74.md, D129). Every key is required data (hard rule 5); there
+// are deliberately no defaults.
+struct W74Parameters {
+    double ax, bxAdd, bxMult, exAdd, exMult, cxAdd, cxMult, opdvAdd, opdvMult, dMax;
+    double bMaxAdd, bMaxMult, bMaxSpeedRoot, bNullAdd, bNullMult, bMinAdd;
+    double leaderAccelerationWeight, emergencyLeaderWeight;
+    bool operator==(const W74Parameters&) const = default;
+};
+// Per-driver draws in [0, 1], fixed when the vehicle is generated (contract §5).
+struct W74Traits {
+    double zBx, zEx, zCx, zOp, zOsc;
+    bool operator==(const W74Traits&) const = default;
+};
+enum class W74Regime : std::uint8_t { free, approaching, following, emergency };
+// The previous tick's regime and the oscillation sign it used (0 outside following), §7.
+struct W74State {
+    W74Regime regime{};
+    std::int8_t sign{};
+    bool operator==(const W74State&) const = default;
+};
 struct DriverBehaviour {
     std::string id;
     double standstillDistance{}, additiveSafetyDistance{}, multiplicativeSafetyDistance{};
@@ -29,6 +49,9 @@ struct DriverBehaviour {
     // D101: seconds after a vehicle's last lane change (either kind) during which it makes no
     // discretionary change. Ours; Vissim has none. Without it there is no hold.
     std::optional<double> discretionaryLaneChangeHoldTime;
+    // Present iff the behaviour's model is `w74` (schema 25, D136); its prototype fields are then
+    // unused and never written. Last, so every existing brace-initialisation keeps its meaning.
+    std::optional<W74Parameters> w74;
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };
@@ -252,6 +275,7 @@ struct ScenarioIndex {
     // M3.3.2b: segments x types, row-major, a behaviour slot each -- behaviourOfType overridden by
     // Scenario::segmentBehaviours. EMPTY when nothing is assigned: then the type alone decides.
     std::vector<std::size_t> behaviourOfSegmentType;
+    bool w74{};                                      // any behaviour is w74: vehicles carry traits
     // The slots a released vehicle is stamped with. An input's route and type never change, so
     // resolving them per input per tick -- which is what generateArrivals did once the vehicle
     // stopped carrying ids -- was the same lookup in a new place.
@@ -273,6 +297,9 @@ struct PendingVehicle {
     static constexpr std::uint32_t kNoInput = 0xffffffffU;
     std::uint32_t inputIndex{kNoInput}, routeIndex{}, typeIndex{};
     double scheduledTime{}, desiredSpeed{}, driverFactor{};
+    // M3.3.3a (D137): hashed at generation, never redrawn; present iff the scenario holds any
+    // w74 behaviour (docs/reference/W74.md §5). Last, so brace-initialisation keeps its meaning.
+    std::optional<W74Traits> w74Traits;
     bool operator==(const PendingVehicle&) const = default;
 };
 // D101: a vehicle's last lane change, of either kind -- the tick it started and the route it left.
@@ -295,6 +322,9 @@ struct Vehicle : PendingVehicle {
     std::optional<LastLaneChange> lastLaneChange;
     std::vector<LaneChangeTrace> laneChangeTrace;
     std::vector<std::string> passedDecisions; // one selection per passage; routes cannot cycle
+    // W74.md §7 (D138): the previous tick's regime and sign while its front is on a w74 road;
+    // written only at publish, cleared on a prototype one.
+    std::optional<W74State> w74State;
     bool operator==(const Vehicle&) const = default;
 };
 // Parallel to Scenario::inputs, one entry each and in that order: createSimulation builds it

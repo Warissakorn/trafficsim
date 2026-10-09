@@ -5,6 +5,17 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-06-d117.md`](PROGRESS-2026-10-06-d117.md) — oldest live entry (2026-10-06 — Conflict bands follow driving lanes with rail offsets (D117)), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-06-d116.md`](PROGRESS-2026-10-06-d116.md) — oldest live entry (2026-10-06 — Road crossbars and hover-traced Routes (D116)), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-06-d115.md`](PROGRESS-2026-10-06-d115.md) — oldest live entry (2026-10-06 — Exact conflict polygons and classified mouths (D115)), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-06-d114.md`](PROGRESS-2026-10-06-d114.md) — oldest live entry (2026-10-06 — Edited Connector lanes drive motion and controls (D114)), moved whole 2026-10-09
+
+
+
+
 - [`PROGRESS-2026-10-05-current-contracts.md`](PROGRESS-2026-10-05-current-contracts.md) — oldest live entry (2026-10-05 — Current contracts separated from obsolete reference text), moved whole 2026-10-09
 
 - [`PROGRESS-2026-10-05-housekeeping.md`](PROGRESS-2026-10-05-housekeeping.md) — oldest live entry (2026-10-05 — Repository housekeeping), moved whole 2026-10-09
@@ -16,6 +27,7 @@ entry behind what you are changing, not the directory.
 - [`PROGRESS-2026-10-05-d113.md`](PROGRESS-2026-10-05-d113.md) — D113 oldest live time/type entry, moved whole 2026-10-08
 
 - [`PROGRESS-2026-10-05-d112.md`](PROGRESS-2026-10-05-d112.md) — D112 oldest live catalog entry, moved whole 2026-10-08
+- [`PROGRESS-2026-10-05-d113.md`](PROGRESS-2026-10-05-d113.md) — D113 time-varying compositions entry, moved whole 2026-10-08
 
 - [`PROGRESS-2026-10-05-d111.md`](PROGRESS-2026-10-05-d111.md) — D111 oldest live Demand correctness entry, moved whole 2026-10-07
 

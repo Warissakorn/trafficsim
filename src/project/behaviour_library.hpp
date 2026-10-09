@@ -5,9 +5,13 @@ namespace trafficsim {
 // M3.3.2a (D126, docs/reference/DRIVING_BEHAVIOUR.md §1): the project-owned behaviour library --
 // behaviour names and model tags, vehicle classes, link behaviour types -- and the Link/Connector
 // assignment. Schema 21. Stored and validated only; nothing reaches the engine before M3.3.2b.
-bool usesBehaviourLibrary(const ProjectDocument&); // anything that needs schema 21 to be saved
+bool usesBehaviourLibrary(const ProjectDocument&); // anything that needs schema 21 (or 25) to be saved
 // A file below schema 21 carrying a library key is refused (EDIT_UNSUPPORTED_FIELD), never dropped.
 void rejectBehaviourLibraryBefore21(const Json& document);
+// D136: a file below schema 25 naming the w74 model is refused (UNSUPPORTED_BEHAVIOUR_MODEL).
+void rejectW74Before25(const Json& document);
+// Schema 25 is needed exactly when an owned behaviour is `w74`.
+bool ownsW74Behaviour(const ProjectDocument&);
 // Schema 21 and later: reads the library and rejects unknown keys in every owned catalog entry.
 void parseBehaviourLibrary(const Json& definition, AuthoringDefinition&);
 // Adds the schema-21 keys to an already written definition: names, the explicit model tag on
@@ -29,5 +33,4 @@ struct RoadBehaviour {
     bool operator==(const RoadBehaviour&) const = default;
 };
 std::vector<RoadBehaviour> effectiveRoadBehaviours(const AuthoringDefinition&, const std::optional<std::string>& behaviourTypeId);
-inline constexpr const char* kPrototypeBehaviourModel = "prototype";
 }

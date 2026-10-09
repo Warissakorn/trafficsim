@@ -1,5 +1,6 @@
 #include "json.hpp"
 #include "../core/validate.hpp"
+#include "../core/w74.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -294,7 +295,33 @@ void requireKnownFields(const Json& value,std::initializer_list<const char*> key
 PriorityDefaults parsePriorityDefaults(const Json& value) {
     return {field<double>(value, "gapTime"), field<double>(value, "headway")};
 }
-DriverBehaviour parseBehaviour(const Json& b) {
+DriverBehaviour parseBehaviour(const Json& b, const std::string& path) {
+    static constexpr const char* prototypeKeys[] = {"standstillDistance", "additiveSafetyDistance",
+        "multiplicativeSafetyDistance", "followingTime", "speedThreshold", "discretionaryLaneChangeThreshold",
+        "acceptedDecelerationTrailingVehicle", "discretionaryLaneChangeHoldTime"};
+    std::string model = kPrototypeBehaviourModel;
+    if (b.is_object() && b.contains("model")) {
+        if (!b.at("model").is_string()) throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", path + ".model"}});
+        model = b.at("model").get<std::string>();
+    }
+    if (model == kW74BehaviourModel) {
+        for (const char* key : prototypeKeys)
+            if (b.contains(key)) throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", path + "." + key}});
+        DriverBehaviour behaviour{field<std::string>(b, "id")};
+        W74Parameters parameters{};
+        for (const auto& key : w74ParameterKeys()) {
+            if (!b.contains(key.name) || !b.at(key.name).is_number())
+                throw ValidationError({{"INVALID_BEHAVIOUR_PARAMETER", path + "." + key.name}});
+            parameters.*key.member = b.at(key.name).get<double>();
+        }
+        behaviour.w74 = parameters;
+        if (b.contains("maxDecelerationCooperativeBraking"))
+            behaviour.maxDecelerationCooperativeBraking = field<double>(b, "maxDecelerationCooperativeBraking");
+        return behaviour;
+    }
+    if (model != kPrototypeBehaviourModel) throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", path + ".model"}});
+    for (const auto& key : w74ParameterKeys())
+        if (b.contains(key.name)) throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", path + "." + key.name}});
     DriverBehaviour behaviour{field<std::string>(b, "id"), field<double>(b, "standstillDistance"),
         field<double>(b, "additiveSafetyDistance"), field<double>(b, "multiplicativeSafetyDistance"),
         field<double>(b, "followingTime"), field<double>(b, "speedThreshold"), std::nullopt};
@@ -425,7 +452,8 @@ ScenarioDefinition parseDefinition(const Json& value) {
     if (value.contains("vehicleTypes"))
         for (const auto& t : array(value, "vehicleTypes")) definition.vehicleTypes.push_back(parseVehicleType(t));
     if (value.contains("behaviours"))
-        for (const auto& b : array(value, "behaviours")) definition.behaviours.push_back(parseBehaviour(b));
+        for (const auto& b : array(value, "behaviours"))
+            definition.behaviours.push_back(parseBehaviour(b, "behaviours[" + std::to_string(definition.behaviours.size()) + "]"));
     return definition;
 }
 }

@@ -11,8 +11,8 @@ and their evidence before reopening a choice. IDs remain stable even when record
 | Link/Connector geometry and lifecycle | D20–D23, D26, D55, D72–D80, D86, D106–D110, D114–D118 |
 | Demand and routing | D25, D32–D33, D37, D42–D46, D71, D93–D94, D111–D113 |
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
-| Following, commitment and lane changes | D129, D127, D126, D125, D124, D123, D122, D121, D120, D69, D71, D87–D95, D98, D101–D102, D105, D108 |
-| UI, gestures, display and results | D134, D133, D132, D131, D130, D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
+| Following, commitment and lane changes | D138, D137, D136, D135, D129, D127, D126, D125, D124, D123, D122, D121, D120, D69, D71, D87–D95, D98, D101–D102, D105, D108 |
+| UI, gestures, display and results | D139, D134, D133, D132, D131, D130, D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
 | Performance, checks and documentation | D27–D29, D31, D70, D82, D85, D91, D99 |
 
 ## Reading a historical choice
@@ -72,3 +72,12 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D133](RECORD.md#d133) — M5.4 travel-time sections (schema 23): Link-wide start/end lines, interpolated crossings, delay against the vehicle's desired speed.
 
 [D134](RECORD.md#d134) — M5.5 LOS: HCM pack as data, author-set control type (schema 24), approaches by start Link, vehicle-weighted.
+[D135](RECORD.md#d135) — W74 lands first as a pure, unwired function with type bounds and D105 inside it; `Leader::acceleration` added, 0 until BA28.
+
+[D136](RECORD.md#d136) — schema-25 `w74` codec from one key table; Run refuses a `w74` behaviour in use until BA28; dialog read-only.
+
+[D137](RECORD.md#d137) — W74 traits hashed at generation only when a scenario holds `w74`; `W74State` and BA24/BA25 move to the composition slice.
+
+[D138](RECORD.md#d138) — W74 runs: one `follow` dispatcher and gap accessors for every consumer, `Leader` acceleration from the snapshot, state from the kept result; D136's refusal lifted.
+
+[D139](RECORD.md#d139) — `w74` edited in the Driving behaviours dialog: model choice, empty-able text field per key, no code defaults.

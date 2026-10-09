@@ -24,8 +24,9 @@ worker thread with a snapshot copy, progress and cancel (an edit invalidates the
 Results view of n, mean, ±95 %, section LOS, queues and seed flags; Copy (TSV) and Export (CSV)
 through the CLI's formatters with the marker line first. Contract and UI acceptance rows first
 (rows equal the CLI batch; cancel leaves no table claiming N runs; export bytes equal the CLI's).
-Then M5.7, the owner's rehearsal. W74 (below) is parked, not cancelled, and takes schema 25;
-owner looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
+Then M5.7, the owner's rehearsal. W74 (below) now runs on top of M5 in schema 25 (D135–D139) and does not block M5.6;
+#128's editor batch (its commit e957169) was not merged; read it as a reference for M5.6. Owner
+looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
 
 ## Driving behaviour improvement — owner instruction, 2026-10-06
 
@@ -67,13 +68,22 @@ vehicle type's effective behaviour and its source; see
 duplicate a behaviour, make a heavy-vehicle class and an urban behaviour type with an
 override, assign it to several roads, check the effective list, Undo/Redo, delete
 with replacement, switch to Thai, save and reopen, then run.
-The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)); nothing runs yet.
-**Parked behind M5 (D130).** When resumed, implement it rows-first: BA21–BA22 as pure-function tests of a new
-`w74Acceleration` in `src/core/` (hand-computed values, every equality side), then the
-schema-25 codec (22 went to M5.3, D132; 23 to M5.4, D133; 24 to M5.5, D134) and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
-timestep sensitivity. Keep prototype runs byte-identical (BA18); do not ship a preset
-in the same slice. The owner may want to read §5 (traits) and §7 (sign hysteresis) before
-code. PCU/calibration gates remain open.
+The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)). By owner instruction
+(2026-10-09) the W74 slices built in parallel with M5 were replayed on top of M5 and renumbered
+D135–D139, schema 25 (22–24 are M5's). The pure `w74Acceleration`/`w74Thresholds` have BA21–BA22
+evidence (D135, [evidence](evidence/w74-pure-function.md)). The schema-25 codec and BA29 are done
+(D136, [evidence](evidence/w74-codec.md)). Driver traits are hashed onto each vehicle when a
+scenario holds `w74` (D137, BA26, [evidence](evidence/w74-traits.md)). **W74 runs** since D138
+(BA23–BA25/BA28, [evidence](evidence/w74-composition.md)): one `follow` dispatcher, gap
+accessors, leader acceleration and `w74State`. Not validated. BA27 is recorded
+([evidence](evidence/w74-discharge.md)); every BA21–BA29 row has focused evidence. W74 clamps
+more on the four-leg project (9.4 per run at dt 0.1, 14.8 at dt 0.5, prototype ≈5.5); the
+[trace](evidence/w74-clamps.md) found **no W74 defect** (owner review item 7 below). The
+Driving behaviours dialog edits `w74` behaviours (D139). Next, after M5.6/M5.7 and as the owner
+chooses: a cited, uncalibrated `w74` preset in `data/driver-behaviour/` (its values need a
+source; the fixture's 15 uncited values are not one; rerun `trafficsim-w74-clamp-trace` with
+them), then the M3.3.3b W99 contract. The owner's Windows look at a `w74` run belongs in §1.
+Keep prototype runs byte-identical (BA18). PCU/calibration gates remain open.
 Keep the owner's existing reviews below; no observation/validation gate closes.
 
 ## Positioned routing decisions — owner instruction, 2026-10-06
@@ -277,7 +287,12 @@ In order:
 6. **The M2.6 template** (`data/projects/m2.6-study-template.traffic.json`) has placeholder
    volumes, a guessed timing-window-to-approach mapping and no aerial image. Replace them before
    using it for a real study.
-7. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
+7. **Amber and the standstill cap** ([W74 clamp trace](evidence/w74-clamps.md), 2026-10-08):
+   a non-green head holds as red with no commitment test, and the hard cap treats a moving
+   leader as standing. Both clamp in every model; W74 meets them more. Changing either needs
+   its own contract and failure-first rows and moves prototype trajectories (BA18). Not
+   required for W74; decide only if the clamp counts matter for a study.
+8. **Open questions, none blocking:** motorcycles (not shipped; lane sharing is unmodelled and
    Thai counts are motorcycle-heavy); continuous-time or multiple same-Link routing stations beyond M2.1.3.
 
 M1.22, M1.23, M2.1 and M2.7 remain open milestones (M2.7 closes on the owner's use in M2.6);

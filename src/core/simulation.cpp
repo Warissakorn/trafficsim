@@ -48,7 +48,7 @@ std::optional<Leader> closestVehicle(const Vehicle& vehicle, const std::vector<R
                 part.start + span.front < vehicle.distance - 1e-9) continue;
             const double gap = part.start + span.rear - vehicle.distance;
             if (!nearest || gap < nearest->gap) {
-                nearest = Leader{gap, span.speed};
+                nearest = Leader{gap, span.speed, span.acceleration};
                 if (id) *id = span.vehicleId;
             }
         }
@@ -151,13 +151,14 @@ SimState stepSimulation(SimState&& state, double dt) {
         const auto& behaviour = scenario.behaviours[behaviourSlot];
         const auto leader = closestVehicle(vehicle, partsFor(index, scenario, route), candidateSpans,
                                            candidateBuckets);
-        if (leader && leader->gap < behaviour.standstillDistance) continue;
+        if (leader && leader->gap < standstillGap(behaviour)) continue;
         // D108: a positive source gap can still be smaller than the first ordinary step.
         // Keep the sampled arrival pending until that step fits the existing buffer;
         // later lane-change/signal/conflict constraints still use the normal safety checks.
         if (leader) {
-            const auto first=followingAcceleration(0,vehicle.desiredSpeed,vehicle.driverFactor,type,behaviour,leader);
-            if (integrate(0,first.acceleration,dt).distance > leader->gap-behaviour.standstillDistance) continue;
+            // A vehicle entering has no w74 state: its first evaluation initialises one (W74.md §7).
+            const auto first=follow(0,vehicle,std::nullopt,type,behaviour,leader);
+            if (integrate(0,first.acceleration,dt).distance > leader->gap-standstillGap(behaviour)) continue;
         }
         const VehicleRefs inserted{static_cast<std::size_t>(&route - scenario.routes.data()),
                                    static_cast<std::size_t>(&type - scenario.vehicleTypes.data()),
@@ -236,7 +237,7 @@ SimState stepSimulation(SimState&& state, double dt) {
     }
     // Phase 1: every vehicle's candidate move, from the snapshot alone. Nothing is published
     // until phase 2 has seen them all (contract §4, steps 1-3 and 6).
-    struct Move { double distance{}, speed{}, acceleration{}; FollowingMode mode{}; bool clamped{}; };
+    struct Move { double distance{}, speed{}, acceleration{}; FollowingMode mode{}; bool clamped{}; std::optional<W74State> w74; };
     std::vector<Move> moves(vehicles.size());
     std::vector<std::optional<VehicleLeader>> leaders(zones.empty() ? 0 : vehicles.size()); // phase 2 only
     for (std::size_t v = 0; v < vehicles.size(); ++v) {
@@ -248,7 +249,7 @@ SimState stepSimulation(SimState&& state, double dt) {
         auto leader = closestVehicle(vehicle, parts, spans, buckets, zones.empty() ? nullptr : &leaderId);
         const auto vehicleLeader = leader; // receiving space is about vehicles, not stop lines
         if (leader && !zones.empty()) leaders[v] = VehicleLeader{leader->gap, leader->speed, leaderId};
-        double allowedDistance = leader ? std::max(0.0, leader->gap - behaviour.standstillDistance) :
+        double allowedDistance = leader ? std::max(0.0, leader->gap - standstillGap(behaviour)) :
                                           std::numeric_limits<double>::infinity();
         for (const auto& routeHead : index.routeHeads[refs[v].route]) {
             const auto& head = scenario.signalHeads[routeHead.headIndex];
@@ -256,20 +257,20 @@ SimState stepSimulation(SimState&& state, double dt) {
             if (gap < -1e-9) continue;
             if (headColors[routeHead.headIndex] == SignalColor::green) continue;
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
-            if (!leader || gap < leader->gap) leader = Leader{gap, 0};
+            if (!leader || gap < leader->gap) leader = Leader{gap, 0, 0};
         }
         // A stub route's dead end holds its vehicle as a red head does, until it changes lanes.
         if (index.laneChanges)
             if (const double gap = std::max(0.0, index.deadEndOfRoute[refs[v].route] - vehicle.distance); std::isfinite(gap)) {
                 allowedDistance = std::min(allowedDistance, gap);
-                if (!leader || gap < leader->gap) leader = Leader{gap, 0};
+                if (!leader || gap < leader->gap) leader = Leader{gap, 0, 0};
             }
         // Holding back for a waiting changer, as behind a standing vehicle -- even when a moving
         // leader is nearer, so it is a second obstacle rather than a replacement leader (below).
         // A moving changer (cooperative braking) is a virtual leader, so it caps nothing.
         const bool yields = !courtesy.empty() && std::isfinite(courtesy[v].gap);
         if (yields && !courtesy[v].moving)
-            allowedDistance = std::min(allowedDistance, std::max(0.0, courtesy[v].gap - behaviour.standstillDistance));
+            allowedDistance = std::min(allowedDistance, std::max(0.0, courtesy[v].gap - standstillGap(behaviour)));
         // Priority rules, after the signal heads and by the same mechanism: a vehicle that must
         // give way is held at its stop line exactly as a red head holds one. Car-following past
         // the merge already works without any of this, because spans are bucketed by GLOBAL
@@ -305,20 +306,21 @@ SimState stepSimulation(SimState&& state, double dt) {
             }
             if (!giveWay) continue;
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
-            if (!leader || gap < leader->gap) leader = Leader{gap, 0};
+            if (!leader || gap < leader->gap) leader = Leader{gap, 0, 0};
         }
         // Conflict zones hold a vehicle by the same stop-line mechanism once more.
         if (const auto hold = index.routeZones[refs[v].route].empty() ? std::nullopt
                               : zoneHold(scenario, index, zones, vehicle, refs[v], vehicleLeader,
                                          stopOf.empty() ? nullptr : stopOf[v], startTick)) {
             allowedDistance = std::min(allowedDistance, *hold);
-            if (!leader || *hold < leader->gap) leader = Leader{*hold, 0};
+            if (!leader || *hold < leader->gap) leader = Leader{*hold, 0, 0};
         }
-        auto following = followingAcceleration(vehicle.speed, vehicle.desiredSpeed,
-                                                 vehicle.driverFactor, type, behaviour, leader);
+        auto following = follow(vehicle.speed, vehicle, vehicle.w74State, type, behaviour, leader);
         if (yields) {
-            auto held = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type,
-                                              behaviour, Leader{courtesy[v].gap, courtesy[v].speed});
+            // Both from the same previous state; the kept result's state is the one stored, and
+            // on a tie the vehicle ahead is kept (strict <), W74.md §7.
+            auto held = follow(vehicle.speed, vehicle, vehicle.w74State, type, behaviour,
+                               Leader{courtesy[v].gap, courtesy[v].speed, courtesy[v].acceleration});
             // Cooperative braking never asks for more than the behaviour's maximum (M3.2.8c).
             if (courtesy[v].moving)
                 held.acceleration = std::max(held.acceleration, -*behaviour.maxDecelerationCooperativeBraking);
@@ -326,7 +328,8 @@ SimState stepSimulation(SimState&& state, double dt) {
         }
         const auto motion = integrate(vehicle.speed, following.acceleration, dt);
         auto& move = moves[v];
-        move = {motion.distance, std::min(vehicle.desiredSpeed, motion.speed), following.acceleration, following.mode, false};
+        move = {motion.distance, std::min(vehicle.desiredSpeed, motion.speed), following.acceleration, following.mode, false,
+                following.w74};
         if (move.distance > allowedDistance) {
             move.distance = allowedDistance; move.speed = 0; move.acceleration = -vehicle.speed / dt;
             move.clamped = true;
@@ -335,7 +338,7 @@ SimState stepSimulation(SimState&& state, double dt) {
     // A Stop finishes the stop the model only approaches (M3.2.5): from below walking pace, so at
     // most kStoppedSpeed/dt of ordinary braking -- not an emergency clamp.
     for (std::size_t v = 0; v < stopOf.size(); ++v)
-        if (restsAtStop(stopOf[v], startTick)) moves[v] = {0, 0, -vehicles[v].speed / dt, FollowingMode::braking, false};
+        if (restsAtStop(stopOf[v], startTick)) moves[v] = {0, 0, -vehicles[v].speed / dt, FollowingMode::braking, false, moves[v].w74};
     // A newly recognized route starts at a tick boundary. Never move onto its unknown
     // suffix under the previous route's safety checks; keep speed, recognize at the line.
     if(!scenario.routeDecisions.empty())for(std::size_t v=0;v<vehicles.size();++v)
@@ -369,6 +372,7 @@ SimState stepSimulation(SimState&& state, double dt) {
         auto moved = std::move(vehicle);
         moved.distance += move.distance; moved.speed = move.speed;
         moved.acceleration = move.acceleration; moved.mode = move.mode;
+        moved.w74State = move.w74; // cleared on a prototype road; Stop rest and caps keep the regime
         for (std::size_t i = 1; i < oldParts.size(); ++i)
             if (startDistance < oldParts[i].start && moved.distance >= oldParts[i].start)
                 events.emplace_back(SegmentEnteredEvent{time, moved.id, oldParts[i].segmentId});

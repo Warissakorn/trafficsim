@@ -44,10 +44,10 @@ Around around(const ScenarioIndex& index, std::size_t target, double at, double 
         if (span.vehicleId == self) return;
         const double otherFront = part.start + span.front, otherRear = part.start + span.rear;
         if (otherRear >= at) {
-            if (!a.leader || otherRear - at < a.leader->gap) a.leader = Leader{otherRear - at, span.speed};
+            if (!a.leader || otherRear - at < a.leader->gap) a.leader = Leader{otherRear - at, span.speed, span.acceleration};
         } else if (otherFront <= atRear) {
             if (!a.follower || atRear - otherFront < a.follower->gap) {
-                a.follower = Leader{atRear - otherFront, span.speed}; a.followerId = span.vehicleId;
+                a.follower = Leader{atRear - otherFront, span.speed, span.acceleration}; a.followerId = span.vehicleId;
             }
         } else a.alongside = true;
     };
@@ -75,10 +75,9 @@ std::optional<double> safeAt(const Scenario& s, const std::vector<Vehicle>& vehi
     // Forward safety (rule 3), by the car-following model itself: braking it would accept,
     // and this tick's move inside the room the leader leaves, so the change never clamps.
     if (const auto& leader = near.leader) {
-        const double a = followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor,
-                                               type, behaviour, leader).acceleration;
+        const double a = follow(vehicle.speed, vehicle, vehicle.w74State, type, behaviour, leader).acceleration;
         if (a < -type.comfortableDeceleration ||
-            integrate(vehicle.speed, a, s.timeStep).distance > leader->gap - behaviour.standstillDistance) return std::nullopt;
+            integrate(vehicle.speed, a, s.timeStep).distance > leader->gap - standstillGap(behaviour)) return std::nullopt;
     }
     // Rearward safety (rule 4): the follower's own reaction to the changer ahead of it.
     if (const auto& follower = near.follower) {
@@ -87,10 +86,11 @@ std::optional<double> safeAt(const Scenario& s, const std::vector<Vehicle>& vehi
         const auto& fType = s.vehicleTypes[refs[f].type];
         const auto& fBehaviour = s.behaviours[refs[f].behaviour];
         const auto& other = vehicles[f];
-        const double a = followingAcceleration(other.speed, other.desiredSpeed, other.driverFactor, fType,
-                                               fBehaviour, Leader{follower->gap, vehicle.speed}).acceleration;
+        // Its leader would be the changer itself, with the changer's own snapshot acceleration.
+        const double a = follow(other.speed, other, other.w74State, fType, fBehaviour,
+                                Leader{follower->gap, vehicle.speed, vehicle.acceleration}).acceleration;
         if (a < -fType.comfortableDeceleration ||
-            integrate(other.speed, a, s.timeStep).distance > follower->gap - fBehaviour.standstillDistance) return std::nullopt;
+            integrate(other.speed, a, s.timeStep).distance > follower->gap - standstillGap(fBehaviour)) return std::nullopt;
         return a;
     }
     return std::numeric_limits<double>::infinity();
@@ -111,8 +111,7 @@ bool deadEndGoverns(const ScenarioIndex& index, std::size_t route, const Vehicle
                     const DriverBehaviour& behaviour) {
     if (index.remainingOfRoute[route] == 0) return false;
     const double toDeadEnd = index.deadEndOfRoute[route] - vehicle.distance;
-    return followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour,
-                                 Leader{toDeadEnd, 0}).mode != FollowingMode::free;
+    return follow(vehicle.speed, vehicle, vehicle.w74State, type, behaviour, Leader{toDeadEnd, 0, 0}).mode != FollowingMode::free;
 }
 bool waitingAtDeadEnd(const ScenarioIndex& index, std::size_t route, const Vehicle& vehicle,
                       const DriverBehaviour& behaviour) {
@@ -261,7 +260,7 @@ std::vector<LaneChange> decideLaneChanges(const Scenario& s, const ScenarioIndex
         // The incentive compares vehicles only, never signals, lines or dead ends: both routes end
         // on the same Link with the same destinations, and neither is a stub.
         const auto acceleration = [&](const std::optional<Leader>& leader) {
-            return followingAcceleration(vehicle.speed, vehicle.desiredSpeed, vehicle.driverFactor, type, behaviour, leader).acceleration;
+            return follow(vehicle.speed, vehicle, vehicle.w74State, type, behaviour, leader).acceleration;
         };
         const double here = acceleration(around(index, route, front, rear, vehicle.id, spans, buckets, moved).leader);
         std::optional<LaneChange> best;
@@ -325,9 +324,9 @@ std::vector<CourtesyHold> courtesyHolds(const Scenario& s, const ScenarioIndex& 
             const auto& other = vehicles[f];
             const auto& fType = s.vehicleTypes[refs[f].type];
             const auto& fBehaviour = s.behaviours[refs[f].behaviour];
-            const double room = gap - fBehaviour.standstillDistance;
+            const double room = gap - standstillGap(fBehaviour);
             if (room < 0) continue;
-            CourtesyHold hold{gap, 0, false};
+            CourtesyHold hold{gap, 0, false, 0};
             if (waiting) {
                 // Kinematic, not the model's commanded braking: once it holds back, its stopping
                 // distance only shrinks, so the same vehicle keeps holding back tick after tick.
@@ -338,7 +337,7 @@ std::vector<CourtesyHold> courtesyHolds(const Scenario& s, const ScenarioIndex& 
                 if (!fBehaviour.maxDecelerationCooperativeBraking) continue;
                 const double closing = other.speed - vehicle.speed;
                 if (closing > 0 && closing * closing > 2 * *fBehaviour.maxDecelerationCooperativeBraking * room) continue;
-                hold = {gap, vehicle.speed, true};
+                hold = {gap, vehicle.speed, true, vehicle.acceleration};
             }
             // The nearest place counts; at equal gaps a waiting changer's standing one wins.
             if (hold.gap < holds[f].gap || (hold.gap == holds[f].gap && holds[f].moving)) holds[f] = hold;

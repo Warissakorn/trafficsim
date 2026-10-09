@@ -19,9 +19,13 @@ const char* modeName(FollowingMode mode) {
 Json pendingJson(const Scenario& scenario, const PendingVehicle& v) {
     const std::string inputId = v.inputIndex == PendingVehicle::kNoInput ? std::string{}
                                                                         : scenario.inputs[v.inputIndex].id;
-    return {{"id", v.id}, {"inputId", inputId}, {"routeId", scenario.routes[v.routeIndex].id},
+    Json j{{"id", v.id}, {"inputId", inputId}, {"routeId", scenario.routes[v.routeIndex].id},
             {"vehicleTypeId", scenario.vehicleTypes[v.typeIndex].id},
             {"scheduledTime", v.scheduledTime}, {"desiredSpeed", v.desiredSpeed}, {"driverFactor", v.driverFactor}};
+    // Only when present (W74.md §9), so prototype checkpoints keep their bytes.
+    if (const auto& t = v.w74Traits)
+        j["w74Traits"] = {{"zBx", t->zBx}, {"zEx", t->zEx}, {"zCx", t->zCx}, {"zOp", t->zOp}, {"zOsc", t->zOsc}};
+    return j;
 }
 Json optionalNumber(const std::optional<double>& value) { return value ? Json(*value) : Json(nullptr); }
 }
@@ -66,6 +70,11 @@ Json checkpointJson(const SimState& state) {
         if(!vehicle.passedDecisions.empty())j["passedDecisions"]=vehicle.passedDecisions;
         j["enteredTime"] = vehicle.enteredTime; j["distance"] = vehicle.distance;
         j["speed"] = vehicle.speed; j["acceleration"] = vehicle.acceleration; j["mode"] = modeName(vehicle.mode);
+        // Only on a w74 road (W74.md §9), so prototype checkpoints keep their bytes.
+        if (const auto& w = vehicle.w74State) {
+            static constexpr const char* regimes[] = {"free", "approaching", "following", "emergency"};
+            j["w74State"] = {{"regime", regimes[static_cast<int>(w->regime)]}, {"sign", w->sign}};
+        }
         vehicles.push_back(std::move(j));
     }
     for (std::size_t i = 0; i < state.inputs.size(); ++i) {

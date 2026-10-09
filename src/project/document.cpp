@@ -119,7 +119,8 @@ Json documentJson(const ProjectDocument& d) {
     // M5.3: 22 only when an evaluation period is set (D132).
     const bool period=d.definition && d.definition->evaluation;
     const bool controlled=std::any_of(d.network.travelTimeSections.begin(),d.network.travelTimeSections.end(),[](const auto& s){return s.controlType.has_value();});
-    const int schema=controlled?24:!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    // M3.3.3a: 25 only when an owned behaviour is w74 (D136).
+    const int schema=ownsW74Behaviour(d)?25:controlled?24:!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     Json definition = d.definition ? definitionJson(*d.definition) : Json(nullptr);
     if (library && d.definition) addBehaviourLibraryJson(*d.definition, definition);
@@ -149,7 +150,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 24) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 25) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -171,6 +172,7 @@ ProjectDocument parseDocument(const Json& j) {
     const int version = j.contains("schemaVersion") ? j.at("schemaVersion").get<int>() : 0;
     if (version < 21) rejectBehaviourLibraryBefore21(j);
     if (version < 22) rejectEvaluationPeriodBefore22(j);
+    if (version < 25) rejectW74Before25(j);
     d.network = parseNetwork(j.at("network"), version);
     if (present(j, "definition")) {
         d.definition = parseAuthoringDefinition(j.at("definition"));
