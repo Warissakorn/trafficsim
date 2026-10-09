@@ -45,6 +45,8 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
     auto* model = new QComboBox(&dialog); model->setObjectName("editorBehaviourModel");
     model->addItem(text("editorBehaviourModelPrototype")); model->addItem(text("editorBehaviourModelW74"));
     form->addRow(text("editorBehaviourModel"), model);
+    // Outside the pages: a wrapped label inside a stacked page does not get its height.
+    auto* w74Help = note(&dialog, form, text("editorBehaviourW74Help"), "editorBehaviourW74Help");
     auto* pages = new QStackedWidget(&dialog); form->addRow(pages);
     auto staged = b;
     // Prototype values: the behaviour's own when it is prototype; a w74 behaviour has none (its
@@ -80,7 +82,6 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
     // be empty. Values a w74 behaviour does not have stay empty until the author enters them.
     auto* w74Page = new QWidget(pages); auto* w74Form = new QFormLayout(w74Page);
     w74Form->setContentsMargins(0, 0, 0, 0);
-    note(w74Page, w74Form, text("editorBehaviourW74Help"), "editorBehaviourW74Help");
     std::vector<std::pair<const W74Key*, QLineEdit*>> keys;
     for (const auto& key : w74ParameterKeys()) {
         auto* edit = new QLineEdit(w74Page); edit->setObjectName(key.name); edit->setFont(editorDesign::numericFont());
@@ -94,8 +95,10 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
     w74Cooperative.on->setObjectName("w74MaxDecelerationCooperativeBrakingSet");
     w74Cooperative.spin->setObjectName("w74MaxDecelerationCooperativeBraking");
     pages->addWidget(w74Page);
-    QObject::connect(model, &QComboBox::currentIndexChanged, pages, &QStackedWidget::setCurrentIndex);
-    model->setCurrentIndex(b.w74 ? 1 : 0); pages->setCurrentIndex(model->currentIndex());
+    QObject::connect(model, &QComboBox::currentIndexChanged, pages, [=](int index) {
+        pages->setCurrentIndex(index); w74Help->setVisible(index == 1);
+    });
+    model->setCurrentIndex(b.w74 ? 1 : 0); pages->setCurrentIndex(model->currentIndex()); w74Help->setVisible(b.w74.has_value());
     auto* error = new QLabel(&dialog); error->setObjectName("editorBehaviourEditError"); error->setWordWrap(true); form->addRow(error);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog); form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm")); buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
