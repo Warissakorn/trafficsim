@@ -37,6 +37,13 @@ Json batchJson(const BatchReport& r, const std::vector<SeedRun>& runs) {
     j["queues"] = Json::array();
     for (const auto& q : r.queues)
         j["queues"].push_back({{"approach", q.name}, {"meanLength", estimateJson(q.meanLength)}, {"maxLength", estimateJson(q.maxLength)}});
+    if (!r.sections.empty()) { // M5.4: only with a section, so other projects keep their bytes
+        j["sections"] = Json::array();
+        for (const auto& m : r.sections)
+            j["sections"].push_back({{"section", m.name}, {"vehicles", estimateJson(m.vehicles)},
+                                     {"meanDelay", estimateJson(m.meanDelay)}, {"meanTravelTime", estimateJson(m.meanTravelTime)},
+                                     {"unfinished", estimateJson(m.unfinished)}});
+    }
     j["meanDelay"] = estimateJson(r.meanDelay); j["completed"] = estimateJson(r.completed);
     j["pending"] = estimateJson(r.pending); j["safetyClamps"] = estimateJson(r.safetyClamps);
     j["movementsWithUnfinished"] = movementsWithUnfinished(r);
@@ -78,6 +85,14 @@ std::string batchCsv(const BatchReport& r, const std::vector<SeedRun>& runs) {
         out << csvQuoted(q.name) << ',' << q.meanLength.n << ',' << csvNumber(q.meanLength.mean) << ','
             << csvNumber(q.meanLength.halfWidth95) << ',' << csvNumber(q.maxLength.mean) << ','
             << csvNumber(q.maxLength.halfWidth95) << '\n';
+    if (!r.sections.empty()) { // M5.4
+        out << "\nsection,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean\n";
+        for (const auto& m : r.sections)
+            out << csvQuoted(m.name) << ',' << m.meanDelay.n << ',' << csvNumber(m.meanDelay.mean) << ','
+                << csvNumber(m.meanDelay.halfWidth95) << ',' << csvNumber(m.meanDelay.sd) << ','
+                << csvNumber(m.vehicles.mean) << ',' << csvNumber(m.meanTravelTime.mean) << ','
+                << csvNumber(m.unfinished.mean) << '\n';
+    }
     out << "\nseed,generated,completed,active,pending,safetyClamps,overloaded,meanDelay_s\n";
     for (const auto& run : bySeed(runs))
         out << run.seed << ',' << run.generated << ',' << run.report.completed << ',' << run.report.active << ','

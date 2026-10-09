@@ -447,7 +447,8 @@ after `createSimulation` and once after every `stepSimulation`). `core/` does no
     LOS**.
   - **Known bias:** a vehicle enters the network from standstill, so an unimpeded trip already
     carries about `v/(2a)` of acceleration delay (≈3 s for the car type). The analytic test pins
-    this rather than hiding it. Cross-section travel-time sections, which remove it, are M5's.
+    this rather than hiding it. Travel-time sections (M5.4, [TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md))
+    remove it by timing between two lines placed after the entry.
 - **Queue** per approach follows Vissim's queue counter at each signal head's stop line (D40).
   - A vehicle enters queue state below `beginSpeed` and leaves it above `endSpeed`.
   - Walking upstream from the line along each route that crosses it, the queue ends at the first

@@ -38,6 +38,11 @@ std::string putQueueCounter(ProjectDocument& d, AuthoredQueueCounter value) {
     const auto id = value.id; put(d.network.queueCounters, std::move(value)); return id;
 }
 void deleteQueueCounter(ProjectDocument& d, const std::string& id) { remove(d.network.queueCounters, id); }
+std::string putTravelTimeSection(ProjectDocument& d, TravelTimeSection value) {
+    if (value.id.empty()) value.id = allocateId(d, "section");
+    const auto id = value.id; put(d.network.travelTimeSections, std::move(value)); return id;
+}
+void deleteTravelTimeSection(ProjectDocument& d, const std::string& id) { remove(d.network.travelTimeSections, id); }
 void deleteWaitingLine(ProjectDocument& d, const std::string& id) {
     const auto& areas = d.network.rightOfWay.conflictAreas;
     const auto& controls = d.network.rightOfWay.stopControls;
@@ -116,6 +121,8 @@ template<class F> void eachPath(Network& n, F visit) {
 }
 }
 void removeControlsOn(ProjectDocument& d, const std::set<std::string>& links, const std::set<std::string>& connectors) {
+    // M5.4: a section measures between two places on roads; without either it measures nothing.
+    std::erase_if(d.network.travelTimeSections, [&](const auto& s) { return links.contains(s.start.linkId) || links.contains(s.end.linkId); });
     auto& row = d.network.rightOfWay;
     if (row.empty()) { pruneQueueCounters(d, links, connectors); return; }
     std::set<std::string> lost;
@@ -161,6 +168,7 @@ bool controlsNameLink(const Network& n, const std::string& link) {
     bool named = false;
     auto copy = n;
     eachPath(copy, [&](const ControlPathRef& p, const auto&) { named = named || (p.connectorId.empty() && p.linkId == link); });
+    for (const auto& s : n.travelTimeSections) named = named || s.start.linkId == link || s.end.linkId == link;
     return named;
 }
 void checkSplitControls(const Network& n, const std::string& link, double distance) {
@@ -176,6 +184,9 @@ void checkSplitControls(const Network& n, const std::string& link, double distan
         for (const auto& l : c.lines)
             if (l.point && l.point->path.connectorId.empty() && l.point->path.linkId == link && l.point->station > near && l.point->station < far)
                 throw std::invalid_argument("EDIT_SPLIT_CONTROL");
+    for (const auto& s : n.travelTimeSections)
+        for (const auto* l : {&s.start, &s.end})
+            if (l->linkId == link && l->station > near && l->station < far) throw std::invalid_argument("EDIT_SPLIT_CONTROL");
 }
 void splitControls(ProjectDocument& d, const std::string& link, const std::string& downstream, double distance,
                    const std::map<std::string, std::string>& lanes) {
@@ -195,6 +206,9 @@ void splitControls(ProjectDocument& d, const std::string& link, const std::strin
         if (it->second->from.linkId == downstream && lanes.contains(p.fromLaneId)) p.fromLaneId = lanes.at(p.fromLaneId);
         if (it->second->to.linkId == downstream && lanes.contains(p.toLaneId)) p.toLaneId = lanes.at(p.toLaneId);
     });
+    for (auto& s : d.network.travelTimeSections)
+        for (auto* l : {&s.start, &s.end})
+            if (l->linkId == link && l->station >= far) { l->linkId = downstream; l->station -= far; }
 }
 void copyControls(ProjectDocument& d, const Network& source, const std::map<std::string, std::string>& links,
                   const std::map<std::string, std::string>& lanes, const std::map<std::string, std::string>& connectors) {

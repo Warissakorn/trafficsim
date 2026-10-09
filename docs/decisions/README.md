@@ -12,7 +12,7 @@ and their evidence before reopening a choice. IDs remain stable even when record
 | Demand and routing | D25, D32–D33, D37, D42–D46, D71, D93–D94, D111–D113 |
 | Signals, conflicts, Stop/Yield and queues | D35–D36, D40, D47–D48, D50, D57–D69 |
 | Following, commitment and lane changes | D129, D127, D126, D125, D124, D123, D122, D121, D120, D69, D71, D87–D95, D98, D101–D102, D105, D108 |
-| UI, gestures, display and results | D132, D131, D130, D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
+| UI, gestures, display and results | D133, D132, D131, D130, D128, D24, D30, D39–D40, D60–D65, D81, D83–D84, D96–D97, D100, D102–D104, D116 |
 | Performance, checks and documentation | D27–D29, D31, D70, D82, D85, D91, D99 |
 
 ## Reading a historical choice
@@ -68,3 +68,5 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 [D131](RECORD.md#d131) — M5.2 batches: seed-ordered aggregate, conservative t table, overloaded seeds flagged and kept, formatting in `src/project/`.
 
 [D132](RECORD.md#d132) — M5.3 evaluation period (schema 22): trips ending in the period, whole-run totals, new projects 900 s + 1 h, per-movement unfinished.
+
+[D133](RECORD.md#d133) — M5.4 travel-time sections (schema 23): Link-wide start/end lines, interpolated crossings, delay against the vehicle's desired speed.

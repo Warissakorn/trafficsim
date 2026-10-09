@@ -89,6 +89,8 @@ BatchReport aggregate(std::vector<SeedRun> runs) {
         bool same = run.report.movements.size() == first.movements.size() && run.report.queues.size() == first.queues.size();
         for (std::size_t i = 0; same && i < first.movements.size(); ++i) same = run.report.movements[i].name == first.movements[i].name;
         for (std::size_t i = 0; same && i < first.queues.size(); ++i) same = run.report.queues[i].name == first.queues[i].name;
+        same = same && run.report.sections.size() == first.sections.size();
+        for (std::size_t i = 0; same && i < first.sections.size(); ++i) same = run.report.sections[i].name == first.sections[i].name;
         if (!same) throw std::invalid_argument("aggregate: runs have different movements or approaches");
     }
     const auto& first = runs.front().report;
@@ -104,6 +106,14 @@ BatchReport aggregate(std::vector<SeedRun> runs) {
         r.queues.push_back({first.queues[i].name,
             over(runs, [i](const SeedRun& s) { return std::optional<double>(s.report.queues[i].meanLength); }),
             over(runs, [i](const SeedRun& s) { return std::optional<double>(s.report.queues[i].maxLength); })});
+    for (std::size_t i = 0; i < first.sections.size(); ++i) {
+        const auto row = [i](const SeedRun& run) -> const SectionRow& { return run.report.sections[i]; };
+        r.sections.push_back({first.sections[i].name,
+            over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).vehicles)); }),
+            over(runs, [&](const SeedRun& s) { return row(s).meanDelay; }),
+            over(runs, [&](const SeedRun& s) { return row(s).meanTravelTime; }),
+            over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).unfinished)); })});
+    }
     r.meanDelay = over(runs, [](const SeedRun& s) { return s.report.meanDelay; });
     r.completed = over(runs, [](const SeedRun& s) { return std::optional<double>(static_cast<double>(s.report.completed)); });
     r.pending = over(runs, [](const SeedRun& s) { return std::optional<double>(static_cast<double>(s.report.pending)); });

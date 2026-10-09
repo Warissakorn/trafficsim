@@ -175,8 +175,9 @@ RightOfWay rightOfWay(const Json& value, int version) {
 }
 Network parseNetwork(const Json& value, int schemaVersion) {
     // `rightOfWay` exists from schema 14; knownFields rejects it in an older file (from 7 on).
-    // `queueCounters` exists from schema 16 (M3.2.6b).
-    if(schemaVersion>=16)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay","queueCounters"},"network",schemaVersion);
+    // `queueCounters` exists from schema 16 (M3.2.6b), `travelTimeSections` from 23 (M5.4).
+    if(schemaVersion>=23)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay","queueCounters","travelTimeSections"},"network",schemaVersion);
+    else if(schemaVersion>=16)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay","queueCounters"},"network",schemaVersion);
     else if(schemaVersion>=14)knownFields(value,{"id","drivingSide","links","connectors","signalHeads","rightOfWay"},"network",schemaVersion);
     else knownFields(value,{"id","drivingSide","links","connectors","signalHeads"},"network",schemaVersion);
     Network network;
@@ -271,6 +272,16 @@ Network parseNetwork(const Json& value, int schemaVersion) {
             counter.lines.push_back(std::move(line));
         }
         network.queueCounters.push_back(std::move(counter));
+    }
+    if(schemaVersion>=23 && present(value,"travelTimeSections"))for(const auto& s:array(value,"travelTimeSections")) {
+        const auto path="travelTimeSections["+std::to_string(network.travelTimeSections.size())+"]";
+        knownFields(s,{"id","name","start","end"},path,schemaVersion);
+        const auto line=[&](const char* name) {
+            const auto& l=member(s,name);
+            knownFields(l,{"linkId","station"},path+"."+name,schemaVersion);
+            return SectionLine{field<std::string>(l,"linkId"),field<double>(l,"station")};
+        };
+        network.travelTimeSections.push_back({field<std::string>(s,"id"),present(s,"name")?field<std::string>(s,"name"):"",line("start"),line("end")});
     }
     return network;
 }

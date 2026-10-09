@@ -100,6 +100,14 @@ Json documentJson(const ProjectDocument& d) {
         }
         network["queueCounters"] = counters;
     }
+    // M5.4, schema 23: likewise only when there is one.
+    if (!d.network.travelTimeSections.empty()) {
+        Json sections = Json::array();
+        const auto line = [](const SectionLine& l) { return Json{{"linkId", l.linkId}, {"station", l.station}}; };
+        for (const auto& s : d.network.travelTimeSections)
+            sections.push_back({{"id", s.id}, {"name", s.name}, {"start", line(s.start)}, {"end", line(s.end)}});
+        network["travelTimeSections"] = sections;
+    }
     const auto& b = d.background;
     // Preserve legacy bytes; use 18 for owned catalogs and 19 for time/type rules.
     const bool positioned=d.definition && std::any_of(d.definition->routingDecisions.begin(),d.definition->routingDecisions.end(),[](const auto& x){return x.position.has_value();});
@@ -107,7 +115,7 @@ Json documentJson(const ProjectDocument& d) {
     const bool library=usesBehaviourLibrary(d);
     // M5.3: 22 only when an evaluation period is set (D132).
     const bool period=d.definition && d.definition->evaluation;
-    const int schema=period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    const int schema=!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     Json definition = d.definition ? definitionJson(*d.definition) : Json(nullptr);
     if (library && d.definition) addBehaviourLibraryJson(*d.definition, definition);
@@ -137,7 +145,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 22) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 23) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -186,6 +194,7 @@ std::string allocateId(ProjectDocument& d, const std::string& prefix) {
     for (const auto& r : d.network.rightOfWay.priorityRules) used.insert(r.id);
     for (const auto& c : d.network.rightOfWay.stopControls) used.insert(c.id);
     for (const auto& c : d.network.queueCounters) used.insert(c.id);
+    for (const auto& s : d.network.travelTimeSections) used.insert(s.id);
     if (d.definition) {
         for (const auto& r : d.definition->routes) used.insert(r.id);
         for (const auto& i : d.definition->inputs) used.insert(i.id);

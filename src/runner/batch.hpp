@@ -43,11 +43,12 @@ struct BatchReport {
     std::vector<std::uint32_t> seeds, overloadedSeeds; // ascending
     std::vector<BatchMovementRow> movements;
     std::vector<BatchQueueRow> queues;
+    std::vector<BatchMovementRow> sections; // M5.4: a section row has a movement row's four fields
     Estimate meanDelay, completed, pending, safetyClamps;
     bool operator==(const BatchReport&) const = default;
 };
 // Sorts by seed first, so any permutation of the same runs gives the same report, bit for bit.
-// Throws on no runs, a duplicate seed, or runs whose movement/approach rows differ.
+// Throws on no runs, a duplicate seed, or runs whose movement, approach or section rows differ.
 BatchReport aggregate(std::vector<SeedRun> runs);
 // Two-sided 95 % Student t quantile. Tabulated for df 1-30, 40, 60 and 120; between rows the
 // lower df is used, which widens the interval rather than narrowing it.

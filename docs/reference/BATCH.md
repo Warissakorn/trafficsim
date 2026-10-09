@@ -56,7 +56,9 @@ JSON on stdout: `validated: false`, `measure`, `seeds`, `overloadedSeeds`, per-m
 `--csv F` (never overwrites) writes the marker line, the warning lines if any, a
 `# Evaluation period: W s to E s` line, then three blocks:
 `movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean`;
-`approach,n,meanQueue_m,ci95_m,maxQueue_m,maxQueue_ci95_m`; and
+`approach,n,meanQueue_m,ci95_m,maxQueue_m,maxQueue_ci95_m`; with a travel-time section
+(M5.4, [TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md) §4) a `section,...` block in the movement
+block's columns; and
 `seed,generated,completed,active,pending,safetyClamps,overloaded,meanDelay_s`. Cells use the
 single-run CSV's formats (`csv_format.hpp`): quoted names, C-locale numbers with two decimals,
 an empty cell for no value.

@@ -1,5 +1,6 @@
 #pragma once
 #include "summary.hpp"
+#include "sections.hpp"
 #include <map>
 
 namespace trafficsim {
@@ -14,7 +15,6 @@ struct QueueDefinition {
 // segment -- a head's stop line, a waiting line or a point the author placed; one per lane. The
 // counter reports the longest queue behind any of them. Where a line came from does not matter
 // here, so a head-derived counter and an authored one are the same measurement.
-struct CounterLine { std::string segmentId; double position{}; bool operator==(const CounterLine&) const = default; };
 struct QueueCounter { std::string name; std::vector<CounterLine> lines; };
 struct EvaluationSpec {
     std::vector<std::string> movementNames;
@@ -24,6 +24,7 @@ struct EvaluationSpec {
     // M5.3 (D132): rows count trips that END in [warmup, end] and queues average its ticks; no end
     // is the end of the run. Run totals in the report stay whole-run.
     double warmup{}; std::optional<double> end;
+    std::vector<SectionSpec> sections; // M5.4 (D133), in authored order
 };
 struct MovementRow {
     std::string name; std::uint64_t vehicles{};
@@ -44,6 +45,7 @@ struct MovementReport {
     double time{};
     std::uint64_t laneChanges{}; // M3.2.8b
     double warmup{}, evaluationEnd{}; // M5.3: the period the rows and queues describe
+    std::vector<SectionRow> sections; // M5.4: one per authored section; empty without any
     bool operator==(const MovementReport&) const = default;
 };
 // Delay a completed trip contributes: the same term as the run summary, so movements add up.
@@ -78,5 +80,6 @@ private:
     std::vector<std::pair<std::uint64_t, bool>> queued_;
     // One line's candidates, reused across lines and ticks so observe() allocates nothing here.
     std::vector<QueuedVehicle> behind_;
+    SectionAccumulator sections_;
 };
 }

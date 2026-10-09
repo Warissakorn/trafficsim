@@ -408,10 +408,10 @@ Unknown future versions are rejected.
 | Opened by | Editor (or `trafficsim-cli --scenario`) | Editor |
 | Runs | Editor, or `trafficsim-cli` | Editor after demand/catalog/runtime checks |
 
-The editor opens bare M0 authoring files and project schemas 1–22. Saving uses schema 17
+The editor opens bare M0 authoring files and project schemas 1–23. Saving uses schema 17
 by default, 18 for owned composition catalogs or embedded vehicle names, and 19 for
 composition periods or type-conditioned routing; schema 20 when a routing decision has `position`; schema 21 when the behaviour library
-or a road behaviour-type assignment is used ([DRIVING_BEHAVIOUR](DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)); schema 22 when an evaluation period is set ([SIMULATION](SIMULATION.md#movement-evaluation-m25), D132). This is selected from the document's
+or a road behaviour-type assignment is used ([DRIVING_BEHAVIOUR](DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)); schema 22 when an evaluation period is set ([SIMULATION](SIMULATION.md#movement-evaluation-m25), D132); schema 23 when a travel-time section exists ([TRAVEL_TIME_SECTIONS](TRAVEL_TIME_SECTIONS.md), D133). This is selected from the document's
 features, not the version of the file opened. See [Demand catalogs](DEMAND_CATALOGS.md)
 and [time/type rules](DEMAND_TIME_TYPES.md); old feature-free fixtures retain schema-17 bytes.
 Schema 4 introduced lane bundle offset and Connector interpolation weights; older versions

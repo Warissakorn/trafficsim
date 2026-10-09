@@ -3,6 +3,7 @@
 #include "input_manifest.hpp"
 #include "json.hpp"
 #include "../model/network/right_of_way.hpp"
+#include "../model/network/travel_time.hpp"
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <cmath>
@@ -133,6 +134,13 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
         if (!counter.lines.empty()) spec.counters.push_back(std::move(counter));
     }
     for (auto& c : authored) spec.counters.push_back(std::move(c));
+    // M5.4 (D133): every authored section is a row, even one whose lines no longer resolve.
+    for (const auto& section : network.travelTimeSections) {
+        SectionSpec s{section.name.empty() ? section.id : section.name, {}, {}};
+        for (const auto& at : locateSectionLine(network, table, section.start)) s.start.push_back({at.segment, at.position});
+        for (const auto& at : locateSectionLine(network, table, section.end)) s.end.push_back({at.segment, at.position});
+        spec.sections.push_back(std::move(s));
+    }
     return spec;
 }
 Json movementJson(const MovementReport& r) {
@@ -152,6 +160,14 @@ Json movementJson(const MovementReport& r) {
     j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
     j["laneChanges"] = r.laneChanges;
     j["evaluationPeriod"] = {{"warmup", r.warmup}, {"end", r.evaluationEnd}}; // M5.3
+    if (!r.sections.empty()) { // M5.4: only with a section, so other projects keep their bytes
+        j["sections"] = Json::array();
+        for (const auto& row : r.sections)
+            j["sections"].push_back({{"section", row.name}, {"vehicles", row.vehicles},
+                                     {"meanTravelTime", row.meanTravelTime ? Json(*row.meanTravelTime) : Json(nullptr)},
+                                     {"meanDelay", row.meanDelay ? Json(*row.meanDelay) : Json(nullptr)},
+                                     {"unfinished", row.unfinished}});
+    }
     return j;
 }
 Json laneChangeJson(const LaneChangeReport& r) {
@@ -249,6 +265,12 @@ std::string movementCsv(const MovementReport& r) {
     out << "\napproach,meanQueue_m,maxQueue_m\n";
     for (const auto& q : r.queues)
         out << csvQuoted(q.name) << ',' << csvNumber(q.meanLength) << ',' << csvNumber(q.maxLength) << '\n';
+    if (!r.sections.empty()) { // M5.4
+        out << "\nsection,vehicles,meanTravelTime_s,meanDelay_s,unfinished\n";
+        for (const auto& row : r.sections)
+            out << csvQuoted(row.name) << ',' << row.vehicles << ',' << csvNumber(row.meanTravelTime) << ','
+                << csvNumber(row.meanDelay) << ',' << row.unfinished << '\n';
+    }
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
         << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges
         << "\nevaluationPeriod_s," << csvNumber(r.warmup) << ',' << csvNumber(r.evaluationEnd) << '\n';
