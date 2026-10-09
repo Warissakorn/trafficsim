@@ -64,7 +64,8 @@ letter. W74's schema moves to 25.
 ## 5. Editor
 
 The *Travel-time sections* tab gains a Control column; its edit dialog sets the control type
-(none, signalised, unsignalised) with the name, in one History step. Results-tab letters are M5.6.
+(none, signalised, unsignalised) with the name, in one History step. Since M5.6 (D141) the Results tab's batch table shows each section's letter
+(`losCell` on the mean over seeds), with the pack id in the note ([BATCH](BATCH.md) §6).
 
 ## 6. Acceptance rows
 

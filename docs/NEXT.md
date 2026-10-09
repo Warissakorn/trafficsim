@@ -14,19 +14,23 @@ O8 (warm-up default 900 s) and O9 (c) (D130). **This queue now comes before ever
 below.** Work [M5_PLAN](plans/M5_PLAN.md) §2 in order, one slice per session:
 **M5.2** batch runner and `--seeds` → M5.3 evaluation period → M5.4 travel-time sections →
 M5.5 LOS pack as data → M5.6 editor Run N seeds, Copy and Export → M5.7 owner rehearsal.
-**M5.2–M5.4 (D131–D133) passed native Linux/Windows CI; confirm M5.5 (D134) on this PR's CI.**
-M5.5 is implemented ([LOS](reference/LOS.md)): `data/los/hcm.json` holds HCM 6th-edition bounds
-as content, the author sets each section's control type (schema 24) in the *Travel-time sections*
-dialog, and single-run and batch output letter each section, each approach (start Link) and each
-control type's intersection row, vehicle-weighted, under their own not-validated marker line.
-Next is **M5.6**, the editor's Run N seeds, Copy and Export: a shell action over `runSeeds` on a
-worker thread with a snapshot copy, progress and cancel (an edit invalidates the result); a
-Results view of n, mean, ±95 %, section LOS, queues and seed flags; Copy (TSV) and Export (CSV)
-through the CLI's formatters with the marker line first. Contract and UI acceptance rows first
-(rows equal the CLI batch; cancel leaves no table claiming N runs; export bytes equal the CLI's).
-Then M5.7, the owner's rehearsal. W74 (below) now runs on top of M5 in schema 25 (D135–D139) and does not block M5.6;
-#128's editor batch (its commit e957169) was not merged; read it as a reference for M5.6. Owner
-looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
+**M5.2–M5.4 (D131–D133) passed native Linux/Windows CI; confirm M5.5 (D134) and M5.6 (D141) on
+their PRs' CI.** M5.6 is implemented ([BATCH](reference/BATCH.md) §6): the Results tab's *Seeds*
+field (default `42-51`) and **Run seeds** run the CLI's `runSeeds`/`aggregate` on one worker thread
+over value copies, with progress and *Cancel seeds*; any edit discards the batch. The table shows
+n, mean, ±95 %, section LOS, queues and the seed flags; Export writes `batchCsv` (the CLI's
+`--seeds --csv`) and **Copy results table** writes the same text as TSV (`csvToTsv`). Rows EB1–EB6
+are held by `batch-run-ui` and `batch.tsv_*`.
+
+Next is **M5.7**, the owner's rehearsal: the PROBLEM §4 sentence on a real aerial image and the
+M2.6 template with its placeholders replaced (§2 item 6), recording file, commit, table and the
+image size against the 32 MiB cap, labelled partial until M6. A session can prepare it (a
+checklist, or a copy of the template ready for the owner's volumes) but cannot close it.
+- *Owner look (Windows), D141:* Run seeds on the M2.6 template, Cancel part way, run again,
+  then Copy into Excel/Word and Export; check Thai strings and that the window stays responsive.
+
+W74 (below) runs on top of M5 in schema 25 (D135–D139). Owner looks stay queued and block
+nothing. No LOS letter on whole-route delay; the marker stays.
 
 ## Earlier owner instructions, 2026-10-05/06 — what is still open
 
