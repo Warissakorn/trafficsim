@@ -25,6 +25,17 @@ else()
         target_compile_options(trafficsim_options INTERFACE -fsanitize=address,undefined -fno-omit-frame-pointer)
         target_link_options(trafficsim_options INTERFACE -fsanitize=address,undefined)
     endif()
+    # Touching one source relinks some 40 executables, and GNU ld made that most of an incremental
+    # build: measured 2026-10-09, trafficsim-tests linked in 4.5 s with ld and 0.57 s with lld.
+    # Global, so every executable gets it; a toolchain without lld keeps its default linker.
+    option(TRAFFICSIM_LLD "Link with lld when the compiler accepts it" ON)
+    if(TRAFFICSIM_LLD)
+        include(CheckLinkerFlag)
+        check_linker_flag(CXX -fuse-ld=lld TRAFFICSIM_HAS_LLD)
+        if(TRAFFICSIM_HAS_LLD)
+            add_link_options(-fuse-ld=lld)
+        endif()
+    endif()
 endif()
 
 # System/vcpkg packages; no network downloads happen implicitly during configure.

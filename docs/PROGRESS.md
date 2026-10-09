@@ -8,6 +8,19 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — Optimization pass: lld
+
+Measured first (Linux, 4 cores, Qt offscreen): the engine (0.15–0.30 µs per vehicle-tick, linear
+to 96 crossings), the run view (~3.3 ms per Step) and redraw (3.6 ms at 40 crossings) are not
+bottlenecks and were left alone. **Link with lld when the compiler accepts it**
+(`TRAFFICSIM_LLD`, default ON, MSVC untouched): touching one source relinks some 40
+executables, and GNU ld was most of an incremental Debug build. `trafficsim-tests` links in
+4.5 s with ld and 0.57 s with lld; touching `src/shell/editor_demand.cpp` rebuilt in 31.3 s
+before and 13.0–13.5 s after, `src/model/network/routing.cpp` 28.7 s → 10.7–11.1 s. CI's Linux
+apt line installs `lld`; without it the default linker is kept silently.
+
+---
+
 ## 2026-10-09 — W74 replayed on top of M5: D135–D139, schema 25
 
 W74 (M3.3.3a) and M5 were built in parallel from the same `main` and both used D130–D134 and

@@ -69,12 +69,15 @@ the signed installer, file association and clean-machine acceptance remain M7.
 
 ```bash
 sudo apt-get update
-sudo apt-get install g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev
+sudo apt-get install g++ cmake ninja-build nlohmann-json3-dev qt6-base-dev lld
 cmake --preset desktop
 cmake --build --preset desktop
 ctest --preset desktop
 ./build/desktop/bin/trafficsim-desktop --language th
 ```
+
+`lld` is optional: when the compiler accepts `-fuse-ld=lld` it links every executable
+(about 7x faster than GNU ld on this tree); `-DTRAFFICSIM_LLD=OFF` keeps the default linker.
 
 In displayless CI the desktop test uses `QT_QPA_PLATFORM=offscreen`. Normal launches
 use your desktop session's platform plugin to display a visible window.
