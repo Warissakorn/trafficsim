@@ -358,6 +358,10 @@ the figures so far with the time reached. The note above the tables is the not-y
 marker and says what the delay is not (HCM control delay, LOS). **Export results (CSV)…** (D104),
 on the tab, in the Simulation menu and in the command palette, writes the same file as
 `trafficsim-cli --csv`, marker line first. It is enabled only once the run has reached its end.
+**Run seeds** (M5.6, D141) runs the *Seeds* list (default `42-51`) on a worker thread and replaces
+the tables with n, mean, ±95 %, section LOS, queues and the seed flags; *Cancel seeds* or any edit
+discards it. Export then writes the `--seeds --csv` file and **Copy results table** puts the same
+text on the clipboard as tab-separated values ([BATCH](BATCH.md) §6).
 
 **Conflict areas** tab (M3.2.4a, D60): Add crossing areas on two selected roads, Take over merge on a
 Connector; Enter edits priority, `gapTime`, `headway`. Run protects authored areas only, and says so.

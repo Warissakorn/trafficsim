@@ -8,6 +8,34 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M5.6: the editor's Run seeds, Copy and Export (D141)
+
+The editor now runs the CLI's batch. **Run seeds** parses the *Seeds* field with `parseSeedList`
+(default `42-51`, O9), compiles the document on the UI thread and hands a `Scenario` and an
+`EvaluationSpec` by value to one `std::thread` that calls `runSeeds` and `aggregate`
+(`src/shell/editor_batch.cpp`). Progress and the result come back through queued
+`QMetaObject::invokeMethod` calls tagged with a generation number; `cancelBatch()` (called from
+`clearRun()`, so every edit, Undo, Open, Reset and a single Run reach it) bumps the number and sets
+the worker's cancel flag, so whatever a stale worker posts is dropped. The destructor cancels and
+joins. No mutable statics were found in `src/core`, `src/eval`, `src/model` or `src/runner`.
+
+The batch table replaces the single-run tables: movements and sections with n, mean delay, ±95 %,
+vehicles, travel time, unfinished, control type and LOS; approaches with n, mean ±95 % and max; a
+note with the marker, n, seeds, evaluation period, overloaded seeds, movements with unfinished trips
+and the LOS pack. Export writes `batchCsv`; Copy writes `csvToTsv(batchCsv(...))` (new in
+`csv_format.hpp`: comment lines kept, unquoted commas become tabs, quotes dropped), and a finished
+single run copies `movementCsv` the same way. Contract and rows EB1–EB6 in BATCH §6.
+
+Evidence (Linux, GCC, Qt 6.4.2 offscreen, Debug): `batch-run-ui` compares the editor's
+`BatchReport` with `aggregate(runSeeds(...))` on four-leg plus two signalised sections, the export
+bytes with `batchCsv` and the clipboard with its TSV; cancel, an edit, a bad list, a batch after a
+cancel and closing mid-batch are exercised; 13–14 s, three repeats stable. Its first version left an
+autosave draft (an unsaved rename outlived the 15 s timer) that blocked the next run on the recovery
+dialog; the test now saves after the edit. `check`: 108/108 tests, architecture, file sizes and
+docs clean. Native Windows CI and the owner's look are separate and still owed.
+
+---
+
 ## 2026-10-09 — Optimization pass: lld, D140, validate benchmark, NEXT
 
 Measured first (Linux, 4 cores, Qt offscreen): the engine (0.15–0.30 µs per vehicle-tick, linear
@@ -440,24 +468,6 @@ and [local test evidence](evidence/discharge-measurement.md).
 Validation: 10 GCC/Linux tests pass; direct full CLI link and seeded JSON parity;
 documentation, architecture and file-size guards. CMake/Ninja/Qt are absent; native/desktop
 CTest must run in CI. No frozen baseline was regenerated.
-
----
-
-## 2026-10-06 — Driving behaviour contract before implementation (D120)
-
-Owner authorized the staged plan following the supplied Driving Behavior design.
-M3.3.0 records class/default/legacy precedence, compiler/runtime ownership,
-front-segment tick selection, source and D119 routing integration, shared catalog
-lifecycle, and the capability map separating prototype support from W74/W99/lateral
-work. BA01–BA20 are pending failure-first rows, not passed runtime tests. Measurement
-specifies lane/cycle/rank headways and startup estimation before changing diagnostic
-code; presets and PCU target ranges remain unvalidated. No engine/schema/UI changed.
-
-Validation: baseline and edited docs/navigation, file-size and architecture guards
-compiled/run directly with GCC on Linux; all passed. `git diff --check` passed.
-CMake/Ninja are absent on this host, so native/desktop CTest was not run locally;
-CI is required independently. Existing prototype fixtures are unchanged. No owner,
-M0 or M6 gate closes; current resolver remains type-based.
 
 ---
 

@@ -2,6 +2,10 @@
 #include "../editor/ui_design_tokens.hpp"
 #include "../core/simulation.hpp"
 #include "editor_storage.hpp"
+#include "../project/batch_output.hpp"
+#include "../project/csv_format.hpp"
+#include <QClipboard>
+#include <QGuiApplication>
 #include <QFileDialog>
 #include <QToolBar>
 #include <QHeaderView>
@@ -54,6 +58,9 @@ void EditorWindow::buildResults() {
         if(file.isEmpty())return;
         try{exportResults(file);}catch(const std::exception& e){showError(e);}
     }));
+    bar->addAction(action("editorCopyResults",QKeySequence(),[this]{
+        try{copyResults();}catch(const std::exception& e){showError(e);}
+    }));
     resultsNote_=new QLabel(page); resultsNote_->setObjectName("editorResultsNote");
     resultsNote_->setWordWrap(true); layout->addWidget(resultsNote_);
     // Side by side, so the dock's height goes to rows: twelve movements beside four approaches.
@@ -61,6 +68,7 @@ void EditorWindow::buildResults() {
     row->setContentsMargins(0,0,0,0);row->setSpacing(editorDesign::space1);
     movementTable_=resultTable(page,"editorMovementTable",4); row->addWidget(movementTable_,3);
     queueTable_=resultTable(page,"editorQueueTable",3); row->addWidget(queueTable_,2);
+    buildBatch(bar,layout); // M5.6: the N-seed table takes the single run's place
     objects_->addTab(page,QString());
 }
 void EditorWindow::translateResults() {
@@ -69,12 +77,15 @@ void EditorWindow::translateResults() {
                                                text("editorResultsDelay"),text("editorResultsTravel")});
     queueTable_->setHorizontalHeaderLabels({text("editorResultsApproach"),text("editorResultsQueueMean"),
                                             text("editorResultsQueueMax")});
+    translateBatch();
     refreshResults();
 }
 void EditorWindow::refreshResults() {
     // Rebuilt every Step and Play frame, so skip it while the tab is hidden; the page's Show
     // event refreshes it the moment it can be seen. Measured 2026-10-02 (Windows, Release, M2.6,
     // 3,000 Steps): -11% of the Run view's time per Step, -28% of the action.
+    refreshBatch();
+    if(batchRunning()||batch_.has_value())return;
     if(!movementTable_ || !movementTable_->isVisible())return;
     const auto report=runReport();
     if(!report){
@@ -107,9 +118,16 @@ void EditorWindow::refreshResults() {
 bool EditorWindow::runFinished() const {
     return runState_.scenario && runState_.tick>=totalTicks(*runState_.scenario);
 }
-void EditorWindow::exportResults(const QString& file) const {
+std::string EditorWindow::resultsCsv() const {
+    if(batch_)return batchCsv(batch_->report,batch_->runs);
     const auto report=runReport();
     if(!report || !runFinished())throw std::runtime_error("EDIT_CSV_UNFINISHED");
-    writeEditorBytes(file,movementCsv(*report),"EDIT_CSV_WRITE");
+    return movementCsv(*report);
+}
+void EditorWindow::exportResults(const QString& file) const {
+    writeEditorBytes(file,resultsCsv(),"EDIT_CSV_WRITE");
+}
+void EditorWindow::copyResults() const {
+    QGuiApplication::clipboard()->setText(QString::fromStdString(csvToTsv(resultsCsv())));
 }
 }

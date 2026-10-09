@@ -287,7 +287,7 @@ Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-b
 
 ## M5 — Evaluation and reporting
 
-The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) was built in parallel and now sits on top of them in schema 25 (D135–D139); it does not block M5.6. M5.2 (batch runner, `--seeds`, 95 % CI) is implemented (D131); the M5 gate stays open.
+The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) was built in parallel and now sits on top of them in schema 25 (D135–D139); it does not block M5.6. M5.2 (batch runner, `--seeds`, 95 % CI) is implemented (D131), and M5.3–M5.6 after it (D132–D134, D141: the editor's Run seeds, Copy and Export); M5.7, the owner's rehearsal, is next. The M5 gate stays open.
 
 - Movement-level delay, LOS, queue length, travel time.
 - Multi-seed batch runs with means and confidence intervals.
