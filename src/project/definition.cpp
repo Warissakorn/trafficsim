@@ -3,6 +3,7 @@
 #include "../core/w74.hpp"
 #include "demand_catalog.hpp"
 #include "demand_time_types.hpp"
+#include "counted_volumes.hpp"
 #include "../model/demand/signal_control.hpp"
 #include "../core/validate.hpp"
 #include <nlohmann/json.hpp>
@@ -28,6 +29,7 @@ AuthoringDefinition parseAuthoringDefinition(const Json& j) {
     }
     if (j.contains("routingDecisions")) d.routingDecisions = parseRoutingDecisions(j);
     if (j.contains("signalControllers")) d.signalControllers = parseSignalControllers(j);
+    syncCountedVolumes(d); // D142
     return d;
 }
 Json definitionJson(const AuthoringDefinition& d) {
@@ -43,8 +45,11 @@ Json definitionJson(const AuthoringDefinition& d) {
         if (!i.compositionId.empty()) input["compositionId"] = i.compositionId; // M2.3
         if (!i.routingDecisionId.empty()) input["routingDecisionId"] = i.routingDecisionId; // M2.4
         if (!i.linkId.empty()) input["linkId"] = i.linkId; // M2.1.1
+        // D142: the decision's counts are the volume, so the intervals are not written at all --
+        // the file holds one truth, and the scalars above are only the derived copy.
+        if (i.volumeFromCounts) input["volumeFromCounts"] = true;
         // M2.2, the same way: absent unless set. The scalars above are then derived from it.
-        if (!i.intervals.empty()) {
+        if (!i.intervals.empty() && !i.volumeFromCounts) {
             input["intervals"] = Json::array();
             for (const auto& p : i.intervals)
                 input["intervals"].push_back({{"startTime",p.startTime},{"endTime",p.endTime},
@@ -236,9 +241,12 @@ std::vector<ValidationIssue> routingDecisionIssues(const AuthoringDefinition& d)
         if (int(!input.routeId.empty()) + int(!input.routingDecisionId.empty()) + int(!input.linkId.empty()) > 1)
             issues.push_back({"INPUT_TARGET_CONFLICT", "inputs[" + std::to_string(i) + "]"});
     }
+    auto counted = countedVolumeIssues(d); // D142
+    issues.insert(issues.end(), counted.begin(), counted.end());
     return issues;
 }
 AuthoringDefinition withRoutingDecisions(AuthoringDefinition d) {
+    syncCountedVolumes(d); // D142: whatever path built `d`, a counted input splits its own counts
     std::vector<VehicleInput> inputs;
     for (const auto& input : d.inputs) {
         if (input.routingDecisionId.empty()) { inputs.push_back(input); continue; }

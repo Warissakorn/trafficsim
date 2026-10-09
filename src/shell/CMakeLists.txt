@@ -128,6 +128,13 @@ target_precompile_headers(trafficsim-demand-ui-tests REUSE_FROM trafficsim_shell
     add_test(NAME demand-edit-ui COMMAND trafficsim-demand-edit-ui-tests "${PROJECT_SOURCE_DIR}/data")
     set_tests_properties(demand-edit-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_dependencies(check trafficsim-demand-edit-ui-tests)
+    # D142: an input's volume from its decision's turning counts, in the input dialog.
+    add_executable(trafficsim-counted-volume-ui-tests ../../tests/counted_volume_ui_tests.cpp)
+    target_link_libraries(trafficsim-counted-volume-ui-tests PRIVATE trafficsim_shell Qt6::Test trafficsim_options)
+    target_precompile_headers(trafficsim-counted-volume-ui-tests REUSE_FROM trafficsim_shell)
+    add_test(NAME counted-volume-ui COMMAND trafficsim-counted-volume-ui-tests "${PROJECT_SOURCE_DIR}/data")
+    set_tests_properties(counted-volume-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_dependencies(check trafficsim-counted-volume-ui-tests)
     set_tests_properties(demand-ui PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_dependencies(check trafficsim-demand-ui-tests)
     add_executable(trafficsim-signal-ui-tests ../../tests/signal_ui_tests.cpp)

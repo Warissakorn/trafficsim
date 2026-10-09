@@ -1,4 +1,5 @@
 #include "editor_window.hpp"
+#include "../project/counted_volumes.hpp"
 #include "../editor/ui_design_tokens.hpp"
 #include <QAction>
 #include <QComboBox>
@@ -155,6 +156,7 @@ void EditorWindow::refreshDemand() {
             // With counted intervals (M2.2) the figure is their mean over the span; say so.
             auto period=" ["+QString::number(i.startTime)+", "+QString::number(i.endTime)+"]";
             if(!i.intervals.empty())period+=" · "+text("editorInputIntervalCount").arg(static_cast<int>(i.intervals.size()));
+            if(i.volumeFromCounts)period+=" · "+text("editorInputFromCountsTag"); // D142
             row(inputTable_,n,{QString::fromStdString(i.id),target,volume+period},i.id);
         }
         for(const auto& x:def.routingDecisions) {
@@ -164,6 +166,10 @@ void EditorWindow::refreshDemand() {
             // A placed decision (M2.1.1) says where it sits.
             if(!x.linkId.empty())flows.prepend(text("editorDecisionAtLink").arg(QString::fromStdString(x.linkId)));
             if(!x.intervals.empty())flows<<text("editorDecisionIntervalCount").arg(static_cast<int>(x.intervals.size())); // M2.1.2
+            // D142: these counts are also the volume of every input that takes it from them.
+            const auto feeds=std::count_if(def.inputs.begin(),def.inputs.end(),[&](const auto& i){
+                const auto* counted=i.volumeFromCounts?countedDecision(def,i):nullptr;return counted&&counted->id==x.id;});
+            if(feeds>0)flows<<text("editorDecisionFeedsVolume").arg(static_cast<int>(feeds));
             const int n=decisionTable_->rowCount();decisionTable_->insertRow(n);
             row(decisionTable_,n,{QString::fromStdString(x.id),QString::fromStdString(x.name),flows.join(", ")},x.id);
         }
