@@ -142,6 +142,7 @@ void EditorWindow::refreshResults() {
     const bool finished=runFinished();
     QString note=text("editorResultsNote").arg(report->active).arg(report->pending)
         .arg(report->unassigned).arg(report->safetyClamps);
+    if(report->cooldown) note+=" "+text("editorCooldownNote").arg(*report->cooldown,0,'f',0); // M5.9
     if(!finished) note=text("editorResultsPartial").arg(report->time,0,'f',1)+" "+note;
     resultsNote_->setText(note);
 }

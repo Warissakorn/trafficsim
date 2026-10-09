@@ -65,7 +65,7 @@ single-run CSV's formats (`csv_format.hpp`): quoted names, C-locale numbers with
 an empty cell for no value.
 
 `--seeds` cannot be combined with a single seed, `--discharge` or the single-run diagnostic flags.
-## 5. Evaluation period and unfinished trips (M5.3, D132)
+## 5. Evaluation period, cool-down and unfinished trips (M5.3 D132, M5.9 D146)
 
 Every seed uses the project's evaluation period ([SIMULATION](SIMULATION.md#movement-evaluation-m25)):
 rows count trips that end inside it and queues average its ticks; run totals stay whole-run.
@@ -73,6 +73,47 @@ Each movement also reports `unfinished` (active or pending on its routes at the 
 Estimate. A movement whose mean unfinished exceeds 5 % of mean (completed + unfinished) is named
 in `movementsWithUnfinished` and in a `# WARNING` CSV line: its completed-trip delay reads low,
 because the stuck vehicles never arrive.
+
+**Cool-down (M5.9, D146).** Without one, a run whose demand lasts to its last second reports
+every trip still in flight as unfinished, so the warning fires where nothing is wrong. An author
+sets `definition.evaluation.cooldown` (seconds, schema 27, written only when above 0):
+
+- **Run length.** The run lasts `duration + cooldown`, always to that bound; it does not stop
+  early when the window's trips have finished, which would change only run totals and would make
+  the editor's Run and the CLI disagree. Inputs still end by `duration`, so no new demand is
+  generated during the cool-down; vehicles already waiting at a source still enter.
+- **The window selects trips by their demand.** With a cool-down a trip belongs to the window when
+  its vehicle's `scheduledTime` (when its input released it, so source waiting is included) lies
+  in `[warmup, end]` (`end` defaults to `duration`, never to the longer run). A window trip counts
+  in its movement row when it arrives and in a section row when it crosses the section's end line,
+  at any time up to the end of the run. A vehicle released after `end` counts nowhere.
+- **Unfinished** is a window vehicle still in the network or still waiting at a source when the
+  run ends: traffic the cool-down did not clear, such as a gridlocked movement, which the 5 % rule
+  still names.
+- **Queues** still average only the ticks in `[warmup, end]`. Run totals (`completed`, `pending`,
+  `active`, `safetyClamps`, network `meanDelay`) stay whole-run and include the cool-down, so
+  generated = completed + active + pending still closes.
+- **Without a cool-down** (absent or 0) every rule above is D132's, byte for byte: rows count trips
+  that end in the period, and every vehicle left at the end is unfinished.
+- **Output.** JSON `evaluationPeriod` gains `cooldown`, the single-run CSV a `cooldown_s` line after
+  `evaluationPeriod_s`, the batch CSV a `# Cool-down: N s after the demand ends` line after the
+  evaluation period line, and the editor's notes say the same. None appears without a cool-down.
+- **Valid** when finite, above 0 and on the time grid (`EVALUATION_PERIOD_INVALID`); the period's
+  `end` must still lie inside `duration`. A new editor project starts with 900 s.
+- **Limit.** A window vehicle that reaches a positioned routing decision after that decision's last
+  interval uses its default weights, the rule [POSITIONED_ROUTING](POSITIONED_ROUTING.md) already
+  states for any time outside the intervals.
+
+| Row | Check | Test |
+|---|---|---|
+| CD1 | Schema 27 round-trips; a file without `cooldown` keeps its schema and bytes; the key below schema 27, zero, negative, non-finite or off-grid values are refused; clearing it restores the earlier bytes | `cooldown` |
+| CD2 | One vehicle released exactly at `end` that arrives during the cool-down counts in its movement; without a cool-down it does not | `cooldown` |
+| CD3 | A vehicle released after `end` counts in no row and not as unfinished | `cooldown` |
+| CD4 | Gridlock: behind an all-red head, window vehicles stay unfinished and `movementsWithUnfinished` names the movement | `cooldown` |
+| CD5 | No vehicle is released after `duration`; the cool-down adds ticks, not demand | `cooldown` |
+| CD6 | A file without a cool-down gives the same batch CSV and JSON before and after a save through the new codec; four-leg CLI outputs are byte-identical across the change | `cooldown`, session `cmp` |
+| CD7 | `four-leg-signalised` with a cool-down, seeds 42-51: no movement is warned, while CD4's network still is | `cooldown` |
+| CD8 | A window vehicle's section trip that ends during the cool-down counts; section `unfinished` counts window vehicles only | `cooldown` |
 
 ## 6. Editor batch (M5.6, D141)
 

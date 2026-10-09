@@ -305,7 +305,7 @@ Controllers, signal groups, programs, fixed-time and actuated, detectors, ring-b
 
 ### M4.2 — Amber stop-or-go
 
-**Open; carved out by D143 (R2), next after M5.9.** D36 runs amber as red, which biases every
+**Open; carved out by D143 (R2), next now that M5.9 is implemented (D146).** D36 runs amber as red, which biases every
 signalised delay an M5 table reports. Contract first: a stop-or-go decision at amber onset (can
 the vehicle stop at a stated deceleration before the stop line?), intergreen handling, and
 failure-first rows. It moves prototype trajectories, so frozen baselines and BA18 change only by a
@@ -316,7 +316,7 @@ seeds (D88); same-build replay.
 
 ## M5 — Evaluation and reporting
 
-The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) was built in parallel and now sits on top of them in schema 25 (D135–D139); it does not block M5.6. M5.2 (batch runner, `--seeds`, 95 % CI) is implemented (D131), and M5.3–M5.6 after it (D132–D134, D141: the editor's Run seeds, Copy and Export); M5.7, the owner's rehearsal, is next; by D143 sessions then take M5.9 (evaluation cool-down), M4.2, M6.0 and M5.8 ([M5_PLAN](plans/M5_PLAN.md) §3). The M5 gate stays open.
+The reason the whole project exists (`PROBLEM.md` §4). **Next, by owner instruction (D130, 2026-10-08):** slices M5.2–M5.7 in [`plans/M5_PLAN.md`](plans/M5_PLAN.md); O1 (a), O3 (b), O8 and O9 (c) are answered there. W74 (M3.3.3a) was built in parallel and now sits on top of them in schema 25 (D135–D139); it does not block M5.6. M5.2 (batch runner, `--seeds`, 95 % CI) is implemented (D131), and M5.3–M5.6 after it (D132–D134, D141: the editor's Run seeds, Copy and Export); M5.7, the owner's rehearsal, is next; by D143 sessions then take M5.9 (evaluation cool-down, implemented by D146: schema 27, new projects 900 s), M4.2, M6.0 and M5.8 ([M5_PLAN](plans/M5_PLAN.md) §3). The M5 gate stays open.
 
 - Movement-level delay, LOS, queue length, travel time.
 - Multi-seed batch runs with means and confidence intervals.

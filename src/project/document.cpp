@@ -122,7 +122,9 @@ Json documentJson(const ProjectDocument& d) {
     const bool controlled=std::any_of(d.network.travelTimeSections.begin(),d.network.travelTimeSections.end(),[](const auto& s){return s.controlType.has_value();});
     // M3.3.3a: 25 only when an owned behaviour is w74 (D136).
     // D142: 26 only when an input takes its volume from the counts.
-    const int schema=usesCountedVolumes(d)?26:ownsW74Behaviour(d)?25:controlled?24:!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    // M5.9: 27 only when the evaluation period has a cool-down (D146).
+    const bool cooled=period && d.definition->evaluation->cooldown>0;
+    const int schema=cooled?27:usesCountedVolumes(d)?26:ownsW74Behaviour(d)?25:controlled?24:!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     Json definition = d.definition ? definitionJson(*d.definition) : Json(nullptr);
     if (library && d.definition) addBehaviourLibraryJson(*d.definition, definition);
@@ -152,7 +154,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 26) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 27) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -176,6 +178,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (version < 22) rejectEvaluationPeriodBefore22(j);
     if (version < 25) rejectW74Before25(j);
     if (version < 26) rejectCountedVolumesBefore26(j);
+    if (version < 27) rejectCooldownBefore27(j);
     d.network = parseNetwork(j.at("network"), version);
     if (present(j, "definition")) {
         d.definition = parseAuthoringDefinition(j.at("definition"));

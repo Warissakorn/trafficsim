@@ -40,6 +40,11 @@ RunSnapshot compileDocument(const ProjectDocument& d, const std::filesystem::pat
     // data, sliced away by resolveCatalogs, so it is read from the document itself.
     definition.segmentBehaviours=compileBehaviourAssignments(d.network,*d.definition);
     if(manifest)manifest->validate();
-    return {d.revision,d.network,compileScenario(d.network,definition)};
+    auto scenario=compileScenario(d.network,definition);
+    // M5.9 (D146): the run goes on for the cool-down after the authored duration. Inputs still end
+    // by that duration, so the engine releases no new demand in it; extended only here, after every
+    // expansion that reads the authored duration, and for every caller (CLI, batch, editor).
+    if(d.definition->evaluation)scenario.duration+=d.definition->evaluation->cooldown;
+    return {d.revision,d.network,std::move(scenario)};
 }
 }

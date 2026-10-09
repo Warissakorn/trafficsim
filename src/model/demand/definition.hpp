@@ -109,8 +109,10 @@ struct LinkBehaviourType {
 };
 // M5.3, schema 22: the part of the run that results describe. Movement rows count trips that end
 // in [warmup, end]; queues average its ticks. No `end` means the end of the run (D132).
+// M5.9, schema 27 (D146): `cooldown` seconds run on past the duration with no new demand; rows then
+// count trips released in [warmup, end] whenever they finish. 0 is none, and is never written.
 struct EvaluationPeriod {
-    double warmup{}; std::optional<double> end;
+    double warmup{}; std::optional<double> end; double cooldown{};
     bool operator==(const EvaluationPeriod&) const = default;
 };
 struct AuthoringDefinition : ScenarioDefinition {

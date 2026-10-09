@@ -82,6 +82,7 @@ void EditorWindow::refreshBatch() {
     const auto& first=batch_->runs.front().report;
     QString note=text("editorBatchNote").arg(r.seeds.size()).arg(seedText(r.seeds))
         .arg(first.warmup,0,'f',0).arg(first.evaluationEnd,0,'f',0);
+    if(first.cooldown) note+=" "+text("editorCooldownNote").arg(*first.cooldown,0,'f',0); // M5.9
     if(!r.overloadedSeeds.empty()) note+=" "+text("editorBatchOverloaded").arg(seedText(r.overloadedSeeds));
     if(const auto stuck=movementsWithUnfinished(r);!stuck.empty()){
         QStringList names; for(const auto& n:stuck) names<<QString::fromStdString(n);

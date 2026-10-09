@@ -5,6 +5,10 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-07-d127.md`](PROGRESS-2026-10-07-d127.md) — oldest live entry (2026-10-07 — Front-segment behaviour selection (D127)), moved whole 2026-10-09
+
+- [`PROGRESS-2026-10-07-d126.md`](PROGRESS-2026-10-07-d126.md) — oldest live entry (2026-10-07 — Project-owned behaviour library and road assignment storage (D126)), moved whole 2026-10-09
+
 - [`PROGRESS-2026-10-07-d125.md`](PROGRESS-2026-10-07-d125.md) — oldest live entry (2026-10-07 — Rank-scoped remap invalidation and source-sink identity (D125)), moved whole 2026-10-09
 
 - [`PROGRESS-2026-10-07-d124.md`](PROGRESS-2026-10-07-d124.md) — oldest live entry (2026-10-07 — Proven source and lateral passages (D124)), moved whole 2026-10-09

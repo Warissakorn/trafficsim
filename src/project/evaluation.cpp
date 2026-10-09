@@ -54,6 +54,11 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
     if (document.definition && document.definition->evaluation) {
         spec.warmup = document.definition->evaluation->warmup;
         spec.end = document.definition->evaluation->end; // none: the end of the run, unbounded
+        // M5.9 (D146): the run goes on past the duration, so the window's end is the authored one.
+        if (const auto cooldown = document.definition->evaluation->cooldown; cooldown > 0) {
+            spec.cooldown = cooldown;
+            if (!spec.end) spec.end = document.definition->duration;
+        }
     }
     std::map<std::string, std::size_t> movementOfAuthored;
     if (document.definition) {
@@ -171,6 +176,7 @@ Json movementJson(const MovementReport& r) {
     j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
     j["laneChanges"] = r.laneChanges;
     j["evaluationPeriod"] = {{"warmup", r.warmup}, {"end", r.evaluationEnd}}; // M5.3
+    if (r.cooldown) j["evaluationPeriod"]["cooldown"] = *r.cooldown; // M5.9: only with one
     if (!r.sections.empty()) { // M5.4: only with a section, so other projects keep their bytes
         j["sections"] = Json::array();
         for (const auto& row : r.sections)
@@ -291,6 +297,7 @@ std::string movementCsv(const MovementReport& r) {
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
         << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges
         << "\nevaluationPeriod_s," << csvNumber(r.warmup) << ',' << csvNumber(r.evaluationEnd) << '\n';
+    if (r.cooldown) out << "cooldown_s," << csvNumber(*r.cooldown) << '\n'; // M5.9: only with one
     return out.str();
 }
 }

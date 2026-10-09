@@ -473,6 +473,10 @@ after `createSimulation` and once after every `stepSimulation`). `core/` does no
   network `meanDelay`) stay whole-run so the vehicle accounting closes. A new editor project
   starts with warm-up 900 s and duration 4500 s; the period must lie inside the run
   (`EVALUATION_PERIOD_INVALID`). JSON carries `evaluationPeriod`, the CSV an `evaluationPeriod_s` line.
+- **Cool-down (M5.9, D146):** `evaluation.cooldown` (schema 27) runs `cooldown` seconds past
+  `duration` with no new demand. Rows then count trips whose demand was released in
+  `[warmup, end]` whenever they finish, and only those still in the network at the end are
+  unfinished; a new project starts with 900 s. The full rule is [BATCH](BATCH.md) §5.
 
 The editor shows this in the **Results** tab, and `trafficsim-cli --project FILE [--csv FILE]`
 prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds

@@ -16,8 +16,8 @@ double crossing(double before, double at, double after, double atAfter, double t
     return ahead + past > 0 ? t0 + (t1 - t0) * ahead / (ahead + past) : t0;
 }
 }
-SectionAccumulator::SectionAccumulator(std::vector<SectionSpec> sections, double warmup, std::optional<double> end)
-    : sections_(std::move(sections)), warmup_(warmup), periodEnd_(end),
+SectionAccumulator::SectionAccumulator(std::vector<SectionSpec> sections, double warmup, std::optional<double> end, bool byRelease)
+    : sections_(std::move(sections)), warmup_(warmup), periodEnd_(end), byRelease_(byRelease),
       count_(sections_.size()), travel_(sections_.size()), delay_(sections_.size()) {}
 void SectionAccumulator::bind(const SimState& state) {
     if (bound_ == state.scenario.get()) return;
@@ -42,11 +42,14 @@ void SectionAccumulator::bind(const SimState& state) {
             start_[k].push_back(applies ? a : none); finish_[k].push_back(applies ? b : none);
         }
 }
+bool SectionAccumulator::inPeriod(double time) const {
+    constexpr double slack = 1e-9; // the period's bounds, as MovementAccumulator applies them
+    return time >= warmup_ - slack && (!periodEnd_ || time <= *periodEnd_ + slack);
+}
 void SectionAccumulator::close(std::size_t k, Track& track, std::uint32_t route, double time) {
     const double opened = track.open[k];
     track.open[k] = none;
-    constexpr double slack = 1e-9; // the period's bounds, as MovementAccumulator applies them
-    if (time < warmup_ - slack || (periodEnd_ && time > *periodEnd_ + slack)) return;
+    if (!inPeriod(byRelease_ ? track.scheduledTime : time)) return;
     const double travel = time - opened;
     const double freeFlow = (finish_[k][route] - start_[k][route]) / track.desiredSpeed;
     ++count_[k]; travel_[k] += travel; delay_[k] += std::max(0.0, travel - freeFlow);
@@ -76,7 +79,7 @@ void SectionAccumulator::observe(const SimState& state) {
         const bool known = it != tracks_.end() && it->id == v.id;
         Track t;
         if (known) { seen[static_cast<std::size_t>(it - tracks_.begin())] = true; t = std::move(*it); }
-        else t = {v.id, v.routeIndex, 0, 0, v.enteredTime, v.desiredSpeed, std::vector<double>(sections_.size(), none)};
+        else t = {v.id, v.routeIndex, 0, 0, v.enteredTime, v.desiredSpeed, std::vector<double>(sections_.size(), none), v.scheduledTime};
         advance(t, v.routeIndex, v.distance, state.time, !known);
         t.route = v.routeIndex; t.distance = v.distance; t.speed = v.speed; t.time = state.time;
         next.push_back(std::move(t));
@@ -100,7 +103,8 @@ std::vector<SectionRow> SectionAccumulator::report() const {
             row.meanTravelTime = travel_[k] / static_cast<double>(count_[k]);
             row.meanDelay = delay_[k] / static_cast<double>(count_[k]);
         }
-        for (const auto& t : tracks_) if (!std::isnan(t.open[k])) ++row.unfinished;
+        for (const auto& t : tracks_)
+            if (!std::isnan(t.open[k]) && (!byRelease_ || inPeriod(t.scheduledTime))) ++row.unfinished;
         rows.push_back(std::move(row));
     }
     return rows;

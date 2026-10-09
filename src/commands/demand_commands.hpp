@@ -17,7 +17,10 @@ std::string putSignalController(ProjectDocument&, SignalController);
 void deleteSignalController(ProjectDocument&, const std::string&);
 void changeRunSettings(ProjectDocument&, double duration, double timeStep);
 // M5.3. Warm-up 0 with no end clears the period, so a file that never used one keeps its schema.
+// Sets warm-up and end and keeps the cool-down; the four-argument form sets all three (M5.9).
+// The period is removed only when every part is at its default: warm-up 0, no end, no cool-down.
 void changeEvaluationPeriod(ProjectDocument&, double warmup, std::optional<double> end);
+void changeEvaluationPeriod(ProjectDocument&, double warmup, std::optional<double> end, double cooldown);
 std::string putSignalHead(ProjectDocument&, NetworkSignalHead);
 void deleteSignalHead(ProjectDocument&, const std::string&);
 // Slides a head -- its stop line -- along the lane or path it stands on. The station is

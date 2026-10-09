@@ -27,19 +27,23 @@ struct SectionRow {
 // per observed state, after it has applied that state's events.
 class SectionAccumulator {
 public:
-    // A trip counts when its end crossing lies in [warmup, end] (no end: the end of the run).
-    SectionAccumulator(std::vector<SectionSpec> sections, double warmup, std::optional<double> end);
+    // A trip counts when its end crossing lies in [warmup, end] (no end: the end of the run). With
+    // `byRelease` (M5.9 cool-down, D146) it counts when its vehicle was released in [warmup, end],
+    // whenever the end crossing falls, and only such vehicles are unfinished; `end` must be set.
+    SectionAccumulator(std::vector<SectionSpec> sections, double warmup, std::optional<double> end, bool byRelease = false);
     void observe(const SimState& state);
     std::vector<SectionRow> report() const;
 private:
     struct Track {
         std::uint64_t id{}; std::uint32_t route{}; double distance{}, speed{}, time{}, desiredSpeed{};
         std::vector<double> open; // per section: the start crossing time, NaN when no trip is open
+        double scheduledTime{}; // M5.9: when the vehicle's input released it
     };
     void bind(const SimState& state);
     void close(std::size_t k, Track& track, std::uint32_t route, double time);
+    bool inPeriod(double time) const;
     std::vector<SectionSpec> sections_;
-    double warmup_{}; std::optional<double> periodEnd_;
+    double warmup_{}; std::optional<double> periodEnd_; bool byRelease_{};
     const Scenario* bound_{};
     // Per section, per route slot: the lines' route distances, NaN where the section does not apply.
     std::vector<std::vector<double>> start_, finish_;

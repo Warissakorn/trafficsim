@@ -58,6 +58,10 @@ Build for the sitting: `cmake --preset desktop`, `cmake --build --preset desktop
    [MULTI_LEVEL_MODELLING](MULTI_LEVEL_MODELLING.md) §8: Meso formulation, default VDF and its
    citation, deterrence form and trip purposes, the mode set (with PROBLEM §8), convergence
    defaults, on-street parking in M8 or later. M10/M11 contracts wait on 1–5. *Owner:*
+8. **The example's cool-down** (listed 2026-10-09, D146). `four-leg-signalised` stays schema 17
+   with no cool-down, so its batch still warns on 11 of 12 movements; 300 s clears every window
+   trip ([evidence](../evidence/m5.9-cooldown.md)). Give the example a cool-down (its tests'
+   expected numbers change), or keep it as the before case? *Owner:*
 
 ## C — Run view (the 125 % screen)
 
