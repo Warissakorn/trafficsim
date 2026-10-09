@@ -59,4 +59,7 @@ constexpr double kRoutelessStubLength = 4.5;
 // cut a branch off.
 RoutelessResult routelessChains(const Network&, const std::string& linkId,
                                 const std::vector<PlacedDecision>& decisions);
+// The same walk over a table already built for this Network (D140).
+RoutelessResult routelessChains(const Network&, const ConnectorPathTable&, const std::string& linkId,
+                                const std::vector<PlacedDecision>& decisions);
 }

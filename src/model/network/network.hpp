@@ -2,6 +2,7 @@
 #include "../../core/types.hpp"
 #include "control.hpp"
 #include <array>
+#include <optional>
 
 namespace trafficsim {
 struct Point { double x{}, y{}; bool operator==(const Point&) const = default; };
@@ -95,6 +96,22 @@ double connectorAuthoringStation(const Connector&, const ConnectorPath&, double 
 std::string connectorPathId(const Connector&, int index);
 // Runtime lane interiors follow adjacent painted-rail midpoints; endpoints join named lanes.
 std::vector<ConnectorPath> connectorPaths(const Network&, const Connector&);
+// Each Connector's paths, computed at most once, on first use (D140). A routing walk asks for the
+// same Connector's paths thousands of times -- 85 % of validating the M2.6 study template was
+// connectorPaths -- and they depend on nothing but the Network. A Connector whose paths throw
+// has none here, which is what every routing caller did with the exception anyway. Valid only
+// for the Network it was built from, unchanged: build one locally for one walk, never store it
+// beside a document, never share one between threads.
+class ConnectorPathTable {
+public:
+    explicit ConnectorPathTable(const Network& network);
+    // `connector` must be an element of that Network's own `connectors`.
+    const std::vector<ConnectorPath>& of(const Connector& connector) const;
+    const std::vector<ConnectorPath>& at(std::size_t index) const;
+private:
+    const Network& network_;
+    mutable std::vector<std::optional<std::vector<ConnectorPath>>> paths_;
+};
 struct NetworkSignalHead {
     std::string id; LaneReference lane; double position{};
     std::string programId, connectorId;
@@ -325,6 +342,8 @@ std::vector<std::string> routeChainTo(const Network&, const std::vector<std::str
 // may be reached by several, since each lane of the Link follows whichever it can drive.
 std::vector<std::vector<std::string>> routeShortestChains(const Network&, const std::string& from,
                                                           const std::string& target);
+std::vector<std::vector<std::string>> routeShortestChains(const Network&, const ConnectorPathTable&,
+                                                          const std::string& from, const std::string& target);
 // One lane-level chain per lane the route actually carries: lane k of the first Link, the
 // Connector path that leaves that lane, the lane it arrives on, and so on. A lane with no path
 // onward contributes no chain, which is exactly what makes narrowing a Connector safe. Empty
@@ -335,6 +354,8 @@ std::vector<std::vector<std::string>> routeShortestChains(const Network&, const 
 std::vector<std::vector<std::string>> routeLaneChains(const Network&,
                                                       const std::vector<std::string>& objectIds,
                                                       std::vector<std::string>* ambiguous = nullptr);
+std::vector<std::vector<std::string>> routeLaneChains(const Network&, const ConnectorPathTable&,
+                                                      const std::vector<std::string>& objectIds);
 // M3.2.8b (docs/reference/M3_8_CONTRACT.md §2): the same walk, keeping one chain per lane of the first Link.
 // A lane that cannot reach the end is a STUB: its chain follows the route's objects as far as that
 // lane goes and stops on the lane the next object does not leave; its vehicles change lanes. A
@@ -343,6 +364,9 @@ std::vector<std::vector<std::string>> routeLaneChains(const Network&,
 // others. Empty when no lane reaches the end.
 struct FamilyChain { std::vector<std::string> ids; std::size_t lane{}; bool stub{}; };
 std::vector<FamilyChain> routeLaneFamily(const Network&, const std::vector<std::string>& objectIds,
+                                         std::vector<std::string>* ambiguous = nullptr);
+std::vector<FamilyChain> routeLaneFamily(const Network&, const ConnectorPathTable&,
+                                         const std::vector<std::string>& objectIds,
                                          std::vector<std::string>* ambiguous = nullptr);
 // How many weights an input's laneShares on this route carries: one per lane of its first Link,
 // or one per chain for a route starting on a Connector (M3.2.8b). One answer for the compile step

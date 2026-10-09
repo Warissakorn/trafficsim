@@ -40,9 +40,8 @@ bool member(const StationRoute& route,const std::string& family) {
     return std::any_of(route.families.begin(),route.families.end(),[&](const auto& x){return x.name==family;});
 }
 }
-void appendStationRouting(const Network& n,const AuthoringDefinition& d,const std::string& type,
+void appendStationRouting(const Network& n,const RuntimeSections& table,const AuthoringDefinition& d,const std::string& type,
                           const std::vector<StationRoute>& routes,ScenarioDefinition& resolved) {
-    const auto table=runtimeSections(n);
     std::map<std::pair<std::string,std::string>,Gate> gates;
     for(const auto& decision:d.routingDecisions)if(decision.position) {
         for(const auto& source:routes) {
