@@ -32,6 +32,12 @@ checklist, or a copy of the template ready for the owner's volumes) but cannot c
 W74 (below) runs on top of M5 in schema 25 (D135–D139). Owner looks stay queued and block
 nothing. No LOS letter on whole-route delay; the marker stays.
 
+**Roadmap review 2026-10-09** ([R1–R8](audits/ROADMAP_REVIEW-2026-10-09.md#8-owner-questions-answer-by-letter)):
+every clause of the success sentence now has code, but none is proven; it proposes, for the owner,
+scenario comparison as an M5 slice (R1), amber and an evaluation cool-down before a benchmark (R2,
+R6: the four-leg example warns of unfinished trips on 11 of 12 movements), a motorcycle decision
+(R3) and one owner sitting for the queue below (R4). Nothing is re-ordered until the owner answers.
+
 ## Earlier owner instructions, 2026-10-05/06 — what is still open
 
 What was built is history: [ROADMAP](ROADMAP.md) M2.8/M3.2.4/M3.3 status lines, PROGRESS and
@@ -93,7 +99,7 @@ needs its own contract; reporting remains M5.
 
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 
-[ROADMAP.md — review record](ROADMAP.md#review-record--2026-10-03) corrected the stale status lines
+[the 2026-10-03 roadmap review](archive/ROADMAP-review-2026-10-03.md) corrected the stale status lines
 and proposes an order, but **changes none.** Its finding is that the back half of the success
 sentence has no product code and no commit since 2026-09-25: 10 seeds, LOS, and a table to paste
 (M5). Most of the items below are owner looks. Its §4 asks the owner ten questions (O1–O10).
@@ -300,7 +306,7 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
     (`simulation.cpp` arrivals vs the main snapshot, ≈40 ms) and phase 1 (≈110 ms). The
     `MovedEvent::segmentId` string copy would need an event-interface decision.
 - **Linux replay of D91–D94:** CI (`native.yml`) is the evidence.
-- **`plans/M3_ACCEPTANCE.md` §4:** the rows a session can fill ([ROADMAP review §7, S5](ROADMAP.md#7-proposed-sequence--owner-free-sessions-after-o1)).
+- **`plans/M3_ACCEPTANCE.md` §4:** the rows a session can fill ([2026-10-03 review §7, S5](archive/ROADMAP-review-2026-10-03.md#7-proposed-sequence--owner-free-sessions-after-o1)).
 - The entry-acceleration bias in movement delay needs travel-time sections (M5), not a correction
   factor.
 
