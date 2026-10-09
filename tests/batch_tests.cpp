@@ -1,9 +1,11 @@
 #include "test.hpp"
 #include "../src/runner/batch.hpp"
 #include "../src/project/batch_output.hpp"
+#include "../src/project/csv_format.hpp"
 #include "../src/project/evaluation.hpp"
 #include "../src/project/run.hpp"
 #include <fstream>
+#include <sstream>
 using namespace trafficsim;
 // M5.2. The aggregate cases pin the statistics by hand; the engine cases pin that a batch seed is
 // exactly today's single run, and that every generated vehicle is accounted for.
@@ -135,4 +137,18 @@ TEST(batch, outputs_carry_the_marker_and_the_flag) {
     CHECK(j["overloadedSeeds"] == Json::array({2}));
     CHECK(j["perSeed"][1]["generated"] == 99);
     CHECK(j["movements"][0]["meanDelay"]["n"] == 2);
+}
+// M5.6 (BATCH §6, EB3): Copy is the CSV, column for column, so the two can never disagree.
+TEST(batch, tsv_splits_cells_and_keeps_comments) {
+    CHECK(csvToTsv("# a, b\n\"x, \"\"y\"\"\",1,2.00,\n\nn,v\n") == "# a, b\nx, \"y\"\t1\t2.00\t\n\nn\tv\n");
+    CHECK(csvToTsv("\"tab\there\",\"line\nbreak\"\n") == "tab here\tline break\n");
+}
+TEST(batch, tsv_of_the_batch_csv_keeps_its_marker_and_rows) {
+    const std::vector<SeedRun> runs{seedWith(1, 10), seedWith(2, 40)};
+    const auto tsv = csvToTsv(batchCsv(aggregate(runs), runs));
+    CHECK(tsv.starts_with("# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay or LOS; mean of 2 runs"));
+    CHECK(tsv.find("movement\tn\tmeanDelay_s\tci95_s\tsd_s\tvehicles_mean\tmeanTravelTime_s\tunfinished_mean\n") != std::string::npos);
+    CHECK(tsv.find("a → b\t2\t25.00\t") != std::string::npos);
+    std::istringstream lines(tsv);
+    for (std::string line; std::getline(lines, line);) CHECK(line.starts_with("#") || line.find(',') == std::string::npos);
 }

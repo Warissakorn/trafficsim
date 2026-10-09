@@ -73,3 +73,40 @@ Each movement also reports `unfinished` (active or pending on its routes at the 
 Estimate. A movement whose mean unfinished exceeds 5 % of mean (completed + unfinished) is named
 in `movementsWithUnfinished` and in a `# WARNING` CSV line: its completed-trip delay reads low,
 because the stuck vehicles never arrive.
+
+## 6. Editor batch (M5.6, D141)
+
+The editor's Results tab runs the same batch as `--seeds`, for the project open in it.
+
+- **Seeds.** A *Seeds* field beside *Run seeds* takes the CLI's `LIST` (`parseSeedList`), default
+  `42-51` (ten seeds, O9). A bad list is refused with the CLI's message before anything runs.
+- **Snapshot.** *Run seeds* compiles the current document (`compileDocument`, `evaluationSpec`) on
+  the UI thread, then hands value copies to one worker thread that calls `runSeeds` and
+  `aggregate`. The worker never reads the document, so editing during a batch cannot change it.
+- **Progress and cancel.** The note shows seeds done of N. *Cancel* (and every edit, Undo, Redo,
+  New, Open, Reset, a change to either seed field, or a single Run) stops the batch: the progress callback
+  returns false, the worker's result is discarded by generation number, and no table is shown.
+  A batch therefore never shows, copies or exports fewer runs than its n says. Closing the window
+  cancels and waits for the seed in progress.
+- **One table at a time.** A finished batch replaces the single-run tables until it is
+  invalidated as above; starting a single run discards the batch.
+- **Table.** Movements and sections: n, mean delay, ±95 % half-width, mean vehicles, mean travel
+  time, mean unfinished; sections add control type and LOS ([LOS](LOS.md) §4). Approaches: n,
+  mean queue ±95 %, max queue. The note names the measure, the evaluation period, the overloaded
+  seeds and the movements with unfinished trips (§3, §5), under the not-validated marker.
+- **Export** writes `batchCsv` (§4), byte for byte the CLI's `--csv` for the same project and seeds.
+- **Copy** puts the same text on the clipboard as tab-separated values (`csvToTsv`): comment
+  lines unchanged, each other line split at its unquoted commas, quotes removed. It pastes into a
+  spreadsheet or a Word table column by column, marker line first. A single finished run copies
+  `movementCsv` the same way.
+
+### Acceptance rows
+
+| Row | Check | Test |
+|---|---|---|
+| EB1 | The table's rows, n and means equal `aggregate(runSeeds(...))` of the same project and seeds | `batch-run-ui` |
+| EB2 | Export bytes equal `batchCsv` of that aggregate (the CLI's `--csv`) | `batch-run-ui` |
+| EB3 | Copy equals `csvToTsv(batchCsv(...))`, marker line first | `batch-run-ui`, `batch.tsv_*` |
+| EB4 | Cancel part way leaves no batch table; Export and Copy refuse | `batch-run-ui` |
+| EB5 | An edit after a finished batch discards it; the single-run view returns | `batch-run-ui` |
+| EB6 | A bad seed list is refused before any run | `batch-run-ui` |

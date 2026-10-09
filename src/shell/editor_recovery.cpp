@@ -15,6 +15,9 @@
 #include <QUuid>
 namespace trafficsim {
 EditorWindow::~EditorWindow() {
+    // A running batch (M5.6) posts to this window; stop it and wait for the seed it is on.
+    if(batchCancel_)*batchCancel_=true;
+    if(batchThread_.joinable())batchThread_.join();
     // Qt destroys child widgets after C++ members. Focus/leave events during teardown must
     // not let the canvas repaint a document whose owning History has already been destroyed.
     canvas_->setDocument(nullptr);

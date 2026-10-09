@@ -6,6 +6,7 @@
 #include "../eval/summary.hpp"
 #include "../project/evaluation.hpp"
 #include "../project/display.hpp"
+#include "../runner/batch.hpp"
 #include "../commands/appearance_commands.hpp"
 #include "../commands/demand_commands.hpp"
 #include <QTimer>
@@ -14,7 +15,10 @@
 #include "../editor/canvas.hpp"
 #include <QMainWindow>
 #include <QJsonObject>
+#include <atomic>
 #include <map>
+#include <memory>
+#include <thread>
 #include <filesystem>
 #include <functional>
 #include <vector>
@@ -35,6 +39,7 @@ class QFormLayout;
 class QCloseEvent;
 class QTabWidget;
 class QTableWidget;
+class QToolBar;
 namespace trafficsim {
 class EditorWindow : public QMainWindow {
 public:
@@ -147,6 +152,27 @@ private:
     void refreshResults();
     bool runFinished() const;
     void observeRun();
+    // M5.6 (BATCH §6), src/shell/editor_batch.cpp: Run N seeds on one worker thread over value
+    // copies of the compiled document. A generation number discards whatever a cancelled or
+    // replaced batch posts back, so no table ever shows fewer runs than its n.
+public:
+    struct BatchResult { BatchReport report; std::vector<SeedRun> runs; };
+private:
+    QLineEdit* batchSeeds_{};
+    QLabel* batchNote_{};
+    QWidget* batchView_{};
+    QTableWidget *batchMovementTable_{}, *batchSectionTable_{}, *batchQueueTable_{};
+    std::thread batchThread_;
+    std::shared_ptr<std::atomic<bool>> batchCancel_;
+    std::uint64_t batchGeneration_{};
+    std::size_t batchDone_{}, batchTotal_{}; // batchTotal_ is non-zero while a batch runs
+    std::optional<BatchResult> batch_;
+    void buildBatch(QToolBar*, QVBoxLayout*);
+    void translateBatch();
+    void refreshBatch();
+    void startBatch();
+    void cancelBatch(); // stops a running batch and discards a finished one
+    void finishBatch(std::uint64_t generation, std::shared_ptr<BatchResult>, const std::string& error);
     // M3.2.4, src/shell/editor_priority.cpp: the Conflict areas tab, its dialogs and actions.
     QTableWidget* conflictTable_{};
     QLabel* runProtection_{};
@@ -197,7 +223,13 @@ public:
         return runMovements_ ? std::optional(runMovements_->report(runState_)) : std::nullopt;
     }
     // The finished run's report as the CLI's CSV, replaced atomically; throws before the end.
+    // With a finished batch, the batch's CSV instead (`--seeds --csv`).
     void exportResults(const QString& file) const;
+    // The same text as tab-separated values on the clipboard (M5.6); throws when Export would.
+    void copyResults() const;
+    std::string resultsCsv() const; // what Export writes; throws EDIT_CSV_UNFINISHED without a finished run or batch
+    bool batchRunning() const { return batchTotal_ > 0; }
+    const std::optional<BatchResult>& batchResult() const { return batch_; }
 private:
     QString file_;
     std::map<QString,QJsonObject> locales_;
