@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
         // hidden through the whole run, it is still empty, and showing it fills it.
         require(!movements->isVisible(), "Results tab already open; the hidden case is not exercised");
         require(movements->rowCount() == 0, "Hidden Results tab was rebuilt during the run");
-        item<QTabWidget>(w, "editorObjectTabs")->setCurrentWidget(movements->parentWidget());
+        item<QTabWidget>(w, "editorObjectTabs")->setCurrentWidget(item<QTabWidget>(w, "editorResultsTabs")->parentWidget());
         require(movements->isVisible(), "Results tab did not open");
         require(movements->rowCount() == static_cast<int>(report->movements.size()), "Results table rows differ from the report");
         require(movements->item(0, 0)->text() == QString::fromStdString(report->movements[0].name), "Movement name missing");

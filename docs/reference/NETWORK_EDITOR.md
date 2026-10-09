@@ -352,7 +352,7 @@ from the lane it left.
 
 Successful edits, Undo/Redo, opening/new documents and seed changes invalidate the run; the next Run compiles the current document.
 
-**Results** tab (M2.5, D39/D40): per-movement vehicles, mean delay and mean travel time beside
+**Results** tab (M2.5, D39/D40; inner pages since D144: *Movements*, *Queue discharge*, *Safety clamps*): per-movement vehicles, mean delay and mean travel time beside
 per-approach mean and maximum queue, for the current run. While the run is still going it shows
 the figures so far with the time reached. The note above the tables is the not-yet-validated
 marker and says what the delay is not (HCM control delay, LOS). **Export results (CSV)…** (D104),
