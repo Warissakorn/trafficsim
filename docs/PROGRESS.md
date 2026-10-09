@@ -8,6 +8,27 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — Volume from turning counts (D142, schema 26)
+
+The owner answered ROADMAP O10's "count sheet typed once vs D46": an input may take its volume
+from its entry decision's turning counts. `VehicleInput.volumeFromCounts` is opt-in, so D46 and
+every existing file are untouched. `src/project/counted_volumes.cpp` holds the one rule:
+`countedDecision` (the decision named, or the placed one on the entry Link), `countedVolumes`
+(summed base-route counts × 3600 / length per decision interval) and `syncCountedVolumes`, called
+on read, in `putInput`/`putRoutingDecision`, in `History::execute` and at the top of
+`withRoutingDecisions`, so no path sees a stale volume. The input's intervals are not written for
+such an input. Issues `INPUT_COUNTS_NO_DECISION`, `INPUT_COUNTS_EMPTY` and
+`INPUT_COUNTS_POSITIONED` (a D119 decision is a downstream split, not a source). The input dialog
+gains the checkbox, which locks the typed volume, counts and Periods and shows the counted total;
+the input and decision rows say which feeds which. `field<bool>` now refuses a non-boolean.
+
+Evidence (Linux, GCC, Qt 6.4.2 offscreen, Debug): `demandcounts` 8/8 (VC1–VC7, each movement's
+vehicles equal its counts for unplaced and placed decisions), `counted-volume-ui` (VC8), and the
+D46 test unchanged. CLI `42 --project` output for the four shipped projects equals `origin/main`'s
+(`c7628e8`, built in a scratch worktree) byte for byte. Native Windows CI and the owner look are owed.
+
+---
+
 ## 2026-10-09 — M5.6: the editor's Run seeds, Copy and Export (D141)
 
 The editor now runs the CLI's batch. **Run seeds** parses the *Seeds* field with `parseSeedList`
@@ -452,22 +473,6 @@ See [contract](reference/DISCHARGE.md) and [evidence](evidence/discharge-control
 Validation: 15 focused GCC/Linux tests pass, including the existing trajectory
 comparison. CLI integration and repository guards are recorded in the evidence.
 Native/desktop Linux/Windows CI remains independent; no owner/calibration gate closes.
-
----
-
-## 2026-10-06 — Queue discharge and startup measurement (D121)
-
-M3.3.1a adds a stdlib-only observer, pure rank estimator and CLI `--discharge` JSON.
-Lane/cycle records retain type identity and queued-at-Go membership; tracked sink
-arrivals are counted. Windows, ranks, timestep, signed startup estimates and
-unavailable reasons are explicit. StopLine output and engine code are unchanged.
-BA03 class filters and BA05 complete remap/source support remain M3.3.1b; neither
-measurement nor owner/calibration gates close. See [contract](reference/DISCHARGE.md)
-and [local test evidence](evidence/discharge-measurement.md).
-
-Validation: 10 GCC/Linux tests pass; direct full CLI link and seeded JSON parity;
-documentation, architecture and file-size guards. CMake/Ninja/Qt are absent; native/desktop
-CTest must run in CI. No frozen baseline was regenerated.
 
 ---
 

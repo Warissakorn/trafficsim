@@ -85,6 +85,11 @@ stacked PRs in dependency order (#106, #107, then time/type), retarget after eac
 exercise catalog periods and type overrides in the owner's desktop. No automatic merge or
 whole-Demand completion claim. Additional distributions, exact-count or dynamic-routing work
 needs its own contract; reporting remains M5.
+- *Volume from turning counts (D142, 2026-10-09):* the owner answered O10's count-sheet item, and
+  an input can now take its volume from its entry decision's counts (schema 26,
+  [DEMAND_IMPROVEMENT](plans/DEMAND_IMPROVEMENT.md) §7, rows VC1–VC8). *Owner look (Windows):*
+  type a 15-minute turning count sheet into a decision, tick the input's checkbox, check the total
+  and the table rows, edit a count and Undo, save and reopen, then run. It suits M5.7's count entry.
 
 ## 0 — The owner decides the order (roadmap review, 2026-10-03)
 
@@ -262,8 +267,6 @@ Pick one per session, as the user asks. Rows and contract come first for engine 
   Preserve the buffer, D50 setback, maximum deceleration and genuine emergency reporting.
   Post-entry lane changes can introduce a new leader; the source guard does not cover that.
   Do not claim clamp-free or close M0/M3 owner observations.
-- **Volumes from turning counts.** Derive an input's interval volumes from its entry decision's
-  turning counts, so a count sheet is typed once. Today both are entered separately.
 - **Per-lane shares (D32; one weight per entry-Link lane since D71).** No canvas gesture sets one.
   The input table row shows set weights since 2026-10-03 (`laneSplit`).
 - **Keyboard-only equivalents** of the route and vehicle-input gestures (M1.25/M1.26).

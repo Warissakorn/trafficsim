@@ -7,7 +7,8 @@ This work extends M2 without reopening or claiming its observed gate.
 ## Contract for the first slice
 
 1. Vehicle input volume is authoritative. Turning counts are relative weights,
-   not a second source of vehicles. Composition and lane/route expansion conserve
+   not a second source of vehicles — unless the input sets `volumeFromCounts`
+   (D142, §7 below), when the counts are its volume and nothing else is. Composition and lane/route expansion conserve
    that volume, subject to the existing reachability gates.
 2. Time intervals are half-open, sorted and non-overlapping. Gaps and unequal
    lengths are valid. Input gaps produce no demand. Turning gaps and all-zero
@@ -79,3 +80,37 @@ correctness, compiled conservation and Qt editing. Frozen reference fixtures are
 not regenerated. Linux automated desktop checks use Qt's offscreen platform.
 Windows native CI and the owner's desktop appearance review remain distinct gates.
 No benchmark/calibration, LOS or Vissim-equivalence claim is added by this work.
+
+## 7. Volume from turning counts (D142, schema 26)
+
+The owner ruled on ROADMAP O10's "count sheet typed once vs D46" (2026-10-09): an input may take
+its volume from its entry decision's turning counts. D46 still holds for every other input.
+
+- `VehicleInput.volumeFromCounts` (JSON `"volumeFromCounts": true`, written only when set; the
+  file is then schema 26). The entry decision is the one the input names, or the placed decision
+  on the Link it enters by (`countedDecision`).
+- Per decision interval, volume = sum of the base routes' counts × 3600 / interval length
+  (`countedVolumes`). Outside the decision's intervals no vehicles enter. Type rules change how a
+  type divides, never the total. Splitting that volume by the same counts sends each movement
+  exactly the vehicles counted on it.
+- One truth: the input's `intervals` are not written for such an input; the scalars written are
+  the derived copy. `syncCountedVolumes` recomputes them on every read, in `putInput` and
+  `putRoutingDecision`, in every History command and in `withRoutingDecisions`, so editing the
+  counts moves the volume in the same Undo step.
+- Refused: `INPUT_COUNTS_NO_DECISION` (no entry decision), `INPUT_COUNTS_EMPTY` (no interval
+  counts a vehicle), `INPUT_COUNTS_POSITIONED` (a D119 decision part way along a Link says how
+  traffic divides there, not how much enters). A schema-25 file carrying the key is refused.
+- Editor: the input dialog's *Volume from the decision's turning counts* is offered only with a
+  usable decision; checked, the typed volume, counts and Periods are locked and the counted total
+  is shown. The input row says "volume from counts"; the decision row "volume of N input(s)".
+
+| Row | Check | Test |
+|---|---|---|
+| VC1 | Volume per interval = summed counts × 3600 / length | `demandcounts.the_volume_is_the_counts_summed_per_interval` |
+| VC2 | Each movement receives exactly its counted vehicles, unplaced and placed entry decisions | `demandcounts.each_movement_gets_exactly_what_was_counted`, `…a_placed_entry_decision_sends_its_counts` |
+| VC3 | Editing the counts moves the volume; one Undo restores both | `demandcounts.editing_the_counts_moves_the_volume_in_one_undo_step` |
+| VC4 | Off, D46 holds and files keep their schema and bytes; CLI output of the four shipped projects unchanged | `demandcounts.off_the_input_volume_stays_the_authority`, the D46 test, CLI `cmp` (PROGRESS 2026-10-09) |
+| VC5 | Schema 26 round trip, no `intervals` written, older or newer schema refused, non-boolean refused | `demandcounts.schema_26_round_trips_and_older_files_refuse_the_key` |
+| VC6 | No decision, no counts, positioned decision: named issues | `demandcounts.inputs_without_usable_counts_are_named` |
+| VC7 | Type rules leave the total alone | `demandcounts.type_rules_change_the_split_not_the_total` |
+| VC8 | Dialog offers, locks and shows the total; table rows say so; save/reopen | `counted-volume-ui` |
