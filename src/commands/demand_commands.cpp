@@ -120,6 +120,10 @@ void deleteSignalController(ProjectDocument& d, const std::string& id) {
 void changeRunSettings(ProjectDocument& d, double duration, double timeStep) {
     auto& def=demand(d); def.duration=duration; def.timeStep=timeStep;
 }
+void changeEvaluationPeriod(ProjectDocument& d, double warmup, std::optional<double> end) {
+    auto& def=demand(d);
+    if (warmup==0 && !end) def.evaluation.reset(); else def.evaluation=EvaluationPeriod{warmup,end};
+}
 std::string putSignalHead(ProjectDocument& d, NetworkSignalHead value) {
     if (value.id.empty()) value.id=allocateId(d,"head");
     const auto id=value.id; put(d.network.signalHeads,std::move(value)); return id;

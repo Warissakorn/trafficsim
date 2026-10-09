@@ -97,7 +97,7 @@ assertions and platform in evidence when the corresponding slice lands.
 | BA26 | Trait hash: copied state, replayed run, two compilers, mixed scenario | Bit-identical traits; in a mixed scenario the `randomState` draw sequence is unchanged; a prototype-only scenario is byte-identical to the build without W74 |
 | BA27 | Queue discharge fixture at dt 0.1/0.25/0.5 via `--discharge` | Sensitivity recorded with seeds 42–81; no claimed bound, no calibration inference |
 | BA28 | Forced red, conflict hold, dead end, Stop and source D108 with a `w74` behaviour; vehicle braking to rest in the following band before a Stop line; courtesy/cooperative second obstacle winning and tying | Hard cap, counted clamps, Stop service and first-step rule unchanged; the standstill `s = +1` rule brings it within `stopLineReach` and the Stop is served; stored regime is the kept result's, the vehicle ahead on a tie; every `Leader` carries its acceleration (0 when static) |
-| BA29 | Missing/extra/out-of-range keys, prototype keys on `w74`, `w74` in schema 21, unused invalid behaviour | Atomic rejection with path; schema 22 only when used; older bytes preserved |
+| BA29 | Missing/extra/out-of-range keys, prototype keys on `w74`, `w74` in schema 21, unused invalid behaviour | Atomic rejection with path; schema 23 only when used (22 is M5.3's evaluation period, D132); older bytes preserved |
 
 Future W74/W99 rows must force each transition/limit, mixed-model following,
 profile/model boundary state transfer, distribution sampling and physical safety.

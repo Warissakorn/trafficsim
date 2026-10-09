@@ -26,11 +26,15 @@ void EditorWindow::editRunSettings() {
     form->setHorizontalSpacing(editorDesign::space2);form->setVerticalSpacing(editorDesign::space1);
     auto* duration=number(dialog,0.001,10000000,def.duration,"editorDuration");
     auto* dt=number(dialog,0.001,0.5,def.timeStep,"editorTimeStep");
-    form->addRow(text("editorDuration"),duration);form->addRow(text("editorTimeStep"),dt);
+    // M5.3: the warm-up before results are counted; 0 with no end clears the period.
+    const auto period=def.evaluation.value_or(EvaluationPeriod{});
+    auto* warmup=number(dialog,0,10000000,period.warmup,"editorWarmup");
+    form->addRow(text("editorDuration"),duration);form->addRow(text("editorTimeStep"),dt);form->addRow(text("editorWarmup"),warmup);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
-    if(dialog.exec()==QDialog::Accepted)execute("editorRunSettings",[&](auto& d){changeRunSettings(d,duration->value(),dt->value());});
+    if(dialog.exec()==QDialog::Accepted)execute("editorRunSettings",[&](auto& d){
+        changeRunSettings(d,duration->value(),dt->value());changeEvaluationPeriod(d,warmup->value(),period.end);});
 }
 void EditorWindow::editProgram(const std::string& id) {
     SignalProgram value{id,0,{{30,SignalColor::red},{30,SignalColor::green},{3,SignalColor::amber}}};

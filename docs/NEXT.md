@@ -14,11 +14,13 @@ O8 (warm-up default 900 s) and O9 (c) (D130). **This queue now comes before ever
 below.** Work [M5_PLAN](plans/M5_PLAN.md) §2 in order, one slice per session:
 **M5.2** batch runner and `--seeds` → M5.3 evaluation period → M5.4 travel-time sections →
 M5.5 LOS pack as data → M5.6 editor Run N seeds, Copy and Export → M5.7 owner rehearsal.
-**M5.2 is implemented (D131, [BATCH](reference/BATCH.md)); confirm its native Linux/Windows CI.**
-Next is **M5.3**: `evaluation.warmup` (default 900 s) and `evaluation.end` in the project file,
-the movement observer ignoring trips that entered before warm-up, unfinished trips counted per
-movement, an inspector edit with Undo and en/th strings. Warm-up 0 must reproduce today's numbers
-byte for byte; W74 takes the following schema number. Then M5.4 onward as listed. W74 (below) is parked, not cancelled; owner
+**M5.2 (D131, [BATCH](reference/BATCH.md)) passed native Linux/Windows CI. M5.3 (D132) is
+implemented: schema-22 evaluation period, unfinished trips, Run settings warm-up; confirm its CI.**
+Next is **M5.4**, travel-time (delay) sections: write the contract and acceptance rows in
+`docs/reference/` first (a section is a start and end line on Links/Connectors; delay = section
+travel time − free-flow time at desired speed), with analytic fixtures (a lone vehicle; one
+vehicle held by a red of known length) before any code. Placement reuses the queue-counter
+gesture; it will need schema 23, so W74 moves to 24 when it resumes. Then M5.5 onward. W74 (below) is parked, not cancelled; owner
 looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
 
 ## Driving behaviour improvement — owner instruction, 2026-10-06
@@ -64,7 +66,7 @@ with replacement, switch to Thai, save and reopen, then run.
 The **M3.3.3a W74 contract** is written (D129, [W74](reference/W74.md)); nothing runs yet.
 **Parked behind M5 (D130).** When resumed, implement it rows-first: BA21–BA22 as pure-function tests of a new
 `w74Acceleration` in `src/core/` (hand-computed values, every equality side), then the
-schema-22 codec and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
+schema-23 codec (22 went to M5.3, D132) and BA29, traits/state and BA24–BA26, composition BA28, and record BA27's
 timestep sensitivity. Keep prototype runs byte-identical (BA18); do not ship a preset
 in the same slice. The owner may want to read §5 (traits) and §7 (sign hysteresis) before
 code. PCU/calibration gates remain open.

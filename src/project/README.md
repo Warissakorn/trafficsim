@@ -1,6 +1,8 @@
-Qt-free M0 loading/output and schema-21 authoring ProjectDocument codec (reads schemas 1–21). The document persists authoring data and optional background; no compiled runtime network is saved. Empty draft networks are valid. Commands depend on this module, never the reverse. The shell owns QSaveFile atomic replacement.
+Qt-free M0 loading/output and schema-22 authoring ProjectDocument codec (reads schemas 1–22). The document persists authoring data and optional background; no compiled runtime network is saved. Empty draft networks are valid. Commands depend on this module, never the reverse. The shell owns QSaveFile atomic replacement.
 
 `input_manifest` optionally records hashes of exact parsed project/catalog/evaluation bytes for CLI discharge studies. Collection is passed explicitly through compilation; loaders keep their legacy path when absent. `input_sha256` has no external dependency. See [measurement/provenance contract](../../docs/reference/DISCHARGE.md).
+
+`evaluation_period` reads, writes and validates the M5.3 evaluation period (schema 22) and builds `newProjectDocument`.
 
 `batch_output` formats M5.2 batch reports as JSON and CSV, with the cell formats it shares with `movementCsv` in `csv_format.hpp`. `parseSeedList` (in `load`) reads `--seeds` lists. See [BATCH](../../docs/reference/BATCH.md).
 

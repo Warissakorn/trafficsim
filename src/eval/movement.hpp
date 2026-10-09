@@ -21,10 +21,14 @@ struct EvaluationSpec {
     std::map<std::string, std::size_t> movementOfRoute; // runtime route id -> movement
     std::vector<QueueCounter> counters;
     QueueDefinition queue;
+    // M5.3 (D132): rows count trips that END in [warmup, end] and queues average its ticks; no end
+    // is the end of the run. Run totals in the report stay whole-run.
+    double warmup{}; std::optional<double> end;
 };
 struct MovementRow {
     std::string name; std::uint64_t vehicles{};
     std::optional<double> meanDelay, meanTravelTime;
+    std::uint64_t unfinished{}; // M5.3: active or pending on this movement when the report is taken
     bool operator==(const MovementRow&) const = default;
 };
 struct QueueRow {
@@ -39,6 +43,7 @@ struct MovementReport {
     std::size_t pending{}, active{};
     double time{};
     std::uint64_t laneChanges{}; // M3.2.8b
+    double warmup{}, evaluationEnd{}; // M5.3: the period the rows and queues describe
     bool operator==(const MovementReport&) const = default;
 };
 // Delay a completed trip contributes: the same term as the run summary, so movements add up.

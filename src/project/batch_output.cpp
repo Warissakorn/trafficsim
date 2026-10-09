@@ -32,12 +32,18 @@ Json batchJson(const BatchReport& r, const std::vector<SeedRun>& runs) {
     j["movements"] = Json::array();
     for (const auto& m : r.movements)
         j["movements"].push_back({{"movement", m.name}, {"vehicles", estimateJson(m.vehicles)},
-                                  {"meanDelay", estimateJson(m.meanDelay)}, {"meanTravelTime", estimateJson(m.meanTravelTime)}});
+                                  {"meanDelay", estimateJson(m.meanDelay)}, {"meanTravelTime", estimateJson(m.meanTravelTime)},
+                                  {"unfinished", estimateJson(m.unfinished)}});
     j["queues"] = Json::array();
     for (const auto& q : r.queues)
         j["queues"].push_back({{"approach", q.name}, {"meanLength", estimateJson(q.meanLength)}, {"maxLength", estimateJson(q.maxLength)}});
     j["meanDelay"] = estimateJson(r.meanDelay); j["completed"] = estimateJson(r.completed);
     j["pending"] = estimateJson(r.pending); j["safetyClamps"] = estimateJson(r.safetyClamps);
+    j["movementsWithUnfinished"] = movementsWithUnfinished(r);
+    if (!runs.empty()) {
+        const auto& first = runs.front().report;
+        j["evaluationPeriod"] = {{"warmup", first.warmup}, {"end", first.evaluationEnd}};
+    }
     j["perSeed"] = Json::array();
     for (const auto& run : bySeed(runs))
         j["perSeed"].push_back({{"seed", run.seed}, {"generated", run.generated}, {"completed", run.report.completed},
@@ -52,11 +58,21 @@ std::string batchCsv(const BatchReport& r, const std::vector<SeedRun>& runs) {
     if (!r.overloadedSeeds.empty())
         out << "# WARNING: overloaded seeds (pending over 5% of generated) are included in the means: "
             << seedList(r.overloadedSeeds) << '\n';
-    out << "movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s\n";
+    const auto stuck = movementsWithUnfinished(r);
+    if (!stuck.empty()) {
+        out << "# WARNING: unfinished trips over 5% of the movement; its delay reads low:";
+        for (const auto& name : stuck) out << ' ' << csvQuoted(name);
+        out << '\n';
+    }
+    if (!runs.empty())
+        out << "# Evaluation period: " << csvNumber(runs.front().report.warmup) << " s to "
+            << csvNumber(runs.front().report.evaluationEnd) << " s\n";
+    out << "movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean\n";
     for (const auto& m : r.movements)
         out << csvQuoted(m.name) << ',' << m.meanDelay.n << ',' << csvNumber(m.meanDelay.mean) << ','
             << csvNumber(m.meanDelay.halfWidth95) << ',' << csvNumber(m.meanDelay.sd) << ','
-            << csvNumber(m.vehicles.mean) << ',' << csvNumber(m.meanTravelTime.mean) << '\n';
+            << csvNumber(m.vehicles.mean) << ',' << csvNumber(m.meanTravelTime.mean) << ','
+            << csvNumber(m.unfinished.mean) << '\n';
     out << "\napproach,n,meanQueue_m,ci95_m,maxQueue_m,maxQueue_ci95_m\n";
     for (const auto& q : r.queues)
         out << csvQuoted(q.name) << ',' << q.meanLength.n << ',' << csvNumber(q.meanLength.mean) << ','

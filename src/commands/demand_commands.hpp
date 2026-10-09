@@ -16,6 +16,8 @@ void deleteProgram(ProjectDocument&, const std::string&); // Reject referenced p
 std::string putSignalController(ProjectDocument&, SignalController);
 void deleteSignalController(ProjectDocument&, const std::string&);
 void changeRunSettings(ProjectDocument&, double duration, double timeStep);
+// M5.3. Warm-up 0 with no end clears the period, so a file that never used one keeps its schema.
+void changeEvaluationPeriod(ProjectDocument&, double warmup, std::optional<double> end);
 std::string putSignalHead(ProjectDocument&, NetworkSignalHead);
 void deleteSignalHead(ProjectDocument&, const std::string&);
 // Slides a head -- its stop line -- along the lane or path it stands on. The station is

@@ -8,6 +8,28 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M5.3 evaluation period and unfinished trips (D132)
+
+Projects can now say which part of the run the results describe: `definition.evaluation
+{warmup, end?}`, schema 22 only when set. Movement rows count trips that end in the period and
+queues average its ticks; run totals stay whole-run so every vehicle is still accounted for.
+Each movement reports `unfinished` (active or pending on its routes), and batches warn when a
+movement's unfinished share passes 5 %. Owner's choices: no key means warm-up 0 (old results
+unchanged), and new editor projects start with 900 s warm-up over 4500 s. Run settings gains a
+Warm-up field, applied with duration and time step in one History step. Making the new window's
+document carry a definition exposed that a demand-less definition took the runtime Problems
+path and lost the drawing's topology rows (`tables-ui`); `runDiagnostics`/`documentDiagnostics`
+now treat a definition holding only run settings (`onlyRunSettings`) as a drawing, with `EDIT_NO_INPUTS`.
+`connector-ui` now checks its intent (lane widths keep the file's schema) instead of the literal
+17, and the behaviour-library "future schema" pin moved from 22 to 23. W74's planned schema is 23.
+Tests first: group `evaluationperiod` (9 cases; both equality sides of the window, a red wholly
+inside the warm-up, unfinished = active + pending, schema-22 refusal below 22) and a Run settings
+UI check in `signal-ui`. Linux GCC 13.3: headless 69/69 and, with Qt 6.4.2 installed locally,
+desktop 100/100 offscreen. Single-run JSON for the four projects keeps every number; the CSV
+gains only the `unfinished` column and the period line. Windows evidence is CI's. The oldest live PROGRESS entry moved whole to the archive.
+
+---
+
 ## 2026-10-09 — M5.2 multi-seed batches and `--seeds` (D131)
 
 `src/runner/` now holds the first M5 product code: `runSeed`/`runSeeds` run one compiled project
@@ -441,27 +463,6 @@ Existing evidence and frozen fixtures are retained. Decision-ID navigation is wr
 for source readability without changing any link or decision row.
 Validation: documentation guard, file-size guard, retained source-spec hashes,
 Git ignore checks for generated output versus evidence and `git diff --check`.
-
----
-
-## 2026-10-05 — Documentation folders and indexed decision record
-
-Second part of the owner's authorized documentation plan. Current references/contracts,
-milestone plans/gates and dated audits now have separate indexed folders. The complete
-decision rows move once into decisions/RECORD with stable D-number anchors; PROGRESS's
-Decisions heading remains a compatibility pointer. Historical backlog/questions remain
-marked as dated context, not another live queue. Relative links and source-comment doc
-pointers follow the moves; supplied spec parts, evidence data and frozen tests stay intact.
-ROADMAP keeps its consolidated dated review, respecting the prior owner's instruction.
-NEXT's Demand priority, owner checks and work ordering are unchanged.
-Validation: Markdown links/anchors and index coverage, three retained source-spec hashes,
-decision/session retention, unchanged fixtures/data, file-size guard and diff whitespace.
-No local CTest claim; CMake/CTest are unavailable. Native CI and owner observations remain
-separate, and no milestone is closed by this maintenance.
-The Qt-free C++ documentation guard is included in `check`/CTest on Linux and Windows.
-Its positive/negative fixtures cover broken paths, stale/duplicate/explicit anchors,
-encoded fragments, fenced examples and missing index entries; GCC compilation and
-direct guard/self-test execution pass locally.
 
 ---
 

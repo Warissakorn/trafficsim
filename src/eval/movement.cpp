@@ -52,10 +52,13 @@ void MovementAccumulator::observe(const SimState& state) {
     bind(state);
     const auto& s = *state.scenario;
     std::map<std::string, std::size_t> slotOfRoute;
+    // Tick times are sums of the time step, so a bound matches within a nanosecond either way.
+    constexpr double slack = 1e-9;
+    const auto inPeriod = [&](double time) { return time >= spec_.warmup - slack && (!spec_.end || time <= *spec_.end + slack); };
     for (const auto& event : state.events) {
         summary_.add(event);
         const auto* arrived = std::get_if<ArrivedEvent>(&event);
-        if (!arrived) continue;
+        if (!arrived || !inPeriod(arrived->time)) continue;
         if (slotOfRoute.empty())
             for (std::size_t r = 0; r < s.routes.size(); ++r) slotOfRoute[s.routes[r].id] = r;
         const auto slot = slotOfRoute.find(arrived->routeId);
@@ -85,6 +88,8 @@ void MovementAccumulator::observe(const SimState& state) {
     // The engine keeps its fleet in id order; a hand-built state need not.
     if (!std::is_sorted(queued.begin(), queued.end(), byId)) std::sort(queued.begin(), queued.end(), byId);
     queued_ = std::move(queued);
+    // Hysteresis above runs every tick so the queued state is right when the period opens.
+    if (!inPeriod(state.time)) return;
     // Per line, the vehicles whose route crosses it; an approach is the max over its lines.
     std::vector<double> length(spec_.counters.size());
     // A front already past the line never enters the walk, and with no queued vehicle the walk
@@ -117,6 +122,14 @@ MovementReport MovementAccumulator::report(const SimState& end) const {
         }
         r.movements.push_back(row);
     }
+    // Unfinished trips by the movement their route belongs to: in the network or still at a source.
+    const auto unfinished = [&](std::uint32_t routeIndex) {
+        if (routeIndex < movementOfSlot_.size() && movementOfSlot_[routeIndex] != npos) ++r.movements[movementOfSlot_[routeIndex]].unfinished;
+    };
+    for (const auto& v : end.vehicles) unfinished(v.routeIndex);
+    for (const auto& input : end.inputs) for (const auto& v : input.queue) unfinished(v.routeIndex);
+    r.warmup = spec_.warmup;
+    r.evaluationEnd = spec_.end.value_or(end.scenario ? end.scenario->duration : end.time);
     for (std::size_t c = 0; c < spec_.counters.size(); ++c)
         r.queues.push_back({spec_.counters[c].name,
                             observed_ ? queueSum_[c] / static_cast<double>(observed_) : 0.0, queueMax_[c]});

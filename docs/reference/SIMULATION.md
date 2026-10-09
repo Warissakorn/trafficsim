@@ -459,11 +459,19 @@ after `createSimulation` and once after every `stepSimulation`). `core/` does no
     Vissim's defaults of 5, 10 and 20.
 - **Unserved demand:** vehicles still in the network (`active`), vehicles waiting to enter
   (`pending`) and safety clamps are reported beside every table. Incomplete trips are not in any
-  delay.
+  delay; since M5.3 each movement row also counts its own `unfinished` (active or pending on
+  its routes when the run ends).
+- **Evaluation period (M5.3, D132):** `definition.evaluation {warmup, end?}` (schema 22). Movement
+  rows count trips that **end** in `[warmup, end]`, and queue mean/max use only ticks in it (queue
+  hysteresis still runs every tick). No `end` is the end of the run; no period is warm-up 0, the
+  whole run, exactly as before. Run totals (`completed`, `pending`, `active`, `safetyClamps`,
+  network `meanDelay`) stay whole-run so the vehicle accounting closes. A new editor project
+  starts with warm-up 900 s and duration 4500 s; the period must lie inside the run
+  (`EVALUATION_PERIOD_INVALID`). JSON carries `evaluationPeriod`, the CSV an `evaluationPeriod_s` line.
 
 The editor shows this in the **Results** tab, and `trafficsim-cli --project FILE [--csv FILE]`
-prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds,
-confidence intervals and LOS letters are M5.
+prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds
+and confidence intervals are M5.2 ([BATCH](BATCH.md)); LOS letters are M5.5.
 
 Catalog content lives under `data/vehicle-types`, `data/driver-behaviour` and
 `data/scenarios`. The compiled boundary allows editor/project work without importing its

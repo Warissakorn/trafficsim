@@ -175,6 +175,22 @@ int main(int argc,char** argv) {
         // And the run compiles every head against its group's program, with nothing to fix first.
         const auto snapshot=compileDocument(w.history().document(),argv[1]);
         require(snapshot.scenario.signalHeads[2].programId==controllerId+"#2","A head does not run against its group");
+        // M5.3: the Run settings dialog edits the warm-up with duration and time step, in one step.
+        const auto duration=w.history().document().definition->duration;
+        require(!w.history().document().definition->evaluation,"A fixture without a period gained one");
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            require(dialog && dialog->objectName()=="editorSettingsDialog","Run settings did not open");
+            auto* warmup=dialog->findChild<QDoubleSpinBox*>("editorWarmup");
+            require(warmup && warmup->value()==0,"Warm-up field missing or not 0 without a period");
+            warmup->setValue(duration/2);dialog->accept();
+        });
+        w.findChild<QAction*>("editorRunSettings")->trigger();QApplication::processEvents();
+        const auto& period=w.history().document().definition->evaluation;
+        require(period && std::abs(period->warmup-duration/2)<1e-9 && !period->end,"Warm-up did not reach the document");
+        require(documentJson(w.history().document())["schemaVersion"]==22,"A period did not write schema 22");
+        w.findChild<QAction*>("editorUndo")->trigger();QApplication::processEvents();
+        require(!w.history().document().definition->evaluation,"Undo did not remove the period");
         std::cout<<"Signal UI tests passed\n";
         return 0;
     } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

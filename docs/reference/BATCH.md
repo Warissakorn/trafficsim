@@ -53,12 +53,20 @@ JSON on stdout: `validated: false`, `measure`, `seeds`, `overloadedSeeds`, per-m
 `perSeed` array, and provenance: `engineVersion`, `buildCommit` (`git rev-parse` at build time,
 `-dirty` with local changes, `unknown` without Git) and `compiler`.
 
-`--csv F` (never overwrites) writes the marker line, the warning line if any, then three blocks:
-`movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s`;
+`--csv F` (never overwrites) writes the marker line, the warning lines if any, a
+`# Evaluation period: W s to E s` line, then three blocks:
+`movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean`;
 `approach,n,meanQueue_m,ci95_m,maxQueue_m,maxQueue_ci95_m`; and
 `seed,generated,completed,active,pending,safetyClamps,overloaded,meanDelay_s`. Cells use the
 single-run CSV's formats (`csv_format.hpp`): quoted names, C-locale numbers with two decimals,
 an empty cell for no value.
 
 `--seeds` cannot be combined with a single seed, `--discharge` or the single-run diagnostic flags.
-There is no warm-up yet; every trip completed in the run counts (M5.3 adds the period).
+## 5. Evaluation period and unfinished trips (M5.3, D132)
+
+Every seed uses the project's evaluation period ([SIMULATION](SIMULATION.md#movement-evaluation-m25)):
+rows count trips that end inside it and queues average its ticks; run totals stay whole-run.
+Each movement also reports `unfinished` (active or pending on its routes at the end) as an
+Estimate. A movement whose mean unfinished exceeds 5 % of mean (completed + unfinished) is named
+in `movementsWithUnfinished` and in a `# WARNING` CSV line: its completed-trip delay reads low,
+because the stuck vehicles never arrive.

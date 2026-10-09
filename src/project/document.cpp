@@ -1,6 +1,7 @@
 #include "document.hpp"
 #include "demand_time_types.hpp"
 #include "behaviour_library.hpp"
+#include "evaluation_period.hpp"
 #include "../core/validate.hpp"
 #include "../model/network/diagnostics.hpp"
 #include <nlohmann/json.hpp>
@@ -104,10 +105,13 @@ Json documentJson(const ProjectDocument& d) {
     const bool positioned=d.definition && std::any_of(d.definition->routingDecisions.begin(),d.definition->routingDecisions.end(),[](const auto& x){return x.position.has_value();});
     // M3.3.2a: 21 only when the behaviour library or a road assignment is used (D126).
     const bool library=usesBehaviourLibrary(d);
-    const int schema=library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    // M5.3: 22 only when an evaluation period is set (D132).
+    const bool period=d.definition && d.definition->evaluation;
+    const int schema=period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     Json definition = d.definition ? definitionJson(*d.definition) : Json(nullptr);
     if (library && d.definition) addBehaviourLibraryJson(*d.definition, definition);
+    if (d.definition) addEvaluationPeriodJson(*d.definition, definition);
     return {{"format", "TrafficSim"}, {"schemaVersion", schema}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", definition}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
             {"metresPerPixel", b.metresPerPixel}, {"rotation", b.rotation}, {"opacity", b.opacity}}}};
@@ -124,6 +128,7 @@ void validateDocument(const ProjectDocument& d) {
         b.opacity < 0 || b.opacity > 1 || b.pngBase64->size() > 32 * 1024 * 1024)
         throw std::invalid_argument("EDIT_BACKGROUND_INVALID");
     validateAuthoredDemand(d);
+    if (d.definition) validateEvaluationPeriod(*d.definition);
     if (auto issues = behaviourLibraryIssues(d); !issues.empty()) throw ValidationError(std::move(issues));
 }
 ProjectDocument parseDocument(const Json& j) {
@@ -132,7 +137,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 21) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 22) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -153,10 +158,12 @@ ProjectDocument parseDocument(const Json& j) {
             if(x.contains("position"))throw std::invalid_argument("UNSUPPORTED_FIELD: routingDecision.position");
     const int version = j.contains("schemaVersion") ? j.at("schemaVersion").get<int>() : 0;
     if (version < 21) rejectBehaviourLibraryBefore21(j);
+    if (version < 22) rejectEvaluationPeriodBefore22(j);
     d.network = parseNetwork(j.at("network"), version);
     if (present(j, "definition")) {
         d.definition = parseAuthoringDefinition(j.at("definition"));
         if (version >= 21) parseBehaviourLibrary(j.at("definition"), *d.definition);
+        if (version >= 22) d.definition->evaluation = parseEvaluationPeriod(j.at("definition"));
         // Schema 7 and earlier stored a route as lanes and Connector paths. Schema 8 stores the
         // Links and Connectors those belong to, so that narrowing a Connector cannot invalidate
         // a route. The mapping is idempotent, which is what lets it run on every read.

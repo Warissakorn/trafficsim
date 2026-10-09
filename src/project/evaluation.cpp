@@ -49,6 +49,10 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
                               const std::filesystem::path& dataDirectory,InputManifest* manifest) {
     EvaluationSpec spec;
     spec.queue = loadQueueDefinition(dataDirectory,manifest);
+    if (document.definition && document.definition->evaluation) {
+        spec.warmup = document.definition->evaluation->warmup;
+        spec.end = document.definition->evaluation->end; // none: the end of the run, unbounded
+    }
     std::map<std::string, std::size_t> movementOfAuthored;
     if (document.definition) {
         std::map<std::pair<std::string, std::string>, std::size_t> movementOfPair;
@@ -139,13 +143,15 @@ Json movementJson(const MovementReport& r) {
     for (const auto& m : r.movements)
         j["movements"].push_back({{"movement", m.name}, {"vehicles", m.vehicles},
                                   {"meanDelay", m.meanDelay ? Json(*m.meanDelay) : Json(nullptr)},
-                                  {"meanTravelTime", m.meanTravelTime ? Json(*m.meanTravelTime) : Json(nullptr)}});
+                                  {"meanTravelTime", m.meanTravelTime ? Json(*m.meanTravelTime) : Json(nullptr)},
+                                  {"unfinished", m.unfinished}});
     j["queues"] = Json::array();
     for (const auto& q : r.queues)
         j["queues"].push_back({{"approach", q.name}, {"meanLength", q.meanLength}, {"maxLength", q.maxLength}});
     j["completed"] = r.completed; j["notInMovement"] = r.unassigned; j["meanDelay"] = r.meanDelay ? Json(*r.meanDelay) : Json(nullptr);
     j["pending"] = r.pending; j["active"] = r.active; j["safetyClamps"] = r.safetyClamps; j["time"] = r.time;
     j["laneChanges"] = r.laneChanges;
+    j["evaluationPeriod"] = {{"warmup", r.warmup}, {"end", r.evaluationEnd}}; // M5.3
     return j;
 }
 Json laneChangeJson(const LaneChangeReport& r) {
@@ -237,14 +243,15 @@ Json arrivalPhaseJson(const ArrivalPhaseReport& r) {
 std::string movementCsv(const MovementReport& r) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";
-    out << "movement,vehicles,meanDelay_s,meanTravelTime_s\n";
+    out << "movement,vehicles,meanDelay_s,meanTravelTime_s,unfinished\n";
     for (const auto& m : r.movements)
-        out << csvQuoted(m.name) << ',' << m.vehicles << ',' << csvNumber(m.meanDelay) << ',' << csvNumber(m.meanTravelTime) << '\n';
+        out << csvQuoted(m.name) << ',' << m.vehicles << ',' << csvNumber(m.meanDelay) << ',' << csvNumber(m.meanTravelTime) << ',' << m.unfinished << '\n';
     out << "\napproach,meanQueue_m,maxQueue_m\n";
     for (const auto& q : r.queues)
         out << csvQuoted(q.name) << ',' << csvNumber(q.meanLength) << ',' << csvNumber(q.maxLength) << '\n';
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
-        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges << '\n';
+        << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges
+        << "\nevaluationPeriod_s," << csvNumber(r.warmup) << ',' << csvNumber(r.evaluationEnd) << '\n';
     return out.str();
 }
 }

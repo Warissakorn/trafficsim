@@ -45,6 +45,14 @@ double tQuantile975(std::size_t df) {
     if (df < 120) return 2.000;
     return 1.980;
 }
+std::vector<std::string> movementsWithUnfinished(const BatchReport& r, double share) {
+    std::vector<std::string> names;
+    for (const auto& m : r.movements) {
+        const double unfinished = m.unfinished.mean.value_or(0), total = m.vehicles.mean.value_or(0) + unfinished;
+        if (unfinished > share * total) names.push_back(m.name);
+    }
+    return names;
+}
 SeedRun runSeed(const Scenario& scenario, const EvaluationSpec& spec, std::uint32_t seed, double maxPendingShare) {
     MovementAccumulator movements(spec);
     auto state = createSimulation(scenario, seed);
@@ -89,7 +97,8 @@ BatchReport aggregate(std::vector<SeedRun> runs) {
         r.movements.push_back({first.movements[i].name,
             over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).vehicles)); }),
             over(runs, [&](const SeedRun& s) { return row(s).meanDelay; }),
-            over(runs, [&](const SeedRun& s) { return row(s).meanTravelTime; })});
+            over(runs, [&](const SeedRun& s) { return row(s).meanTravelTime; }),
+            over(runs, [&](const SeedRun& s) { return std::optional<double>(static_cast<double>(row(s).unfinished)); })});
     }
     for (std::size_t i = 0; i < first.queues.size(); ++i)
         r.queues.push_back({first.queues[i].name,

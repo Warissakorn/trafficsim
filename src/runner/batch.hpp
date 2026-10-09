@@ -32,7 +32,7 @@ struct Estimate {
     bool operator==(const Estimate&) const = default;
 };
 struct BatchMovementRow {
-    std::string name; Estimate vehicles, meanDelay, meanTravelTime;
+    std::string name; Estimate vehicles, meanDelay, meanTravelTime, unfinished;
     bool operator==(const BatchMovementRow&) const = default;
 };
 struct BatchQueueRow {
@@ -52,4 +52,7 @@ BatchReport aggregate(std::vector<SeedRun> runs);
 // Two-sided 95 % Student t quantile. Tabulated for df 1-30, 40, 60 and 120; between rows the
 // lower df is used, which widens the interval rather than narrowing it.
 double tQuantile975(std::size_t degreesOfFreedom);
+// M5.3: movements whose mean unfinished trips exceed `share` of mean (completed + unfinished) --
+// completed-trip delay reads low there, because the stuck vehicles never arrive.
+std::vector<std::string> movementsWithUnfinished(const BatchReport&, double share = 0.05);
 }

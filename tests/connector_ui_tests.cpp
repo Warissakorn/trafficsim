@@ -135,7 +135,9 @@ int main(int argc,char** argv) {
             const auto saved=documentJson(w.history().document());
             w.saveFile(lanesFile);w.openFile(lanesFile);
             require(documentJson(w.history().document())==saved,"Lanes tab lost on save/reopen");
-            require(saved["schemaVersion"]==17,"Lanes tab did not write schema 17");
+            // Lane widths need no schema of their own: the file keeps the version it had (M5.3
+            // made a new window's document schema 22 for its evaluation period).
+            require(saved["schemaVersion"]==beforeLanes["schemaVersion"],"Lanes tab changed the schema");
             c->select(id);
             require(item<QLineEdit>(w,"editorConnectorWidths")->text().contains("4.75"),
                     "Lanes tab did not reload into the field");
