@@ -48,6 +48,12 @@ bool projectBoundary(const std::string& source) {
     }
     return true;
 }
+// The batch runner (M5.2) may read the core and eval contracts, which `check` would refuse as
+// cross-directory headers; replace exactly those includes so every other rule still applies.
+std::string runnerContract(std::string source) {
+    const std::regex allowed(R"(#include "\.\./(core|eval)/[a-z_]+\.hpp")");
+    return std::regex_replace(source, allowed, "#include <vector>");
+}
 }
 int main(int argc, char** argv) {
     if (argc != 2) return 2;
@@ -59,10 +65,15 @@ int main(int argc, char** argv) {
         for (const auto* bad : {"#include \"../commands/history.hpp\"", "#include <QFile>", "#include HEADER"})
             if (projectBoundary(bad)) return 1;
         if (!projectBoundary("#include \"../model/network/network.hpp\"\n#include <nlohmann/json.hpp>")) return 1;
+        // runner may see core and eval, never project/model/Qt or I/O.
+        for (const auto* bad : {"#include \"../project/load.hpp\"", "#include <QObject>", "#include <fstream>",
+                "#include \"../model/network/network.hpp\""})
+            if (check(runnerContract(bad), {})) { std::cerr << "Runner guard accepted: " << bad << '\n'; return 1; }
+        if (!check(runnerContract("#include \"../eval/movement.hpp\"\n#include \"../core/simulation.hpp\"\n"), {})) return 1;
         return check("#include <vector>\n#include <cmath>\n", {}) ? 0 : 1;
     }
     bool valid = true;
-    for (const auto* module : {"core", "eval"}) {
+    for (const auto* module : {"core", "eval", "runner"}) {
         const auto directory = std::filesystem::path(argv[1]) / "src" / module;
         for (const auto& entry : std::filesystem::directory_iterator(directory)) {
             if (entry.path().extension() != ".hpp" && entry.path().extension() != ".cpp") continue;
@@ -74,6 +85,7 @@ int main(int argc, char** argv) {
                 for (auto pos = source.find(allowed); pos != std::string::npos; pos = source.find(allowed))
                     source.replace(pos, allowed.size(), "#include <vector>");
             }
+            if (std::string(module) == "runner") source = runnerContract(source);
             if (!file || !check(source, directory)) { std::cerr << "Boundary violation: " << entry.path() << '\n'; valid = false; }
         }
     }

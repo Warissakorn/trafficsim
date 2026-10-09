@@ -14,9 +14,11 @@ O8 (warm-up default 900 s) and O9 (c) (D130). **This queue now comes before ever
 below.** Work [M5_PLAN](plans/M5_PLAN.md) §2 in order, one slice per session:
 **M5.2** batch runner and `--seeds` → M5.3 evaluation period → M5.4 travel-time sections →
 M5.5 LOS pack as data → M5.6 editor Run N seeds, Copy and Export → M5.7 owner rehearsal.
-Start M5.2 from `tools/run_simulation.cpp`'s project path, `compileDocument` and
-`evaluationSpec`; write `src/runner/`'s interface and the aggregate test first. A one-seed
-batch must equal today's `--project` bytes. W74 (below) is parked, not cancelled; owner
+**M5.2 is implemented (D131, [BATCH](reference/BATCH.md)); confirm its native Linux/Windows CI.**
+Next is **M5.3**: `evaluation.warmup` (default 900 s) and `evaluation.end` in the project file,
+the movement observer ignoring trips that entered before warm-up, unfinished trips counted per
+movement, an inspector edit with Undo and en/th strings. Warm-up 0 must reproduce today's numbers
+byte for byte; W74 takes the following schema number. Then M5.4 onward as listed. W74 (below) is parked, not cancelled; owner
 looks stay queued and block nothing. No LOS letter on whole-route delay; the marker stays.
 
 ## Driving behaviour improvement — owner instruction, 2026-10-06

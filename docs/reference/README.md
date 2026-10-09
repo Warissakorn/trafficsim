@@ -6,6 +6,7 @@ acceptance records live in [plans](../plans/README.md); milestone status lives i
 
 | Document | Scope |
 |---|---|
+| [BATCH.md](BATCH.md) | Multi-seed batches: runs, aggregate, 95 % CI, overloaded seeds and output (M5.2) |
 | [DISCHARGE.md](DISCHARGE.md) | Lane/cycle discharge and startup diagnostics, quantization and unavailable results |
 | [DRIVING_BEHAVIOUR.md](DRIVING_BEHAVIOUR.md) | Proposed class/road behavior assignment and target capability map |
 | [W74.md](W74.md) | W74 car-following equations, parameters, traits, state and model switch (contract, not yet implemented) |

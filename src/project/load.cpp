@@ -182,6 +182,31 @@ std::uint32_t parseSeed(const std::string& text) {
         throw std::invalid_argument("Seed must be an unsigned 32-bit integer (0..4294967295)");
     return seed;
 }
+std::vector<std::uint32_t> parseSeedList(const std::string& text) {
+    const auto fail = [&](const std::string& why) { return std::invalid_argument("Invalid seed list '" + text + "': " + why); };
+    constexpr std::size_t limit = 1000;
+    std::vector<std::uint32_t> seeds;
+    const auto one = [&](const std::string& item) {
+        try { return parseSeed(item); } catch (const std::invalid_argument&) { throw fail("'" + item + "' is not a seed (0..4294967295)"); }
+    };
+    std::size_t start = 0;
+    while (true) {
+        const auto comma = text.find(',', start);
+        const auto item = text.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+        const auto dash = item.find('-');
+        const auto first = one(dash == std::string::npos ? item : item.substr(0, dash));
+        const auto last = dash == std::string::npos ? first : one(item.substr(dash + 1));
+        if (last < first) throw fail("range " + item + " runs backwards");
+        if (last - first >= limit || seeds.size() + (last - first) >= limit) throw fail("more than 1000 seeds");
+        for (auto seed = first;; ++seed) { seeds.push_back(seed); if (seed == last) break; }
+        if (comma == std::string::npos) break;
+        start = comma + 1;
+    }
+    auto sorted = seeds;
+    std::sort(sorted.begin(), sorted.end());
+    if (std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end()) throw fail("a seed is repeated");
+    return seeds;
+}
 std::filesystem::path findDataDirectory(const std::filesystem::path& executable) {
     std::vector<std::filesystem::path> candidates;
     const auto add = [&](const std::filesystem::path& binary) {

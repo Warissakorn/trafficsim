@@ -8,6 +8,23 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M5.2 multi-seed batches and `--seeds` (D131)
+
+`src/runner/` now holds the first M5 product code: `runSeed`/`runSeeds` run one compiled project
+over independent seeds with the CLI's own loop, and `aggregate` reports n, mean, sample SD and the
+95 % half-width (tabulated Student t) per movement and approach, summing in seed order. The CLI
+takes `--project F --seeds 42-51 [--csv F]`; the JSON carries per-seed accounting and a
+build-time `buildCommit`. Seeds with over 5 % of generated vehicles still pending are flagged and
+kept in the means, by the owner's choice: dropping them would hide the worst seeds. Why the
+formatter sits in `src/project/` and why the t table only widens: D131. Tests were written first
+(group `batch`, 9 cases: hand statistics, permutation, one seed equal to the single run,
+generated = completed + active + pending, a saturated input flagged, seed-list parsing, marker).
+Linux GCC 13.3 headless Debug: 68/68 ctest, including `cli-batch`; single-run `--project` JSON
+for the four projects, the M0 run and the four-leg CSV are byte-identical to before. Ten seeds
+of the four-leg take ~10 s in Debug. No desktop or Windows claim; native CI is separate.
+
+---
+
 ## 2026-10-08 — M5 first: owner answers and the M5 slice plan (D130)
 
 The owner asked for a plan that makes the program usable for real work as fast as possible.
@@ -445,24 +462,6 @@ The Qt-free C++ documentation guard is included in `check`/CTest on Linux and Wi
 Its positive/negative fixtures cover broken paths, stale/duplicate/explicit anchors,
 encoded fragments, fenced examples and missing index entries; GCC compilation and
 direct guard/self-test execution pass locally.
-
----
-
-## 2026-10-05 — Shared AI instructions and documentation authority
-
-Owner authorized the documentation organization plan. AGENTS.md is the shared entry
-point; CLAUDE.md delegates to it. Standing rules and model invariants are retained,
-while detailed status is read from NEXT/ROADMAP. The documentation map now selects
-context by task and the decision index locates existing D-numbers without copying
-their reasoning. README's codec range is corrected to schemas 1–19, matching
-`documentFromJson`; feature-dependent legacy save versions remain unchanged.
-The owner's current task explicitly takes priority over the standing session queue.
-No product scope, gate, owner review or engine behaviour is changed.
-Three pre-existing archive links are repaired. The source-spec parts stay byte-identical:
-Network Editor's existing D38 edit is now explicit in README/manifest, retaining the
-original hash plus a retained-copy hash and its authorizing commit.
-Validation: local Markdown links/anchors, source-spec hashes, file-size guard and
-`git diff --check`. No local CTest claim: CMake/CTest are unavailable in this workspace.
 
 ---
 

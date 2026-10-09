@@ -1,4 +1,5 @@
 #include "evaluation.hpp"
+#include "csv_format.hpp"
 #include "input_manifest.hpp"
 #include "json.hpp"
 #include "../model/network/right_of_way.hpp"
@@ -130,17 +131,6 @@ EvaluationSpec evaluationSpec(const ProjectDocument& document, const RunSnapshot
     for (auto& c : authored) spec.counters.push_back(std::move(c));
     return spec;
 }
-namespace {
-std::string quoted(const std::string& text) {
-    std::string out = "\"";
-    for (const char c : text) { if (c == '"') out += '"'; out += c; }
-    return out + '"';
-}
-std::string number(const std::optional<double>& value) {
-    if (!value) return "";
-    std::ostringstream s; s << std::fixed << std::setprecision(2) << *value; return s.str();
-}
-}
 Json movementJson(const MovementReport& r) {
     Json j;
     j["validated"] = false;
@@ -249,10 +239,10 @@ std::string movementCsv(const MovementReport& r) {
     out << "# TrafficSim - not yet validated. Simulated movement delay, not HCM control delay; one run.\n";
     out << "movement,vehicles,meanDelay_s,meanTravelTime_s\n";
     for (const auto& m : r.movements)
-        out << quoted(m.name) << ',' << m.vehicles << ',' << number(m.meanDelay) << ',' << number(m.meanTravelTime) << '\n';
+        out << csvQuoted(m.name) << ',' << m.vehicles << ',' << csvNumber(m.meanDelay) << ',' << csvNumber(m.meanTravelTime) << '\n';
     out << "\napproach,meanQueue_m,maxQueue_m\n";
     for (const auto& q : r.queues)
-        out << quoted(q.name) << ',' << number(q.meanLength) << ',' << number(q.maxLength) << '\n';
+        out << csvQuoted(q.name) << ',' << csvNumber(q.meanLength) << ',' << csvNumber(q.maxLength) << '\n';
     out << "\ncompleted," << r.completed << "\nnotInMovement," << r.unassigned << "\npending," << r.pending
         << "\nactive," << r.active << "\nsafetyClamps," << r.safetyClamps << "\nlaneChanges," << r.laneChanges << '\n';
     return out.str();

@@ -5,6 +5,8 @@ entry behind what you are changing, not the directory.
 
 ## PROGRESS
 
+- [`PROGRESS-2026-10-05-ai-instructions.md`](PROGRESS-2026-10-05-ai-instructions.md) — oldest live documentation-authority entry, moved whole 2026-10-09
+
 - [`PROGRESS-2026-10-05-d113.md`](PROGRESS-2026-10-05-d113.md) — D113 oldest live time/type entry, moved whole 2026-10-08
 
 - [`PROGRESS-2026-10-05-d112.md`](PROGRESS-2026-10-05-d112.md) — D112 oldest live catalog entry, moved whole 2026-10-08
