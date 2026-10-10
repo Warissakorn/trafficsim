@@ -87,6 +87,10 @@ Build for the sitting: `cmake --preset desktop`, `cmake --build --preset desktop
 6. **D93 downstream decision** (listed 2026-10-01). Copy of four-leg; a decision on the West
    pocket Link (East 3, North 1), routeless West input. Do pocket vehicles change toward their
    turn with no LANE_UNSERVED? (CLI on Windows: 118 : 41 : 0.) *Owner:*
+7. **D149 Compare with…** (listed 2026-10-10). Save a copy of the M2.6 template with one input
+   raised; open the original, Results → Compare with… the copy (Seeds 42-51), Cancel part way, run
+   again, Copy into Excel/Word, Export; Thai strings. Do the table and note read as alternative
+   minus base, and does the pasted table land column by column? *Owner:*
 
 ## D — Right-of-way on the drawing
 

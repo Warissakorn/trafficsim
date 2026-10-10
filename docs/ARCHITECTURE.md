@@ -262,7 +262,7 @@ M3.1 `PriorityRule`s (D59).
 | Extended commands | `src/commands/` | Multi-selection and future object edits use the same transaction path |
 | Extended demand/control | `src/model/demand/` | M1 typed routes/inputs/fixed-time programs exist; M2 added intervals, compositions, routing decisions with per-interval turning proportions (M2.1.1–M2.4) and fixed-time Signal Controllers (M2.7b); partial/dynamic routing (M2.1) and actuated control (M4) remain |
 | Movement evaluation | `src/eval/` | One-run delay and queues exist (M2.5); multi-seed means are M5.2's runner; travel-time sections are `sections.*` (M5.4), owned by `MovementAccumulator`; LOS letters and groups are pure `los.*` (M5.5) |
-| Batch runner | `src/runner/` | Implemented (M5.2; comparison M5.8a, D148): independent seeds, deterministic aggregation; editor use is M5.6 |
+| Batch runner | `src/runner/` | Implemented (M5.2; comparison M5.8a, D148): independent seeds, deterministic aggregation; editor use is M5.6 (batch) and M5.8b (comparison, D149) |
 | Reports | `src/report/` | Reserved for the M5.5/M5.6 LOS report table; data formatting stays in `src/project/` (D131) |
 | Meso engine | `src/meso/` | Planned (M11, D145): imports nothing; compiled from the same authoring network by `compileMesoNetwork`; seeded and deterministic like core |
 | Macro four-step model | `src/macro/` | Planned (M10, D145): imports nothing; `compileMacroNetwork` derives its graph; generation, distribution, mode choice and assignment parameters are `data/` |

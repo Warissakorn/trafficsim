@@ -8,6 +8,40 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-10 — M5.8b scenario comparison in the editor (D149)
+
+Results → *Compare with…* runs the open project as the **base** against a chosen
+`*.traffic.json` as the **alternative**, over the Seeds field: the roles of `--project` and
+`--compare`, so Export is byte for byte the CLI's `--compare --csv` for the same saved files and
+seeds (checked once by hand with `cmp`, and by row EC2). Copy is `csvToTsv` of the same text. The
+table shows base and alternative n and mean, the difference and its ±95 % half-width per movement,
+section and approach; the note carries the marker, both names, each side's warnings, the unmatched
+names and the network delay difference. A difference gets no LOS letter.
+
+How it is built and why:
+- **One worker.** M5.6's thread plumbing was factored into `startWorker(total, comparing, job)`,
+  where the job runs on the worker over value copies and returns what installs its result. The
+  batch and the comparison share the generation number and Cancel, so M5.6's guarantee holds for
+  both: no table shows fewer runs than its n. A comparison counts 2N runs, base first.
+- **Refuse before clearing.** A bad list, an alternative that cannot be read or compiled, a base
+  that does not compile and different evaluation periods are refused before any run and before
+  the results on show are cleared. An alternative's issues are one line naming its file, never
+  rows in the open project's Problems tab, whose paths they are not.
+- **Honest names.** A dirty base is named `NAME (unsaved edits)` and a fileless one
+  `unsaved project`, so the CSV never names bytes that did not produce its side.
+- **A bug the new test caught.** `startWorker(seeds.size(), ..., [seeds=std::move(seeds)]...)`
+  left the order of the size read and the move to the compiler; GCC moved first and the batch
+  started with a total of 0, so `batch-run-ui` failed at once. The total is now read before the call.
+
+Contract and rows EC1–EC7: [BATCH](reference/BATCH.md) §7, *Editor comparison*; test
+`compare-run-ui` (`tests/compare_run_ui_tests.cpp`, 25 s in a Debug build on Linux). The batch table helpers
+moved to `src/shell/editor_batch_cells.hpp` for both views. Verified on Linux only (Ubuntu 24.04,
+GCC 13, Qt 6.4.2, offscreen): full desktop build, every ctest and `check`. Windows rests on
+`native.yml`. The owner's look is [OWNER_SITTING](plans/OWNER_SITTING.md) C7. The D130 and D131
+entries moved to the archive.
+
+---
+
 ## 2026-10-10 — M5.8a scenario comparison, CLI (D148)
 
 `trafficsim-cli --project BASE --compare ALT --seeds LIST [--csv FILE]` answers PROBLEM §1 step 6.
@@ -428,36 +462,6 @@ inside the warm-up, unfinished = active + pending, schema-22 refusal below 22) a
 UI check in `signal-ui`. Linux GCC 13.3: headless 69/69 and, with Qt 6.4.2 installed locally,
 desktop 100/100 offscreen. Single-run JSON for the four projects keeps every number; the CSV
 gains only the `unfinished` column and the period line. Windows evidence is CI's. The oldest live PROGRESS entry moved whole to the archive.
-
----
-
-## 2026-10-09 — M5.2 multi-seed batches and `--seeds` (D131)
-
-`src/runner/` now holds the first M5 product code: `runSeed`/`runSeeds` run one compiled project
-over independent seeds with the CLI's own loop, and `aggregate` reports n, mean, sample SD and the
-95 % half-width (tabulated Student t) per movement and approach, summing in seed order. The CLI
-takes `--project F --seeds 42-51 [--csv F]`; the JSON carries per-seed accounting and a
-build-time `buildCommit`. Seeds with over 5 % of generated vehicles still pending are flagged and
-kept in the means, by the owner's choice: dropping them would hide the worst seeds. Why the
-formatter sits in `src/project/` and why the t table only widens: D131. Tests were written first
-(group `batch`, 9 cases: hand statistics, permutation, one seed equal to the single run,
-generated = completed + active + pending, a saturated input flagged, seed-list parsing, marker).
-Linux GCC 13.3 headless Debug: 68/68 ctest, including `cli-batch`; single-run `--project` JSON
-for the four projects, the M0 run and the four-leg CSV are byte-identical to before. Ten seeds
-of the four-leg take ~10 s in Debug. No desktop or Windows claim; native CI is separate.
-
----
-
-## 2026-10-08 — M5 first: owner answers and the M5 slice plan (D130)
-
-The owner asked for a plan that makes the program usable for real work as fast as possible.
-The 2026-10-03 review had found the back half of PROBLEM §4 (ten seeds, LOS, a table to
-paste) without product code. The owner answered O1 (a), O3 (b), O8 (warm-up default 900 s,
-unfinished trips counted and warned) and O9 (c); D130 records them and waives Q4's "decide
-before M5" for M5 only. [M5_PLAN](plans/M5_PLAN.md) numbers M5.2–M5.7; NEXT puts M5.2 first
-and parks W74. Why section delay before letters: whole-route delay includes source waiting
-and entry acceleration (D39), so a letter on it would read worse than the junction is.
-Docs only; no code, schema, gate or baseline changed. The D113 entry moved to the archive.
 
 ---
 

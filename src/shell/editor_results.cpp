@@ -114,8 +114,8 @@ void EditorWindow::refreshResults() {
     if(!resultsPage_ || !resultsPage_->isVisible())return;
     // Only the inner tab on show is rebuilt; switching tabs refreshes the new one.
     refreshDischarge(); refreshClamps();
-    refreshBatch(); // M5.6: a running or finished batch takes the single run's place
-    if(batchRunning()||batch_.has_value())return;
+    refreshBatch(); // M5.6/M5.8b: a running or finished batch or comparison takes the single run's place
+    if(batchShown())return;
     if(!movementTable_->isVisible())return;
     const auto report=runReport();
     if(!report){
@@ -200,6 +200,7 @@ bool EditorWindow::runFinished() const {
 }
 std::string EditorWindow::resultsCsv() const {
     if(batch_)return batchCsv(batch_->report,batch_->runs);
+    if(comparison_)return comparisonCsv(comparison_->comparison,comparison_->base,comparison_->alternative);
     const auto report=runReport();
     if(!report || !runFinished())throw std::runtime_error("EDIT_CSV_UNFINISHED");
     return movementCsv(*report);
