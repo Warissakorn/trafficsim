@@ -56,7 +56,7 @@ Since D145 the same surface extends to the coarser levels a study feeds from:
 | What the engineer needs | Why the study needs it |
 |---|---|
 | **Zones and OD matrices** shared by every level | Trip tables are how site and regional demand is stated; entering them once keeps the levels consistent. |
-| **Parking lots** with capacity, dwell time and a gate | Development-access studies ask whether the car park and its access queue fit the site. |
+| **Parking lots** with capacity and a gate (dwell time later, D150) | Development-access studies ask whether the car park and its access queue fit the site. |
 | **Dynamic assignment** among alternative paths | When congestion or a scheme changes travel times, traffic diverts; fixed turning shares cannot show it. |
 | **Mesoscopic corridor results** — link travel times, queues and spill-back over time | Corridor and work-zone studies need the whole peak over many junctions, not one junction in detail. |
 | **A four-step macroscopic model** — generation, distribution, mode choice, assignment | Site trip distribution and regional volume/capacity are the inputs and the context of the junction study. |

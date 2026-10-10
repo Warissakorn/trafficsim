@@ -351,7 +351,8 @@ a connector.
 
 **Death.** In: front at the route's end, not on a stub. Out: `arrived` with `travelTime` (from
 `enteredTime`), `departureDelay` (`enteredTime − scheduledTime`) and `freeFlowTime` (route
-length ÷ `desiredSpeed`, no acceleration term).
+length ÷ `desiredSpeed`, no acceleration term). Planned exception (M8.4, not implemented): a
+parking lot's gated route ends at a gate instead ([PARKING_LOTS](PARKING_LOTS.md) §3).
 
 A runtime vehicle identifies its input, route and vehicle type by **index into the canonical
 `Scenario`**, not by id (D29). `createSimulation` sorts the scenario once and never changes it

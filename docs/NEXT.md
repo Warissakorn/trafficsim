@@ -39,18 +39,23 @@ The owner accepted every recommendation, R1–R8 ([review](audits/ROADMAP_REVIEW
    M5 gate, which stays open.
 
 **The D143 queue has no session slice left** (items 1, 2's example cool-down, 3's closure and 4's
-answer are the owner's). Next, as the owner chooses: the W74 cited preset and W99 contract
-(below), or M3.4 (R7, §3 below). Without a choice, the next session starts **M8.1** (below), which
-the owner booked to follow the queue. Motorcycles wait for M5.7 (R3; the question is in
+answer are the owner's). Motorcycles wait for M5.7 (R3; the question is in
 [PROBLEM](PROBLEM.md) §8).
 
-**After the D143 queue — multi-level modelling (D145).** The owner booked Micro, Meso and Macro
-(four-step) levels as M8–M12 ([design](plans/MULTI_LEVEL_MODELLING.md), ROADMAP M8–M12). Items
-2–5 above are implemented, so they may start now. First session: **M8.1**, the Zone/ZoneConnector/OdMatrix/
-ParkingLot contract in `docs/reference/` and failure-first rows (a full lot queues at the gate and
-never deletes a vehicle; older files byte-identical), no code. Then M8.2 onward in the design's §5
-order. The six open questions in the design's §8 go to the owner's sitting; M10 and M11 cannot
-start their contracts before questions 1–5 are answered.
+**Multi-level modelling (D145) — M8 in progress.** The owner chose M8 next (2026-10-10). **M8.1,
+the contracts, delivered 2026-10-10 (D150), docs only:**
+- [ZONES_AND_OD](reference/ZONES_AND_OD.md): zones, zone connectors at Link ends, OD matrices,
+  schema 29, expansion by fewest-object chains; rows ZO1–ZO12.
+- [PARKING_LOTS](reference/PARKING_LOTS.md): lots as zones with capacity, a gate hold, exits that
+  wait for a parked vehicle, no dwell and no random draw, schema 30; rows PL1–PL11.
+
+**Next session: M8.2**, schema 29 codec and commands for Zone, ZoneConnector and OdMatrix
+(ZONES_AND_OD §1, §4; rows ZO1, ZO2, ZO9 and ZO10 first, failure-first), with no expansion: a matrix is
+stored and validated, and Run refuses it (`OD_NOT_EXPANDED`) until M8.3, so no trip is dropped. Then M8.3 (expansion, ZO3–ZO8,
+ZO11), M8.4 (lot runtime, PL1–PL8), M8.5 (outputs, PL9), M8.6 (editor, ZO12 and PL10), and PL11 as
+the M8 gate. The other open questions in the design's §8 stay with the owner's sitting; M10 and
+M11 cannot start their contracts before questions 1–5 are answered. As the owner chooses instead:
+the W74 cited preset and W99 contract (below), or M3.4 (R7, §3 below).
 
 **Owner items** — gates, chat decisions and every desktop look — are in one sheet,
 [OWNER_SITTING](plans/OWNER_SITTING.md) (R4). After the sitting, items still open and older than

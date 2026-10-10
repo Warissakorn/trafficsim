@@ -76,6 +76,11 @@ The Micro area of a model is where Links carry lane geometry and Connectors.
 
 ### 3.2 Shared demand layer: Zones and OD matrices (M8)
 
+> **Contracted by M8.1 (D150, 2026-10-10):** [ZONES_AND_OD](../reference/ZONES_AND_OD.md) owns the
+> objects now. It departs from the sketch below: a connector attaches at a Link end with no
+> `position`, its direction is `origin` or `destination` (no `both`), zone attributes wait for
+> M10.2, and until M9 a pair takes the fewest-object chain.
+
 New authoring objects, shared by every level:
 
 ```text
@@ -95,6 +100,11 @@ ParkingLot    { id, zone, access ZoneConnector(s), capacity, initialOccupancy,
   unchanged and keep their bytes.
 
 ### 3.3 Parking lots are zones with capacity (M8)
+
+> **Contracted by M8.1 (D150, 2026-10-10):** [PARKING_LOTS](../reference/PARKING_LOTS.md) owns the
+> runtime. By the owner's choice there is **no dwell distribution**: a lot's exits are OD demand
+> that waits for a parked vehicle, and the lot uses no random draw. One lot per zone, access by its
+> zone's connectors, schema 30 with the runtime. The paragraph below is the superseded sketch.
 
 A lot is the origin and destination of site trips. Runtime contract (to be written as M8.1):
 an arriving vehicle enters if occupancy < capacity after the gate service; otherwise it **waits at
@@ -193,7 +203,7 @@ All after the D143 queue. One system per session, interface and acceptance rows 
 
 | Milestone | Slices | Done when |
 |---|---|---|
-| **M8 — Zones, OD matrices and parking lots** | M8.1 contract + rows; M8.2 schema/codec/commands for Zone, ZoneConnector, OdMatrix; M8.3 OD → Micro inputs/routes; M8.4 ParkingLot runtime (capacity, gate, dwell); M8.5 lot outputs; M8.6 editor tools (`Z`, `P`), OD matrix table | A development-access study runs from a zone OD matrix through a capacity-limited lot; a full lot produces a gate queue and never deletes a vehicle; older files load byte-identical |
+| **M8 — Zones, OD matrices and parking lots** | M8.1 contract + rows; M8.2 schema/codec/commands for Zone, ZoneConnector, OdMatrix; M8.3 OD → Micro inputs/routes; M8.4 ParkingLot runtime (capacity, gate, OD-driven exits; D150); M8.5 lot outputs; M8.6 editor tools (`Z`, `G`), OD matrix table | A development-access study runs from a zone OD matrix through a capacity-limited lot; a full lot produces a gate queue and never deletes a vehicle; older files load byte-identical |
 | **M9 — Dynamic assignment (Micro)** | M9.1 contract + analytic two-route equilibrium fixture; M9.2 path cost extraction; M9.3 runner loop + CLI `--assign N`; M9.4 Results/Export of path flows and convergence | Two-route fixture converges to the analytic split within the stated tolerance; same inputs ⇒ same bytes; non-convergence flagged |
 | **M10 — Macro four-step model** | M10.1 `compileMacroNetwork` + link types + VDF data + UE assignment; M10.2 generation; M10.3 distribution; M10.4 mode choice; M10.5 skims, select-link, Results/Export; M10.6 centreline-only Links in the editor | Assignment reproduces a published test network's equilibrium within a stated gap; each step has a hand-computed fixture; parameters swap with no code edit |
 | **M11 — Meso engine** | M11.1 model choice + contract + analytic queue/shockwave rows; M11.2 `compileMesoNetwork`; M11.3 engine; M11.4 eval and Results; M11.5 DTA reuse from M9 | Analytic fixtures pass; spill-back blocks the upstream link at storage capacity; same seed ⇒ same bytes |

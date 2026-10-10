@@ -8,6 +8,8 @@ acceptance records live in [plans](../plans/README.md); milestone status lives i
 |---|---|
 | [BATCH.md](BATCH.md) | Multi-seed batches: runs, aggregate, 95 % CI, overloaded seeds and output (M5.2); scenario comparison `--compare` (M5.8, §7) |
 | [LOS.md](LOS.md) | Level of service from section delay: the HCM pack as data, control types, approach/intersection rows (M5.5) |
+| [ZONES_AND_OD.md](ZONES_AND_OD.md) | Zones, zone connectors and OD matrices: schema 29, codes, expansion into Micro inputs by fewest-object chains, rows ZO1–ZO12 (contract, not yet implemented; M8.2–M8.3, D150) |
+| [PARKING_LOTS.md](PARKING_LOTS.md) | Parking lots as zones with capacity: schema 30, gate hold, OD-driven exits, invariants, outputs, rows PL1–PL11 (contract, not yet implemented; M8.4–M8.5, D150) |
 | [TRAVEL_TIME_SECTIONS.md](TRAVEL_TIME_SECTIONS.md) | Travel-time sections: lines, crossings, section delay, output and acceptance rows (M5.4) |
 | [DISCHARGE.md](DISCHARGE.md) | Lane/cycle discharge and startup diagnostics, quantization and unavailable results |
 | [DRIVING_BEHAVIOUR.md](DRIVING_BEHAVIOUR.md) | Proposed class/road behavior assignment and target capability map |

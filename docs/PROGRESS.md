@@ -8,6 +8,41 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-10 — M8.1 contracts: zones, OD matrices and parking lots (D150)
+
+The owner chose M8 after M5.8 merged. M8.1 is docs only: two contracts with failure-first rows,
+no code.
+- [ZONES_AND_OD](reference/ZONES_AND_OD.md) (M8.2–M8.3, rows ZO1–ZO12): zones, zone connectors at
+  Link ends and OD matrices in schema 29. One function, `withOdDemand`, expands a matrix into
+  ordinary routes and inputs by fewest-object chains, ahead of every other demand step.
+- [PARKING_LOTS](reference/PARKING_LOTS.md) (M8.4–M8.5, rows PL1–PL11): a lot is a zone with a
+  capacity in schema 30, with a gate hold, a fixed order within a tick, events, invariants and
+  outputs.
+
+**Owner answers (D150).** A lot's traffic is OD demand both ways: exits wait in their source
+queue for a parked vehicle, there is no dwell distribution and there is no new random draw. Until
+M9 an OD pair takes the fewest-object chain, the rule placed decisions already use. D150 also
+records where the contracts leave the D145 sketch (no `position`, no `both`, no zone attributes
+yet, one lot per zone, lots in their own schema).
+
+**How the draft was checked.** A read-only review of the first plan by five reviewers found 63
+gaps. Among them:
+- an OD-only project would be refused with `EDIT_NO_INPUTS` before any expansion;
+- the dead-end hold never lets a vehicle arrive, so the gate needs its own hold;
+- gates must be defined by route, or other traffic at the same road has no rule;
+- generated ids could collide, because `INVALID_ID` refuses only blank ids;
+- `P` was already bound to cycle priority.
+
+The review was stopped part way to save usage: its per-finding verifiers had confirmed 16 of 17,
+so the rest were triaged by hand and spot-checked against the code. A lean three-reviewer pass
+then read the written contracts. One gap came from the M8.2 seam itself: a matrix stored before
+its expansion would be ignored by Run, so `OD_NOT_EXPANDED` refuses it until M8.3.
+
+The design, ROADMAP, PROBLEM, ARCHITECTURE, SIMULATION (Death) and NETWORK_EDITOR (schema list)
+now point to the contracts. The D132 and D133 entries moved to the archive.
+
+---
+
 ## 2026-10-10 — M5.8b scenario comparison in the editor (D149)
 
 Results → *Compare with…* runs the open project as the **base** against a chosen
@@ -415,53 +450,6 @@ delay; eight malformed packs refused; weighting by hand) and `section-ui`. Linux
 headless 71/71, desktop 103/103 offscreen. A 10-seed four-leg batch with three signalised
 sections: west through 48.3 s D, north left 57.6 s E, east through 43.0 s D; the intersection
 row 46.4 s D equals the hand-weighted mean. Windows evidence is CI's.
-
----
-
-## 2026-10-09 — M5.4 travel-time sections (D133)
-
-The quantity M5.5's LOS will read now exists. A section is `network.travelTimeSections[]`
-(schema 23 only when present): a start and an end line, each a cross-section of one Link at a
-station, spanning every lane so a lane change inside is timed once. The contract
-([TRAVEL_TIME_SECTIONS](reference/TRAVEL_TIME_SECTIONS.md)) and its rows TT1–TT11 were written
-before the code. `SectionAccumulator` (`src/eval/sections.*`, owned by `MovementAccumulator`, so
-batches get it free) interpolates each crossing between the two observed states, treats a new
-vehicle as entering at distance 0 at `enteredTime`, and times an end line crossed in the arrival
-step from the last speed. Delay is `max(0, travel − length/desiredSpeed)`, the whole-trip term
-restricted to the section; trips count by their end crossing (D132's rule). Outputs gain a
-`section` block only with a section, so every other project keeps its bytes (TT10 checks the
-four-leg report equals the section-less one). Link delete removes, split moves, reverse refuses,
-like other controls. Editor: Section tool (`T`), two Ctrl+right-clicks make one Undo step, and a
-*Travel-time sections* tab renames and deletes; en/th strings. Results-tab rows for sections wait
-for M5.6. W74 moves to schema 24.
-Evidence: group `traveltime` (11 cases — a lone vehicle at desired speed gives exactly 100/15 s
-and zero delay; a red held to 30 s gives 20.01 s against an analytic floor of 16.67 s; the
-period's equality sides; a hand-built lane change) and `section-ui`. Linux GCC 13.3: headless
-70/70, desktop 102/102 offscreen. A 10-seed batch of the four-leg project with a west-through
-section gives 48.3 ± 4.3 s against 52.8 ± 4.3 s whole-route movement delay, with the same 121
-mean vehicles: the gap is the entry acceleration the section excludes. Windows evidence is CI's.
-
----
-
-## 2026-10-09 — M5.3 evaluation period and unfinished trips (D132)
-
-Projects can now say which part of the run the results describe: `definition.evaluation
-{warmup, end?}`, schema 22 only when set. Movement rows count trips that end in the period and
-queues average its ticks; run totals stay whole-run so every vehicle is still accounted for.
-Each movement reports `unfinished` (active or pending on its routes), and batches warn when a
-movement's unfinished share passes 5 %. Owner's choices: no key means warm-up 0 (old results
-unchanged), and new editor projects start with 900 s warm-up over 4500 s. Run settings gains a
-Warm-up field, applied with duration and time step in one History step. Making the new window's
-document carry a definition exposed that a demand-less definition took the runtime Problems
-path and lost the drawing's topology rows (`tables-ui`); `runDiagnostics`/`documentDiagnostics`
-now treat a definition holding only run settings (`onlyRunSettings`) as a drawing, with `EDIT_NO_INPUTS`.
-`connector-ui` now checks its intent (lane widths keep the file's schema) instead of the literal
-17, and the behaviour-library "future schema" pin moved from 22 to 23. W74's planned schema is 23.
-Tests first: group `evaluationperiod` (9 cases; both equality sides of the window, a red wholly
-inside the warm-up, unfinished = active + pending, schema-22 refusal below 22) and a Run settings
-UI check in `signal-ui`. Linux GCC 13.3: headless 69/69 and, with Qt 6.4.2 installed locally,
-desktop 100/100 offscreen. Single-run JSON for the four projects keeps every number; the CSV
-gains only the `unfinished` column and the period line. Windows evidence is CI's. The oldest live PROGRESS entry moved whole to the archive.
 
 ---
 
