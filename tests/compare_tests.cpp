@@ -49,6 +49,15 @@ TEST(compare, cmp1_welch_by_hand) {
     CHECK(*d.degreesOfFreedom >= 3 && *d.degreesOfFreedom <= 7); // min(n) - 1 .. n_b + n_a - 2
     // floor(nu) = 5: t = 2.571, the lower whole df.
     test::near(*d.halfWidth95, 2.571 * std::sqrt(variance));
+    // Two seeds a side with nearly equal variances: nu = 1.9969 is just under 2, so the interval uses
+    // t(1); the CSV prints df truncated (1.99, not a rounded 2.00) so its floor is the df used.
+    const auto close = welch(estimate(2, 10.0, 1.0), estimate(2, 12.0, 1.04));
+    CHECK(*close.degreesOfFreedom < 2 && *close.degreesOfFreedom > 1.99);
+    test::near(*close.halfWidth95, 12.706 * std::sqrt((1.0 + 1.04 * 1.04) / 2));
+    BatchReport b; b.seeds = {42, 43}; b.meanDelay = estimate(2, 10.0, 1.0);
+    BatchReport a = b; a.meanDelay = estimate(2, 12.0, 1.04);
+    const auto csv = comparisonCsv(compareBatches(b, a), {"b", b, {}}, {"a", a, {}});
+    CHECK(csv.find("\"network\",2,10.00,2,12.00,2.00,12.96,1.99\n") != std::string::npos);
 }
 TEST(compare, cmp2_swapping_negates_the_difference_only) {
     const auto base = estimate(4, 2.5, std::sqrt(5.0 / 3)), alternative = estimate(5, 6.0, std::sqrt(10.0));
@@ -110,7 +119,7 @@ TEST(compare, cmp5_a_project_against_itself_differs_by_exactly_zero) {
         CHECK(*row.value.difference == 0);
         CHECK(*row.value.halfWidth95 > 0); // two independent batches, not a paired zero
     }
-    for (const auto& row : c.queues) CHECK(*row.value.difference == 0);
+    for (const auto& row : c.queues) { CHECK(*row.value.difference == 0); CHECK(*row.value.halfWidth95 > 0); }
     CHECK(*c.network.difference == 0); CHECK(*c.network.halfWidth95 > 0);
 }
 TEST(compare, cmp6_each_difference_is_the_two_batches_means_apart) {
@@ -128,6 +137,12 @@ TEST(compare, cmp6_each_difference_is_the_two_batches_means_apart) {
         changed = changed || *c.movements[i].value.difference != 0;
     }
     CHECK(changed); // the forcing: the alternative really differs
+    CHECK(c.queues.size() == base.report.queues.size()); // approaches compare the mean queue length
+    for (std::size_t i = 0; i < c.queues.size(); ++i) {
+        CHECK(c.queues[i].name == base.report.queues[i].name);
+        CHECK(*c.queues[i].value.difference ==
+              *alternative.report.queues[i].meanLength.mean - *base.report.queues[i].meanLength.mean);
+    }
     CHECK(*c.network.difference == *alternative.report.meanDelay.mean - *base.report.meanDelay.mean);
 }
 TEST(compare, cmp7_output_marker_first_and_reproducible) {
@@ -143,7 +158,8 @@ TEST(compare, cmp7_output_marker_first_and_reproducible) {
     const auto j = comparisonJson(c, base, alternative);
     CHECK(j["validated"] == false); CHECK(!j.contains("sections"));
     CHECK(j["movements"][0]["difference"] == 0.0);
-    // Same inputs, same bytes.
-    CHECK(comparisonCsv(compareBatches(base.report, alternative.report), base, alternative) == csv);
+    // A second, independent run of the same project formats to the same bytes.
+    const ComparedBatch rerun{base.name, fourLegCopy().report, fourLegCopy().runs};
+    CHECK(comparisonCsv(compareBatches(rerun.report, alternative.report), rerun, alternative) == csv);
     CHECK(csvToTsv(csv).rfind("# TrafficSim - not yet validated.", 0) == 0); // M5.8b's Copy path
 }

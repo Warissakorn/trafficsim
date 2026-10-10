@@ -80,17 +80,22 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
 }
 // --seeds (M5.2): the same compiled project and evaluation spec for every seed, then the aggregate.
 struct Prepared { RunSnapshot snapshot; EvaluationSpec spec; };
-Prepared prepare(const std::filesystem::path& file, const std::filesystem::path& data) {
+// Refuses an existing --csv after the project compiles and before any run, as runProject does.
+Prepared prepare(const std::filesystem::path& file, const std::filesystem::path& data, const std::filesystem::path& csvFile) {
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
     const auto document = parseDocument(Json::parse(stream));
     auto snapshot = compileDocument(document, data);
+    if (!csvFile.empty() && std::filesystem::exists(csvFile))
+        throw std::invalid_argument("CSV output already exists: " + csvFile.string());
     auto spec = evaluationSpec(document, snapshot, data);
     return {std::move(snapshot), std::move(spec)};
 }
-void refuseExisting(const std::filesystem::path& csvFile) {
-    if (!csvFile.empty() && std::filesystem::exists(csvFile))
-        throw std::invalid_argument("CSV output already exists: " + csvFile.string());
+// BATCH §3: the flag also goes to stderr. `side` is empty for a batch, else "base" or "alternative".
+void warnOverloaded(const BatchReport& report, const std::string& side) {
+    if (report.overloadedSeeds.empty()) return;
+    std::cerr << "TrafficSim: warning: " << (side.empty() ? "" : side + ": ") << report.overloadedSeeds.size()
+              << " overloaded seed(s) are included in the means; see " << (side.empty() ? "" : side + ".") << "overloadedSeeds\n";
 }
 std::vector<SeedRun> runAll(const Prepared& p, const std::vector<std::uint32_t>& seeds, const std::string& label) {
     return runSeeds(p.snapshot.scenario, p.spec, seeds, [&](std::size_t done) {
@@ -111,24 +116,20 @@ void stamp(Json& result) {
 }
 int runBatch(const std::filesystem::path& file, const std::filesystem::path& csvFile,
              const std::filesystem::path& data, const std::vector<std::uint32_t>& seeds) {
-    refuseExisting(csvFile);
-    const auto runs = runAll(prepare(file, data), seeds, "");
+    const auto runs = runAll(prepare(file, data, csvFile), seeds, "");
     const auto report = aggregate(runs);
     writeCsv(csvFile, batchCsv(report, runs));
     auto result = batchJson(report, runs);
     stamp(result);
     std::cout << result.dump(2) << '\n';
-    if (!report.overloadedSeeds.empty())
-        std::cerr << "TrafficSim: warning: " << report.overloadedSeeds.size()
-                  << " overloaded seed(s) are included in the means; see overloadedSeeds\n";
+    warnOverloaded(report, "");
     return std::cout ? 0 : 1;
 }
 // --compare (M5.8a, BATCH §7): both projects compiled and their windows checked before any run.
 int runComparison(const std::filesystem::path& baseFile, const std::filesystem::path& alternativeFile,
                   const std::filesystem::path& csvFile, const std::filesystem::path& data,
                   const std::vector<std::uint32_t>& seeds) {
-    refuseExisting(csvFile);
-    const auto base = prepare(baseFile, data), alternative = prepare(alternativeFile, data);
+    const auto base = prepare(baseFile, data, csvFile), alternative = prepare(alternativeFile, data, csvFile);
     requireSameEvaluationPeriod(base.spec, base.snapshot.scenario.duration, alternative.spec, alternative.snapshot.scenario.duration);
     ComparedBatch b{baseFile.filename().string(), {}, runAll(base, seeds, "base ")};
     ComparedBatch a{alternativeFile.filename().string(), {}, runAll(alternative, seeds, "alternative ")};
@@ -139,6 +140,8 @@ int runComparison(const std::filesystem::path& baseFile, const std::filesystem::
     auto result = comparisonJson(comparison, b, a);
     stamp(result);
     std::cout << result.dump(2) << '\n';
+    warnOverloaded(b.report, "base");
+    warnOverloaded(a.report, "alternative");
     return std::cout ? 0 : 1;
 }
 }

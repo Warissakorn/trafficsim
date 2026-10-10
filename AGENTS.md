@@ -138,7 +138,7 @@ src/project/    load, save, revisions, validation
 src/editor/     canvas: tools, gestures, run view
 src/shell/      window, inspector, tables, results, layout, palette, i18n
 src/eval/       event stream → measurements
-src/runner/     multi-seed batches (planned; README only, M5)
+src/runner/     multi-seed batches and scenario comparison (M5)
 src/report/     impact-study output (planned; README only, M5)
 data/           vehicle types · behaviour presets · compositions · priority rules · levels ·
                 display types · locales · example projects (LOS thresholds planned, M5)

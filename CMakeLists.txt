@@ -230,7 +230,7 @@ if(BUILD_TESTING)
     set_tests_properties(cli-compare PROPERTIES PASS_REGULAR_EXPRESSION "\"difference\": 0\\.0")
     add_test(NAME cli-compare-conflict COMMAND trafficsim-cli --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json"
         --compare "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json")
-    set_tests_properties(cli-compare-conflict PROPERTIES WILL_FAIL TRUE)
+    set_tests_properties(cli-compare-conflict PROPERTIES PASS_REGULAR_EXPRESSION "--compare needs --project and --seeds")
     add_dependencies(check trafficsim-tests)
 endif()
 

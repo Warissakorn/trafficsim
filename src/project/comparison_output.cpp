@@ -1,5 +1,7 @@
 #include "comparison_output.hpp"
+#include "batch_output.hpp"
 #include "csv_format.hpp"
+#include <cmath>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -59,10 +61,16 @@ void unmatchedCsv(std::string& out, const char* block, const Unmatched& u) {
     part("alternative only", u.alternativeOnly);
     part("ambiguous", u.ambiguous);
 }
+// df truncated, not rounded, to two decimals, so the printed value's floor is the df the interval
+// used (a nu of 1.997 prints 1.99, not 2.00); the epsilon is welch()'s.
+std::optional<double> printedDf(const std::optional<double>& nu) {
+    if (!nu) return nu;
+    return std::floor(*nu * 100 + 1e-7) / 100;
+}
 void rowCsv(std::ostringstream& out, const std::string& name, const Difference& d) {
     out << csvQuoted(name) << ',' << d.nBase << ',' << csvNumber(d.base) << ',' << d.nAlternative << ','
         << csvNumber(d.alternative) << ',' << csvNumber(d.difference) << ',' << csvNumber(d.halfWidth95) << ','
-        << csvNumber(d.degreesOfFreedom) << '\n';
+        << csvNumber(printedDf(d.degreesOfFreedom)) << '\n';
 }
 void blockCsv(std::ostringstream& out, const char* head, const char* quantity, const char* unit,
               const std::vector<ComparisonRow>& rows) {
@@ -103,10 +111,10 @@ std::string comparisonCsv(const Comparison& c, const ComparedBatch& base, const 
     out << "# Base: " << csvQuoted(base.name) << "; alternative: " << csvQuoted(alternative.name) << '\n';
     if (const auto seeds = perSide(base, alternative, [](const ComparedBatch& s) { return seedList(s.report.overloadedSeeds); });
         !seeds.empty())
-        out << "# WARNING: overloaded seeds (pending over 5% of generated) are included in the means: " << seeds << '\n';
+        out << kOverloadedWarning << ' ' << seeds << '\n';
     if (const auto stuck = perSide(base, alternative, [](const ComparedBatch& s) { return nameList(movementsWithUnfinished(s.report)); });
         !stuck.empty())
-        out << "# WARNING: unfinished trips over 5% of the movement; its delay reads low: " << stuck << '\n';
+        out << kUnfinishedWarning << ' ' << stuck << '\n';
     std::string unmatched;
     unmatchedCsv(unmatched, "movement", c.unmatchedMovements);
     unmatchedCsv(unmatched, "section", c.unmatchedSections);

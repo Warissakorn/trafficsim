@@ -21,8 +21,8 @@ equal seeds are not common random numbers, and the output says so.
 What the command refuses or reports:
 - **Matching.** Rows are matched by name; base-only, alternative-only and duplicated names are
   listed in JSON and on a `# Unmatched` CSV line, never dropped.
-- **Refusals.** Different seed lists, or evaluation periods that differ in warm-up, end or
-  cool-down, are refused before any run.
+- **Refusals.** Evaluation periods that differ in warm-up, end or cool-down are refused before
+  any run; different seed lists before any output.
 - **No LOS.** A difference never gets an LOS letter.
 
 Contract and rows CMP1–CMP7 are in [BATCH](reference/BATCH.md) §7, with

@@ -98,4 +98,4 @@ For continuous vehicle-pose work, also read [VEHICLE_POSE](../reference/VEHICLE_
 
 [D147](RECORD.md#d147) — M4.2 amber stop-or-go: `amberDeceleration` (catalog 3.0), continuous check, commitment at red; M0 keeps amber as red; schema 28 for an owned field.
 
-[D148](RECORD.md#d148) — M5.8a scenario comparison: `--compare` runs two independent batches on one seed list; alternative minus base with a Welch 95 % CI; unmatched rows listed; different seeds or windows refused.
+[D148](RECORD.md#d148) — M5.8a scenario comparison: `--compare` runs two independent batches on one seed list; alternative minus base with a Welch 95 % CI; unmatched rows listed; different windows refused before any run, different seeds before any output.

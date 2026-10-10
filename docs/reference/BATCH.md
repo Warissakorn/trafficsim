@@ -2,7 +2,7 @@
 
 What `trafficsim-cli --project F --seeds LIST` and `src/runner/` compute. Decisions:
 [D130](../decisions/RECORD.md#d130) (M5 first) and [D131](../decisions/RECORD.md#d131) (this
-contract). Every figure is **simulated movement delay, not HCM control delay or LOS, and not
+contract); scenario comparison, `--compare`, is §7 ([D148](../decisions/RECORD.md#d148)). Every figure is **simulated movement delay, not HCM control delay or LOS, and not
 validated** (rule 4); LOS waits for travel-time sections ([M5_PLAN](../plans/M5_PLAN.md) M5.4–M5.5).
 
 ## 1. Runs
@@ -164,13 +164,13 @@ M5.8b.
   `LIST`. Each run draws one random stream from its seed, and the two streams diverge as soon as
   the projects differ. So equal seeds are **not** common random numbers: the batches are treated
   as independent samples and nothing is paired.
-- **Refused before any output.** `--compare` needs `--project` and `--seeds`, and refuses what
-  `--seeds` refuses: a single seed, the single-run diagnostic flags, `--scenario` and `--events`.
-  Also refused:
-  - two batches whose seed lists differ;
-  - evaluation periods that differ in warm-up, end or cool-down, because a difference over
-    different windows is not the scenario's effect;
-  - an existing `--csv` file.
+- **Refused.** `--compare` needs `--project` and `--seeds`, and refuses what `--seeds` refuses:
+  a single seed, the single-run diagnostic flags, `--scenario` and `--events`. Also refused:
+  - before any run: evaluation periods that differ in warm-up, end or cool-down, because a
+    difference over different windows is not the scenario's effect; an existing `--csv` file,
+    checked once each project compiles, as for `--seeds`;
+  - before any output: two batches whose seed lists differ (the CLI runs both on one list; the
+    check guards every other caller).
 - **Rows.** Movements, sections and approaches are matched by name, block by block, in the
   base's order. A name found in only one batch, or more than once in either, is not compared. It
   is listed as base-only, alternative-only or ambiguous, in JSON `unmatched` and on a
@@ -189,6 +189,8 @@ M5.8b.
   - A mean missing on either side (no vehicle in any seed) leaves `d` empty.
   - A side with `n < 2` has no SD: `d` is given, while the interval and `ν` are empty.
   - Both SDs 0 gives `SE = 0`: the half-width is 0 and `ν` is empty.
+  - The CSV prints `ν` truncated to two decimals, not rounded, so the floor of the printed `df` is
+    the df the interval used (1.997 prints 1.99). JSON keeps it in full.
 - **Reading it.** An interval that spans 0 means the difference cannot be told apart from seed
   noise at 95 %. The output claims nothing more, and gives no LOS letter to a difference.
 - **JSON (stdout):**
@@ -196,9 +198,11 @@ M5.8b.
   - `base` and `alternative`, each with its file name, `overloadedSeeds` and
     `movementsWithUnfinished`;
   - `evaluationPeriod`;
-  - `movements`, `sections` and `queues` rows: `{base: {n, mean}, alternative: {n, mean},
-    difference, halfWidth95, degreesOfFreedom}`;
-  - `network` and `unmatched`;
+  - `movements`, `queues` and, only when either side has a section, `sections` rows:
+    `{movement|approach|section: name, base: {n, mean}, alternative: {n, mean}, difference,
+    halfWidth95, degreesOfFreedom}`;
+  - `network`, and `unmatched` with `movements`, `queues` and (with sections) `sections`, each
+    `{baseOnly, alternativeOnly, ambiguous}`;
   - `engineVersion`, `buildCommit`, `compiler`.
 - **CSV (`--csv`):**
   - the marker line first;
@@ -209,13 +213,14 @@ M5.8b.
   - then the blocks `movement`, `section` (only when either side has a section), `approach` and
     `network`, each with the columns `base_n, base_mean, alternative_n, alternative_mean,
     difference, ci95, df`, in units of s or m.
+- **stderr.** As for a batch (§3), each side's overloaded seeds are also named on stderr.
 
 | Row | Check | Test |
 |---|---|---|
-| CMP1 | Welch by hand: `d`, `SE`, `ν`, `⌊ν⌋` and the half-width for explicit estimates; `ν` lies between `min(n) − 1` and `n_b + n_a − 2` | `compare` |
+| CMP1 | Welch by hand: `d`, `SE`, `ν`, `⌊ν⌋` and the half-width for explicit estimates; `ν` lies between `min(n) − 1` and `n_b + n_a − 2`; a `ν` just under 2 uses t(1) and prints `1.99` | `compare` |
 | CMP2 | Swapping base and alternative negates every `d` and leaves every half-width and `ν` unchanged | `compare` |
 | CMP3 | Base-only, alternative-only and duplicate names are listed and not compared; matched rows keep the base's order | `compare` |
 | CMP4 | Different seed lists and different warm-up, end or cool-down are refused; `n < 2` gives an empty interval; zero SDs give a zero half-width | `compare` |
-| CMP5 | `four-leg-signalised` against itself (seeds 42–43): every `d` is exactly 0 and every half-width positive | `compare` |
-| CMP6 | `four-leg-signalised` against a copy with one input's volume raised by half: every `d` equals the difference of the two batches' own means, bit for bit, and at least one is not 0 | `compare` |
-| CMP7 | CLI: `--compare` without `--seeds` is refused; the CSV starts with the marker line; two invocations give identical bytes | `compare`, `cli-compare`, `cli-compare-conflict` |
+| CMP5 | `four-leg-signalised` against itself (seeds 42–43): every `d` is exactly 0 and every half-width positive, approaches included | `compare` |
+| CMP6 | `four-leg-signalised` against a copy with one input's volume raised by half: every movement, approach and network `d` equals the difference of the two batches' own means, bit for bit, and at least one is not 0 | `compare` |
+| CMP7 | `--compare` without `--seeds` is refused with its own message; the CSV starts with the marker line; a second, independent run of the same project formats to the same bytes | `compare`, `cli-compare`, `cli-compare-conflict` |

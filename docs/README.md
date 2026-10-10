@@ -22,8 +22,8 @@ selects additional context; read related decisions and evidence only when needed
 | Evaluation or reporting | [DISCHARGE](reference/DISCHARGE.md); [PROBLEM](PROBLEM.md); [SIMULATION](reference/SIMULATION.md); [ROADMAP](ROADMAP.md) M5/M6; [M2_PLAN](plans/M2_PLAN.md) | `src/eval/`, `src/project/evaluation.*`, `src/runner/`, `src/report/` |
 | Build or portability | [BUILDING](BUILDING.md); [MIGRATION](reference/MIGRATION.md); tools README | `CMakeLists.txt`, `CMakePresets.json`, `.github/workflows/` |
 
-Resolve the document names through the indexes below. `src/runner/` and `src/report/`
-are planned module boundaries, not implemented batch/report products.
+Resolve the document names through the indexes below. `src/report/` is a planned module
+boundary; `src/runner/` holds batches (M5.2) and scenario comparison (M5.8a).
 
 ## Sources and status
 
