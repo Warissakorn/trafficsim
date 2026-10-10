@@ -38,9 +38,11 @@ One system per session, interface first, build green at each commit.
 The owner's R2 answer: correct the known biases first, then the validation path.
 
 1. **M5.9** evaluation cool-down (above) — implemented (D146).
-2. **M4.2** amber stop-or-go ([ROADMAP](../ROADMAP.md) M4.2; D36 runs amber as red, which biases
-   every signalised delay).
-3. **M6.0** benchmark option sheet, docs only, no engine numbers; the marker stays until M6 passes.
+2. **M4.2** amber stop-or-go ([ROADMAP](../ROADMAP.md) M4.2; D36 ran amber as red, which biased
+   every signalised delay) — implemented (D147).
+3. **M6.0** benchmark option sheet, docs only, no engine numbers; the marker stays until M6 passes
+   — delivered 2026-10-10 ([sheet](../evidence/m6-benchmark-options.md)); the owner chooses in
+   [OWNER_SITTING](OWNER_SITTING.md) B9.
 4. **M5.8** scenario comparison (above).
 
 Not booked here: W74's cited preset and W99 ([NEXT](../NEXT.md)); the live

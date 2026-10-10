@@ -62,6 +62,11 @@ Build for the sitting: `cmake --preset desktop`, `cmake --build --preset desktop
    with no cool-down, so its batch still warns on 11 of 12 movements; 300 s clears every window
    trip ([evidence](../evidence/m5.9-cooldown.md)). Give the example a cool-down (its tests'
    expected numbers change), or keep it as the before case? *Owner:*
+9. **M6 benchmark choice (Q4)** (listed 2026-10-10, M6.0). Read the
+   [option sheet](../evidence/m6-benchmark-options.md) and answer its §7 by letter: Q4's kind of
+   benchmark, then a primary and secondary option for S1 (saturation flow), S2 (delay) and U
+   (minor-movement capacity). The sheet holds no engine numbers; the tolerance comes after this
+   answer and before any comparable run. Which options? *Owner:*
 
 ## C — Run view (the 125 % screen)
 
