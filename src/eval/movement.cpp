@@ -28,7 +28,7 @@ MovementAccumulator::MovementAccumulator(EvaluationSpec spec)
     : spec_(std::move(spec)), count_(spec_.movementNames.size()),
       delay_(spec_.movementNames.size()), travel_(spec_.movementNames.size()),
       queueSum_(spec_.counters.size()), queueMax_(spec_.counters.size()),
-      sections_(spec_.sections, spec_.warmup, spec_.end) {}
+      sections_(spec_.sections, spec_.warmup, spec_.end, spec_.cooldown.has_value()) {}
 void MovementAccumulator::bind(const SimState& state) {
     // Slots are resolved once per scenario; a run never swaps its scenario.
     if (bound_ == state.scenario.get()) return;
@@ -59,7 +59,11 @@ void MovementAccumulator::observe(const SimState& state) {
     for (const auto& event : state.events) {
         summary_.add(event);
         const auto* arrived = std::get_if<ArrivedEvent>(&event);
-        if (!arrived || !inPeriod(arrived->time)) continue;
+        if (!arrived) continue;
+        // M5.9: with a cool-down a trip belongs to the window it was released in, whenever it ends.
+        // The event carries no release time; this sum recovers scheduledTime to rounding error.
+        const double counted = spec_.cooldown ? arrived->time - arrived->travelTime - arrived->departureDelay : arrived->time;
+        if (!inPeriod(counted)) continue;
         if (slotOfRoute.empty())
             for (std::size_t r = 0; r < s.routes.size(); ++r) slotOfRoute[s.routes[r].id] = r;
         const auto slot = slotOfRoute.find(arrived->routeId);
@@ -125,13 +129,20 @@ MovementReport MovementAccumulator::report(const SimState& end) const {
         r.movements.push_back(row);
     }
     // Unfinished trips by the movement their route belongs to: in the network or still at a source.
-    const auto unfinished = [&](std::uint32_t routeIndex) {
-        if (routeIndex < movementOfSlot_.size() && movementOfSlot_[routeIndex] != npos) ++r.movements[movementOfSlot_[routeIndex]].unfinished;
+    // With a cool-down (M5.9) only the window's: a vehicle released after it is no one's trip.
+    constexpr double slack = 1e-9;
+    const auto inWindow = [&](const PendingVehicle& v) {
+        return !spec_.cooldown || (v.scheduledTime >= spec_.warmup - slack && v.scheduledTime <= *spec_.end + slack);
     };
-    for (const auto& v : end.vehicles) unfinished(v.routeIndex);
-    for (const auto& input : end.inputs) for (const auto& v : input.queue) unfinished(v.routeIndex);
+    const auto unfinished = [&](const PendingVehicle& v) {
+        if (!inWindow(v)) return;
+        if (v.routeIndex < movementOfSlot_.size() && movementOfSlot_[v.routeIndex] != npos) ++r.movements[movementOfSlot_[v.routeIndex]].unfinished;
+    };
+    for (const auto& v : end.vehicles) unfinished(v);
+    for (const auto& input : end.inputs) for (const auto& v : input.queue) unfinished(v);
     r.warmup = spec_.warmup;
     r.evaluationEnd = spec_.end.value_or(end.scenario ? end.scenario->duration : end.time);
+    r.cooldown = spec_.cooldown;
     for (std::size_t c = 0; c < spec_.counters.size(); ++c)
         r.queues.push_back({spec_.counters[c].name,
                             observed_ ? queueSum_[c] / static_cast<double>(observed_) : 0.0, queueMax_[c]});

@@ -25,6 +25,10 @@ struct EvaluationSpec {
     // M5.3 (D132): rows count trips that END in [warmup, end] and queues average its ticks; no end
     // is the end of the run. Run totals in the report stay whole-run.
     double warmup{}; std::optional<double> end;
+    // M5.9 (D146): with a cool-down the window selects trips by release (scheduledTime) instead of by
+    // end, and only window vehicles left at the report are unfinished. `end` must then be set: the
+    // run lasts longer than the window. Absent keeps every D132 rule.
+    std::optional<double> cooldown;
     std::vector<SectionSpec> sections; // M5.4 (D133), in authored order
     std::optional<LosPack> los; // M5.5 (D134): read only when a section has a control type
 };
@@ -32,6 +36,7 @@ struct MovementRow {
     std::string name; std::uint64_t vehicles{};
     std::optional<double> meanDelay, meanTravelTime;
     std::uint64_t unfinished{}; // M5.3: active or pending on this movement when the report is taken
+                                // (M5.9: with a cool-down, only those released in the window)
     bool operator==(const MovementRow&) const = default;
 };
 struct QueueRow {
@@ -47,6 +52,7 @@ struct MovementReport {
     double time{};
     std::uint64_t laneChanges{}; // M3.2.8b
     double warmup{}, evaluationEnd{}; // M5.3: the period the rows and queues describe
+    std::optional<double> cooldown; // M5.9: the spec's, so output can say how the window was read
     std::vector<SectionRow> sections; // M5.4: one per authored section; empty without any
     std::optional<LosPack> los; // M5.5: the spec's pack, so output can letter the rows
     bool operator==(const MovementReport&) const = default;

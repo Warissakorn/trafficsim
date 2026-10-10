@@ -29,12 +29,15 @@ void EditorWindow::editRunSettings() {
     // M5.3: the warm-up before results are counted; 0 with no end clears the period.
     const auto period=def.evaluation.value_or(EvaluationPeriod{});
     auto* warmup=number(dialog,0,10000000,period.warmup,"editorWarmup");
+    // M5.9: the cool-down after the demand ends; validation keeps it on the time grid.
+    auto* cooldown=number(dialog,0,10000000,period.cooldown,"editorCooldown");
     form->addRow(text("editorDuration"),duration);form->addRow(text("editorTimeStep"),dt);form->addRow(text("editorWarmup"),warmup);
+    form->addRow(text("editorCooldown"),cooldown);
     auto* buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel,&dialog);form->addRow(buttons);
     buttons->button(QDialogButtonBox::Ok)->setText(text("editorConfirm"));buttons->button(QDialogButtonBox::Cancel)->setText(text("editorCancel"));
     connect(buttons,&QDialogButtonBox::accepted,&dialog,&QDialog::accept);connect(buttons,&QDialogButtonBox::rejected,&dialog,&QDialog::reject);
     if(dialog.exec()==QDialog::Accepted)execute("editorRunSettings",[&](auto& d){
-        changeRunSettings(d,duration->value(),dt->value());changeEvaluationPeriod(d,warmup->value(),period.end);});
+        changeRunSettings(d,duration->value(),dt->value());changeEvaluationPeriod(d,warmup->value(),period.end,cooldown->value());});
 }
 void EditorWindow::editProgram(const std::string& id) {
     SignalProgram value{id,0,{{30,SignalColor::red},{30,SignalColor::green},{3,SignalColor::amber}}};

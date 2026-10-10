@@ -8,6 +8,54 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-09 — M4.2 amber stop-or-go (D147)
+
+An optional behaviour `amberDeceleration` (catalog 3.0 m/s², ITE) turns amber into a continuous
+check: go when `speed² > 2·a·gap`, else stop. With it, a vehicle that cannot stop at its type's
+maximum deceleration goes on amber or red, as at a priority rule. That second rule was the owner's
+choice after the first measurement left 44 physically impossible stops at red onset. One comparison
+in the core head loop, no vehicle state. M0 scenarios (no `schemaVersion`) resolve the catalog
+without the field through a never-written, never-compared provenance flag. So the frozen TS
+fixtures, `trafficsim-cli 42` and the editor's `crossing.json` run did not move; a save and reopen
+round-trips exactly. An owned behaviour with the field is schema 28. Capturing the catalog now owns
+it, which exposed a latent defect: owned catalogs without a library were written without `model`
+at schema 22+ and could not be reopened. The writer now tags every owned behaviour from schema 21.
+
+Contract and rows AM1–AM8 in [AMBER](reference/AMBER.md); `tests/amber_tests.cpp` (group `amber`)
+plus a regression for the untagged catalogs. Four-leg over seeds 42–81: clamps 220 → 1, every
+movement's delay down 1.4–7.5 s; M2.6: clamps 844 → 35 (not classified), delay −1.1 to −12.3 s
+([evidence](evidence/m4.2-amber.md)). Changed tests, each for a stated reason:
+- The four-leg clamp diagnosis is pinned on the run with the field removed (D36), and a new row
+  pins zero clamps with it.
+- The archived M3.2.7 sweep inputs drop the field, noted in that evidence as D36-era.
+- `results-tabs-ui` uses a copy owning the D36 behaviour so its clamp page still has clamps.
+- Fixtures that test schemas 18–25 strip the field.
+- Future-schema probes move to 29.
+
+Linux only: desktop preset (Qt 6.4.2 offscreen, GCC 13.3), ctest 113/113 and `check` green.
+Windows is the PR's native CI. The BA14/BA17 and D128 entries moved whole to `archive/`.
+
+---
+
+## 2026-10-09 — M5.9 evaluation cool-down (D146)
+
+`definition.evaluation.cooldown` (schema 27) runs the simulation that many seconds past `duration`
+with no new demand (inputs still end by it; `compileDocument` extends the compiled duration after
+every expansion, so core is untouched). With a cool-down the window selects trips by release
+(`scheduledTime` in `[warmup, end]`, `end` defaulting to `duration`) whenever they finish, in
+movement and section rows, and only window vehicles left at the end are unfinished; without one
+every D132 rule stands. New projects get 900 s; the run-settings dialog edits it in the same
+History step as the warm-up; JSON, CSV and both Results notes name it. Contract and rows CD1–CD8 in
+[BATCH](reference/BATCH.md) §5, written first; `tests/cooldown_tests.cpp` (group `cooldown`).
+On `four-leg-signalised` seeds 42–51 the warning goes from 11 of 12 movements to none at 120 s and
+every window trip finishes at 300 s ([evidence](evidence/m5.9-cooldown.md)); the example itself
+stays schema 17 (owner's choice, sitting B8). Nine CLI outputs of the committed examples are
+byte-identical before and after. Future-schema tests now probe 28. Linux only: desktop preset
+(Qt 6.4 offscreen, GCC 13.3), ctest and `check` green; Windows is the PR's native CI. The D126/D127
+entries moved whole to `archive/`.
+
+---
+
 ## 2026-10-09 — Three modelling levels designed and booked (D145)
 
 The owner asked for more capability chosen by what studies need — parking lots, dynamic
@@ -389,66 +437,6 @@ so the contract now adds and fills it everywhere; the stored regime with a secon
 obstacle is the kept result's; `bxAdd > 0` prevents `BX = 0`; the hash's modulo
 and summation order are fixed; BA23/BA26/BA28 now state the emergency start-up
 delay, the real mixed-scenario guarantee and the new cases.
-
----
-
-## 2026-10-07 — BA14/BA17 focused fixtures
-
-Six `behaviourselection` cases in `tests/behaviour_selection_edge_tests.cpp` close the two
-rows D127 left "by construction": selection follows the recognized route at source-zero,
-mid-Link and consecutive lines and at a line just short of a join, with routing draws
-unchanged; a served Stop keeps its service while the front crosses into a tighter set,
-composes with the denied area and the receiving queue (read under the current set), and a
-genuine clamp is still reported. Tests only; no engine change. Fixture obstacles need
-desired speed 0, or a placed "standing" vehicle drives away. Four mutations caught; the
-receiving-queue case survived one until its room was narrowed below the legacy set's need.
-See [evidence](evidence/behaviour-selection.md). Headless 65/65 (Linux, GCC 13.3).
-
----
-
-## 2026-10-07 — Behaviour library editor and road assignment UI (D128)
-
-M3.3.2c adds the *Driving behaviours* dialog (Behaviours / Vehicle classes / Link
-behaviour types; Add, Duplicate, Edit, Delete with replacement) on a staged copy that
-commits once, and the inspector's *Behaviour type* for every selected Link and
-Connector with each vehicle type's effective behaviour and source. The precedence is
-now one shared function, `effectiveRoadBehaviours`, used by compiler and inspector.
-See [contract §9](reference/DRIVING_BEHAVIOUR.md#9-implemented-editor-m332c-d128) and [evidence](evidence/behaviour-editor.md).
-
-Headless 65/65 and desktop 96/96 CTest (offscreen) pass; the new `behaviour-library-ui`
-test is stable over six runs and fails under four seeded UI mutations. CLI output is
-unchanged. Windows UI jobs and the owner's visual review are separate gates.
-
----
-
-## 2026-10-07 — Front-segment behaviour selection (D127)
-
-M3.3.2b compiles Link/Connector assignments into `segmentBehaviours` (ids; class
-override else default; every section and Connector path inherits its owner) and
-selects every consumer's behaviour through `effectiveBehaviour` by the front's
-segment, sharing `locateVehicle`'s boundary rule. Without assignments the index
-table is empty and the legacy type slot is used unchanged. D126's Run refusal is gone.
-See [contract §8](reference/DRIVING_BEHAVIOUR.md#8-implemented-runtime-selection-m332b-d127) and [evidence](evidence/behaviour-selection.md).
-
-Headless 65/65 CTest including frozen TS baselines; six `behaviourselection` cases,
-six of seven mutations caught (the unneeded canonical sort was removed). Seed-42 CLI
-output equals a `main` Release build for the four projects; benchmark per vehicle-tick
-unchanged within noise. BA14/BA17 focused fixtures remain open.
-
----
-
-## 2026-10-07 — Project-owned behaviour library and road assignment storage (D126)
-
-M3.3.2a adds schema 21: model-tagged owned behaviours with names, vehicle classes,
-link behaviour types (default + per-class overrides) and a `behaviourType` on Links
-and Connectors, plus `behaviour_commands` for put/duplicate/assign/users/delete with
-replacement. Owner decisions: the library needs project-owned catalogs, and Run
-refuses an assigned road until M3.3.2b. See [contract §7](reference/DRIVING_BEHAVIOUR.md#7-implemented-library-and-codec-m332a-d126)
-and [evidence](evidence/behaviour-library.md).
-
-Headless CTest passes with 7 `behaviourlibrary` cases (BA06–BA09, Run refusal,
-EN/TH codes); seven targeted mutations each fail a case. Shipped projects re-save
-unchanged and their seed-42 CLI output is byte-identical. No engine or catalog data change.
 
 ---
 

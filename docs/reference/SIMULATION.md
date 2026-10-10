@@ -78,7 +78,8 @@ Driving side changes lane ordering and offsets. Connector endpoints must match t
 referenced lane attachment positions within 0.01 m; attachments may be at an interior
 station. Editor changes reanchor Connectors, and stale endpoints fail validation.
 Signal heads can be located anywhere along a lane, including its endpoints. The head's station
-is the stop line: a vehicle is held there while the head is not green. A signal group of a
+is the stop line: a vehicle is held there while the head is not green, except as the amber
+stop-or-go rule allows (M4.2, D147, [AMBER](AMBER.md)); an M0 scenario keeps amber as red. A signal group of a
 fixed-time controller (M2.7b, D48) is compiled into one ordinary `SignalProgram` with id
 `<controllerId>#<groupNumber>` — green from green start to green end in cycle seconds
 `(t + offset) mod cycle`, then amber, red for the rest — so the engine runs exactly the programs
@@ -473,6 +474,10 @@ after `createSimulation` and once after every `stepSimulation`). `core/` does no
   network `meanDelay`) stay whole-run so the vehicle accounting closes. A new editor project
   starts with warm-up 900 s and duration 4500 s; the period must lie inside the run
   (`EVALUATION_PERIOD_INVALID`). JSON carries `evaluationPeriod`, the CSV an `evaluationPeriod_s` line.
+- **Cool-down (M5.9, D146):** `evaluation.cooldown` (schema 27) runs `cooldown` seconds past
+  `duration` with no new demand. Rows then count trips whose demand was released in
+  `[warmup, end]` whenever they finish, and only those still in the network at the end are
+  unfinished; a new project starts with 900 s. The full rule is [BATCH](BATCH.md) §5.
 
 The editor shows this in the **Results** tab, and `trafficsim-cli --project FILE [--csv FILE]`
 prints the same report as JSON and CSV. Both carry the not-yet-validated marker. Several seeds

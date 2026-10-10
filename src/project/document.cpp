@@ -122,10 +122,16 @@ Json documentJson(const ProjectDocument& d) {
     const bool controlled=std::any_of(d.network.travelTimeSections.begin(),d.network.travelTimeSections.end(),[](const auto& s){return s.controlType.has_value();});
     // M3.3.3a: 25 only when an owned behaviour is w74 (D136).
     // D142: 26 only when an input takes its volume from the counts.
-    const int schema=usesCountedVolumes(d)?26:ownsW74Behaviour(d)?25:controlled?24:!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
+    // M5.9: 27 only when the evaluation period has a cool-down (D146).
+    const bool cooled=period && d.definition->evaluation->cooldown>0;
+    // M4.2: 28 only when an owned behaviour carries amberDeceleration (D147).
+    const int schema=ownsAmberBehaviour(d)?28:cooled?27:usesCountedVolumes(d)?26:ownsW74Behaviour(d)?25:controlled?24:!d.network.travelTimeSections.empty()?23:period?22:library?21:positioned?20:d.definition && hasTimeTypeDemand(*d.definition)?19:d.definition && (!d.definition->externalCompositions ||
         (!d.definition->externalVehicleTypes && !d.definition->vehicleTypeNames.empty()))?18:17;
     Json definition = d.definition ? definitionJson(*d.definition) : Json(nullptr);
-    if (library && d.definition) addBehaviourLibraryJson(*d.definition, definition);
+    // From schema 21 the reader requires every owned behaviour's model, so any file at 21 or later
+    // tags them, not only one with a library: owned catalogs with an evaluation period (22) and no
+    // library were written untagged and could not be reopened (found by M4.2, D147).
+    if ((library || schema >= 21) && d.definition) addBehaviourLibraryJson(*d.definition, definition);
     if (d.definition) addEvaluationPeriodJson(*d.definition, definition);
     return {{"format", "TrafficSim"}, {"schemaVersion", schema}, {"nextId", d.nextId}, {"revision", d.revision}, {"network", network},
         {"definition", definition}, {"background", {{"pngBase64", *b.pngBase64}, {"x", b.x}, {"y", b.y},
@@ -152,7 +158,7 @@ ProjectDocument parseDocument(const Json& j) {
     if (j.contains("schemaVersion")) {
         // Every read here is guarded: a hand-edited null section must name itself, not surface
         // as an nlohmann type_error the user cannot act on.
-        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 26) ||
+        if (!present(j, "schemaVersion") || !j.at("schemaVersion").is_number_integer() || (j.at("schemaVersion") < 1 || j.at("schemaVersion") > 28) ||
             !present(j, "format") || j.at("format") != "TrafficSim")
             throw std::invalid_argument("EDIT_VERSION");
         if (!present(j, "nextId") || !j.at("nextId").is_number_unsigned() ||
@@ -176,11 +182,15 @@ ProjectDocument parseDocument(const Json& j) {
     if (version < 22) rejectEvaluationPeriodBefore22(j);
     if (version < 25) rejectW74Before25(j);
     if (version < 26) rejectCountedVolumesBefore26(j);
+    if (version < 27) rejectCooldownBefore27(j);
+    if (version < 28) rejectAmberBefore28(j);
     d.network = parseNetwork(j.at("network"), version);
     if (present(j, "definition")) {
         d.definition = parseAuthoringDefinition(j.at("definition"));
         if (version >= 21) parseBehaviourLibrary(j.at("definition"), *d.definition);
         if (version >= 22) d.definition->evaluation = parseEvaluationPeriod(j.at("definition"));
+        // M4.2 (D147): a bare M0 scenario keeps amber as red, as the CLI reads it (loadScenario).
+        if (!j.contains("schemaVersion")) d.definition->provenance.legacyAmber = true;
         // Schema 7 and earlier stored a route as lanes and Connector paths. Schema 8 stores the
         // Links and Connectors those belong to, so that narrowing a Connector cannot invalidate
         // a route. The mapping is idempotent, which is what lets it run on every read.

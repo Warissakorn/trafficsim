@@ -20,7 +20,9 @@ ProjectDocument owned() {
     ProjectDocument d; const auto a = addLink(d, {{0, 0}, {200, 0}}, 1, 3.5), b = addLink(d, {{220, 0}, {400, 0}}, 1, 3.5);
     addConnector(d, {a, d.network.links[0].lanes[0].id, {}}, {b, d.network.links[1].lanes[0].id, {}});
     const auto route = putRoute(d, {"route", {a, d.network.connectors[0].id, b}}); changeRunSettings(d, 60, .1);
-    putDemandCatalog(d, resolveDemandCatalog(AuthoringDefinition{}, test::root() / "data"));
+    auto catalog = resolveDemandCatalog(AuthoringDefinition{}, test::root() / "data");
+    for (auto& b : catalog.behaviours) b.amberDeceleration.reset(); // M4.2 (D147): an owned amberDeceleration is schema 28 (amber tests); this fixture exercises the schemas before it.
+    putDemandCatalog(d, catalog);
     putInput(d, {"in", route, "car", 600, 0, 60});
     validateDocument(d);
     return d;
@@ -112,7 +114,7 @@ TEST(w74codec, w74_below_schema_25_and_a_future_schema_are_refused) { // BA29
         auto old = j; old["schemaVersion"] = version;
         refused(old, "UNSUPPORTED_BEHAVIOUR_MODEL", "behaviours[" + std::to_string(i) + "].model");
     }
-    auto future = j; future["schemaVersion"] = 27;
+    auto future = j; future["schemaVersion"] = 29;
     test::throws([&] { parseDocument(future); }, "EDIT_VERSION");
 }
 

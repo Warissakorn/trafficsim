@@ -61,6 +61,7 @@ Json batchJson(const BatchReport& r, const std::vector<SeedRun>& runs) {
     if (!runs.empty()) {
         const auto& first = runs.front().report;
         j["evaluationPeriod"] = {{"warmup", first.warmup}, {"end", first.evaluationEnd}};
+        if (first.cooldown) j["evaluationPeriod"]["cooldown"] = *first.cooldown; // M5.9
     }
     j["perSeed"] = Json::array();
     for (const auto& run : bySeed(runs))
@@ -85,6 +86,8 @@ std::string batchCsv(const BatchReport& r, const std::vector<SeedRun>& runs) {
     if (!runs.empty())
         out << "# Evaluation period: " << csvNumber(runs.front().report.warmup) << " s to "
             << csvNumber(runs.front().report.evaluationEnd) << " s\n";
+    if (!runs.empty() && runs.front().report.cooldown) // M5.9
+        out << "# Cool-down: " << csvNumber(*runs.front().report.cooldown) << " s after the demand ends\n";
     out << "movement,n,meanDelay_s,ci95_s,sd_s,vehicles_mean,meanTravelTime_s,unfinished_mean\n";
     for (const auto& m : r.movements)
         out << csvQuoted(m.name) << ',' << m.meanDelay.n << ',' << csvNumber(m.meanDelay.mean) << ','

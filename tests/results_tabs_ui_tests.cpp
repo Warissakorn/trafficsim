@@ -3,6 +3,7 @@
 // DischargeAccumulator over the same seed; the clamp rows against the run's own count.
 #include "../src/shell/editor_window.hpp"
 #include "../src/core/simulation.hpp"
+#include "../src/project/demand_catalog.hpp"
 #include <nlohmann/json.hpp>
 #include <QAction>
 #include <QApplication>
@@ -31,6 +32,11 @@ int main(int argc, char** argv) {
         const std::filesystem::path data(argv[1]);
         std::ifstream in(data / "projects/four-leg-signalised.traffic.json");
         auto document = parseDocument(Json::parse(in));
+        // The clamp page needs clamps. Since M4.2 (D147) the catalog decides at amber and seed 42
+        // has none, so this copy owns the catalog behaviour without amberDeceleration: D36's run.
+        auto behaviours = resolveDemandCatalog(*document.definition, data).behaviours;
+        for (auto& b : behaviours) b.amberDeceleration.reset();
+        document.definition->behaviours = behaviours; document.definition->externalBehaviours = false;
         QTemporaryDir dir; require(dir.isValid(), "No temporary directory");
         const auto path = dir.filePath("four-leg.traffic.json");
         QFile f(path); require(f.open(QIODevice::WriteOnly), "Fixture write failed");

@@ -56,6 +56,7 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
         const auto from = std::find_if(library.begin(), library.end(), [](const auto& x) { return !x.w74; });
         prototype = from == library.end() ? DriverBehaviour{} : *from;
         prototype.maxDecelerationCooperativeBraking = b.maxDecelerationCooperativeBraking;
+        prototype.amberDeceleration = b.amberDeceleration;
         prototype.discretionaryLaneChangeThreshold = prototype.acceptedDecelerationTrailingVehicle =
             prototype.discretionaryLaneChangeHoldTime = std::nullopt;
     }
@@ -75,7 +76,8 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
              {"maxDecelerationCooperativeBraking", &prototype.maxDecelerationCooperativeBraking},
              {"discretionaryLaneChangeThreshold", &prototype.discretionaryLaneChangeThreshold},
              {"acceptedDecelerationTrailingVehicle", &prototype.acceptedDecelerationTrailingVehicle},
-             {"discretionaryLaneChangeHoldTime", &prototype.discretionaryLaneChangeHoldTime}})
+             {"discretionaryLaneChangeHoldTime", &prototype.discretionaryLaneChangeHoldTime},
+             {"amberDeceleration", &prototype.amberDeceleration}}) // M4.2 (D147)
         optionals.push_back(optional(prototypePage, prototypeForm, key, value));
     pages->addWidget(prototypePage);
     // W74 page (W74.md §5): every key required, each a text field so that one with no value can
@@ -94,6 +96,10 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
     const auto w74Cooperative = optional(w74Page, w74Form, "maxDecelerationCooperativeBraking", &cooperative);
     w74Cooperative.on->setObjectName("w74MaxDecelerationCooperativeBrakingSet");
     w74Cooperative.spin->setObjectName("w74MaxDecelerationCooperativeBraking");
+    // M4.2 (D147): the amber decision is the same for every model.
+    auto amber = b.amberDeceleration;
+    const auto w74Amber = optional(w74Page, w74Form, "amberDeceleration", &amber);
+    w74Amber.on->setObjectName("w74AmberDecelerationSet"); w74Amber.spin->setObjectName("w74AmberDeceleration");
     pages->addWidget(w74Page);
     QObject::connect(model, &QComboBox::currentIndexChanged, pages, [=](int index) {
         pages->setCurrentIndex(index); w74Help->setVisible(index == 1);
@@ -111,6 +117,7 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
             staged.discretionaryLaneChangeThreshold = prototype.discretionaryLaneChangeThreshold;
             staged.acceptedDecelerationTrailingVehicle = prototype.acceptedDecelerationTrailingVehicle;
             staged.discretionaryLaneChangeHoldTime = prototype.discretionaryLaneChangeHoldTime;
+            staged.amberDeceleration = prototype.amberDeceleration;
             staged.w74.reset(); dialog.accept(); return;
         }
         // A w74 behaviour: all 18 keys, in range; its prototype fields are unused and not written.
@@ -126,6 +133,7 @@ bool editBehaviour(QWidget* parent, DriverBehaviour& b, std::string& name, const
         auto result = DriverBehaviour{staged.id};
         result.maxDecelerationCooperativeBraking = w74Cooperative.on->isChecked()
             ? std::optional<double>(w74Cooperative.spin->value()) : std::nullopt;
+        result.amberDeceleration = w74Amber.on->isChecked() ? std::optional<double>(w74Amber.spin->value()) : std::nullopt;
         result.w74 = parameters; staged = std::move(result); dialog.accept();
     });
     if (dialog.exec() != QDialog::Accepted) return false;

@@ -89,6 +89,10 @@ inline bool restoreArchivedBehaviour(const std::filesystem::path& root, nlohmann
     // D95's two fields act only through lane-change spans too.
     now.erase("discretionaryLaneChangeThreshold"); now.erase("acceptedDecelerationTrailingVehicle");
     now.erase("discretionaryLaneChangeHoldTime"); // D101, likewise
+    // D147: the archived sweeps ran with amber as red (D36). Their inputs are today's catalog
+    // without amberDeceleration; the congested variant's amber head means a rerun today differs,
+    // which the M3.2.7c section of docs/evidence/m3.2.7-sweep.md records.
+    now.erase("amberDeceleration");
     if (now != archived) return false;
     for (const bool congested : {false, true}) {
         fixture::TJunctionOptions o; o.congestedMajor = congested;

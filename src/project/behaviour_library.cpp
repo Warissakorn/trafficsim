@@ -45,6 +45,10 @@ bool ownsW74Behaviour(const ProjectDocument& d) {
     return d.definition && !d.definition->externalBehaviours &&
         std::any_of(d.definition->behaviours.begin(), d.definition->behaviours.end(), [](const auto& b) { return b.w74.has_value(); });
 }
+bool ownsAmberBehaviour(const ProjectDocument& d) {
+    return d.definition && !d.definition->externalBehaviours &&
+        std::any_of(d.definition->behaviours.begin(), d.definition->behaviours.end(), [](const auto& b) { return b.amberDeceleration.has_value(); });
+}
 bool usesBehaviourLibrary(const ProjectDocument& d) {
     if (assigned(d.network.links) || assigned(d.network.connectors) || ownsW74Behaviour(d)) return true;
     return d.definition && (!d.definition->behaviourNames.empty() || !d.definition->vehicleClasses.empty() ||
@@ -71,6 +75,15 @@ void rejectW74Before25(const Json& j) {
         if (behaviours[i].is_object() && behaviours[i].contains("model") && behaviours[i].at("model") == kW74BehaviourModel)
             throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", at("behaviours", i) + ".model"}});
 }
+void rejectAmberBefore28(const Json& j) {
+    if (!j.contains("definition") || !j.at("definition").is_object()) return;
+    const auto& definition = j.at("definition");
+    if (!definition.contains("behaviours") || !definition.at("behaviours").is_array()) return;
+    const auto& behaviours = definition.at("behaviours");
+    for (std::size_t i = 0; i < behaviours.size(); ++i)
+        if (behaviours[i].is_object() && behaviours[i].contains("amberDeceleration"))
+            throw ValidationError({{"EDIT_UNSUPPORTED_FIELD", at("behaviours", i) + ".amberDeceleration"}});
+}
 void parseBehaviourLibrary(const Json& j, AuthoringDefinition& d) {
     if (j.contains("behaviours")) {
         const auto& behaviours = list(j, "behaviours");
@@ -82,7 +95,7 @@ void parseBehaviourLibrary(const Json& j, AuthoringDefinition& d) {
                 static constexpr const char* common[] = {"id", "name", "model", "standstillDistance",
                     "additiveSafetyDistance", "multiplicativeSafetyDistance", "followingTime", "speedThreshold",
                     "maxDecelerationCooperativeBraking", "discretionaryLaneChangeThreshold",
-                    "acceptedDecelerationTrailingVehicle", "discretionaryLaneChangeHoldTime"};
+                    "acceptedDecelerationTrailingVehicle", "discretionaryLaneChangeHoldTime", "amberDeceleration"};
                 const auto& w74 = w74ParameterKeys();
                 if (std::none_of(std::begin(common), std::end(common), [&](const char* k) { return key == k; }) &&
                     std::none_of(w74.begin(), w74.end(), [&](const auto& k) { return key == k.name; }))

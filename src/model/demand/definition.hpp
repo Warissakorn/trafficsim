@@ -109,8 +109,10 @@ struct LinkBehaviourType {
 };
 // M5.3, schema 22: the part of the run that results describe. Movement rows count trips that end
 // in [warmup, end]; queues average its ticks. No `end` means the end of the run (D132).
+// M5.9, schema 27 (D146): `cooldown` seconds run on past the duration with no new demand; rows then
+// count trips released in [warmup, end] whenever they finish. 0 is none, and is never written.
 struct EvaluationPeriod {
-    double warmup{}; std::optional<double> end;
+    double warmup{}; std::optional<double> end; double cooldown{};
     bool operator==(const EvaluationPeriod&) const = default;
 };
 struct AuthoringDefinition : ScenarioDefinition {
@@ -125,6 +127,14 @@ struct AuthoringDefinition : ScenarioDefinition {
     std::vector<VehicleClass> vehicleClasses;
     std::vector<LinkBehaviourType> linkBehaviourTypes;
     std::optional<EvaluationPeriod> evaluation; // M5.3; absent is warm-up 0 to the end of the run
+    // M4.2 (D147): where the definition came from, not what it says -- never written and never
+    // compared, so a save and reopen round-trips the content exactly. A bare M0 scenario (no
+    // schemaVersion) sets it; its catalog behaviours then resolve without amberDeceleration, so
+    // the frozen TS baselines keep amber as red. Saved and reopened, the file is a project.
+    struct Provenance {
+        bool legacyAmber{};
+        bool operator==(const Provenance&) const { return true; }
+    } provenance;
     AuthoringDefinition() { duration = 180; timeStep = 0.1; }
     bool operator==(const AuthoringDefinition&) const = default;
 };

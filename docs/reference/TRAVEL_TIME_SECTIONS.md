@@ -56,8 +56,8 @@ linear interpolation between the two observed states that bracket it.
 | Travel time | `t_end − t_start` |
 | Free-flow time | `(a_end − a_start) / desiredSpeed` on the route the vehicle holds at the end crossing: the section length at the vehicle's own desired speed, the term the whole-trip `freeFlowTime` uses (the engine has no speed limit below it) |
 | Delay | `max(0, travel time − free-flow time)`, as `tripDelay` |
-| Period | A trip counts when its **end** crossing is in the evaluation period (D132's rule for movements) |
-| Unfinished | Vehicles still in the network with an open trip when the report is taken |
+| Period | A trip counts when its **end** crossing is in the evaluation period (D132's rule for movements). With a cool-down (M5.9, D146, [BATCH](BATCH.md) §5) it counts when its vehicle was released in the window, whenever the end crossing falls |
+| Unfinished | Vehicles still in the network with an open trip when the report is taken; with a cool-down, window vehicles only |
 
 Rows: `name`, `vehicles`, `meanTravelTime`, `meanDelay` (null with no vehicle), `unfinished`.
 

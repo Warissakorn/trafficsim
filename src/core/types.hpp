@@ -52,6 +52,10 @@ struct DriverBehaviour {
     // Present iff the behaviour's model is `w74` (schema 25, D136); its prototype fields are then
     // unused and never written. Last, so every existing brace-initialisation keeps its meaning.
     std::optional<W74Parameters> w74;
+    // M4.2 (D147, docs/reference/AMBER.md): at an amber head the vehicle goes when it cannot stop
+    // before the line at this deceleration (m/s², positive). Absent, amber holds like red (D36).
+    // After w74, so every existing brace-initialisation keeps its meaning.
+    std::optional<double> amberDeceleration;
     bool operator==(const DriverBehaviour&) const = default;
 };
 struct SpeedRange { double min{}, max{}; bool operator==(const SpeedRange&) const = default; };

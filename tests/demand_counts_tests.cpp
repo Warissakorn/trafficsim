@@ -105,7 +105,7 @@ TEST(demandcounts, schema_26_round_trips_and_older_files_refuse_the_key) { // VC
     CHECK(back.definition->inputs == w.d.definition->inputs);
     auto old = j; old["schemaVersion"] = 25;
     test::throws([&] { parseDocument(old); }, "EDIT_UNSUPPORTED_FIELD");
-    auto newer = j; newer["schemaVersion"] = 27;
+    auto newer = j; newer["schemaVersion"] = 29;
     test::throws([&] { parseDocument(newer); }, "EDIT_VERSION");
     auto typo = j; typo["definition"]["inputs"][0]["volumeFromCounts"] = "yes";
     test::throws([&] { parseDocument(typo); }, "true or false");

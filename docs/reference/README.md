@@ -14,6 +14,7 @@ acceptance records live in [plans](../plans/README.md); milestone status lives i
 | [W74.md](W74.md) | W74 car-following equations, parameters, traits, state and model switch (contract, not yet implemented) |
 | [POSITIONED_ROUTING.md](POSITIONED_ROUTING.md) | Positioned Route recognition and schema 20 |
 | [SIMULATION.md](SIMULATION.md) | Simulation core and network model |
+| [AMBER.md](AMBER.md) | Amber stop-or-go: the continuous check, `amberDeceleration`, M0 legacy and acceptance rows (M4.2) |
 | [VEHICLE_POSE.md](VEHICLE_POSE.md) | Vehicle pose — rear axle reference and continuous lane changes |
 | [NETWORK_EDITOR.md](NETWORK_EDITOR.md) | Native network editor |
 | [NETWORK_EDITOR_CONNECTORS.md](NETWORK_EDITOR_CONNECTORS.md) | Native network editor — Connectors |

@@ -120,6 +120,7 @@ Json definitionJson(const AuthoringDefinition& d) {
                 Json item{{"id",b.id}};
                 for (const auto& key : w74ParameterKeys()) item[key.name] = (*b.w74).*key.member;
                 if (b.maxDecelerationCooperativeBraking) item["maxDecelerationCooperativeBraking"] = *b.maxDecelerationCooperativeBraking;
+                if (b.amberDeceleration) item["amberDeceleration"] = *b.amberDeceleration; // M4.2, schema 28
                 j["behaviours"].push_back(std::move(item));
                 continue;
             }
@@ -130,6 +131,7 @@ Json definitionJson(const AuthoringDefinition& d) {
             if (b.discretionaryLaneChangeThreshold) item["discretionaryLaneChangeThreshold"] = *b.discretionaryLaneChangeThreshold;
             if (b.acceptedDecelerationTrailingVehicle) item["acceptedDecelerationTrailingVehicle"] = *b.acceptedDecelerationTrailingVehicle;
             if (b.discretionaryLaneChangeHoldTime) item["discretionaryLaneChangeHoldTime"] = *b.discretionaryLaneChangeHoldTime;
+            if (b.amberDeceleration) item["amberDeceleration"] = *b.amberDeceleration; // M4.2, schema 28
             j["behaviours"].push_back(std::move(item));
         }
     }

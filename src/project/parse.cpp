@@ -319,6 +319,7 @@ DriverBehaviour parseBehaviour(const Json& b, const std::string& path) {
         behaviour.w74 = parameters;
         if (b.contains("maxDecelerationCooperativeBraking"))
             behaviour.maxDecelerationCooperativeBraking = field<double>(b, "maxDecelerationCooperativeBraking");
+        if (b.contains("amberDeceleration")) behaviour.amberDeceleration = field<double>(b, "amberDeceleration"); // M4.2
         return behaviour;
     }
     if (model != kPrototypeBehaviourModel) throw ValidationError({{"UNSUPPORTED_BEHAVIOUR_MODEL", path + ".model"}});
@@ -338,6 +339,8 @@ DriverBehaviour parseBehaviour(const Json& b, const std::string& path) {
     // Optional (D101): absent, a discretionary change is never held.
     if (b.contains("discretionaryLaneChangeHoldTime"))
         behaviour.discretionaryLaneChangeHoldTime = field<double>(b, "discretionaryLaneChangeHoldTime");
+    // Optional (M4.2, D147): absent, amber holds like red.
+    if (b.contains("amberDeceleration")) behaviour.amberDeceleration = field<double>(b, "amberDeceleration");
     return behaviour;
 }
 VehicleType parseVehicleType(const Json& t) {

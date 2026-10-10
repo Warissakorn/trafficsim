@@ -15,15 +15,15 @@ The owner accepted every recommendation, R1–R8 ([review](audits/ROADMAP_REVIEW
 1. **M5.7 rehearsal — prepare only.** It is the owner's ([sitting](plans/OWNER_SITTING.md) A3).
    A session may ready a copy of the M2.6 template for the owner's real counts (sitting B4) and a
    checklist; it cannot close it.
-2. **M5.9 evaluation cool-down** (R6, [M5_PLAN](plans/M5_PLAN.md) §2). Trips that entered inside
-   the evaluation window run on, up to a bound, before anything counts as unfinished. Today
-   `four-leg-signalised` with `--seeds 42-51` warns on 11 of 12 movements because demand runs to
-   the last second. Contract (BATCH §5, SIMULATION) and rows first; warm-up 0 and no cool-down
-   must reproduce today's bytes.
-3. **M4.2 amber stop-or-go** (R2, ROADMAP M4.2). D36 runs amber as red. Contract and
-   failure-first rows first; it moves prototype trajectories, so frozen baselines and BA18 need an
-   explicit, recorded change.
-4. **M6.0 benchmark option sheet** (R2 b, docs only): `docs/evidence/m6-benchmark-options.md`,
+2. **M5.9 evaluation cool-down — implemented 2026-10-09 (D146).** Schema 27
+   `evaluation.cooldown`; new projects 900 s; old files byte-identical
+   ([evidence](evidence/m5.9-cooldown.md)). Left: native CI on its PR; whether the shipped
+   `four-leg-signalised` example gets a cool-down is the owner's ([sitting](plans/OWNER_SITTING.md) B8).
+3. **M4.2 amber stop-or-go — implemented 2026-10-09 (D147).** Catalog `amberDeceleration` 3.0,
+   continuous check, commitment at red; M0 keeps amber as red, so the frozen fixtures did not move.
+   Four-leg clamps 220 → 1 over 40 seeds, every movement's delay down 1.4–7.5 s
+   ([evidence](evidence/m4.2-amber.md)). Left: native CI on its PR; the owner closes the milestone.
+4. **M6.0 benchmark option sheet — the next session's slice** (R2 b, docs only): `docs/evidence/m6-benchmark-options.md`,
    at least two published options per M6 benchmark kind, the command that would produce the
    comparable figure, **no engine numbers and no tolerance**.
 5. **M5.8 scenario comparison** (R1): two batches on one seed list → per-movement and per-section
@@ -42,7 +42,7 @@ start their contracts before questions 1–5 are answered.
 
 **Owner items** — gates, chat decisions and every desktop look — are in one sheet,
 [OWNER_SITTING](plans/OWNER_SITTING.md) (R4). After the sitting, items still open and older than
-14 days become ROADMAP carve-outs. **Native CI** of M5.5 (D134), M5.6 (D141) and D142 is checked
+14 days become ROADMAP carve-outs. **Native CI** of M5.5 (D134), M5.6 (D141), D142, M5.9 (D146) and M4.2 (D147) is checked
 on their PRs.
 
 ## Open engineering notes from 2026-10-05/06 (non-owner parts)

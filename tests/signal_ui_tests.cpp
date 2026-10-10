@@ -191,6 +191,19 @@ int main(int argc,char** argv) {
         require(documentJson(w.history().document())["schemaVersion"]==22,"A period did not write schema 22");
         w.findChild<QAction*>("editorUndo")->trigger();QApplication::processEvents();
         require(!w.history().document().definition->evaluation,"Undo did not remove the period");
+        // M5.9: the same dialog sets the cool-down, which writes schema 27 and undoes in one step.
+        QTimer::singleShot(0,[&]{
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+            auto* cooldown=dialog?dialog->findChild<QDoubleSpinBox*>("editorCooldown"):nullptr;
+            require(cooldown && cooldown->value()==0,"Cool-down field missing or not 0 without a period");
+            cooldown->setValue(120);dialog->accept();
+        });
+        w.findChild<QAction*>("editorRunSettings")->trigger();QApplication::processEvents();
+        const auto& cooled=w.history().document().definition->evaluation;
+        require(cooled && cooled->cooldown==120 && cooled->warmup==0,"Cool-down did not reach the document");
+        require(documentJson(w.history().document())["schemaVersion"]==27,"A cool-down did not write schema 27");
+        w.findChild<QAction*>("editorUndo")->trigger();QApplication::processEvents();
+        require(!w.history().document().definition->evaluation,"Undo did not remove the cool-down");
         std::cout<<"Signal UI tests passed\n";
         return 0;
     } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

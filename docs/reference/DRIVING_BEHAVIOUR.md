@@ -139,6 +139,7 @@ not appear as a working setting just because the catalog can store a number.
 | Minimum lane-change headway front/rear | Existing following-based checks are not this separate target parameter |
 | Lane-change safety-distance reduction | Planned; never overrides physical overlap protection |
 | Maximum cooperative braking | Existing optional positive-magnitude `maxDecelerationCooperativeBraking`; mapping is partial, not Vissim parity |
+| Behaviour at amber | Optional `amberDeceleration` (m/s², both models; catalog 3.0, ITE): a continuous stop-or-go check, not Vissim's probability model ([AMBER](AMBER.md), D147) |
 | Cooperative lane change; speed difference/collision time | Cooperation by changing lane is planned separately from braking |
 | Advanced merging | Existing merge arbitration is not this complete behavior model |
 | Rear lateral correction | Rear-axle display exists; physical lateral correction/occupancy not implemented |

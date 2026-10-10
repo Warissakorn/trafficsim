@@ -62,7 +62,7 @@ TEST(evaluationperiod, older_schemas_and_bad_periods_are_refused) {
     test::throws([&] { parseDocument(extra); }, "EVALUATION_PERIOD_INVALID");
     auto text = j; text["definition"]["evaluation"]["warmup"] = "900";
     test::throws([&] { parseDocument(text); }, "EVALUATION_PERIOD_INVALID");
-    auto newer = j; newer["schemaVersion"] = 27;
+    auto newer = j; newer["schemaVersion"] = 29;
     test::throws([&] { parseDocument(newer); }, "EDIT_VERSION");
     // duration 600: each of these leaves no period inside the run.
     const std::vector<std::pair<double, std::optional<double>>> bad{

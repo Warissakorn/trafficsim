@@ -107,6 +107,8 @@ DemandCatalog resolveDemandCatalog(const AuthoringDefinition& authored,const std
                 result.behaviours.push_back(parseBehaviour(item));
         }
     } catch (const std::exception&) { throw std::runtime_error("EDIT_CATALOG_READ"); }
+    // M4.2 (D147): an M0 scenario keeps amber as red (AMBER.md §2).
+    if (authored.provenance.legacyAmber) for (auto& b : result.behaviours) b.amberDeceleration.reset();
     if(includeCompositions && authored.externalCompositions)result.compositions=loadCompositions(dataDirectory,manifest);
     return result;
 }
@@ -163,6 +165,7 @@ LoadedScenario loadScenario(const std::filesystem::path& file, const std::filesy
         // An M0 scenario carries no schemaVersion, so it is read with the pre-5 meaning.
         auto network = parseNetwork(section(value, "network"), 0);
         auto authored = parseAuthoringDefinition(declared);
+        authored.provenance.legacyAmber = true; // M4.2 (D147): the frozen TS baselines' file kind
         // An M0 scenario names lanes in its routes, like a schema-7 project; the same migration
         // runs here, or the CLI and the editor would compile the same file two different ways.
         migrateRoutesToObjects(network, authored);

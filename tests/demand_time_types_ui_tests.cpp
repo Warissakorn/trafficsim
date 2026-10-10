@@ -63,7 +63,9 @@ int main(int argc,char** argv){
     try{
         require(argc>1,"Expected data directory");QTemporaryDir temp;ProjectDocument d;
         const auto link=addLink(d,{{0,0},{400,0}},2,3.5);putRoute(d,{"first",{link}});putRoute(d,{"second",{link}});changeRunSettings(d,120,.1);
-        auto catalog=resolveDemandCatalog(AuthoringDefinition{},argv[1]);catalog.compositions={{"mix",{{"car",1},{"heavy-vehicle",1}}}};putDemandCatalog(d,catalog);
+        auto catalog=resolveDemandCatalog(AuthoringDefinition{},argv[1]);
+        for(auto& b:catalog.behaviours)b.amberDeceleration.reset(); // M4.2 (D147): an owned amberDeceleration is schema 28; this fixture exercises 19
+        catalog.compositions={{"mix",{{"car",1},{"heavy-vehicle",1}}}};putDemandCatalog(d,catalog);
         putRoutingDecision(d,{"choose","",{{"first",1},{"second",1}}});VehicleInput input{"in","","",600,0,120};input.compositionId="mix";input.routingDecisionId="choose";putInput(d,input);
         const auto path=temp.filePath("time-types.traffic.json");QFile f(path);require(f.open(QIODevice::WriteOnly),"Cannot write fixture");f.write(QByteArray::fromStdString(documentJson(d).dump()));f.close();
         EditorWindow w(argv[1]);w.openFile(path);w.show();QApplication::processEvents();const auto original=documentJson(w.history().document());

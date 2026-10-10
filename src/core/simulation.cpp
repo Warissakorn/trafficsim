@@ -255,7 +255,16 @@ SimState stepSimulation(SimState&& state, double dt) {
             const auto& head = scenario.signalHeads[routeHead.headIndex];
             const double gap = routeHead.partStart + head.position - vehicle.distance;
             if (gap < -1e-9) continue;
-            if (headColors[routeHead.headIndex] == SignalColor::green) continue;
+            const auto colour = headColors[routeHead.headIndex];
+            if (colour == SignalColor::green) continue;
+            // M4.2 (D147, AMBER.md): with an amber deceleration, a driver who cannot stop before the
+            // line at it goes on amber, and one who cannot stop at all (the type's maxDeceleration,
+            // as at a priority rule) goes on amber or red; equality and a standing vehicle stop.
+            if (behaviour.amberDeceleration) {
+                const double toLine = std::max(0.0, gap);
+                if (committed(vehicle.speed, toLine, type) ||
+                    (colour == SignalColor::amber && vehicle.speed * vehicle.speed > 2 * *behaviour.amberDeceleration * toLine)) continue;
+            }
             allowedDistance = std::min(allowedDistance, std::max(0.0, gap));
             if (!leader || gap < leader->gap) leader = Leader{gap, 0, 0};
         }
