@@ -30,20 +30,23 @@ The owner accepted every recommendation, R1–R8 ([review](audits/ROADMAP_REVIEW
    the command for each comparable figure, no engine numbers and no tolerance. The owner answers
    by letter ([sitting](plans/OWNER_SITTING.md) B9); the tolerance follows that answer and
    precedes any comparable run. No session runs a benchmark scenario before then.
-5. **M5.8 scenario comparison** (R1). **M5.8a, the CLI, implemented 2026-10-10 (D148):**
-   `--project BASE --compare ALT --seeds LIST`, alternative minus base per movement, section,
-   approach and the network with a Welch 95 % CI, contract and rows CMP1–CMP7 in
-   [BATCH](reference/BATCH.md) §7. **M5.8b, the editor, is the next session's slice:** compare the
-   open project with a chosen file over the Seeds field, then Copy and Export through
-   `comparisonCsv` and `csvToTsv`, as M5.6 does for a batch (rows EB-style, contract in BATCH §7
-   first).
+5. **M5.8 scenario comparison (R1) — implemented 2026-10-10.** M5.8a, the CLI
+   `--project BASE --compare ALT --seeds LIST` (D148, rows CMP1–CMP7), and M5.8b, the editor's
+   Results → *Compare with…* (D149, rows EC1–EC7): the open project as base against a chosen file
+   over the Seeds field, Copy and Export byte for byte the CLI's `--compare --csv`. Contract in
+   [BATCH](reference/BATCH.md) §7. Verified on Linux (GCC 13.3, Qt 6.4.2, offscreen); Windows waits for
+   `native.yml`. Left: the owner's look ([sitting](plans/OWNER_SITTING.md) C7), and the
+   M5 gate, which stays open.
 
-Then, as the owner chooses: the W74 cited preset and W99 contract (below), M3.4 (R7, §3 below).
-Motorcycles wait for M5.7 (R3; the question is in [PROBLEM](PROBLEM.md) §8).
+**The D143 queue has no session slice left** (items 1, 2's example cool-down, 3's closure and 4's
+answer are the owner's). Next, as the owner chooses: the W74 cited preset and W99 contract
+(below), or M3.4 (R7, §3 below). Without a choice, the next session starts **M8.1** (below), which
+the owner booked to follow the queue. Motorcycles wait for M5.7 (R3; the question is in
+[PROBLEM](PROBLEM.md) §8).
 
 **After the D143 queue — multi-level modelling (D145).** The owner booked Micro, Meso and Macro
-(four-step) levels as M8–M12 ([design](plans/MULTI_LEVEL_MODELLING.md), ROADMAP M8–M12). Do not
-start them before items 2–5 above. First session: **M8.1**, the Zone/ZoneConnector/OdMatrix/
+(four-step) levels as M8–M12 ([design](plans/MULTI_LEVEL_MODELLING.md), ROADMAP M8–M12). Items
+2–5 above are implemented, so they may start now. First session: **M8.1**, the Zone/ZoneConnector/OdMatrix/
 ParkingLot contract in `docs/reference/` and failure-first rows (a full lot queues at the gate and
 never deletes a vehicle; older files byte-identical), no code. Then M8.2 onward in the design's §5
 order. The six open questions in the design's §8 go to the owner's sitting; M10 and M11 cannot
@@ -52,7 +55,8 @@ start their contracts before questions 1–5 are answered.
 **Owner items** — gates, chat decisions and every desktop look — are in one sheet,
 [OWNER_SITTING](plans/OWNER_SITTING.md) (R4). After the sitting, items still open and older than
 14 days become ROADMAP carve-outs. **Native CI** of M5.5 (D134), M5.6 (D141) and D142 is checked on their PRs; M5.9 (D146) and
-M4.2 (D147) were green on PR #135.
+M4.2 (D147) were green on PR #135; M5.8b (D149) has no native CI
+run yet.
 
 ## Open engineering notes from 2026-10-05/06 (non-owner parts)
 

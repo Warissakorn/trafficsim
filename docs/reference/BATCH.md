@@ -152,13 +152,13 @@ The editor's Results tab runs the same batch as `--seeds`, for the project open 
 | EB5 | An edit after a finished batch discards it; the single-run view returns | `batch-run-ui` |
 | EB6 | A bad seed list is refused before any run | `batch-run-ui` |
 
-## 7. Scenario comparison (M5.8, D148)
+## 7. Scenario comparison (M5.8, D148, D149)
 
 `trafficsim-cli --project BASE --compare ALTERNATIVE --seeds LIST [--csv FILE]` answers
 [PROBLEM](../PROBLEM.md) §1 step 6: how much a with-project or mitigated scenario changes the
 base. Every figure is a difference of **simulated** delays or queues, not HCM control delay or
-LOS, and not validated (rule 4). The CLI comes first (M5.8a); the editor's Copy and Export are
-M5.8b.
+LOS, and not validated (rule 4). The CLI came first (M5.8a); the editor, with Copy and Export, is
+M5.8b (below, D149).
 
 - **Runs.** Each project is parsed, compiled and run as its own batch (§1–§2) over the same
   `LIST`. Each run draws one random stream from its seed, and the two streams diverge as soon as
@@ -224,3 +224,43 @@ M5.8b.
 | CMP5 | `four-leg-signalised` against itself (seeds 42–43): every `d` is exactly 0 and every half-width positive, approaches included | `compare` |
 | CMP6 | `four-leg-signalised` against a copy with one input's volume raised by half: every movement, approach and network `d` equals the difference of the two batches' own means, bit for bit, and at least one is not 0 | `compare` |
 | CMP7 | `--compare` without `--seeds` is refused with its own message; the CSV starts with the marker line; a second, independent run of the same project formats to the same bytes | `compare`, `cli-compare`, `cli-compare-conflict` |
+
+### Editor comparison (M5.8b, D149)
+
+The editor's Results tab runs the same comparison as `--compare`, with the project open in it as
+the **base** and a chosen file as the **alternative** — the roles of `--project` and `--compare`.
+
+- **Start.** *Compare with…*, beside *Run seeds*, asks for a `*.traffic.json` file and uses the
+  Seeds field's list (§6). Before any run, and before the results on show are cleared, it
+  refuses: a bad seed list (the CLI's message), an alternative that cannot be read or does not
+  compile (one line naming the file; the open project's Problems tab is not touched, because the
+  issues are the other network's), a base that does not compile (as *Run seeds*), and evaluation
+  periods that differ (§7 above).
+- **Snapshot.** Both documents are compiled on the UI thread and only value copies cross to the
+  one worker thread, which runs the base's seeds, then the alternative's, `aggregate`s each and
+  calls `compareBatches`. Neither file is read again, so editing either during the runs changes
+  nothing.
+- **Progress, cancel, one table at a time.** As §6, counting 2N runs (base first). Cancel and
+  every invalidation of §6 discard a running or finished comparison; a batch or a single run
+  replaces it, and it replaces them.
+- **Names.** The base is named by its file name, `NAME (unsaved edits)` when the document differs
+  from that file, and `unsaved project` when it has none; the alternative by its file name. The
+  CSV therefore never names a file whose bytes did not produce that side.
+- **Table.** Movements, sections and approaches: name, base n and mean, alternative n and mean,
+  difference, ±95 % half-width (s for delay, m for queue). The df is in Copy and Export. The note
+  carries the marker and the measure (independent runs, Welch's 95 % interval, an interval that
+  spans 0 is seed noise), both names, the seeds, the evaluation period and cool-down, each side's
+  overloaded seeds and unfinished movements, the unmatched names, and the network mean delay
+  difference. No LOS letter is given to a difference.
+- **Export** writes `comparisonCsv`, byte for byte the CLI's `--compare --csv` for the same saved
+  files and seeds; **Copy** puts `csvToTsv` of it on the clipboard (§6).
+
+| Row | Check | Test |
+|---|---|---|
+| EC1 | The table's rows, n, means, differences and half-widths equal `compareBatches(aggregate(runSeeds(base)), aggregate(runSeeds(alternative)))` | `compare-run-ui` |
+| EC2 | Export bytes equal `comparisonCsv` with both file names (the CLI's `--compare --csv`) | `compare-run-ui` |
+| EC3 | Copy equals `csvToTsv(comparisonCsv(...))`, marker line first | `compare-run-ui` |
+| EC4 | A bad seed list, an unreadable alternative and a different warm-up are refused before any run, and the finished batch on show stays | `compare-run-ui` |
+| EC5 | Cancel part way leaves no comparison; Export and Copy refuse; a late result is discarded | `compare-run-ui` |
+| EC6 | An edit, a batch and a single run each discard a finished comparison | `compare-run-ui` |
+| EC7 | With unsaved edits the CSV names the base `NAME (unsaved edits)`; a section in the alternative only is named in the note | `compare-run-ui` |

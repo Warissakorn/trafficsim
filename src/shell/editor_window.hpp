@@ -8,6 +8,7 @@
 #include "../project/evaluation.hpp"
 #include "../project/display.hpp"
 #include "../runner/batch.hpp"
+#include "../project/comparison_output.hpp"
 #include "../commands/appearance_commands.hpp"
 #include "../commands/demand_commands.hpp"
 #include <QTimer>
@@ -183,8 +184,27 @@ private:
     void translateBatch();
     void refreshBatch();
     void startBatch();
-    void cancelBatch(); // stops a running batch and discards a finished one
-    void finishBatch(std::uint64_t generation, std::shared_ptr<BatchResult>, const std::string& error);
+    std::optional<std::vector<std::uint32_t>> batchSeedList(); // the Seeds field, or the error shown
+    void cancelBatch(); // stops a running batch or comparison and discards a finished one
+    // The worker both use: `job` runs on it over value copies, reports runs done through
+    // `progress` (false once cancelled) and returns what installs its result on the UI thread.
+    using BatchJob = std::function<std::function<void()>(const std::function<bool(std::size_t)>& progress)>;
+    void startWorker(std::size_t total, bool comparing, BatchJob job);
+    void finishBatch(std::uint64_t generation, const std::function<void()>& install, const std::string& error);
+    // M5.8b (BATCH §7, D149), src/shell/editor_compare.cpp: the open project as base against a
+    // chosen file over the Seeds field, on the same worker; one table at a time with the batch.
+public:
+    struct ComparisonResult { Comparison comparison; ComparedBatch base, alternative; };
+private:
+    QWidget* compareView_{};
+    QLabel* compareNote_{};
+    QTableWidget *compareMovementTable_{}, *compareSectionTable_{}, *compareQueueTable_{};
+    bool batchComparing_{}; // the running job is a comparison
+    std::optional<ComparisonResult> comparison_;
+    void buildCompare(QToolBar*, QVBoxLayout*);
+    void translateCompare();
+    void refreshCompare();
+    bool batchShown() const { return batchRunning() || batch_ || comparison_; }
     // M3.2.4, src/shell/editor_priority.cpp: the Conflict areas tab, its dialogs and actions.
     QTableWidget* conflictTable_{};
     QLabel* runProtection_{};
@@ -235,13 +255,19 @@ public:
         return runMovements_ ? std::optional(runMovements_->report(runState_)) : std::nullopt;
     }
     // The finished run's report as the CLI's CSV, replaced atomically; throws before the end.
-    // With a finished batch, the batch's CSV instead (`--seeds --csv`).
+    // With a finished batch, the batch's CSV instead (`--seeds --csv`); with a finished
+    // comparison, the comparison's (`--compare --csv`).
     void exportResults(const QString& file) const;
     // The same text as tab-separated values on the clipboard (M5.6); throws when Export would.
     void copyResults() const;
-    std::string resultsCsv() const; // what Export writes; throws EDIT_CSV_UNFINISHED without a finished run or batch
+    std::string resultsCsv() const; // what Export writes; throws EDIT_CSV_UNFINISHED without a finished run, batch or comparison
     bool batchRunning() const { return batchTotal_ > 0; }
     const std::optional<BatchResult>& batchResult() const { return batch_; }
+    // The open project (base) against `file` (alternative) over the Seeds field. Refuses, before
+    // any run and leaving the results on show, a bad list, an alternative that cannot be read or
+    // compiled, and evaluation periods that differ; *Compare with...* is a file dialog and this.
+    void compareWithFile(const QString& file);
+    const std::optional<ComparisonResult>& comparisonResult() const { return comparison_; }
 private:
     QString file_;
     std::map<QString,QJsonObject> locales_;

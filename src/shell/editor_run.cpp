@@ -79,7 +79,7 @@ bool EditorWindow::prepareRun() {
             runDischarge_.emplace(discharge,evaluation.queue);
         }catch(const std::exception& e){runDischarge_.reset();runDischargeError_=e.what();}
         runSnapshot_=std::move(snapshot);runState_=std::move(state);runMovements_.emplace(std::move(movements));
-        if(batchRunning()||batch_)cancelBatch(); // one table at a time: a single run replaces the batch
+        if(batchShown())cancelBatch(); // one table at a time: a single run replaces the batch or comparison
         // createSimulation can already emit events at t=0; start the count from them, not from
         // the first step, or a departure at time zero is missing from every later figure.
         runSummary_={};runClamps_.clear();observeRun();
@@ -122,10 +122,11 @@ void EditorWindow::refreshRun(){
     actions_.at("editorRun")->setText(text(runTimer_.isActive()?"editorPause":"editorRun"));
     actions_.at("editorRun")->setIcon(editorIcon(runTimer_.isActive()?EditorIcon::pause:EditorIcon::run));
     actions_.at("editorStep")->setEnabled(!runTimer_.isActive());
-    const bool exportable=runFinished()||batch_.has_value();
+    const bool exportable=runFinished()||batch_.has_value()||comparison_.has_value();
     for(const char* key:{"editorExportResults","editorCopyResults"})
         if(const auto e=actions_.find(key);e!=actions_.end())e->second->setEnabled(exportable);
-    if(const auto e=actions_.find("editorRunSeeds");e!=actions_.end())e->second->setEnabled(!batchRunning());
+    for(const char* key:{"editorRunSeeds","editorCompareSeeds"})
+        if(const auto e=actions_.find(key);e!=actions_.end())e->second->setEnabled(!batchRunning());
     if(const auto e=actions_.find("editorCancelSeeds");e!=actions_.end())e->second->setEnabled(batchRunning());
     runSeed_->setAccessibleName(text("seed"));runSpeed_->setAccessibleName(text("speed"));
     if(!runSnapshot_){runInfo_->setText(text("editorRunReady"));runInfo_->setToolTip({});return;}

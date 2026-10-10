@@ -1,15 +1,13 @@
 #include "editor_window.hpp"
-#include "../editor/ui_design_tokens.hpp"
+#include "editor_batch_cells.hpp"
 #include "../project/batch_output.hpp"
 #include "../project/load.hpp"
 #include "../project/los_output.hpp"
 #include <QAction>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QTabWidget>
-#include <QTableWidget>
 #include <QToolBar>
 #include <QVBoxLayout>
 
@@ -17,29 +15,7 @@ namespace trafficsim {
 // M5.6 (BATCH §6): the editor's `--seeds`. The document is compiled here, on the UI thread, and
 // only value copies cross to the worker, which calls the CLI's runSeeds and aggregate; Export and
 // Copy then format with the CLI's batchCsv. Every number keeps the not-validated marker (rule 4).
-namespace {
-QTableWidget* batchTable(QWidget* parent, const char* name, int columns) {
-    auto* table=new QTableWidget(0,columns,parent); table->setObjectName(name);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->verticalHeader()->setVisible(false);
-    table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    table->horizontalHeader()->setSectionResizeMode(0,QHeaderView::Stretch);
-    return table;
-}
-QTableWidgetItem* cell(const QString& text, bool numeric) {
-    auto* item=new QTableWidgetItem(text);
-    if(numeric){ editorDesign::setNumericText(item,true); item->setTextAlignment(Qt::AlignRight|Qt::AlignVCenter); }
-    return item;
-}
-QTableWidgetItem* number(const std::optional<double>& value) {
-    return cell(value?QString::number(*value,'f',1):QString(),true);
-}
-QTableWidgetItem* count(std::size_t n) { return cell(QString::number(n),true); }
-QString seedText(const std::vector<std::uint32_t>& seeds) {
-    QStringList out; for(const auto s:seeds) out<<QString::number(s); return out.join(", ");
-}
-}
+using namespace batchCells;
 void EditorWindow::buildBatch(QToolBar* bar, QVBoxLayout* layout) {
     bar->addSeparator();
     auto* label=new QLabel(bar); texts_["editorSeedsLabel"]=label;
@@ -47,17 +23,18 @@ void EditorWindow::buildBatch(QToolBar* bar, QVBoxLayout* layout) {
     batchSeeds_->setFont(editorDesign::numericFont()); batchSeeds_->setProperty("numeric",true);
     label->setBuddy(batchSeeds_); bar->addWidget(label); bar->addWidget(batchSeeds_);
     bar->addAction(action("editorRunSeeds",{},[this]{startBatch();}));
+    buildCompare(bar,layout); // M5.8b: Compare with... sits beside Run seeds and shares Cancel
     bar->addAction(action("editorCancelSeeds",{},[this]{cancelBatch(); refreshRun();}));
     // A different list is a different batch; the finished one no longer answers what it says.
-    connect(batchSeeds_,&QLineEdit::textChanged,this,[this]{ if(batchRunning()||batch_){cancelBatch(); refreshRun();} });
+    connect(batchSeeds_,&QLineEdit::textChanged,this,[this]{ if(batchShown()){cancelBatch(); refreshRun();} });
 
     batchView_=new QWidget(layout->parentWidget()); layout->addWidget(batchView_,1);
     auto* column=new QVBoxLayout(batchView_); column->setContentsMargins(0,0,0,0); column->setSpacing(editorDesign::space1);
     batchNote_=new QLabel(batchView_); batchNote_->setObjectName("editorBatchNote"); batchNote_->setWordWrap(true);
     column->addWidget(batchNote_);
-    batchMovementTable_=batchTable(batchView_,"editorBatchMovementTable",7); column->addWidget(batchMovementTable_,3);
-    batchSectionTable_=batchTable(batchView_,"editorBatchSectionTable",7); column->addWidget(batchSectionTable_,2);
-    batchQueueTable_=batchTable(batchView_,"editorBatchQueueTable",5); column->addWidget(batchQueueTable_,2);
+    batchMovementTable_=table(batchView_,"editorBatchMovementTable",7); column->addWidget(batchMovementTable_,3);
+    batchSectionTable_=table(batchView_,"editorBatchSectionTable",7); column->addWidget(batchSectionTable_,2);
+    batchQueueTable_=table(batchView_,"editorBatchQueueTable",5); column->addWidget(batchQueueTable_,2);
     batchView_->hide();
 }
 void EditorWindow::translateBatch() {
@@ -68,15 +45,18 @@ void EditorWindow::translateBatch() {
         text("editorResultsCi"),text("editorResultsVehicles"),text("editorResultsControl"),text("editorResultsLos")});
     batchQueueTable_->setHorizontalHeaderLabels({text("editorResultsApproach"),text("editorResultsN"),text("editorResultsQueueMean"),
         text("editorResultsQueueCi"),text("editorResultsQueueMax")});
+    translateCompare();
 }
 void EditorWindow::refreshBatch() {
     if(!batchView_) return;
-    const bool shown=batchRunning()||batch_;
+    // One table at a time: the single run, a batch, or a comparison (M5.8b).
+    const bool shown=(batchRunning()&&!batchComparing_)||batch_;
     batchView_->setVisible(shown);
-    for(QWidget* single:{static_cast<QWidget*>(movementTable_),static_cast<QWidget*>(queueTable_),static_cast<QWidget*>(resultsNote_)})single->setVisible(!shown);
+    for(QWidget* single:{static_cast<QWidget*>(movementTable_),static_cast<QWidget*>(queueTable_),static_cast<QWidget*>(resultsNote_)})single->setVisible(!batchShown());
+    refreshCompare();
     batchMovementTable_->setRowCount(0); batchSectionTable_->setRowCount(0); batchQueueTable_->setRowCount(0);
     batchSectionTable_->hide();
-    if(batchRunning()){ batchNote_->setText(text("editorBatchProgress").arg(batchDone_).arg(batchTotal_)); return; }
+    if(batchRunning()){ if(!batchComparing_) batchNote_->setText(text("editorBatchProgress").arg(batchDone_).arg(batchTotal_)); return; }
     if(!batch_) return;
     const auto& r=batch_->report;
     const auto& first=batch_->runs.front().report;
@@ -121,10 +101,13 @@ void EditorWindow::refreshBatch() {
         batchQueueTable_->setItem(i,4,number(q.maxLength.mean));
     });
 }
+std::optional<std::vector<std::uint32_t>> EditorWindow::batchSeedList() {
+    try{ return parseSeedList(batchSeeds_->text().toStdString()); }
+    catch(const std::exception& e){ error_->setText(text("invalidSeeds")+" ("+QString::fromUtf8(e.what())+")"); return std::nullopt; }
+}
 void EditorWindow::startBatch() {
-    std::vector<std::uint32_t> seeds;
-    try{ seeds=parseSeedList(batchSeeds_->text().toStdString()); }
-    catch(const std::exception& e){ error_->setText(text("invalidSeeds")+" ("+QString::fromUtf8(e.what())+")"); return; }
+    auto list=batchSeedList(); if(!list) return;
+    auto seeds=std::move(*list);
     clearRun(); // one table at a time: the batch replaces the single run, and this cancels any batch
     std::optional<RunSnapshot> snapshot; std::optional<EvaluationSpec> spec;
     try{
@@ -135,15 +118,26 @@ void EditorWindow::startBatch() {
         showError(e);objects_->setCurrentIndex(3);return;
     }
     error_->clear();
+    const auto total=seeds.size(); // read before the call: the capture below moves `seeds`
+    startWorker(total,false,[this,scenario=std::move(snapshot->scenario),spec=std::move(*spec),seeds=std::move(seeds)](const auto& progress)
+        -> std::function<void()> {
+        auto runs=runSeeds(scenario,spec,seeds,progress);
+        if(runs.empty()) return {}; // cancelled
+        auto report=aggregate(runs);
+        auto result=std::make_shared<BatchResult>(BatchResult{std::move(report),std::move(runs)});
+        return [this,result]{ batch_=std::move(*result); };
+    });
+}
+void EditorWindow::startWorker(std::size_t total, bool comparing, BatchJob job) {
     // The previous worker was told to stop by clearRun(); it returns after the seed it is on.
     if(batchThread_.joinable()) batchThread_.join();
     auto cancel=std::make_shared<std::atomic<bool>>(false); batchCancel_=cancel;
     const auto generation=++batchGeneration_;
-    batchDone_=0; batchTotal_=seeds.size();
-    batchThread_=std::thread([this,cancel,generation,scenario=std::move(snapshot->scenario),spec=std::move(*spec),seeds=std::move(seeds)]{
-        std::shared_ptr<BatchResult> result; std::string error;
+    batchDone_=0; batchTotal_=total; batchComparing_=comparing;
+    batchThread_=std::thread([this,cancel,generation,job=std::move(job)]{
+        std::function<void()> install; std::string error;
         try{
-            auto runs=runSeeds(scenario,spec,seeds,[&](std::size_t done){
+            install=job([&](std::size_t done){
                 if(*cancel) return false;
                 QMetaObject::invokeMethod(this,[this,generation,done]{
                     if(generation!=batchGeneration_) return;
@@ -151,25 +145,24 @@ void EditorWindow::startBatch() {
                 },Qt::QueuedConnection);
                 return true;
             });
-            if(!runs.empty()){ auto report=aggregate(runs); result=std::make_shared<BatchResult>(BatchResult{std::move(report),std::move(runs)}); }
         }catch(const std::exception& e){ error=e.what(); }
-        QMetaObject::invokeMethod(this,[this,generation,result,error]{ finishBatch(generation,result,error); },Qt::QueuedConnection);
+        QMetaObject::invokeMethod(this,[this,generation,install,error]{ finishBatch(generation,install,error); },Qt::QueuedConnection);
     });
     objects_->setCurrentIndex(objects_->indexOf(resultsPage_)); resultsTabs_->setCurrentIndex(0); // the Movements tab holds the batch
     refreshRun();
 }
-void EditorWindow::finishBatch(std::uint64_t generation, std::shared_ptr<BatchResult> result, const std::string& error) {
+void EditorWindow::finishBatch(std::uint64_t generation, const std::function<void()>& install, const std::string& error) {
     if(generation!=batchGeneration_) return; // cancelled or replaced: whatever it carries is not shown
     if(batchThread_.joinable()) batchThread_.join(); // it posted this as its last act
     batchTotal_=0; batchDone_=0;
     if(!error.empty()) showError(std::runtime_error(error));
-    else if(result) batch_=std::move(*result);
+    else if(install) install();
     refreshRun();
 }
 void EditorWindow::cancelBatch() {
     if(batchCancel_) *batchCancel_=true;
     ++batchGeneration_;
-    batchTotal_=0; batchDone_=0; batch_.reset();
+    batchTotal_=0; batchDone_=0; batch_.reset(); comparison_.reset();
     refreshBatch();
 }
 }
