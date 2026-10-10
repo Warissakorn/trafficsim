@@ -75,11 +75,10 @@ std::string batchCsv(const BatchReport& r, const std::vector<SeedRun>& runs) {
     std::ostringstream out;
     out << "# TrafficSim - not yet validated. " << measure(r.seeds.size()) << ".\n";
     if (!r.overloadedSeeds.empty())
-        out << "# WARNING: overloaded seeds (pending over 5% of generated) are included in the means: "
-            << seedList(r.overloadedSeeds) << '\n';
+        out << kOverloadedWarning << ' ' << seedList(r.overloadedSeeds) << '\n';
     const auto stuck = movementsWithUnfinished(r);
     if (!stuck.empty()) {
-        out << "# WARNING: unfinished trips over 5% of the movement; its delay reads low:";
+        out << kUnfinishedWarning;
         for (const auto& name : stuck) out << ' ' << csvQuoted(name);
         out << '\n';
     }

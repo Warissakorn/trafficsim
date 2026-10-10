@@ -8,6 +8,67 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-10 — M5.8a scenario comparison, CLI (D148)
+
+`trafficsim-cli --project BASE --compare ALT --seeds LIST [--csv FILE]` answers PROBLEM §1 step 6.
+It runs both projects as batches over the same seeds and reports the alternative minus the base
+per movement, section, approach and the network. Each row has a Welch 95 % interval: the
+Welch–Satterthwaite df, then `tQuantile975(⌊ν⌋)`, the batch's own conservative table rule.
+
+Why Welch, not paired: one random stream per run diverges as soon as the projects differ, so
+equal seeds are not common random numbers, and the output says so.
+
+What the command refuses or reports:
+- **Matching.** Rows are matched by name; base-only, alternative-only and duplicated names are
+  listed in JSON and on a `# Unmatched` CSV line, never dropped.
+- **Refusals.** Evaluation periods that differ in warm-up, end or cool-down are refused before
+  any run; different seed lists before any output.
+- **No LOS.** A difference never gets an LOS letter.
+
+Contract and rows CMP1–CMP7 are in [BATCH](reference/BATCH.md) §7, with
+`tests/compare_tests.cpp` (group `compare`) and `cli-compare`/`cli-compare-conflict` in ctest. The
+CLI's batch path was factored into `prepare`/`runAll` for both commands. `--seeds` output is
+byte-identical before and after (`cmp`, seeds 42–44 on four-leg and 42–43 on M2.6 and the
+T-junction; only `buildCommit` differs). The editor is M5.8b (NEXT).
+
+An independent review of the M6.0 sheet also ran this session, and its 25 findings were fixed in
+a separate commit. The run-cost entry of 2026-10-08 moved whole to `archive/`.
+
+---
+
+## 2026-10-10 — M6.0 benchmark option sheet (Q4)
+
+Docs only, the D143 queue's item after M4.2. The [option sheet](evidence/m6-benchmark-options.md)
+prepares Q4, open since 2026-09-10, for the owner to answer by letter
+([OWNER_SITTING](plans/OWNER_SITTING.md) B9). It covers three kinds: S1 saturation flow and
+capacity, S2 delay, and U minor-movement capacity with the gap-acceptance calibration R7 moved
+to M6. Each kind has five published options, each giving its quantity, conditions and limits,
+and the command that would produce TrafficSim's comparable figure or what is missing for it. No
+TrafficSim figure was produced for it, and no tolerance is proposed, so the choice stays blind.
+
+What the sheet found for the next M6 session:
+- **Unsignalised capacity has no command yet.** The engine's rule is a gap time plus a distance
+  headway, occupancy and area reservation, so a published critical headway must be translated,
+  not copied into `gapTime`. A comparison also needs a saturated-minor project per major-flow
+  level, and a follow-up headway measured at a priority line, which `--discharge` cannot give.
+- **Effective green is not measured.** Amber ends the discharge window, so capacity needs a
+  declared green or a saturated count.
+- **Poisson generation** makes a random-arrival delay formula (Webster) the closer match, not an
+  exact one: insertion and car-following reshape the stream before the stop line. HCM's uniform
+  term alone describes arrivals the engine cannot generate.
+- **No verifiable Thai study.** No published Thai study of these quantities could be verified,
+  so a local benchmark would be the owner's own measurement.
+
+**How the citations were checked.** Agents researched them with web search, an adversarial pass
+checked them, and a third pass re-checked only the printed details. The HCM and HBS are paid and
+were not read: their values come from agency and software documentation and are marked to be
+read in the manual. Unconfirmed exhibit numbers are left out.
+
+PR #135 (M5.9, M4.2) merged, with native CI green on Linux and Windows. NEXT now points at M5.8.
+The D129 entry moved whole to `archive/`.
+
+---
+
 ## 2026-10-09 — M4.2 amber stop-or-go (D147)
 
 An optional behaviour `amberDeceleration` (catalog 3.0 m/s², ITE) turns amber into a continuous
@@ -397,46 +458,6 @@ before M5" for M5 only. [M5_PLAN](plans/M5_PLAN.md) numbers M5.2–M5.7; NEXT pu
 and parks W74. Why section delay before letters: whole-route delay includes source waiting
 and entry acceleration (D39), so a letter on it would read worse than the junction is.
 Docs only; no code, schema, gate or baseline changed. The D113 entry moved to the archive.
-
----
-
-## 2026-10-08 — Engine run cost: observe and publish
-
-Measured on Windows (MSVC 14.51 Release, P-cores pinned) with temporary probes on the M2.6
-one-hour CLI run: compile 116 / step 332 / observe 155 ms. Inside observe the per-counter-line
-walk was 115 ms: each of 12 lines built and sorted a fresh vector every tick. It now reuses one
-buffer, leaves out fronts past the line (the walk skipped them) and returns 0 without sorting
-when no candidate is queued. Queue hysteresis uses one forward walk over two id-ordered lists
-(an unordered hand-built fleet still searches). Publish copied each `Vehicle` with its lists;
-it now moves it, finding the pending decision first and locating before the push, so no
-moved-from list is read. Wall median 634 → 568 ms (−10%); output byte-identical for the four
-projects × seeds 42–81. Compile was split but not changed: 100 `routelessChains` walks per Run
-dominate (NEXT). Windows only; Linux is CI's.
-
----
-
-## 2026-10-07 — W74 car-following contract (D129)
-
-[`reference/W74.md`](reference/W74.md) writes the M3.3.3a contract NEXT asked for before any
-W74 code: net-gap thresholds (AX, BX, ABX, SDX, SDV, CLDV, OPDV, DMAX), a seven-row regime
-table with every equality side named, per-regime accelerations, 18 required behaviour keys,
-driver traits, `W74State`, model switch, composition with the hard cap/D105/D108/Stop, and
-schema 22. Rows BA21–BA29 are in the delivery plan. Docs only; no code, schema or behaviour
-change. Sources are public: PTV's W74 parameter page for vocabulary and SUMO's open
-`MSCFModel_Wiedemann` (citing Olstam & Tapani 2004) for the decision tree; neither is a
-parity target. Why the choices (D129): PTV hides the internal constants, so each is a key
-rather than a code default; traits come from a splitmix64 hash so the run stream, frozen
-baselines and prototype vehicles in mixed scenarios keep their draws, and an Irwin–Hall
-normal avoids `log`/`cos` cross-compiler drift; `driverFactor` already is PTV's `z`. The
-following sign is hysteresis (−1 after approaching/emergency, +1 after free), the only
-state W74 needs. Not resolved here: preset values, timestep sensitivity (BA27 records it).
-A self-review then fixed six defects before any code: a vehicle resting in the
-following band with `s = −1` behind a static obstacle never moved again and could
-miss its Stop service (now `s = +1` at standstill); `Leader` has no acceleration,
-so the contract now adds and fills it everywhere; the stored regime with a second
-obstacle is the kept result's; `bxAdd > 0` prevents `BX = 0`; the hash's modulo
-and summation order are fixed; BA23/BA26/BA28 now state the emergency start-up
-delay, the real mixed-scenario guarantee and the new cases.
 
 ---
 
