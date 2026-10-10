@@ -151,3 +151,71 @@ The editor's Results tab runs the same batch as `--seeds`, for the project open 
 | EB4 | Cancel part way leaves no batch table; Export and Copy refuse | `batch-run-ui` |
 | EB5 | An edit after a finished batch discards it; the single-run view returns | `batch-run-ui` |
 | EB6 | A bad seed list is refused before any run | `batch-run-ui` |
+
+## 7. Scenario comparison (M5.8, D148)
+
+`trafficsim-cli --project BASE --compare ALTERNATIVE --seeds LIST [--csv FILE]` answers
+[PROBLEM](../PROBLEM.md) §1 step 6: how much a with-project or mitigated scenario changes the
+base. Every figure is a difference of **simulated** delays or queues, not HCM control delay or
+LOS, and not validated (rule 4). The CLI comes first (M5.8a); the editor's Copy and Export are
+M5.8b.
+
+- **Runs.** Each project is parsed, compiled and run as its own batch (§1–§2) over the same
+  `LIST`. Each run draws one random stream from its seed, and the two streams diverge as soon as
+  the projects differ. So equal seeds are **not** common random numbers: the batches are treated
+  as independent samples and nothing is paired.
+- **Refused before any output.** `--compare` needs `--project` and `--seeds`, and refuses what
+  `--seeds` refuses: a single seed, the single-run diagnostic flags, `--scenario` and `--events`.
+  Also refused:
+  - two batches whose seed lists differ;
+  - evaluation periods that differ in warm-up, end or cool-down, because a difference over
+    different windows is not the scenario's effect;
+  - an existing `--csv` file.
+- **Rows.** Movements, sections and approaches are matched by name, block by block, in the
+  base's order. A name found in only one batch, or more than once in either, is not compared. It
+  is listed as base-only, alternative-only or ambiguous, in JSON `unmatched` and on a
+  `# Unmatched` CSV line; nothing is dropped silently. The network mean delay is one more row.
+- **Quantity.** Mean delay for movements, sections and the network; mean queue length for
+  approaches.
+- **Statistic.** Each row uses the two batches' estimates over seeds (`n`, mean, SD):
+  - difference `d = mean_alternative − mean_base`;
+  - standard error `SE = √(s_b²/n_b + s_a²/n_a)`;
+  - Welch–Satterthwaite degrees of freedom
+    `ν = SE⁴ / [(s_b²/n_b)²/(n_b − 1) + (s_a²/n_a)²/(n_a − 1)]`;
+  - 95 % half-width `tQuantile975(⌊ν⌋) · SE`. This takes the lower whole df, as §2's table takes
+    the lower row: wider, never narrower.
+
+  Edge cases:
+  - A mean missing on either side (no vehicle in any seed) leaves `d` empty.
+  - A side with `n < 2` has no SD: `d` is given, while the interval and `ν` are empty.
+  - Both SDs 0 gives `SE = 0`: the half-width is 0 and `ν` is empty.
+- **Reading it.** An interval that spans 0 means the difference cannot be told apart from seed
+  noise at 95 %. The output claims nothing more, and gives no LOS letter to a difference.
+- **JSON (stdout):**
+  - `validated: false`, `measure`, `seeds`;
+  - `base` and `alternative`, each with its file name, `overloadedSeeds` and
+    `movementsWithUnfinished`;
+  - `evaluationPeriod`;
+  - `movements`, `sections` and `queues` rows: `{base: {n, mean}, alternative: {n, mean},
+    difference, halfWidth95, degreesOfFreedom}`;
+  - `network` and `unmatched`;
+  - `engineVersion`, `buildCommit`, `compiler`.
+- **CSV (`--csv`):**
+  - the marker line first;
+  - `# Base:` with both file names;
+  - for each side, the overloaded-seed and unfinished-trip `# WARNING`s (§3, §5), when any;
+  - `# Unmatched`, when any;
+  - the evaluation period and cool-down;
+  - then the blocks `movement`, `section` (only when either side has a section), `approach` and
+    `network`, each with the columns `base_n, base_mean, alternative_n, alternative_mean,
+    difference, ci95, df`, in units of s or m.
+
+| Row | Check | Test |
+|---|---|---|
+| CMP1 | Welch by hand: `d`, `SE`, `ν`, `⌊ν⌋` and the half-width for explicit estimates; `ν` lies between `min(n) − 1` and `n_b + n_a − 2` | `compare` |
+| CMP2 | Swapping base and alternative negates every `d` and leaves every half-width and `ν` unchanged | `compare` |
+| CMP3 | Base-only, alternative-only and duplicate names are listed and not compared; matched rows keep the base's order | `compare` |
+| CMP4 | Different seed lists and different warm-up, end or cool-down are refused; `n < 2` gives an empty interval; zero SDs give a zero half-width | `compare` |
+| CMP5 | `four-leg-signalised` against itself (seeds 42–43): every `d` is exactly 0 and every half-width positive | `compare` |
+| CMP6 | `four-leg-signalised` against a copy with one input's volume raised by half: every `d` equals the difference of the two batches' own means, bit for bit, and at least one is not 0 | `compare` |
+| CMP7 | CLI: `--compare` without `--seeds` is refused; the CSV starts with the marker line; two invocations give identical bytes | `compare`, `cli-compare`, `cli-compare-conflict` |

@@ -5,6 +5,7 @@
 #include "../src/project/evaluation.hpp"
 #include "../src/project/json.hpp"
 #include "../src/project/batch_output.hpp"
+#include "../src/project/comparison_output.hpp"
 #include "build_info.hpp"
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -78,40 +79,73 @@ int runProject(const std::filesystem::path& file, const std::filesystem::path& c
     return std::cout ? 0 : 1;
 }
 // --seeds (M5.2): the same compiled project and evaluation spec for every seed, then the aggregate.
-int runBatch(const std::filesystem::path& file, const std::filesystem::path& csvFile,
-             const std::filesystem::path& data, const std::vector<std::uint32_t>& seeds) {
+struct Prepared { RunSnapshot snapshot; EvaluationSpec spec; };
+Prepared prepare(const std::filesystem::path& file, const std::filesystem::path& data) {
     std::ifstream stream(file);
     if (!stream) throw std::runtime_error("Cannot read project: " + file.string());
     const auto document = parseDocument(Json::parse(stream));
-    const auto snapshot = compileDocument(document, data);
+    auto snapshot = compileDocument(document, data);
+    auto spec = evaluationSpec(document, snapshot, data);
+    return {std::move(snapshot), std::move(spec)};
+}
+void refuseExisting(const std::filesystem::path& csvFile) {
     if (!csvFile.empty() && std::filesystem::exists(csvFile))
         throw std::invalid_argument("CSV output already exists: " + csvFile.string());
-    const auto spec = evaluationSpec(document, snapshot, data);
-    const auto runs = runSeeds(snapshot.scenario, spec, seeds, [&](std::size_t done) {
-        std::cerr << "seed " << done << "/" << seeds.size() << '\n';
+}
+std::vector<SeedRun> runAll(const Prepared& p, const std::vector<std::uint32_t>& seeds, const std::string& label) {
+    return runSeeds(p.snapshot.scenario, p.spec, seeds, [&](std::size_t done) {
+        std::cerr << label << "seed " << done << "/" << seeds.size() << '\n';
         return true;
     });
-    const auto report = aggregate(runs);
-    if (!csvFile.empty()) {
-        std::ofstream csv(csvFile);
-        csv << batchCsv(report, runs);
-        if (!csv) throw std::runtime_error("Failed writing CSV output");
-    }
-    auto result = batchJson(report, runs);
+}
+void writeCsv(const std::filesystem::path& csvFile, const std::string& text) {
+    if (csvFile.empty()) return;
+    std::ofstream csv(csvFile);
+    csv << text;
+    if (!csv) throw std::runtime_error("Failed writing CSV output");
+}
+void stamp(Json& result) {
     result["engineVersion"] = std::string(TRAFFICSIM_VERSION) + "-cpp-m0";
     result["buildCommit"] = TRAFFICSIM_BUILD_COMMIT;
     result["compiler"] = TRAFFICSIM_COMPILER;
+}
+int runBatch(const std::filesystem::path& file, const std::filesystem::path& csvFile,
+             const std::filesystem::path& data, const std::vector<std::uint32_t>& seeds) {
+    refuseExisting(csvFile);
+    const auto runs = runAll(prepare(file, data), seeds, "");
+    const auto report = aggregate(runs);
+    writeCsv(csvFile, batchCsv(report, runs));
+    auto result = batchJson(report, runs);
+    stamp(result);
     std::cout << result.dump(2) << '\n';
     if (!report.overloadedSeeds.empty())
         std::cerr << "TrafficSim: warning: " << report.overloadedSeeds.size()
                   << " overloaded seed(s) are included in the means; see overloadedSeeds\n";
     return std::cout ? 0 : 1;
 }
+// --compare (M5.8a, BATCH §7): both projects compiled and their windows checked before any run.
+int runComparison(const std::filesystem::path& baseFile, const std::filesystem::path& alternativeFile,
+                  const std::filesystem::path& csvFile, const std::filesystem::path& data,
+                  const std::vector<std::uint32_t>& seeds) {
+    refuseExisting(csvFile);
+    const auto base = prepare(baseFile, data), alternative = prepare(alternativeFile, data);
+    requireSameEvaluationPeriod(base.spec, base.snapshot.scenario.duration, alternative.spec, alternative.snapshot.scenario.duration);
+    ComparedBatch b{baseFile.filename().string(), {}, runAll(base, seeds, "base ")};
+    ComparedBatch a{alternativeFile.filename().string(), {}, runAll(alternative, seeds, "alternative ")};
+    b.report = aggregate(b.runs);
+    a.report = aggregate(a.runs);
+    const auto comparison = compareBatches(b.report, a.report);
+    writeCsv(csvFile, comparisonCsv(comparison, b, a));
+    auto result = comparisonJson(comparison, b, a);
+    stamp(result);
+    std::cout << result.dump(2) << '\n';
+    return std::cout ? 0 : 1;
+}
 }
 int main(int argc, char** argv) {
     try {
         std::uint32_t seed = 42;
-        std::filesystem::path data, scenarioFile, eventsFile, projectFile, csvFile;
+        std::filesystem::path data, scenarioFile, eventsFile, projectFile, csvFile, compareFile;
         bool seedSet = false, laneChanges = false, segmentTimes = false, stopLines = false;
         bool arrivalPhases = false, waitCauses = false;
         DischargeOptions discharge;
@@ -123,13 +157,15 @@ int main(int argc, char** argv) {
                 std::cout << "TrafficSim (not yet validated)\n"
                              "Usage: trafficsim-cli [seed] [--seed N] [--data-dir DIR]\n"
                              "       [--scenario FILE] [--events FILE]\n"
-                             "       [--project FILE.traffic.json [--seeds LIST] [--csv FILE] [--lane-changes] [--segment-times]\n"
+                             "       [--project FILE.traffic.json [--seeds LIST [--compare FILE]] [--csv FILE] [--lane-changes] [--segment-times]\n"
                              "        [--stop-lines] [--arrival-phases [--phase-bin S]] [--wait-causes] [--discharge]]\n"
                              "Outputs completed-trip diagnostics, not HCM control delay or LOS.\n"
                              "--project adds simulated movement delay and approach queues (M2.5).\n"
                              "--seeds LIST (with --project, e.g. 42-51 or 1,5,9) runs each seed and reports n, mean,\n"
                              "  SD and 95% CI per movement and approach, plus every seed's accounting (M5.2).\n"
                              "  Seeds with over 5% of generated vehicles still pending are flagged, not dropped.\n"
+                             "--compare FILE (with --project and --seeds) runs FILE as the alternative over the same seeds\n"
+                             "  and reports alternative minus base per movement, section and approach, Welch 95% CI (M5.8).\n"
                              "--lane-changes adds where lane changes happen and dead-end waits (M3.2.8c).\n"
                              "--segment-times adds each movement's mean time to every segment (M3.2.8c).\n"
                              "--stop-lines adds each signal head's stop-line discharge (M3.2.8c).\n"
@@ -149,7 +185,7 @@ int main(int argc, char** argv) {
             if (arg == "--arrival-phases") { arrivalPhases = true; continue; }
             if (arg == "--wait-causes") { waitCauses = true; continue; }
             if (arg == "--seed" || arg == "--data-dir" || arg == "--scenario" || arg == "--events" ||
-                arg == "--project" || arg == "--csv" || arg == "--phase-bin" || arg == "--seeds") {
+                arg == "--project" || arg == "--csv" || arg == "--phase-bin" || arg == "--seeds" || arg == "--compare") {
                 if (++i == argc) throw std::invalid_argument("Missing value for " + arg);
                 if (arg == "--seed") {
                     if (seedSet) throw std::invalid_argument("Specify seed only once");
@@ -161,6 +197,7 @@ int main(int argc, char** argv) {
                 else if (arg == "--scenario") scenarioFile = argv[i];
                 else if (arg == "--project") projectFile = argv[i];
                 else if (arg == "--csv") csvFile = argv[i];
+                else if (arg == "--compare") compareFile = argv[i];
                 else if (arg == "--phase-bin") {
                     std::size_t used = 0;
                     binWidth = std::stod(argv[i], &used);
@@ -181,6 +218,8 @@ int main(int argc, char** argv) {
         discharge.validateUsage(!projectFile.empty());
         if (waitCauses && projectFile.empty()) throw std::invalid_argument("--wait-causes needs --project");
         if (binWidth != 10 && !arrivalPhases) throw std::invalid_argument("--phase-bin needs --arrival-phases");
+        if (!compareFile.empty() && (projectFile.empty() || !seeds))
+            throw std::invalid_argument("--compare needs --project and --seeds");
         if (seeds) {
             if (projectFile.empty()) throw std::invalid_argument("--seeds needs --project");
             if (seedSet) throw std::invalid_argument("--seeds cannot be combined with a single seed");
@@ -190,6 +229,7 @@ int main(int argc, char** argv) {
         if (!projectFile.empty()) {
             if (!scenarioFile.empty() || !eventsFile.empty())
                 throw std::invalid_argument("--project cannot be combined with --scenario or --events");
+            if (!compareFile.empty()) return runComparison(projectFile, compareFile, csvFile, data, *seeds);
             if (seeds) return runBatch(projectFile, csvFile, data, *seeds);
             return runProject(projectFile, csvFile, data, seed, laneChanges, segmentTimes, stopLines, arrivalPhases ? binWidth : 0, waitCauses, discharge);
         }

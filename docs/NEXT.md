@@ -30,9 +30,13 @@ The owner accepted every recommendation, R1–R8 ([review](audits/ROADMAP_REVIEW
    the command for each comparable figure, no engine numbers and no tolerance. The owner answers
    by letter ([sitting](plans/OWNER_SITTING.md) B9); the tolerance follows that answer and
    precedes any comparable run. No session runs a benchmark scenario before then.
-5. **M5.8 scenario comparison — the next session's slice** (R1): two batches on one seed list →
-   per-movement and per-section differences with a Welch 95 % CI; no common-random-numbers claim.
-   Contract and rows first ([M5_PLAN](plans/M5_PLAN.md) M5.8).
+5. **M5.8 scenario comparison** (R1). **M5.8a, the CLI, implemented 2026-10-10 (D148):**
+   `--project BASE --compare ALT --seeds LIST`, alternative minus base per movement, section,
+   approach and the network with a Welch 95 % CI, contract and rows CMP1–CMP7 in
+   [BATCH](reference/BATCH.md) §7. **M5.8b, the editor, is the next session's slice:** compare the
+   open project with a chosen file over the Seeds field, then Copy and Export through
+   `comparisonCsv` and `csvToTsv`, as M5.6 does for a batch (rows EB-style, contract in BATCH §7
+   first).
 
 Then, as the owner chooses: the W74 cited preset and W99 contract (below), M3.4 (R7, §3 below).
 Motorcycles wait for M5.7 (R3; the question is in [PROBLEM](PROBLEM.md) §8).

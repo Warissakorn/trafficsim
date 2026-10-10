@@ -8,6 +8,34 @@ move old blocks whole into `docs/archive/` if this gets long, and list each in
 
 ---
 
+## 2026-10-10 — M5.8a scenario comparison, CLI (D148)
+
+`trafficsim-cli --project BASE --compare ALT --seeds LIST [--csv FILE]` answers PROBLEM §1 step 6.
+It runs both projects as batches over the same seeds and reports the alternative minus the base
+per movement, section, approach and the network. Each row has a Welch 95 % interval: the
+Welch–Satterthwaite df, then `tQuantile975(⌊ν⌋)`, the batch's own conservative table rule.
+
+Why Welch, not paired: one random stream per run diverges as soon as the projects differ, so
+equal seeds are not common random numbers, and the output says so.
+
+What the command refuses or reports:
+- **Matching.** Rows are matched by name; base-only, alternative-only and duplicated names are
+  listed in JSON and on a `# Unmatched` CSV line, never dropped.
+- **Refusals.** Different seed lists, or evaluation periods that differ in warm-up, end or
+  cool-down, are refused before any run.
+- **No LOS.** A difference never gets an LOS letter.
+
+Contract and rows CMP1–CMP7 are in [BATCH](reference/BATCH.md) §7, with
+`tests/compare_tests.cpp` (group `compare`) and `cli-compare`/`cli-compare-conflict` in ctest. The
+CLI's batch path was factored into `prepare`/`runAll` for both commands. `--seeds` output is
+byte-identical before and after (`cmp`, seeds 42–44 on four-leg and 42–43 on M2.6 and the
+T-junction; only `buildCommit` differs). The editor is M5.8b (NEXT).
+
+An independent review of the M6.0 sheet also ran this session, and its 25 findings were fixed in
+a separate commit. The run-cost entry of 2026-10-08 moved whole to `archive/`.
+
+---
+
 ## 2026-10-10 — M6.0 benchmark option sheet (Q4)
 
 Docs only, the D143 queue's item after M4.2. The [option sheet](evidence/m6-benchmark-options.md)
@@ -430,21 +458,6 @@ before M5" for M5 only. [M5_PLAN](plans/M5_PLAN.md) numbers M5.2–M5.7; NEXT pu
 and parks W74. Why section delay before letters: whole-route delay includes source waiting
 and entry acceleration (D39), so a letter on it would read worse than the junction is.
 Docs only; no code, schema, gate or baseline changed. The D113 entry moved to the archive.
-
----
-
-## 2026-10-08 — Engine run cost: observe and publish
-
-Measured on Windows (MSVC 14.51 Release, P-cores pinned) with temporary probes on the M2.6
-one-hour CLI run: compile 116 / step 332 / observe 155 ms. Inside observe the per-counter-line
-walk was 115 ms: each of 12 lines built and sorted a fresh vector every tick. It now reuses one
-buffer, leaves out fronts past the line (the walk skipped them) and returns 0 without sorting
-when no candidate is queued. Queue hysteresis uses one forward walk over two id-ordered lists
-(an unordered hand-built fleet still searches). Publish copied each `Vehicle` with its lists;
-it now moves it, finding the pending decision first and locating before the push, so no
-moved-from list is read. Wall median 634 → 568 ms (−10%); output byte-identical for the four
-projects × seeds 42–81. Compile was split but not changed: 100 `routelessChains` walks per Run
-dominate (NEXT). Windows only; Linux is CI's.
 
 ---
 

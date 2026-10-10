@@ -69,11 +69,11 @@ target_link_libraries(trafficsim_vehicle_pose PUBLIC trafficsim_model PRIVATE tr
 add_library(trafficsim_eval STATIC src/eval/discharge.cpp src/eval/discharge_passage.cpp src/eval/summary.cpp src/eval/movement.cpp src/eval/sections.cpp src/eval/los.cpp src/eval/lane_changes.cpp src/eval/segment_times.cpp src/eval/stop_lines.cpp src/eval/arrival_phases.cpp src/eval/dead_end_waits.cpp)
 target_link_libraries(trafficsim_eval PUBLIC trafficsim_core PRIVATE trafficsim_options)
 # M5.2 batches: independent seeds and their aggregate. Core and eval only (check_architecture).
-add_library(trafficsim_runner STATIC src/runner/batch.cpp)
+add_library(trafficsim_runner STATIC src/runner/batch.cpp src/runner/compare.cpp)
 target_link_libraries(trafficsim_runner PUBLIC trafficsim_eval PRIVATE trafficsim_options)
 add_library(trafficsim_project STATIC src/project/load.cpp src/project/parse.cpp src/project/output.cpp
     src/project/document.cpp src/project/signal_migration.cpp src/project/definition.cpp src/project/run.cpp src/project/display.cpp src/project/diagnostics.cpp
-    src/project/input_sha256.cpp src/project/input_manifest.cpp src/project/behaviour_library.cpp src/project/discharge_json.cpp src/project/evaluation.cpp src/project/demand_paths.cpp src/project/demand_preview.cpp src/project/demand_catalog.cpp src/project/demand_time_types.cpp src/project/station_routing.cpp src/project/batch_output.cpp src/project/evaluation_period.cpp src/project/los_output.cpp src/project/counted_volumes.cpp)
+    src/project/input_sha256.cpp src/project/input_manifest.cpp src/project/behaviour_library.cpp src/project/discharge_json.cpp src/project/evaluation.cpp src/project/demand_paths.cpp src/project/demand_preview.cpp src/project/demand_catalog.cpp src/project/demand_time_types.cpp src/project/station_routing.cpp src/project/batch_output.cpp src/project/comparison_output.cpp src/project/evaluation_period.cpp src/project/los_output.cpp src/project/counted_volumes.cpp)
 target_link_libraries(trafficsim_project PUBLIC trafficsim_model trafficsim_eval trafficsim_runner
     nlohmann_json::nlohmann_json PRIVATE trafficsim_options)
 
@@ -189,7 +189,7 @@ if(BUILD_TESTING)
     add_dependencies(check trafficsim-vehicle-pose-tests)
     add_executable(trafficsim-tests tests/main.cpp tests/behaviour_library_tests.cpp tests/behaviour_selection_tests.cpp tests/behaviour_selection_edge_tests.cpp tests/input_manifest_tests.cpp tests/discharge_tests.cpp tests/discharge_passage_tests.cpp tests/discharge_identity_tests.cpp tests/core_tests.cpp tests/station_routing_tests.cpp tests/source_insertion_tests.cpp
         tests/network_tests.cpp tests/reference_tests.cpp tests/project_tests.cpp tests/editor_model_tests.cpp tests/authoring_tests.cpp
-        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/demand_correctness_tests.cpp tests/demand_catalog_tests.cpp tests/demand_time_types_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_geometry_tests.cpp tests/conflict_polygon_tests.cpp tests/conflict_mouth_group_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/demand_counts_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp tests/lane_change_lab_tests.cpp tests/batch_tests.cpp tests/evaluation_period_tests.cpp tests/cooldown_tests.cpp tests/amber_tests.cpp tests/travel_time_section_tests.cpp tests/los_tests.cpp tests/w74_tests.cpp tests/w74_codec_tests.cpp tests/w74_traits_tests.cpp tests/w74_run_tests.cpp)
+        tests/network_lifecycle_tests.cpp tests/connector_tests.cpp tests/connector_shape_tests.cpp tests/connector_mouth_tests.cpp tests/connector_point_tests.cpp tests/attachment_tests.cpp tests/lane_edge_tests.cpp tests/diagnostics_tests.cpp tests/demand_tests.cpp tests/demand_correctness_tests.cpp tests/demand_catalog_tests.cpp tests/demand_time_types_tests.cpp tests/range_tests.cpp tests/four_leg_tests.cpp tests/m26_study_tests.cpp tests/right_of_way_tests.cpp tests/right_of_way_lifecycle_tests.cpp tests/right_of_way_resolution_tests.cpp tests/conflict_zone_tests.cpp tests/conflict_chain_tests.cpp tests/commitment_tests.cpp tests/lane_change_tests.cpp tests/stop_control_tests.cpp tests/stop_control_model_tests.cpp tests/signal_position_tests.cpp tests/queue_counter_tests.cpp tests/t_junction_tests.cpp tests/t_junction_controlled_tests.cpp tests/t_junction_signal_tests.cpp tests/automatic_conflict_tests.cpp tests/conflict_geometry_tests.cpp tests/conflict_polygon_tests.cpp tests/conflict_mouth_group_tests.cpp tests/conflict_follow_tests.cpp tests/right_of_way_runtime_tests.cpp tests/right_of_way_editor_tests.cpp tests/demand_interval_tests.cpp tests/demand_composition_tests.cpp tests/demand_decision_tests.cpp tests/movement_tests.cpp tests/arrival_phase_tests.cpp tests/wait_cause_tests.cpp tests/routeless_tests.cpp tests/downstream_decision_tests.cpp tests/decision_interval_tests.cpp tests/demand_counts_tests.cpp tests/signal_control_tests.cpp tests/discretionary_tests.cpp tests/lane_change_lab_tests.cpp tests/batch_tests.cpp tests/compare_tests.cpp tests/evaluation_period_tests.cpp tests/cooldown_tests.cpp tests/amber_tests.cpp tests/travel_time_section_tests.cpp tests/los_tests.cpp tests/w74_tests.cpp tests/w74_codec_tests.cpp tests/w74_traits_tests.cpp tests/w74_run_tests.cpp)
     target_link_libraries(trafficsim-tests PRIVATE trafficsim_commands trafficsim_options)
     target_compile_definitions(trafficsim-tests PRIVATE TRAFFICSIM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
     target_precompile_headers(trafficsim-tests PRIVATE <nlohmann/json.hpp>)
@@ -202,7 +202,7 @@ if(BUILD_TESTING)
         conflict_zone conflict_chain commitment stop_control stop_control_model signal_position
         queue_counter tjunction tjunction_controlled tjunction_signal automatic_conflict conflict_geometry
         rightofway_runtime rightofway_editor lanechange lane_correspondence mouth_sweep conflict_follow
-        discretionary lanelab lane_centres equation batch evaluationperiod cooldown amber traveltime los w74 w74codec w74traits w74run demandcounts)
+        discretionary lanelab lane_centres equation batch compare evaluationperiod cooldown amber traveltime los w74 w74codec w74traits w74run demandcounts)
     foreach(group ${TRAFFICSIM_TEST_GROUPS})
         add_test(NAME ${group} COMMAND trafficsim-tests ${group})
     endforeach()
@@ -225,6 +225,12 @@ if(BUILD_TESTING)
     set_tests_properties(cli-batch PROPERTIES PASS_REGULAR_EXPRESSION "\"halfWidth95\": [0-9]")
     add_test(NAME cli-batch-conflict COMMAND trafficsim-cli --seed 1 --seeds 2-3 --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json")
     set_tests_properties(cli-batch-conflict PROPERTIES WILL_FAIL TRUE)
+    add_test(NAME cli-compare COMMAND trafficsim-cli --seeds 42-43 --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json"
+        --compare "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json")
+    set_tests_properties(cli-compare PROPERTIES PASS_REGULAR_EXPRESSION "\"difference\": 0\\.0")
+    add_test(NAME cli-compare-conflict COMMAND trafficsim-cli --project "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json"
+        --compare "${PROJECT_SOURCE_DIR}/data/projects/four-leg-signalised.traffic.json")
+    set_tests_properties(cli-compare-conflict PROPERTIES WILL_FAIL TRUE)
     add_dependencies(check trafficsim-tests)
 endif()
 
