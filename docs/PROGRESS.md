@@ -25,8 +25,9 @@ What the sheet found for the next M6 session:
   level, and a follow-up headway measured at a priority line, which `--discharge` cannot give.
 - **Effective green is not measured.** Amber ends the discharge window, so capacity needs a
   declared green or a saturated count.
-- **Poisson arrivals** make a random-arrival delay formula (Webster) the direct match. HCM's
-  uniform term alone describes arrivals the engine cannot generate.
+- **Poisson generation** makes a random-arrival delay formula (Webster) the closer match, not an
+  exact one: insertion and car-following reshape the stream before the stop line. HCM's uniform
+  term alone describes arrivals the engine cannot generate.
 - **No verifiable Thai study.** No published Thai study of these quantities could be verified,
   so a local benchmark would be the owner's own measurement.
 
